@@ -303,6 +303,7 @@ class iGTNTask(TaskNetTask):
                                 break
 
                         if not success:
+                            obj.clear_supporting_surface_occupied_pos()
                             continue
 
                         if room_inst not in scene_object_scope_filtered[room_type][scene_obj]:
@@ -310,6 +311,8 @@ class iGTNTask(TaskNetTask):
                             ]
                         scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
                             obj)
+
+                        obj.clear_supporting_surface_occupied_pos()
 
         np.random.shuffle(self.ground_goal_state_options)
         print('number of ground_goal_state_options',
@@ -348,7 +351,9 @@ class iGTNTask(TaskNetTask):
                                       success)
                                 if not success:
                                     break
+
                             if not success:
+                                obj.clear_supporting_surface_occupied_pos()
                                 continue
 
                             if room_inst not in scene_object_scope_filtered_goal_cond[room_type][scene_obj]:
@@ -356,6 +361,8 @@ class iGTNTask(TaskNetTask):
                                 ]
                             scene_object_scope_filtered_goal_cond[room_type][scene_obj][room_inst].append(
                                 obj)
+
+                            obj.clear_supporting_surface_occupied_pos()
 
             for room_type in scene_object_scope_filtered_goal_cond:
                 # For each room_type, filter in room_inst that has successful
@@ -507,6 +514,8 @@ class iGTNTask(TaskNetTask):
                             success = condition.sample(binary_state=positive)
                             print('success', success)
 
+                        obj.clear_supporting_surface_occupied_pos()
+
                         for goal_condition in goal_condition_set:
                             goal_condition = goal_condition.children[0]
                             if isinstance(goal_condition, Negation):
@@ -531,6 +540,8 @@ class iGTNTask(TaskNetTask):
                             success = goal_condition.sample(
                                 binary_state=True)
                             print('success', success)
+
+                        obj.clear_supporting_surface_occupied_pos()
 
     def clutter_scene(self):
         if not self.load_clutter:

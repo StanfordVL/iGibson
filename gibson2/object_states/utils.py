@@ -6,6 +6,8 @@ from gibson2.object_states import AABB
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
 import gibson2
 from IPython import embed
+from scipy.spatial import distance_matrix
+from scipy.special import softmax
 
 
 def get_center_extent(obj_states):
@@ -52,7 +54,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
                 random_idx]
             random_height_idx = np.random.randint(
                 len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
-            height, height_map = objB.supporting_surfaces[predicate][(
+            height, height_map, occupied_pos = objB.supporting_surfaces[predicate][(
                 body_id, link_id)][random_height_idx]
             obj_half_size = np.max(objA.bounding_box) / 2 * 100
             obj_half_size_scaled = np.array(
@@ -64,9 +66,19 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             valid_pos = np.array(height_map_eroded.nonzero())
             if valid_pos.shape[1] == 0:
                 return False
-            random_pos_idx = np.random.randint(valid_pos.shape[1])
-            random_pos = valid_pos[:, random_pos_idx]
-            y_map, x_map = random_pos
+
+            if len(occupied_pos) == 0:
+                random_pos_idx = np.random.randint(valid_pos.shape[1])
+                selected_pos = valid_pos[:, random_pos_idx]
+            else:
+                dist_mat = distance_matrix(valid_pos.T, np.array(occupied_pos))
+                dist_mat_agg = dist_mat.sum(axis=1)
+                # softmax sampling based on distance
+                random_pos_idx = np.random.choice(
+                    np.arange(valid_pos.shape[1]), p=softmax(dist_mat_agg))
+                selected_pos = valid_pos[:, random_pos_idx]
+
+            y_map, x_map = selected_pos
             y = y_map / 100.0 - 2
             x = x_map / 100.0 - 2
             z = height
@@ -122,6 +134,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             p.stepSimulation()
             if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
                 break
+        occupied_pos.append(selected_pos)
         return True
     else:
         # move back so it's not in scene anymore

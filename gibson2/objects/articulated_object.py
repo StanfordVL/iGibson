@@ -425,8 +425,14 @@ class URDFObject(StatefulObject):
                         link_dir, link_dir, '{}.png'.format(i))
                     xy_map = cv2.imread(img_fname, 0)
                     height_maps[(new_body_id, new_link_id)].append(
-                        (z_value, xy_map))
+                        (z_value, xy_map, []))
             self.supporting_surfaces[predicate] = height_maps
+
+    def clear_supporting_surface_occupied_pos(self):
+        for predicate in self.supporting_surfaces:
+            for key in self.supporting_surfaces[predicate]:
+                for _, _, occupied_pos in self.supporting_surfaces[predicate][key]:
+                    occupied_pos.clear()
 
     def sample_orientation(self):
         if self.orientations is None:
