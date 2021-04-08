@@ -335,6 +335,11 @@ app = iGFlask(__name__)
 
 ########### REQUEST HANDLERS ###########
 
+@app.route('/')
+def index():
+    id = uuid.uuid4()
+    return render_template('index.html', uuid=id)
+
 @app.route("/setup", methods=["POST"])
 def setup():
     """Set up the three environments when requested by annotation React app"""
