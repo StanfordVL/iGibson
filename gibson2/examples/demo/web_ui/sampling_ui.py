@@ -345,10 +345,12 @@ def setup():
     """Set up the three environments when requested by annotation React app"""
     scenes = request.data       # TODO check what this looks like
     print("REQUEST RESULT:", scenes)
-    ids = [uuid.uuid4() for __ in range(len(scenes))]
+    ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
     for scene, unique_id in zip(scenes, ids):
         # app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
         print(f"Pretend instantiated {scene} with uuid {unique_id}")
+
+    return Response(json.dumps({"uuids": ids}))
 
     # TODO need to send uuids to the upcoming POSTs somehow, I guess in the response
 
