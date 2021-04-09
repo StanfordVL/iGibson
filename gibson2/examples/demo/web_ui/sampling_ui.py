@@ -2,6 +2,7 @@ from flask import Flask, render_template, Response, request, session
 import sys
 import pickle
 import json
+from tasknet.parsing import construct_full_pddl
 
 from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -51,12 +52,18 @@ class ProcessPyEnvironment(object):
 
     def start(self):
         """Start the process."""
+        print("STARTING")
         self._conn, conn = multiprocessing.Pipe()
+        print("CREATED CONN")
         self._process = multiprocessing.Process(target=self._worker,
                                                 args=(conn, self._env_constructor))
+        print("CREATED PROCESS")
         atexit.register(self.close)
+        print("REGISTER?")
         self._process.start()
+        print("STARTED PROCESS")
         result = self._conn.recv()
+        print("GOT RESULT FROM CONN")
         if isinstance(result, Exception):
             self._conn.close()
             self._process.join(5)
@@ -163,11 +170,17 @@ class ProcessPyEnvironment(object):
 
         :raise KeyError: when receiving a message of unknown type.
         """
+        print("ENTERED WORKER")
         try:
+            print("TRYING")
             np.random.seed()
+            print("SEEDED")
             env = env_constructor()
+            print("MADE THE ENVIRONMENT")
             conn.send(self._READY)    # Ready.
+            print("SENT READY MESSAGE")
             while True:
+                print("WHILE")
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
                     if not conn.poll(0.1):
@@ -265,10 +278,12 @@ class ToyEnvInt(object):
                                         enable_shadow=True, msaa=True,
                                         light_dimming_factor=1.0,
                                         optimized=True)
-
+        print("STARTING SIM INITIALIZATION")
         self.s = Simulator(mode='headless', image_width=400,
                       image_height=400, rendering_settings=settings)
+        print("FINISHED SIM INIT")
         self.s.import_ig_scene(scene)
+        print("FINISHED SCENE IMPORT")
 
         for _ in range(5):
             obj = YCBObject('003_cracker_box')
@@ -305,24 +320,28 @@ class iGFlask(Flask):
         self.envs = {}
         self.envs_inception_time = {}
     def cleanup(self):
-        print(self.envs)
+        print("ENVS TO CLEANUP:", self.envs)
         for k,v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
                 self.stop_app(k)
 
     def prepare_app(self, uuid, scene):
+        print("ABOUT TO CLEANUP")
         self.cleanup()
-
+        print("CLEANED UP")
         def env_constructor():
             if interactive:
                 return ToyEnvInt(scene=scene)
             else:
                 return ToyEnv()
-
+        print("ABOUT TO CONSTRUCT")
         self.envs[uuid] = ProcessPyEnvironment(env_constructor)
+        print("CONSTRUCTED ONE")
         self.envs[uuid].start()
+        print("STARTED ONE")
         self.envs_inception_time[uuid] = time.time()
+        print("ENVS:", self.envs)
 
     def stop_app(self, uuid):
         self.envs[uuid].close()
@@ -343,10 +362,13 @@ def index():
 @app.route("/setup", methods=["POST"])
 def setup():
     """Set up the three environments when requested by annotation React app"""
+    print("STARTING SETUP")
     scenes = json.loads(request.data)       # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
+    print("MADE IDS")
     for scene, unique_id in zip(scenes, ids):
-        # app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
+        print("PREPARING ONE APP")
+        app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
         print(f"Instantiated {scene} with uuid {unique_id}")
 
     return Response(json.dumps({"uuids": ids}))
@@ -361,14 +383,31 @@ def check_sampling():
     :return (Response): response indicating success of sampling in all three 
                          scenes, feedback given from each 
     """
+    # Prepare data 
     data = json.loads(request.data)
+    atus_activity = data["activityName"]
     init_state = data["initialConditions"]     
     goal_state = data["goalConditions"]
     object_list = data["objectList"]
-    pddl = init_state + goal_state + object_list        # TODO fix using existing utils
-
+    # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
+    pddl = construct_full_pddl(
+                atus_activity, 
+                "feasibility_check", 
+                object_list,
+                init_state,
+                goal_state)
     ids = data["uuids"]
-    success, feedback = run_sampling(app, pddl, ids)
+
+    # Try sampling
+    num_successful_scenes = 0
+    feedback_instances = []
+    for unique_id in ids:
+        init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(pddl)
+        if init_success and goal_success:
+            num_successful_scenes += 1
+            feedback_instances.append((init_feedback, goal_feedback))
+    success = num_successful_scenes >= 3
+    feedback = str(feedback_instances)      # TODO make prettier 
 
     return Response(json.dumps({"success": success, "feedback": feedback}))
 
@@ -382,30 +421,7 @@ def teardown():
         print(f"uuid {unique_id} pretend-stopped")
         # app.stop_app(unique_id)       # TODO uncomment when ready 
     
-    return Response(json.dumps({"success": True}))      # TODO need anything else?
-
-
-########### UTILS ###########
-
-def run_sampling(app, pddl, unique_ids):
-    """Try the current definition for sampleability 
-
-    :param app (iGFlask): app being run
-    :param pddl (str): pddl definition being tested 
-    :param unique_ids (list of uuid): unique ids of environments for the annotator 
-                                      that sent the relevant post 
-    """
-    num_successful_scenes = 0
-    feedback_instances = []
-    for uid in unique_ids:
-        # init_success, goal_success, init_feedback, goal_feedback = app.envs[uid].sample(pddl)     # TODO add in when i can actually do this
-        init_success, goal_success, init_feedback, goal_feedback = True, True, "test init feedback", "test goal feedback"
-        if init_success and goal_success:
-            num_successful_scenes += 1
-        feedback_instances.append((init_feedback, goal_feedback))
-    
-    # TODO make feedback prettier 
-    return num_successful_scenes >= 3, str(feedback_instances)
+    return Response(json.dumps({"success": True}))      # TODO need anything else? 
 
 
 if __name__ == '__main__':
