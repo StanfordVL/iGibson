@@ -52,12 +52,18 @@ class ProcessPyEnvironment(object):
 
     def start(self):
         """Start the process."""
+        print("STARTING")
         self._conn, conn = multiprocessing.Pipe()
+        print("CREATED CONN")
         self._process = multiprocessing.Process(target=self._worker,
                                                 args=(conn, self._env_constructor))
+        print("CREATED PROCESS")
         atexit.register(self.close)
+        print("REGISTER?")
         self._process.start()
+        print("STARTED PROCESS")
         result = self._conn.recv()
+        print("GOT RESULT FROM CONN")
         if isinstance(result, Exception):
             self._conn.close()
             self._process.join(5)
