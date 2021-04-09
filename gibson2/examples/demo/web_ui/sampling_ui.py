@@ -335,7 +335,7 @@ app = iGFlask(__name__)
 
 ########### REQUEST HANDLERS ###########
 
-@app.route('/')
+@app.route('/', methods=["POST"])
 def index():
     id = uuid.uuid4()
     return render_template('index.html', uuid=id)
@@ -343,12 +343,11 @@ def index():
 @app.route("/setup", methods=["POST"])
 def setup():
     """Set up the three environments when requested by annotation React app"""
-    scenes = request.data       # TODO check what this looks like
-    print("REQUEST RESULT:", scenes)
+    scenes = json.loads(request.data)       # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
     for scene, unique_id in zip(scenes, ids):
         # app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
-        print(f"Pretend instantiated {scene} with uuid {unique_id}")
+        print(f"Instantiated {scene} with uuid {unique_id}")
 
     return Response(json.dumps({"uuids": ids}))
 
@@ -380,15 +379,10 @@ def teardown():
     data = json.loads(request.data)
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
-        app.stop_app(unique_id)
-
-
-# @app.route('/demo')
-# def demo():
-#     args = request.args
-#     id = uuid.uuid4()
-#     scene = args['scene']
-#     return render_template('demo.html', uuid=id, scene=scene)
+        print(f"uuid {unique_id} pretend-stopped")
+        # app.stop_app(unique_id)       # TODO uncomment when ready 
+    
+    return Response(json.dumps({"success": True}))      # TODO need anything else?
 
 
 ########### UTILS ###########
@@ -404,7 +398,8 @@ def run_sampling(app, pddl, unique_ids):
     num_successful_scenes = 0
     feedback_instances = []
     for uid in unique_ids:
-        init_success, goal_success, init_feedback, goal_feedback = app.envs[uid].sample(pddl)
+        # init_success, goal_success, init_feedback, goal_feedback = app.envs[uid].sample(pddl)     # TODO add in when i can actually do this
+        init_success, goal_success, init_feedback, goal_feedback = True, True, "test init feedback", "test goal feedback"
         if init_success and goal_success:
             num_successful_scenes += 1
         feedback_instances.append((init_feedback, goal_feedback))
@@ -413,68 +408,7 @@ def run_sampling(app, pddl, unique_ids):
     return num_successful_scenes >= 3, str(feedback_instances)
 
 
-# def gen_interaction_ui(app, unique_id, robot, scene):
-#     image = np.array(Image.open("templates/loading.jpg").resize((400, 400))).astype(np.uint8)
-#     loading_frame = pil_image_to_base64(Image.fromarray(image))
-#     loading_frame = binascii.a2b_base64(loading_frame)
-
-#     image = np.array(Image.open("templates/waiting.jpg").resize((400, 400))).astype(np.uint8)
-#     waiting_frame = pil_image_to_base64(Image.fromarray(image))
-#     waiting_frame = binascii.a2b_base64(waiting_frame)
-
-#     image = np.array(Image.open("templates/finished.jpg").resize((400, 400))).astype(np.uint8)
-#     finished_frame = pil_image_to_base64(Image.fromarray(image))
-#     finished_frame = binascii.a2b_base64(finished_frame)
-#     id = unique_id
-#     if len(app.envs) < 3:
-#         for i in range(5):
-#             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + loading_frame + b'\r\n\r\n')
-#         app.prepare_app(id, robot, scene)
-#         try:
-#             start_time = time.time()
-#             if interactive:
-#                 timeout = 200
-#             else:
-#                 timeout = 30
-#             while time.time() - start_time < timeout:
-#                 frame = app.envs[id].step(app.action[id])
-#                 frame = (frame[:, :, :3] * 255).astype(np.uint8)
-#                 frame = pil_image_to_base64(Image.fromarray(frame))
-#                 frame = binascii.a2b_base64(frame)
-#                 yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n\r\n')
-#         except:
-#             pass
-#         finally:
-#             app.stop_app(id)
-#         for i in range(5):
-#             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + finished_frame + b'\r\n\r\n')
-#     else:
-#         for i in range(5):
-#             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + waiting_frame + b'\r\n\r\n')
-
-# @app.route('/video_feed', methods=['POST', 'GET'])
-# def video_feed():
-#     unique_id = request.args['uuid']
-#     if 'scene' in request.args.keys():
-#         scene = request.args['scene']
-#     print(unique_id)
-#     if request.method == 'POST':
-#         key = request.args['key']
-#         if key == 'w':
-#             app.action[unique_id] = [1,1]
-#         if key == 's':
-#             app.action[unique_id] = [-1,-1]
-#         if key == 'd':
-#             app.action[unique_id] = [0.3,-0.3]
-#         if key == 'a':
-#             app.action[unique_id] = [-0.3,0.3]
-#         if key == 'f':
-#             app.action[unique_id] = [0,0]
-#         return ""
-#     else:
-#         app.action[unique_id] = [0,0]
-#         return Response(gen_interaction_ui(app, unique_id, robot, scene), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 if __name__ == '__main__':
     port = int(sys.argv[1])
-    app.run(host="0.0.0.0", port=port)
+    # app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(port=port, debug=True)
