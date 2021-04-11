@@ -49,8 +49,8 @@ class iGibsonMujocoBridge:
         self.render_collision_mesh = 0
         self.render_visual_mesh = 0
         # print("self.render_visual_mesh", self.render_visual_mesh)
-        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_shadow=True)
-        self.mrs_no_tensor = MeshRendererSettings(msaa=True, enable_shadow=True)
+        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False)
+        self.mrs_no_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False)
         self.settings = self.mrs_tensor if render_to_tensor else self.mrs_no_tensor
         print("##"*80)
         # self.simulator = Simulator(mode=mode,
@@ -94,8 +94,8 @@ class iGibsonMujocoBridge:
         # print("self.render_visual_mesh", self.render_visual_mesh)
         # mrs_tensor = MeshRendererSettings(msaa=True)
         # mrs_no_tensor = MeshRendererSettings(msaa=True, enable_shadow=True)
-        mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
-        mrs_no_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
+        # mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
+        # mrs_no_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
 
 
         if self.render_to_tensor:
@@ -103,14 +103,14 @@ class iGibsonMujocoBridge:
                                             height=self.image_height,
                                             vertical_fov=self.vertical_fov,
                                             device_idx=self.device_idx,
-                                            rendering_settings=mrs_tensor
+                                            rendering_settings=self.mrs_tensor
                                             )
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
-                                         rendering_settings=mrs_no_tensor
+                                         rendering_settings=self.mrs_no_tensor
                                          )
 
         # This doesn't work after reset -> returns zeros
