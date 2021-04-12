@@ -1,3 +1,7 @@
+*.pdb
+*.ilk
+*.pyd
+*.vs
 *.pyc
 *.pkl
 *.so
