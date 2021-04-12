@@ -123,8 +123,11 @@ class VrBody(ArticulatedObject):
         self.sim = s
         self.use_constraints = use_constraints
         self.normal_color = normal_color
+        # Determine whether to use torso tracker for control
+        self.torso_tracker_serial = self.sim.vr_settings.torso_tracker_serial
         body_path = 'normal_color' if self.normal_color else 'alternative_color'
-        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, 'vr_body.urdf')
+        body_path_suffix = 'vr_body.urdf' if not self.torso_tracker_serial else 'vr_body_tracker.urdf'
+        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
         super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
         # Start body far above the scene so it doesn't interfere with physics
         self.start_pos = [30, 0, z_coord]
@@ -134,6 +137,12 @@ class VrBody(ArticulatedObject):
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         self.wall_ids = self.sim.get_category_ids('walls')
         self.init_body()
+        # Determine whether to use torso tracker for control
+        self.torso_tracker_serial = self.sim.vr_settings.torso_tracker_serial
+
+        # TODO: Remove this after testing
+        #self.torso_marker = VisualMarker(visual_shape=p.GEOM_BOX, half_extents=[0.1, 0.2, 0.3], rgba_color=[1, 0, 0, 1])
+        #self.sim.import_object(self.torso_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
 
     def _load(self):
         """
@@ -177,52 +186,72 @@ class VrBody(ArticulatedObject):
         Updates VrBody to new position and rotation, via constraints.
         If vr_data is passed in, uses this data to update the VrBody instead of the simulator's data.
         """
-        # Get HMD data
+        # Reset the body position to the HMD if either of the controller reset buttons are pressed
         if vr_data:
-            hmd_is_valid, _, hmd_rot, right, up, forward = vr_data.query('hmd')
-            hmd_pos, _ = vr_data.query('vr_positions')
+            reset_agent =(('left_controller', 'reset_agent') in vr_data.query('event_data') 
+                        or ('right_controller', 'reset_agent') in vr_data.query('event_data'))
         else:
-            hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
-            right, up, forward = self.sim.get_device_coordinate_system('hmd')
-            hmd_pos = self.sim.get_vr_pos()
+            reset_agent = (self.sim.query_vr_event('left_controller', 'reset_agent') or self.sim.query_vr_event('right_controller', 'reset_agent'))
 
-        # Only update the body if the HMD data is valid - this also only teleports the body to the player
-        # once the HMD has started tracking when they first load into a scene
-        if hmd_is_valid:
-            # Get hmd and current body rotations for use in calculations
-            hmd_x, hmd_y, hmd_z = p.getEulerFromQuaternion(hmd_rot)
-            _, _, curr_z = p.getEulerFromQuaternion(self.get_orientation())
-
-            # Reset the body position to the HMD if either of the controller reset buttons are pressed
+        # Use body update algorithm if no torso tracker is present
+        if not self.torso_tracker_serial:
+            # Get HMD data
             if vr_data:
-                reset_agent =(('left_controller', 'reset_agent') in vr_data.query('event_data') 
-                            or ('right_controller', 'reset_agent') in vr_data.query('event_data'))
+                hmd_is_valid, _, hmd_rot, right, up, forward = vr_data.query('hmd')
+                hmd_pos, _ = vr_data.query('vr_positions')
             else:
-                reset_agent = (self.sim.query_vr_event('left_controller', 'reset_agent') or self.sim.query_vr_event('right_controller', 'reset_agent'))
-            if reset_agent:
-                self.set_position(hmd_pos)
-                self.set_orientation(p.getQuaternionFromEuler([0, 0, hmd_z]))
+                hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
+                right, up, forward = self.sim.get_device_coordinate_system('hmd')
+                hmd_pos = self.sim.get_vr_pos()
 
-            # If VR body is more than 2 meters away from the HMD, don't update its constraint
-            curr_pos = np.array(self.get_position())
-            dest = np.array(hmd_pos)
-            dist_to_dest = np.linalg.norm(curr_pos - dest)
+            # Only update the body if the HMD data is valid - this also only teleports the body to the player
+            # once the HMD has started tracking when they first load into a scene
+            if hmd_is_valid:
+                # Get hmd and current body rotations for use in calculations
+                hmd_x, hmd_y, hmd_z = p.getEulerFromQuaternion(hmd_rot)
+                _, _, curr_z = p.getEulerFromQuaternion(self.get_orientation())
 
-            if dist_to_dest < 2.0:
-                new_z = calc_z_rot_from_right(right)
-                new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
-                p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=50)
+                if reset_agent:
+                    self.set_position(hmd_pos)
+                    self.set_orientation(p.getQuaternionFromEuler([0, 0, hmd_z]))
 
-                # Use 90% strength haptic pulse in both controllers for body collisions with walls - this should notify the user immediately
-                # Note: haptics can't be used in networking situations like MUVR (due to network latency)
-                # or in action replay, since no VR device is connected
-                if not vr_data:
-                    for c_info in p.getContactPoints(self.body_id):
-                        if self.wall_ids and (c_info[1] in self.wall_ids or c_info[2] in self.wall_ids):
-                            for controller in ['left_controller', 'right_controller']:
-                                is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
-                                if is_valid:
-                                    self.sim.trigger_haptic_pulse(controller, 0.9)
+                # If VR body is more than 2 meters away from the HMD, don't update its constraint
+                curr_pos = np.array(self.get_position())
+                dest = np.array(hmd_pos)
+                dist_to_dest = np.linalg.norm(curr_pos - dest)
+
+                if dist_to_dest < 2.0:
+                    new_z = calc_z_rot_from_right(right)
+                    new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
+                    p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=50)
+        else:
+            # Get torso tracker data
+            if vr_data:
+                torso_is_valid, torso_trans, torso_rot = vr_data.query('torso_tracker')
+            else:
+                torso_is_valid, torso_trans, torso_rot = self.sim.get_data_for_vr_tracker(self.torso_tracker_serial)
+
+            if torso_is_valid:
+                curr_pos = np.array(self.get_position())
+                dest = np.array(torso_trans)
+                dist_to_dest = np.linalg.norm(curr_pos - dest)
+                if reset_agent:
+                    self.set_position(torso_trans)
+                    self.set_orientation(torso_rot)
+                    p.changeConstraint(self.movement_cid, torso_trans, torso_rot, maxForce=50)
+                if dist_to_dest < 2.0:
+                    p.changeConstraint(self.movement_cid, torso_trans, torso_rot, maxForce=50)
+            
+        # Use 90% strength haptic pulse in both controllers for body collisions with walls - this should notify the user immediately
+        # Note: haptics can't be used in networking situations like MUVR (due to network latency)
+        # or in action replay, since no VR device is connected
+        if not vr_data:
+            for c_info in p.getContactPoints(self.body_id):
+                if self.wall_ids and (c_info[1] in self.wall_ids or c_info[2] in self.wall_ids):
+                    for controller in ['left_controller', 'right_controller']:
+                        is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
+                        if is_valid:
+                            self.sim.trigger_haptic_pulse(controller, 0.9)
 
 
 class VrHandBase(ArticulatedObject):
@@ -333,16 +362,15 @@ class VrHandBase(ArticulatedObject):
                     if hmd_height + curr_offset[2] + vr_z_offset <= self.height_bounds[1]:
                         self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
+            # Move player based on direction of touchpad
+            if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
+                move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
+
             self.move(trans, rot)
             self.set_close_fraction(trig_frac)
-
+            # Haptic updates only occur when using VR mode
             if not vr_data:
-                if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
-                    move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
-
-                # Use 30% strength haptic pulse for general collisions with controller
-                if len(p.getContactPoints(self.body_id)) > 0:
-                    self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
+                self.update_haptic()
 
     def move(self, trans, rot):
         """
@@ -363,6 +391,13 @@ class VrHandBase(ArticulatedObject):
         Sets the close fraction of the hand - this must be implemented by each subclass.
         """
         raise NotImplementedError()
+
+    def update_haptic(self):
+        """
+        Updates haptic information and triggers haptic response - this must be implemented by each subclass.
+        """
+        raise NotImplementedError()
+
 
 class VrHand(VrHandBase):
     """
@@ -417,7 +452,7 @@ class VrHand(VrHandBase):
         Sets up constraints in addition to superclass hand setup.
         """
         super(VrHand, self).hand_setup(z_coord)
-        p.changeDynamics(self.body_id, -1, mass=2, lateralFriction=self.hand_friction)
+        p.changeDynamics(self.body_id, -1, mass=1, lateralFriction=self.hand_friction)
         for joint_index in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
@@ -640,6 +675,15 @@ class VrHand(VrHandBase):
             target_pos = self.open_pos + interp_frac
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
 
+    def update_haptic(self):
+        """
+        Updates haptic response, which triggers whenever the hand collides with
+        an object or when an object is "in-hand" during assisted grasping.
+        """
+        # Use 30% strength haptic pulse
+        if len(p.getContactPoints(self.body_id)) > 0 or self.object_in_hand:
+            self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
+
 
 class VrGripper(VrHandBase):
     """
@@ -688,6 +732,14 @@ class VrGripper(VrHandBase):
                          erp=1,
                          relativePositionTarget=1-close_frac,
                          maxForce=3)
+
+    def update_haptic(self):
+        """
+        Updates hand haptic whenever an object is touched.
+        """
+        # Use 30% strength haptic pulse
+        if len(p.getContactPoints(self.body_id)) > 0:
+            self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
 
 
 class VrGazeMarker(VisualMarker):
