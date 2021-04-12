@@ -38,7 +38,7 @@ def main():
     #planeOrn = [0, 0, 0, 1]  # p.getQuaternionFromEuler([0.3,0,0])
     #planeId = p.loadURDF("plane.urdf", [0, 0, 0], planeOrn)
 
-    obj = SoftObject(fileName="/data2/ball.obj", simFileName = "/data2/ball.vtk", basePosition=[0, 0, 1.5],
+    obj = SoftObject(fileName="ball.obj", simFileName = "ball.vtk", basePosition=[0, 0, 1.5],
                      scale=0.2, mass=0.5, useNeoHookean=1,NeoHookeanMu=400, NeoHookeanLambda=600,
                      NeoHookeanDamping=0.001, useSelfCollision=1,
                      frictionCoeff=.5, collisionMargin=0.001)
