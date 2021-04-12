@@ -1,4 +1,5 @@
 from flask import Flask, render_template, Response, request, session
+from flask_cors import CORS 
 import sys
 import pickle
 import json
@@ -10,7 +11,6 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 import gibson2
 import os
 
-from gibson2.objects.ycb_object import YCBObject
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
@@ -180,7 +180,6 @@ class ProcessPyEnvironment(object):
             conn.send(self._READY)    # Ready.
             print("SENT READY MESSAGE")
             while True:
-                print("WHILE")
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
                     if not conn.poll(0.1):
@@ -195,7 +194,7 @@ class ProcessPyEnvironment(object):
                     continue
                 if message == self._CALL:
                     name, args, kwargs = payload
-                    if name == 'step' or name == 'reset':
+                    if name == 'step' or name == 'reset' or name == "sample":
                         result = getattr(env, name)(*args, **kwargs)
                     conn.send((self._RESULT, result))
                     continue
@@ -235,12 +234,12 @@ class ToyEnv(object):
         self.s.import_scene(scene)
         #self.s.import_ig_scene(scene)
 
-        for _ in range(5):
-            obj = YCBObject('003_cracker_box')
-            self.s.import_object(obj)
-            obj.set_position_orientation(np.random.uniform(
-                low=0, high=2, size=3), [0, 0, 0, 1])
-        print(self.s.renderer.instances)
+#         for _ in range(5):
+#             obj = YCBObject('003_cracker_box')
+#             self.s.import_object(obj)
+#             obj.set_position_orientation(np.random.uniform(
+#                 low=0, high=2, size=3), [0, 0, 0, 1])
+#         print(self.s.renderer.instances)
 
     def step(self, a):
         self.s.step()
@@ -285,12 +284,12 @@ class ToyEnvInt(object):
         self.s.import_ig_scene(scene)
         print("FINISHED SCENE IMPORT")
 
-        for _ in range(5):
-            obj = YCBObject('003_cracker_box')
-            self.s.import_object(obj)
-            obj.set_position_orientation(np.random.uniform(
-                low=0, high=2, size=3), [0, 0, 0, 1])
-        print(self.s.renderer.instances)
+#         for _ in range(5):
+#             obj = YCBObject('003_cracker_box')
+#             self.s.import_object(obj)
+#             obj.set_position_orientation(np.random.uniform(
+#                 low=0, high=2, size=3), [0, 0, 0, 1])
+#         print(self.s.renderer.instances)
 
         self.locked = False
 
@@ -301,7 +300,7 @@ class ToyEnvInt(object):
 
     def sample(self, pddl):
         # TODO implement 
-        return False, "Tester feedback"
+        return False, False, "Tester init feedback", "Tester goal feedback"
 
     def lock(self):
         self.locked = True
@@ -326,7 +325,7 @@ class iGFlask(Flask):
                 # clean up an old environment
                 self.stop_app(k)
 
-    def prepare_app(self, uuid, scene):
+    def prepare_env(self, uuid, scene):
         print("ABOUT TO CLEANUP")
         self.cleanup()
         print("CLEANED UP")
@@ -350,6 +349,7 @@ class iGFlask(Flask):
 
 
 app = iGFlask(__name__)
+CORS(app)
 
 
 ########### REQUEST HANDLERS ###########
@@ -368,7 +368,7 @@ def setup():
     print("MADE IDS")
     for scene, unique_id in zip(scenes, ids):
         print("PREPARING ONE APP")
-        app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
+        app.prepare_env(unique_id, scene)             # TODO uncomment when basic infra is done 
         print(f"Instantiated {scene} with uuid {unique_id}")
 
     return Response(json.dumps({"uuids": ids}))
@@ -405,7 +405,7 @@ def check_sampling():
         init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(pddl)
         if init_success and goal_success:
             num_successful_scenes += 1
-            feedback_instances.append((init_feedback, goal_feedback))
+        feedback_instances.append((init_feedback, goal_feedback))
     success = num_successful_scenes >= 3
     feedback = str(feedback_instances)      # TODO make prettier 
 
@@ -427,4 +427,4 @@ def teardown():
 if __name__ == '__main__':
     port = int(sys.argv[1])
     # app.run(host="0.0.0.0", port=port, debug=True)
-    app.run(port=port, debug=True)
+    app.run(host="0.0.0.0", port=port)
