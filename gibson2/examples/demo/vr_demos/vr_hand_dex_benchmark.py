@@ -74,7 +74,7 @@ def main():
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
-    # Move VR agent to the middle of the kitchen
+    # Move VR agent to the middlvr_agent = VrAgent(s, use_gripper=USE_GRIPPER)e of the kitchen
     s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=-0.02)
 
     # Mass values to use for each object type - len(masses) objects will be created of each type
