@@ -294,6 +294,8 @@ void VRRendererContext::postRenderVR(bool shouldHandoff) {;
 	if (shouldHandoff) {
 		vr::VRCompositor()->PostPresentHandoff();
 	}
+	// Flush rendering queue to get GPU working ASAP
+	glFlush();
 }
 
 // Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -470,6 +472,10 @@ void VRRendererContext::updateVRData() {
 			char serial_name[vr::k_unMaxPropertyStringSize];
 			uint32_t serial_name_len = m_pHMD->GetStringTrackedDeviceProperty(idx, vr::ETrackedDeviceProperty::Prop_SerialNumber_String, serial_name, vr::k_unMaxPropertyStringSize);
 			std::string serial(serial_name, serial_name_len-1);
+
+			// Apply VR offset to tracker position
+			glm::vec3 trackerPos = getPositionFromSteamVRMatrix(transformMat);
+			setSteamVRMatrixPos(trackerPos + vrOffsetVec, transformMat);
 
 			if (this->trackerNamesToData.find(serial) != this->trackerNamesToData.end()) {
 				this->trackerNamesToData[serial].index = idx;
