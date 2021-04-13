@@ -1,7 +1,6 @@
 from flask import Flask, render_template, Response, request, session
 from flask_cors import CORS 
 import sys
-import pickle
 import json
 import tasknet 
 from tasknet.parsing import construct_full_pddl
@@ -16,26 +15,16 @@ import os
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
-from gibson2.render.profiler import Profiler
-import cv2
 from PIL import Image
 from io import BytesIO
 import base64
-import binascii
 import multiprocessing
 import traceback
 import atexit
 import time
-import cv2
 import uuid
 
 interactive = True
-
-def pil_image_to_base64(pil_image):
-    buf = BytesIO()
-    pil_image.save(buf, format="JPEG")
-    return base64.b64encode(buf.getvalue())
-
 
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
