@@ -19,16 +19,18 @@ from IPython import embed
 
 
 class iGTNTask(TaskNetTask):
-    def __init__(self, atus_activity, task_instance=0):
+    def __init__(self, atus_activity, task_instance=0, predefined_problem=None):
         '''
         Initialize simulator with appropriate scene and sampled objects.
         :param atus_activity: string, official ATUS activity label
         :param task_instance: int, specific instance of atus_activity init/final conditions
                                    optional, randomly generated if not specified
+        :param predefined_problem: string, in format of a BEHAVIOR problem file read
         '''
         super().__init__(atus_activity,
                          task_instance=task_instance,
-                         scene_path=os.path.join(gibson2.ig_dataset_path, 'scenes'))
+                         scene_path=os.path.join(gibson2.ig_dataset_path, 'scenes'),
+                         predefined_problem=predefined_problem)
 
     def initialize_simulator(self,
                              mode='iggui',
