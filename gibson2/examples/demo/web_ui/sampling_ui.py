@@ -180,7 +180,6 @@ class ProcessPyEnvironment(object):
             conn.send(self._READY)    # Ready.
             print("SENT READY MESSAGE")
             while True:
-                print("WHILE")
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
                     if not conn.poll(0.1):
@@ -195,7 +194,7 @@ class ProcessPyEnvironment(object):
                     continue
                 if message == self._CALL:
                     name, args, kwargs = payload
-                    if name == 'step' or name == 'reset':
+                    if name == 'step' or name == 'reset' or name == "sample":
                         result = getattr(env, name)(*args, **kwargs)
                     conn.send((self._RESULT, result))
                     continue
@@ -301,7 +300,7 @@ class ToyEnvInt(object):
 
     def sample(self, pddl):
         # TODO implement 
-        return False, "Tester feedback"
+        return False, False, "Tester init feedback", "Tester goal feedback"
 
     def lock(self):
         self.locked = True
@@ -368,8 +367,8 @@ def setup():
     print("MADE IDS")
     for scene, unique_id in zip(scenes, ids):
         print("PREPARING ONE APP")
-        app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
-        print(f"Instantiated {scene} with uuid {unique_id}")
+        # app.prepare_app(scene, unique_id)             # TODO uncomment when basic infra is done 
+        print(f"Pretend instantiated {scene} with uuid {unique_id}")
 
     return Response(json.dumps({"uuids": ids}))
 
@@ -405,7 +404,7 @@ def check_sampling():
         init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(pddl)
         if init_success and goal_success:
             num_successful_scenes += 1
-            feedback_instances.append((init_feedback, goal_feedback))
+        feedback_instances.append((init_feedback, goal_feedback))
     success = num_successful_scenes >= 3
     feedback = str(feedback_instances)      # TODO make prettier 
 
