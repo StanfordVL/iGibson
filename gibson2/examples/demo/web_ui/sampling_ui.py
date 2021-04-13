@@ -54,18 +54,12 @@ class ProcessPyEnvironment(object):
 
     def start(self):
         """Start the process."""
-        print("STARTING")
         self._conn, conn = multiprocessing.Pipe()
-        print("CREATED CONN")
         self._process = multiprocessing.Process(target=self._worker,
                                                 args=(conn, self._env_constructor))
-        print("CREATED PROCESS")
         atexit.register(self.close)
-        print("REGISTER?")
         self._process.start()
-        print("STARTED PROCESS")
         result = self._conn.recv()
-        print("GOT RESULT FROM CONN")
         if isinstance(result, Exception):
             self._conn.close()
             self._process.join(5)
@@ -172,15 +166,10 @@ class ProcessPyEnvironment(object):
 
         :raise KeyError: when receiving a message of unknown type.
         """
-        print("ENTERED WORKER")
         try:
-            print("TRYING")
             np.random.seed()
-            print("SEEDED")
             env = env_constructor()
-            print("MADE THE ENVIRONMENT")
             conn.send(self._READY)    # Ready.
-            print("SENT READY MESSAGE")
             while True:
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
@@ -236,13 +225,6 @@ class ToyEnv(object):
         self.s.import_scene(scene)
         #self.s.import_ig_scene(scene)
 
-#         for _ in range(5):
-#             obj = YCBObject('003_cracker_box')
-#             self.s.import_object(obj)
-#             obj.set_position_orientation(np.random.uniform(
-#                 low=0, high=2, size=3), [0, 0, 0, 1])
-#         print(self.s.renderer.instances)
-
     def step(self, a):
         self.s.step()
         frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
@@ -279,21 +261,9 @@ class ToyEnvInt(object):
                                         enable_shadow=True, msaa=True,
                                         light_dimming_factor=1.0,
                                         optimized=True)
-        print("STARTING SIM INITIALIZATION")
         self.s = Simulator(mode='headless', image_width=400,
                       image_height=400, rendering_settings=settings)
-        print("FINISHED SIM INIT")
         self.s.import_ig_scene(scene)
-        print("FINISHED SCENE IMPORT")
-
-#         for _ in range(5):
-#             obj = YCBObject('003_cracker_box')
-#             self.s.import_object(obj)
-#             obj.set_position_orientation(np.random.uniform(
-#                 low=0, high=2, size=3), [0, 0, 0, 1])
-#         print(self.s.renderer.instances)
-
-        self.locked = False
 
     def step(self, a):
         self.s.step()
@@ -310,12 +280,6 @@ class ToyEnvInt(object):
         # TODO implement goal success sampling
         return success, False, "Tester init feedback", "Tester goal feedback"
 
-    def lock(self):
-        self.locked = True
-    
-    def unlock(self):
-        self.locked = False 
-
     def close(self):
         self.s.disconnect()
 
@@ -327,34 +291,27 @@ class iGFlask(Flask):
         self.envs = {}
         self.envs_inception_time = {}
     def cleanup(self):
-        print("ENVS TO CLEANUP:", self.envs)
+        # TODO change this to allow people to make the conditions 
         for k,v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
                 self.stop_app(k)
 
     def prepare_env(self, uuid, scene):
-        print("ABOUT TO CLEANUP")
         self.cleanup()
-        print("CLEANED UP")
         def env_constructor():
             if interactive:
                 return ToyEnvInt(scene=scene)
             else:
                 return ToyEnv()
-        print("ABOUT TO CONSTRUCT")
         self.envs[uuid] = ProcessPyEnvironment(env_constructor)
-        print("CONSTRUCTED ONE")
         self.envs[uuid].start()
-        print("STARTED ONE")
         self.envs_inception_time[uuid] = time.time()
-        print("ENVS:", self.envs)
 
     def stop_app(self, uuid):
         self.envs[uuid].close()
         del self.envs[uuid]
         del self.envs_inception_time[uuid]
-        print("ENVS:", self.envs)
 
 
 app = iGFlask(__name__)
@@ -371,12 +328,9 @@ def index():
 @app.route("/setup", methods=["POST"])
 def setup():
     """Set up the three environments when requested by annotation React app"""
-    print("STARTING SETUP")
     scenes = json.loads(request.data)       # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
-    print("MADE IDS")
     for scene, unique_id in zip(scenes, ids):
-        print("PREPARING ONE APP")
         app.prepare_env(unique_id, scene)             # TODO uncomment when basic infra is done 
         print(f"Instantiated {scene} with uuid {unique_id}")
 
@@ -405,11 +359,6 @@ def check_sampling():
                 object_list,
                 init_state,
                 goal_state)
-    import pprint
-    print("OBJECT LIST:")
-    pprint.pprint(object_list)
-    print("CONSTRUCTED PDDL:")
-    pprint.pprint(pddl)
     ids = data["uuids"]
 
     # Try sampling
@@ -420,7 +369,6 @@ def check_sampling():
         if init_success and goal_success:
             num_successful_scenes += 1
         feedback_instances.append((init_feedback, goal_feedback))
-        print("REPORT:", init_success, goal_success, init_feedback, goal_feedback)
     success = num_successful_scenes >= 3
     feedback = str(feedback_instances)      # TODO make prettier 
 
@@ -434,7 +382,7 @@ def teardown():
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
         app.stop_app(unique_id)       # TODO uncomment when ready 
-        print(f"uuid {unique_id} pretend-stopped")
+        print(f"uuid {unique_id} stopped")
     
     return Response(json.dumps({"success": True}))      # TODO need anything else? 
 
