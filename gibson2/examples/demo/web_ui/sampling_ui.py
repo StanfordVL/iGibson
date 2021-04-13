@@ -4,6 +4,7 @@ import sys
 import json
 import tasknet 
 from tasknet.parsing import construct_full_pddl
+from tasknet.condition_evaluation import UncontrolledCategoryError
 
 from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -17,7 +18,6 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 import numpy as np
 from PIL import Image
 from io import BytesIO
-import base64
 import multiprocessing
 import traceback
 import atexit
@@ -263,11 +263,18 @@ class ToyEnvInt(object):
         # TODO implement 
         tasknet.set_backend("iGibson")
         igtn_task = iGTNTask("tester", "tester", predefined_problem=pddl)
-        success = igtn_task.initialize_simulator(simulator=self.s, 
-                    scene_id=self.scene_id, 
-                    online_sampling=True)
-        # TODO implement goal success sampling
-        return success, False, "Tester init feedback", "Tester goal feedback"
+        try:
+            init_success = igtn_task.initialize_simulator(simulator=self.s, 
+                        scene_id=self.scene_id, 
+                        online_sampling=True)
+            goal_success = False                    # TODO implement and update 
+            init_feedback = "Tester init feedback"  # TODO update 
+            goal_feedback = "Tester goal feedback"  # TODO update 
+        except UncontrolledCategoryError:
+            goal_success = False 
+            goal_feedback = "Goal state has uncontrolled categories."
+
+        return init_success, goal_success, init_feedback, goal_feedback
 
     def close(self):
         self.s.disconnect()
