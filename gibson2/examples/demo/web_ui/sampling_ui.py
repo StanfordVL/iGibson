@@ -432,8 +432,8 @@ def teardown():
     data = json.loads(request.data)
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
+        app.stop_app(unique_id)       # TODO uncomment when ready 
         print(f"uuid {unique_id} pretend-stopped")
-        # app.stop_app(unique_id)       # TODO uncomment when ready 
     
     return Response(json.dumps({"success": True}))      # TODO need anything else? 
 
