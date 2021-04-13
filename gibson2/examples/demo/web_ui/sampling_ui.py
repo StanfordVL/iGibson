@@ -354,6 +354,7 @@ class iGFlask(Flask):
         self.envs[uuid].close()
         del self.envs[uuid]
         del self.envs_inception_time[uuid]
+        print("ENVS:", self.envs)
 
 
 app = iGFlask(__name__)
