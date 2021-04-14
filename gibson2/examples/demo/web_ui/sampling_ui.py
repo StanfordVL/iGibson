@@ -4,7 +4,7 @@ import sys
 import json
 import tasknet 
 from tasknet.parsing import construct_full_pddl
-from tasknet.condition_evaluation import UncontrolledCategoryError
+from tasknet.logic_base import UncontrolledCategoryError
 
 from gibson2.simulator import Simulator
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -271,6 +271,8 @@ class ToyEnvInt(object):
             init_feedback = "Tester init feedback"  # TODO update 
             goal_feedback = "Tester goal feedback"  # TODO update 
         except UncontrolledCategoryError:
+            init_success = False 
+            init_feedback = "Cannot check until goal state is fixed."
             goal_success = False 
             goal_feedback = "Goal state has uncontrolled categories."
 
