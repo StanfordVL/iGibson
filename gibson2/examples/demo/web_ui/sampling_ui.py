@@ -25,6 +25,7 @@ import time
 import uuid
 
 interactive = True
+NUM_REQUIRED_SUCCESSFUL_SCENES = 3
 
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
@@ -267,9 +268,9 @@ class ToyEnvInt(object):
             init_success = igtn_task.initialize_simulator(simulator=self.s, 
                         scene_id=self.scene_id, 
                         online_sampling=True)
-            goal_success = False                    # TODO implement and update 
-            init_feedback = "Tester init feedback"  # TODO update 
-            goal_feedback = "Tester goal feedback"  # TODO update 
+            goal_success = True                    # TODO implement and update 
+            init_feedback = "Initial conditions are good to go!" if init_success else "Initial conditions don't work."      # TODO update
+            goal_feedback = "Goal conditions are good to go!" if goal_success else "Goal conditions don't work"             # TODO update 
         except UncontrolledCategoryError:
             init_success = False 
             init_feedback = "Cannot check until goal state is fixed."
@@ -367,7 +368,7 @@ def check_sampling():
         if init_success and goal_success:
             num_successful_scenes += 1
         feedback_instances.append((init_feedback, goal_feedback))
-    success = num_successful_scenes >= 3
+    success = num_successful_scenes >= min(NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
     feedback = str(feedback_instances)      # TODO make prettier 
 
     return Response(json.dumps({"success": success, "feedback": feedback}))
@@ -379,7 +380,7 @@ def teardown():
     data = json.loads(request.data)
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
-        app.stop_app(unique_id)       # TODO uncomment when ready 
+        app.stop_app(unique_id)       
         print(f"uuid {unique_id} stopped")
     
     return Response(json.dumps({"success": True}))      # TODO need anything else? 
