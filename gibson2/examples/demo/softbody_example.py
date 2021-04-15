@@ -38,10 +38,15 @@ def main():
     #planeOrn = [0, 0, 0, 1]  # p.getQuaternionFromEuler([0.3,0,0])
     #planeId = p.loadURDF("plane.urdf", [0, 0, 0], planeOrn)
 
-    obj = SoftObject(fileName="ball.obj", simFileName = "ball.vtk", basePosition=[0, 0, 1.5],
-                     scale=0.2, mass=0.5, useNeoHookean=1,NeoHookeanMu=400, NeoHookeanLambda=600,
-                     NeoHookeanDamping=0.001, useSelfCollision=1,
-                     frictionCoeff=.5, collisionMargin=0.001)
+    tmp = YCBObject
+    obj = SoftObject(fileName="Provence_Bath_Towel_Royal_Blue_cm.obj", simFileName = "Provence_Bath_Towel_Royal_Blue_cm.obj", basePosition=[0, 0, 1.5],
+                     mass=1, scale=0.1, collisionMargin=0.04, useNeoHookean=0, useBendingSprings=1, useMassSpring=1, useFaceContact=1,
+                     useSelfCollision=1, springElasticStiffness=40, springDampingStiffness=0.1, springDampingAllDirections=0,frictionCoeff=1.0)
+                     
+    #obj = SoftObject(fileName="ball.obj", simFileName = "ball_processed.obj", basePosition=[0, 0, 1.5],
+    #                 scale=0.2, mass=0.5, useNeoHookean=1,NeoHookeanMu=400, NeoHookeanLambda=600,
+    #                 NeoHookeanDamping=0.001, useSelfCollision=1,
+    #                 frictionCoeff=.5, collisionMargin=0.001)
     s.import_object(obj)
     for _ in range(3):
         obj = YCBObject('003_cracker_box')

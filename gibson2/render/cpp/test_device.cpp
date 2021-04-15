@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
 
 #ifdef USE_GLAD
   #include  <glad/egl.h>
