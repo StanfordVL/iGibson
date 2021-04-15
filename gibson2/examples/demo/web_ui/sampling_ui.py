@@ -1,8 +1,8 @@
 from flask import Flask, render_template, Response, request, session
-from flask_cors import CORS 
+from flask_cors import CORS
 import sys
 import json
-import tasknet 
+import tasknet
 from tasknet.parsing import construct_full_pddl
 from tasknet.condition_evaluation import UncontrolledCategoryError
 
@@ -23,8 +23,10 @@ import traceback
 import atexit
 import time
 import uuid
+import pybullet as p
 
 interactive = True
+
 
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
@@ -39,7 +41,6 @@ class ProcessPyEnvironment(object):
 
     def __init__(self, env_constructor):
         self._env_constructor = env_constructor
-
 
     def start(self):
         """Start the process."""
@@ -113,7 +114,7 @@ class ProcessPyEnvironment(object):
             return promise()
         else:
             return promise
-    
+
     def sample(self, pddl, blocking=True):
         """Run a sampling in the environment
 
@@ -122,7 +123,7 @@ class ProcessPyEnvironment(object):
         :return (bool, str): (success, feedback) from the sampling process
         """
         promise = self.call("sample", pddl)
-        if blocking: 
+        if blocking:
             return promise()
         else:
             return promise
@@ -195,7 +196,8 @@ class ProcessPyEnvironment(object):
 
 class ToyEnv(object):
     def __init__(self):
-        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
+        config = parse_config(os.path.join(
+            gibson2.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -206,13 +208,12 @@ class ToyEnv(object):
             gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
-       
 
         self.s = Simulator(mode='headless', image_width=400,
-                      image_height=400, rendering_settings=settings)
+                           image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene('Rs')
         self.s.import_scene(scene)
-        #self.s.import_ig_scene(scene)
+        # self.s.import_ig_scene(scene)
 
     def step(self, a):
         self.s.step()
@@ -221,80 +222,72 @@ class ToyEnv(object):
 
     def close(self):
         self.s.disconnect()
-
 
 
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
-        # TODO this config may need to change 
-        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
-        hdr_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-        hdr_texture2 = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-        light_modulation_map_filename = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-        background_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        # TODO this config may need to change
+        self.task = iGTNTask('sampling_test', task_instance=7)
 
-        self.scene_id = scene
-        scene = InteractiveIndoorScene(
-            scene, texture_randomization=False, object_randomization=False)
-        #scene._set_first_n_objects(5)
-        scene.open_all_doors()
-
-        settings = MeshRendererSettings(env_texture_filename=hdr_texture,
-                                        env_texture_filename2=hdr_texture2,
-                                        env_texture_filename3=background_texture,
-                                        light_modulation_map_filename=light_modulation_map_filename,
-                                        enable_shadow=True, msaa=True,
-                                        light_dimming_factor=1.0,
-                                        optimized=True)
-        self.s = Simulator(mode='headless', image_width=400,
-                      image_height=400, rendering_settings=settings)
-        self.s.import_ig_scene(scene)
+        self.task.initialize_simulator(
+            scene_id=scene,
+            mode='headless',
+            load_clutter=False,
+            should_debug_sampling=False,
+            scene_kwargs={},
+            online_sampling=False,
+            offline_sampling=False,
+        )
+        self.state_id = p.saveState()
 
     def step(self, a):
-        self.s.step()
-        frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
-        return frame
+        pass
 
     def sample(self, pddl):
-        # TODO implement 
-        tasknet.set_backend("iGibson")
-        igtn_task = iGTNTask("tester", "tester", predefined_problem=pddl)
-        try:
-            init_success = igtn_task.initialize_simulator(simulator=self.s, 
-                        scene_id=self.scene_id, 
-                        online_sampling=True)
-            goal_success = False                    # TODO implement and update 
-            init_feedback = "Tester init feedback"  # TODO update 
-            goal_feedback = "Tester goal feedback"  # TODO update 
-        except UncontrolledCategoryError:
-            goal_success = False 
-            goal_feedback = "Goal state has uncontrolled categories."
+        self.task.update_problem("tester", "tester", predefined_problem=pddl)
+
+        init_success, goal_success, init_feedback, goal_feedback = True, True, '', ''
+        accept_scene = self.task.check_scene()
+        if not accept_scene:
+            init_success = False
+            goal_success = False
+            return init_success, goal_success, init_feedback, goal_feedback
+
+        accept_scene = self.task.sample()
+        if not accept_scene:
+            init_success = False
+            goal_success = False
+            return init_success, goal_success, init_feedback, goal_feedback
+
+        for sim_obj in self.task.newly_added_objects:
+            self.task.scene.remove_object(sim_obj)
+            for id in sim_obj.body_ids:
+                p.removeBody(id)
+        p.restoreState(self.state_id)
 
         return init_success, goal_success, init_feedback, goal_feedback
 
     def close(self):
-        self.s.disconnect()
+        self.task.simulator.disconnect()
 
 
 class iGFlask(Flask):
     def __init__(self, args, **kwargs):
         super(iGFlask, self).__init__(args, **kwargs)
-        self.action= {}
+        self.action = {}
         self.envs = {}
         self.envs_inception_time = {}
+
     def cleanup(self):
-        # TODO change this to allow people to make the conditions 
-        for k,v in self.envs_inception_time.items():
+        # TODO change this to allow people to make the conditions
+        for k, v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
                 self.stop_app(k)
 
     def prepare_env(self, uuid, scene):
         self.cleanup()
+
         def env_constructor():
             if interactive:
                 return ToyEnvInt(scene=scene)
@@ -321,13 +314,15 @@ def index():
     id = uuid.uuid4()
     return render_template('index.html', uuid=id)
 
+
 @app.route("/setup", methods=["POST"])
 def setup():
     """Set up the three environments when requested by annotation React app"""
     scenes = json.loads(request.data)       # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
     for scene, unique_id in zip(scenes, ids):
-        app.prepare_env(unique_id, scene)             # TODO uncomment when basic infra is done 
+        # TODO uncomment when basic infra is done
+        app.prepare_env(unique_id, scene)
         print(f"Instantiated {scene} with uuid {unique_id}")
 
     return Response(json.dumps({"uuids": ids}))
@@ -342,31 +337,32 @@ def check_sampling():
     :return (Response): response indicating success of sampling in all three 
                          scenes, feedback given from each 
     """
-    # Prepare data 
+    # Prepare data
     data = json.loads(request.data)
     atus_activity = data["activityName"]
-    init_state = data["initialConditions"]     
+    init_state = data["initialConditions"]
     goal_state = data["goalConditions"]
     object_list = data["objectList"]
     # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
     pddl = construct_full_pddl(
-                atus_activity, 
-                "feasibility_check", 
-                object_list,
-                init_state,
-                goal_state)
+        atus_activity,
+        "feasibility_check",
+        object_list,
+        init_state,
+        goal_state)
     ids = data["uuids"]
 
     # Try sampling
     num_successful_scenes = 0
     feedback_instances = []
     for unique_id in ids:
-        init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(pddl)
+        init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(
+            pddl)
         if init_success and goal_success:
             num_successful_scenes += 1
         feedback_instances.append((init_feedback, goal_feedback))
     success = num_successful_scenes >= 3
-    feedback = str(feedback_instances)      # TODO make prettier 
+    feedback = str(feedback_instances)      # TODO make prettier
 
     return Response(json.dumps({"success": success, "feedback": feedback}))
 
@@ -377,10 +373,11 @@ def teardown():
     data = json.loads(request.data)
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
-        app.stop_app(unique_id)       # TODO uncomment when ready 
+        app.stop_app(unique_id)       # TODO uncomment when ready
         print(f"uuid {unique_id} stopped")
-    
-    return Response(json.dumps({"success": True}))      # TODO need anything else? 
+
+    # TODO need anything else?
+    return Response(json.dumps({"success": True}))
 
 
 if __name__ == '__main__':

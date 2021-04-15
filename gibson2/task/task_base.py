@@ -29,17 +29,19 @@ class iGTNTask(TaskNetTask):
         '''
         super().__init__(atus_activity,
                          task_instance=task_instance,
-                         scene_path=os.path.join(gibson2.ig_dataset_path, 'scenes'),
+                         scene_path=os.path.join(
+                             gibson2.ig_dataset_path, 'scenes'),
                          predefined_problem=predefined_problem)
 
     def initialize_simulator(self,
+                             simulator=None,
                              mode='iggui',
                              scene_id=None,
-                             simulator=None,
+                             scene_kwargs=None,
                              load_clutter=False,
                              should_debug_sampling=False,
-                             scene_kwargs=None,
-                             online_sampling=True):
+                             online_sampling=True,
+                             offline_sampling=False):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
         :param simulator: Simulator class, populated simulator that should completely
@@ -58,10 +60,14 @@ class iGTNTask(TaskNetTask):
         self.load_clutter = load_clutter
         self.should_debug_sampling = should_debug_sampling
         return self.initialize(InteractiveIndoorScene,
-                               scene_id=scene_id, scene_kwargs=scene_kwargs,
-                               online_sampling=online_sampling)
+                               scene_id=scene_id,
+                               scene_kwargs=scene_kwargs,
+                               online_sampling=online_sampling,
+                               offline_sampling=offline_sampling,
+                               )
 
     def check_scene(self):
+        self.newly_added_objects = set()
         room_type_to_obj_inst = {}
         self.non_sampleable_object_inst = set()
         for cond in self.parsed_initial_conditions:
@@ -211,7 +217,11 @@ class iGTNTask(TaskNetTask):
                     texture_randomization=False,
                     overwrite_inertial=True,
                     initial_pos=[100 + num_new_obj, 100, -100])
-                self.scene.add_object(simulator_obj)
+                if not self.scene.loaded:
+                    self.scene.add_object(simulator_obj)
+                else:
+                    self.simulator.import_object(simulator_obj)
+                self.newly_added_objects.add(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
                 num_new_obj += 1
 
@@ -221,7 +231,7 @@ class iGTNTask(TaskNetTask):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
 
-        if not self.online_sampling:
+        if self.offline_sampling:
             for obj_inst in self.object_scope:
                 matched_sim_obj = None
 

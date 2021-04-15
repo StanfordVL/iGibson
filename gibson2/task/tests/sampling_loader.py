@@ -15,9 +15,9 @@ task_choices = [
     "putting_dishes_away_after_cleaning_filtered",
     "cleaning_out_drawers_filtered",
 ]
-task = 'packing_lunches_filtered'
-task_id = 1
-scene = 'Ihlen_1_int'
+task = 're-shelving_library_books_filtered'
+task_id = 0
+scene = 'Rs_int'
 
 igtn_task = iGTNTask(task, task_instance=task_id)
 scene_kwargs = {
@@ -32,6 +32,7 @@ init_success = igtn_task.initialize_simulator(
     should_debug_sampling=False,
     scene_kwargs=scene_kwargs,
     online_sampling=False,
+    offline_sampling=True,
 )
 
 print('loading done')

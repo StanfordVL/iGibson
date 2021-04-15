@@ -20,6 +20,7 @@ import tasknet
 import numpy as np
 import pybullet as p
 
+
 def parse_args():
     scene_choices = [
         "Beechwood_0_int",
@@ -122,14 +123,21 @@ def main():
     scene_kwargs = None
 
     online_sampling = True
+    offline_sampling = False
+
     if not args.disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
+            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
         }
         online_sampling = False
+        offline_sampling = True
 
-    igtn_task.initialize_simulator(simulator=s, scene_id=scene, load_clutter=True,
-                                   scene_kwargs=scene_kwargs, online_sampling=online_sampling)
+    igtn_task.initialize_simulator(simulator=s,
+                                   scene_id=args.scene,
+                                   scene_kwargs=scene_kwargs,
+                                   load_clutter=True,
+                                   online_sampling=online_sampling,
+                                   offline_sampling=offline_sampling)
 
     vr_agent = VrAgent(igtn_task.simulator)
 
@@ -141,10 +149,11 @@ def main():
     if not args.disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_replay_log_path == None:
-            args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(task, task_id, scene, timestamp)
-        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200, log_filepath=args.vr_replay_log_path, profiling_mode=args.profile, filter_objects=filter_objects)
+            args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
+                task, task_id, scene, timestamp)
+        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200,
+                                log_filepath=args.vr_replay_log_path, profiling_mode=args.profile, filter_objects=filter_objects)
         vr_writer.set_up_data_storage()
-
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
     target_obj = -1
@@ -159,7 +168,8 @@ def main():
 
                 origin = vr_agent.vr_dict['gaze_marker'].position_vector
                 direction = vr_agent.vr_dict['gaze_marker'].orientation_vector
-                intersection = p.rayTest(origin, np.array(origin) + (np.array(direction) * gaze_max_distance))
+                intersection = p.rayTest(origin, np.array(
+                    origin) + (np.array(direction) * gaze_max_distance))
                 target_obj = intersection[0][0]
 
                 if target_obj in s.scene.objects_by_id:
