@@ -7,6 +7,8 @@ from gibson2.utils import sampling_utils
 
 _STASH_POSITION = [0, 0, -100]
 
+# This parameters are used when sampling dirt particles.
+# See gibson2/utils/sampling_utils.py for how they are used.
 _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY = 0.1
 _DIRT_SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
 _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
