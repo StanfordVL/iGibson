@@ -4,7 +4,7 @@ from gibson2.object_states.dirty import Dusty, Stained
 from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.objects.particles import Dirt, Stain
+from gibson2.objects.particles import _Dirt, Stain
 
 
 class CleaningTool(AbsoluteObjectState):
@@ -15,7 +15,7 @@ class CleaningTool(AbsoluteObjectState):
     def update(self, simulator):
         # Check if this tool interacts with any dirt particles.
         for particle_system in simulator.particle_systems:
-            if not isinstance(particle_system, Dirt):
+            if not isinstance(particle_system, _Dirt):
                 continue
 
             if isinstance(particle_system, Stain):
