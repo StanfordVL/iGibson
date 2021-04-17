@@ -52,7 +52,7 @@ if VIEWER_MANIP:
                 rendering_settings=vr_rendering_settings,
                 )
 else:
-    vr_settings = VrSettings()
+    vr_settings = VrSettings(use_vr=True)
     s = Simulator(mode='vr',
                 rendering_settings=vr_rendering_settings,
                 vr_settings=vr_settings)
