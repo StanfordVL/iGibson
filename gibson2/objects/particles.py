@@ -193,9 +193,13 @@ class WaterStream(ParticleSystem):
         self.steps_since_last_drop_step = 0
 
 
-class Dirt(AttachedParticleSystem):
+class _Dirt(AttachedParticleSystem):
+    """
+    This class represents common logic between particle-based dirtyness states like
+    dusty and stained. It should not be directly instantiated - use subclasses instead.
+    """
     def __init__(self, parent_obj, color, **kwargs):
-        super(Dirt, self).__init__(
+        super(_Dirt, self).__init__(
             parent_obj,
             dim=0.01,
             visual_only=True,
@@ -217,11 +221,11 @@ class Dirt(AttachedParticleSystem):
                 self.unstash_particle(position, [0, 0, 0, 1])
 
 
-class Dust(Dirt):
+class Dust(_Dirt):
     def __init__(self, parent_obj, **kwargs):
         super(Dust, self).__init__(parent_obj, (0, 0, 0, 1), **kwargs)
 
 
-class Stain(Dirt):
+class Stain(_Dirt):
     def __init__(self, parent_obj, **kwargs):
         super(Stain, self).__init__(parent_obj, (0.4, 0, 0, 1), **kwargs)
