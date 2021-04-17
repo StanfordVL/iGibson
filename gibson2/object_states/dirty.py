@@ -6,6 +6,10 @@ CLEAN_THRESHOLD = 0.9
 
 
 class _Dirty(AbsoluteObjectState, BooleanState):
+    """
+    This class represents common logic between particle-based dirtyness states like
+    dusty and stained. It should not be directly instantiated - use subclasses instead.
+    """
     def __init__(self, obj):
         super(_Dirty, self).__init__(obj)
         self.prev_value = False
