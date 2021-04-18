@@ -313,7 +313,8 @@ class MeshRenderer(object):
                     texture_scale=1.0,
                     load_texture=True,
                     overwrite_material=None,
-                    input_material=None):
+                    input_material=None,
+                    geom_type=None):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -347,6 +348,7 @@ class MeshRenderer(object):
             logging.warning("Warning: {}".format(reader.Warning()))
 
         attrib = reader.GetAttrib()
+        # import pdb; pdb.set_trace()
         logging.debug("Num vertices = {}".format(len(attrib.vertices)))
         logging.debug("Num normals = {}".format(len(attrib.normals)))
         logging.debug("Num texcoords = {}".format(len(attrib.texcoords)))
@@ -366,7 +368,14 @@ class MeshRenderer(object):
         if overwrite_material is not None and len(materials) > 1:
             logging.warning(
                 "passed in one material ends up overwriting multiple materials")
-
+        
+        # if 'cube.obj' in obj_path:
+        #     n_indices = len(shapes[0].mesh.indices)
+        #     np_indices = np_indices = shapes[0].mesh.numpy_indices().reshape((n_indices, 3))
+        #     shape_normal_index = np_indices[:, 1]
+        #     vertex_normal = np.array(attrib.normals).reshape(
+        #                             (len(attrib.normals) // 3, 3))            
+        #     import pdb; pdb.set_trace();
         # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
         # or create plane color Material elements
         num_existing_mats = len(self.materials_mapping)    # Number of current Material elements       
@@ -375,6 +384,7 @@ class MeshRenderer(object):
         texuniform = False                  
 
         if input_material is None:
+            # import pdb; pdb.set_trace();
             for i, item in enumerate(materials):
                 if overwrite_material is not None:
                     self.load_randomized_material(overwrite_material)
@@ -395,7 +405,10 @@ class MeshRenderer(object):
                                         roughness_texture_id=texture_roughness,
                                         normal_texture_id=texture_normal)
                 else:
-                    material = Material('color', kd=item.diffuse)
+                    material = Material('color', kd=item.diffuse, texture_id=-1,
+                                    metallic_texture_id=-1,
+                                    roughness_texture_id=-1,
+                                    normal_texture_id=-1)
                 self.materials_mapping[i + material_count] = material
 
             num_added_materials = len(materials) 
@@ -408,7 +421,10 @@ class MeshRenderer(object):
             self.materials_mapping[num_existing_mats] = input_material
             num_added_materials = 1            
         
-
+        if geom_type == 'mesh':
+            pass
+            # import pdb; pdb.set_trace();
+        
         if input_kd is not None:  # append the default material in the end, in case material loading fails
             self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd)
             # self.materials_mapping[len(
@@ -451,12 +467,27 @@ class MeshRenderer(object):
             shape_normal_index = np_indices[:, 1]
             shape_texcoord_index = np_indices[:, 2]
             shape_vertex = vertex_position[shape_vertex_index]
+            
+
 
             if len(vertex_normal) == 0:
                 # dummy normal if normal is not available
                 shape_normal = np.zeros((shape_vertex.shape[0], 3))
             else:
                 shape_normal = vertex_normal[shape_normal_index]
+            
+            if geom_type == 'plane':
+                # import pdb; pdb.set_trace()
+                shape_normal *= -1
+
+
+            if geom_type == 'mesh':
+                shape_normal *= 1
+                # import pdb; pdb.set_trace()
+                
+            # if geom_type == 'mesh':
+            #     # import pdb; pdb.set_trace()
+            #     shape_normal *= 10
 
             # Scale the shape before transforming
             # Need to flip normals in axes where we have negative scaling

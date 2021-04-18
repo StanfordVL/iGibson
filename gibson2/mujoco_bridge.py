@@ -9,6 +9,8 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+import tempfile
 import transforms3d
 from transforms3d import quaternions
 import logging
@@ -185,6 +187,10 @@ class iGibsonMujocoBridge:
                 textures[texture.get('name')] = texture.attrib
                 texture_ids[texture.get('name')] = (self.renderer.r.loadTexture(texture.get('file'), self.settings.texture_scale), texture_type)
                 p = Path(texture.get('file'))
+                # if 'wood-tiles' in str(p):
+                #     print(texture_ids)
+                #     print(textures)
+                #     exit()
                 roughness_fname = p.parent / (p.stem + '-roughness.png')
                 normal_fname = p.parent / (p.stem + '-normal.png')
                 metallic_fname = p.parent / (p.stem + '-metallic.png')
@@ -193,25 +199,25 @@ class iGibsonMujocoBridge:
                     roughness_ids[texture.get('name')] = self.renderer.r.loadTexture(str(roughness_fname), self.settings.texture_scale)
                     # print(texture.get('name'), roughness_ids)
                 else:
-                    roughness_ids[texture.get('name')] = None
+                    roughness_ids[texture.get('name')] = -1
 
                 if normal_fname.exists():
                     normal_ids[texture.get('name')] = self.renderer.r.loadTexture(str(normal_fname), self.settings.texture_scale)
                 else:
-                    normal_ids[texture.get('name')] = None
+                    normal_ids[texture.get('name')] = -1
 
                 if metallic_fname.exists():
                     metallic_ids[texture.get('name')] = self.renderer.r.loadTexture(str(metallic_fname), self.settings.texture_scale)  
                 else:
-                    metallic_ids[texture.get('name')] = None               
+                    metallic_ids[texture.get('name')] = -1               
 
             else:
                 value_str = texture.get('rgb1').split()
                 value = [float(pp) for pp in value_str]
                 texture_ids[texture.get('name')] = (np.array(value), texture_type)  
-                roughness_ids[texture.get('name')] = None
-                normal_ids[texture.get('name')] = None
-                metallic_ids[texture.get('name')] = None
+                roughness_ids[texture.get('name')] = -1
+                normal_ids[texture.get('name')] = -1
+                metallic_ids[texture.get('name')] = -1
 
         # print(texture_ids)
         # print(roughness_ids)
@@ -227,15 +233,33 @@ class iGibsonMujocoBridge:
         materials = {}
         material_objs = {}
         print(roughness_ids)
+
+        def get_id(intensity, name, self):
+            im = np.array([[intensity]])
+            tmpdirname =  tempfile.TemporaryDirectory()
+            fname = os.path.join(tmpdirname.name, f'{name}.png')
+            plt.imsave(fname, im)
+            print(fname)
+            return self.renderer.r.loadTexture(str(fname), self.settings.texture_scale)
+
         for material in xml_root.iter('material'):
             # import pdb; pdb.set_trace();
             materials[material.get('name')] = material.attrib
             texture_name = material.get('texture')
+
             if texture_name is not None:
                 (texture_id, texture_type) = texture_ids[texture_name]
-                roughness_id = roughness_ids[texture_name]
-                normal_id = normal_ids[texture_name]
-                metallic_id = metallic_ids[texture_name]
+                specular = material.get('specular')
+                shininess = material.get('shininess')
+                roughness_id = -1 if specular is None else get_id(int((1 - float(specular)) * 65535), 'roughness', self)
+                metallic_id = -1 if shininess is None else get_id(int(float(shininess) * 65535), 'metallic', self)
+                if material.get('name') == 'floorplane':
+                    normal_id = -1
+                else:
+                    normal_id = -1
+
+                # normal_id = normal_ids[texture_name]
+                # metallic_id = metallic_ids[texture_name]
                 # import pdb; pdb.set_trace();
                 # print((texture_id, texture_type))
 
@@ -253,6 +277,8 @@ class iGibsonMujocoBridge:
                     if texuniform_str is not None:
                         texuniform = (texuniform_str == "true")
 
+                    # import pdb; pdb.set_trace();
+                    # metallic_id, roughness_id, normal_id = None, None, None
                     material_objs[material.get('name')] = Material('texture',
                                                                    texture_id=texture_id,
                                                                    repeat_x=repeat[0], 
@@ -262,6 +288,11 @@ class iGibsonMujocoBridge:
                                                                    normal_texture_id=normal_id,
                                                                    texuniform=texuniform, 
                                                                    texture_type = texture_type)
+
+                    # print(material.get('name'), metallic_id, roughness_id, normal_id)
+                    # print("is_pbr_texture", material_objs[material.get('name')].is_pbr_texture())
+                    # exit()
+
                 else:                    
                     # This texture may have been a gradient. We don't have a way to do that 
                     material_objs[material.get('name')] = Material('color', kd= texture_id)
@@ -404,7 +435,8 @@ class iGibsonMujocoBridge:
                                               input_kd=properties['rgba'][0:3],
                                               scale=2*np.array(properties['size'][0:3]),
                                               load_texture = load_texture,
-                                              input_material = geom_material
+                                              input_material = geom_material,
+                                              geom_type=geom_type
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
@@ -422,6 +454,8 @@ class iGibsonMujocoBridge:
                                               transform_pos=geom_pos,
                                               input_kd=properties['rgba'][0:3],
                                               scale= [properties['size'][0], properties['size'][0], properties['size'][1]], #the cylinder.obj has radius 1 and height 2
+                                              input_material=geom_material,
+                                              geom_type=geom_type
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
@@ -439,6 +473,8 @@ class iGibsonMujocoBridge:
                                               transform_pos=geom_pos,
                                               input_kd=properties['rgba'][0:3],
                                               scale= [2*properties['size'][0], 2*properties['size'][0], 2*properties['size'][0]], # the sphere8.obj has radius 0.5
+                                              input_material=geom_material,
+                                              geom_type=geom_type
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
@@ -449,13 +485,13 @@ class iGibsonMujocoBridge:
                 elif geom_type == 'mesh':
                     filename = meshes[geom.attrib['mesh']]['file']
                     scale = meshes[geom.attrib['mesh']].get('scale',  "1 1 1")
-                    scale = [float(s) for s in scale.split()]
+                    scale = np.array([float(s) for s in scale.split()])
                     filename = os.path.splitext(filename)[0]+'.obj'
                     # print(meshes)
                     # print(filename)
                     # exit()
-                    if filename.startswith('robotiq_arg2f_85'):
-                        import pdb; pdb.set_trace()
+                    # if filename.startswith('robotiq_arg2f_85'):
+                    #     import pdb; pdb.set_trace()
 
                     geom_orn = np.array([geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]])
 
@@ -471,9 +507,10 @@ class iGibsonMujocoBridge:
                                             scale=scale,
                                             transform_orn=geom_orn,
                                             transform_pos=geom_pos,
-                                            input_kd=properties['rgba'][0:3],
-                                            load_texture = load_texture,
-                                            input_material = geom_material,                                            
+                                            input_kd=properties['rgba'],
+                                            load_texture = True,
+                                            input_material = None,  
+                                            geom_type=geom_type                                          
                                             )
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
@@ -491,9 +528,9 @@ class iGibsonMujocoBridge:
                 
                 print("Plane Attributes:")
 
-                
                 props = {}
 
+                geom_type=geom.get('type')
                 # import pdb; pdb.set_trace();
                 for propp in ['pos', 'quat', 'size', 'rgba']:
                     if geom.get(propp) != None:
@@ -531,9 +568,10 @@ class iGibsonMujocoBridge:
                                           transform_orn=props['quat'][0:4],
                                           transform_pos=props['pos'][0:3],
                                           input_kd=props['rgba'][0:3],
-                                          scale=[2*props['size'][0], 2*props['size'][1],0.01],
+                                          scale=[2*props['size'][0], 2*props['size'][1], 0.01],
                                           load_texture = load_texture,
-                                          input_material = geom_material
+                                          input_material = geom_material,
+                                          geom_type=geom_type
                                             ) #Forcing plane to be 1 cm width (this param is the tile size in Mujoco anyway)
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                            pybullet_uuid=0,
