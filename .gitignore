@@ -1,3 +1,6 @@
+*.ilk
+*.dll
+*.vs
 *.pyc
 *.pkl
 *.so
