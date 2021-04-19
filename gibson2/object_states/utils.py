@@ -43,6 +43,9 @@ def sample_kinematics(predicate, objA, objB, binary_state):
     if not sample_on_floor:
         objB.force_wakeup()
 
+    # Orientation needs to be set for stable_z_on_aabb to work correctly
+    objA.set_orientation(orientation)
+
     state_id = p.saveState()
     for i in range(max_trials):
         if not sample_on_floor:
@@ -64,6 +67,7 @@ def sample_kinematics(predicate, objA, objB, binary_state):
             valid_pos = np.array(height_map_eroded.nonzero())
             if valid_pos.shape[1] == 0:
                 return False
+
             random_pos_idx = np.random.randint(valid_pos.shape[1])
             random_pos = valid_pos[:, random_pos_idx]
             y_map, x_map = random_pos
