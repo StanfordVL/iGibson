@@ -256,7 +256,8 @@ class ToyEnvInt(object):
                                         light_modulation_map_filename=light_modulation_map_filename,
                                         enable_shadow=True, msaa=True,
                                         light_dimming_factor=1.0,
-                                        optimized=True)
+                                        optimized=True,
+                                        texture_scale=0.1)
         self.s = Simulator(mode='headless', image_width=400,
                       image_height=400, rendering_settings=settings)
         self.s.import_ig_scene(scene)
@@ -274,13 +275,9 @@ class ToyEnvInt(object):
         tasknet.set_backend("iGibson")
         igtn_task = iGTNTask("tester", "tester", predefined_problem=pddl)
         try:
-            # init_success = igtn_task.initialize_simulator(simulator=self.s, 
-            #             scene_id=self.scene_id, 
-            #             online_sampling=True)
-            print("STARTING SLEEP")
-            time.sleep(5)
-            print("FINISHED SLEEP")
-
+            init_success = igtn_task.initialize_simulator(simulator=self.s, 
+                        scene_id=self.scene_id, 
+                        online_sampling=True)
             goal_success = True                    # TODO implement and update 
             init_feedback = "Initial conditions are good to go!" if init_success else "Initial conditions don't work."      # TODO update
             goal_feedback = "Goal conditions are good to go!" if goal_success else "Goal conditions don't work"             # TODO update 
@@ -325,12 +322,11 @@ class iGFlask(Flask):
         self.envs_inception_time[uuid] = time.time()
         self.envs_last_use_time[uuid] = time.time()
     
-    def periodic_cleanup(self):
-        print("Starting periodic cleanup")
-        for uid, env in self.envs:
+    def periodic_cleanup(self, periodic_cleanup_interval=PERIODIC_CLEANUP_INTERVAL):
+        for uid, env in self.envs.items():
             last_active_time = env.last_active_time
             print(f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
-            if time.time() - last_active_time > 60:                   # TODO magic number
+            if time.time() - last_active_time > periodic_cleanup_interval:                   
                 print("stale uuid:", uid)
                 self.stop_env(uid)
     
@@ -349,8 +345,6 @@ CORS(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
-
-PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
 
 
 ########### REQUEST HANDLERS ###########
@@ -423,6 +417,9 @@ def teardown():
 
 
 ########### PERIODIC CLEANUP ###########
+
+PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
+PERIODIC_CLEANUP_INTERVAL = 3600
 
 def periodic_cleanup(): 
     app.periodic_cleanup()
