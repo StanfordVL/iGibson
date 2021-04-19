@@ -163,14 +163,26 @@ def sample_points_on_object(obj,
             ray_direction[axis] = 1
             ray_direction *= -1 if is_top else 1
 
-            # Extend vector until it intersects one of the AABB's faces.
+            # We want to extend our ray until it intersects one of the AABB's faces.
+            # Start by getting the distances towards the min and max boundaries of the AABB on each axis.
             point_to_min = aabb_min - start_pos
             point_to_max = aabb_max - start_pos
+
+            # Then choose the distance to the point in the correct direction on each axis.
             closer_point_on_each_axis = np.where(ray_direction < 0, point_to_min, point_to_max)
+
+            # For each axis, find how many times the ray direction should be multiplied to reach the AABB's boundary.
             multiple_to_face_on_each_axis = closer_point_on_each_axis / ray_direction
+
+            # Choose the minimum of these multiples, e.g. how many times the ray direction should be multiplied
+            # to reach the nearest boundary.
             multiple_to_face = np.min(multiple_to_face_on_each_axis[np.isfinite(multiple_to_face_on_each_axis)])
+
+            # Finally, use the multiple we found to calculate the point on the AABB boundary that we want to cast our
+            # ray until.
             point_on_face = start_pos + ray_direction * multiple_to_face
 
+            # Make sure that we did not end up with all NaNs or infinities due to division issues.
             assert not np.any(np.isnan(point_on_face)) and not np.any(np.isinf(point_on_face))
 
             ray_offset_distance = parallel_ray_offset_distance
