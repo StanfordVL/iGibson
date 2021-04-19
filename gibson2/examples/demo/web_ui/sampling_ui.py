@@ -315,14 +315,12 @@ class iGFlask(Flask):
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
         self.envs_last_use_time[uuid] = time.time()
-
-    def periodic_cleanup(self):
-        print("Starting periodic cleanup")
-        for uid, env in self.envs:
+    
+    def periodic_cleanup(self, periodic_cleanup_interval=PERIODIC_CLEANUP_INTERVAL):
+        for uid, env in self.envs.items():
             last_active_time = env.last_active_time
-            print(
-                f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
-            if time.time() - last_active_time > 60:                   # TODO magic number
+            print(f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
+            if time.time() - last_active_time > periodic_cleanup_interval:                   
                 print("stale uuid:", uid)
                 self.stop_env(uid)
 
@@ -341,8 +339,6 @@ CORS(app)
 scheduler = APScheduler()
 scheduler.init_app(app)
 scheduler.start()
-
-PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
 
 
 ########### REQUEST HANDLERS ###########
@@ -426,7 +422,10 @@ def teardown():
 
 ########### PERIODIC CLEANUP ###########
 
-def periodic_cleanup():
+PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
+PERIODIC_CLEANUP_INTERVAL = 3600
+
+def periodic_cleanup(): 
     app.periodic_cleanup()
 
 
