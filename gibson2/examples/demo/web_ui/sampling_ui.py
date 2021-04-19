@@ -1,31 +1,32 @@
-from flask import Flask, render_template, Response, request, session
-from flask_cors import CORS
-import sys
-import json
-import tasknet
-from tasknet.parsing import construct_full_pddl
-from tasknet.condition_evaluation import UncontrolledCategoryError
-
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.task.task_base import iGTNTask
-import gibson2
-import os
-
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import numpy as np
-from PIL import Image
-from io import BytesIO
-import multiprocessing
-import traceback
-import atexit
-import time
-import uuid
 import pybullet as p
+import uuid
+import time
+import atexit
+import traceback
+import multiprocessing
+from io import BytesIO
+from PIL import Image
+import numpy as np
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.utils.utils import parse_config
+import os
+import gibson2
+from gibson2.task.task_base import iGTNTask
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from gibson2.simulator import Simulator
+from tasknet.logic_base import UncontrolledCategoryError
+from tasknet.parsing import construct_full_pddl
+import tasknet
+import json
+import sys
+from flask_apscheduler import APScheduler
+from flask_cors import CORS
+from flask import Flask, render_template, Response, request, session
+
 
 interactive = True
+NUM_REQUIRED_SUCCESSFUL_SCENES = 3
 
 
 class ProcessPyEnvironment(object):
@@ -42,14 +43,18 @@ class ProcessPyEnvironment(object):
     def __init__(self, env_constructor):
         self._env_constructor = env_constructor
 
+        self.last_active_time = time.time()
+
     def start(self):
         """Start the process."""
         self._conn, conn = multiprocessing.Pipe()
         self._process = multiprocessing.Process(target=self._worker,
                                                 args=(conn, self._env_constructor))
         atexit.register(self.close)
+        self.last_active_time = time.time()
         self._process.start()
         result = self._conn.recv()
+        self.last_active_time = time.time()
         if isinstance(result, Exception):
             self._conn.close()
             self._process.join(5)
@@ -122,7 +127,9 @@ class ProcessPyEnvironment(object):
         :param blocking (bool): whether to wait for the result
         :return (bool, dict): (success, feedback) from the sampling process
         """
+        self.last_active_time = time.time()
         promise = self.call("sample", pddl)
+        self.last_active_time = time.time()
         if blocking:
             return promise()
         else:
@@ -240,18 +247,34 @@ class ToyEnvInt(object):
         )
         self.state_id = p.saveState()
 
+        # self.last_active_time = time.time()
+
     def step(self, a):
         pass
 
     def sample(self, pddl):
-        self.task.update_problem("tester", "tester", predefined_problem=pddl)
+        try:
+            self.task.update_problem(
+                "tester", "tester", predefined_problem=pddl)
+        except UncontrolledCategoryError:
+            accept_scene = False
+            feedback = {
+                'init_success': 'untested',
+                'goal_success': 'no',
+                'init_feedback': 'Cannot check until goal state is fixed.'
+                'goal_feedback': 'Goal state has uncontrolled categories.'
+            }
+            self.last_active_time = time.time()
+            return accept_scene, feedback
 
         accept_scene, feedback = self.task.check_scene()
         if not accept_scene:
+            self.last_active_time = time.time()
             return accept_scene, feedback
 
         accept_scene, feedback = self.task.sample()
         if not accept_scene:
+            self.last_active_time = time.time()
             return accept_scene, feedback
 
         for sim_obj in self.task.newly_added_objects:
@@ -260,10 +283,11 @@ class ToyEnvInt(object):
                 p.removeBody(id)
         p.restoreState(self.state_id)
 
+        self.last_active_time = time.time()
         return accept_scene, feedback
 
-    def close(self):
-        self.task.simulator.disconnect()
+ def close(self):
+      self.task.simulator.disconnect()
 
 
 class iGFlask(Flask):
@@ -272,17 +296,17 @@ class iGFlask(Flask):
         self.action = {}
         self.envs = {}
         self.envs_inception_time = {}
+        self.envs_last_use_time = {}
 
     def cleanup(self):
         # TODO change this to allow people to make the conditions
         for k, v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
-                self.stop_app(k)
+                self.stop_env(k)
 
     def prepare_env(self, uuid, scene):
-        self.cleanup()
-
+        # self.cleanup()
         def env_constructor():
             if interactive:
                 return ToyEnvInt(scene=scene)
@@ -291,15 +315,35 @@ class iGFlask(Flask):
         self.envs[uuid] = ProcessPyEnvironment(env_constructor)
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
+        self.envs_last_use_time[uuid] = time.time()
 
-    def stop_app(self, uuid):
+    def periodic_cleanup(self):
+        print("Starting periodic cleanup")
+        for uid, env in self.envs:
+            last_active_time = env.last_active_time
+            print(
+                f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
+            if time.time() - last_active_time > 60:                   # TODO magic number
+                print("stale uuid:", uid)
+                self.stop_env(uid)
+
+    # TODO how to update envs_last_use_time? Maybe make it a field in
+    #   the ToyEnvInt or ProcessPyEnv and update it while some call is running?
+
+    def stop_env(self, uuid):
         self.envs[uuid].close()
         del self.envs[uuid]
         del self.envs_inception_time[uuid]
+        del self.envs_last_use_time[uuid]
 
 
 app = iGFlask(__name__)
 CORS(app)
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
+
+PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
 
 
 ########### REQUEST HANDLERS ###########
@@ -351,8 +395,7 @@ def check_sampling():
     num_successful_scenes = 0
     feedback_instances = []
     for unique_id in ids:
-        success, feedback = app.envs[unique_id].sample(
-            pddl)
+        success, feedback = app.envs[unique_id].sample(pddl)
         if success:
             num_successful_scenes += 1
         '''
@@ -362,7 +405,8 @@ def check_sampling():
         '''
         feedback_instances.append(
             (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
-    success = num_successful_scenes >= 3
+    success = num_successful_scenes >= min(
+        NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
     feedback = str(feedback_instances)      # TODO make prettier
 
     return Response(json.dumps({"success": success, "feedback": feedback}))
@@ -374,11 +418,25 @@ def teardown():
     data = json.loads(request.data)
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
-        app.stop_app(unique_id)       # TODO uncomment when ready
+        app.stop_env(unique_id)
         print(f"uuid {unique_id} stopped")
 
     # TODO need anything else?
     return Response(json.dumps({"success": True}))
+
+
+########### PERIODIC CLEANUP ###########
+
+def periodic_cleanup():
+    app.periodic_cleanup()
+
+
+scheduler.add_job(
+    id=PERIODIC_CLEANUP_TASK_ID,
+    func=periodic_cleanup,
+    seconds=5,
+    trigger="interval"
+)
 
 
 if __name__ == '__main__':
