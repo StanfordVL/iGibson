@@ -71,7 +71,7 @@ class Particle(Object):
         activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
-    def force_wakeup(self, body_id=None):
+    def force_wakeup(self):
         activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_WAKE_UP
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
