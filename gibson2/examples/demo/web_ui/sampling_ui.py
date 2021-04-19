@@ -27,6 +27,9 @@ import uuid
 
 interactive = True
 NUM_REQUIRED_SUCCESSFUL_SCENES = 3
+PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
+PERIODIC_CLEANUP_INTERVAL = 3600
+
 
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
@@ -287,7 +290,7 @@ class ToyEnvInt(object):
             goal_success = False 
             goal_feedback = "Goal state has uncontrolled categories."
 
-        print("EXITING ENV SAMPLE")
+        print(f"\n\nResults: init success - {init_success}, goal success - {goal_success}")
         self.last_active_time = time.time() 
         return init_success, goal_success, init_feedback, goal_feedback
 
@@ -359,7 +362,7 @@ def setup():
     """Set up the three environments when requested by annotation React app"""
     scenes = json.loads(request.data)       # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
-    scenes_ids = zip(scenes, ids)
+    scenes_ids = list(zip(scenes, ids))
     for scene, unique_id in scenes_ids:
         app.prepare_env(unique_id, scene)             # TODO uncomment when basic infra is done 
         print(f"Instantiated {scene} with uuid {unique_id}")
@@ -419,9 +422,6 @@ def teardown():
 
 
 ########### PERIODIC CLEANUP ###########
-
-PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
-PERIODIC_CLEANUP_INTERVAL = 3600
 
 def periodic_cleanup(): 
     app.periodic_cleanup()

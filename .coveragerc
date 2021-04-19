@@ -1,0 +1,3 @@
+[run]
+omit=gibson2/external/*
+	 gibson2/data/*
