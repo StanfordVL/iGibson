@@ -14,7 +14,7 @@ _DEFAULT_MAX_SAMPLING_ATTEMPTS = 10
 
 
 def get_parallel_rays(source, destination, offset):
-    """Given a ray described by a source and a destination, sample 4 parallel rays.
+    """Given a ray described by a source and a destination, sample 4 parallel rays and return together with input ray.
 
     The parallel rays start at the corners of a square of edge length `offset` centered on `source`, with the square
     orthogonal to the ray direction. That is, the cast rays are the height edges of a square-base cuboid with bases
@@ -23,7 +23,7 @@ def get_parallel_rays(source, destination, offset):
     :param source: Source of the ray to sample parallel rays of.
     :param destination: Source of the ray to sample parallel rays of.
     :param offset: Orthogonal distance of parallel rays from input ray.
-    :return Tuple[List, List] containing sources and destinations of parallel rays.
+    :return Tuple[List, List] containing sources and destinations of original ray and the parallel rays.
     """
     ray_direction = destination - source
 
