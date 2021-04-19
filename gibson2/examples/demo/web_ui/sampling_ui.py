@@ -1,4 +1,5 @@
 from flask import Flask, render_template, Response, request, session
+from flask_apscheduler import APScheduler
 from flask_cors import CORS 
 import sys
 import json
@@ -30,7 +31,7 @@ NUM_REQUIRED_SUCCESSFUL_SCENES = 3
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
 
-    # Message types for communication via the pipe.
+    # Message types for communication via the pipe. 
     _READY = 1
     _ACCESS = 2
     _CALL = 3
@@ -40,7 +41,7 @@ class ProcessPyEnvironment(object):
 
     def __init__(self, env_constructor):
         self._env_constructor = env_constructor
-
+        self.last_active_time = time.time()
 
     def start(self):
         """Start the process."""
@@ -48,8 +49,10 @@ class ProcessPyEnvironment(object):
         self._process = multiprocessing.Process(target=self._worker,
                                                 args=(conn, self._env_constructor))
         atexit.register(self.close)
+        self.last_active_time = time.time()
         self._process.start()
         result = self._conn.recv()
+        self.last_active_time = time.time()
         if isinstance(result, Exception):
             self._conn.close()
             self._process.join(5)
@@ -122,12 +125,15 @@ class ProcessPyEnvironment(object):
         :param blocking (bool): whether to wait for the result
         :return (bool, str): (success, feedback) from the sampling process
         """
+        self.last_active_time = time.time()
         promise = self.call("sample", pddl)
+        self.last_active_time = time.time()     
         if blocking: 
             return promise()
         else:
             return promise
-
+    
+    
     def _receive(self):
         """Wait for a message from the worker process and return its payload.
 
@@ -255,6 +261,8 @@ class ToyEnvInt(object):
                       image_height=400, rendering_settings=settings)
         self.s.import_ig_scene(scene)
 
+        # self.last_active_time = time.time()
+
     def step(self, a):
         self.s.step()
         frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
@@ -262,12 +270,17 @@ class ToyEnvInt(object):
 
     def sample(self, pddl):
         # TODO implement 
+        print("ENTERED ENV SAMPLE")
         tasknet.set_backend("iGibson")
         igtn_task = iGTNTask("tester", "tester", predefined_problem=pddl)
         try:
-            init_success = igtn_task.initialize_simulator(simulator=self.s, 
-                        scene_id=self.scene_id, 
-                        online_sampling=True)
+            # init_success = igtn_task.initialize_simulator(simulator=self.s, 
+            #             scene_id=self.scene_id, 
+            #             online_sampling=True)
+            print("STARTING SLEEP")
+            time.sleep(5)
+            print("FINISHED SLEEP")
+
             goal_success = True                    # TODO implement and update 
             init_feedback = "Initial conditions are good to go!" if init_success else "Initial conditions don't work."      # TODO update
             goal_feedback = "Goal conditions are good to go!" if goal_success else "Goal conditions don't work"             # TODO update 
@@ -277,6 +290,8 @@ class ToyEnvInt(object):
             goal_success = False 
             goal_feedback = "Goal state has uncontrolled categories."
 
+        print("EXITING ENV SAMPLE")
+        self.last_active_time = time.time() 
         return init_success, goal_success, init_feedback, goal_feedback
 
     def close(self):
@@ -289,15 +304,17 @@ class iGFlask(Flask):
         self.action= {}
         self.envs = {}
         self.envs_inception_time = {}
+        self.envs_last_use_time = {}
+
     def cleanup(self):
         # TODO change this to allow people to make the conditions 
         for k,v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
-                self.stop_app(k)
+                self.stop_env(k)
 
     def prepare_env(self, uuid, scene):
-        self.cleanup()
+        # self.cleanup()
         def env_constructor():
             if interactive:
                 return ToyEnvInt(scene=scene)
@@ -306,15 +323,34 @@ class iGFlask(Flask):
         self.envs[uuid] = ProcessPyEnvironment(env_constructor)
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
+        self.envs_last_use_time[uuid] = time.time()
+    
+    def periodic_cleanup(self):
+        print("Starting periodic cleanup")
+        for uid, env in self.envs:
+            last_active_time = env.last_active_time
+            print(f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
+            if time.time() - last_active_time > 60:                   # TODO magic number
+                print("stale uuid:", uid)
+                self.stop_env(uid)
+    
+    # TODO how to update envs_last_use_time? Maybe make it a field in 
+    #   the ToyEnvInt or ProcessPyEnv and update it while some call is running? 
 
-    def stop_app(self, uuid):
+    def stop_env(self, uuid):
         self.envs[uuid].close()
         del self.envs[uuid]
         del self.envs_inception_time[uuid]
+        del self.envs_last_use_time[uuid]
 
 
 app = iGFlask(__name__)
 CORS(app)
+scheduler = APScheduler()
+scheduler.init_app(app)
+scheduler.start()
+
+PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
 
 
 ########### REQUEST HANDLERS ###########
@@ -380,13 +416,26 @@ def teardown():
     data = json.loads(request.data)
     unique_ids = data["uuids"]
     for unique_id in unique_ids:
-        app.stop_app(unique_id)       
+        app.stop_env(unique_id)       
         print(f"uuid {unique_id} stopped")
     
     return Response(json.dumps({"success": True}))      # TODO need anything else? 
 
 
-if __name__ == '__main__':
+########### PERIODIC CLEANUP ###########
+
+def periodic_cleanup(): 
+    app.periodic_cleanup()
+
+scheduler.add_job(
+    id=PERIODIC_CLEANUP_TASK_ID, 
+    func=periodic_cleanup, 
+    seconds=5,
+    trigger="interval"
+)
+
+
+if __name__ == '__main__': 
     port = int(sys.argv[1])
     # app.run(host="0.0.0.0", port=port, debug=True)
     app.run(host="0.0.0.0", port=port)
