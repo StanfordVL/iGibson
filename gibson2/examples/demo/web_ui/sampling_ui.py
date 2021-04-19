@@ -1,37 +1,38 @@
-from flask import Flask, render_template, Response, request, session
-from flask_apscheduler import APScheduler
-from flask_cors import CORS 
-import sys
-import json
-import tasknet 
-from tasknet.parsing import construct_full_pddl
-from tasknet.logic_base import UncontrolledCategoryError
-
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.task.task_base import iGTNTask
-import gibson2
-import os
-
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import numpy as np
-from PIL import Image
-from io import BytesIO
-import multiprocessing
-import traceback
-import atexit
-import time
+import pybullet as p
 import uuid
+import time
+import atexit
+import traceback
+import multiprocessing
+from io import BytesIO
+from PIL import Image
+import numpy as np
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.utils.utils import parse_config
+import os
+import gibson2
+from gibson2.task.task_base import iGTNTask
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from gibson2.simulator import Simulator
+from tasknet.logic_base import UncontrolledCategoryError
+from tasknet.parsing import construct_full_pddl
+import tasknet
+import json
+import sys
+from flask_apscheduler import APScheduler
+from flask_cors import CORS
+from flask import Flask, render_template, Response, request, session
+
 
 interactive = True
 NUM_REQUIRED_SUCCESSFUL_SCENES = 3
 
+
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
 
-    # Message types for communication via the pipe. 
+    # Message types for communication via the pipe.
     _READY = 1
     _ACCESS = 2
     _CALL = 3
@@ -41,6 +42,7 @@ class ProcessPyEnvironment(object):
 
     def __init__(self, env_constructor):
         self._env_constructor = env_constructor
+
         self.last_active_time = time.time()
 
     def start(self):
@@ -117,23 +119,22 @@ class ProcessPyEnvironment(object):
             return promise()
         else:
             return promise
-    
+
     def sample(self, pddl, blocking=True):
         """Run a sampling in the environment
 
         :param pddl (str): the pddl being sampled in the environment
         :param blocking (bool): whether to wait for the result
-        :return (bool, str): (success, feedback) from the sampling process
+        :return (bool, dict): (success, feedback) from the sampling process
         """
         self.last_active_time = time.time()
         promise = self.call("sample", pddl)
-        self.last_active_time = time.time()     
-        if blocking: 
+        self.last_active_time = time.time()
+        if blocking:
             return promise()
         else:
             return promise
-    
-    
+
     def _receive(self):
         """Wait for a message from the worker process and return its payload.
 
@@ -202,7 +203,8 @@ class ProcessPyEnvironment(object):
 
 class ToyEnv(object):
     def __init__(self):
-        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
+        config = parse_config(os.path.join(
+            gibson2.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -213,13 +215,12 @@ class ToyEnv(object):
             gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
-       
 
         self.s = Simulator(mode='headless', image_width=400,
-                      image_height=400, rendering_settings=settings)
+                           image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene('Rs')
         self.s.import_scene(scene)
-        #self.s.import_ig_scene(scene)
+        # self.s.import_ig_scene(scene)
 
     def step(self, a):
         self.s.step()
@@ -228,84 +229,75 @@ class ToyEnv(object):
 
     def close(self):
         self.s.disconnect()
-
 
 
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
-        # TODO this config may need to change 
-        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
-        hdr_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-        hdr_texture2 = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
-        light_modulation_map_filename = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-        background_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        self.task = iGTNTask('sampling_test', task_instance=4)
 
-        self.scene_id = scene
-        scene = InteractiveIndoorScene(
-            scene, texture_randomization=False, object_randomization=False)
-        #scene._set_first_n_objects(5)
-        scene.open_all_doors()
-
-        settings = MeshRendererSettings(env_texture_filename=hdr_texture,
-                                        env_texture_filename2=hdr_texture2,
-                                        env_texture_filename3=background_texture,
-                                        light_modulation_map_filename=light_modulation_map_filename,
-                                        enable_shadow=True, msaa=True,
-                                        light_dimming_factor=1.0,
-                                        optimized=True,
-                                        texture_scale=0.1)
-        self.s = Simulator(mode='headless', image_width=400,
-                      image_height=400, rendering_settings=settings)
-        self.s.import_ig_scene(scene)
-
-        # self.last_active_time = time.time()
+        self.task.initialize_simulator(
+            scene_id=scene,
+            mode='headless',
+            load_clutter=False,
+            should_debug_sampling=False,
+            scene_kwargs={},
+            online_sampling=False,
+            offline_sampling=False,
+        )
+        self.state_id = p.saveState()
 
     def step(self, a):
-        self.s.step()
-        frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
-        return frame
+        pass
 
     def sample(self, pddl):
-        # TODO implement 
-        print("ENTERED ENV SAMPLE")
-        tasknet.set_backend("iGibson")
-        igtn_task = iGTNTask("tester", "tester", predefined_problem=pddl)
         try:
-            init_success = igtn_task.initialize_simulator(simulator=self.s, 
-                        scene_id=self.scene_id, 
-                        online_sampling=True)
-            goal_success = True                    # TODO implement and update 
-            init_feedback = "Initial conditions are good to go!" if init_success else "Initial conditions don't work."      # TODO update
-            goal_feedback = "Goal conditions are good to go!" if goal_success else "Goal conditions don't work"             # TODO update 
+            self.task.update_problem(
+                "tester", "tester", predefined_problem=pddl)
         except UncontrolledCategoryError:
-            init_success = False 
-            init_feedback = "Cannot check until goal state is fixed."
-            goal_success = False 
-            goal_feedback = "Goal state has uncontrolled categories."
+            accept_scene = False
+            feedback = {
+                'init_success': 'untested',
+                'goal_success': 'no',
+                'init_feedback': 'Cannot check until goal state is fixed.'
+                'goal_feedback': 'Goal state has uncontrolled categories.'
+            }
+            # self.last_active_time = time.time()
+            return accept_scene, feedback
 
-        print("EXITING ENV SAMPLE")
-        self.last_active_time = time.time() 
-        return init_success, goal_success, init_feedback, goal_feedback
+        accept_scene, feedback = self.task.check_scene()
+        if not accept_scene:
+            # self.last_active_time = time.time()
+            return accept_scene, feedback
 
-    def close(self):
-        self.s.disconnect()
+        accept_scene, feedback = self.task.sample()
+        if not accept_scene:
+            # self.last_active_time = time.time()
+            return accept_scene, feedback
+
+        for sim_obj in self.task.newly_added_objects:
+            self.task.scene.remove_object(sim_obj)
+            for id in sim_obj.body_ids:
+                p.removeBody(id)
+        p.restoreState(self.state_id)
+
+        # self.last_active_time = time.time()
+        return accept_scene, feedback
+
+ def close(self):
+      self.task.simulator.disconnect()
 
 
 class iGFlask(Flask):
     def __init__(self, args, **kwargs):
         super(iGFlask, self).__init__(args, **kwargs)
-        self.action= {}
+        self.action = {}
         self.envs = {}
         self.envs_inception_time = {}
         self.envs_last_use_time = {}
 
     def cleanup(self):
-        # TODO change this to allow people to make the conditions 
-        for k,v in self.envs_inception_time.items():
+        # TODO change this to allow people to make the conditions
+        for k, v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
                 self.stop_env(k)
@@ -329,9 +321,9 @@ class iGFlask(Flask):
             if time.time() - last_active_time > periodic_cleanup_interval:                   
                 print("stale uuid:", uid)
                 self.stop_env(uid)
-    
-    # TODO how to update envs_last_use_time? Maybe make it a field in 
-    #   the ToyEnvInt or ProcessPyEnv and update it while some call is running? 
+
+    # TODO how to update envs_last_use_time? Maybe make it a field in
+    #   the ToyEnvInt or ProcessPyEnv and update it while some call is running?
 
     def stop_env(self, uuid):
         self.envs[uuid].close()
@@ -353,6 +345,7 @@ scheduler.start()
 def index():
     id = uuid.uuid4()
     return render_template('index.html', uuid=id)
+
 
 @app.route("/setup", methods=["POST"])
 def setup():
@@ -376,10 +369,10 @@ def check_sampling():
     :return (Response): response indicating success of sampling in all three 
                          scenes, feedback given from each 
     """
-    # Prepare data 
+    # Prepare data
     data = json.loads(request.data)
     atus_activity = data["activityName"]
-    init_state = data["initialConditions"]     
+    init_state = data["initialConditions"]
     goal_state = data["goalConditions"]
     object_list = data["objectList"]
     # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
@@ -396,12 +389,19 @@ def check_sampling():
     num_successful_scenes = 0
     feedback_instances = []
     for unique_id in ids:
-        init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(pddl)
-        if init_success and goal_success:
+        success, feedback = app.envs[unique_id].sample(pddl)
+        if success:
             num_successful_scenes += 1
-        feedback_instances.append((init_feedback, goal_feedback))
-    success = num_successful_scenes >= min(NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
-    feedback = str(feedback_instances)      # TODO make prettier 
+        '''
+        init_success, goal_success: one of the three values ['yes', 'no', 'untested']
+        init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
+        if the conditions are not tested or the conditions are sampled successfully.
+        '''
+        feedback_instances.append(
+            (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
+    success = num_successful_scenes >= min(
+        NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
+    feedback = str(feedback_instances)      # TODO make prettier
 
     return Response(json.dumps({"success": success, "feedback": feedback}))
 
@@ -414,8 +414,9 @@ def teardown():
     for scene, unique_id in scenes_ids:
         app.stop_env(unique_id)       
         print(f"uuid {unique_id} stopped")
-    
-    return Response(json.dumps({"success": True}))      # TODO need anything else? 
+
+    # TODO need anything else?
+    return Response(json.dumps({"success": True}))
 
 
 ########### PERIODIC CLEANUP ###########
@@ -426,15 +427,16 @@ PERIODIC_CLEANUP_INTERVAL = 3600
 def periodic_cleanup(): 
     app.periodic_cleanup()
 
+
 scheduler.add_job(
-    id=PERIODIC_CLEANUP_TASK_ID, 
-    func=periodic_cleanup, 
+    id=PERIODIC_CLEANUP_TASK_ID,
+    func=periodic_cleanup,
     seconds=5,
     trigger="interval"
 )
 
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     port = int(sys.argv[1])
     # app.run(host="0.0.0.0", port=port, debug=True)
     app.run(host="0.0.0.0", port=port)
