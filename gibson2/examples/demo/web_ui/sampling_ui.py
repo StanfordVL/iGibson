@@ -120,7 +120,7 @@ class ProcessPyEnvironment(object):
 
         :param pddl (str): the pddl being sampled in the environment
         :param blocking (bool): whether to wait for the result
-        :return (bool, str): (success, feedback) from the sampling process
+        :return (bool, dict): (success, feedback) from the sampling process
         """
         promise = self.call("sample", pddl)
         if blocking:
@@ -246,18 +246,13 @@ class ToyEnvInt(object):
     def sample(self, pddl):
         self.task.update_problem("tester", "tester", predefined_problem=pddl)
 
-        init_success, goal_success, init_feedback, goal_feedback = True, True, '', ''
-        accept_scene = self.task.check_scene()
+        accept_scene, feedback = self.task.check_scene()
         if not accept_scene:
-            init_success = False
-            goal_success = False
-            return init_success, goal_success, init_feedback, goal_feedback
+            return accept_scene, feedback
 
-        accept_scene = self.task.sample()
+        accept_scene, feedback = self.task.sample()
         if not accept_scene:
-            init_success = False
-            goal_success = False
-            return init_success, goal_success, init_feedback, goal_feedback
+            return accept_scene, feedback
 
         for sim_obj in self.task.newly_added_objects:
             self.task.scene.remove_object(sim_obj)
@@ -265,7 +260,7 @@ class ToyEnvInt(object):
                 p.removeBody(id)
         p.restoreState(self.state_id)
 
-        return init_success, goal_success, init_feedback, goal_feedback
+        return accept_scene, feedback
 
     def close(self):
         self.task.simulator.disconnect()
@@ -356,11 +351,17 @@ def check_sampling():
     num_successful_scenes = 0
     feedback_instances = []
     for unique_id in ids:
-        init_success, goal_success, init_feedback, goal_feedback = app.envs[unique_id].sample(
+        success, feedback = app.envs[unique_id].sample(
             pddl)
-        if init_success and goal_success:
+        if success:
             num_successful_scenes += 1
-        feedback_instances.append((init_feedback, goal_feedback))
+        '''
+        init_success, goal_success: one of the three values ['yes', 'no', 'untested']
+        init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
+        if the conditions are not tested or the conditions are sampled successfully.
+        '''
+        feedback_instances.append(
+            (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
     success = num_successful_scenes >= 3
     feedback = str(feedback_instances)      # TODO make prettier
 
