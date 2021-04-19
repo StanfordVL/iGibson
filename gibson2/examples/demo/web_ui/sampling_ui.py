@@ -246,8 +246,6 @@ class ToyEnvInt(object):
         )
         self.state_id = p.saveState()
 
-        # self.last_active_time = time.time()
-
     def step(self, a):
         pass
 
@@ -263,17 +261,17 @@ class ToyEnvInt(object):
                 'init_feedback': 'Cannot check until goal state is fixed.'
                 'goal_feedback': 'Goal state has uncontrolled categories.'
             }
-            self.last_active_time = time.time()
+            # self.last_active_time = time.time()
             return accept_scene, feedback
 
         accept_scene, feedback = self.task.check_scene()
         if not accept_scene:
-            self.last_active_time = time.time()
+            # self.last_active_time = time.time()
             return accept_scene, feedback
 
         accept_scene, feedback = self.task.sample()
         if not accept_scene:
-            self.last_active_time = time.time()
+            # self.last_active_time = time.time()
             return accept_scene, feedback
 
         for sim_obj in self.task.newly_added_objects:
@@ -282,7 +280,7 @@ class ToyEnvInt(object):
                 p.removeBody(id)
         p.restoreState(self.state_id)
 
-        self.last_active_time = time.time()
+        # self.last_active_time = time.time()
         return accept_scene, feedback
 
  def close(self):
