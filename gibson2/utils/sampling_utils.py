@@ -66,7 +66,7 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
         fraction of the min-max range.
     :param axis_probabilities: Array of shape (3, ), the probability of ray casting along each axis.
     :param bottom_side_probability: float, probability of casting upwards rays if the Z axis is chosen.
-    :return: List of (ray cast axis index, [x, y, z]) tuples.
+    :return: List of (ray cast axis index, bool whether the axis was sampled from the top side, [x, y, z]) tuples.
     """
     assert len(mins.shape) == 1
     assert mins.shape == maxes.shape
