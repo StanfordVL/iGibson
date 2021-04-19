@@ -354,12 +354,12 @@ def setup():
     """Set up the three environments when requested by annotation React app"""
     scenes = json.loads(request.data)       # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
-    for scene, unique_id in zip(scenes, ids):
-        # TODO uncomment when basic infra is done
-        app.prepare_env(unique_id, scene)
+    scenes_ids = zip(scenes, ids)
+    for scene, unique_id in scenes_ids:
+        app.prepare_env(unique_id, scene)             # TODO uncomment when basic infra is done 
         print(f"Instantiated {scene} with uuid {unique_id}")
 
-    return Response(json.dumps({"uuids": ids}))
+    return Response(json.dumps({"scenes_ids": scenes_ids}))
 
     # TODO need to send uuids to the upcoming POSTs somehow, I guess in the response
 
@@ -379,12 +379,13 @@ def check_sampling():
     object_list = data["objectList"]
     # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
     pddl = construct_full_pddl(
-        atus_activity,
-        "feasibility_check",
-        object_list,
-        init_state,
-        goal_state)
-    ids = data["uuids"]
+                atus_activity, 
+                "feasibility_check", 
+                object_list,
+                init_state,
+                goal_state)
+    ids = [unique_id for scene, unique_id in data["scenes_ids"]]
+    scenes = [scene for scene, unique_id in data["scenes_ids"]]
 
     # Try sampling
     num_successful_scenes = 0
@@ -411,9 +412,9 @@ def check_sampling():
 def teardown():
     """Tear down the three environments created for this instance of the React app"""
     data = json.loads(request.data)
-    unique_ids = data["uuids"]
-    for unique_id in unique_ids:
-        app.stop_env(unique_id)
+    scenes_ids = data["scenes_ids"]
+    for scene, unique_id in scenes_ids:
+        app.stop_env(unique_id)       
         print(f"uuid {unique_id} stopped")
 
     # TODO need anything else?
