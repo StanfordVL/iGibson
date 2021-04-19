@@ -233,8 +233,7 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
-        # TODO this config may need to change
-        self.task = iGTNTask('sampling_test', task_instance=7)
+        self.task = iGTNTask('sampling_test', task_instance=4)
 
         self.task.initialize_simulator(
             scene_id=scene,
