@@ -38,7 +38,7 @@ class Temperature(AbsoluteObjectState):
         new_temperature = self.value
 
         # Apply temperature decay.
-        new_temperature += (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * simulator.physics_timestep
+        new_temperature += (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * simulator.render_timestep
 
         # Compute the center of our aabb.
         # TODO: We need to be more clever about this. Check shortest dist between aabb and heat source.
