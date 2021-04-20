@@ -47,8 +47,7 @@ def get_parallel_rays(source, destination, offset):
     return sources, destinations
 
 
-def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities,
-                            bottom_side_probability):
+def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities):
     """
     Sample ray casting origin positions with a given distribution.
 
@@ -65,7 +64,6 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
     :param bimodal_stdev_fraction: float, the standard deviation of one side of the symmetric bimodal distribution as a
         fraction of the min-max range.
     :param axis_probabilities: Array of shape (3, ), the probability of ray casting along each axis.
-    :param bottom_side_probability: float, probability of casting upwards rays if the Z axis is chosen.
     :return: List of (ray cast axis index, bool whether the axis was sampled from the top side, [x, y, z]) tuples.
     """
     assert len(mins.shape) == 1
@@ -84,15 +82,19 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
         # Pick which axis the bimodal normal sample should go to.
         bimodal_axis = np.random.choice([0, 1, 2], p=axis_probabilities)
 
-        # We want the bottom side to show up much less often.
-        side_selection_p = (
-            [0.5, 0.5] if bimodal_axis != 2 else
-            [1 - bottom_side_probability, bottom_side_probability])
+        # Choose which side of the axis to sample from. We only sample from the top for the Z axis.
+        if bimodal_axis == 2:
+            bimodal_axis_top_side = True
+        else:
+            bimodal_axis_top_side = np.random.choice([True, False])
 
-        # Choose which side of the axis to sample from.
-        bimodal_axis_top_side = np.random.choice([True, False], p=side_selection_p)
+        # Move sample based on chosen side.
         position[bimodal_axis] = bimodal_sample if bimodal_axis_top_side else 1 - bimodal_sample
+
+        # Scale the position from the standard normal range to the min-max range.
         scaled_position = mins + (maxes - mins) * position
+
+        # Save the result.
         results.append((bimodal_axis, bimodal_axis_top_side, scaled_position))
 
     return results
@@ -104,7 +106,6 @@ def sample_points_on_object(obj,
                             bimodal_mean_fraction,
                             bimodal_stdev_fraction,
                             axis_probabilities,
-                            bottom_side_probability,
                             aabb_offset=_DEFAULT_AABB_OFFSET,
                             max_sampling_attempts=_DEFAULT_MAX_SAMPLING_ATTEMPTS,
                             max_angle_with_z_axis=_DEFAULT_MAX_ANGLE_WITH_Z_AXIS,
@@ -124,7 +125,6 @@ def sample_points_on_object(obj,
     :param bimodal_stdev_fraction: float, the standard deviation of one side of the symmetric bimodal distribution as a
         fraction of the min-max range.
     :param axis_probabilities: Array of shape (3, ), the probability of ray casting along each axis.
-    :param bottom_side_probability: float, probability of casting upwards rays if the Z axis is chosen.
     :param aabb_offset: float, padding for AABB to make sure rays start outside the actual object.
     :param max_sampling_attempts: int, how many times sampling will be attempted for each requested point.
     :param max_angle_with_z_axis: float, maximum angle between hit normal and positive Z axis allowed. Can be used to
@@ -151,8 +151,7 @@ def sample_points_on_object(obj,
     for i in range(num_points_to_sample):
         # Sample the starting positions in advance.
         samples = sample_origin_positions(sampling_aabb_min, sampling_aabb_max, max_sampling_attempts,
-                                          bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities,
-                                          bottom_side_probability)
+                                          bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities)
 
         refusal_reasons = results[i][2]
 
