@@ -4,7 +4,7 @@ from gibson2.object_states.contact_bodies import ContactBodies
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.objects.particles import WaterStreamPhysicsBased
+from gibson2.objects.particles import WaterStream
 
 _WATER_SOURCE_LINK_NAME = "water_source"
 
@@ -14,7 +14,7 @@ _WATER_SOURCE_LINK_NAME = "water_source"
 # that touch a water source object are immediately destroyed. Ideally we should
 # replace this with some reasonable water sink logic, but for now we just create
 # the particles slightly lower.
-_OFFSET_FROM_LINK = np.array([0, 0, -0.1])
+_OFFSET_FROM_LINK = np.array([0, 0, -0.05])
 
 
 class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
@@ -36,22 +36,20 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
         if self.water_stream is None:
-            self.water_stream = WaterStreamPhysicsBased(self.obj, pos=water_source_position, num=10)
+            self.water_stream = WaterStream(water_source_position, num=10)
             simulator.import_particle_system(self.water_stream)
         else:
             self.water_stream.water_source_pos = water_source_position
 
         if ToggledOn in self.obj.states:
             # sync water source state with toggleable
-            self.water_stream.set_value(self.obj.states[ToggledOn].get_value())
+            self.water_stream.set_running(self.obj.states[ToggledOn].get_value())
         else:
-            self.water_stream.set_value(True)  # turn on the water by default
-
-        self.water_stream.step()
+            self.water_stream.set_running(True)  # turn on the water by default
 
         # water reusing logic
         contacted_water_body_ids = set(item[1] for item in list(self.obj.states[ContactBodies].get_value()))
-        for particle in self.water_stream.particles:
+        for particle in self.water_stream.get_active_particles():
             if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)
 

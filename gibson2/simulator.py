@@ -72,6 +72,8 @@ class Simulator:
 
         self.scene = None
 
+        self.particle_systems = []
+
         # TODO: remove this, currently used for testing only
         self.objects = []
 
@@ -356,13 +358,15 @@ class Simulator:
             'import_particle_system can only be called with ParticleSystem'
 
         new_object_pb_ids = []
-        for o in obj.particles:
+        for o in obj.get_particles():
             particle_pb_id = self.import_object(o,
                                                 class_id=class_id,
                                                 use_pbr=use_pbr,
                                                 use_pbr_mapping=use_pbr_mapping,
                                                 shadow_caster=shadow_caster)
             new_object_pb_ids.append(particle_pb_id)
+
+        self.particle_systems.append(obj)
 
         return new_object_pb_ids
 
@@ -915,6 +919,10 @@ class Simulator:
         """
         Complete any non-physics steps such as state updates.
         """
+        # Step all of the particle systems.
+        for particle_system in self.particle_systems:
+            particle_system.update(self)
+
         # Step the object states in global topological order.
         for state_type in self.object_state_types:
             for obj in self.scene.get_objects_with_state(state_type):
