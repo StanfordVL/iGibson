@@ -236,6 +236,7 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
+        tasknet.set_backend("iGibson")
         self.task = iGTNTask('sampling_test', task_instance=4)
 
         self.task.initialize_simulator(
@@ -261,7 +262,7 @@ class ToyEnvInt(object):
             feedback = {
                 'init_success': 'untested',
                 'goal_success': 'no',
-                'init_feedback': 'Cannot check until goal state is fixed.'
+                'init_feedback': 'Cannot check until goal state is fixed.',
                 'goal_feedback': 'Goal state has uncontrolled categories.'
             }
             # self.last_active_time = time.time()
@@ -283,12 +284,11 @@ class ToyEnvInt(object):
                 p.removeBody(id)
         p.restoreState(self.state_id)
 
-        print(f"\n\nResults: accept scene - {accept_scene}; feedback - {feedback}\n\n")
         # self.last_active_time = time.time()
         return accept_scene, feedback
 
- def close(self):
-      self.task.simulator.disconnect()
+    def close(self):
+        self.task.simulator.disconnect()
 
 
 class iGFlask(Flask):
@@ -405,9 +405,9 @@ def check_sampling():
             (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
     success = num_successful_scenes >= min(
         NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
-    feedback = str(feedback_instances)      # TODO make prettier
+    full_feedback = feedback_instances      
 
-    return Response(json.dumps({"success": success, "feedback": feedback}))
+    return Response(json.dumps({"success": success, "feedback": full_feedback}))
 
 
 @app.route("/teardown", methods=["POST"])

@@ -369,7 +369,7 @@ class iGTNTask(TaskNetTask):
                 error_msg += 'The folloing are the initial condition sampling history:\n'
                 error_msg += '\n'.join(init_sampling_log)
                 logging.warning(error_msg)
-                feedback['init_success'] = 'no',
+                feedback['init_success'] = 'no'
                 feedback['goal_success'] = 'untested'
                 feedback['init_feedback'] = error_msg
 
