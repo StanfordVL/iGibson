@@ -386,28 +386,60 @@ def check_sampling():
                 object_list,
                 init_state,
                 goal_state)
-    ids = [unique_id for scene, unique_id in data["scenes_ids"]]
-    scenes = [scene for scene, unique_id in data["scenes_ids"]]
+    scenes_ids = data["scenes_ids"]
+    ids = [unique_id for scene, unique_id in scenes_ids]
+    scenes = [scene for scene, unique_id in scenes_ids]
 
     # Try sampling
     num_successful_scenes = 0
     feedback_instances = []
-    for unique_id in ids:
-        success, feedback = app.envs[unique_id].sample(pddl)
-        if success:
+    # for unique_id in ids:
+    #     if unique_id in app.envs:
+    #         success, feedback = app.envs[unique_id].sample(pddl)
+    #         if success:
+    #             num_successful_scenes += 1
+    #         '''
+    #         init_success, goal_success: one of the three values ['yes', 'no', 'untested']
+    #         init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
+    #         if the conditions are not tested or the conditions are sampled successfully.
+    #         '''
+    #         feedback_instances.append(
+    #             (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
+    #     else:
+    #         new_id = uuid.uuid4()
+    
+    new_scenes_ids = scenes_ids[:]
+    for i, info in enumerate(scenes_ids):
+        scene, unique_id = info 
+        # If this scene's environment has been cleaned, make a new one 
+        if unique_id not in app.envs:
+            new_unique_id = uuid.uuid4()
+            new_scenes_ids[i] = (scene, new_unique_id)
+            app.prepare_env(new_unique_id, scene)       # TODO is this asynchronous with the sample call?
+            print(f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
+        else:
+            new_unique_id = unique_id 
+        success, feedback = app.envs[new_unique_id].sample(pddl)
+        if success: 
             num_successful_scenes += 1
-        '''
-        init_success, goal_success: one of the three values ['yes', 'no', 'untested']
-        init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
-        if the conditions are not tested or the conditions are sampled successfully.
-        '''
-        feedback_instances.append(
-            (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
+            '''
+            init_success, goal_success: one of the three values ['yes', 'no', 'untested']
+            init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
+            if the conditions are not tested or the conditions are sampled successfully.
+            '''
+            feedback_instances.append(
+                (feedback["init_success"], feedback["goal_success"], feedback["init_feedback"], feedback["goal_feedback"])
+            )
+
     success = num_successful_scenes >= min(
         NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
     full_feedback = feedback_instances      
 
-    return Response(json.dumps({"success": success, "feedback": full_feedback}))
+    return Response(json.dumps({
+        "success": success, 
+        "feedback": full_feedback,
+        "scenes_ids": new_scenes_ids
+    }))
 
 
 @app.route("/teardown", methods=["POST"])
