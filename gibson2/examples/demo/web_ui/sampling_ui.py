@@ -319,12 +319,15 @@ class iGFlask(Flask):
         self.envs_last_use_time[uuid] = time.time()
     
     def periodic_cleanup(self, periodic_cleanup_interval=PERIODIC_CLEANUP_INTERVAL):
+        stale_uids = []
         for uid, env in self.envs.items():
             last_active_time = env.last_active_time
             print(f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
             if time.time() - last_active_time > periodic_cleanup_interval:                   
                 print("stale uuid:", uid)
-                self.stop_env(uid)
+                stale_uids.append(uid)
+        for stale_uid in stale_uids:
+            self.stop_env(stale_uid)
 
     # TODO how to update envs_last_use_time? Maybe make it a field in
     #   the ToyEnvInt or ProcessPyEnv and update it while some call is running?
@@ -393,27 +396,12 @@ def check_sampling():
     # Try sampling
     num_successful_scenes = 0
     feedback_instances = []
-    # for unique_id in ids:
-    #     if unique_id in app.envs:
-    #         success, feedback = app.envs[unique_id].sample(pddl)
-    #         if success:
-    #             num_successful_scenes += 1
-    #         '''
-    #         init_success, goal_success: one of the three values ['yes', 'no', 'untested']
-    #         init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
-    #         if the conditions are not tested or the conditions are sampled successfully.
-    #         '''
-    #         feedback_instances.append(
-    #             (feedback['init_success'], feedback['goal_success'], feedback['init_feedback'], feedback['goal_feedback']))
-    #     else:
-    #         new_id = uuid.uuid4()
-    
     new_scenes_ids = scenes_ids[:]
     for i, info in enumerate(scenes_ids):
         scene, unique_id = info 
         # If this scene's environment has been cleaned, make a new one 
         if unique_id not in app.envs:
-            new_unique_id = uuid.uuid4()
+            new_unique_id = str(uuid.uuid4())
             new_scenes_ids[i] = (scene, new_unique_id)
             app.prepare_env(new_unique_id, scene)       # TODO is this asynchronous with the sample call?
             print(f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
