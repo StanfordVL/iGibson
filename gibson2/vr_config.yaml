@@ -33,8 +33,8 @@ shared_settings:
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
   hud_pos: [0,0,-0.8]
-  # Height boundaries for VR user (2m is the upper limit)
-  height_bounds: [0, 2.0]
+  # Height boundaries for VR user
+  height_bounds: [0, 1.8]
   # Whether to use iGibson companion window (set to False by default - please use Steam VR mirror display (described in README))
   use_companion_window: False
   # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
