@@ -8,6 +8,7 @@ also be individually created. These are:
 3) VrGazeMarker
 """
 
+import itertools
 import numpy as np
 import os
 import pybullet as p
@@ -16,6 +17,7 @@ import time
 from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.utils import multQuatLists
 from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_rot_from_right
 
@@ -139,10 +141,6 @@ class VrBody(ArticulatedObject):
         self.init_body()
         # Determine whether to use torso tracker for control
         self.torso_tracker_serial = self.sim.vr_settings.torso_tracker_serial
-
-        # TODO: Remove this after testing
-        #self.torso_marker = VisualMarker(visual_shape=p.GEOM_BOX, half_extents=[0.1, 0.2, 0.3], rgba_color=[1, 0, 0, 1])
-        #self.sim.import_object(self.torso_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
 
     def _load(self):
         """
@@ -279,6 +277,8 @@ class VrHandBase(ArticulatedObject):
         self.base_rot = base_rot
         self.vr_device = '{}_controller'.format(self.hand)
         self.height_bounds = self.sim.vr_settings.height_bounds
+        # Bool indicating whether the hands have been spwaned by pressing the trigger reset
+        self.has_spawned = False
         if self.hand not in ['left', 'right']:
             raise RuntimeError('ERROR: VrHandBase can only accept left or right as a hand argument!')
         super(VrHandBase, self).__init__(filename=self.fpath, scale=1)
@@ -350,14 +350,15 @@ class VrHandBase(ArticulatedObject):
                 # Apply base rotation first so the virtual controller is properly aligned with the real controller
                 final_rot = multQuatLists(rot, self.base_rot)
                 self.set_orientation(final_rot)
+                self.has_spawned = True
 
-            # Adjust user height based on analog stick press
+            # Adjust user height based on analog stick press (along y axis)
             if not vr_data and self.hand != self.vr_settings.movement_controller:
-                if touch_x < -0.7:
+                if touch_y < -0.7:
                     vr_z_offset = -0.01
                     if hmd_height + curr_offset[2] + vr_z_offset >= self.height_bounds[0]:
                         self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
-                elif touch_x > 0.7:
+                elif touch_y > 0.7:
                     vr_z_offset = 0.01
                     if hmd_height + curr_offset[2] + vr_z_offset <= self.height_bounds[1]:
                         self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
@@ -419,8 +420,9 @@ class VrHand(VrHandBase):
             else:
                 suffix = 'vr_hand_vhacd'
         final_suffix = '{}_{}.urdf'.format(suffix, hand)
+        base_rot_handed = p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80])
         super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
-                                    hand=hand, use_constraints=use_constraints, base_rot=p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80]))
+                                    hand=hand, use_constraints=use_constraints, base_rot=base_rot_handed)
         self.open_pos = 0
         self.finger_close_pos = 1.2
         self.thumb_close_pos = 0.6
@@ -430,11 +432,11 @@ class VrHand(VrHandBase):
         # Variables for assisted grasping
         self.object_in_hand = None
         self.assist_percent = self.s.vr_settings.assist_percent
-        self.articulated_assist_percentage = 0.15
+        self.articulated_assist_percentage = 0.7
         self.min_assist_force = 0
         self.max_assist_force = 500
         self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
-        self.trig_frac_thresh = 0.6
+        self.trig_frac_thresh = 0.5
         self.violation_threshold = 0.1 # constraint violation to break the constraint
         self.palm_link_idx = 0
         self.obj_cid = None
@@ -442,10 +444,42 @@ class VrHand(VrHandBase):
         self.release_start_time = None
         self.should_execute_release = False
         self.release_window = self.s.vr_settings.release_window
+        # Used to debug AG
+        self.candidate_data = None
         if self.use_reduced_joint_hand:
             self.finger_tip_link_idxs = [1, 2, 3, 4, 5]
+            self.thumb_link_idx = 4
+            self.non_thumb_fingers = [1, 2, 3, 5]
         else:
             self.finger_tip_link_idxs = [2, 4, 6, 8, 10]
+
+        # Local transforms of AG raycast start/endpoints
+        # Need to flip y offsets for left hand, since it has -1 scale along the y axis
+        y_modifier = 1 if self.hand == 'right' else -1
+        self.finger_tip_pos = [0, -0.025 * y_modifier, -0.055]
+        self.palm_base_pos = [0, 0, 0.015]
+        self.palm_center_pos = [0, -0.04 * y_modifier, 0.01]
+        self.thumb_1_pos = [0, -0.015 * y_modifier, -0.02]
+        self.thumb_2_pos = [0, -0.02 * y_modifier, -0.05]
+
+        # Spheres to optionally visualize the ray start/end points
+        # Note: toggle this on/off to toggle visible ray start and end points
+        self.display_raypoints = False
+        if self.display_raypoints:
+            self.ray_markers = []
+            for _ in range(8):
+                ray_marker = VisualMarker(visual_shape=p.GEOM_SPHERE, radius=0.008, rgba_color=[1, 0, 0, 1])
+                self.ray_markers.append(ray_marker)
+                s.import_object(ray_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+
+        # Create ghost hand
+        self.enable_ghost_hand = True
+        self.ghost_hand_appear_thresh = 0.1
+        # Keeps track of previous ghost hand hidden state
+        self.prev_ghost_hand_hidden_state = False
+        if self.enable_ghost_hand:
+            self.ghost_hand = VisualShape(os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', 'ghost_hand_{}.obj'.format(self.hand)), scale=0.001)
+            self.s.import_object(self.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
 
     def hand_setup(self, z_coord):
         """
@@ -467,6 +501,9 @@ class VrHand(VrHandBase):
         # Create constraint that can be used to move the hand
         if self.use_constraints:
             self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.start_pos)
+        # Start ghost hand where the VR hand starts
+        if self.enable_ghost_hand:
+            self.ghost_hand.set_position(self.start_pos)
 
     def set_hand_coll_filter(self, target_id, enable):
         """
@@ -497,6 +534,117 @@ class VrHand(VrHandBase):
         for joint_index, j_val in self.freeze_vals.items():
             p.resetJointState(self.body_id, joint_index, targetValue=j_val, targetVelocity=0.0)
 
+    def find_raycast_candidates(self):
+        """
+        Calculates the body id and link that have the most fingertip-palm ray intersections.
+        """
+        # Store unique ray start/end points for visualization
+        raypoints = []
+        palm_link_state = p.getLinkState(self.body_id, 0)
+        palm_pos = palm_link_state[0]
+        palm_orn = palm_link_state[1]
+        palm_base_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, self.palm_base_pos, [0, 0, 0, 1])
+        palm_center_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, self.palm_center_pos, [0, 0, 0, 1])
+        thumb_link_state = p.getLinkState(self.body_id, self.thumb_link_idx)
+        thumb_pos = thumb_link_state[0]
+        thumb_orn = thumb_link_state[1]
+        thumb_1, _ = p.multiplyTransforms(thumb_pos, thumb_orn, self.thumb_2_pos, [0, 0, 0, 1])
+        thumb_2, _ = p.multiplyTransforms(thumb_pos, thumb_orn, self.thumb_1_pos, [0, 0, 0, 1])
+        # Repeat for each of 4 fingers
+        raypoints.extend([palm_base_pos, palm_center_pos, thumb_1, thumb_2])
+        raycast_startpoints = [palm_base_pos, palm_center_pos, thumb_1, thumb_2] * 4
+
+        raycast_endpoints = []
+        for lk in self.non_thumb_fingers:
+            finger_link_state = p.getLinkState(self.body_id, lk)
+            link_pos = finger_link_state[0]
+            link_orn = finger_link_state[1]
+            finger_tip_pos, _ = p.multiplyTransforms(link_pos, link_orn, self.finger_tip_pos, [0, 0, 0, 1])
+            raypoints.append(finger_tip_pos)
+            raycast_endpoints.extend([finger_tip_pos] * 4)
+
+        if self.display_raypoints:
+            for i in range(8):
+                self.ray_markers[i].set_position(raypoints[i])
+
+        # Raycast from each start point to each end point - 8 in total between 4 finger start points and 2 palm end points
+        ray_results = p.rayTestBatch(raycast_startpoints, raycast_endpoints)
+        if not ray_results:
+            return None
+        ray_data = []
+        for ray_res in ray_results:
+            bid, link_idx, fraction, _, _ = ray_res
+            # Skip intersections with the hand itself
+            if bid == -1 or bid == self.body_id:
+                continue
+            ray_data.append((bid, link_idx))
+
+        return ray_data
+
+    def find_hand_contacts(self):
+        """
+        Calculates the body ids and links that have force applied to them by the VR hand.
+        """
+        # Get collisions
+        cpts = p.getContactPoints(self.body_id)
+        if not cpts:
+            return None
+
+        contact_data = []
+        for i in range(len(cpts)):
+            cpt = cpts[i]
+            # Don't attach to links that are not finger tip
+            if cpt[3] not in self.finger_tip_link_idxs:
+                continue
+            c_bid = cpt[2]
+            c_link = cpt[4]
+            contact_data.append((c_bid, c_link))
+
+        return contact_data
+
+    def calculate_ag_object(self):
+        """
+        Calculates which object to assisted-grasp. Returns an (object_id, link_id) tuple or None
+        if no valid AG-enabled object can be found.
+        """
+        # Step 1- Get candidates that intersect "inside-hand" rays
+        ray_data = self.find_raycast_candidates()
+        if not ray_data:
+            return None
+
+        # Step 2 - find the closest object to the palm center among these "inside" objects
+        palm_state = p.getLinkState(self.body_id, 0)
+        palm_center_pos, _ = p.multiplyTransforms(palm_state[0], palm_state[1], self.palm_center_pos, [0, 0, 0, 1])
+
+        self.candidate_data = []
+        for bid, link in ray_data:
+            if link == -1:
+                link_pos, _ = p.getBasePositionAndOrientation(bid)
+            else:
+                link_pos = p.getLinkState(bid, link)[0]
+            dist = np.linalg.norm(np.array(link_pos) - np.array(palm_center_pos))
+            self.candidate_data.append((bid, link, dist))
+
+        self.candidate_data = sorted(self.candidate_data, key=lambda x: x[2])
+        ag_bid, ag_link, _ = self.candidate_data[0]
+
+        if not ag_bid:
+            return None
+
+        # Step 3 - Make sure we are applying a force to this object
+        force_data = self.find_hand_contacts()
+        if not force_data or (ag_bid, ag_link) not in force_data:
+            return None
+
+        # Return None if any of the following edge cases are activated
+        if (not self.s.can_assisted_grasp(ag_bid, ag_link) or 
+            (self.other_hand and self.other_hand.object_in_hand == ag_bid) or 
+            (self.body and self.body.body_id == ag_bid) or 
+            (self.other_hand and self.other_hand.body_id == ag_bid)):
+            return None
+
+        return ag_bid, ag_link
+
     def handle_assisted_grasping(self, vr_data=None):
         """
         Handles assisted grasping.
@@ -519,51 +667,19 @@ class VrHand(VrHandBase):
                 return
 
         if not self.object_in_hand:
-            if trig_frac > self.trig_frac_thresh:
-                # Get collisions
-                cpts = p.getContactPoints(self.body_id)
-                if not cpts:
+            # Detect valid trig fraction that is above threshold
+            if trig_frac >= 0.0 and trig_frac <= 1.0 and trig_frac > self.trig_frac_thresh:
+                ag_data = self.calculate_ag_object()
+                # Return early if no AG-valid object can be grasped
+                if not ag_data:
                     return
-                # Count overall force applied to each body id
-                cpt_forces = {}
-                for i in range(len(cpts)):
-                    cpt = cpts[i]
-                    # Don't attach to links that are not finger tip
-                    if cpt[3] not in self.finger_tip_link_idxs:
-                        continue
-                    c_bid = cpt[2]
-                    c_link = cpt[4]
-                    # Make sure object is in an assisted-grasping-enabled category
-                    if not self.s.can_assisted_grasp(c_bid, c_link):
-                        continue
-                    # Get magnitude of normal force exerted by cpt onto the hand
-                    n_force = cpt[9]
-                    c_key = (c_bid, c_link)
-                    if c_bid in cpt_forces:
-                        cpt_forces[c_key] += n_force
-                    else:
-                        cpt_forces[c_key] = n_force
+                ag_bid, ag_link = ag_data
 
-                # Exit if not valid contact points
-                if not cpt_forces:
-                    return
-
-                # Get body id of contact with most force
-                most_force_bid, most_force_link = sorted(cpt_forces.items(), key=lambda v: v[1])[::-1][0][0]
-                # Don't grasp if this object is being assisted-grasped by the other hand
-                if self.other_hand and self.other_hand.object_in_hand == most_force_bid:
-                    return
-                # Don't grasp the user's body
-                if self.body and self.body.body_id == most_force_bid:
-                    return
-                # Don't grasp other hand
-                if self.other_hand and self.other_hand.body_id == most_force_bid:
-                    return
-                # Calculate transform from object to palm center
-                if most_force_link == -1:
-                    body_pos, body_orn = p.getBasePositionAndOrientation(most_force_bid)
+                # Different pos/orn calculations for base/links
+                if ag_link == -1:
+                    body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
                 else:
-                    body_pos, body_orn  = p.getLinkState(most_force_bid, most_force_link)[:2]
+                    body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
 
                 # Get inverse world transform of body frame
                 inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
@@ -576,9 +692,8 @@ class VrHand(VrHandBase):
                                                                         link_pos,
                                                                         link_orn)
 
-                # if grab children link of urdfs, create p2p joint
-
-                if most_force_link == -1:
+                # If we grab a child link of a URDF, create a p2p joint
+                if ag_link == -1:
                     joint_type = p.JOINT_FIXED
                 else:
                     joint_type = p.JOINT_POINT2POINT
@@ -586,8 +701,8 @@ class VrHand(VrHandBase):
                 self.obj_cid = p.createConstraint(
                                         parentBodyUniqueId=self.body_id,
                                         parentLinkIndex=self.palm_link_idx,
-                                        childBodyUniqueId=most_force_bid,
-                                        childLinkIndex=most_force_link,
+                                        childBodyUniqueId=ag_bid,
+                                        childLinkIndex=ag_link,
                                         jointType=joint_type,
                                         jointAxis=(0, 0, 0),
                                         parentFramePosition=(0, 0, 0),
@@ -595,20 +710,19 @@ class VrHand(VrHandBase):
                                         childFrameOrientation=child_frame_orn
                                     )
                 # Modify max force based on user-determined assist parameters
-
-                if most_force_link == -1:
+                if ag_link == -1:
                     p.changeConstraint(self.obj_cid, maxForce=self.assist_force)
                 else:
                     p.changeConstraint(self.obj_cid, maxForce=self.assist_force * self.articulated_assist_percentage)
-                    # apply some tiny assistance on articulated objects
-                self.object_in_hand = most_force_bid
+
+                self.object_in_hand = ag_bid
                 self.should_freeze_joints = True
                 # Disable collisions while picking things up
-                self.set_hand_coll_filter(most_force_bid, False)
+                self.set_hand_coll_filter(ag_bid, False)
                 self.gen_freeze_vals()
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if trig_frac <= self.trig_frac_thresh or constraint_violation > self.violation_threshold:
+            if trig_frac >= 0.0 and trig_frac <= 1.0 and trig_frac <= self.trig_frac_thresh or constraint_violation > self.violation_threshold:
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
                 self.should_execute_release = True
@@ -640,13 +754,50 @@ class VrHand(VrHandBase):
         diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
         return diff
 
+    def update_ghost_hand(self, vr_data=None):
+        """
+        Updates ghost hand if the real and virtual hands are too far apart.
+        """
+        if not self.has_spawned:
+            return
+
+        if vr_data:
+            transform_data = vr_data.query(self.vr_device)[:3]
+        else:
+            transform_data = self.sim.get_data_for_vr_device(self.vr_device)
+        is_valid, trans, rot = transform_data
+        if not is_valid:
+            return
+        
+        # Ghost hand tracks real hand whether it is hidden or not
+        self.ghost_hand.set_position(trans)
+        self.ghost_hand.set_orientation(rot)
+
+        # If distance between hand and controller is greater than threshold,
+        # ghost hand appears
+        dist_to_real_controller = np.linalg.norm(np.array(trans) - np.array(self.get_position()))
+        should_hide = dist_to_real_controller <= self.ghost_hand_appear_thresh
+        
+        # Only toggle hidden state if we are transition from hidden to unhidden, or the other way around
+        if not self.prev_ghost_hand_hidden_state and should_hide:
+            self.s.set_hidden_state(self.ghost_hand, hide=True)
+            self.prev_ghost_hand_hidden_state = True
+        elif self.prev_ghost_hand_hidden_state and not should_hide:
+            self.s.set_hidden_state(self.ghost_hand, hide=False)
+            self.prev_ghost_hand_hidden_state = False
+
     def update(self, vr_data=None):
         """
         Overriden update that can handle assisted grasping. Note that this only
         available for the VrHand, and not the VrGripper.
         """
-        if self.assist_percent > 0:
+        # AG is only enable for the reduced joint hand
+        if self.assist_percent > 0 and self.use_reduced_joint_hand:
             self.handle_assisted_grasping(vr_data=vr_data)
+
+        # Move ghost hand if necessary
+        if self.enable_ghost_hand:
+            self.update_ghost_hand()
 
         super(VrHand, self).update(vr_data=vr_data)
 
@@ -667,7 +818,7 @@ class VrHand(VrHandBase):
             jf = p.getJointInfo(self.body_id, joint_index)
             j_name = jf[1]
             # Thumb has different close fraction to fingers
-            if j_name[0] == 'T':
+            if j_name.decode('utf-8')[0] == 'T':
                 close_pos = self.thumb_close_pos
             else:
                 close_pos = self.finger_close_pos
