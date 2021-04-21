@@ -271,11 +271,21 @@ class ToyEnvInt(object):
         accept_scene, feedback = self.task.check_scene()
         if not accept_scene:
             # self.last_active_time = time.time()
+            for sim_obj in self.task.newly_added_objects:
+                self.task.scene.remove_object(sim_obj)
+                for id in sim_obj.body_ids:
+                    p.removeBody(id)
+            p.restoreState(self.state_id)
             return accept_scene, feedback
 
         accept_scene, feedback = self.task.sample()
         if not accept_scene:
             # self.last_active_time = time.time()
+            for sim_obj in self.task.newly_added_objects:
+                self.task.scene.remove_object(sim_obj)
+                for id in sim_obj.body_ids:
+                    p.removeBody(id)
+            p.restoreState(self.state_id)
             return accept_scene, feedback
 
         for sim_obj in self.task.newly_added_objects:
@@ -415,9 +425,9 @@ def check_sampling():
             init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
             if the conditions are not tested or the conditions are sampled successfully.
             '''
-            feedback_instances.append(
-                (feedback["init_success"], feedback["goal_success"], feedback["init_feedback"], feedback["goal_feedback"])
-            )
+        feedback_instances.append(
+            (feedback["init_success"], feedback["goal_success"], feedback["init_feedback"], feedback["goal_feedback"])
+        )
 
     success = num_successful_scenes >= min(
         NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
