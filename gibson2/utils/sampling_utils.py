@@ -13,9 +13,12 @@ _DEFAULT_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.2
 _DEFAULT_MAX_ANGLE_WITH_Z_AXIS = 3 * np.pi / 4
 _DEFAULT_MAX_SAMPLING_ATTEMPTS = 10
 
+# We will cast an additional parallel ray for each additional this much distance.
+_DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE = 0.1
 
-def get_parallel_rays(source, destination, offset):
-    """Given a ray described by a source and a destination, sample 4 parallel rays and return together with input ray.
+def get_parallel_rays(source, destination, offset,
+                      new_ray_per_horizontal_distance=_DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE):
+    """Given a ray described by a source and a destination, sample parallel rays and return together with input ray.
 
     The parallel rays start at the corners of a square of edge length `offset` centered on `source`, with the square
     orthogonal to the ray direction. That is, the cast rays are the height edges of a square-base cuboid with bases
@@ -24,6 +27,8 @@ def get_parallel_rays(source, destination, offset):
     :param source: Source of the ray to sample parallel rays of.
     :param destination: Source of the ray to sample parallel rays of.
     :param offset: Orthogonal distance of parallel rays from input ray.
+    :param new_ray_per_horizontal_distance: Step in offset beyond which an additional split will be applied in the
+        parallel ray grid (which at minimum is 3x3 at the AABB corners & center).
     :return Tuple[List, List] containing sources and destinations of original ray and the parallel rays.
     """
     ray_direction = destination - source
@@ -40,10 +45,19 @@ def get_parallel_rays(source, destination, offset):
     orthogonal_vectors = np.array([orthogonal_vector_1, orthogonal_vector_2])
     assert np.all(np.isfinite(orthogonal_vectors))
 
-    # Use the orthogonal vectors to generate some parallel rays.
-    ray_offsets = np.array([(-1, -1), (-1, 1), (1, 1), (1, -1)]) * offset
-    sources = [source] + [source + np.dot(offsets, orthogonal_vectors) for offsets in ray_offsets]
-    destinations = [destination] + [destination + np.dot(offsets, orthogonal_vectors) for offsets in ray_offsets]
+    # Convert the offset into a 2-vector if it already isn't one.
+    offset = np.array([1, 1]) * offset
+
+    # Compute the grid of rays
+    steps = offset / new_ray_per_horizontal_distance * 2 + 1
+    steps = np.maximum(steps, 3).astype(int)
+    x_range = np.linspace(-offset[0], offset[0], steps[0])
+    y_range = np.linspace(-offset[1], offset[1], steps[1])
+    ray_grid = np.dstack(np.meshgrid(x_range, y_range)).reshape(-1, 2)
+
+    # Apply the grid onto the orthogonal vectors to obtain the rays.
+    sources = [source + np.dot(offsets, orthogonal_vectors) for offsets in ray_grid]
+    destinations = [destination + np.dot(offsets, orthogonal_vectors) for offsets in ray_grid]
 
     return sources, destinations
 
@@ -150,6 +164,8 @@ def sample_points_on_object(obj,
     results = [(None, None, defaultdict(list)) for _ in range(num_points_to_sample)]
 
     for i in range(num_points_to_sample):
+        debug_markers = []
+
         # Sample the starting positions in advance.
         samples = sample_origin_positions(sampling_aabb_min, sampling_aabb_max, max_sampling_attempts,
                                           bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities)
@@ -194,17 +210,21 @@ def sample_points_on_object(obj,
             sources, destinations = get_parallel_rays(start_pos, point_on_face, ray_offset_distance)
 
             # Time to cast the rays.
-            res = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations)
+            cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations)
+
+            center_idx = int(len(cast_results) / 2)
+            main_ray = cast_results[center_idx]
+            parallel_rays = cast_results[:center_idx] + cast_results[center_idx + 1:]
 
             # Check that the center ray has hit our object.
-            if res[0][0] != body_id:
+            if main_ray[0] != body_id:
                 if gibson2.debug_sampling:
                     refusal_reasons["missed_object"].append("hit %d" % body_id)
                 continue
 
             # Get the candidate position & normal.
-            hit_pos = np.array(res[0][3])
-            hit_normal = np.array(res[0][4])
+            hit_pos = np.array(main_ray[3])
+            hit_normal = np.array(main_ray[4])
             hit_normal /= np.linalg.norm(hit_normal)
 
             # Reject anything facing more than 45deg downwards if requested.
@@ -216,15 +236,15 @@ def sample_points_on_object(obj,
                     continue
 
             # Check that all rays hit the object.
-            parallel_hit_body_ids = [ray_res[0] for ray_res in res[1:]]
+            parallel_hit_body_ids = [ray_res[0] for ray_res in parallel_rays]
             if not all(hit_body_id == body_id for hit_body_id in parallel_hit_body_ids):
                 if gibson2.debug_sampling:
                     refusal_reasons["parallel_hit_missed"].append("normal %r" % parallel_hit_body_ids)
                 continue
 
             # Check that none of the parallel rays' hit normal differs from center ray by more than threshold.
-            parallel_hit_positions = np.array([ray_res[3] for ray_res in res[1:]])
-            parallel_hit_normals = np.array([ray_res[4] for ray_res in res[1:]])
+            parallel_hit_positions = np.array([ray_res[3] for ray_res in parallel_rays])
+            parallel_hit_normals = np.array([ray_res[4] for ray_res in parallel_rays])
             parallel_hit_normals /= np.linalg.norm(parallel_hit_normals, axis=1)[:, np.newaxis]
 
             parallel_hit_main_hit_dot_products = np.clip(np.dot(parallel_hit_normals, hit_normal), -1.0, 1.0)
@@ -239,17 +259,23 @@ def sample_points_on_object(obj,
                             hit_normal, parallel_hit_normals, parallel_hit_normal_angles_to_hit_normal))
                 continue
 
+            # TODO: Check that the points are somewhat planar, e.g. fit a least-squares plane and set maximum
+            # allowed distance.
+
             # Debug markers
             # TODO (Cem): Either make this possible to toggle on/off or delete it.
             # Kept for now for debugging cases that seem to spring up often.
             # from gibson2 import simulator
             # color = np.concatenate([np.random.rand(3), [1]])
+            # [m.set_position([100, 100, 0]) for m in debug_markers]
             # for vec in parallel_hit_positions:
-            #     simulator.SIM.import_object(VisualMarker(
+            #     m = VisualMarker(
             #         rgba_color=color,
             #         radius=0.01,
             #         initial_offset=vec
-            #     ))
+            #     )
+            #     simulator.SIM.import_object(m)
+            #     debug_markers.append(m)
 
             # Compute a rotation from the default AABB to the sampled position.
             center_to_bottom_left_on_original = np.array([-1, -1]) * parallel_ray_offset_distance
