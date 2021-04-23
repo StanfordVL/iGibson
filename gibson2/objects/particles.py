@@ -218,7 +218,7 @@ class _Dirt(AttachedParticleSystem):
             _DIRT_SAMPLING_AXIS_PROBABILITIES, _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY, refuse_downwards=True)
 
         # Use the sampled points to set the dirt positions.
-        for position, normal, reasons in results:
+        for position, normal, quaternion, reasons in results:
             if position is not None:
                 self.unstash_particle(position, [0, 0, 0, 1])
 

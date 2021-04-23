@@ -6,6 +6,7 @@ import pybullet as p
 from scipy.stats import truncnorm
 
 from gibson2 import object_states
+from gibson2.objects.visual_marker import VisualMarker
 
 _DEFAULT_AABB_OFFSET = 0.1
 _DEFAULT_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.2
@@ -222,6 +223,7 @@ def sample_points_on_object(obj,
                 continue
 
             # Check that none of the parallel rays' hit normal differs from center ray by more than threshold.
+            parallel_hit_positions = np.array([ray_res[3] for ray_res in res[1:]])
             parallel_hit_normals = np.array([ray_res[4] for ray_res in res[1:]])
             parallel_hit_normals /= np.linalg.norm(parallel_hit_normals, axis=1)[:, np.newaxis]
 
@@ -237,8 +239,38 @@ def sample_points_on_object(obj,
                             hit_normal, parallel_hit_normals, parallel_hit_normal_angles_to_hit_normal))
                 continue
 
+            # Debug markers
+            # TODO (Cem): Either make this possible to toggle on/off or delete it.
+            # Kept for now for debugging cases that seem to spring up often.
+            # from gibson2 import simulator
+            # color = np.concatenate([np.random.rand(3), [1]])
+            # for vec in parallel_hit_positions:
+            #     simulator.SIM.import_object(VisualMarker(
+            #         rgba_color=color,
+            #         radius=0.01,
+            #         initial_offset=vec
+            #     ))
+
+            # Compute a rotation from the default AABB to the sampled position.
+            center_to_bottom_left_on_original = np.array([-1, -1]) * parallel_ray_offset_distance
+            center_to_bottom_left_on_original = np.concatenate([center_to_bottom_left_on_original, [0]])
+            center_to_bottom_left_on_original /= np.linalg.norm(center_to_bottom_left_on_original)
+
+            center_to_bottom_left_on_cast = parallel_hit_positions[0] - hit_pos
+            center_to_bottom_left_on_cast /= np.linalg.norm(center_to_bottom_left_on_cast)
+
+            dot = np.dot(center_to_bottom_left_on_original, center_to_bottom_left_on_cast)
+            if dot > 0.999:
+                # There was practically no rotation, so use the identity quaternion
+                rotation = np.array([0, 0, 0, 1])
+            else:
+                # Compute the rotation quaternion
+                axis = np.cross(center_to_bottom_left_on_original, center_to_bottom_left_on_cast)
+                rotation = np.concatenate([axis, [1 + dot]])
+                rotation /= np.linalg.norm(rotation)
+
             # We've found a nice attachment point. Let's go.
-            results[i] = (hit_pos, hit_normal, refusal_reasons)
+            results[i] = (hit_pos, hit_normal, rotation, refusal_reasons)
             break
 
     return results
