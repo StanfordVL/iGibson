@@ -1,0 +1,423 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+
+<head>
+  <meta name="project_path" value="/resonance-audio/_project.yaml" />
+  <meta name="book_path" value="/resonance-audio/_book.yaml" />
+  <meta name="gtm_var" data-key="docType" data-value="reference">
+  <title>Class: ResonanceAudio</title>
+  <link href="jsdoc.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="jsdoc-body-container">
+    <div id="jsdoc-content">
+      <div id="jsdoc-content-container">
+        <div id="jsdoc-main" role="main">
+          <header class="page-header">
+            <h1><small></small><span class="symbol-name">ResonanceAudio</span></h1>
+            <div class="symbol-detail-labels"><span class="label label-kind"><small>class</small></span></div>
+          </header>
+          <section>
+            <h2>Constructor</h2>
+            <section>
+              <h3 id="ResonanceAudio" class="symbol-name">ResonanceAudio</h3>
+              <p class="type-signature"> new ResonanceAudio(context, options)</p>
+              <p>Main class for managing sources, room and listener models.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>context</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">AudioContext</p>
+                        <p>Associated <a href="https://developer.mozilla.org/en-US/docs/Web/API/AudioContext">AudioContext</a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>options</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types"><a href="ResonanceAudio.html#~ResonanceAudioOptions">ResonanceAudio~ResonanceAudioOptions</a></p>
+                        <p>Options for constructing a new ResonanceAudio scene.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+          </section>
+          <section>
+            <h2>Properties</h2>
+            <section>
+              <h3 id="ambisonicInput" class="symbol-name">ambisonicInput</h3>
+              <p class="type-signature">AudioNode</p>
+              <p>Ambisonic (multichannel) input <a href="https://developer.mozilla.org/en-US/docs/Web/API/AudioNode">AudioNode</a> (For rendering input soundfields).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="ambisonicOutput" class="symbol-name">ambisonicOutput</h3>
+              <p class="type-signature">AudioNode</p>
+              <p>Ambisonic (multichannel) output <a href="https://developer.mozilla.org/en-US/docs/Web/API/AudioNode">AudioNode</a> (For allowing external rendering / post-processing).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="output" class="symbol-name">output</h3>
+              <p class="type-signature">AudioNode</p>
+              <p>Binaurally-rendered stereo (2-channel) output <a href="https://developer.mozilla.org/en-US/docs/Web/API/AudioNode">AudioNode</a>.</p>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+            <h2>Methods</h2>
+            <section>
+              <h3 id="createSource" class="symbol-name">createSource</h3>
+              <p class="type-signature"> createSource(options)&nbsp;returns&nbsp;<a href="Source.html">Source</a></p>
+              <p>Create a new source for the scene.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>options</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types"><a href="Source.html#~SourceOptions">Source~SourceOptions</a></p>
+                        <p>Options for constructing a new Source.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+                <dt>Returns</dt>
+                <dd>
+                  <p><code><a href="Source.html">Source</a></code>&nbsp;</p>
+                </dd>
+              </dl>
+              <h3 id="setAmbisonicOrder" class="symbol-name">setAmbisonicOrder</h3>
+              <p class="type-signature"> setAmbisonicOrder(ambisonicOrder)</p>
+              <p>Set the scene's desired ambisonic order.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>ambisonicOrder</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Desired ambisonic order.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setListenerFromMatrix" class="symbol-name">setListenerFromMatrix</h3>
+              <p class="type-signature"> setListenerFromMatrix(matrix)</p>
+              <p>Set the listener's position and orientation using a Three.js Matrix4 object.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>matrix</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Object</p>
+                        <p>The Three.js Matrix4 object representing the listener's world transform.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setListenerOrientation" class="symbol-name">setListenerOrientation</h3>
+              <p class="type-signature"> setListenerOrientation(forwardX, forwardY, forwardZ, upX, upY, upZ)</p>
+              <p>Set the source's orientation using forward and up vectors.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forwardX</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forwardY</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forwardZ</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>upX</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>upY</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>upZ</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setListenerPosition" class="symbol-name">setListenerPosition</h3>
+              <p class="type-signature"> setListenerPosition(x, y, z)</p>
+              <p>Set the listener's position (in meters), where origin is the center of the room.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>x</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>y</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>z</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setRoomProperties" class="symbol-name">setRoomProperties</h3>
+              <p class="type-signature"> setRoomProperties(dimensions, materials)</p>
+              <p>Set the room's dimensions and wall materials.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>dimensions</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Object</p>
+                        <p>Room dimensions (in meters).</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>materials</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Object</p>
+                        <p>Named acoustic materials per wall.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setSpeedOfSound" class="symbol-name">setSpeedOfSound</h3>
+              <p class="type-signature"> setSpeedOfSound(speedOfSound)</p>
+              <p>Set the speed of sound.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>speedOfSound</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+            <h2>Abstract type</h2>
+            <section>
+              <h3 id="~ResonanceAudioOptions" class="symbol-name">ResonanceAudioOptions</h3>
+              <div class="symbol-detail-labels"><span class="label label-inner"><small>inner</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Options for constructing a new ResonanceAudio scene.</p>
+              <section>
+                <h4>Properties</h4>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>ambisonicOrder</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Desired ambisonic Order. Defaults to
+                          <a href="Utils.html#.DEFAULT_AMBISONIC_ORDER"><code>DEFAULT_AMBISONIC_ORDER</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>listenerPosition</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The listener's initial position (in meters), where origin is the center of the room. Defaults to <a href="Utils.html#.DEFAULT_POSITION"><code>DEFAULT_POSITION</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>listenerForward</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The listener's initial forward vector. Defaults to <a href="Utils.html#.DEFAULT_FORWARD"><code>DEFAULT_FORWARD</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>listenerUp</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The listener's initial up vector. Defaults to <a href="Utils.html#.DEFAULT_UP"><code>DEFAULT_UP</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>dimensions</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types"><a href="Utils.html#~RoomDimensions">Utils~RoomDimensions</a></p>
+                        <p>Room dimensions (in meters). Defaults to
+                          <a href="Utils.html#.DEFAULT_ROOM_DIMENSIONS"><code>DEFAULT_ROOM_DIMENSIONS</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>materials</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types"><a href="Utils.html#~RoomMaterials">Utils~RoomMaterials</a></p>
+                        <p>Named acoustic materials per wall. Defaults to <a href="Utils.html#.DEFAULT_ROOM_MATERIALS"><code>DEFAULT_ROOM_MATERIALS</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>speedOfSound</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>(in meters/second). Defaults to
+                          <a href="Utils.html#.DEFAULT_SPEED_OF_SOUND"><code>DEFAULT_SPEED_OF_SOUND</code></a>.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+          </section>
+        </div>
+      </div>
+      <nav id="jsdoc-toc-nav" role="navigation"></nav>
+    </div>
+  </div>
+</body>
+
+</html>

@@ -1,0 +1,133 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioMaterialMapper Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body><div id="top"><!-- do not remove this div --></div><h1>ResonanceAudioMaterialMapper</h1><p>Resonance Audio material mapper scriptable object that holds the mapping from GUIDs to surface materials (which define the acoustic characteristics of surfaces). </p><h2>Summary</h2><p>The GUID identifies either a Unity Material (which gives a mesh its visual appearance) of a game object or the terrain data of a terrain object. </p><h3>Inheritance</h3>Inherits from: ScriptableObject<table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_material_mapper_1ab89ae46fe35cb55e52afabf0352b2fd8">ApplyMaterialMapping</a>(MeshRenderer[] meshRenderers, List< string >[] guidsForMeshRenderers, Terrain[] activeTerrains, string[] guidsForTerrains, Shader surfaceMaterialShader)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Applies the material mapping to acoustic meshes generated from mesh renderes and terrains. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_material_mapper_1a91c56a2aeee4dae79be1b08db87d5c65">GetIncludedAcousticMeshes</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>List< <a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh">ResonanceAudioAcousticMesh</a> ></code>
+        </div>
+        <div>Gets all acoustic meshes that should be included in a reverb computation. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_material_mapper_1a466dc0097bc362b63d998ab0aa9c395d">GetTerrainData</a>(string guid)</code>
+      </td>
+      <td>
+        <div>
+          <code>TerrainData</code>
+        </div>
+        <div>Gets the terrain data mapped from a GUID. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_material_mapper_1a23d6cbd0884bd7b6cf54dc51aef9514e">GetUnityMaterial</a>(string guid)</code>
+      </td>
+      <td>
+        <div>
+          <code>Material</code>
+        </div>
+        <div>Gets the Unity Material mapped from a GUID. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_material_mapper_1a2c29b29f6af5dee8e4321792157aa0bb">Initialize</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Initializes the data members. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_material_mapper_1a20dae60ff445d98169b9b8cafb05d54d">RenderAcousticMeshes</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Renders all acoustic meshes that are included. </div>
+      </td>
+    </tr>
+  </table><h2>Public functions</h2><div id="class_resonance_audio_material_mapper_1ab89ae46fe35cb55e52afabf0352b2fd8">
+    <h3>ApplyMaterialMapping</h3>
+    <pre class="prettyprint">void ApplyMaterialMapping(
+  MeshRenderer[] meshRenderers,
+  List< string >[] guidsForMeshRenderers,
+  Terrain[] activeTerrains,
+  string[] guidsForTerrains,
+  Shader surfaceMaterialShader
+)</pre>
+    <div>
+      <p>Applies the material mapping to acoustic meshes generated from mesh renderes and terrains. </p>
+    </div>
+  </div><div id="class_resonance_audio_material_mapper_1a91c56a2aeee4dae79be1b08db87d5c65">
+    <h3>GetIncludedAcousticMeshes</h3>
+    <pre class="prettyprint">List< <a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh">ResonanceAudioAcousticMesh</a> > GetIncludedAcousticMeshes()</pre>
+    <div>
+      <p>Gets all acoustic meshes that should be included in a reverb computation. </p>
+    </div>
+  </div><div id="class_resonance_audio_material_mapper_1a466dc0097bc362b63d998ab0aa9c395d">
+    <h3>GetTerrainData</h3>
+    <pre class="prettyprint">TerrainData GetTerrainData(
+  string guid
+)</pre>
+    <div>
+      <p>Gets the terrain data mapped from a GUID. </p>
+      <p>Returns null if a mapping cannot be found in the currently loaded scenes. </p>
+    </div>
+  </div><div id="class_resonance_audio_material_mapper_1a23d6cbd0884bd7b6cf54dc51aef9514e">
+    <h3>GetUnityMaterial</h3>
+    <pre class="prettyprint">Material GetUnityMaterial(
+  string guid
+)</pre>
+    <div>
+      <p>Gets the Unity Material mapped from a GUID. </p>
+      <p>Returns null if a mapping cannot be found in the currently loaded scenes. </p>
+    </div>
+  </div><div id="class_resonance_audio_material_mapper_1a2c29b29f6af5dee8e4321792157aa0bb">
+    <h3>Initialize</h3>
+    <pre class="prettyprint">void Initialize()</pre>
+    <div>
+      <p>Initializes the data members. </p>
+    </div>
+  </div><div id="class_resonance_audio_material_mapper_1a20dae60ff445d98169b9b8cafb05d54d">
+    <h3>RenderAcousticMeshes</h3>
+    <pre class="prettyprint">void RenderAcousticMeshes()</pre>
+    <div>
+      <p>Renders all acoustic meshes that are included. </p>
+    </div>
+  </div></body>
+</html>

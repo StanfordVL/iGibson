@@ -1,0 +1,471 @@
+html {
+  overflow-y: scroll;
+}
+
+.exo-post {
+  margin-bottom: 25px;
+}
+
+#table-of-contents {
+  position: relative;
+  float: right;
+  width: 300px;
+  margin-left: 30px;
+  margin-bottom: 10px;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 5px;
+  border-color: rgba(0,0,0,0.06);
+  background-color: #ffffff;
+  z-index: 99;
+}
+
+#table-of-contents-header
+{
+  padding-left: 0.7em;
+  padding-right: 0.7em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  width: 100%;
+  font-weight: bold;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  border-bottom-color: rgba(0,0,0,0.06);
+}
+
+#markdown-toc {
+  padding-left: 0.7em;
+  padding-right: 0.7em;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  width: 100%;
+}
+
+#markdown-toc ul,
+#markdown-toc li {
+  list-style: none;
+}
+
+
+.devsite-landing-row-1-up .devsite-landing-row-item-description {
+  margin-right: 0;
+}
+
+h1 {
+ margin-top: 0;
+}
+
+.devsite-landing-row[background],
+.devsite-landing-row.devsite-background {
+  padding-top: 72px;
+  padding-bottom: 72px;
+}
+
+.devsite-footer-promo-icon {
+  width: auto;
+  height: 73px;
+  font-size: 73px;
+}
+
+/* =============================================================================
+ * Utils
+ * =============================================================================
+ */
+
+/* Simple flex columns */
+.resonance-audio-row {
+  display: -ms-flex;
+  display: flex;
+  -ms-flex-direction: row;
+  flex-direction: row;
+}
+
+.resonance-audio-col {
+  -ms-flex: 1 0;
+  flex: 1 0;
+}
+
+.resonance-audio-col:not(:first-child) {
+  margin-left: 24px;
+}
+
+/* =============================================================================
+ * Home page
+ * =============================================================================
+ */
+
+.resonance-audio-hero-wrapper {
+  color: rgba(255,255,255,1);
+  /* Contains absolute elements */
+  position: relative;
+}
+
+.resonance-audio-hero-button {
+  margin-right: 8px;
+  color: white !important;
+  background-color: #039be5 !important;
+  box-shadow:none !important;
+}
+
+.resonance-audio-hero-background {
+  background-color: #000;
+  height: 600px;
+  overflow: hidden;
+  position: relative;
+}
+
+img.resonance-audio-hero-image {
+  object-fit: cover;
+  display: block;
+  position: absolute;
+  min-width: 100%;
+  min-height: 100%;
+  /* Setting width & height to auto prevents video from being squished. */
+  width: auto;
+  height: auto;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, 0);
+}
+
+.resonance-audio-hero-content-wrapper {
+  /* Matching DevSite css, we specify the -ms prefix as well as the standard,
+   * for wider browser coverage.
+   */
+  background: rgba(0,0,0,0);
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-direction: column;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 120px;
+  /* For z-index. Needs to appear above background. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+}
+
+.resonance-audio-container {
+  padding: 0 120px;
+}
+
+.resonance-audio-hero {
+  text-align: center;
+  max-width: 690px;
+  padding-bottom: 60px;
+  margin-bottom: 72px;
+  margin-top: 50px;
+}
+
+.resonance-audio-hero-title {
+  color: #fff !important;
+  font-size: 40px;
+  line-height: 52px;
+  margin-top: 0;
+  margin-bottom: 4px;
+  padding-top: 10px;
+
+}
+
+.resonance-audio-hero-desc {
+  font-size: 20px;
+  line-height: 30px;
+  margin-bottom: 16px;
+}
+
+/* Landing page rows */
+  margin: 62px 0 0;
+  padding-top: 0;
+}
+
+
+.devsite-landing-row:not(.devsite-background):not(.devsite-landing-row-cta):not(.devsite-landing-row-marquee)+.devsite-landing-row.devsite-background,
+.devsite-landing-row:not(.devsite-background):not(.devsite-landing-row-cta):not(.devsite-landing-row-marquee)+.devsite-landing-row-cta {
+  margin-top: 64px;
+}
+
+.devsite-landing-row-header {
+  margin-bottom: 40px;
+}
+
+/* Extra space below a section.
+ * Selector chaining hack adds enough specificity to override the landing page
+ * row styles above.
+ */
+.resonance-audio-row-bspace.resonance-audio-row-bspace.resonance-audio-row-bspace.resonance-audio-row-bspace {
+  margin-bottom: 72px;
+}
+
+.devsite-landing-row-header-text > h2 {
+  color: #4A4A4A;
+  font-size: 32px;
+  line-height: 36px;
+  text-align: center;
+  /* Override an overly-eager padding rule for the tablet breakpoint */
+  padding: 0 !important;
+}
+
+
+.devsite-landing-row:not(.devsite-background):not(.devsite-landing-row-cta):not(.devsite-landing-row-marquee):not(:first-child) .devsite-landing-row-header-text > h2 {
+  margin-top: 0;
+}
+
+.devsite-landing-row-description,
+.devsite-background-grey .devsite-landing-row-description {
+  color: #757575;
+  text-align: center;
+}
+
+.devsite-landing-row-item-description > h3 {
+  color: #4A4A4A;
+}
+
+/* Add vertical separators to columns for this row */
+.resonance-audio-row-vsep {
+  /* Contains absolute pseudo-elements */
+  position: relative;
+}
+
+.resonance-audio-row-vsep .devsite-landing-row-item {
+  position: relative;
+  /* Must override standard devsite-landing-row-item styles to get 1000px
+   * breakpoint to work with custom_html
+   */
+  -ms-flex: 1 0;
+  flex: 1 0;
+  -ms-flex-direction: column;
+  flex-direction: column;
+}
+
+.resonance-audio-row-vsep .devsite-landing-row-item:not(:first-child) {
+  margin-left: 100px;
+}
+
+.resonance-audio-row-vsep .devsite-landing-row-item:not(:first-child)::after {
+  background: rgba(155,155,155,0.32);
+  content: "";
+  height: 100%;
+  width: 1px;
+  position: absolute;
+  top: 0;
+  left: -50px;
+}
+
+/* Get Started section */
+
+/* Toaster teasers for platforms */
+
+.resonance-audio-teaser-toaster {
+  /* It's an <a> tag */
+  display: block;
+  position: relative;
+}
+
+.resonance-audio-teaser-toaster:focus {
+  text-decoration: none;
+}
+
+.resonance-audio-teaser-toaster-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.resonance-audio-teaser-toaster .arcore-teaser-toaster-title {
+  color: #4A4A4A;
+  font-size: 20px;
+  font-weight: normal;
+  line-height: 26px;
+  margin-bottom: 24px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.resonance-audio-teaser-toaster .arcore-teaser-toaster-subtitle {
+  text-wrap: nowrap;
+}
+
+
+.resonance-audio-teaser-toaster-icon {
+  position: absolute;
+  left: 50%;
+  top: 150px;
+  transform: translate(-50%, -50%);
+}
+
+.resonance-audio-teaser-toaster-slot {
+  position: relative;
+  /* This lets shadow overhang the bounds of the box. */
+  height: 150px;
+  margin: 0 -20px 28px;
+  padding: 0 20px;
+  /* Contains the shadow */
+  overflow: hidden;
+}
+
+.resonance-audio-teaser-toaster-slot::after {
+  content: "";
+  background: #fff;
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.15);
+  height: 10px;
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: -10px;
+}
+
+.resonance-audio-teaser-toaster-toast img {
+  margin: 0 auto;
+  display: block;
+}
+
+/* Stay Connected */
+
+/* Match to .devsite-landing-row-description
+ * for some reason the devsite template changes the markup for description
+ * when a cta row is used, resulting in a different font size.
+ */
+.resonance-audio-row-stay-connected .devsite-landing-row-item-description-content {
+  font: 18px/24px Roboto,sans-serif;
+}
+
+
+/* =============================================================================
+ * Media Queries
+ * =============================================================================
+ */
+@media screen and (max-width: 1400px) {
+  .resonance-audio-teaser-toaster-slot {
+    height: 110px;
+  }
+
+  .resonance-audio-teaser-toaster-icon {
+    top: 110px;
+  }
+}
+
+@media screen and (max-width: 1230px) {
+  .resonance-audio-teaser-toaster-slot {
+    padding: 0 8px;
+    margin: 0 -8px 28px;
+    height: 80px;
+  }
+
+  .resonance-audio-teaser-toaster-icon {
+    top: 80px;
+  }
+
+  .resonance-audio-row-vsep .devsite-landing-row-item:not(:first-child) {
+    margin-left: 40px;
+  }
+
+  .resonance-audio-row-vsep .devsite-landing-row-item:not(:first-child)::after {
+    left: -20px;
+  }
+}
+
+@media screen and (max-width: 1000px) {
+  .resonance-audio-container {
+    padding: 0 80px;
+  }
+}
+
+@media screen and (max-width: 720px) {
+  .resonance-audio-container {
+    padding: 0 16px;
+  }
+
+  .devsite-footer-promos-list {
+    padding: 20px 16px;
+    text-align: left;
+  }
+  .devsite-footer-promo {
+    margin: 8px;
+    width: calc((100% - 32px)/2);
+  }
+  .devsite-footer-promo-icon {
+    float: left;
+    height: 32px;
+    margin-right: 16px;
+    width: 32px;
+  }
+  .devsite-footer-promo-title {
+    font-weight: normal;
+    line-height: 32px;
+  }
+  .devsite-footer-promo-description {
+    display: none;
+  }
+
+  .resonance-audio-row-vsep .devsite-landing-row-item::after {
+    display: none;
+  }
+
+  .resonance-audio-teaser-toaster {
+    box-sizing: border-box;
+    margin: 0;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .resonance-audio-teaser-toaster-slot {
+    padding: 0 16px;
+    margin: 0 0 28px;
+  }
+
+  .resonance-audio-teaser-toaster::after {
+    left: 0;
+    right: 0;
+  }
+
+  .resonance-audio-teaser-toaster-slot {
+    height: 148px;
+  }
+
+  .resonance-audio-teaser-toaster-icon {
+    top: 148px;
+  }
+}
+
+.button,
+.fc-button, /* For events */
+button,
+#embedded-explorer .com-google-api-explorer-client-embedded-EmbeddedParameterForm_EmbeddedParameterFormUiBinderImpl_GenCss_style-execute,
+#embedded-explorer div.com-google-api-explorer-client-history-EmbeddedHistoryItemView_HistoryItemUiBinderImpl_GenCss_style-showHideHeaders,
+.gwt-PopupPanel .popupContent button,
+input[type="button"],
+input[type="file"],
+input[type="image"],
+input[type="reset"],
+input[type="submit"] {
+  background-color: WHITE;
+  border: 0;
+  border-radius: 2px;
+  box-shadow: 0 2px 5px 0;
+  cursor: pointer;
+  display: inline-block;
+  height: 36px;
+  margin: 0;
+  min-width: 36px;
+  outline: 0;
+  overflow: hidden;
+  padding: 8px;
+  text-align: center;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  transition: background-color .2s, box-shadow .2s;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.devsite-landing-row-group {
+  display:flex;
+  margin: 0;
+  padding: 0;
+}

@@ -1,0 +1,331 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioRoomManager Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body>
+  <div id="top"><!-- do not remove this div --></div>
+  <h1>ResonanceAudioRoomManager</h1>
+  <p>A class that manages the room effects to be applied to spatial audio sources in the scene. </p>
+  <h2>Summary</h2>
+  <table class="constants responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public types</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">SurfaceMaterial</a>{<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea3d971943089a3388c01fb297a32d9ba7">Transparent</a> = 0,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eab0be3625f54933315a2abb60aafe4e42">AcousticCeilingTiles</a> = 1,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eab126b0b3cb0b87abfa871ead634db525">BrickBare</a> = 2,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea2f2c67192a1e7588bb49ee47792454e0">BrickPainted</a> = 3,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea45523ce642c052463d8ba1fd1db40408">ConcreteBlockCoarse</a> = 4,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaa6128f48e7d80790085c6c4cabf1305e">ConcreteBlockPainted</a> = 5,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea193c00c05db45e4543e9290b191fa206">CurtainHeavy</a> = 6,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea9325d32e22aa28c684fa7e102477aef0">FiberglassInsulation</a> = 7,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea7757597b5a92f9413562d684c971a1d9">GlassThin</a> = 8,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea57d9c9de29aea5b1f6e5a52e44085314">GlassThick</a> = 9,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaaac9a63596f76a62bb9f61a5dd7c0d25">Grass</a> = 10,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea000d234b7a916a3a1c22d8ad7ee7314a">LinoleumOnConcrete</a> = 11,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea7fb26875c639817a59912a87be6f7386">Marble</a> = 12,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaeaa57a9b4248ce3968e718895e1c2f04">Metal</a> = 13,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eae1624da1c4144b606373a7495c804a44">ParquetOnConcrete</a> = 14,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea4aebac55a367c11621083cabcc68a4c2">PlasterRough</a> = 15,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaf4c40b23a6c7a77fa84748c0bad45d9f">PlasterSmooth</a> = 16,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea8b8483c28e86d1446c44b91e49f57c0c">PlywoodPanel</a> = 17,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea42b8db95599e1f3374b37860e7793521">PolishedConcreteOrTile</a> = 18,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eacc4bb5a66cff1d8feb4e5cccba74c4bd">Sheetrock</a> = 19,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea63c5238abaa6c713ee41b96cb4afe73b">WaterOrIceSurface</a> = 20,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eac906895b1f5e07dcdd293cbadc841f96">WoodCeiling</a> = 21,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea2668dd10c264300dcded38167599ceb8">WoodPanel</a> = 22<br>}</code>
+      </td>
+      <td>enum<div>Material type that determines the acoustic properties of a room surface. </div></td>
+    </tr>
+  </table>
+  <table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public static functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_manager_1ada4e213ccbea04ddc6b24b6c931e3b59">RemoveReverbProbe</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe">ResonanceAudioReverbProbe</a> reverbProbe)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Removes a Resonance Audio reverb probe. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_manager_1a4e847e4508ad5b72d2cb3a4239d6c6ba">RemoveRoom</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-room.html#class_resonance_audio_room">ResonanceAudioRoom</a> room)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Removes a Resonance Audio room. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_manager_1aa4e3bedc8c5b87b1134c0aeac415ad1a">UpdateReverbProbe</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe">ResonanceAudioReverbProbe</a> reverbProbe)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Adds or removes a Resonance Audio reverb probe depending on whether the listener is inside |reverbProbe|. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_manager_1ad718f449c94b8b5391ecd32051dd7a0d">UpdateRoom</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-room.html#class_resonance_audio_room">ResonanceAudioRoom</a> room)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Adds or removes a Resonance Audio room depending on whether the listener is inside |room|. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="nested-classes responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Classes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager/surface-material-dictionary">ResonanceAudioRoomManager.<wbr/>SurfaceMaterialDictionary</a>
+      </td>
+      <td>
+        <p>A serializable dictionary class that maps surface materials from GUIDs. </p>
+      </td>
+    </tr>
+  </table>
+  <h2>Public types</h2>
+  <div id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">
+    <h3>SurfaceMaterial</h3>
+    <pre class="prettyprint"> SurfaceMaterial</pre>
+    <div>
+      <p>Material type that determines the acoustic properties of a room surface. </p>
+      <table class="properties responsive">
+        <tr>
+          <th colspan="2">Properties</th>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eab0be3625f54933315a2abb60aafe4e42" />AcousticCeilingTiles</code>
+          </td>
+          <td>
+            <p>Acoustic ceiling tiles. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eab126b0b3cb0b87abfa871ead634db525" />BrickBare</code>
+          </td>
+          <td>
+            <p>Brick, bare. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea2f2c67192a1e7588bb49ee47792454e0" />BrickPainted</code>
+          </td>
+          <td>
+            <p>Brick, painted. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea45523ce642c052463d8ba1fd1db40408" />ConcreteBlockCoarse</code>
+          </td>
+          <td>
+            <p>Concrete block, coarse. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaa6128f48e7d80790085c6c4cabf1305e" />ConcreteBlockPainted</code>
+          </td>
+          <td>
+            <p>Concrete block, painted. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea193c00c05db45e4543e9290b191fa206" />CurtainHeavy</code>
+          </td>
+          <td>
+            <p>Curtain, heavy. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea9325d32e22aa28c684fa7e102477aef0" />FiberglassInsulation</code>
+          </td>
+          <td>
+            <p>Fiberglass insulation. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea57d9c9de29aea5b1f6e5a52e44085314" />GlassThick</code>
+          </td>
+          <td>
+            <p>Glass, thick. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea7757597b5a92f9413562d684c971a1d9" />GlassThin</code>
+          </td>
+          <td>
+            <p>Glass, thin. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaaac9a63596f76a62bb9f61a5dd7c0d25" />Grass</code>
+          </td>
+          <td>
+            <p>Grass. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea000d234b7a916a3a1c22d8ad7ee7314a" />LinoleumOnConcrete</code>
+          </td>
+          <td>
+            <p>Linoleum on concrete. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea7fb26875c639817a59912a87be6f7386" />Marble</code>
+          </td>
+          <td>
+            <p>Marble. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaeaa57a9b4248ce3968e718895e1c2f04" />Metal</code>
+          </td>
+          <td>
+            <p>Galvanized sheet metal. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eae1624da1c4144b606373a7495c804a44" />ParquetOnConcrete</code>
+          </td>
+          <td>
+            <p>Parquet on concrete. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea4aebac55a367c11621083cabcc68a4c2" />PlasterRough</code>
+          </td>
+          <td>
+            <p>Plaster, rough. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eaf4c40b23a6c7a77fa84748c0bad45d9f" />PlasterSmooth</code>
+          </td>
+          <td>
+            <p>Plaster, smooth. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea8b8483c28e86d1446c44b91e49f57c0c" />PlywoodPanel</code>
+          </td>
+          <td>
+            <p>Plywood panel. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea42b8db95599e1f3374b37860e7793521" />PolishedConcreteOrTile</code>
+          </td>
+          <td>
+            <p>Polished concrete or tile. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eacc4bb5a66cff1d8feb4e5cccba74c4bd" />Sheetrock</code>
+          </td>
+          <td>
+            <p>Sheetrock. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea3d971943089a3388c01fb297a32d9ba7" />Transparent</code>
+          </td>
+          <td>
+            <p>Transparent. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea63c5238abaa6c713ee41b96cb4afe73b" />WaterOrIceSurface</code>
+          </td>
+          <td>
+            <p>Water or ice surface. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566eac906895b1f5e07dcdd293cbadc841f96" />WoodCeiling</code>
+          </td>
+          <td>
+            <p>Wood ceiling. </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566ea2668dd10c264300dcded38167599ceb8" />WoodPanel</code>
+          </td>
+          <td>
+            <p>Wood panel. </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+  <h2>Public static functions</h2>
+  <div id="class_resonance_audio_room_manager_1ada4e213ccbea04ddc6b24b6c931e3b59">
+    <h3>RemoveReverbProbe</h3>
+    <pre class="prettyprint">void RemoveReverbProbe(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe">ResonanceAudioReverbProbe</a> reverbProbe
+)</pre>
+    <div>
+      <p>Removes a Resonance Audio reverb probe. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_room_manager_1a4e847e4508ad5b72d2cb3a4239d6c6ba">
+    <h3>RemoveRoom</h3>
+    <pre class="prettyprint">void RemoveRoom(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-room.html#class_resonance_audio_room">ResonanceAudioRoom</a> room
+)</pre>
+    <div>
+      <p>Removes a Resonance Audio room. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_room_manager_1aa4e3bedc8c5b87b1134c0aeac415ad1a">
+    <h3>UpdateReverbProbe</h3>
+    <pre class="prettyprint">void UpdateReverbProbe(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe">ResonanceAudioReverbProbe</a> reverbProbe
+)</pre>
+    <div>
+      <p>Adds or removes a Resonance Audio reverb probe depending on whether the listener is inside |reverbProbe|. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_room_manager_1ad718f449c94b8b5391ecd32051dd7a0d">
+    <h3>UpdateRoom</h3>
+    <pre class="prettyprint">void UpdateRoom(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-room.html#class_resonance_audio_room">ResonanceAudioRoom</a> room
+)</pre>
+    <div>
+      <p>Adds or removes a Resonance Audio room depending on whether the listener is inside |room|. </p>
+    </div>
+  </div>
+</body>
+</html>

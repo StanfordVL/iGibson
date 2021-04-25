@@ -1,0 +1,251 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioAcousticMesh Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body>
+  <div id="top"><!-- do not remove this div --></div>
+  <h1>ResonanceAudioAcousticMesh</h1>
+  <p>A class to hold the duplicated mesh of a mesh filter or a terrain, as well as the surface materials assigned to the triangles. </p>
+  <h2>Summary</h2>
+  <table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Properties</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1ab7160369c6cbb35c8a8bc3846d855d7d">mesh</a></code>
+      </td>
+      <td>
+        <div>
+          <code>Mesh</code>
+        </div>
+        <div>The duplicated mesh. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1ad2c04bfe17d1174d3054c3bf1e809dd0">sourceObject</a></code>
+      </td>
+      <td>
+        <div>
+          <code>GameObject</code>
+        </div>
+        <div>The source object from which this acoustic mesh is generated. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1a59d90b761142c855b81f1b676421be0c">isIncludedByObjectFiltering</a> = false</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Whether the source object of this acoustic mesh is included by the material mapper's object filtering mechanism. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public static functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1ac9ee84f693025f81034763d0c33a15a5">GenerateFromMeshFilter</a>(MeshFilter meshFilter, Shader surfaceMaterialShader)</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh">ResonanceAudioAcousticMesh</a></code>
+        </div>
+        <div>Generates an acoustic mesh from a source object's mesh filter. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1aab588c15db751c049debeeb67c3a3a56">GenerateFromTerrain</a>(Terrain terrain, Shader surfaceMaterialShader)</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh">ResonanceAudioAcousticMesh</a></code>
+        </div>
+        <div>Generates an acoustic mesh from a terrain. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1ada3f09b7e15154a9c6d9a7ba2a8ee168">GetSurfaceMaterialIndicesFromTriangle</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>int[]</code>
+        </div>
+        <div>Gets the mapping from triangles to surface material indices. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1aa8ea2301981ec6aa88d6bd160da9553c">IsIncluded</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Whether this acoustic mesh is included in reverb computation. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1a380d5b387757f3429e1f11a4ac6af85b">Render</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Renders the acoustic mesh. Returns false if the mesh does not exist. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1ae70d157d2b8b6fb384bce6670c1fcf3f">SetSurfaceMaterialToAllSubMeshes</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> surfaceMaterial)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Sets the surface material to all sub-meshes. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_acoustic_mesh_1ab0f14eab1549b03b16b798d2f9016aae">SetSurfaceMaterialToSubMesh</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> surfaceMaterial, int subMeshIndex)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Sets the surface material to a sub-mesh. </div>
+      </td>
+    </tr>
+  </table>
+  <h2>Properties</h2>
+  <div id="class_resonance_audio_acoustic_mesh_1ab7160369c6cbb35c8a8bc3846d855d7d">
+    <h3>mesh</h3>
+    <pre class="prettyprint">Mesh mesh</pre>
+    <div>
+      <p>The duplicated mesh. </p>
+      <p><strong>Note:</strong>The vertices are in world space. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_acoustic_mesh_1ad2c04bfe17d1174d3054c3bf1e809dd0">
+    <h3>sourceObject</h3>
+    <pre class="prettyprint">GameObject sourceObject</pre>
+    <div>
+      <p>The source object from which this acoustic mesh is generated. </p>
+      <p>Can be<ol>
+          <li>A game object with a mesh filter, or</li>
+          <li>A terrain object. </li>
+        </ol></p>
+    </div>
+  </div>
+  <h2>Public attributes</h2>
+  <div id="class_resonance_audio_acoustic_mesh_1a59d90b761142c855b81f1b676421be0c">
+    <h3>isIncludedByObjectFiltering</h3>
+    <pre class="prettyprint">bool isIncludedByObjectFiltering = false</pre>
+    <div>
+      <p>Whether the source object of this acoustic mesh is included by the material mapper's object filtering mechanism. </p>
+      <p>Combined with other criteria such as whether the game object is activated, the final verdict of whether this acoustic mesh should be included in reverb computation can be computed (se <a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh_1aa8ea2301981ec6aa88d6bd160da9553c">IsIncluded()</a> below). </p>
+    </div>
+  </div>
+  <h2>Public static functions</h2>
+  <div id="class_resonance_audio_acoustic_mesh_1ac9ee84f693025f81034763d0c33a15a5">
+    <h3>GenerateFromMeshFilter</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh">ResonanceAudioAcousticMesh</a> GenerateFromMeshFilter(
+  MeshFilter meshFilter,
+  Shader surfaceMaterialShader
+)</pre>
+    <div>
+      <p>Generates an acoustic mesh from a source object's mesh filter. </p>
+      <p>Returns null if the generation failed. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_acoustic_mesh_1aab588c15db751c049debeeb67c3a3a56">
+    <h3>GenerateFromTerrain</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-acoustic-mesh.html#class_resonance_audio_acoustic_mesh">ResonanceAudioAcousticMesh</a> GenerateFromTerrain(
+  Terrain terrain,
+  Shader surfaceMaterialShader
+)</pre>
+    <div>
+      <p>Generates an acoustic mesh from a terrain. </p>
+    </div>
+  </div>
+  <h2>Public functions</h2>
+  <div id="class_resonance_audio_acoustic_mesh_1ada3f09b7e15154a9c6d9a7ba2a8ee168">
+    <h3>GetSurfaceMaterialIndicesFromTriangle</h3>
+    <pre class="prettyprint">int[] GetSurfaceMaterialIndicesFromTriangle()</pre>
+    <div>
+      <p>Gets the mapping from triangles to surface material indices. </p>
+      <p>This will be passed to the ray-tracing engine to model sound reflecting from a surface. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_acoustic_mesh_1aa8ea2301981ec6aa88d6bd160da9553c">
+    <h3>IsIncluded</h3>
+    <pre class="prettyprint">bool IsIncluded()</pre>
+    <div>
+      <p>Whether this acoustic mesh is included in reverb computation. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_acoustic_mesh_1a380d5b387757f3429e1f11a4ac6af85b">
+    <h3>Render</h3>
+    <pre class="prettyprint">bool Render()</pre>
+    <div>
+      <p>Renders the acoustic mesh. Returns false if the mesh does not exist. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_acoustic_mesh_1ae70d157d2b8b6fb384bce6670c1fcf3f">
+    <h3>SetSurfaceMaterialToAllSubMeshes</h3>
+    <pre class="prettyprint">void SetSurfaceMaterialToAllSubMeshes(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> surfaceMaterial
+)</pre>
+    <div>
+      <p>Sets the surface material to all sub-meshes. </p>
+      <p>This is particularly useful for assigning surface materials to terrains, because we model a terrain as a uniform surface. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_acoustic_mesh_1ab0f14eab1549b03b16b798d2f9016aae">
+    <h3>SetSurfaceMaterialToSubMesh</h3>
+    <pre class="prettyprint">void SetSurfaceMaterialToSubMesh(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> surfaceMaterial,
+  int subMeshIndex
+)</pre>
+    <div>
+      <p>Sets the surface material to a sub-mesh. </p>
+      <p>This is useful for assigning surface materials to game objects with a mesh filter. Because in a mesh filter, a sub-mesh contains triangles sharing a common Unity Material, which will eventually be assigned to the same surface material. </p>
+    </div>
+  </div>
+</body>
+</html>

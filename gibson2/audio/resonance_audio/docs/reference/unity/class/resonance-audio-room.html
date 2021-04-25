@@ -1,0 +1,218 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioRoom Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body><div id="top"><!-- do not remove this div --></div><h1>ResonanceAudioRoom</h1><p>Resonance Audio room component that simulates environmental effects of a room with respect to the properties of the attached game object. </p><h2>Summary</h2><h3>Inheritance</h3>Inherits from: MonoBehaviour<table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1aa9bc012e8223f82519237db7f536e98e">backWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>Room surface material in negative z direction. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a6bfcd1364c2580d0bc108968eb81f87d">ceiling</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.PlasterRough</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>Room surface material in positive y direction. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a597462da3bf67c4c5e061b8601ac4942">floor</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.ParquetOnConcrete</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>Room surface material in negative y direction. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1ab35240ea15734ae896d8e1224a21c3b9">frontWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>Room surface material in positive z direction. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a8e9f580edd24b29a95e6e89ff78f784d">leftWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>Room surface material in negative x direction. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a3b68425c51ff5bddc807e4efec1c68fe">reflectivity</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reflectivity scalar for each surface of the room. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a1d53c5cc6b87c9d45059fafe03fd5c4b">reverbBrightness</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reverb brightness modifier. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a298605f18ae794741c28af9ac8ab2a5f">reverbGainDb</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reverb gain modifier in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a0bb999406e90a346ad1c7a3d0763dc61">reverbTime</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reverb time modifier. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1aff4e834442cc91d38cbed523b181ca88">rightWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>Room surface material in positive x direction. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_room_1a06a11fea80d9145d1366159210226c25">size</a> = Vector3.one</code>
+      </td>
+      <td>
+        <div>
+          <code>Vector3</code>
+        </div>
+        <div>Size of the room (normalized with respect to scale of the game object). </div>
+      </td>
+    </tr>
+  </table><h2>Public attributes</h2><div id="class_resonance_audio_room_1aa9bc012e8223f82519237db7f536e98e">
+    <h3>backWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> backWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</pre>
+    <div>
+      <p>Room surface material in negative z direction. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a6bfcd1364c2580d0bc108968eb81f87d">
+    <h3>ceiling</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> ceiling =
+      ResonanceAudioRoomManager.SurfaceMaterial.PlasterRough</pre>
+    <div>
+      <p>Room surface material in positive y direction. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a597462da3bf67c4c5e061b8601ac4942">
+    <h3>floor</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> floor =
+      ResonanceAudioRoomManager.SurfaceMaterial.ParquetOnConcrete</pre>
+    <div>
+      <p>Room surface material in negative y direction. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1ab35240ea15734ae896d8e1224a21c3b9">
+    <h3>frontWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> frontWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</pre>
+    <div>
+      <p>Room surface material in positive z direction. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a8e9f580edd24b29a95e6e89ff78f784d">
+    <h3>leftWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> leftWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</pre>
+    <div>
+      <p>Room surface material in negative x direction. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a3b68425c51ff5bddc807e4efec1c68fe">
+    <h3>reflectivity</h3>
+    <pre class="prettyprint">float reflectivity = 1.0f</pre>
+    <div>
+      <p>Reflectivity scalar for each surface of the room. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a1d53c5cc6b87c9d45059fafe03fd5c4b">
+    <h3>reverbBrightness</h3>
+    <pre class="prettyprint">float reverbBrightness = 0.0f</pre>
+    <div>
+      <p>Reverb brightness modifier. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a298605f18ae794741c28af9ac8ab2a5f">
+    <h3>reverbGainDb</h3>
+    <pre class="prettyprint">float reverbGainDb = 0.0f</pre>
+    <div>
+      <p>Reverb gain modifier in decibels. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a0bb999406e90a346ad1c7a3d0763dc61">
+    <h3>reverbTime</h3>
+    <pre class="prettyprint">float reverbTime = 1.0f</pre>
+    <div>
+      <p>Reverb time modifier. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1aff4e834442cc91d38cbed523b181ca88">
+    <h3>rightWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> rightWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.ConcreteBlockCoarse</pre>
+    <div>
+      <p>Room surface material in positive x direction. </p>
+    </div>
+  </div><div id="class_resonance_audio_room_1a06a11fea80d9145d1366159210226c25">
+    <h3>size</h3>
+    <pre class="prettyprint">Vector3 size = Vector3.one</pre>
+    <div>
+      <p>Size of the room (normalized with respect to scale of the game object). </p>
+    </div>
+  </div></body>
+</html>

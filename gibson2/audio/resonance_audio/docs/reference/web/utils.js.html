@@ -1,0 +1,548 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+
+<head>
+  <meta name="project_path" value="/resonance-audio/_project.yaml" />
+  <meta name="book_path" value="/resonance-audio/_book.yaml" />
+  <meta name="gtm_var" data-key="docType" data-value="reference">
+  <title>Source: utils.js</title>
+  <link href="jsdoc.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="jsdoc-body-container">
+    <div id="jsdoc-content">
+      <div id="jsdoc-content-container">
+        <div id="jsdoc-banner" role="banner">
+        </div>
+        <div id="jsdoc-main" role="main">
+          <header class="page-header">
+            <h1>Source: utils.js</h1>
+          </header>
+          <article>
+            <pre class="prettyprint linenums"><code>/**
+ * @license
+ * Copyright 2017 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file ResonanceAudio library common utilities, mathematical constants,
+ * and default values.
+ * @author Andrew Allen &amp;lt;bitllama@google.com&gt;
+ */
+
+&#x27;use strict&#x27;;
+
+
+/**
+ * @class Utils
+ * @description A set of defaults, constants and utility functions.
+ */
+function Utils() {};
+
+
+/**
+ * Default input gain (linear).
+ * @type {Number}
+ */
+Utils.DEFAULT_SOURCE_GAIN &#x3D; 1;
+
+
+/**
+ * Maximum outside-the-room distance to attenuate far-field listener by.
+ * @type {Number}
+ */
+Utils.LISTENER_MAX_OUTSIDE_ROOM_DISTANCE &#x3D; 1;
+
+
+/**
+ * Maximum outside-the-room distance to attenuate far-field sources by.
+ * @type {Number}
+ */
+Utils.SOURCE_MAX_OUTSIDE_ROOM_DISTANCE &#x3D; 1;
+
+
+/**
+ * Default distance from listener when setting angle.
+ * @type {Number}
+ */
+Utils.DEFAULT_SOURCE_DISTANCE &#x3D; 1;
+
+
+/** @type {Float32Array} */
+Utils.DEFAULT_POSITION &#x3D; [0, 0, 0];
+
+
+/** @type {Float32Array} */
+Utils.DEFAULT_FORWARD &#x3D; [0, 0, -1];
+
+
+/** @type {Float32Array} */
+Utils.DEFAULT_UP &#x3D; [0, 1, 0];
+
+
+/** @type {Float32Array} */
+Utils.DEFAULT_RIGHT &#x3D; [1, 0, 0];
+
+
+/**
+ * @type {Number}
+ */
+Utils.DEFAULT_SPEED_OF_SOUND &#x3D; 343;
+
+
+/** Rolloff models (e.g. &#x27;logarithmic&#x27;, &#x27;linear&#x27;, or &#x27;none&#x27;).
+ * @type {Array}
+ */
+Utils.ATTENUATION_ROLLOFFS &#x3D; [&#x27;logarithmic&#x27;, &#x27;linear&#x27;, &#x27;none&#x27;];
+
+
+/** Default rolloff model (&#x27;logarithmic&#x27;).
+ * @type {string}
+ */
+Utils.DEFAULT_ATTENUATION_ROLLOFF &#x3D; &#x27;logarithmic&#x27;;
+
+
+/** @type {Number} */
+Utils.DEFAULT_MIN_DISTANCE &#x3D; 1;
+
+
+/** @type {Number} */
+Utils.DEFAULT_MAX_DISTANCE &#x3D; 1000;
+
+
+/**
+ * The default alpha (i.e. microphone pattern).
+ * @type {Number}
+ */
+Utils.DEFAULT_DIRECTIVITY_ALPHA &#x3D; 0;
+
+
+/**
+ * The default pattern sharpness (i.e. pattern exponent).
+ * @type {Number}
+ */
+Utils.DEFAULT_DIRECTIVITY_SHARPNESS &#x3D; 1;
+
+
+/**
+ * Default azimuth (in degrees). Suitable range is 0 to 360.
+ * @type {Number}
+ */
+Utils.DEFAULT_AZIMUTH &#x3D; 0;
+
+
+/**
+ * Default elevation (in degres).
+ * Suitable range is from -90 (below) to 90 (above).
+ * @type {Number}
+ */
+Utils.DEFAULT_ELEVATION &#x3D; 0;
+
+
+/**
+ * The default ambisonic order.
+ * @type {Number}
+ */
+Utils.DEFAULT_AMBISONIC_ORDER &#x3D; 1;
+
+
+/**
+ * The default source width.
+ * @type {Number}
+ */
+Utils.DEFAULT_SOURCE_WIDTH &#x3D; 0;
+
+
+/**
+ * The maximum delay (in seconds) of a single wall reflection.
+ * @type {Number}
+ */
+Utils.DEFAULT_REFLECTION_MAX_DURATION &#x3D; 0.5;
+
+
+/**
+ * The -12dB cutoff frequency (in Hertz) for the lowpass filter applied to
+ * all reflections.
+ * @type {Number}
+ */
+Utils.DEFAULT_REFLECTION_CUTOFF_FREQUENCY &#x3D; 6400; // Uses -12dB cutoff.
+
+
+/**
+ * The default reflection coefficients (where 0 &#x3D; no reflection, 1 &#x3D; perfect
+ * reflection, -1 &#x3D; mirrored reflection (180-degrees out of phase)).
+ * @type {Object}
+ */
+Utils.DEFAULT_REFLECTION_COEFFICIENTS &#x3D; {
+  left: 0, right: 0, front: 0, back: 0, down: 0, up: 0,
+};
+
+
+/**
+ * The minimum distance we consider the listener to be to any given wall.
+ * @type {Number}
+ */
+Utils.DEFAULT_REFLECTION_MIN_DISTANCE &#x3D; 1;
+
+
+/**
+ * Default room dimensions (in meters).
+ * @type {Object}
+ */
+Utils.DEFAULT_ROOM_DIMENSIONS &#x3D; {
+  width: 0, height: 0, depth: 0,
+};
+
+
+/**
+ * The multiplier to apply to distances from the listener to each wall.
+ * @type {Number}
+ */
+Utils.DEFAULT_REFLECTION_MULTIPLIER &#x3D; 1;
+
+
+/** The default bandwidth (in octaves) of the center frequencies.
+ * @type {Number}
+ */
+Utils.DEFAULT_REVERB_BANDWIDTH &#x3D; 1;
+
+
+/** The default multiplier applied when computing tail lengths.
+ * @type {Number}
+ */
+Utils.DEFAULT_REVERB_DURATION_MULTIPLIER &#x3D; 1;
+
+
+/**
+ * The late reflections pre-delay (in milliseconds).
+ * @type {Number}
+ */
+Utils.DEFAULT_REVERB_PREDELAY &#x3D; 1.5;
+
+
+/**
+ * The length of the beginning of the impulse response to apply a
+ * half-Hann window to.
+ * @type {Number}
+ */
+Utils.DEFAULT_REVERB_TAIL_ONSET &#x3D; 3.8;
+
+
+/**
+ * The default gain (linear).
+ * @type {Number}
+ */
+Utils.DEFAULT_REVERB_GAIN &#x3D; 0.01;
+
+
+/**
+ * The maximum impulse response length (in seconds).
+ * @type {Number}
+ */
+Utils.DEFAULT_REVERB_MAX_DURATION &#x3D; 3;
+
+
+/**
+ * Center frequencies of the multiband late reflections.
+ * Nine bands are computed by: 31.25 * 2^(0:8).
+ * @type {Array}
+ */
+Utils.DEFAULT_REVERB_FREQUENCY_BANDS &#x3D; [
+  31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000,
+];
+
+
+/**
+ * The number of frequency bands.
+ */
+Utils.NUMBER_REVERB_FREQUENCY_BANDS &#x3D;
+  Utils.DEFAULT_REVERB_FREQUENCY_BANDS.length;
+
+
+/**
+ * The default multiband RT60 durations (in seconds).
+ * @type {Float32Array}
+ */
+Utils.DEFAULT_REVERB_DURATIONS &#x3D;
+  new Float32Array(Utils.NUMBER_REVERB_FREQUENCY_BANDS);
+
+
+/**
+ * Pre-defined frequency-dependent absorption coefficients for listed materials.
+ * Currently supported materials are:
+ * &amp;lt;ul&gt;
+ * &amp;lt;li&gt;&#x27;transparent&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;acoustic-ceiling-tiles&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;brick-bare&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;brick-painted&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;concrete-block-coarse&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;concrete-block-painted&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;curtain-heavy&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;fiber-glass-insulation&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;glass-thin&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;glass-thick&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;grass&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;linoleum-on-concrete&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;marble&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;metal&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;parquet-on-concrete&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;plaster-smooth&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;plywood-panel&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;polished-concrete-or-tile&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;sheetrock&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;water-or-ice-surface&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;wood-ceiling&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;wood-panel&#x27;&amp;lt;/li&gt;
+ * &amp;lt;li&gt;&#x27;uniform&#x27;&amp;lt;/li&gt;
+ * &amp;lt;/ul&gt;
+ * @type {Object}
+ */
+Utils.ROOM_MATERIAL_COEFFICIENTS &#x3D; {
+  &#x27;transparent&#x27;:
+  [1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000, 1.000],
+  &#x27;acoustic-ceiling-tiles&#x27;:
+  [0.672, 0.675, 0.700, 0.660, 0.720, 0.920, 0.880, 0.750, 1.000],
+  &#x27;brick-bare&#x27;:
+  [0.030, 0.030, 0.030, 0.030, 0.030, 0.040, 0.050, 0.070, 0.140],
+  &#x27;brick-painted&#x27;:
+  [0.006, 0.007, 0.010, 0.010, 0.020, 0.020, 0.020, 0.030, 0.060],
+  &#x27;concrete-block-coarse&#x27;:
+  [0.360, 0.360, 0.360, 0.440, 0.310, 0.290, 0.390, 0.250, 0.500],
+  &#x27;concrete-block-painted&#x27;:
+  [0.092, 0.090, 0.100, 0.050, 0.060, 0.070, 0.090, 0.080, 0.160],
+  &#x27;curtain-heavy&#x27;:
+  [0.073, 0.106, 0.140, 0.350, 0.550, 0.720, 0.700, 0.650, 1.000],
+  &#x27;fiber-glass-insulation&#x27;:
+  [0.193, 0.220, 0.220, 0.820, 0.990, 0.990, 0.990, 0.990, 1.000],
+  &#x27;glass-thin&#x27;:
+  [0.180, 0.169, 0.180, 0.060, 0.040, 0.030, 0.020, 0.020, 0.040],
+  &#x27;glass-thick&#x27;:
+  [0.350, 0.350, 0.350, 0.250, 0.180, 0.120, 0.070, 0.040, 0.080],
+  &#x27;grass&#x27;:
+  [0.050, 0.050, 0.150, 0.250, 0.400, 0.550, 0.600, 0.600, 0.600],
+  &#x27;linoleum-on-concrete&#x27;:
+  [0.020, 0.020, 0.020, 0.030, 0.030, 0.030, 0.030, 0.020, 0.040],
+  &#x27;marble&#x27;:
+  [0.010, 0.010, 0.010, 0.010, 0.010, 0.010, 0.020, 0.020, 0.040],
+  &#x27;metal&#x27;:
+  [0.030, 0.035, 0.040, 0.040, 0.050, 0.050, 0.050, 0.070, 0.090],
+  &#x27;parquet-on-concrete&#x27;:
+  [0.028, 0.030, 0.040, 0.040, 0.070, 0.060, 0.060, 0.070, 0.140],
+  &#x27;plaster-rough&#x27;:
+  [0.017, 0.018, 0.020, 0.030, 0.040, 0.050, 0.040, 0.030, 0.060],
+  &#x27;plaster-smooth&#x27;:
+  [0.011, 0.012, 0.013, 0.015, 0.020, 0.030, 0.040, 0.050, 0.100],
+  &#x27;plywood-panel&#x27;:
+  [0.400, 0.340, 0.280, 0.220, 0.170, 0.090, 0.100, 0.110, 0.220],
+  &#x27;polished-concrete-or-tile&#x27;:
+  [0.008, 0.008, 0.010, 0.010, 0.015, 0.020, 0.020, 0.020, 0.040],
+  &#x27;sheet-rock&#x27;:
+  [0.290, 0.279, 0.290, 0.100, 0.050, 0.040, 0.070, 0.090, 0.180],
+  &#x27;water-or-ice-surface&#x27;:
+  [0.006, 0.006, 0.008, 0.008, 0.013, 0.015, 0.020, 0.025, 0.050],
+  &#x27;wood-ceiling&#x27;:
+  [0.150, 0.147, 0.150, 0.110, 0.100, 0.070, 0.060, 0.070, 0.140],
+  &#x27;wood-panel&#x27;:
+  [0.280, 0.280, 0.280, 0.220, 0.170, 0.090, 0.100, 0.110, 0.220],
+  &#x27;uniform&#x27;:
+  [0.500, 0.500, 0.500, 0.500, 0.500, 0.500, 0.500, 0.500, 0.500],
+};
+
+
+/**
+ * Default materials that use strings from
+ * {@linkcode Utils.MATERIAL_COEFFICIENTS MATERIAL_COEFFICIENTS}
+ * @type {Object}
+ */
+Utils.DEFAULT_ROOM_MATERIALS &#x3D; {
+  left: &#x27;transparent&#x27;, right: &#x27;transparent&#x27;, front: &#x27;transparent&#x27;,
+  back: &#x27;transparent&#x27;, down: &#x27;transparent&#x27;, up: &#x27;transparent&#x27;,
+};
+
+
+/**
+ * The number of bands to average over when computing reflection coefficients.
+ * @type {Number}
+ */
+Utils.NUMBER_REFLECTION_AVERAGING_BANDS &#x3D; 3;
+
+
+/**
+ * The starting band to average over when computing reflection coefficients.
+ * @type {Number}
+ */
+Utils.ROOM_STARTING_AVERAGING_BAND &#x3D; 4;
+
+
+/**
+ * The minimum threshold for room volume.
+ * Room model is disabled if volume is below this value.
+ * @type {Number} */
+Utils.ROOM_MIN_VOLUME &#x3D; 1e-4;
+
+
+/**
+ * Air absorption coefficients per frequency band.
+ * @type {Float32Array}
+ */
+Utils.ROOM_AIR_ABSORPTION_COEFFICIENTS &#x3D;
+  [0.0006, 0.0006, 0.0007, 0.0008, 0.0010, 0.0015, 0.0026, 0.0060, 0.0207];
+
+
+/**
+ * A scalar correction value to ensure Sabine and Eyring produce the same RT60
+ * value at the cross-over threshold.
+ * @type {Number}
+ */
+Utils.ROOM_EYRING_CORRECTION_COEFFICIENT &#x3D; 1.38;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.TWO_PI &#x3D; 6.28318530717959;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.TWENTY_FOUR_LOG10 &#x3D; 55.2620422318571;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.LOG1000 &#x3D; 6.90775527898214;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.LOG2_DIV2 &#x3D; 0.346573590279973;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.DEGREES_TO_RADIANS &#x3D; 0.017453292519943;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.RADIANS_TO_DEGREES &#x3D; 57.295779513082323;
+
+
+/**
+ * @type {Number}
+ * @private
+ */
+Utils.EPSILON_FLOAT &#x3D; 1e-8;
+
+
+/**
+ * Properties describing the geometry of a room.
+ * @typedef {Object} Utils~RoomDimensions
+ * @property {Number} width (in meters).
+ * @property {Number} height (in meters).
+ * @property {Number} depth (in meters).
+ */
+
+/**
+ * Properties describing the wall materials (from
+ * {@linkcode Utils.ROOM_MATERIAL_COEFFICIENTS ROOM_MATERIAL_COEFFICIENTS})
+ * of a room.
+ * @typedef {Object} Utils~RoomMaterials
+ * @property {String} left Left-wall material name.
+ * @property {String} right Right-wall material name.
+ * @property {String} front Front-wall material name.
+ * @property {String} back Back-wall material name.
+ * @property {String} up Up-wall material name.
+ * @property {String} down Down-wall material name.
+ */
+
+/**
+ * ResonanceAudio library logging function.
+ * @type {Function}
+ * @param {any} Message to be printed out.
+ * @private
+ */
+Utils.log &#x3D; function() {
+  window.console.log.apply(window.console, [
+    &#x27;%c[ResonanceAudio]%c &#x27;
+      + Array.prototype.slice.call(arguments).join(&#x27; &#x27;) + &#x27; %c(@&#x27;
+      + performance.now().toFixed(2) + &#x27;ms)&#x27;,
+    &#x27;background: #BBDEFB; color: #FF5722; font-weight: 700&#x27;,
+    &#x27;font-weight: 400&#x27;,
+    &#x27;color: #AAA&#x27;,
+  ]);
+};
+
+
+/**
+ * Normalize a 3-d vector.
+ * @param {Float32Array} v 3-element vector.
+ * @return {Float32Array} 3-element vector.
+ * @private
+ */
+Utils.normalizeVector &#x3D; function(v) {
+  let n &#x3D; Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+  if (n &gt; exports.EPSILON_FLOAT) {
+    n &#x3D; 1 / n;
+    v[0] *&#x3D; n;
+    v[1] *&#x3D; n;
+    v[2] *&#x3D; n;
+  }
+  return v;
+};
+
+
+/**
+ * Cross-product between two 3-d vectors.
+ * @param {Float32Array} a 3-element vector.
+ * @param {Float32Array} b 3-element vector.
+ * @return {Float32Array}
+ * @private
+ */
+Utils.crossProduct &#x3D; function(a, b) {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+};
+
+module.exports &#x3D; Utils;
+</code></pre>
+          </article>
+        </div>
+      </div>
+      <nav id="jsdoc-toc-nav" role="navigation"></nav>
+    </div>
+  </div>
+</body>
+
+</html>

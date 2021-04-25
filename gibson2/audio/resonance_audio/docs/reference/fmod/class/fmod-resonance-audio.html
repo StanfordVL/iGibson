@@ -1,0 +1,185 @@
+---
+title: Resonance Audio FMOD Plugin Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>FmodResonanceAudio Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body>
+  <div id="top"><!-- do not remove this div --></div>
+  <h1>FmodResonanceAudio</h1>
+  <p>This is the main Resonance Audio class that communicates with the FMOD Unity integration. </p>
+  <h2>Summary</h2>
+  <p>Native functions of the system can only be called through this class to preserve the internal system functionality. </p>
+  <table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1a1a6aa13e079bc9412ae711ec91bdd30e">maxGainDb</a> = 24.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed gain value in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1ac43acf7ebcba9e820e35444ee03e6cf3">maxReflectivity</a> = 2.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed reflectivity multiplier of a room surface material. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1a5c4b933ec784a882d2c69477b147ab83">maxReverbBrightness</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed reverb brightness modifier value. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1ad78d927afc662ec67fe96ffc7aaed812">maxReverbTime</a> = 3.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed reverb time modifier value. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1a924591d04dcf77e19262d7de1d882f11">minGainDb</a> = -24.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Minimum allowed gain value in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1acf9d3726edf06e4cf47764f76b76de1c">minReverbBrightness</a> = -1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Minimum allowed reverb brightness modifier value. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public static functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1a679dee1b0ca8c15ed43b0033b639b86c">IsListenerInsideRoom</a>(<a href="/resonance-audio/reference/fmod/class/fmod-resonance-audio-room.html#class_fmod_resonance_audio_room">FmodResonanceAudioRoom</a> room)</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Returns whether the listener is currently inside the given |room| boundaries. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_fmod_resonance_audio_1a770b89b90f5d090eecfbecc15e73efcd">UpdateAudioRoom</a>(<a href="/resonance-audio/reference/fmod/class/fmod-resonance-audio-room.html#class_fmod_resonance_audio_room">FmodResonanceAudioRoom</a> room, bool roomEnabled)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Updates the room effects of the environment with given |room| properties. </div>
+      </td>
+    </tr>
+  </table>
+  <h2>Public attributes</h2>
+  <div id="class_fmod_resonance_audio_1a1a6aa13e079bc9412ae711ec91bdd30e">
+    <h3>maxGainDb</h3>
+    <pre class="prettyprint">const float maxGainDb = 24.0f</pre>
+    <div>
+      <p>Maximum allowed gain value in decibels. </p>
+    </div>
+  </div>
+  <div id="class_fmod_resonance_audio_1ac43acf7ebcba9e820e35444ee03e6cf3">
+    <h3>maxReflectivity</h3>
+    <pre class="prettyprint">const float maxReflectivity = 2.0f</pre>
+    <div>
+      <p>Maximum allowed reflectivity multiplier of a room surface material. </p>
+    </div>
+  </div>
+  <div id="class_fmod_resonance_audio_1a5c4b933ec784a882d2c69477b147ab83">
+    <h3>maxReverbBrightness</h3>
+    <pre class="prettyprint">const float maxReverbBrightness = 1.0f</pre>
+    <div>
+      <p>Maximum allowed reverb brightness modifier value. </p>
+    </div>
+  </div>
+  <div id="class_fmod_resonance_audio_1ad78d927afc662ec67fe96ffc7aaed812">
+    <h3>maxReverbTime</h3>
+    <pre class="prettyprint">const float maxReverbTime = 3.0f</pre>
+    <div>
+      <p>Maximum allowed reverb time modifier value. </p>
+    </div>
+  </div>
+  <div id="class_fmod_resonance_audio_1a924591d04dcf77e19262d7de1d882f11">
+    <h3>minGainDb</h3>
+    <pre class="prettyprint">const float minGainDb = -24.0f</pre>
+    <div>
+      <p>Minimum allowed gain value in decibels. </p>
+    </div>
+  </div>
+  <div id="class_fmod_resonance_audio_1acf9d3726edf06e4cf47764f76b76de1c">
+    <h3>minReverbBrightness</h3>
+    <pre class="prettyprint">const float minReverbBrightness = -1.0f</pre>
+    <div>
+      <p>Minimum allowed reverb brightness modifier value. </p>
+    </div>
+  </div>
+  <h2>Public static functions</h2>
+  <div id="class_fmod_resonance_audio_1a679dee1b0ca8c15ed43b0033b639b86c">
+    <h3>IsListenerInsideRoom</h3>
+    <pre class="prettyprint">bool IsListenerInsideRoom(
+  <a href="/resonance-audio/reference/fmod/class/fmod-resonance-audio-room.html#class_fmod_resonance_audio_room">FmodResonanceAudioRoom</a> room
+)</pre>
+    <div>
+      <p>Returns whether the listener is currently inside the given |room| boundaries. </p>
+    </div>
+  </div>
+  <div id="class_fmod_resonance_audio_1a770b89b90f5d090eecfbecc15e73efcd">
+    <h3>UpdateAudioRoom</h3>
+    <pre class="prettyprint">void UpdateAudioRoom(
+  <a href="/resonance-audio/reference/fmod/class/fmod-resonance-audio-room.html#class_fmod_resonance_audio_room">FmodResonanceAudioRoom</a> room,
+  bool roomEnabled
+)</pre>
+    <div>
+      <p>Updates the room effects of the environment with given |room| properties. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+</body>
+</html>

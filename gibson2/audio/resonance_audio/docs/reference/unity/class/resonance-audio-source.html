@@ -1,0 +1,199 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioSource Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body><div id="top"><!-- do not remove this div --></div><h1>ResonanceAudioSource</h1><p>Resonance Audio source component that enhances AudioSource to provide advanced spatial audio features. </p><h2>Summary</h2><h3>Inheritance</h3>Inherits from: MonoBehaviour<table class="constants responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public types</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69">Quality</a>{<br>&nbsp;&nbsp;<a href="#class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69abbc45d9b35436f5f0ed9e33499efcea9">Stereo</a> = 0,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69a28d0edd045e05cf5af64e35ae0c4c6ef">Low</a> = 1,<br>&nbsp;&nbsp;<a href="#class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69a655d20c1ca69519ca647684edbb2db35">High</a> = 2<br>}</code>
+      </td>
+      <td>enum<div>Audio rendering quality. </div></td>
+    </tr>
+  </table><table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a8410729bbf4786a99408b6220f91d5db">bypassRoomEffects</a> = false</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Denotes whether the room effects should be bypassed. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a0a0a34abd0644b7bfc620c98c842c427">directivityAlpha</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Directivity pattern shaping factor. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a48f4eb52ea071efe9ec4b2e61ec15674">directivitySharpness</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Directivity pattern order. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a08f2596abf2649bce5e628902dff4f7c">gainDb</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Input gain in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a2a9723bff50e46fbf9d3ffd12b2370b6">listenerDirectivityAlpha</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Listener directivity pattern shaping factor. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1a3fa958f4a6cf6016f266ec430046de5e">listenerDirectivitySharpness</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Listener directivity pattern order. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1ae8d53fef1de834434cc50a535742edbe">occlusionEnabled</a> = false</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Occlusion effect toggle. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_source_1aad55bb8d8e6ebba9d25dc44aaf6b0d0d">quality</a> = Quality.High</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-source.html#class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69">Quality</a></code>
+        </div>
+      </td>
+    </tr>
+  </table><h2>Public types</h2><div id="class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69">
+    <h3>Quality</h3>
+    <pre class="prettyprint"> Quality</pre>
+    <div>
+      <p>Audio rendering quality. </p>
+      <table class="properties responsive">
+        <tr>
+          <th colspan="2">Properties</th>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69a655d20c1ca69519ca647684edbb2db35" />High</code>
+          </td>
+          <td>
+            <p>High quality binaural rendering (third-order HRTF) </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69a28d0edd045e05cf5af64e35ae0c4c6ef" />Low</code>
+          </td>
+          <td>
+            <p>Low quality binaural rendering (first-order HRTF) </p>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code><a id="class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69abbc45d9b35436f5f0ed9e33499efcea9" />Stereo</code>
+          </td>
+          <td>
+            <p>Stereo-only rendering. </p>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div><h2>Public attributes</h2><div id="class_resonance_audio_source_1a8410729bbf4786a99408b6220f91d5db">
+    <h3>bypassRoomEffects</h3>
+    <pre class="prettyprint">bool bypassRoomEffects = false</pre>
+    <div>
+      <p>Denotes whether the room effects should be bypassed. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1a0a0a34abd0644b7bfc620c98c842c427">
+    <h3>directivityAlpha</h3>
+    <pre class="prettyprint">float directivityAlpha = 0.0f</pre>
+    <div>
+      <p>Directivity pattern shaping factor. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1a48f4eb52ea071efe9ec4b2e61ec15674">
+    <h3>directivitySharpness</h3>
+    <pre class="prettyprint">float directivitySharpness = 1.0f</pre>
+    <div>
+      <p>Directivity pattern order. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1a08f2596abf2649bce5e628902dff4f7c">
+    <h3>gainDb</h3>
+    <pre class="prettyprint">float gainDb = 0.0f</pre>
+    <div>
+      <p>Input gain in decibels. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1a2a9723bff50e46fbf9d3ffd12b2370b6">
+    <h3>listenerDirectivityAlpha</h3>
+    <pre class="prettyprint">float listenerDirectivityAlpha = 0.0f</pre>
+    <div>
+      <p>Listener directivity pattern shaping factor. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1a3fa958f4a6cf6016f266ec430046de5e">
+    <h3>listenerDirectivitySharpness</h3>
+    <pre class="prettyprint">float listenerDirectivitySharpness = 1.0f</pre>
+    <div>
+      <p>Listener directivity pattern order. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1ae8d53fef1de834434cc50a535742edbe">
+    <h3>occlusionEnabled</h3>
+    <pre class="prettyprint">bool occlusionEnabled = false</pre>
+    <div>
+      <p>Occlusion effect toggle. </p>
+    </div>
+  </div><div id="class_resonance_audio_source_1aad55bb8d8e6ebba9d25dc44aaf6b0d0d">
+    <h3>quality</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-source.html#class_resonance_audio_source_1a0a3899562ca46e4e05d9648bc7d2cb69">Quality</a> quality = Quality.High</pre>
+    <div />
+  </div></body>
+</html>
