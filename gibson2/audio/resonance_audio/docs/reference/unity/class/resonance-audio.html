@@ -1,0 +1,552 @@
+---
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudio Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body>
+  <div id="top"><!-- do not remove this div --></div>
+  <h1>ResonanceAudio</h1>
+  <p>This is the main Resonance Audio class that communicates with the native code implementation of the audio system. </p>
+  <h2>Summary</h2>
+  <p>Native functions of the system can only be called through this class to preserve the internal system functionality. Public function calls are <i>not</i> thread-safe. </p>
+  <table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Properties</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a2aef662bd6aa716c5d03b68a3e595f19">ListenerTransform</a></code>
+      </td>
+      <td>
+        <div>
+          <code>static Transform</code>
+        </div>
+        <div>Audio listener transform. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public static attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a263cc9d9c2361ab9d32b4c70290185b6">listenerDirectivityColor</a> = 0.65f * Color.magenta</code>
+      </td>
+      <td>
+        <div>
+          <code>readonly Color</code>
+        </div>
+        <div>Listener directivity GUI color. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1abcf4a7c3913639cac1defd599cffaebd">sourceDirectivityColor</a> = 0.65f * Color.blue</code>
+      </td>
+      <td>
+        <div>
+          <code>readonly Color</code>
+        </div>
+        <div>Source directivity GUI color. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a050b32c98a4bd6edef11566a505ac1ae">distanceEpsilon</a> = 0.01f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Minimum distance threshold between |minDistance| and |maxDistance|. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a1585f8b937aa34dfdb54641510388f47">maxDistanceLimit</a> = 1000000.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Max distance limit that can be set for volume rolloff. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1af399d7fc92b8886aebac9abcbd056990">maxGainDb</a> = 24.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed gain value in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a2003696240268a8118469b3844535399">maxNumOcclusionHits</a> = 12</code>
+      </td>
+      <td>
+        <div>
+          <code>const int</code>
+        </div>
+        <div>Maximum allowed number of raycast hits for occlusion computation per source. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a33e781e9faa93a9f62c9de921c826aeb">maxReflectivity</a> = 2.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed reflectivity multiplier of a room surface material. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a559ed2eac684746741f01a690aa22060">maxReverbBrightness</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed reverb brightness modifier value. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1aa644f2d14427111c48c60a32cc65e5b7">maxReverbTime</a> = 3.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Maximum allowed reverb time modifier value. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a7dedbd90a7be272450d18900f6658c51">minDistanceLimit</a> = 990099.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Min distance limit that can be set for volume rolloff. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1aed084bb78ae24880cb75e61c07d92fcb">minGainDb</a> = -24.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Minimum allowed gain value in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a52e38fec626b84c0c92490bed03037b3">minReverbBrightness</a> = -1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Minimum allowed reverb brightness modifier value. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a90c28446f46d152709d714ea177fd991">occlusionDetectionInterval</a> = 0.2f</code>
+      </td>
+      <td>
+        <div>
+          <code>const float</code>
+        </div>
+        <div>Source occlusion detection rate in seconds. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public static functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a9049fae63e744d14c06ec0fc43d8f7d4">ComputeOcclusion</a>(Transform sourceTransform)</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Computes the occlusion intensity of a given |source| using point source detection. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1ac52b9c533a153f18538a60c3b24821f1">ComputeRt60sAndProxyRoom</a>(int totalNumPaths, int numPathsPerBatch, int maxDepth, float energyThreshold, Vector3 probePosition, float listenerSphereRadius, ref float[] outputRt60s, ref <a href="/resonance-audio/reference/unity/struct/resonance-audio/room-properties.html#struct_resonance_audio_1_1_room_properties">RoomProperties</a> outputProxyRoomProperties)</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Computes the RT60s and proxy room properties. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a514a12d0f5e84cedf3a899345d820a70">ConvertAmplitudeFromDb</a>(float db)</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Converts given |db| value to its amplitude equivalent where 'dB = 20 * log10(amplitude)'. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1ae34d89f5997b5c4d68670e38462060af">DisableRoomEffects</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Disables the room effects. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a6367695bc686af99a7497d09c7b38ee2">Generate2dPolarPattern</a>(float alpha, float order, int resolution)</code>
+      </td>
+      <td>
+        <div>
+          <code>Vector2[]</code>
+        </div>
+        <div>Generates a set of points to draw a 2D polar pattern. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a7abb02a2fec4b4be29ce35d4d2f43f64">InitializeReverbComputer</a>(float[] vertices, int[] triangles, int[] materialIndices, float scatteringCoefficient)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Initializes the reverb computer. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1afb2393e4f11d8d2e555e86a6cfeafdae">StartRecording</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Starts soundfield recording. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a434b05197d1762afc3340e96fdfc04c1">StopRecordingAndSaveToFile</a>(string filePath, bool seamless)</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Stops soundfield recording and saves it into target file path. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a485a3e23ef1208124e764a0c004b1cd9">UpdateAudioListener</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-listener.html#class_resonance_audio_listener">ResonanceAudioListener</a> listener)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Updates the audio listener. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1a6d980f9f56cbfbeb279eb1e6d553d4de">UpdateAudioRoom</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-room.html#class_resonance_audio_room">ResonanceAudioRoom</a> currentRoom)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Updates the room effects of the environment with given |room| properties. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_1ade938b630487ef3d2dc1904649b68926">UpdateReverbProbe</a>(<a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe">ResonanceAudioReverbProbe</a> currentReverbProbe)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Updates the room effects of the environment with given |reverbProbe|. </div>
+      </td>
+    </tr>
+  </table>
+  <table class="constants responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Structs</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <a href="/resonance-audio/reference/unity/struct/resonance-audio/room-properties">ResonanceAudio.<wbr/>RoomProperties</a>
+      </td>
+      <td />
+    </tr>
+  </table>
+  <h2>Properties</h2>
+  <div id="class_resonance_audio_1a2aef662bd6aa716c5d03b68a3e595f19">
+    <h3>ListenerTransform</h3>
+    <pre class="prettyprint">static Transform ListenerTransform</pre>
+    <div>
+      <p>Audio listener transform. </p>
+    </div>
+  </div>
+  <h2>Public static attributes</h2>
+  <div id="class_resonance_audio_1a263cc9d9c2361ab9d32b4c70290185b6">
+    <h3>listenerDirectivityColor</h3>
+    <pre class="prettyprint">readonly Color listenerDirectivityColor = 0.65f * Color.magenta</pre>
+    <div>
+      <p>Listener directivity GUI color. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1abcf4a7c3913639cac1defd599cffaebd">
+    <h3>sourceDirectivityColor</h3>
+    <pre class="prettyprint">readonly Color sourceDirectivityColor = 0.65f * Color.blue</pre>
+    <div>
+      <p>Source directivity GUI color. </p>
+    </div>
+  </div>
+  <h2>Public attributes</h2>
+  <div id="class_resonance_audio_1a050b32c98a4bd6edef11566a505ac1ae">
+    <h3>distanceEpsilon</h3>
+    <pre class="prettyprint">const float distanceEpsilon = 0.01f</pre>
+    <div>
+      <p>Minimum distance threshold between |minDistance| and |maxDistance|. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a1585f8b937aa34dfdb54641510388f47">
+    <h3>maxDistanceLimit</h3>
+    <pre class="prettyprint">const float maxDistanceLimit = 1000000.0f</pre>
+    <div>
+      <p>Max distance limit that can be set for volume rolloff. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1af399d7fc92b8886aebac9abcbd056990">
+    <h3>maxGainDb</h3>
+    <pre class="prettyprint">const float maxGainDb = 24.0f</pre>
+    <div>
+      <p>Maximum allowed gain value in decibels. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a2003696240268a8118469b3844535399">
+    <h3>maxNumOcclusionHits</h3>
+    <pre class="prettyprint">const int maxNumOcclusionHits = 12</pre>
+    <div>
+      <p>Maximum allowed number of raycast hits for occlusion computation per source. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a33e781e9faa93a9f62c9de921c826aeb">
+    <h3>maxReflectivity</h3>
+    <pre class="prettyprint">const float maxReflectivity = 2.0f</pre>
+    <div>
+      <p>Maximum allowed reflectivity multiplier of a room surface material. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a559ed2eac684746741f01a690aa22060">
+    <h3>maxReverbBrightness</h3>
+    <pre class="prettyprint">const float maxReverbBrightness = 1.0f</pre>
+    <div>
+      <p>Maximum allowed reverb brightness modifier value. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1aa644f2d14427111c48c60a32cc65e5b7">
+    <h3>maxReverbTime</h3>
+    <pre class="prettyprint">const float maxReverbTime = 3.0f</pre>
+    <div>
+      <p>Maximum allowed reverb time modifier value. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a7dedbd90a7be272450d18900f6658c51">
+    <h3>minDistanceLimit</h3>
+    <pre class="prettyprint">const float minDistanceLimit = 990099.0f</pre>
+    <div>
+      <p>Min distance limit that can be set for volume rolloff. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1aed084bb78ae24880cb75e61c07d92fcb">
+    <h3>minGainDb</h3>
+    <pre class="prettyprint">const float minGainDb = -24.0f</pre>
+    <div>
+      <p>Minimum allowed gain value in decibels. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a52e38fec626b84c0c92490bed03037b3">
+    <h3>minReverbBrightness</h3>
+    <pre class="prettyprint">const float minReverbBrightness = -1.0f</pre>
+    <div>
+      <p>Minimum allowed reverb brightness modifier value. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a90c28446f46d152709d714ea177fd991">
+    <h3>occlusionDetectionInterval</h3>
+    <pre class="prettyprint">const float occlusionDetectionInterval = 0.2f</pre>
+    <div>
+      <p>Source occlusion detection rate in seconds. </p>
+    </div>
+  </div>
+  <h2>Public static functions</h2>
+  <div id="class_resonance_audio_1a9049fae63e744d14c06ec0fc43d8f7d4">
+    <h3>ComputeOcclusion</h3>
+    <pre class="prettyprint">float ComputeOcclusion(
+  Transform sourceTransform
+)</pre>
+    <div>
+      <p>Computes the occlusion intensity of a given |source| using point source detection. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1ac52b9c533a153f18538a60c3b24821f1">
+    <h3>ComputeRt60sAndProxyRoom</h3>
+    <pre class="prettyprint">bool ComputeRt60sAndProxyRoom(
+  int totalNumPaths,
+  int numPathsPerBatch,
+  int maxDepth,
+  float energyThreshold,
+  Vector3 probePosition,
+  float listenerSphereRadius,
+  ref float[] outputRt60s,
+  ref <a href="/resonance-audio/reference/unity/struct/resonance-audio/room-properties.html#struct_resonance_audio_1_1_room_properties">RoomProperties</a> outputProxyRoomProperties
+)</pre>
+    <div>
+      <p>Computes the RT60s and proxy room properties. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a514a12d0f5e84cedf3a899345d820a70">
+    <h3>ConvertAmplitudeFromDb</h3>
+    <pre class="prettyprint">float ConvertAmplitudeFromDb(
+  float db
+)</pre>
+    <div>
+      <p>Converts given |db| value to its amplitude equivalent where 'dB = 20 * log10(amplitude)'. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1ae34d89f5997b5c4d68670e38462060af">
+    <h3>DisableRoomEffects</h3>
+    <pre class="prettyprint">void DisableRoomEffects()</pre>
+    <div>
+      <p>Disables the room effects. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a6367695bc686af99a7497d09c7b38ee2">
+    <h3>Generate2dPolarPattern</h3>
+    <pre class="prettyprint">Vector2[] Generate2dPolarPattern(
+  float alpha,
+  float order,
+  int resolution
+)</pre>
+    <div>
+      <p>Generates a set of points to draw a 2D polar pattern. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a7abb02a2fec4b4be29ce35d4d2f43f64">
+    <h3>InitializeReverbComputer</h3>
+    <pre class="prettyprint">void InitializeReverbComputer(
+  float[] vertices,
+  int[] triangles,
+  int[] materialIndices,
+  float scatteringCoefficient
+)</pre>
+    <div>
+      <p>Initializes the reverb computer. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1afb2393e4f11d8d2e555e86a6cfeafdae">
+    <h3>StartRecording</h3>
+    <pre class="prettyprint">bool StartRecording()</pre>
+    <div>
+      <p>Starts soundfield recording. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a434b05197d1762afc3340e96fdfc04c1">
+    <h3>StopRecordingAndSaveToFile</h3>
+    <pre class="prettyprint">bool StopRecordingAndSaveToFile(
+  string filePath,
+  bool seamless
+)</pre>
+    <div>
+      <p>Stops soundfield recording and saves it into target file path. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a485a3e23ef1208124e764a0c004b1cd9">
+    <h3>UpdateAudioListener</h3>
+    <pre class="prettyprint">void UpdateAudioListener(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-listener.html#class_resonance_audio_listener">ResonanceAudioListener</a> listener
+)</pre>
+    <div>
+      <p>Updates the audio listener. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1a6d980f9f56cbfbeb279eb1e6d553d4de">
+    <h3>UpdateAudioRoom</h3>
+    <pre class="prettyprint">void UpdateAudioRoom(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-room.html#class_resonance_audio_room">ResonanceAudioRoom</a> currentRoom
+)</pre>
+    <div>
+      <p>Updates the room effects of the environment with given |room| properties. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+  <div id="class_resonance_audio_1ade938b630487ef3d2dc1904649b68926">
+    <h3>UpdateReverbProbe</h3>
+    <pre class="prettyprint">void UpdateReverbProbe(
+  <a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe">ResonanceAudioReverbProbe</a> currentReverbProbe
+)</pre>
+    <div>
+      <p>Updates the room effects of the environment with given |reverbProbe|. </p>
+      <p><strong>Note:</strong>This should only be called from the main Unity thread. </p>
+    </div>
+  </div>
+</body>
+</html>

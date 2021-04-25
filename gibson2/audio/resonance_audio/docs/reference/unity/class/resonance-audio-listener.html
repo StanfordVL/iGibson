@@ -1,0 +1,186 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioListener Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body><div id="top"><!-- do not remove this div --></div><h1>ResonanceAudioListener</h1><p>Resonance Audio listener component that enhances AudioListener to provide advanced spatial audio features. </p><h2>Summary</h2><p>There should be only one instance of this which is attached to the AudioListener's game object. </p><h3>Inheritance</h3>Inherits from: MonoBehaviour<table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1af8c8efbc30f6d3f2bb46ea4319b4a6d3">globalGainDb</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Global gain in decibels to be applied to the processed output. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a128797a86f4b106e255cb950c3409610">occlusionMask</a> = -1</code>
+      </td>
+      <td>
+        <div>
+          <code>LayerMask</code>
+        </div>
+        <div>Global layer mask to be used in occlusion detection. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a4213e95d722bf07bb78c138b8f318942">recorderSeamless</a> = false</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Denotes whether the soundfield should be recorded in a seamless loop. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a21afe3dc37001aaf3f355ccc1c002864">recorderSourceTag</a> = "Untagged"</code>
+      </td>
+      <td>
+        <div>
+          <code>string</code>
+        </div>
+        <div>Target tag for spatial audio sources to be recorded into soundfield. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a0277a5b6cb902e0ca2bfb54c8827e76a">stereoSpeakerModeEnabled</a> = false</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Stereo speaker mode toggle. </div>
+      </td>
+    </tr>
+  </table><table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Properties</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a23a0b7db385db4ee80c42b6c6be48256">IsRecording</a></code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Is currently recording soundfield? </div>
+      </td>
+    </tr>
+  </table><table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a6491a7ae58e6963ac0854917d72a5179">GetCurrentRecordDuration</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>double</code>
+        </div>
+        <div>Returns the current record duration in seconds. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1a0b0ffe2119e60255c6c4a223394f6f6d">StartSoundfieldRecorder</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Starts soundfield recording. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_listener_1ad214c06246c32e3b662d749db03a21c2">StopSoundfieldRecorder</a>(string filePath)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Stops soundfield recording and saves the recorded data into target file path. </div>
+      </td>
+    </tr>
+  </table><h2>Public attributes</h2><div id="class_resonance_audio_listener_1af8c8efbc30f6d3f2bb46ea4319b4a6d3">
+    <h3>globalGainDb</h3>
+    <pre class="prettyprint">float globalGainDb = 0.0f</pre>
+    <div>
+      <p>Global gain in decibels to be applied to the processed output. </p>
+    </div>
+  </div><div id="class_resonance_audio_listener_1a128797a86f4b106e255cb950c3409610">
+    <h3>occlusionMask</h3>
+    <pre class="prettyprint">LayerMask occlusionMask = -1</pre>
+    <div>
+      <p>Global layer mask to be used in occlusion detection. </p>
+    </div>
+  </div><div id="class_resonance_audio_listener_1a4213e95d722bf07bb78c138b8f318942">
+    <h3>recorderSeamless</h3>
+    <pre class="prettyprint">bool recorderSeamless = false</pre>
+    <div>
+      <p>Denotes whether the soundfield should be recorded in a seamless loop. </p>
+    </div>
+  </div><div id="class_resonance_audio_listener_1a21afe3dc37001aaf3f355ccc1c002864">
+    <h3>recorderSourceTag</h3>
+    <pre class="prettyprint">string recorderSourceTag = "Untagged"</pre>
+    <div>
+      <p>Target tag for spatial audio sources to be recorded into soundfield. </p>
+    </div>
+  </div><div id="class_resonance_audio_listener_1a0277a5b6cb902e0ca2bfb54c8827e76a">
+    <h3>stereoSpeakerModeEnabled</h3>
+    <pre class="prettyprint">bool stereoSpeakerModeEnabled = false</pre>
+    <div>
+      <p>Stereo speaker mode toggle. </p>
+    </div>
+  </div><h2>Properties</h2><div id="class_resonance_audio_listener_1a23a0b7db385db4ee80c42b6c6be48256">
+    <h3>IsRecording</h3>
+    <pre class="prettyprint">bool IsRecording</pre>
+    <div>
+      <p>Is currently recording soundfield? </p>
+    </div>
+  </div><h2>Public functions</h2><div id="class_resonance_audio_listener_1a6491a7ae58e6963ac0854917d72a5179">
+    <h3>GetCurrentRecordDuration</h3>
+    <pre class="prettyprint">double GetCurrentRecordDuration()</pre>
+    <div>
+      <p>Returns the current record duration in seconds. </p>
+    </div>
+  </div><div id="class_resonance_audio_listener_1a0b0ffe2119e60255c6c4a223394f6f6d">
+    <h3>StartSoundfieldRecorder</h3>
+    <pre class="prettyprint">void StartSoundfieldRecorder()</pre>
+    <div>
+      <p>Starts soundfield recording. </p>
+    </div>
+  </div><div id="class_resonance_audio_listener_1ad214c06246c32e3b662d749db03a21c2">
+    <h3>StopSoundfieldRecorder</h3>
+    <pre class="prettyprint">void StopSoundfieldRecorder(
+  string filePath
+)</pre>
+    <div>
+      <p>Stops soundfield recording and saves the recorded data into target file path. </p>
+    </div>
+  </div></body>
+</html>

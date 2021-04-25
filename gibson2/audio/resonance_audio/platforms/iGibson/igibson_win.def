@@ -1,0 +1,11 @@
+LIBRARY "audiopluginresonanceaudio"
+
+EXPORTS
+  SetListenerGain
+  SetListenerStereoSpeakerMode
+  SetRoomProperties
+  StartSoundfieldRecorder
+  StopSoundfieldRecorderAndWriteToFile
+  InitializeReverbComputer
+  ComputeRt60sAndProxyRoom
+  UnityGetAudioEffectDefinitions

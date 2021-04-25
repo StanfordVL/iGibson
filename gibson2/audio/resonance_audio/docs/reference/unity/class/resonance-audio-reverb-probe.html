@@ -1,0 +1,385 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+<head>
+  <title>ResonanceAudioReverbProbe Class Reference</title>
+  <link rel="stylesheet" href="/resonance-audio/css/default.css"/>
+</head>
+<body><div id="top"><!-- do not remove this div --></div><h1>ResonanceAudioReverbProbe</h1><p>Resonance Audio reverb probe component that acts as a sample point where the reverb properties are computed by casting rays that interact with surrounding geometries and collecting them back. </p><h2>Summary</h2><p>In addition, it allows the user to define a "region of application", where when the listener enters, the pre-computed reverb properties are applied. </p><h3>Inheritance</h3>Inherits from: MonoBehaviour<table class="constants responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public types</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a5b191fa642a2b55cca13a571603a6bd1">ApplicationRegionShape</a></code>
+      </td>
+      <td>enum<div>Supported choices of the shape of regions of application. </div></td>
+    </tr>
+  </table><table class="properties responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public attributes</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a22ae7a35c60005a45e8754ea8b4e6709">boxApplicationRegionSize</a> = Vector3.one</code>
+      </td>
+      <td>
+        <div>
+          <code>Vector3</code>
+        </div>
+        <div>Size of the box-shaped region of application, normalized with respect to scale of the game object. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a0eb5755d4379157fc4d371dad2a0f9d4">onlyApplyWhenVisible</a> = true</code>
+      </td>
+      <td>
+        <div>
+          <code>bool</code>
+        </div>
+        <div>Only apply the reverb properties if this probe is visible to the listener. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a7f0d30cacba8df1b16b8e2c1bd11e0dc">proxyRoomBackWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1aa5828d270bb73153da020aaf4ead7133">proxyRoomCeiling</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a7aea8606befe55055ed15ce67667b258">proxyRoomFloor</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a7fac5a36066af8476fe1c9659b226bba">proxyRoomFrontWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a186ec3512e3b8d5d95b17e5bdc92b73f">proxyRoomLeftWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+        <div>The surface materials on the six walls of the proxy room in the {-x, +x, -y, +y, -z, +z}-directions. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a0c7ede3d283ebd5f23d0d027843aa044">proxyRoomPosition</a> = Vector3.zero</code>
+      </td>
+      <td>
+        <div>
+          <code>Vector3</code>
+        </div>
+        <div>Proxy room related fields. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1ad9519a12643cd157dc47957fb4088071">proxyRoomRightWall</a> =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a></code>
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a5391f1a5a1eab79ab0fb07db3887be84">proxyRoomRotation</a> = Quaternion.identity</code>
+      </td>
+      <td>
+        <div>
+          <code>Quaternion</code>
+        </div>
+        <div>The rotation of the proxy room in world space. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a19e2a5eacdcc3b2d336c67c057130208">proxyRoomSize</a> = Vector3.one</code>
+      </td>
+      <td>
+        <div>
+          <code>Vector3</code>
+        </div>
+        <div>The size of the proxy room in world space. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1acc9742c5c8e523967e425d2abdea1d43">reverbBrightness</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reverb brightness modifier. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a04512eef0fcb5347cb73eecd19a4d1c8">reverbGainDb</a> = 0.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reverb gain modifier in decibels. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1aa2cea1dde3f02cc955c022b6148d3851">reverbTime</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Reverb time modifier. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a0a92a9f22f991f08f1899dd6751437cb">rt60s</a> = new float[] {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}</code>
+      </td>
+      <td>
+        <div>
+          <code>float[]</code>
+        </div>
+        <div>The RT-60s of the reverb baked in this probe. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a0c160f03822c7c975f477f0c4359af02">runtimeApplicationRegionShape</a> = ApplicationRegionShape.Sphere</code>
+      </td>
+      <td>
+        <div>
+          <code><a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe_1a5b191fa642a2b55cca13a571603a6bd1">ApplicationRegionShape</a></code>
+        </div>
+        <div>Which shape of regions of application to use at runtime to check whether the listener is inside. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a8b5d14f21b3f6b54fffc13b98e1dc924">sphereApplicationRegionRadius</a> = 1.0f</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Radius of the sphere-shaped region of application. </div>
+      </td>
+    </tr>
+  </table><table class="methods responsive">
+    <tr>
+      <th colspan="2">
+        <h3>Public functions</h3>
+      </th>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a68ce4dbf725ffe6fbd5b37fdbf876307">GetScaledBoxApplicationRegionSize</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>Vector3</code>
+        </div>
+        <div>Gets the size of the box-shaped region of application scaled by the transform. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a480e6b6d4a9d2b137bc4dc728ccf4a19">GetScaledSphericalApplicationRegionRadius</a>()</code>
+      </td>
+      <td>
+        <div>
+          <code>float</code>
+        </div>
+        <div>Gets the radius of the spherical region of application scaled by the transform. </div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <code><a href="#class_resonance_audio_reverb_probe_1a8e08a5f577403eaf38c07dbcf7dd8c4a">SetProxyRoomProperties</a>(<a href="/resonance-audio/reference/unity/struct/resonance-audio/room-properties.html#struct_resonance_audio_1_1_room_properties">ResonanceAudio.RoomProperties</a> proxyRoomProperties)</code>
+      </td>
+      <td>
+        <div>
+          <code>void</code>
+        </div>
+        <div>Set proxy room properties. </div>
+      </td>
+    </tr>
+  </table><h2>Public types</h2><div id="class_resonance_audio_reverb_probe_1a5b191fa642a2b55cca13a571603a6bd1">
+    <h3>ApplicationRegionShape</h3>
+    <pre class="prettyprint"> ApplicationRegionShape</pre>
+    <div>
+      <p>Supported choices of the shape of regions of application. </p>
+    </div>
+  </div><h2>Public attributes</h2><div id="class_resonance_audio_reverb_probe_1a22ae7a35c60005a45e8754ea8b4e6709">
+    <h3>boxApplicationRegionSize</h3>
+    <pre class="prettyprint">Vector3 boxApplicationRegionSize = Vector3.one</pre>
+    <div>
+      <p>Size of the box-shaped region of application, normalized with respect to scale of the game object. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a0eb5755d4379157fc4d371dad2a0f9d4">
+    <h3>onlyApplyWhenVisible</h3>
+    <pre class="prettyprint">bool onlyApplyWhenVisible = true</pre>
+    <div>
+      <p>Only apply the reverb properties if this probe is visible to the listener. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a7f0d30cacba8df1b16b8e2c1bd11e0dc">
+    <h3>proxyRoomBackWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> proxyRoomBackWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</pre>
+    <div />
+  </div><div id="class_resonance_audio_reverb_probe_1aa5828d270bb73153da020aaf4ead7133">
+    <h3>proxyRoomCeiling</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> proxyRoomCeiling =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</pre>
+    <div />
+  </div><div id="class_resonance_audio_reverb_probe_1a7aea8606befe55055ed15ce67667b258">
+    <h3>proxyRoomFloor</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> proxyRoomFloor =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</pre>
+    <div />
+  </div><div id="class_resonance_audio_reverb_probe_1a7fac5a36066af8476fe1c9659b226bba">
+    <h3>proxyRoomFrontWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> proxyRoomFrontWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</pre>
+    <div />
+  </div><div id="class_resonance_audio_reverb_probe_1a186ec3512e3b8d5d95b17e5bdc92b73f">
+    <h3>proxyRoomLeftWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> proxyRoomLeftWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</pre>
+    <div>
+      <p>The surface materials on the six walls of the proxy room in the {-x, +x, -y, +y, -z, +z}-directions. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a0c7ede3d283ebd5f23d0d027843aa044">
+    <h3>proxyRoomPosition</h3>
+    <pre class="prettyprint">Vector3 proxyRoomPosition = Vector3.zero</pre>
+    <div>
+      <p>Proxy room related fields. </p>
+      <p>A proxy room is used to calculate real-time early reflections. The position of the proxy room in world space. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1ad9519a12643cd157dc47957fb4088071">
+    <h3>proxyRoomRightWall</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-room-manager.html#class_resonance_audio_room_manager_1a72924444fe38079ff5f61f65b4fa566e">ResonanceAudioRoomManager.SurfaceMaterial</a> proxyRoomRightWall =
+      ResonanceAudioRoomManager.SurfaceMaterial.Transparent</pre>
+    <div />
+  </div><div id="class_resonance_audio_reverb_probe_1a5391f1a5a1eab79ab0fb07db3887be84">
+    <h3>proxyRoomRotation</h3>
+    <pre class="prettyprint">Quaternion proxyRoomRotation = Quaternion.identity</pre>
+    <div>
+      <p>The rotation of the proxy room in world space. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a19e2a5eacdcc3b2d336c67c057130208">
+    <h3>proxyRoomSize</h3>
+    <pre class="prettyprint">Vector3 proxyRoomSize = Vector3.one</pre>
+    <div>
+      <p>The size of the proxy room in world space. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1acc9742c5c8e523967e425d2abdea1d43">
+    <h3>reverbBrightness</h3>
+    <pre class="prettyprint">float reverbBrightness = 0.0f</pre>
+    <div>
+      <p>Reverb brightness modifier. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a04512eef0fcb5347cb73eecd19a4d1c8">
+    <h3>reverbGainDb</h3>
+    <pre class="prettyprint">float reverbGainDb = 0.0f</pre>
+    <div>
+      <p>Reverb gain modifier in decibels. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1aa2cea1dde3f02cc955c022b6148d3851">
+    <h3>reverbTime</h3>
+    <pre class="prettyprint">float reverbTime = 1.0f</pre>
+    <div>
+      <p>Reverb time modifier. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a0a92a9f22f991f08f1899dd6751437cb">
+    <h3>rt60s</h3>
+    <pre class="prettyprint">float[] rt60s = new float[] {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}</pre>
+    <div>
+      <p>The RT-60s of the reverb baked in this probe. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a0c160f03822c7c975f477f0c4359af02">
+    <h3>runtimeApplicationRegionShape</h3>
+    <pre class="prettyprint"><a href="/resonance-audio/reference/unity/class/resonance-audio-reverb-probe.html#class_resonance_audio_reverb_probe_1a5b191fa642a2b55cca13a571603a6bd1">ApplicationRegionShape</a> runtimeApplicationRegionShape = ApplicationRegionShape.Sphere</pre>
+    <div>
+      <p>Which shape of regions of application to use at runtime to check whether the listener is inside. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a8b5d14f21b3f6b54fffc13b98e1dc924">
+    <h3>sphereApplicationRegionRadius</h3>
+    <pre class="prettyprint">float sphereApplicationRegionRadius = 1.0f</pre>
+    <div>
+      <p>Radius of the sphere-shaped region of application. </p>
+    </div>
+  </div><h2>Public functions</h2><div id="class_resonance_audio_reverb_probe_1a68ce4dbf725ffe6fbd5b37fdbf876307">
+    <h3>GetScaledBoxApplicationRegionSize</h3>
+    <pre class="prettyprint">Vector3 GetScaledBoxApplicationRegionSize()</pre>
+    <div>
+      <p>Gets the size of the box-shaped region of application scaled by the transform. </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a480e6b6d4a9d2b137bc4dc728ccf4a19">
+    <h3>GetScaledSphericalApplicationRegionRadius</h3>
+    <pre class="prettyprint">float GetScaledSphericalApplicationRegionRadius()</pre>
+    <div>
+      <p>Gets the radius of the spherical region of application scaled by the transform. </p>
+      <p>In order to maintain the spherical shape, the maximum of the scales in three dimensions is used to scale the radius (similar to how Unity handles Sphere Collider). </p>
+    </div>
+  </div><div id="class_resonance_audio_reverb_probe_1a8e08a5f577403eaf38c07dbcf7dd8c4a">
+    <h3>SetProxyRoomProperties</h3>
+    <pre class="prettyprint">void SetProxyRoomProperties(
+  <a href="/resonance-audio/reference/unity/struct/resonance-audio/room-properties.html#struct_resonance_audio_1_1_room_properties">ResonanceAudio.RoomProperties</a> proxyRoomProperties
+)</pre>
+    <div>
+      <p>Set proxy room properties. </p>
+      <p>Proxy rooms are estimated by the ray-tracing engine and passed back to be used in real-time early reflections. </p>
+    </div>
+  </div></body>
+</html>

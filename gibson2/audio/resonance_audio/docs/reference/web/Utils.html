@@ -1,0 +1,435 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+
+<head>
+  <meta name="project_path" value="/resonance-audio/_project.yaml" />
+  <meta name="book_path" value="/resonance-audio/_book.yaml" />
+  <meta name="gtm_var" data-key="docType" data-value="reference">
+  <title>Class: Utils</title>
+  <link href="jsdoc.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="jsdoc-body-container">
+    <div id="jsdoc-content">
+      <div id="jsdoc-content-container">
+        <div id="jsdoc-main" role="main">
+          <header class="page-header">
+            <h1><small></small><span class="symbol-name">Utils</span></h1>
+            <div class="symbol-detail-labels"><span class="label label-kind"><small>class</small></span></div>
+          </header>
+          <section>
+            <h2>Constructor</h2>
+            <section>
+              <h3 id="Utils" class="symbol-name">Utils</h3>
+              <p class="type-signature"> new Utils()
+              </p>
+              <p>A set of defaults, constants and utility functions.</p>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+          </section>
+          <section>
+            <h2>Properties</h2>
+            <section>
+              <h3 id=".ATTENUATION_ROLLOFFS" class="symbol-name">ATTENUATION_ROLLOFFS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Array</p>
+              <p>Rolloff models (e.g. 'logarithmic', 'linear', or 'none').</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_AMBISONIC_ORDER" class="symbol-name">DEFAULT_AMBISONIC_ORDER</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default ambisonic order.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_ATTENUATION_ROLLOFF" class="symbol-name">DEFAULT_ATTENUATION_ROLLOFF</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">string</p>
+              <p>Default rolloff model ('logarithmic').</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_AZIMUTH" class="symbol-name">DEFAULT_AZIMUTH</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>Default azimuth (in degrees). Suitable range is 0 to 360.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_DIRECTIVITY_ALPHA" class="symbol-name">DEFAULT_DIRECTIVITY_ALPHA</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default alpha (i.e. microphone pattern).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_DIRECTIVITY_SHARPNESS" class="symbol-name">DEFAULT_DIRECTIVITY_SHARPNESS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default pattern sharpness (i.e. pattern exponent).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_ELEVATION" class="symbol-name">DEFAULT_ELEVATION</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>Default elevation (in degres). Suitable range is from -90 (below) to 90 (above).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_FORWARD" class="symbol-name">DEFAULT_FORWARD</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Float32Array</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_MAX_DISTANCE" class="symbol-name">DEFAULT_MAX_DISTANCE</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_MIN_DISTANCE" class="symbol-name">DEFAULT_MIN_DISTANCE</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_POSITION" class="symbol-name">DEFAULT_POSITION</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Float32Array</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REFLECTION_COEFFICIENTS" class="symbol-name">DEFAULT_REFLECTION_COEFFICIENTS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>The default reflection coefficients (where 0 = no reflection, 1 = perfect reflection, -1 = mirrored reflection (180-degrees out of phase)).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REFLECTION_CUTOFF_FREQUENCY" class="symbol-name">DEFAULT_REFLECTION_CUTOFF_FREQUENCY</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The -12dB cutoff frequency (in Hertz) for the lowpass filter applied to all reflections.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REFLECTION_MAX_DURATION" class="symbol-name">DEFAULT_REFLECTION_MAX_DURATION</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The maximum delay (in seconds) of a single wall reflection.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REFLECTION_MIN_DISTANCE" class="symbol-name">DEFAULT_REFLECTION_MIN_DISTANCE</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The minimum distance we consider the listener to be to any given wall.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REFLECTION_MULTIPLIER" class="symbol-name">DEFAULT_REFLECTION_MULTIPLIER</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The multiplier to apply to distances from the listener to each wall.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_BANDWIDTH" class="symbol-name">DEFAULT_REVERB_BANDWIDTH</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default bandwidth (in octaves) of the center frequencies.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_DURATION_MULTIPLIER" class="symbol-name">DEFAULT_REVERB_DURATION_MULTIPLIER</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default multiplier applied when computing tail lengths.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_DURATIONS" class="symbol-name">DEFAULT_REVERB_DURATIONS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Float32Array</p>
+              <p>The default multiband RT60 durations (in seconds).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_FREQUENCY_BANDS" class="symbol-name">DEFAULT_REVERB_FREQUENCY_BANDS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Array</p>
+              <p>Center frequencies of the multiband late reflections. Nine bands are computed by: 31.25 * 2^(0:8).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_GAIN" class="symbol-name">DEFAULT_REVERB_GAIN</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default gain (linear).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_MAX_DURATION" class="symbol-name">DEFAULT_REVERB_MAX_DURATION</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The maximum impulse response length (in seconds).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_PREDELAY" class="symbol-name">DEFAULT_REVERB_PREDELAY</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The late reflections pre-delay (in milliseconds).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_REVERB_TAIL_ONSET" class="symbol-name">DEFAULT_REVERB_TAIL_ONSET</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The length of the beginning of the impulse response to apply a half-Hann window to.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_RIGHT" class="symbol-name">DEFAULT_RIGHT</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Float32Array</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_ROOM_DIMENSIONS" class="symbol-name">DEFAULT_ROOM_DIMENSIONS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Default room dimensions (in meters).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_ROOM_MATERIALS" class="symbol-name">DEFAULT_ROOM_MATERIALS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Default materials that use strings from
+                <code>MATERIAL_COEFFICIENTS</code></p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_SOURCE_DISTANCE" class="symbol-name">DEFAULT_SOURCE_DISTANCE</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>Default distance from listener when setting angle.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_SOURCE_GAIN" class="symbol-name">DEFAULT_SOURCE_GAIN</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>Default input gain (linear).</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_SOURCE_WIDTH" class="symbol-name">DEFAULT_SOURCE_WIDTH</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The default source width.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_SPEED_OF_SOUND" class="symbol-name">DEFAULT_SPEED_OF_SOUND</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".DEFAULT_UP" class="symbol-name">DEFAULT_UP</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Float32Array</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".LISTENER_MAX_OUTSIDE_ROOM_DISTANCE" class="symbol-name">LISTENER_MAX_OUTSIDE_ROOM_DISTANCE</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>Maximum outside-the-room distance to attenuate far-field listener by.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".NUMBER_REFLECTION_AVERAGING_BANDS" class="symbol-name">NUMBER_REFLECTION_AVERAGING_BANDS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The number of bands to average over when computing reflection coefficients.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".NUMBER_REVERB_FREQUENCY_BANDS" class="symbol-name">NUMBER_REVERB_FREQUENCY_BANDS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature"></p>
+              <p>The number of frequency bands.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".ROOM_AIR_ABSORPTION_COEFFICIENTS" class="symbol-name">ROOM_AIR_ABSORPTION_COEFFICIENTS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Float32Array</p>
+              <p>Air absorption coefficients per frequency band.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".ROOM_EYRING_CORRECTION_COEFFICIENT" class="symbol-name">ROOM_EYRING_CORRECTION_COEFFICIENT</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>A scalar correction value to ensure Sabine and Eyring produce the same RT60 value at the cross-over threshold.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".ROOM_MATERIAL_COEFFICIENTS" class="symbol-name">ROOM_MATERIAL_COEFFICIENTS</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Pre-defined frequency-dependent absorption coefficients for listed materials. Currently supported materials are:</p>
+              <ul>
+                <li>'transparent'</li>
+                <li>'acoustic-ceiling-tiles'</li>
+                <li>'brick-bare'</li>
+                <li>'brick-painted'</li>
+                <li>'concrete-block-coarse'</li>
+                <li>'concrete-block-painted'</li>
+                <li>'curtain-heavy'</li>
+                <li>'fiber-glass-insulation'</li>
+                <li>'glass-thin'</li>
+                <li>'glass-thick'</li>
+                <li>'grass'</li>
+                <li>'linoleum-on-concrete'</li>
+                <li>'marble'</li>
+                <li>'metal'</li>
+                <li>'parquet-on-concrete'</li>
+                <li>'plaster-smooth'</li>
+                <li>'plywood-panel'</li>
+                <li>'polished-concrete-or-tile'</li>
+                <li>'sheetrock'</li>
+                <li>'water-or-ice-surface'</li>
+                <li>'wood-ceiling'</li>
+                <li>'wood-panel'</li>
+                <li>'uniform'</li>
+              </ul>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".ROOM_MIN_VOLUME" class="symbol-name">ROOM_MIN_VOLUME</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The minimum threshold for room volume. Room model is disabled if volume is below this value.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".ROOM_STARTING_AVERAGING_BAND" class="symbol-name">ROOM_STARTING_AVERAGING_BAND</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>The starting band to average over when computing reflection coefficients.</p>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id=".SOURCE_MAX_OUTSIDE_ROOM_DISTANCE" class="symbol-name">SOURCE_MAX_OUTSIDE_ROOM_DISTANCE</h3>
+              <div class="symbol-detail-labels"><span class="label label-static"><small>static</small></span></div>
+              <p class="type-signature">Number</p>
+              <p>Maximum outside-the-room distance to attenuate far-field sources by.</p>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+            <h2>Abstract types</h2>
+            <section>
+              <h3 id="~RoomDimensions" class="symbol-name">RoomDimensions</h3>
+              <div class="symbol-detail-labels"><span class="label label-inner"><small>inner</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Properties describing the geometry of a room.</p>
+              <section>
+                <h4>Properties</h4>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>width</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>(in meters).</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>height</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>(in meters).</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>depth</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>(in meters).</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="~RoomMaterials" class="symbol-name">RoomMaterials</h3>
+              <div class="symbol-detail-labels"><span class="label label-inner"><small>inner</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Properties describing the wall materials (from
+                <a href="Utils.html#.ROOM_MATERIAL_COEFFICIENTS"><code>ROOM_MATERIAL_COEFFICIENTS</code></a>) of a room.</p>
+              <section>
+                <h4>Properties</h4>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>left</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">String</p>
+                        <p>Left-wall material name.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>right</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">String</p>
+                        <p>Right-wall material name.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>front</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">String</p>
+                        <p>Front-wall material name.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>back</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">String</p>
+                        <p>Back-wall material name.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>up</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">String</p>
+                        <p>Up-wall material name.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>down</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">String</p>
+                        <p>Down-wall material name.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+          </section>
+        </div>
+      </div>
+      <nav id="jsdoc-toc-nav" role="navigation"></nav>
+    </div>
+  </div>
+</body>
+
+</html>

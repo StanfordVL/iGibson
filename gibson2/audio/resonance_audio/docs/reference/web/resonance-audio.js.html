@@ -1,0 +1,280 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+
+<head>
+  <meta name="project_path" value="/resonance-audio/_project.yaml" />
+  <meta name="book_path" value="/resonance-audio/_book.yaml" />
+  <meta name="gtm_var" data-key="docType" data-value="reference">
+  <title>Source: resonance-audio.js</title>
+  <link href="jsdoc.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="jsdoc-body-container">
+    <div id="jsdoc-content">
+      <div id="jsdoc-content-container">
+        <div id="jsdoc-banner" role="banner">
+        </div>
+        <div id="jsdoc-main" role="main">
+          <header class="page-header">
+            <h1>Source: resonance-audio.js</h1>
+          </header>
+          <article>
+            <pre class="prettyprint linenums"><code>/**
+ * @license
+ * Copyright 2017 Google Inc. All Rights Reserved.
+ * Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file ResonanceAudio library name space and common utilities.
+ * @author Andrew Allen &amp;lt;bitllama@google.com&gt;
+ */
+
+&#x27;use strict&#x27;;
+
+
+// Internal dependencies.
+const Listener &#x3D; require(&#x27;./listener.js&#x27;);
+const Source &#x3D; require(&#x27;./source.js&#x27;);
+const Room &#x3D; require(&#x27;./room.js&#x27;);
+const Encoder &#x3D; require(&#x27;./encoder.js&#x27;);
+const Utils &#x3D; require(&#x27;./utils.js&#x27;);
+
+
+/**
+ * Options for constructing a new ResonanceAudio scene.
+ * @typedef {Object} ResonanceAudio~ResonanceAudioOptions
+ * @property {Number} ambisonicOrder
+ * Desired ambisonic Order. Defaults to
+ * {@linkcode Utils.DEFAULT_AMBISONIC_ORDER DEFAULT_AMBISONIC_ORDER}.
+ * @property {Float32Array} listenerPosition
+ * The listener&#x27;s initial position (in meters), where origin is the center of
+ * the room. Defaults to {@linkcode Utils.DEFAULT_POSITION DEFAULT_POSITION}.
+ * @property {Float32Array} listenerForward
+ * The listener&#x27;s initial forward vector.
+ * Defaults to {@linkcode Utils.DEFAULT_FORWARD DEFAULT_FORWARD}.
+ * @property {Float32Array} listenerUp
+ * The listener&#x27;s initial up vector.
+ * Defaults to {@linkcode Utils.DEFAULT_UP DEFAULT_UP}.
+ * @property {Utils~RoomDimensions} dimensions Room dimensions (in meters). Defaults to
+ * {@linkcode Utils.DEFAULT_ROOM_DIMENSIONS DEFAULT_ROOM_DIMENSIONS}.
+ * @property {Utils~RoomMaterials} materials Named acoustic materials per wall.
+ * Defaults to {@linkcode Utils.DEFAULT_ROOM_MATERIALS DEFAULT_ROOM_MATERIALS}.
+ * @property {Number} speedOfSound
+ * (in meters/second). Defaults to
+ * {@linkcode Utils.DEFAULT_SPEED_OF_SOUND DEFAULT_SPEED_OF_SOUND}.
+ */
+
+
+/**
+ * @class ResonanceAudio
+ * @description Main class for managing sources, room and listener models.
+ * @param {AudioContext} context
+ * Associated {@link
+https://developer.mozilla.org/en-US/docs/Web/API/AudioContext AudioContext}.
+ * @param {ResonanceAudio~ResonanceAudioOptions} options
+ * Options for constructing a new ResonanceAudio scene.
+ */
+function ResonanceAudio(context, options) {
+  // Public variables.
+  /**
+   * Binaurally-rendered stereo (2-channel) output {@link
+   * https://developer.mozilla.org/en-US/docs/Web/API/AudioNode AudioNode}.
+   * @member {AudioNode} output
+   * @memberof ResonanceAudio
+   * @instance
+   */
+  /**
+   * Ambisonic (multichannel) input {@link
+   * https://developer.mozilla.org/en-US/docs/Web/API/AudioNode AudioNode}
+   * (For rendering input soundfields).
+   * @member {AudioNode} ambisonicInput
+   * @memberof ResonanceAudio
+   * @instance
+   */
+  /**
+   * Ambisonic (multichannel) output {@link
+   * https://developer.mozilla.org/en-US/docs/Web/API/AudioNode AudioNode}
+   * (For allowing external rendering / post-processing).
+   * @member {AudioNode} ambisonicOutput
+   * @memberof ResonanceAudio
+   * @instance
+   */
+
+  // Use defaults for undefined arguments.
+  if (options &#x3D;&#x3D; undefined) {
+    options &#x3D; {};
+  }
+  if (options.ambisonicOrder &#x3D;&#x3D; undefined) {
+    options.ambisonicOrder &#x3D; Utils.DEFAULT_AMBISONIC_ORDER;
+  }
+  if (options.listenerPosition &#x3D;&#x3D; undefined) {
+    options.listenerPosition &#x3D; Utils.DEFAULT_POSITION.slice();
+  }
+  if (options.listenerForward &#x3D;&#x3D; undefined) {
+    options.listenerForward &#x3D; Utils.DEFAULT_FORWARD.slice();
+  }
+  if (options.listenerUp &#x3D;&#x3D; undefined) {
+    options.listenerUp &#x3D; Utils.DEFAULT_UP.slice();
+  }
+  if (options.dimensions &#x3D;&#x3D; undefined) {
+    options.dimensions &#x3D; {};
+    Object.assign(options.dimensions, Utils.DEFAULT_ROOM_DIMENSIONS);
+  }
+  if (options.materials &#x3D;&#x3D; undefined) {
+    options.materials &#x3D; {};
+    Object.assign(options.materials, Utils.DEFAULT_ROOM_MATERIALS);
+  }
+  if (options.speedOfSound &#x3D;&#x3D; undefined) {
+    options.speedOfSound &#x3D; Utils.DEFAULT_SPEED_OF_SOUND;
+  }
+
+  // Create member submodules.
+  this._ambisonicOrder &#x3D; Encoder.validateAmbisonicOrder(options.ambisonicOrder);
+  this._sources &#x3D; [];
+  this._room &#x3D; new Room(context, {
+    listenerPosition: options.listenerPosition,
+    dimensions: options.dimensions,
+    materials: options.materials,
+    speedOfSound: options.speedOfSound,
+  });
+  this._listener &#x3D; new Listener(context, {
+    ambisonicOrder: options.ambisonicOrder,
+    position: options.listenerPosition,
+    forward: options.listenerForward,
+    up: options.listenerUp,
+  });
+
+  // Create auxillary audio nodes.
+  this._context &#x3D; context;
+  this.output &#x3D; context.createGain();
+  this.ambisonicOutput &#x3D; context.createGain();
+  this.ambisonicInput &#x3D; this._listener.input;
+
+  // Connect audio graph.
+  this._room.output.connect(this._listener.input);
+  this._listener.output.connect(this.output);
+  this._listener.ambisonicOutput.connect(this.ambisonicOutput);
+}
+
+
+/**
+ * Create a new source for the scene.
+ * @param {Source~SourceOptions} options
+ * Options for constructing a new Source.
+ * @return {Source}
+ */
+ResonanceAudio.prototype.createSource &#x3D; function(options) {
+  // Create a source and push it to the internal sources array, returning
+  // the object&#x27;s reference to the user.
+  let source &#x3D; new Source(this, options);
+  this._sources[this._sources.length] &#x3D; source;
+  return source;
+};
+
+
+/**
+ * Set the scene&#x27;s desired ambisonic order.
+ * @param {Number} ambisonicOrder Desired ambisonic order.
+ */
+ResonanceAudio.prototype.setAmbisonicOrder &#x3D; function(ambisonicOrder) {
+  this._ambisonicOrder &#x3D; Encoder.validateAmbisonicOrder(ambisonicOrder);
+};
+
+
+/**
+ * Set the room&#x27;s dimensions and wall materials.
+ * @param {Object} dimensions Room dimensions (in meters).
+ * @param {Object} materials Named acoustic materials per wall.
+ */
+ResonanceAudio.prototype.setRoomProperties &#x3D; function(dimensions, materials) {
+  this._room.setProperties(dimensions, materials);
+};
+
+
+/**
+ * Set the listener&#x27;s position (in meters), where origin is the center of
+ * the room.
+ * @param {Number} x
+ * @param {Number} y
+ * @param {Number} z
+ */
+ResonanceAudio.prototype.setListenerPosition &#x3D; function(x, y, z) {
+  // Update listener position.
+  this._listener.position[0] &#x3D; x;
+  this._listener.position[1] &#x3D; y;
+  this._listener.position[2] &#x3D; z;
+  this._room.setListenerPosition(x, y, z);
+
+  // Update sources with new listener position.
+  this._sources.forEach(function(element) {
+     element._update();
+  });
+};
+
+
+/**
+ * Set the source&#x27;s orientation using forward and up vectors.
+ * @param {Number} forwardX
+ * @param {Number} forwardY
+ * @param {Number} forwardZ
+ * @param {Number} upX
+ * @param {Number} upY
+ * @param {Number} upZ
+ */
+ResonanceAudio.prototype.setListenerOrientation &#x3D; function(forwardX, forwardY,
+  forwardZ, upX, upY, upZ) {
+  this._listener.setOrientation(forwardX, forwardY, forwardZ, upX, upY, upZ);
+};
+
+
+/**
+ * Set the listener&#x27;s position and orientation using a Three.js Matrix4 object.
+ * @param {Object} matrix
+ * The Three.js Matrix4 object representing the listener&#x27;s world transform.
+ */
+ResonanceAudio.prototype.setListenerFromMatrix &#x3D; function(matrix) {
+  this._listener.setFromMatrix(matrix);
+
+  // Update the rest of the scene using new listener position.
+  this.setListenerPosition(this._listener.position[0],
+    this._listener.position[1], this._listener.position[2]);
+};
+
+
+/**
+ * Set the speed of sound.
+ * @param {Number} speedOfSound
+ */
+ResonanceAudio.prototype.setSpeedOfSound &#x3D; function(speedOfSound) {
+  this._room.speedOfSound &#x3D; speedOfSound;
+};
+
+
+module.exports &#x3D; ResonanceAudio;
+</code></pre>
+          </article>
+        </div>
+      </div>
+      <nav id="jsdoc-toc-nav" role="navigation"></nav>
+    </div>
+  </div>
+</body>
+
+</html>

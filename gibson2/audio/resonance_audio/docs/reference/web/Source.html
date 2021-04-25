@@ -1,0 +1,492 @@
+---
+title: Resonance Audio Unity SDK API Reference
+layout: default
+exclude_from_menu: true
+---
+<!DOCTYPE html>
+<html devsite>
+
+<head>
+  <meta name="project_path" value="/resonance-audio/_project.yaml" />
+  <meta name="book_path" value="/resonance-audio/_book.yaml" />
+  <meta name="gtm_var" data-key="docType" data-value="reference">
+  <title>Class: Source</title>
+  <link href="jsdoc.css" rel="stylesheet">
+</head>
+
+<body>
+  <div id="jsdoc-body-container">
+    <div id="jsdoc-content">
+      <div id="jsdoc-content-container">
+        <div id="jsdoc-main" role="main">
+          <header class="page-header">
+            <h1><small></small><span class="symbol-name">Source</span></h1>
+            <div class="symbol-detail-labels"><span class="label label-kind"><small>class</small></span></div>
+          </header>
+          <section>
+            <h2>Constructor</h2>
+            <section>
+              <h3 id="Source" class="symbol-name">Source</h3>
+              <p class="type-signature"> new Source(scene, options)</p>
+              <p>Source model to spatialize an audio buffer.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>scene</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types"><a href="ResonanceAudio.html">ResonanceAudio</a></p>
+                        <p>Associated <a href="ResonanceAudio.html">ResonanceAudio</a> instance.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>options</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types"><a href="Source.html#~SourceOptions">Source~SourceOptions</a></p>
+                        <p>Options for constructing a new Source.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+          </section>
+          <section>
+            <h2>Property</h2>
+            <section>
+              <h3 id="input" class="symbol-name">input</h3>
+              <p class="type-signature">AudioNode</p>
+              <p>Mono (1-channel) input <a href="https://developer.mozilla.org/en-US/docs/Web/API/AudioNode">AudioNode</a>.</p>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+            <h2>Methods</h2>
+            <section>
+              <h3 id="setDirectivityPattern" class="symbol-name">setDirectivityPattern</h3>
+              <p class="type-signature"> setDirectivityPattern(alpha, sharpness)</p>
+              <p>Set source's directivity pattern (defined by alpha), where 0 is an omnidirectional pattern, 1 is a bidirectional pattern, 0.5 is a cardiod pattern. The sharpness of the pattern is increased exponentially.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>alpha</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Determines directivity pattern (0 to 1).</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>sharpness</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Determines the sharpness of the directivity pattern (1 to Inf).</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setFromMatrix" class="symbol-name">setFromMatrix</h3>
+              <p class="type-signature"> setFromMatrix(matrix4)</p>
+              <p>Set source's position and orientation using a Three.js modelViewMatrix object.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>matrix4</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The Matrix4 representing the object position and rotation in world space.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setGain" class="symbol-name">setGain</h3>
+              <p class="type-signature"> setGain(gain)</p>
+              <p>Set source's gain (linear).</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>gain</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setMaxDistance" class="symbol-name">setMaxDistance</h3>
+              <p class="type-signature"> setMaxDistance(maxDistance)</p>
+              <p>Set source's maximum distance (in meters).</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>maxDistance</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setMinDistance" class="symbol-name">setMinDistance</h3>
+              <p class="type-signature"> setMinDistance(minDistance)</p>
+              <p>Set source's minimum distance (in meters).</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>minDistance</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setOrientation" class="symbol-name">setOrientation</h3>
+              <p class="type-signature"> setOrientation(forwardX, forwardY, forwardZ, upX, upY, upZ)</p>
+              <p>Set the source's orientation using forward and up vectors.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forwardX</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forwardY</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forwardZ</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>upX</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>upY</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>upZ</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setPosition" class="symbol-name">setPosition</h3>
+              <p class="type-signature"> setPosition(x, y, z)</p>
+              <p>Set source's position (in meters), where origin is the center of the room.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>x</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>y</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>z</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setRolloff" class="symbol-name">setRolloff</h3>
+              <p class="type-signature"> setRolloff(rolloff)</p>
+              <p>Set source's rolloff.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>rolloff</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">string</p>
+                        <p>Rolloff model to use, chosen from options in
+                          <a href="Utils.html#.ATTENUATION_ROLLOFFS"><code>ATTENUATION_ROLLOFFS</code></a>.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+              <h3 id="setSourceWidth" class="symbol-name">setSourceWidth</h3>
+              <p class="type-signature"> setSourceWidth(sourceWidth)</p>
+              <p>Set the source width (in degrees). Where 0 degrees is a point source and 360 degrees is an omnidirectional source.</p>
+              <section>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>sourceWidth</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>(in degrees).</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+            <h2>Abstract type</h2>
+            <section>
+              <h3 id="~SourceOptions" class="symbol-name">SourceOptions</h3>
+              <div class="symbol-detail-labels"><span class="label label-inner"><small>inner</small></span></div>
+              <p class="type-signature">Object</p>
+              <p>Options for constructing a new Source.</p>
+              <section>
+                <h4>Properties</h4>
+                <table class="function param responsive">
+                  <tr>
+                    <th colspan="2">
+                      <h4>Parameter</h4>
+                    </th>
+                  </tr>
+                  <tbody>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>position</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The source's initial position (in meters), where origin is the center of the room. Defaults to <a href="Utils.html#.DEFAULT_POSITION"><code>DEFAULT_POSITION</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>forward</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The source's initial forward vector. Defaults to
+                          <a href="Utils.html#.DEFAULT_FORWARD"><code>DEFAULT_FORWARD</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>up</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Float32Array</p>
+                        <p>The source's initial up vector. Defaults to
+                          <a href="Utils.html#.DEFAULT_UP"><code>DEFAULT_UP</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>minDistance</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Min. distance (in meters). Defaults to
+                          <a href="Utils.html#.DEFAULT_MIN_DISTANCE"><code>DEFAULT_MIN_DISTANCE</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>maxDistance</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Max. distance (in meters). Defaults to
+                          <a href="Utils.html#.DEFAULT_MAX_DISTANCE"><code>DEFAULT_MAX_DISTANCE</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>rolloff</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">string</p>
+                        <p>Rolloff model to use, chosen from options in
+                          <a href="Utils.html#.ATTENUATION_ROLLOFFS"><code>ATTENUATION_ROLLOFFS</code></a>. Defaults to
+                          <a href="Utils.html#.DEFAULT_ATTENUATION_ROLLOFF"><code>DEFAULT_ATTENUATION_ROLLOFF</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>gain</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Input gain (linear). Defaults to
+                          <a href="Utils.html#.DEFAULT_SOURCE_GAIN"><code>DEFAULT_SOURCE_GAIN</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>alpha</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Directivity alpha. Defaults to
+                          <a href="Utils.html#.DEFAULT_DIRECTIVITY_ALPHA"><code>DEFAULT_DIRECTIVITY_ALPHA</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>sharpness</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Directivity sharpness. Defaults to
+                          <a href="Utils.html#.DEFAULT_DIRECTIVITY_SHARPNESS"><code>DEFAULT_DIRECTIVITY_SHARPNESS</code></a>.</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td class="details-table-name">
+                        <p>sourceWidth</p>
+                      </td>
+                      <td>
+                        <p class="details-table-types">Number</p>
+                        <p>Source width (in degrees). Where 0 degrees is a point source and 360 degrees is an omnidirectional source. Defaults to
+                          <a href="Utils.html#.DEFAULT_SOURCE_WIDTH"><code>DEFAULT_SOURCE_WIDTH</code></a>.</p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+              <dl class="dl-compact">
+              </dl>
+            </section>
+          </section>
+        </div>
+      </div>
+      <nav id="jsdoc-toc-nav" role="navigation"></nav>
+    </div>
+  </div>
+</body>
+
+</html>
