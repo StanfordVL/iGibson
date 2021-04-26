@@ -17,7 +17,6 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.utils.vr_utils import VrTimer
 from gibson2 import assets_path
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
@@ -37,7 +36,7 @@ benchmark_names = [
 ]
 
 # Set to true to print Simulator step() statistics
-PRINT_STATS = False
+PRINT_STATS = True
 # Set to true to use gripper instead of VR hands
 USE_GRIPPER = False
 
@@ -74,7 +73,7 @@ def main():
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
-    # Move VR agent to the middle of the kitchen
+    # Move VR agent to the middlvr_agent = VrAgent(s, use_gripper=USE_GRIPPER)e of the kitchen
     s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=-0.02)
 
     # Mass values to use for each object type - len(masses) objects will be created of each type
@@ -247,40 +246,32 @@ def main():
         print('XYZ dimensions: {}'.format(dims))
 
     # Time how long demo takes
-    time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', 
-                                    font_size=40, font_style='Bold', color=[0,0,0], pos=[0, 90], size=[50, 50])
-    timer = VrTimer()
+    show_overlay = False
+    if show_overlay:
+        ag_text = s.add_vr_overlay_text(text_data='NO AG DATA', 
+                                        font_size=40, font_style='Bold', color=[0,0,0], pos=[0, 90], size=[50, 50])
 
     # Main simulation loop
     while True:
         s.step(print_stats=PRINT_STATS)
 
-        # Events that manage timer functionality
-        r_toggle = s.query_vr_event('right_controller', 'overlay_toggle')
-        l_toggle = s.query_vr_event('left_controller', 'overlay_toggle')
-        # Overlay toggle action on right controller is used to start/stop timer
-        if r_toggle and not l_toggle:
-            if timer.is_timer_running():
-                timer.stop_timer()
-            else:
-                timer.start_timer()
-        # Overlay toggle action on left controller is used to show/hide timer
-        elif l_toggle and not r_toggle:
-            time_text.set_show_state(not time_text.get_show_state())
-        # Reset timer if both toggle buttons are pressed at once
-        elif r_toggle and l_toggle:
-            timer.refresh_timer()
-
-        # Update timer value
-        time_text.set_text('Current time: {}'.format(round(timer.get_timer_val(), 1)))
-
         # Update scroll text
         scroll_dir = s.get_scroll_input()
         if scroll_dir > -1:
-            time_text.scroll_text(up=scroll_dir)
+            ag_text.scroll_text(up=scroll_dir)
 
         # Update VR agent
         vr_agent.update()
+
+        if show_overlay:
+            ag_candidate_data = vr_agent.vr_dict['right_hand'].candidate_data
+            if ag_candidate_data:
+                t = ''
+                for bid, link, dist in ag_candidate_data:
+                    t += '{}, {}, {}\n'.format(bid, link, dist)
+                ag_text.set_text(t)
+            else:
+                ag_text.set_text('NO AG DATA')
 
     s.disconnect()
 

@@ -33,12 +33,16 @@ shared_settings:
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
   hud_pos: [0,0,-0.8]
-  # Height boundaries for VR user (2m is the upper limit)
-  height_bounds: [0, 2.0]
+  # Height boundaries for VR user
+  height_bounds: [0, 1.8]
   # Whether to use iGibson companion window (set to False by default - please use Steam VR mirror display (described in README))
   use_companion_window: False
   # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
   store_only_first_event_per_button: True
+  # Serial number of VR torso tracker - this can be found by connecting/pairing the tracker,
+  # then going into Steam VR settings -> controllers -> manage vive trackers
+  # Note: replace this with your own tracker serial number or leave blank to not use one
+  torso_tracker_serial: "LHR-DF82C682"
 # Settings that are specific to different VR devices (eg. eye tracking, button mapping)
 device_settings:
   HTC_VIVE_PRO_EYE:
