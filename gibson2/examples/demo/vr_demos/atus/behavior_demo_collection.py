@@ -95,7 +95,7 @@ def main():
     )
 
     # VR system settings
-    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings)
+    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings, physics_timestep=1 / 300.0, render_timestep = 1 / 30.0)
     igtn_task = iGTNTask(args.task, args.task_id)
 
     scene_kwargs = None

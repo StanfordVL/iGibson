@@ -161,8 +161,6 @@ class VrSettings(object):
         self.use_vr = True
         # Simulation is reset at start by default
         self.reset_sim = True
-        # Fixed FPS is used by default
-        self.use_fixed_fps = True
         # No frame save path by default
         self.frame_save_path = None
 
