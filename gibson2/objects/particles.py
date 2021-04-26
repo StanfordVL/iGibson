@@ -13,7 +13,6 @@ _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY = 0.1
 _DIRT_SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
 _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
 _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
-_DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET = 0.05
 
 _WATER_SOURCE_PERIOD = 0.3  # new water every this many seconds.
 
@@ -26,7 +25,7 @@ class Particle(Object):
     def __init__(self, pos=(0, 0, 0), dim=0.1, visual_only=False, mass=0.1, color=(1, 1, 1, 1), base_shape="sphere"):
         super(Particle, self).__init__()
         self.base_pos = pos
-        self.dimension = [dim, dim, dim]
+        self.half_extent = np.array([dim, dim, dim])
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
@@ -40,14 +39,14 @@ class Particle(Object):
 
         if self.base_shape == "box":
             colBoxId = p.createCollisionShape(
-                p.GEOM_BOX, halfExtents=self.dimension)
+                p.GEOM_BOX, halfExtents=self.half_extent)
             visualShapeId = p.createVisualShape(
-                p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+                p.GEOM_BOX, halfExtents=self.half_extent, rgbaColor=self.color)
         elif self.base_shape == 'sphere':
             colBoxId = p.createCollisionShape(
-                p.GEOM_SPHERE, radius=self.dimension[0])
+                p.GEOM_SPHERE, radius=self.half_extent[0])
             visualShapeId = p.createVisualShape(
-                p.GEOM_SPHERE, radius=self.dimension[0], rgbaColor=self.color)
+                p.GEOM_SPHERE, radius=self.half_extent[0], rgbaColor=self.color)
 
         if self.visual_only:
             body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
@@ -212,15 +211,18 @@ class _Dirt(AttachedParticleSystem):
 
     def randomize(self, obj):
         # Sample points using the raycasting sampler.
-        results = sampling_utils.sample_points_on_object(
-            obj, self.get_num_stashed(), _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET,
+        cuboid_sizes = [particle.half_extent * 2 for particle in self.get_stashed_particles()]
+        results = sampling_utils.sample_cuboid_on_object(
+            obj, self.get_num_stashed(), cuboid_sizes,
             _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION, _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION,
             _DIRT_SAMPLING_AXIS_PROBABILITIES, _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY, refuse_downwards=True)
 
         # Use the sampled points to set the dirt positions.
         for position, normal, quaternion, reasons in results:
             if position is not None:
-                self.unstash_particle(position, [0, 0, 0, 1])
+                particle_height = self.get_stashed_particles()[0].half_extent[2]
+                half_below_height = position - normal * particle_height / 2
+                self.unstash_particle(half_below_height, quaternion)
 
 
 class Dust(_Dirt):
