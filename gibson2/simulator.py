@@ -130,10 +130,8 @@ class Simulator:
         self.vsync_frame_num = int(
             round(self.fixed_frame_dur / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
-        # This leaves 1 entire vsync frame for blocking, to make sure we don't wait too long
-        # Add 1e-3 to go halfway into the next frame
-        self.non_block_frame_time = (
-            self.vsync_frame_num - 1) * self.vsync_frame_dur + 1e-3
+        # Leave a small amount of time before the last vsync, just in case we overrun
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 10e-3
         # Number of physics steps based on fixed VR fps
         # Use integer division to guarantee we don't exceed 1.0 realtime factor
         # It is recommended to use an FPS that is a multiple of the timestep
@@ -956,6 +954,13 @@ class Simulator:
         self.sync()
         render_dur = time.perf_counter() - render_start_time
 
+        # Sleep until last possible Vsync
+        pre_sleep_dur = outside_step_dur + physics_dur + render_dur
+        sleep_start_time = time.perf_counter()
+        if pre_sleep_dur < self.non_block_frame_time and self.use_fixed_fps:
+            sleep(self.non_block_frame_time - pre_sleep_dur)
+        sleep_dur = time.perf_counter() - sleep_start_time
+
         # Update VR compositor and VR data
         vr_system_start = time.perf_counter()
         # First sync VR compositor - this is where Oculus blocks (as opposed to Vive, which blocks in update_vr_data)
@@ -971,16 +976,9 @@ class Simulator:
         self.renderer.update_vr_data()
         vr_system_dur = time.perf_counter() - vr_system_start
 
-        # Sleep until we reach the last frame before desired vsync point
-        phys_rend_dur = outside_step_dur + physics_dur + render_dur + vr_system_dur
-        sleep_start_time = time.perf_counter()
-        if phys_rend_dur < self.fixed_frame_dur:
-            sleep(self.fixed_frame_dur - phys_rend_dur)
-        sleep_dur = time.perf_counter() - sleep_start_time
-
         # Calculate final frame duration
         # Make sure it is non-zero for FPS calculation (set to max of 1000 if so)
-        frame_dur = max(1e-3, phys_rend_dur + sleep_dur)
+        frame_dur = max(1e-3, pre_sleep_dur + sleep_dur + vr_system_dur)
 
         # Set variables for data saving and replay
         self.last_physics_timestep = physics_dur
@@ -1116,7 +1114,7 @@ class Simulator:
         Checks to see if an object with the given body_id can be grasped. This is done
         by checking its category to see if is in the allowlist.
         """
-        if body_id not in self.scene.objects_by_id or self.scene.objects_by_id[body_id].category == 'object':
+        if not hasattr(self.scene, 'objects_by_id') or body_id not in self.scene.objects_by_id or self.scene.objects_by_id[body_id].category == 'object':
             mass = p.getDynamicsInfo(body_id, c_link)[0]
             return mass <= self.vr_settings.assist_grasp_mass_thresh
         else:
@@ -1191,6 +1189,24 @@ class Simulator:
         is_valid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(device_name)
         return [is_valid, translation, rotation]
 
+    def get_data_for_vr_tracker(self, tracker_serial_number):
+        """
+        Returns the data for a tracker with a specific serial number. This number can be found
+        by looking in the SteamVR device information.
+        :param tracker_serial_number: the serial number of the tracker
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+
+        tracker_data = self.renderer.vrsys.getDataForVRTracker(tracker_serial_number)
+        # Set is_valid to false, and assume the user will check for invalid data
+        if not tracker_data:
+            return [False, None, None]
+        
+        is_valid, translation, rotation = tracker_data
+        return [is_valid, translation, rotation]
+
     def get_hmd_world_pos(self):
         """
         Get world position of HMD without offset
@@ -1221,17 +1237,17 @@ class Simulator:
         """
         Gets scroll input. This uses the non-movement-controller, and determines whether
         the user wants to scroll by testing if they have pressed the touchpad, while keeping
-        their finger on the top/button of the pad. Return True for up and False for down (-1 for no scroll)
+        their finger on the left/right of the pad. Return True for up and False for down (-1 for no scroll)
         """
         mov_controller = self.vr_settings.movement_controller
         other_controller = 'right' if mov_controller == 'left' else 'left'
         other_controller = '{}_controller'.format(other_controller)
         # Data indicating whether user has pressed top or bottom of the touchpad
-        _, _, touch_y = self.renderer.vrsys.getButtonDataForController(other_controller)
-        # Detect no touch in extreme regions of y axis
-        if touch_y > 0.7 and touch_y <= 1.0:
+        _, touch_x, _ = self.renderer.vrsys.getButtonDataForController(other_controller)
+        # Detect no touch in extreme regions of x axis
+        if touch_x > 0.7 and touch_x <= 1.0:
             return 1
-        elif touch_y < -0.7 and touch_y >= -1.0:
+        elif touch_x < -0.7 and touch_x >= -1.0:
             return 0
         else:
             return -1
@@ -1351,7 +1367,7 @@ class Simulator:
         for instance in self.renderer.instances:
             if obj.body_id == instance.pybullet_uuid:
                 instance.hidden = hide
-                self.renderer.update_hidden_state([instance])
+                self.renderer.update_hidden_highlight_state([instance])
                 return
 
     def set_hud_state(self, state):
