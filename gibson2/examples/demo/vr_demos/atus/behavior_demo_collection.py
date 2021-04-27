@@ -100,22 +100,18 @@ def main():
 
     scene_kwargs = None
     online_sampling = True
-    offline_sampling = False
 
     if not args.disable_scene_cache:
         scene_kwargs = {
             'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
         }
         online_sampling = False
-        offline_sampling = True
 
     igtn_task.initialize_simulator(simulator=s,
                                    scene_id=args.scene,
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
-                                   online_sampling=online_sampling,
-                                   offline_sampling=offline_sampling)
-
+                                   online_sampling=online_sampling)
     vr_agent = VrAgent(igtn_task.simulator)
     igtn_task.simulator.set_vr_start_pos([0, 0, 1.8], vr_height_offset=-0.1)
 

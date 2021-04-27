@@ -40,8 +40,7 @@ class iGTNTask(TaskNetTask):
                              scene_kwargs=None,
                              load_clutter=False,
                              should_debug_sampling=False,
-                             online_sampling=True,
-                             offline_sampling=False):
+                             online_sampling=True):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
         :param simulator: Simulator class, populated simulator that should completely
@@ -63,7 +62,6 @@ class iGTNTask(TaskNetTask):
                                scene_id=scene_id,
                                scene_kwargs=scene_kwargs,
                                online_sampling=online_sampling,
-                               offline_sampling=offline_sampling,
                                )
 
     def check_scene(self):
@@ -251,7 +249,7 @@ class iGTNTask(TaskNetTask):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
 
-        if self.offline_sampling:
+        if not self.online_sampling:
             for obj_inst in self.object_scope:
                 matched_sim_obj = None
 
