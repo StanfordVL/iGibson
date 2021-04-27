@@ -67,7 +67,7 @@ def main():
             for _ in range(100):
                 s.step()
 
-            for j in range(0):
+            for j in range(3):
                 apple = URDFObject(filename=apple_filename, category="apple", model_path=apple_dir)
                 s.import_object(apple)
                 assert apple.states[object_states.OnTop].set_value(plate, True, use_ray_casting_method=True)
