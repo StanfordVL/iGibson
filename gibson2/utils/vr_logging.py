@@ -39,6 +39,8 @@ the computer's display when the VR is running
 ------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
 --------- vr_position_data (dataset)
 ------------ DATA: [vr_world_pos, vr_offset] (len 6)
+--------- torso_tracker (dataset)
+------------ DATA: [is_valid, trans, rot] (len 8)
 
 ------ vr_button_data (group)
 
@@ -146,6 +148,7 @@ class VRLogWriter():
             ['vr', 'vr_device_data', 'left_controller'],
             ['vr', 'vr_device_data', 'right_controller'],
             ['vr', 'vr_device_data', 'vr_position_data'],
+            ['vr', 'vr_device_data', 'torso_tracker'],
             ['vr', 'vr_button_data', 'left_controller'],
             ['vr', 'vr_button_data', 'right_controller'],
             ['vr', 'vr_eye_tracking_data'],
@@ -194,7 +197,8 @@ class VRLogWriter():
                 'hmd': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
                 'left_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
                 'right_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
-                'vr_position_data': np.full((self.frames_before_write, 12), self.default_fill_sentinel, dtype=self.np_dtype)
+                'vr_position_data': np.full((self.frames_before_write, 12), self.default_fill_sentinel, dtype=self.np_dtype),
+                'torso_tracker': np.full((self.frames_before_write, 8), self.default_fill_sentinel, dtype=self.np_dtype)
             },
             'vr_button_data': {
                 'left_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype),
@@ -345,6 +349,12 @@ class VRLogWriter():
                 if button_data_list[0] is not None:
                     self.data_map['vr']['vr_button_data'][device][self.frame_counter, ...] = np.array(
                         button_data_list)
+
+        is_valid, torso_trans, torso_rot = s.get_data_for_vr_tracker(s.vr_settings.torso_tracker_serial)
+        torso_data_list = [is_valid]
+        torso_data_list.extend(list(torso_trans))
+        torso_data_list.extend(list(torso_rot))
+        self.data_map['vr']['vr_device_data']['torso_tracker'][self.frame_counter, ...] = np.array(torso_data_list)
 
         vr_pos_data = []
         vr_pos_data.extend(list(s.get_vr_pos()))

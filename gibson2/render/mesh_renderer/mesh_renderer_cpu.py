@@ -464,6 +464,9 @@ class MeshRenderer(object):
                 # Rotate the shape after they are scaled
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 shape_vertex = shape_vertex.dot(orn[:3, :3].T)
+                # Also rotate the surface normal, note that tangent space does not need to be rotated since they
+                # are derived from shape_vertex
+                shape_normal = shape_normal.dot(orn[:3, :3].T)
             if transform_pos is not None:
                 # Translate the shape after they are scaled
                 shape_vertex += np.array(transform_pos)

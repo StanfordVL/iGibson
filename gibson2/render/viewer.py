@@ -58,7 +58,6 @@ class ViewerVR:
             self.renderer.render_companion_window()
 
         self.frame_counter += 1
-        print(self.frame_counter)
 
 
 class ViewerSimple:

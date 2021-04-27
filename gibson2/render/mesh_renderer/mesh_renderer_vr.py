@@ -192,6 +192,8 @@ class VrSettings(object):
         self.height_bounds = shared_settings['height_bounds']
         self.use_companion_window = shared_settings['use_companion_window']
         self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
+        self.torso_tracker_serial = shared_settings['torso_tracker_serial']
+        if self.torso_tracker_serial == '': self.torso_tracker_serial = None
 
         device_settings = vr_config['device_settings']
         curr_device_candidate = vr_config['current_device']
@@ -199,6 +201,9 @@ class VrSettings(object):
             self.curr_device = 'OTHER_VR'
         else:
             self.curr_device = curr_device_candidate
+        # Disable waist tracker by default for Oculus
+        if self.curr_device == 'OCULUS':
+            self.torso_tracker_serial = None
         specific_device_settings = device_settings[self.curr_device]
         self.eye_tracking = specific_device_settings['eye_tracking']
         self.action_button_map = specific_device_settings['action_button_map']

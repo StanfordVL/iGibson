@@ -393,6 +393,29 @@ class InteractiveIndoorScene(StaticIndoorScene):
         else:
             return []
 
+    def remove_object(self, obj):
+        if hasattr(obj, "name"):
+            del self.objects_by_name[obj.name]
+
+        if hasattr(obj, "category"):
+            self.objects_by_category[obj.category].remove(obj)
+
+        if hasattr(obj, "states"):
+            for state in obj.states:
+                self.objects_by_state[state].remove(obj)
+
+        if hasattr(obj, "in_rooms"):
+            in_rooms = obj.in_rooms
+            if in_rooms is not None:
+                for in_room in in_rooms:
+                    self.objects_by_room[in_room].remove(obj)
+
+        if hasattr(obj, "body_ids"):
+            for id in obj.body_ids:
+                del self.objects_by_id[id]
+        else:
+            del self.objects_by_id[obj.body_id]
+
     def _add_object(self, obj):
         """
         Adds an object to the scene
@@ -435,6 +458,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     if in_room not in self.objects_by_room.keys():
                         self.objects_by_room[in_room] = []
                     self.objects_by_room[in_room].append(obj)
+
+        if hasattr(obj, "body_ids"):
+            for id in obj.body_ids:
+                self.objects_by_id[id] = obj
+        else:
+            if obj.body_id is not None:
+                self.objects_by_id[obj.body_id] = obj
 
     def randomize_texture(self):
         """
