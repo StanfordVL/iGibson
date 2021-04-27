@@ -190,6 +190,11 @@ class ProcessPyEnvironment(object):
 
 
 class ToyEnv(object):
+    """
+    ToyEnv is an example environment that wraps around the simulator. It doesn't follow
+    OpenAI gym interface, and only has step and close function. It works with static
+    mesh scenes.
+    """
     def __init__(self):
         config = parse_config(os.path.join(
             gibson2.example_config_path, 'turtlebot_demo.yaml'))
@@ -220,16 +225,21 @@ class ToyEnv(object):
         print(self.s.renderer.instances)
 
     def step(self, a):
+        # run simulation for one step and get an rgb frame
         self.robot.apply_action(a)
         self.s.step()
         frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
         return frame
 
     def close(self):
+        # tear down the simulation
         self.s.disconnect()
 
 
 class ToyEnvInt(object):
+    """
+    Same with ToyEnv, but works with interactive scenes.
+    """
     def __init__(self, robot='turtlebot', scene='Rs_int'):
         config = parse_config(os.path.join(
             gibson2.example_config_path, 'turtlebot_demo.yaml'))
@@ -274,7 +284,9 @@ class ToyEnvInt(object):
         print(self.s.renderer.instances)
 
     def step(self, a):
+        # run simulation for one step and get an rgb frame
         action = np.zeros(self.robot.action_space.shape)
+        # for some reason, the wheel velocity of Fetch Robot needs to be reversed.
         if isinstance(self.robot, Turtlebot):
             action[0] = a[0]
             action[1] = a[1]
@@ -288,24 +300,35 @@ class ToyEnvInt(object):
         return frame
 
     def close(self):
+        # tear down the simulation
         self.s.disconnect()
 
 
 class iGFlask(Flask):
+    """
+    iGFlask is a Flask app that handles environment creation and teardown.
+    """
     def __init__(self, args, **kwargs):
         super(iGFlask, self).__init__(args, **kwargs)
-        self.action = {}
-        self.envs = {}
-        self.envs_inception_time = {}
+        self.action= {} # map uuid to input action
+        self.envs = {} # map uuid to environment instance
+        self.envs_inception_time = {} # map uuid to environment start time
 
     def cleanup(self):
+        """
+        Routine clean up, this function tries to find any environment that idles for more
+        than 200s and stops it.
+        """
         print(self.envs)
         for k, v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
-                self.stop_app(k)
+                self.stop_env(k)
 
-    def prepare_app(self, uuid, robot, scene):
+    def prepare_env(self, uuid, robot, scene):
+        """
+        This function creates an Env (ToyEnv or ToyEnvInt) in a subprocess.
+        """
         self.cleanup()
 
         def env_constructor():
@@ -318,7 +341,8 @@ class iGFlask(Flask):
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
 
-    def stop_app(self, uuid):
+    def stop_env(self, uuid):
+        # stop an environment (ToyEnv or ToyEnvInt) that lives in a subprocess.
         self.envs[uuid].close()
         del self.envs[uuid]
         del self.envs_inception_time[uuid]
@@ -341,7 +365,11 @@ def demo():
     scene = args['scene']
     return render_template('demo.html', uuid=id, robot=robot, scene=scene)
 
-
+"""
+gen is a utility function that generate an image based on user id
+    and user input (robot and scene), and send it back to the user.
+    The images are played quickly so it becomes a video.
+"""
 def gen(app, unique_id, robot, scene):
     image = np.array(Image.open(
         "templates/loading.jpg").resize((400, 400))).astype(np.uint8)
@@ -359,9 +387,10 @@ def gen(app, unique_id, robot, scene):
     finished_frame = binascii.a2b_base64(finished_frame)
     id = unique_id
     if len(app.envs) < 3:
+        # if number of envs is smaller than 3, then create an environment and provide to the user
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + loading_frame + b'\r\n\r\n')
-        app.prepare_app(id, robot, scene)
+        app.prepare_env(id, robot, scene)
         try:
             start_time = time.time()
             if interactive:
@@ -369,6 +398,8 @@ def gen(app, unique_id, robot, scene):
             else:
                 timeout = 30
             while time.time() - start_time < timeout:
+                # If the environment is still valid (before it should be destroyed)
+                # generate a frame from the Env and supply to the user.
                 frame = app.envs[id].step(app.action[id])
                 frame = (frame[:, :, :3] * 255).astype(np.uint8)
                 frame = pil_image_to_base64(Image.fromarray(frame))
@@ -377,10 +408,13 @@ def gen(app, unique_id, robot, scene):
         except:
             pass
         finally:
-            app.stop_app(id)
+            # if timeouts, stop the environment, and show an text prompt image telling
+            # the user the simulation has finished
+            app.stop_env(id)
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + finished_frame + b'\r\n\r\n')
     else:
+        # If number of envs is >= 3, then let the user wait
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + waiting_frame + b'\r\n\r\n')
 

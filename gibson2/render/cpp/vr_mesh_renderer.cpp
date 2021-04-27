@@ -55,8 +55,8 @@ py::list VRRendererContext::getButtonDataForController(char* controllerType) {
 }
 
 // Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
-	// Device type can be either hmd, left_controller or right_controller
-	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
+// Device type can be either hmd, left_controller or right_controller
+// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 py::list VRRendererContext::getDataForVRDevice(char* deviceType) {
 	bool isValid = false;
 
@@ -64,7 +64,6 @@ py::list VRRendererContext::getDataForVRDevice(char* deviceType) {
 	py::array_t<float> rotationData;
 	py::array_t<float> hmdActualPosData;
 
-	// TODO: Extend this to work with multiple headsets in future
 	if (!strcmp(deviceType, "hmd")) {
 		glm::vec3 transformedPos(vrToGib * glm::vec4(hmdData.devicePos, 1.0));
 		positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
@@ -93,6 +92,31 @@ py::list VRRendererContext::getDataForVRDevice(char* deviceType) {
 	deviceData.append(hmdActualPosData);
 
 	return deviceData;
+}
+
+// Returns tracker data in order: isValidData, position, rotation
+// An empty list will be returned if the input serial number is invalid
+py::list VRRendererContext::getDataForVRTracker(char* trackerSerialNumber) {
+	std::string trackerSerialString = std::string(trackerSerialNumber);
+	bool isValid = false;
+	py::list trackerData;
+
+	py::array_t<float> positionData;
+	py::array_t<float> rotationData;
+
+	// Return empty tracker data list if the tracker serial number is invalid
+	if (this->trackerNamesToData.find(trackerSerialString) != this->trackerNamesToData.end()) {
+		DeviceData currTrackerData = this->trackerNamesToData[trackerSerialString];
+		glm::vec3 transformedPos(vrToGib * glm::vec4(currTrackerData.devicePos, 1.0));
+		positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+		rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * currTrackerData.deviceRot));
+		isValid = currTrackerData.isValidData;
+		trackerData.append(isValid);
+		trackerData.append(positionData);
+		trackerData.append(rotationData);
+	}
+
+	return trackerData;
 }
 
 // Gets normalized vectors representing HMD coordinate system
@@ -270,6 +294,8 @@ void VRRendererContext::postRenderVR(bool shouldHandoff) {;
 	if (shouldHandoff) {
 		vr::VRCompositor()->PostPresentHandoff();
 	}
+	// Flush rendering queue to get GPU working ASAP
+	glFlush();
 }
 
 // Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -439,6 +465,33 @@ void VRRendererContext::updateVRData() {
 
 				rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
 				rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
+			}
+		}
+		else if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_GenericTracker) {
+			// We identify generic trackers by their serial number
+			char serial_name[vr::k_unMaxPropertyStringSize];
+			uint32_t serial_name_len = m_pHMD->GetStringTrackedDeviceProperty(idx, vr::ETrackedDeviceProperty::Prop_SerialNumber_String, serial_name, vr::k_unMaxPropertyStringSize);
+			std::string serial(serial_name, serial_name_len-1);
+
+			// Apply VR offset to tracker position
+			glm::vec3 trackerPos = getPositionFromSteamVRMatrix(transformMat);
+			setSteamVRMatrixPos(trackerPos + vrOffsetVec, transformMat);
+
+			if (this->trackerNamesToData.find(serial) != this->trackerNamesToData.end()) {
+				this->trackerNamesToData[serial].index = idx;
+				this->trackerNamesToData[serial].isValidData = true;
+				this->trackerNamesToData[serial].deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				this->trackerNamesToData[serial].devicePos = getPositionFromSteamVRMatrix(transformMat);
+				this->trackerNamesToData[serial].deviceRot = getRotationFromSteamVRMatrix(transformMat);
+			}
+			else {
+				DeviceData trackerData;
+				trackerData.index = idx;
+				trackerData.isValidData = true;
+				trackerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				trackerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+				trackerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+				this->trackerNamesToData[serial] = trackerData;
 			}
 		}
 	}
@@ -810,6 +863,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	// VR functions
 	pymodule.def("getButtonDataForController", &VRRendererContext::getButtonDataForController);
 	pymodule.def("getDataForVRDevice", &VRRendererContext::getDataForVRDevice);
+	pymodule.def("getDataForVRTracker", &VRRendererContext::getDataForVRTracker);
 	pymodule.def("getDeviceCoordinateSystem", &VRRendererContext::getDeviceCoordinateSystem);
 	pymodule.def("getEyeTrackingData", &VRRendererContext::getEyeTrackingData);
 	pymodule.def("getVROffset", &VRRendererContext::getVROffset);

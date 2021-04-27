@@ -39,6 +39,8 @@ the computer's display when the VR is running
 ------------ DATA: [is_valid, trans, rot, right, up, forward] (len 17)
 --------- vr_position_data (dataset)
 ------------ DATA: [vr_world_pos, vr_offset] (len 6)
+--------- torso_tracker (dataset)
+------------ DATA: [is_valid, trans, rot] (len 8)
 
 ------ vr_button_data (group)
 
@@ -104,7 +106,7 @@ class VRLogWriter():
         # TODO: if the objects change after scene initialization, this will be invalid
         self.filter_objects = filter_objects
         if filter_objects:
-            self.tracked_objects = self.task.scene.object_scope
+            self.tracked_objects = self.task.object_scope
         else:
             self.tracked_objects = self.task.scene.objects_by_id
         self.joint_map = {str(obj_name): p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.tracked_objects.items()}
@@ -146,6 +148,7 @@ class VRLogWriter():
             ['vr', 'vr_device_data', 'left_controller'],
             ['vr', 'vr_device_data', 'right_controller'],
             ['vr', 'vr_device_data', 'vr_position_data'],
+            ['vr', 'vr_device_data', 'torso_tracker'],
             ['vr', 'vr_button_data', 'left_controller'],
             ['vr', 'vr_button_data', 'right_controller'],
             ['vr', 'vr_eye_tracking_data'],
@@ -194,7 +197,8 @@ class VRLogWriter():
                 'hmd': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
                 'left_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
                 'right_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
-                'vr_position_data': np.full((self.frames_before_write, 12), self.default_fill_sentinel, dtype=self.np_dtype)
+                'vr_position_data': np.full((self.frames_before_write, 12), self.default_fill_sentinel, dtype=self.np_dtype),
+                'torso_tracker': np.full((self.frames_before_write, 8), self.default_fill_sentinel, dtype=self.np_dtype)
             },
             'vr_button_data': {
                 'left_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype),
@@ -345,6 +349,12 @@ class VRLogWriter():
                 if button_data_list[0] is not None:
                     self.data_map['vr']['vr_button_data'][device][self.frame_counter, ...] = np.array(
                         button_data_list)
+
+        is_valid, torso_trans, torso_rot = s.get_data_for_vr_tracker(s.vr_settings.torso_tracker_serial)
+        torso_data_list = [is_valid]
+        torso_data_list.extend(list(torso_trans))
+        torso_data_list.extend(list(torso_rot))
+        self.data_map['vr']['vr_device_data']['torso_tracker'][self.frame_counter, ...] = np.array(torso_data)
 
         vr_pos_data = []
         vr_pos_data.extend(list(s.get_vr_pos()))
@@ -531,7 +541,7 @@ class VRLogReader():
         Args:
             s (simulator): used to set camera view and projection matrices
             full_replay: boolean indicating if we should replay full state of the world or not.
-                If this value is set to false, we simply increment the frame counter each frame, 
+                If this value is set to false, we simply increment the frame counter each frame,
                 and let the user take control of processing actions and simulating them
             print_vr_data: boolean indicating whether all vr data should be printed each frame (for debugging purposes)
         """
@@ -595,7 +605,7 @@ class VRLogReader():
         """
         full_action_path = 'action/' + action_path
         return self.hf[full_action_path][self.frame_counter]
-    
+
     # TIMELINE: Use this as the while loop condition to keep reading frames
     def get_data_left_to_read(self):
         """Returns whether there is still data left to read."""

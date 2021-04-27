@@ -98,6 +98,9 @@ public:
 	// Stores mapping from overlay names to handles
 	std::map<std::string, vr::VROverlayHandle_t> overlayNamesToHandles;
 
+	// Stores mapping from tracker serial names to device data
+	std::map<std::string, DeviceData> trackerNamesToData;
+
 	// Main VR methods
 
 	VRRendererContext(int w, int h, int glVersionMajor, int glVersionMinor, bool render_window = false, bool fullscreen = false) : GLFWRendererContext(w, h, glVersionMajor, glVersionMinor, render_window, fullscreen), m_pHMD(NULL), nearClip(0.1f), farClip(30.0f) {};
@@ -105,6 +108,8 @@ public:
 	py::list getButtonDataForController(char* controllerType);
 
 	py::list getDataForVRDevice(char* deviceType);
+
+	py::list getDataForVRTracker(char* trackerSerialNumber);
 
 	py::list getDeviceCoordinateSystem(char* device);
 

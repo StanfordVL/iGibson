@@ -229,7 +229,7 @@ def test_dirty():
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
         assert 'dustyable' in sink.abilities
-        assert object_states.Dirty in sink.states
+        assert object_states.Dusty in sink.states
 
         for i in range(10):
             s.step()
@@ -260,10 +260,10 @@ def test_water_source():
         assert 'water_source' in sink.abilities
         assert object_states.WaterSource in sink.states
 
-        for i in range(10):
+        for i in range(2):
             s.step()
 
         # Check that we have some loaded particles here.
-        assert sink.states[object_states.WaterSource].water_stream.particles[0].body_id is not None
+        assert sink.states[object_states.WaterSource].water_stream.get_active_particles()[0].body_id is not None
     finally:
         s.disconnect()
