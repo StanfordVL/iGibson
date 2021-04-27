@@ -1198,6 +1198,9 @@ class Simulator:
         if not self.can_access_vr_context:
             raise RuntimeError(
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            
+        if not tracker_serial_number:
+            return [False, [0,0,0], [0,0,0,0]]
 
         tracker_data = self.renderer.vrsys.getDataForVRTracker(tracker_serial_number)
         # Set is_valid to false, and assume the user will check for invalid data
