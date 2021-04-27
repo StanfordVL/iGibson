@@ -15,6 +15,7 @@ from gibson2.task.task_base import iGTNTask
 from gibson2.utils.vr_logging import VRLogWriter
 import tasknet
 
+
 def parse_args():
     scene_choices = [
         "Beechwood_0_int",
@@ -35,26 +36,35 @@ def parse_args():
     ]
 
     task_choices = [
-	"packing_lunches_filtered",
-	"assembling_gift_baskets_filtered",
-	"organizing_school_stuff_filtered",
-	"re-shelving_library_books_filtered",
-	"serving_hors_d_oeuvres_filtered",
-	"putting_away_toys_filtered",
-	"putting_away_Christmas_decorations_filtered",
-	"putting_dishes_away_after_cleaning_filtered",
-	"cleaning_out_drawers_filtered",
+        "packing_lunches_filtered",
+        "assembling_gift_baskets_filtered",
+        "organizing_school_stuff_filtered",
+        "re-shelving_library_books_filtered",
+        "serving_hors_d_oeuvres_filtered",
+        "putting_away_toys_filtered",
+        "putting_away_Christmas_decorations_filtered",
+        "putting_dishes_away_after_cleaning_filtered",
+        "cleaning_out_drawers_filtered",
     ]
     task_id_choices = [0, 1]
-    parser = argparse.ArgumentParser(description='Run and collect an ATUS demo')
-    parser.add_argument('--task', type=str, required=True, choices=task_choices, nargs='?', help='Name of ATUS task matching PDDL parent folder in tasknet.')
-    parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices, nargs='?', help='PDDL integer ID, matching suffix of pddl.')
-    parser.add_argument('--vr_log_path', type=str, help='Path (and filename) of vr log')
-    parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?', help='Scene name/ID matching iGibson interactive scenes.')
-    parser.add_argument('--disable_save', action='store_true', help='Whether to disable saving logfiles.')
-    parser.add_argument('--disable_scene_cache', action='store_true', help='Whether to disable using pre-initialized scene caches.')
-    parser.add_argument('--profile', action='store_true', help='Whether to print profiling data.')
+    parser = argparse.ArgumentParser(
+        description='Run and collect an ATUS demo')
+    parser.add_argument('--task', type=str, required=True, choices=task_choices,
+                        nargs='?', help='Name of ATUS task matching PDDL parent folder in tasknet.')
+    parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
+                        nargs='?', help='PDDL integer ID, matching suffix of pddl.')
+    parser.add_argument('--vr_log_path', type=str,
+                        help='Path (and filename) of vr log')
+    parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?',
+                        help='Scene name/ID matching iGibson interactive scenes.')
+    parser.add_argument('--disable_save', action='store_true',
+                        help='Whether to disable saving logfiles.')
+    parser.add_argument('--disable_scene_cache', action='store_true',
+                        help='Whether to disable using pre-initialized scene caches.')
+    parser.add_argument('--profile', action='store_true',
+                        help='Whether to print profiling data.')
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -78,7 +88,7 @@ def main():
         env_texture_filename2=hdr_texture2,
         env_texture_filename3=background_texture,
         light_modulation_map_filename=light_modulation_map_filename,
-        enable_shadow=True, 
+        enable_shadow=True,
         enable_pbr=True,
         msaa=False,
         light_dimming_factor=1.0
@@ -93,26 +103,31 @@ def main():
 
     if not args.disable_scene_cache:
         scene_kwargs = {
-                'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
+            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
         }
         online_sampling = False
 
-    igtn_task.initialize_simulator(simulator=s, scene_id=args.scene, load_clutter=True, scene_kwargs=scene_kwargs, online_sampling=online_sampling)
-
+    igtn_task.initialize_simulator(simulator=s,
+                                   scene_id=args.scene,
+                                   scene_kwargs=scene_kwargs,
+                                   load_clutter=True,
+                                   online_sampling=online_sampling)
     vr_agent = VrAgent(igtn_task.simulator)
-    igtn_task.simulator.set_vr_start_pos([0,0,1.8], vr_height_offset=-0.1)
+    igtn_task.simulator.set_vr_start_pos([0, 0, 1.8], vr_height_offset=-0.1)
 
     vr_cs = VrConditionSwitcher(
-        igtn_task.simulator, 
-        igtn_task.show_instruction, 
+        igtn_task.simulator,
+        igtn_task.show_instruction,
         igtn_task.iterate_instruction
     )
 
     if not args.disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_log_path == None:
-            args.vr_log_path = "{}_{}_{}_{}.hdf5".format(args.task, args.task_id, args.scene, timestamp)
-        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200, log_filepath=args.vr_log_path, profiling_mode=args.profile)
+            args.vr_log_path = "{}_{}_{}_{}.hdf5".format(
+                args.task, args.task_id, args.scene, timestamp)
+        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200,
+                                log_filepath=args.vr_log_path, profiling_mode=args.profile)
         vr_writer.set_up_data_storage()
 
     satisfied_predicates_cached = {}
@@ -128,7 +143,7 @@ def main():
 
         if igtn_task.simulator.query_vr_event('right_controller', 'overlay_toggle'):
             vr_cs.refresh_condition()
-        
+
         if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
             vr_cs.toggle_show_state()
 
@@ -136,6 +151,7 @@ def main():
             vr_writer.process_frame(s)
 
     s.disconnect()
+
 
 if __name__ == "__main__":
     main()
