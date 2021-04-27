@@ -29,6 +29,7 @@ import uuid
 
 interactive = True
 
+
 def pil_image_to_base64(pil_image):
     buf = BytesIO()
     pil_image.save(buf, format="JPEG")
@@ -48,7 +49,6 @@ class ProcessPyEnvironment(object):
 
     def __init__(self, env_constructor):
         self._env_constructor = env_constructor
-
 
     def start(self):
         """Start the process."""
@@ -188,6 +188,7 @@ class ProcessPyEnvironment(object):
         finally:
             conn.close()
 
+
 class ToyEnv(object):
     """
     ToyEnv is an example environment that wraps around the simulator. It doesn't follow
@@ -195,7 +196,8 @@ class ToyEnv(object):
     mesh scenes.
     """
     def __init__(self):
-        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
+        config = parse_config(os.path.join(
+            gibson2.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -206,13 +208,12 @@ class ToyEnv(object):
             gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
-       
 
         self.s = Simulator(mode='headless', image_width=400,
-                      image_height=400, rendering_settings=settings)
+                           image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene('Rs')
         self.s.import_scene(scene)
-        #self.s.import_ig_scene(scene)
+        # self.s.import_ig_scene(scene)
         self.robot = Turtlebot(config)
         self.s.import_robot(self.robot)
 
@@ -235,13 +236,13 @@ class ToyEnv(object):
         self.s.disconnect()
 
 
-
 class ToyEnvInt(object):
     """
     Same with ToyEnv, but works with interactive scenes.
     """
     def __init__(self, robot='turtlebot', scene='Rs_int'):
-        config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
+        config = parse_config(os.path.join(
+            gibson2.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
             gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
@@ -253,7 +254,7 @@ class ToyEnvInt(object):
 
         scene = InteractiveIndoorScene(
             scene, texture_randomization=False, object_randomization=False)
-        #scene._set_first_n_objects(5)
+        # scene._set_first_n_objects(5)
         scene.open_all_doors()
 
         settings = MeshRendererSettings(env_texture_filename=hdr_texture,
@@ -265,10 +266,10 @@ class ToyEnvInt(object):
                                         optimized=True)
 
         self.s = Simulator(mode='headless', image_width=400,
-                      image_height=400, rendering_settings=settings)
+                           image_height=400, rendering_settings=settings)
         self.s.import_ig_scene(scene)
-        
-        if robot=='turtlebot':
+
+        if robot == 'turtlebot':
             self.robot = Turtlebot(config)
         else:
             self.robot = Fetch(config)
@@ -302,6 +303,7 @@ class ToyEnvInt(object):
         # tear down the simulation
         self.s.disconnect()
 
+
 class iGFlask(Flask):
     """
     iGFlask is a Flask app that handles environment creation and teardown.
@@ -318,7 +320,7 @@ class iGFlask(Flask):
         than 200s and stops it.
         """
         print(self.envs)
-        for k,v in self.envs_inception_time.items():
+        for k, v in self.envs_inception_time.items():
             if time.time() - v > 200:
                 # clean up an old environment
                 self.stop_env(k)
@@ -345,12 +347,15 @@ class iGFlask(Flask):
         del self.envs[uuid]
         del self.envs_inception_time[uuid]
 
+
 app = iGFlask(__name__)
+
 
 @app.route('/')
 def index():
     id = uuid.uuid4()
     return render_template('index.html', uuid=id)
+
 
 @app.route('/demo')
 def demo():
@@ -366,15 +371,18 @@ gen is a utility function that generate an image based on user id
     The images are played quickly so it becomes a video.
 """
 def gen(app, unique_id, robot, scene):
-    image = np.array(Image.open("templates/loading.jpg").resize((400, 400))).astype(np.uint8)
+    image = np.array(Image.open(
+        "templates/loading.jpg").resize((400, 400))).astype(np.uint8)
     loading_frame = pil_image_to_base64(Image.fromarray(image))
     loading_frame = binascii.a2b_base64(loading_frame)
 
-    image = np.array(Image.open("templates/waiting.jpg").resize((400, 400))).astype(np.uint8)
+    image = np.array(Image.open(
+        "templates/waiting.jpg").resize((400, 400))).astype(np.uint8)
     waiting_frame = pil_image_to_base64(Image.fromarray(image))
     waiting_frame = binascii.a2b_base64(waiting_frame)
 
-    image = np.array(Image.open("templates/finished.jpg").resize((400, 400))).astype(np.uint8)
+    image = np.array(Image.open(
+        "templates/finished.jpg").resize((400, 400))).astype(np.uint8)
     finished_frame = pil_image_to_base64(Image.fromarray(image))
     finished_frame = binascii.a2b_base64(finished_frame)
     id = unique_id
@@ -410,6 +418,7 @@ def gen(app, unique_id, robot, scene):
         for i in range(5):
             yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + waiting_frame + b'\r\n\r\n')
 
+
 @app.route('/video_feed', methods=['POST', 'GET'])
 def video_feed():
     unique_id = request.args['uuid']
@@ -421,19 +430,20 @@ def video_feed():
     if request.method == 'POST':
         key = request.args['key']
         if key == 'w':
-            app.action[unique_id] = [1,1]
+            app.action[unique_id] = [1, 1]
         if key == 's':
-            app.action[unique_id] = [-1,-1]
+            app.action[unique_id] = [-1, -1]
         if key == 'd':
-            app.action[unique_id] = [0.3,-0.3]
+            app.action[unique_id] = [0.3, -0.3]
         if key == 'a':
-            app.action[unique_id] = [-0.3,0.3]
+            app.action[unique_id] = [-0.3, 0.3]
         if key == 'f':
-            app.action[unique_id] = [0,0]
+            app.action[unique_id] = [0, 0]
         return ""
     else:
-        app.action[unique_id] = [0,0]
+        app.action[unique_id] = [0, 0]
         return Response(gen(app, unique_id, robot, scene), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 if __name__ == '__main__':
     port = int(sys.argv[1])
