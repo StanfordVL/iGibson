@@ -366,7 +366,7 @@ class iGTNTask(TaskNetTask):
                 for obj_inst in scene_object_scope_filtered[room_type]:
                     error_msg += '{}: '.format(obj_inst) + ', '.join(
                         scene_object_scope_filtered[room_type][obj_inst].keys()) + '\n'
-                error_msg += 'The folloing are the initial condition sampling history:\n'
+                error_msg += 'The following are the initial condition sampling history:\n'
                 error_msg += '\n'.join(init_sampling_log)
                 logging.warning(error_msg)
                 feedback['init_success'] = 'no'
@@ -430,7 +430,7 @@ class iGTNTask(TaskNetTask):
             if not success:
                 error_msg = 'Room type [{}] of scene [{}] do not have enough simulator objects that can successfully sample all the objects needed. This is usually caused by specifying too many object instances in the object scope or the conditions are so stringent that too few simulator objects can satisfy them via sampling.\n'.format(
                     room_type, self.scene.scene_id)
-                error_msg += 'The folloing are the initial condition matching history:\n'
+                error_msg += 'The following are the initial condition matching history:\n'
                 error_msg += '\n'.join(init_mbm_log)
                 logging.warning(error_msg)
                 feedback['init_success'] = 'no'
@@ -508,7 +508,7 @@ class iGTNTask(TaskNetTask):
                     for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
                         error_msg += '{}: '.format(obj_inst) + ', '.join(
                             scene_object_scope_filtered_goal_cond[room_type][obj_inst].keys()) + '\n'
-                    error_msg += 'The folloing are the goal condition sampling history:\n'
+                    error_msg += 'The following are the goal condition sampling history:\n'
                     error_msg += '\n'.join(goal_sampling_log)
                     logging.warning(error_msg)
                     goal_sampling_error_msgs.append(error_msg)
@@ -574,7 +574,7 @@ class iGTNTask(TaskNetTask):
                 if not success:
                     error_msg = 'Room type [{}] of scene [{}] do not have enough simulator objects that can successfully sample all the objects needed. This is usually caused by specifying too many object instances in the object scope or the conditions are so stringent that too few simulator objects can satisfy them via sampling.\n'.format(
                         room_type, self.scene.scene_id)
-                    error_msg += 'The folloing are the goal condition matching history:\n'
+                    error_msg += 'The following are the goal condition matching history:\n'
                     error_msg += '\n'.join(goal_mbm_log)
                     logging.warning(error_msg)
                     goal_sampling_error_msgs.append(error_msg)
