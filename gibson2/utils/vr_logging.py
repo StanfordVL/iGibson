@@ -86,7 +86,7 @@ class VRLogWriter():
     """
 
     # TIMELINE: Initialize the VRLogger just before simulation starts, once all bodies have been loaded
-    def __init__(self, sim, task, vr_agent, frames_before_write, log_filepath, profiling_mode=False, log_status=True):
+    def __init__(self, sim, task, vr_agent, frames_before_write, log_filepath, filter_objects=True, profiling_mode=False, log_status=True):
         # The number of frames to store data on the stack before writing to HDF5.
         # We buffer and flush data like this to cause a small an impact as possible
         # on the VR frame-rate.
@@ -102,9 +102,19 @@ class VRLogWriter():
         self.task = task
         self.vr_agent = vr_agent
         # PyBullet body ids to be saved
+<<<<<<< HEAD
         if self.task:
             self.joint_map = {obj_name: p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.task.object_scope.items()}
+=======
+>>>>>>> igdsl2
         self.data_map = None
+        # TODO: if the objects change after scene initialization, this will be invalid
+        self.filter_objects = filter_objects
+        if filter_objects:
+            self.tracked_objects = self.task.object_scope
+        else:
+            self.tracked_objects = self.task.scene.objects_by_id
+        self.joint_map = {str(obj_name): p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.tracked_objects.items()}
         # Sentinel that indicates a certain value was not set in the HDF5
         self.default_fill_sentinel = -1.0
         # Numpy dtype common to all values
@@ -126,7 +136,8 @@ class VRLogWriter():
         Eg. ['vr', 'vr_camera', 'right_eye_view']."""
         self.name_path_data.extend([['frame_data']])
 
-        for obj in self.task.object_scope:
+        for obj in self.tracked_objects:
+            obj = str(obj)
             base = ['physics_data', obj]
             for registered_property in ['position', 'orientation', 'aabb', 'joint_state']:
                 self.name_path_data.append(
@@ -168,8 +179,8 @@ class VRLogWriter():
 
         self.data_map['physics_data'] = dict()
 
-        # for pb_id in self.pb_ids:
-        for obj in self.task.object_scope:
+        for obj in self.tracked_objects:
+            obj = str(obj)
             self.data_map['physics_data'][obj] = dict()
             handle = self.data_map['physics_data'][obj]
             handle['position'] = np.full(
@@ -259,6 +270,7 @@ class VRLogWriter():
         # Now open in r+ mode to append to the file
         self.hf = h5py.File(self.log_filepath, 'r+')
         self.hf.attrs['/metadata/task_name'] =  self.task.atus_activity
+        self.hf.attrs['/metadata/filter_objects'] =  self.filter_objects
         self.hf.attrs['/metadata/task_instance'] = self.task.task_instance
         self.hf.attrs['/metadata/scene_id'] = self.task.scene.scene_id
         self.hf.attrs['/metadata/start_time'] = str(datetime.datetime.now())
@@ -379,7 +391,8 @@ class VRLogWriter():
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""
-        for obj_name, obj in self.task.object_scope.items():
+        for obj_name, obj in self.tracked_objects.items():
+            obj_name = str(obj_name)
             pos, orn = obj.states[Pose].get_value()
             aabb = obj.states[AABB].get_value()
             handle = self.data_map['physics_data'][obj_name]
@@ -392,7 +405,8 @@ class VRLogWriter():
     def _print_pybullet_data(self):
         """Print pybullet debug data - hidden API since this is used for debugging purposes only."""
         print("----- PyBullet data at the end of frame {} -----".format(self.persistent_frame_count))
-        for obj_name, obj in self.task.object_scope.items():
+        for obj_name, obj in self.tracked_objects.items():
+            obj_name = str(obj_name)
             pos, orn = obj.states[Pose].get_value()
             print("{} - pos: {} and orn: {}".format(obj_name, pos, orn))
 
@@ -413,7 +427,7 @@ class VRLogWriter():
         self.data_map['goal_status']['satisfied'][self.frame_counter] = self.one_hot_encoding(satisfied, self.total_goals)
 
     # TIMELINE: Call this at the end of each frame (eg. at end of while loop)
-    def process_frame(self, s, print_vr_data=False):
+    def process_frame(self, s, print_vr_data=False, store_vr_data=True):
         """Asks the VRLogger to process frame data. This includes:
         -- updating pybullet data
         -- incrementing frame counter by 1
@@ -422,7 +436,8 @@ class VRLogWriter():
             s (simulator): used to extract information about VR system
         """
         self.write_frame_data_to_map(s)
-        self.write_vr_data_to_map(s)
+        if store_vr_data:
+            self.write_vr_data_to_map(s)
         self.write_pybullet_data_to_map()
         self.write_predicate_data_to_map()
         self.frame_counter += 1
@@ -662,7 +677,7 @@ class VRLogReader():
         Args:
             s (simulator): used to set camera view and projection matrices
             full_replay: boolean indicating if we should replay full state of the world or not.
-                If this value is set to false, we simply increment the frame counter each frame, 
+                If this value is set to false, we simply increment the frame counter each frame,
                 and let the user take control of processing actions and simulating them
             print_vr_data: boolean indicating whether all vr data should be printed each frame (for debugging purposes)
         """
@@ -726,7 +741,7 @@ class VRLogReader():
         """
         full_action_path = 'action/' + action_path
         return self.hf[full_action_path][self.frame_counter]
-    
+
     # TIMELINE: Use this as the while loop condition to keep reading frames
     def get_data_left_to_read(self):
         """Returns whether there is still data left to read."""

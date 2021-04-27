@@ -72,6 +72,8 @@ class Simulator:
 
         self.scene = None
 
+        self.particle_systems = []
+
         # TODO: remove this, currently used for testing only
         self.objects = []
 
@@ -325,7 +327,7 @@ class Simulator:
                     scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
                 self.load_articulated_object_in_renderer(
                     body_id,
-                    class_id=body_id,
+                    class_id=class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster,
@@ -354,13 +356,15 @@ class Simulator:
             'import_particle_system can only be called with ParticleSystem'
 
         new_object_pb_ids = []
-        for o in obj.particles:
+        for o in obj.get_particles():
             particle_pb_id = self.import_object(o,
                                                 class_id=class_id,
                                                 use_pbr=use_pbr,
                                                 use_pbr_mapping=use_pbr_mapping,
                                                 shadow_caster=shadow_caster)
             new_object_pb_ids.append(particle_pb_id)
+
+        self.particle_systems.append(obj)
 
         return new_object_pb_ids
 
@@ -913,6 +917,10 @@ class Simulator:
         """
         Complete any non-physics steps such as state updates.
         """
+        # Step all of the particle systems.
+        for particle_system in self.particle_systems:
+            particle_system.update(self)
+
         # Step the object states in global topological order.
         for state_type in self.object_state_types:
             for obj in self.scene.get_objects_with_state(state_type):
@@ -1044,6 +1052,7 @@ class Simulator:
             p.stepSimulation()
         self._non_physics_step()
         self.sync()
+        self.frame_count += 1
 
     def sync(self):
         """
@@ -1189,7 +1198,7 @@ class Simulator:
         if not self.can_access_vr_context:
             raise RuntimeError(
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
-
+            
         if not tracker_serial_number:
             return [False, [0,0,0], [0,0,0,0]]
 
