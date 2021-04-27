@@ -50,6 +50,8 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     vr_settings = VrSettings()
     if not use_vr:
         vr_settings.turn_off_vr_mode()
+    # Toggle this on/off based on what was recorded in the record_agent_actions function
+    vr_settings.use_untracked_body()
 
     # HDR files for PBR rendering
     hdr_texture = os.path.join(

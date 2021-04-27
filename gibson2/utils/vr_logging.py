@@ -101,20 +101,16 @@ class VRLogWriter():
         self.sim = sim
         self.task = task
         self.vr_agent = vr_agent
-        # PyBullet body ids to be saved
-<<<<<<< HEAD
-        if self.task:
-            self.joint_map = {obj_name: p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.task.object_scope.items()}
-=======
->>>>>>> igdsl2
         self.data_map = None
-        # TODO: if the objects change after scene initialization, this will be invalid
-        self.filter_objects = filter_objects
-        if filter_objects:
-            self.tracked_objects = self.task.object_scope
-        else:
-            self.tracked_objects = self.task.scene.objects_by_id
-        self.joint_map = {str(obj_name): p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.tracked_objects.items()}
+        # PyBullet body ids to be saved
+        if self.task:
+            # TODO: if the objects change after scene initialization, this will be invalid
+            self.filter_objects = filter_objects
+            if filter_objects:
+                self.tracked_objects = self.task.object_scope
+            else:
+                self.tracked_objects = self.task.scene.objects_by_id
+            self.joint_map = {str(obj_name): p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.tracked_objects.items()}
         # Sentinel that indicates a certain value was not set in the HDF5
         self.default_fill_sentinel = -1.0
         # Numpy dtype common to all values

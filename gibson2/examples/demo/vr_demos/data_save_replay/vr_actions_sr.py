@@ -77,6 +77,8 @@ def run_action_sr(mode):
     vr_settings = VrSettings()
     if not is_save:
         vr_settings.turn_off_vr_mode()
+    # Comment this out to use torso tracker for HTC Vive
+    vr_settings.use_untracked_body()
     s = Simulator(mode='vr', 
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
