@@ -354,7 +354,7 @@ class VRLogWriter():
         torso_data_list = [is_valid]
         torso_data_list.extend(list(torso_trans))
         torso_data_list.extend(list(torso_rot))
-        self.data_map['vr']['vr_device_data']['torso_tracker'][self.frame_counter, ...] = np.array(torso_data)
+        self.data_map['vr']['vr_device_data']['torso_tracker'][self.frame_counter, ...] = np.array(torso_data_list)
 
         vr_pos_data = []
         vr_pos_data.extend(list(s.get_vr_pos()))
