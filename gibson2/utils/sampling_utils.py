@@ -44,11 +44,10 @@ def get_parallel_rays(source, destination, offset,
     orthogonal_vector_1 /= np.linalg.norm(orthogonal_vector_1)
 
     # Get a second vector orthogonal to both the ray and the first vector.
-    orthogonal_vector_2 = np.cross(ray_direction, orthogonal_vector_1)
+    orthogonal_vector_2 = -np.cross(ray_direction, orthogonal_vector_1)
     orthogonal_vector_2 /= np.linalg.norm(orthogonal_vector_2)
 
     orthogonal_vectors = np.array([orthogonal_vector_1, orthogonal_vector_2])
-    # orthogonal_vectors = np.array([[1, 0, 0], [0, 1, 0]])
     assert np.all(np.isfinite(orthogonal_vectors))
 
     # Convert the offset into a 2-vector if it already isn't one.
@@ -265,17 +264,17 @@ def compute_rotation_from_grid_sample(two_d_grid, hit_positions, cuboid_centroid
     grid_in_object_coordinates = np.zeros((len(grid_in_planar_coordinates), 3))
     grid_in_object_coordinates[:, :2] = grid_in_planar_coordinates
     grid_in_object_coordinates[:, 2] = -this_cuboid_dimensions[2] / 2.
-    # grid_in_object_coordinates /= np.linalg.norm(grid_in_object_coordinates, axis=1)[:, None]
+    grid_in_object_coordinates /= np.linalg.norm(grid_in_object_coordinates, axis=1)[:, None]
 
     sampled_grid_relative_vectors = hit_positions - cuboid_centroid
-    # sampled_grid_relative_vectors /= np.linalg.norm(sampled_grid_relative_vectors, axis=1)[:, None]
+    sampled_grid_relative_vectors /= np.linalg.norm(sampled_grid_relative_vectors, axis=1)[:, None]
 
     # Grab the vectors that are nonzero in both
-    # nonzero_indices = np.logical_and(
-    #     np.any(np.isfinite(grid_in_object_coordinates), axis=1),
-    #     np.any(np.isfinite(sampled_grid_relative_vectors), axis=1))
-    # grid_in_object_coordinates = grid_in_object_coordinates[nonzero_indices]
-    # sampled_grid_relative_vectors = sampled_grid_relative_vectors[nonzero_indices]
+    nonzero_indices = np.logical_and(
+        np.any(np.isfinite(grid_in_object_coordinates), axis=1),
+        np.any(np.isfinite(sampled_grid_relative_vectors), axis=1))
+    grid_in_object_coordinates = grid_in_object_coordinates[nonzero_indices]
+    sampled_grid_relative_vectors = sampled_grid_relative_vectors[nonzero_indices]
 
     rotation, _ = Rotation.align_vectors(sampled_grid_relative_vectors, grid_in_object_coordinates)
     return rotation
