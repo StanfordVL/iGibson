@@ -364,7 +364,7 @@ class VrHandBase(ArticulatedObject):
                         self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
             # Move player based on direction of touchpad
-            if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
+            if not vr_data and self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
                 move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
 
             self.move(trans, rot)
@@ -797,7 +797,7 @@ class VrHand(VrHandBase):
 
         # Move ghost hand if necessary
         if self.enable_ghost_hand:
-            self.update_ghost_hand()
+            self.update_ghost_hand(vr_data=vr_data)
 
         super(VrHand, self).update(vr_data=vr_data)
 
