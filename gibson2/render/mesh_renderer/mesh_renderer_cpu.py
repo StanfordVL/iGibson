@@ -333,6 +333,9 @@ class MeshRenderer(object):
                           "objects")
             return
 
+        if 'pedestal' in obj_path:
+            pass
+            # import pdb; pdb.set_trace()
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
@@ -381,7 +384,8 @@ class MeshRenderer(object):
         num_existing_mats = len(self.materials_mapping)    # Number of current Material elements       
         repeat_x = 1
         repeat_y = 1
-        texuniform = False                  
+        texuniform = False
+
 
         if input_material is None:
             # import pdb; pdb.set_trace();
@@ -405,10 +409,7 @@ class MeshRenderer(object):
                                         roughness_texture_id=texture_roughness,
                                         normal_texture_id=texture_normal)
                 else:
-                    material = Material('color', kd=item.diffuse, texture_id=-1,
-                                    metallic_texture_id=-1,
-                                    roughness_texture_id=-1,
-                                    normal_texture_id=-1)
+                    material = Material('color', kd=item.diffuse)
                 self.materials_mapping[i + material_count] = material
 
             num_added_materials = len(materials) 
@@ -426,11 +427,11 @@ class MeshRenderer(object):
             # import pdb; pdb.set_trace();
         
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd, texture_id=-1)
             # self.materials_mapping[len(
                 # materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5])
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
             # self.materials_mapping[len(
                 # materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
 
@@ -477,10 +478,11 @@ class MeshRenderer(object):
                 shape_normal = vertex_normal[shape_normal_index]
             
             if geom_type == 'plane':
+                pass
                 # import pdb; pdb.set_trace()
-                shape_normal *= -1
+                # shape_normal *= -1
 
-
+            # shape_normal *= -1
             if geom_type == 'mesh':
                 shape_normal *= 1
                 # import pdb; pdb.set_trace()
@@ -546,11 +548,11 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                self.mesh_materials.append(num_existing_mats + len(materials))
-                # self.mesh_materials.append(len(materials) + material_count)
+                # self.mesh_materials.append(num_existing_mats + len(materials))
+                self.mesh_materials.append(len(materials) + material_count)
             else:
-                self.mesh_materials.append(num_existing_mats + material_id)
-                # self.mesh_materials.append(material_id + material_count)
+                # self.mesh_materials.append(num_existing_mats + material_id)
+                self.mesh_materials.append(material_id + material_count)
 
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)

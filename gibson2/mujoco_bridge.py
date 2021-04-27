@@ -51,8 +51,8 @@ class iGibsonMujocoBridge:
         self.render_collision_mesh = 0
         self.render_visual_mesh = 0
         # print("self.render_visual_mesh", self.render_visual_mesh)
-        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False)
-        self.mrs_no_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False)
+        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.2)
+        self.mrs_no_tensor = self.mrs_tensor # MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.5)
         self.settings = self.mrs_tensor if render_to_tensor else self.mrs_no_tensor
         print("##"*80)
         # self.simulator = Simulator(mode=mode,
@@ -156,7 +156,10 @@ class iGibsonMujocoBridge:
         if verbose: print(mjpy_model.get_xml()) #Print XML
         with open("/home/divyansh/xml.xml", 'w') as f:
             f.write(mjpy_model.get_xml())
-        xml_root = ET.fromstring(mjpy_model.get_xml())  #Create a workable XML object
+        with open("/home/divyansh/walls.xml", 'r') as f:
+            spheres_xml = f.read()
+        xml_root = ET.fromstring(mjpy_model.get_xml())
+        # xml_root = ET.fromstring(spheres_xml)  #Create a workable XML object
         parent_map = {c:p for p in xml_root.iter() for c in p}  #Create parent map to query bodies of geoms   
 
         pp = pprint.PrettyPrinter() #create a pretty printer object
@@ -235,7 +238,12 @@ class iGibsonMujocoBridge:
         print(roughness_ids)
 
         def get_id(intensity, name, self):
-            im = np.array([[intensity]])
+            if isinstance(intensity, np.ndarray):
+                im = intensity
+            else:
+                im = np.array([intensity] * 3).reshape(1,1,3) * 255
+                im = im.astype(np.uint8)
+                # im = np.array([intensity]).reshape(1,1)
             tmpdirname =  tempfile.TemporaryDirectory()
             fname = os.path.join(tmpdirname.name, f'{name}.png')
             plt.imsave(fname, im)
@@ -243,20 +251,38 @@ class iGibsonMujocoBridge:
             return self.renderer.r.loadTexture(str(fname), self.settings.texture_scale)
 
         for material in xml_root.iter('material'):
-            # import pdb; pdb.set_trace();
+        
             materials[material.get('name')] = material.attrib
             texture_name = material.get('texture')
+            
+            if texture_name is None:
+                import pdb; pdb.set_trace();
 
             if texture_name is not None:
                 (texture_id, texture_type) = texture_ids[texture_name]
                 specular = material.get('specular')
                 shininess = material.get('shininess')
-                roughness_id = -1 if specular is None else get_id(int((1 - float(specular)) * 65535), 'roughness', self)
-                metallic_id = -1 if shininess is None else get_id(int(float(shininess) * 65535), 'metallic', self)
-                if material.get('name') == 'floorplane':
-                    normal_id = -1
+                if specular is not None:
+                    specular = float(specular)
+                    roughness = 1 - specular
                 else:
-                    normal_id = -1
+                    roughness = 1.0
+
+                if shininess is not None:
+                    shininess = float(shininess)
+                    metallic = shininess
+                else:
+                    metallic = 0.0
+                
+                # if material.get('name') == 'walls_mat':
+                #     metallic = 0.5
+                    
+                    
+                roughness_id = get_id(roughness, 'roughness', self)
+                metallic_id = get_id(metallic, 'metallic', self)                    
+                roughness_id = -1 if specular is None else get_id(roughness, 'roughness', self)
+                metallic_id = -1 if shininess is None else get_id(metallic, 'metallic', self)
+                normal_id = get_id(np.array([127, 127, 255]).reshape(1,1,3).astype(np.uint8), 'normal', self)
 
                 # normal_id = normal_ids[texture_name]
                 # metallic_id = metallic_ids[texture_name]
@@ -277,8 +303,10 @@ class iGibsonMujocoBridge:
                     if texuniform_str is not None:
                         texuniform = (texuniform_str == "true")
 
-                    # import pdb; pdb.set_trace();
+                    
                     # metallic_id, roughness_id, normal_id = None, None, None
+                    # if 'Can_coke' in material.get('name'):
+                        # import pdb; pdb.set_trace();
                     material_objs[material.get('name')] = Material('texture',
                                                                    texture_id=texture_id,
                                                                    repeat_x=repeat[0], 
@@ -397,7 +425,12 @@ class iGibsonMujocoBridge:
                 geom_pos = properties['pos']
 
                 # if "wall" in geom.get('name'):
-                    # geom_orn = [1,0,0,0]
+                #     geom_pos[1] = -1 * geom_pos[1] 
+                #     # geom_orn = [-o for o in geom_orn]
+                #     # geom_orn[1] = -1 * geom_orn[1] 
+                #     geom_orn[2] = -1 * geom_orn[2]
+                #     geom_orn[3] = -1 * geom_orn[3]
+                #     # geom_orn = [1,0,0,0]
 
                 geom_material_name = geom.get('material')
                 load_texture = True
@@ -407,7 +440,9 @@ class iGibsonMujocoBridge:
                     geom_material = material_objs[geom_material_name]
                 
 
-
+                # if geom_material_name is not None:
+                #     if 'legs' in geom_material_name:
+                #         import pdb; pdb.set_trace();
                 # overriding input material.
                 # geom_material = None # not working
                 # load_texture = True # not working
@@ -426,14 +461,18 @@ class iGibsonMujocoBridge:
 
                     geom_orn = [geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]]
 
-                    # if "wall" not in geom.get('name'):
+                    # if "wall" in geom.get('name'):
+                        # pass
+                        # import pdb; pdb.set_trace();
                         # exit()
                     # print("geom_orn:       ",  geom_orn)
+                    scale_box = 2*np.array(properties['size'][0:3])
+                    # scale_box[-1] = -1 * scale_box[-1]
                     self.renderer.load_object(filename,
                                               transform_orn=geom_orn,
                                               transform_pos=geom_pos,
-                                              input_kd=properties['rgba'][0:3],
-                                              scale=2*np.array(properties['size'][0:3]),
+                                              input_kd=properties['rgba'],
+                                              scale=scale_box,
                                               load_texture = load_texture,
                                               input_material = geom_material,
                                               geom_type=geom_type
@@ -564,6 +603,7 @@ class iGibsonMujocoBridge:
                 # import pdb; pdb.set_trace();
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 # import pdb; pdb.set_trace()
+
                 self.renderer.load_object(filename,
                                           transform_orn=props['quat'][0:4],
                                           transform_pos=props['pos'][0:3],
