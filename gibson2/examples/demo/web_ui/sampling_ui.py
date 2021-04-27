@@ -31,7 +31,6 @@ PERIODIC_CLEANUP_TASK_ID = "interval-task-id"
 PERIODIC_CLEANUP_INTERVAL = 3600
 
 
-
 class ProcessPyEnvironment(object):
     """Step a single env in a separate process for lock free paralellism."""
 
@@ -237,7 +236,7 @@ class ToyEnv(object):
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
         tasknet.set_backend("iGibson")
-        self.task = iGTNTask('sampling_test', task_instance=4)
+        self.task = iGTNTask('trivial', task_instance=0)
 
         self.task.initialize_simulator(
             scene_id=scene,
@@ -246,7 +245,6 @@ class ToyEnvInt(object):
             should_debug_sampling=False,
             scene_kwargs={},
             online_sampling=False,
-            offline_sampling=False,
         )
         self.state_id = p.saveState()
 
@@ -327,13 +325,14 @@ class iGFlask(Flask):
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
         self.envs_last_use_time[uuid] = time.time()
-    
+
     def periodic_cleanup(self, periodic_cleanup_interval=PERIODIC_CLEANUP_INTERVAL):
         stale_uids = []
         for uid, env in self.envs.items():
             last_active_time = env.last_active_time
-            print(f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
-            if time.time() - last_active_time > periodic_cleanup_interval:                   
+            print(
+                f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
+            if time.time() - last_active_time > periodic_cleanup_interval:
                 print("stale uuid:", uid)
                 stale_uids.append(uid)
         for stale_uid in stale_uids:
@@ -371,7 +370,8 @@ def setup():
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
     scenes_ids = list(zip(scenes, ids))
     for scene, unique_id in scenes_ids:
-        app.prepare_env(unique_id, scene)             # TODO uncomment when basic infra is done 
+        # TODO uncomment when basic infra is done
+        app.prepare_env(unique_id, scene)
         print(f"Instantiated {scene} with uuid {unique_id}")
 
     return Response(json.dumps({"scenes_ids": scenes_ids}))
@@ -394,11 +394,11 @@ def check_sampling():
     object_list = data["objectList"]
     # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
     pddl = construct_full_pddl(
-                atus_activity, 
-                "feasibility_check", 
-                object_list,
-                init_state,
-                goal_state)
+        atus_activity,
+        "feasibility_check",
+        object_list,
+        init_state,
+        goal_state)
     scenes_ids = data["scenes_ids"]
     ids = [unique_id for scene, unique_id in scenes_ids]
     scenes = [scene for scene, unique_id in scenes_ids]
@@ -408,17 +408,19 @@ def check_sampling():
     feedback_instances = []
     new_scenes_ids = scenes_ids[:]
     for i, info in enumerate(scenes_ids):
-        scene, unique_id = info 
-        # If this scene's environment has been cleaned, make a new one 
+        scene, unique_id = info
+        # If this scene's environment has been cleaned, make a new one
         if unique_id not in app.envs:
             new_unique_id = str(uuid.uuid4())
             new_scenes_ids[i] = (scene, new_unique_id)
-            app.prepare_env(new_unique_id, scene)       # TODO is this asynchronous with the sample call?
-            print(f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
+            # TODO is this asynchronous with the sample call?
+            app.prepare_env(new_unique_id, scene)
+            print(
+                f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
         else:
-            new_unique_id = unique_id 
+            new_unique_id = unique_id
         success, feedback = app.envs[new_unique_id].sample(pddl)
-        if success: 
+        if success:
             num_successful_scenes += 1
             '''
             init_success, goal_success: one of the three values ['yes', 'no', 'untested']
@@ -426,15 +428,16 @@ def check_sampling():
             if the conditions are not tested or the conditions are sampled successfully.
             '''
         feedback_instances.append(
-            (feedback["init_success"], feedback["goal_success"], feedback["init_feedback"], feedback["goal_feedback"])
+            (feedback["init_success"], feedback["goal_success"],
+             feedback["init_feedback"], feedback["goal_feedback"])
         )
 
     success = num_successful_scenes >= min(
         NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
-    full_feedback = feedback_instances      
+    full_feedback = feedback_instances
 
     return Response(json.dumps({
-        "success": success, 
+        "success": success,
         "feedback": full_feedback,
         "scenes_ids": new_scenes_ids
     }))
@@ -446,7 +449,7 @@ def teardown():
     data = json.loads(request.data)
     scenes_ids = data["scenes_ids"]
     for scene, unique_id in scenes_ids:
-        app.stop_env(unique_id)       
+        app.stop_env(unique_id)
         print(f"uuid {unique_id} stopped")
 
     # TODO need anything else?
@@ -455,7 +458,7 @@ def teardown():
 
 ########### PERIODIC CLEANUP ###########
 
-def periodic_cleanup(): 
+def periodic_cleanup():
     app.periodic_cleanup()
 
 

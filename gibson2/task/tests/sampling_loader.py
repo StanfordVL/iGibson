@@ -32,7 +32,6 @@ init_success = igtn_task.initialize_simulator(
     should_debug_sampling=False,
     scene_kwargs=scene_kwargs,
     online_sampling=False,
-    offline_sampling=True,
 )
 
 print('loading done')
