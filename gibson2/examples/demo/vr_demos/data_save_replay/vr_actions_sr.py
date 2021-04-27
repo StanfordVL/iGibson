@@ -32,7 +32,7 @@ from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.utils.vr_logging import VRLogReader, VRLogWriter
+from gibson2.utils.vr_logging import VRLogReader, VRLogWriterNonATUS
 from gibson2 import assets_path
 
 # Number of frames to save
@@ -80,7 +80,7 @@ def run_action_sr(mode):
     s = Simulator(mode='vr', 
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
-    scene = InteractiveIndoorScene('Rs_int')
+    scene = InteractiveIndoorScene('Rs_int', load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
     s.import_ig_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
@@ -144,7 +144,7 @@ def run_action_sr(mode):
 
     if mode == 'save':
         # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
-        vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=False, log_status=False)
+        vr_writer = VRLogWriterNonATUS(vr_agent, frames_before_write=200, log_filepath=vr_log_path, profiling_mode=False, log_status=False)
 
         # Save a single button press as a mock action that demonstrates action-saving capabilities.
         vr_writer.register_action(mock_vr_action_path, (1,))

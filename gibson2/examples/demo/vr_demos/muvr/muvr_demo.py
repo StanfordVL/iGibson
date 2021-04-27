@@ -7,6 +7,7 @@ import argparse
 import numpy as np
 import os
 import pybullet as p
+import pybullet_data
 import time
 from time import sleep
 
@@ -21,19 +22,13 @@ from gibson2.simulator import Simulator
 from gibson2 import assets_path
 from gibson2.utils.muvr_utils import IGVRClient, IGVRServer
 
-sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
-
-# Only load in first few objects in Rs to decrease load times
-LOAD_PARTIAL = True
-# Whether to print iGibson + networking FPS each frame
-PRINT_FPS = True
 # Whether to wait for client before simulating
 WAIT_FOR_CLIENT = False
 
-# Note: This is where the VR configuration for the MUVR experience can be changed.
-RUN_SETTINGS = {
-    'client': VrSettings(use_vr=False),
-    'server': VrSettings(use_vr=True)
+# Determines whether to use VR for server/client
+CS_VR_SETTINGS = {
+    'client': False,
+    'server': True
 }
 
 
@@ -45,7 +40,9 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     # This function only runs if mode is one of server or client, so setting this bool is safe
     is_server = mode == 'server'
 
-    vr_settings = RUN_SETTINGS[mode]
+    vr_settings = VrSettings()
+    if not CS_VR_SETTINGS[mode]:
+        vr_settings.turn_off_vr_mode()
 
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
@@ -71,10 +68,9 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     s = Simulator(mode='vr', 
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
-    scene = InteractiveIndoorScene('Rs_int')
-    if LOAD_PARTIAL:
-        scene._set_first_n_objects(10)
+    scene = InteractiveIndoorScene('Rs_int', load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
     s.import_ig_scene(scene)
+    p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     # Default camera for non-VR MUVR users
     if not vr_settings.use_vr:
@@ -87,14 +83,39 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     client_agent = VrAgent(s, agent_num=1)
     server_agent = VrAgent(s, agent_num=2)
 
-    # Objects to interact with
-    mass_list = [5, 10, 20, 30]
-    mustard_start = [-1, 1.55, 1.2]
-    for i in range(len(mass_list)):
-        mustard = YCBObject('006_mustard_bottle')
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-        mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
-        p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
+    objects = [
+        ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
+                0.707107)),
+        ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+        ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107,
+                0.707107)),
+    ]
+
+    for item in objects:
+        fpath = item[0]
+        pos = item[1]
+        orn = item[2]
+        item_ob = ArticulatedObject(fpath, scale=1)
+        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+        item_ob.set_position(pos)
+        item_ob.set_orientation(orn)
 
     # Start the two agents at different points so they don't collide upon entering the scene
     if vr_settings.use_vr:
@@ -112,7 +133,6 @@ def run_muvr(mode='server', host='localhost', port='8885'):
 
     # Main networking loop
     while True:
-        frame_start = time.time()
         if is_server:
             # Update iGibson with latest vr data from client
             vr_server.ingest_vr_data()
@@ -140,10 +160,6 @@ def run_muvr(mode='server', host='localhost', port='8885'):
             vr_client.gen_vr_data()
             vr_client.send_vr_data()
             vr_client.Refresh()
-
-        frame_dur = time.time() - frame_start
-        if PRINT_FPS:
-            print("Frame duration: {:.3f} ms".format(frame_dur / 0.001))
 
     # Disconnect at end of server session
     if is_server:

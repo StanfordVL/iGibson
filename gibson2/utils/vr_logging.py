@@ -102,7 +102,8 @@ class VRLogWriter():
         self.task = task
         self.vr_agent = vr_agent
         # PyBullet body ids to be saved
-        self.joint_map = {obj_name: p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.task.object_scope.items()}
+        if self.task:
+            self.joint_map = {obj_name: p.getNumJoints(obj.body_id[0]) for (obj_name, obj) in self.task.object_scope.items()}
         self.data_map = None
         # Sentinel that indicates a certain value was not set in the HDF5
         self.default_fill_sentinel = -1.0
@@ -346,7 +347,7 @@ class VRLogWriter():
         torso_data_list = [is_valid]
         torso_data_list.extend(list(torso_trans))
         torso_data_list.extend(list(torso_rot))
-        self.data_map['vr']['vr_device_data']['torso_tracker'][self.frame_counter, ...] = np.array(torso_data)
+        self.data_map['vr']['vr_device_data']['torso_tracker'][self.frame_counter, ...] = np.array(torso_data_list)
 
         vr_pos_data = []
         vr_pos_data.extend(list(s.get_vr_pos()))
@@ -473,6 +474,137 @@ class VRLogWriter():
             print('VR LOGGER INFO: Ending log writing session after {} frames'.format(
                 self.persistent_frame_count))
         self.hf.close()
+
+
+class VRLogWriterNonATUS(VRLogWriter):
+    """ VRLogWriter that can be used for non-ATUS scripts. """
+
+    def __init__(self, vr_agent, frames_before_write, log_filepath, profiling_mode=False, log_status=True):
+        self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
+        self.pb_id_data_len_map = dict()
+        # Initialize parent without task or simulator
+        super(VRLogWriterNonATUS, self).__init__(None, None, vr_agent, frames_before_write, log_filepath, profiling_mode=profiling_mode, log_status=log_status)
+
+    def generate_name_path_data(self):
+        """Generates lists of name paths for resolution in hd5 saving.
+        Eg. ['vr', 'vr_camera', 'right_eye_view']."""
+        self.name_path_data.extend([['frame_data']])
+
+        for n in self.pb_ids:
+            self.name_path_data.append(['physics_data', 'body_id_{0}'.format(n)])
+
+        self.name_path_data.extend([
+
+            ['vr', 'vr_camera', 'right_eye_view'],
+            ['vr', 'vr_camera', 'right_eye_proj'],
+            ['vr', 'vr_camera', 'right_camera_pos'],
+            ['vr', 'vr_device_data', 'hmd'],
+            ['vr', 'vr_device_data', 'left_controller'],
+            ['vr', 'vr_device_data', 'right_controller'],
+            ['vr', 'vr_device_data', 'vr_position_data'],
+            ['vr', 'vr_device_data', 'torso_tracker'],
+            ['vr', 'vr_button_data', 'left_controller'],
+            ['vr', 'vr_button_data', 'right_controller'],
+            ['vr', 'vr_eye_tracking_data'],
+            ['vr', 'vr_event_data', 'left_controller'],
+            ['vr', 'vr_event_data', 'right_controller']
+        ])
+
+    def create_data_map(self):
+        """Creates data map of data that will go into HDF5 file. All the data in the
+        map is reset after every self.frames_before_write frames, by refresh_data_map."""
+        self.data_map = dict()
+        self.data_map['action'] = dict()
+        self.data_map['frame_data'] = np.full((self.frames_before_write, 5), self.default_fill_sentinel, dtype=self.np_dtype)
+
+        self.data_map['physics_data'] = dict()
+        for pb_id in self.pb_ids:
+            # pos + orn + number of joints
+            array_len = 7 + p.getNumJoints(pb_id)
+            self.pb_id_data_len_map[pb_id] = array_len
+            self.data_map['physics_data']['body_id_{0}'.format(pb_id)] = np.full((self.frames_before_write, array_len), self.default_fill_sentinel, dtype=self.np_dtype)
+
+        self.data_map['vr'] = {
+            'vr_camera': {
+                'right_eye_view': np.full((self.frames_before_write, 4, 4), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_eye_proj': np.full((self.frames_before_write, 4, 4), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_camera_pos': np.full((self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype)
+            },
+            'vr_device_data': {
+                'hmd': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
+                'left_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_controller': np.full((self.frames_before_write, 23), self.default_fill_sentinel, dtype=self.np_dtype),
+                'vr_position_data': np.full((self.frames_before_write, 12), self.default_fill_sentinel, dtype=self.np_dtype),
+                'torso_tracker': np.full((self.frames_before_write, 8), self.default_fill_sentinel, dtype=self.np_dtype)
+            },
+            'vr_button_data': {
+                'left_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_controller': np.full((self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype)
+            },
+            'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel, dtype=self.np_dtype),
+            'vr_event_data': {
+                'left_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype),
+                'right_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype)
+            }
+        }
+
+    def set_up_data_storage(self):
+        """Performs set up of internal data structures needed for storage, once
+        VRLogWriter has been initialized and all actions have been registered."""
+        # Note: this erases the file contents previously stored as self.log_filepath
+        hf = h5py.File(self.log_filepath, 'w')
+        for name_path in self.name_path_data:
+            joined_path = '/'.join(name_path)
+            curr_data_shape = (0,) + self.get_data_for_name_path(name_path).shape[1:]
+            # None as first shape value allows dataset to grow without bound through time
+            max_shape = (None,) + curr_data_shape[1:]
+            # Create_dataset with a '/'-joined path automatically creates the required groups
+            # Important note: we store values with double precision to avoid truncation
+            hf.create_dataset(joined_path, curr_data_shape, maxshape=max_shape, dtype=np.float64)
+        
+        hf.close()
+        # Now open in r+ mode to append to the file
+        self.hf = h5py.File(self.log_filepath, 'r+')
+
+    def write_pybullet_data_to_map(self):
+        """Write all pybullet data to the class' internal map."""
+        for pb_id in self.pb_ids:
+            data_list = []
+            pos, orn = p.getBasePositionAndOrientation(pb_id)
+            data_list.extend(pos)
+            data_list.extend(orn)
+            data_list.extend([p.getJointState(pb_id, n)[0] for n in range(p.getNumJoints(pb_id))])
+            self.data_map['physics_data']['body_id_{0}'.format(pb_id)][self.frame_counter] = np.array(data_list)
+
+    def _print_pybullet_data(self):
+        """Print pybullet debug data - hidden API since this is used for debugging purposes only."""
+        print("----- PyBullet data at the end of frame {} -----".format(self.persistent_frame_count))
+        for pb_id in self.pb_ids:
+            pos, orn = p.getBasePositionAndOrientation(pb_id)
+            print("{} - pos: {} and orn: {}".format(pb_id, pos, orn))
+
+    def process_frame(self, s, print_vr_data=False):
+        """Asks the VRLogger to process frame data. This includes:
+        -- updating pybullet data
+        -- incrementing frame counter by 1
+
+        Args:
+            s (simulator): used to extract information about VR system
+        """
+        self.write_frame_data_to_map(s)
+        self.write_vr_data_to_map(s)
+        self.write_pybullet_data_to_map()
+        self.frame_counter += 1
+        self.persistent_frame_count += 1
+        if (self.frame_counter >= self.frames_before_write):
+            self.frame_counter = 0
+            # We have accumulated enough data, which we will write to hd5
+            self.write_to_hd5()
+            if print_vr_data:
+                self.temp_vr_data = VrData()
+                for hf_idx in range(self.persistent_frame_count - self.frames_before_write, self.persistent_frame_count):
+                    self.temp_vr_data.refresh_action_replay_data(self.hf, hf_idx)
+                    self.temp_vr_data.print_data()
 
 
 class VRLogReader():

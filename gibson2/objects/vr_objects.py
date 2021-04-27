@@ -364,7 +364,7 @@ class VrHandBase(ArticulatedObject):
                         self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
             # Move player based on direction of touchpad
-            if self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
+            if not vr_data and self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
                 move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
 
             self.move(trans, rot)
@@ -656,8 +656,8 @@ class VrHand(VrHandBase):
 
         # Execute gradual release of object
         if self.should_execute_release and self.release_start_time:
-            time_since_release = time.perf_counter() - self.release_start_time
-            if time_since_release >= self.release_window / 1000.0:
+            time_since_release = (self.sim.frame_count - self.release_start_time) * self.sim.num_phys_steps
+            if time_since_release >= self.release_window:
                 self.set_hand_coll_filter(self.object_in_hand, True)
                 self.object_in_hand = None
                 self.should_execute_release = False
@@ -721,12 +721,13 @@ class VrHand(VrHandBase):
                 self.set_hand_coll_filter(ag_bid, False)
                 self.gen_freeze_vals()
         else:
-            constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if trig_frac >= 0.0 and trig_frac <= 1.0 and trig_frac <= self.trig_frac_thresh or constraint_violation > self.violation_threshold:
+            # TODO: Fix this!
+            #constraint_violation = self.get_constraint_violation(self.obj_cid)
+            if trig_frac >= 0.0 and trig_frac <= 1.0 and trig_frac <= self.trig_frac_thresh: #or constraint_violation > self.violation_threshold:
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
                 self.should_execute_release = True
-                self.release_start_time = time.perf_counter()
+                self.release_start_time = self.sim.frame_count
 
     def get_constraint_violation(self, cid):
         parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
@@ -797,7 +798,7 @@ class VrHand(VrHandBase):
 
         # Move ghost hand if necessary
         if self.enable_ghost_hand:
-            self.update_ghost_hand()
+            self.update_ghost_hand(vr_data=vr_data)
 
         super(VrHand, self).update(vr_data=vr_data)
 
