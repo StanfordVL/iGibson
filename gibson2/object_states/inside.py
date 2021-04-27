@@ -20,7 +20,7 @@ _RAY_CASTING_MAX_SAMPLING_ATTEMPTS = 100
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
     def set_value(self, other, new_value, use_ray_casting_method=False):
-        for _ in range(10):
+        for _ in range(100 if use_ray_casting_method else 10):
             if use_ray_casting_method:
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
