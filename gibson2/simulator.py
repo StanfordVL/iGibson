@@ -327,7 +327,7 @@ class Simulator:
                     scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
                 self.load_articulated_object_in_renderer(
                     body_id,
-                    class_id=body_id,
+                    class_id=class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster,
