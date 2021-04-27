@@ -20,7 +20,7 @@ _ALL_STATES = frozenset([
     Touching,
     Under,
     Soaked,
-    Dirty,
+    Dusty,
     Stained,
     ToggledOn,
     WaterSource,
@@ -31,7 +31,7 @@ _ALL_STATES = frozenset([
 _ABILITY_TO_STATE_MAPPING = {
     "cookable": [Cooked],
     "soakable": [Soaked],
-    "dustyable": [Dirty],
+    "dustyable": [Dusty],
     "scrubbable": [Stained],
     "water_source": [WaterSource],
     "cleaning_tool": [CleaningTool],

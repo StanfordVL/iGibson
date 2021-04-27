@@ -73,6 +73,9 @@ class VrData(object):
             if device in self.controllers:
                 self.vr_data_dict['{}_button'.format(device)] = ar_data['vr/vr_button_data/{}'.format(device)][frame_num].tolist()
 
+        torso_tracker_data = ar_data['vr/vr_device_data/torso_tracker'][frame_num].tolist()
+        self.vr_data_dict['torso_tracker'] = [torso_tracker_data[0], torso_tracker_data[1:4], torso_tracker_data[4:]]
+
         eye_data = ar_data['vr/vr_eye_tracking_data'][frame_num].tolist()
         self.vr_data_dict['eye_data'] = [eye_data[0], eye_data[1:4], eye_data[4:7], eye_data[7], eye_data[8]]
 

@@ -1,22 +1,35 @@
-import gibson2.object_states
-from gibson2 import object_states
-from gibson2.objects.object_base import Object
-import pybullet as p
+from collections import deque
+
 import numpy as np
+import pybullet as p
+from gibson2.objects.object_base import Object
+from gibson2.utils import sampling_utils
+
+_STASH_POSITION = [0, 0, -100]
+
+# This parameters are used when sampling dirt particles.
+# See gibson2/utils/sampling_utils.py for how they are used.
+_DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY = 0.1
+_DIRT_SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
+_DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
+_DIRT_SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
+_DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET = 0.05
+
+_WATER_SOURCE_PERIOD = 0.3  # new water every this many seconds.
+
 
 class Particle(Object):
     """
     A particle object, used to simulate water stream and dust/stain
     """
 
-    def __init__(self, pos=(0,0,0), dim=0.1, visual_only=False, mass=0.1, color=(1, 1, 1, 1), base_shape="box"):
+    def __init__(self, pos=(0, 0, 0), dim=0.1, visual_only=False, mass=0.1, color=(1, 1, 1, 1), base_shape="sphere"):
         super(Particle, self).__init__()
         self.base_pos = pos
         self.dimension = [dim, dim, dim]
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
-        self.active = True
         self.base_shape = base_shape
 
     def _load(self):
@@ -47,151 +60,174 @@ class Particle(Object):
         p.resetBasePositionAndOrientation(
             body_id, np.array(self.base_pos), base_orientation)
 
+        self.force_sleep(body_id)
+
         return body_id
 
-    def force_sleep(self):
-        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_SLEEP
-        p.changeDynamics(self.body_id, -1, activationState=activationState)
+    def force_sleep(self, body_id=None):
+        if body_id is None:
+            body_id = self.body_id
+
+        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
+        p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
         activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_WAKE_UP
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
-class ParticleSystem:
-    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.1, offset=0.4, num=15, visual_only=False, mass=0.1, color=(1, 1, 1, 1),
-                 base_shape="box"):
-        self.parent_obj = parent_obj
-        self.particles = []
-        self.offset = offset
-        self.num = num
+
+class ParticleSystem(object):
+    def __init__(self, num=20, visual_only=False, **kwargs):
+        self._active_particles = []
+        self._stashed_particles = deque()
+
         for i in range(num):
-            self.particles.append(Particle(pos=[pos[0], pos[1], pos[2] + i * offset],
-                                           dim=dim,
-                                           visual_only=visual_only,
-                                           mass=mass,
-                                           color=color,
-                                           base_shape=base_shape))
+            self._stashed_particles.append(Particle(pos=_STASH_POSITION, visual_only=visual_only, **kwargs))
+
         self.visual_only = visual_only
 
+    def update(self, simulator):
+        pass
+
     def get_num(self):
-        return self.num
+        return len(self._stashed_particles) + len(self._active_particles)
+
+    def get_num_stashed(self):
+        return len(self._stashed_particles)
 
     def get_num_active(self):
-        s = 0
-        for i in range(self.num):
-            if self.particles[i].active:
-                s += 1
-        return s
+        return len(self._active_particles)
+
+    def get_stashed_particles(self):
+        return list(self._stashed_particles)
+
+    def get_active_particles(self):
+        return list(self._active_particles)
+
+    def get_particles(self):
+        return self.get_active_particles() + self.get_stashed_particles()
 
     def stash_particle(self, particle):
-        particle.set_position([np.random.uniform(-10, 10), np.random.uniform(-10, 10), -100])
+        assert particle in self._active_particles
+        self._active_particles.remove(particle)
+        self._stashed_particles.append(particle)
+
+        particle.set_position(_STASH_POSITION)
         particle.force_sleep()
-        particle.active = False
 
-class WaterStreamAnimation(ParticleSystem):
-    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=(0, 0, 1, 1)):
-        super(WaterStreamAnimation, self).__init__(
-            parent_obj,
-            pos=pos,
-            dim=dim,
-            offset=offset,
-            num=num,
-            visual_only=visual_only,
-            mass=mass,
-            color=color,
-            base_shape="sphere",
+    def unstash_particle(self, position, orientation):
+        # This assumes that the stashed particle has been moved to the appropriate position already.
+        particle = self._stashed_particles.popleft()
+        particle.set_position_orientation(position, orientation)
+        particle.force_wakeup()
+
+        self._active_particles.append(particle)
+
+        return particle
+
+
+class AttachedParticleSystem(ParticleSystem):
+    def __init__(self, parent_obj, **kwargs):
+        super(AttachedParticleSystem, self).__init__(**kwargs)
+
+        self._parent_obj = parent_obj
+        self._attachment_offsets = {}  # in the format of {particle: offset}
+
+    def unstash_particle(self, position, orientation):
+        particle = super(AttachedParticleSystem, self).unstash_particle(position, orientation)
+
+        # Compute the offset for this particle.
+        base_pos, base_orn = p.invertTransform(self._parent_obj.get_position(), self._parent_obj.get_orientation())
+        offsets = p.multiplyTransforms(base_pos, base_orn, position, orientation)
+        self._attachment_offsets[particle] = offsets
+
+        return particle
+
+    def stash_particle(self, particle):
+        super(AttachedParticleSystem, self).stash_particle(particle)
+        del self._attachment_offsets[particle]
+
+    def update(self, simulator):
+        super(AttachedParticleSystem, self).update(simulator)
+
+        # Move every particle to their known parent object offsets.
+        # TODO: Find the surface link so that we can attach to the correct link rather than main body.
+        base_pos, base_orn = self._parent_obj.get_position(), self._parent_obj.get_orientation()
+        for particle in self.get_active_particles():
+            pos_offset, orn_offset = self._attachment_offsets[particle]
+            position, orientation = p.multiplyTransforms(base_pos, base_orn, pos_offset, orn_offset)
+            particle.set_position_orientation(position, orientation)
+
+
+class WaterStream(ParticleSystem):
+    def __init__(self, water_source_pos, **kwargs):
+        super(WaterStream, self).__init__(
+            dim=0.01,
+            visual_only=False,
+            mass=0.1,
+            color=(0, 0, 1, 1),
+            **kwargs
         )
-        self.animation_step = 0
 
-    def animate(self):
-        self.animation_step += 1
-        if self.animation_step % 10 == 0:
-            for particle in self.particles:
-                particle.set_position(particle.get_position() - np.array([0,0,self.offset]))
-
-        for particle in self.particles:
-            particle.set_position(particle.get_position() + np.array([0,0,self.offset * 0.1]))
-
-    def step(self):
-        # detect soakable around it, and change soakable state
-        self.animate()
-
-class WaterStreamPhysicsBased(ParticleSystem):
-    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.01, offset=-0.04, num=15, visual_only=False, mass=0.1, color=(0, 0, 1, 1)):
-        super(WaterStreamPhysicsBased, self).__init__(
-            parent_obj,
-            pos=pos,
-            dim=dim,
-            offset=offset,
-            num=num,
-            visual_only=visual_only,
-            mass=mass,
-            color=color,
-            base_shape="sphere",
-        )
-        self.step_elapsed = 0
-        self.water_source_pos = pos
-        # set a rest position somewhere
+        self.steps_since_last_drop_step = float('inf')
+        self.water_source_pos = water_source_pos
         self.on = False
 
-    def set_value(self, on):
+    def set_running(self, on):
         self.on = on
 
-    def step(self):
-        if self.on:
-            # every n steps, move to a particle the water source
-            # detect sinks soakable around it, and change soakable state
-            self.step_elapsed += 1
-            period = 30 # assuming a 30 fps simulation, 1 second 1 drop seems reasonable
-            n_particle = len(self.particles)
-            if self.step_elapsed % period == 0:
-                particle_idx = self.step_elapsed // period % n_particle
-                particle = self.particles[particle_idx]
-                if not particle.active:
-                    particle.set_position(self.water_source_pos)
-                    particle.force_wakeup()
-                    particle.active = True
+    def update(self, simulator):
+        # If the stream is off, return.
+        if not self.on:
+            return
 
-class Dust(ParticleSystem):
-    def __init__(self, parent_obj, pos=(0, 0, 0), dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=(0,0,0,1)):
-        super(Dust, self).__init__(
+        # If we don't have any stashed particles, return.
+        if self.get_num_stashed() == 0:
+            return
+
+        # If enough time hasn't passed since last drop, return.
+        if self.steps_since_last_drop_step < _WATER_SOURCE_PERIOD / simulator.render_timestep:
+            self.steps_since_last_drop_step += 1
+            return
+
+        # Otherwise, create & drop the water.
+        self.unstash_particle(self.water_source_pos, [0, 0, 0, 1])
+        self.steps_since_last_drop_step = 0
+
+
+class _Dirt(AttachedParticleSystem):
+    """
+    This class represents common logic between particle-based dirtyness states like
+    dusty and stained. It should not be directly instantiated - use subclasses instead.
+    """
+    def __init__(self, parent_obj, color, **kwargs):
+        super(_Dirt, self).__init__(
             parent_obj,
-            pos=pos,
-            dim=dim,
-            offset=offset,
-            num=num,
-            visual_only=visual_only,
-            mass=mass,
-            color=color
+            dim=0.01,
+            visual_only=True,
+            mass=0,
+            color=color,
+            **kwargs
         )
 
-    def attach(self, obj):
-        aabb = obj.states[object_states.AABB].get_value()
-        for i in range(self.num):
-            good_hit = False
-            iter = 0
-            while not good_hit and iter < 100:
-                x = np.random.uniform(aabb[0][0], aabb[1][0])
-                y = np.random.uniform(aabb[0][1], aabb[1][1])
-                zmax = aabb[1][2] + 0.1
-                zmin = aabb[0][2]
-                res = p.rayTest(rayFromPosition=[x,y,zmax], rayToPosition=[x,y,zmin])
-                # print(x,y,zmin, zmax,res, iter)
-                if len(res) > 0 and res[0][0] == obj.get_body_id():
-                    good_hit = True
-                    hit_pos = res[0][3]
-                    self.particles[i].set_position(hit_pos)
-                iter += 1
+    def randomize(self, obj):
+        # Sample points using the raycasting sampler.
+        results = sampling_utils.sample_points_on_object(
+            obj, self.get_num_stashed(), _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET,
+            _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION, _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION,
+            _DIRT_SAMPLING_AXIS_PROBABILITIES, _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY, refuse_downwards=True)
 
-class Stain(Dust):
-    def __init__(self, parent_obj, pos=(0,0,0), dim=0.01, offset=-0.04, num=15, visual_only=True, mass=0, color=(0,0,0,1)):
-        super(Stain, self).__init__(
-            parent_obj,
-            pos=pos,
-            dim=dim,
-            offset=offset,
-            num=num,
-            visual_only=visual_only,
-            mass=mass,
-            color=color
-        )
+        # Use the sampled points to set the dirt positions.
+        for position, normal, reasons in results:
+            if position is not None:
+                self.unstash_particle(position, [0, 0, 0, 1])
+
+
+class Dust(_Dirt):
+    def __init__(self, parent_obj, **kwargs):
+        super(Dust, self).__init__(parent_obj, (0, 0, 0, 1), **kwargs)
+
+
+class Stain(_Dirt):
+    def __init__(self, parent_obj, **kwargs):
+        super(Stain, self).__init__(parent_obj, (0.4, 0, 0, 1), **kwargs)
