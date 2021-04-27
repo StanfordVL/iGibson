@@ -1205,7 +1205,7 @@ class Simulator:
         tracker_data = self.renderer.vrsys.getDataForVRTracker(tracker_serial_number)
         # Set is_valid to false, and assume the user will check for invalid data
         if not tracker_data:
-            return [False, None, None]
+            return [False, [0,0,0], [0,0,0,0]]
         
         is_valid, translation, rotation = tracker_data
         return [is_valid, translation, rotation]
