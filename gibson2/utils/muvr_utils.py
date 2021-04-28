@@ -76,36 +76,41 @@ class IGVRClient(ConnectionListener):
             # Update VR offset so updated value can be used in server
             self.client_agent.update_frame_offset()
 
-    def gen_vr_data(self):
-        if not self.s.can_access_vr_context:
-            self.vr_data = []
+    def gen_vr_data(self, replay_data=None):
+        if replay_data:
+            # Construct vr dictionary from replay data
+
         else:
-            # Store all data in a dictionary to be sent to the server
-            vr_data_dict = defaultdict(list)
+            if not self.s.can_access_vr_context:
+                self.vr_data = []
+            else:
+                # Store all data in a dictionary to be sent to the server
+                vr_data_dict = defaultdict(list)
 
-            for device in self.devices:
-                device_data = []
-                is_valid, trans, rot = self.s.get_data_for_vr_device(device)
-                device_data.extend([is_valid, trans.tolist(), rot.tolist()])
-                device_data.extend(self.s.get_device_coordinate_system(device))
-                if device in ['left_controller', 'right_controller']:
-                    device_data.extend(self.s.get_button_data_for_controller(device))
-                vr_data_dict[device] = device_data
+                for device in self.devices:
+                    device_data = []
+                    is_valid, trans, rot = self.s.get_data_for_vr_device(device)
+                    device_data.extend([is_valid, trans.tolist(), rot.tolist()])
+                    device_data.extend(self.s.get_device_coordinate_system(device))
+                    if device in ['left_controller', 'right_controller']:
+                        device_data.extend(self.s.get_button_data_for_controller(device))
+                    vr_data_dict[device] = device_data
 
-            vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
-            # We need to get VR events instead of polling here, otherwise the previously events will be erased
-            vr_data_dict['event_data'] = self.s.get_vr_events()
-            vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-            vr_data_dict['vr_offset'] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
-            vr_data_dict['vr_settings'] = [
-                self.s.vr_settings.eye_tracking,
-                self.s.vr_settings.touchpad_movement,
-                self.s.vr_settings.movement_controller,
-                self.s.vr_settings.relative_movement_device,
-                self.s.vr_settings.movement_speed
-            ]
+                vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
+                # We need to get VR events instead of polling here, otherwise the previously events will be erased
+                vr_data_dict['event_data'] = self.s.get_vr_events()
+                vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
+                vr_data_dict['vr_offset'] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
+                vr_data_dict['vr_settings'] = [
+                    self.s.vr_settings.eye_tracking,
+                    self.s.vr_settings.touchpad_movement,
+                    self.s.vr_settings.movement_controller,
+                    self.s.vr_settings.relative_movement_device,
+                    self.s.vr_settings.movement_speed
+                ]
 
-            self.vr_data = dict(vr_data_dict)
+        # Convert back to a regular dictionary before sending
+        self.vr_data = dict(vr_data_dict)
 
     def send_vr_data(self):
         if self.vr_data:

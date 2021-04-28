@@ -226,6 +226,13 @@ class VrSettings(object):
         # Enable rendering of companion window
         self.use_companion_window = True
 
+    def use_untracked_body(self):
+        """
+        Force VR system to use VR body without the tracker, even if a tracker serial number
+        is provided.
+        """
+        self.torso_tracker_serial = None
+
     def set_frame_save_path(self, frame_save_path):
         """
         :param frame_save_path: sets path to save frames (used in action replay)
@@ -328,6 +335,8 @@ class MeshRendererVR(MeshRenderer):
         else:
             if return_frame:
                 return super().render(modes=('rgb'), return_buffer=return_frame, render_shadow_pass=True)
+            else:
+                super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """
