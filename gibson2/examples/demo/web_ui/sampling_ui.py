@@ -15,7 +15,7 @@ from gibson2.task.task_base import iGTNTask
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.simulator import Simulator
-from tasknet.logic_base import UncontrolledCategoryError
+from tasknet.utils import UncontrolledCategoryError, UnsupportedSentenceError
 from tasknet.parsing import construct_full_pddl
 import tasknet
 import json
@@ -252,9 +252,13 @@ class ToyEnvInt(object):
         pass
 
     def sample(self, pddl):
+        print("PARSED INIT:", self.task.parsed_initial_conditions)
+        print("PARSED GOAL:", self.task.parsed_goal_conditions)
         try:
             self.task.update_problem(
-                "tester", "tester", predefined_problem=pddl)
+                "tester", "tester", predefined_problem=pddl, kinematic_only=True)
+            print("PARSED INIT AFTER UPDATE:", self.task.parsed_initial_conditions)
+            print("PARSED GOAL AFTER UPDATE:", self.task.parsed_goal_conditions)
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
@@ -265,6 +269,15 @@ class ToyEnvInt(object):
             }
             # self.last_active_time = time.time()
             return accept_scene, feedback
+#         except UnsupportedSentenceError as e:
+#             accept_scene = False
+#             feedback = {
+#                     "init_success": "untested",
+#                     "goal_success": "untested",
+#                     "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
+#                     "goal_feedback": ""
+#             }
+#             return accept_scene, feedback
 
         accept_scene, feedback = self.task.check_scene()
         if not accept_scene:
@@ -390,7 +403,9 @@ def check_sampling():
     data = json.loads(request.data)
     atus_activity = data["activityName"]
     init_state = data["initialConditions"]
+    print(init_state)
     goal_state = data["goalConditions"]
+    print(goal_state)
     object_list = data["objectList"]
     # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
     pddl = construct_full_pddl(
