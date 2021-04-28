@@ -135,8 +135,7 @@ def main():
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
                                    online_sampling=online_sampling)
-    vr_agent = VrAgent(igtn_task.simulator)
-
+    vr_agent = igtn_task.simulator.robots[0]
     if not args.vr_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
     vr_reader = VRLogReader(args.vr_log_path, s,
@@ -147,6 +146,7 @@ def main():
         if args.vr_replay_log_path == None:
             args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
                 task, task_id, scene, timestamp)
+
         vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200,
                                 log_filepath=args.vr_replay_log_path, profiling_mode=args.profile, filter_objects=filter_objects)
         vr_writer.set_up_data_storage()
