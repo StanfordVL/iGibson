@@ -145,6 +145,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # percentage of objects allowed that CANNOT extend their joints by >66%
         self.link_collision_tolerance = link_collision_tolerance
 
+        # Agent placeholder
+        self.agent = {}
+
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
             if 'category' in link.attrib:
@@ -168,6 +171,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     model_path = self.scene_dir
                     filename = os.path.join(
                         model_path, "urdf", model + "_" + category + ".urdf")
+
+                elif category in ["agent"]:
+                    self.agent[link.attrib['name']] = {
+                        'xyz' : np.array([float(val) for val in link.attrib['xyz'].split(" ")]),
+                        'rpy' : np.array([float(val) for val in link.attrib['rpy'].split(" ")])
+                    }
+                    continue
 
                 # For other objects
                 else:
@@ -238,7 +248,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      == object_name][0]
 
                 tasknet_object_scope = link.attrib.get('object_scope', None)
-
                 obj = URDFObject(
                     filename,
                     name=object_name,
@@ -916,6 +925,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         x, y = self.world_to_seg_map(xy)
+        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]: 
+            return None
         ins_id = self.room_ins_map[x, y]
         # room boundary
         if ins_id == 0:
@@ -948,6 +959,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
             link = scene_tree.find('link[@name="{}"]'.format(name))
 
             # Convert from center of mass to base link position
+            if obj.category == "ignore":
+                continue
+
             body_id = obj.body_ids[obj.main_body]
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos = dynamics_info[3]

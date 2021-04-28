@@ -112,7 +112,6 @@ def main():
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
                                    online_sampling=online_sampling)
-    vr_agent = VrAgent(igtn_task.simulator)
     igtn_task.simulator.set_vr_start_pos([0, 0, 1.8], vr_height_offset=-0.1)
 
     vr_cs = VrConditionSwitcher(
@@ -126,7 +125,7 @@ def main():
         if args.vr_log_path == None:
             args.vr_log_path = "{}_{}_{}_{}.hdf5".format(
                 args.task, args.task_id, args.scene, timestamp)
-        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200,
+        vr_writer = VRLogWriter(s, igtn_task, igtn_task.agent, frames_before_write=200,
                                 log_filepath=args.vr_log_path, profiling_mode=args.profile)
         vr_writer.set_up_data_storage()
 
@@ -135,7 +134,7 @@ def main():
         igtn_task.simulator.step(print_stats=args.profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
-        vr_agent.update()
+        igtn_task.agent.update()
 
         if satisfied_predicates != satisfied_predicates_cached:
             vr_cs.refresh_condition(switch=False)

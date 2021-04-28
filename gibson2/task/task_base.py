@@ -10,6 +10,7 @@ from gibson2.object_states.on_floor import RoomFloor
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
+from gibson2.objects.vr_objects import VrAgent
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -190,6 +191,8 @@ class iGTNTask(TaskNetTask):
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
+            if "agent" in obj_cat:
+                break
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
             categories = \
@@ -245,6 +248,11 @@ class iGTNTask(TaskNetTask):
 
         return True, feedback
 
+    def import_agent(self):
+        self.agent = VrAgent(self.simulator)
+        for condition in self.initial_conditions:
+            condition.scope['agent.n.01_1'] = self.agent.vr_dict['body']
+
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
@@ -272,6 +280,8 @@ class iGTNTask(TaskNetTask):
                                           name=tasknet_object_scope[obj_inst],
                                           scene=self.scene,
                                           room_instance=room_inst)
+                elif 'agent' in obj_inst:
+                    matched_sim_obj = "placeholder"
                 else:
                     for _, sim_obj in self.scene.objects_by_name.items():
                         if sim_obj.tasknet_object_scope == obj_inst:

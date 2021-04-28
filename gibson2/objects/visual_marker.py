@@ -54,6 +54,8 @@ class VisualMarker(Object):
                                         visualFramePosition=self.initial_offset)
         body_id = p.createMultiBody(
             baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1)
+        self.body_ids = [body_id]
+        self.main_body = -1
 
         return body_id
 

@@ -135,8 +135,6 @@ def main():
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
                                    online_sampling=online_sampling)
-    vr_agent = VrAgent(igtn_task.simulator)
-
     if not args.vr_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
     vr_reader = VRLogReader(args.vr_log_path, s,
@@ -183,7 +181,7 @@ def main():
 
         # Get relevant VR action data and update VR agent
         vr_action_data = vr_reader.get_vr_action_data()
-        vr_agent.update(vr_action_data)
+        igtn_task.agent.update(vr_action_data)
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
