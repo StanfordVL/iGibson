@@ -33,6 +33,9 @@ class iGTNTask(TaskNetTask):
                              gibson2.ig_dataset_path, 'scenes'),
                          predefined_problem=predefined_problem)
 
+        print("PARSED INIT:", self.parsed_initial_conditions)
+        print("PARSED GOAL:", self.parsed_goal_conditions)
+
     def initialize_simulator(self,
                              simulator=None,
                              mode='iggui',
@@ -280,7 +283,7 @@ class iGTNTask(TaskNetTask):
                 assert matched_sim_obj is not None, obj_inst
                 self.object_scope[obj_inst] = matched_sim_obj
 
-    def sample(self):
+    def sample(self, kinematic_only=False):
         feedback = {
             'init_success': 'yes',
             'goal_success': 'yes',
@@ -295,6 +298,8 @@ class iGTNTask(TaskNetTask):
         # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
+            if kinematic_only and condition.STATE_NAME not in ["inside", "ontop", "under"]:
+                continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
                 positive = False
@@ -614,6 +619,8 @@ class iGTNTask(TaskNetTask):
 
         # Do sampling that only involves sampleable object (e.g. apple is cooked)
         for condition, positive in sampleable_obj_conditions:
+            print(condition.body)
+            print(positive)
             success = condition.sample(binary_state=positive)
             if not success:
                 logging.warning(
