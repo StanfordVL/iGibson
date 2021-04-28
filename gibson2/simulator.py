@@ -1397,7 +1397,10 @@ class Simulator:
         """
         if not hasattr(self.scene, 'objects_by_id'):
             return []
-        return [body_id for body_id in self.objects if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == category_name]
+        return [body_id for body_id in self.objects
+                if (body_id in self.scene.objects_by_id.keys() and
+                    hasattr(self.scene.objects_by_id[body_id], "category") and
+                    self.scene.objects_by_id[body_id].category == category_name)]
 
     def update_position(self, instance):
         """
