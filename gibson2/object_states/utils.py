@@ -60,7 +60,7 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
     state_id = p.saveState()
     for i in range(max_trials):
         pos = None
-        if objA.orientations is not None:
+        if hasattr(objA, "orientations") and objA.orientations is not None:
             orientation = objA.sample_orientation()
         else:
             orientation = [0, 0, 0, 1]

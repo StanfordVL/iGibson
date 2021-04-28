@@ -57,6 +57,16 @@ class ArticulatedObject(StatefulObject):
         self.body_id = body_id
         return body_id
 
+    def force_wakeup(self):
+        """
+        Force wakeup sleeping objects
+        """
+        for joint_id in range(p.getNumJoints(self.body_id)):
+            p.changeDynamics(self.body_id, joint_id,
+                             activationState=p.ACTIVATION_STATE_WAKE_UP)
+        p.changeDynamics(self.body_id, -1,
+                         activationState=p.ACTIVATION_STATE_WAKE_UP)
+
     def get_body_id(self):
         return self.body_id
 
