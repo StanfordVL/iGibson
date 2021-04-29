@@ -35,8 +35,6 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
     max_trials = 100
     z_offset = 0.05
 
-    old_pos = objA.get_position()
-
     objA.force_wakeup()
     if not sample_on_floor:
         objB.force_wakeup()
@@ -50,7 +48,10 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
             orientation = [0, 0, 0, 1]
 
         # Orientation needs to be set for stable_z_on_aabb to work correctly
-        objA.set_orientation(orientation)
+        # Position needs to be set to be very far away because the object's
+        # original position might be blocking rays (use_ray_casting_method=True)
+        old_pos = np.array([200, 200, 200])
+        objA.set_position_orientation(old_pos, orientation)
 
         if sample_on_floor:
             _, pos = objB.scene.get_random_point_by_room_instance(

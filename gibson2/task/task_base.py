@@ -107,6 +107,24 @@ class iGTNTask(TaskNetTask):
                     return False, feedback
                 self.non_sampleable_object_inst.add(obj_inst)
 
+        self.sampling_orders = []
+        cur_batch = self.non_sampleable_object_inst
+        while len(cur_batch) > 0:
+            self.sampling_orders.append(cur_batch)
+            next_batch = set()
+            for cond in self.parsed_initial_conditions:
+                if len(cond) == 3 and cond[2] in cur_batch:
+                    next_batch.add(cond[1])
+            cur_batch = next_batch
+        remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+        if len(remaining_objs) != 0:
+            error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
+                ', '.join(remaining_objs))
+            logging.warning(error_msg)
+            feedback['init_success'] = 'no',
+            feedback['init_feedback'] = error_msg
+            return False, feedback
+
         for obj_cat in self.objects:
             if obj_cat not in NON_SAMPLEABLE_OBJECTS:
                 continue
@@ -612,16 +630,25 @@ class iGTNTask(TaskNetTask):
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
 
-        # Do sampling that only involves sampleable object (e.g. apple is cooked)
+        # Use ray casting for ontop and inside sampling for non-sampleable objects
         for condition, positive in sampleable_obj_conditions:
-            success = condition.sample(binary_state=positive)
-            if not success:
-                logging.warning(
-                    'Sampleable object conditions failed: {}'.format(
-                        condition.body))
-                feedback['init_success'] = 'no',
-                feedback['init_feedback'] = 'Please run test sampling again.'
-                return False, feedback
+            if condition.STATE_NAME in ['inside', 'ontop']:
+                condition.kwargs['use_ray_casting_method'] = True
+
+        # Pop non-sampleable objects
+        self.sampling_orders.pop(0)
+        for cur_batch in self.sampling_orders:
+            for condition, positive in sampleable_obj_conditions:
+                # Sample conditions that involve the current batch of objects
+                if condition.body[0] in cur_batch:
+                    success = condition.sample(binary_state=positive)
+                    if not success:
+                        error_msg = 'Sampleable object conditions failed: {}'.format(
+                            condition.body)
+                        logging.warning(error_msg)
+                        feedback['init_success'] = 'no',
+                        feedback['init_feedback'] = error_msg
+                        return False, feedback
 
         return True, feedback
 
