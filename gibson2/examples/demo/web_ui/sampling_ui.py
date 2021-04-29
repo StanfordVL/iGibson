@@ -289,7 +289,7 @@ class ToyEnvInt(object):
             p.restoreState(self.state_id)
             return accept_scene, feedback
 
-        accept_scene, feedback = self.task.sample()
+        accept_scene, feedback = self.task.sample(kinematic_only=True)
         if not accept_scene:
             # self.last_active_time = time.time()
             for sim_obj in self.task.newly_added_objects:
