@@ -298,8 +298,13 @@ class iGTNTask(TaskNetTask):
         # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
-            if kinematic_only and condition.STATE_NAME not in ["inside", "ontop", "under"]:
-                continue
+            if kinematic_only:
+                if isinstance(condition.children[0], Negation):
+                    if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under"]:
+                        continue
+                else:
+                    if condition.children[0].STATE_NAME not in ["ontop", "inside", "under"]:
+                        continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
                 positive = False
