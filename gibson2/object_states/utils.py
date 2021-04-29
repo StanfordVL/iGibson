@@ -9,6 +9,24 @@ from IPython import embed
 from gibson2.utils import sampling_utils
 from scipy.spatial.transform import Rotation as R
 
+_ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
+    'parallel_ray_normal_angle_tolerance': 0.52,
+    'max_angle_with_z_axis': 0.17,
+    'bimodal_stdev_fraction': 0.01,
+    'bimodal_mean_fraction': 1.0,
+    'max_sampling_attempts': 50,
+    'aabb_offset': 0.1,
+}
+
+_INSIDE_RAY_CASTING_SAMPLING_PARAMS = {
+    'parallel_ray_normal_angle_tolerance': 0.52,
+    'max_angle_with_z_axis': 0.17,
+    'bimodal_stdev_fraction': 0.4,
+    'bimodal_mean_fraction': 0.5,
+    'max_sampling_attempts': 100,
+    'aabb_offset': -0.01,
+}
+
 
 def get_center_extent(obj_states):
     assert AABB in obj_states
@@ -59,19 +77,9 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
         else:
             if use_ray_casting_method:
                 if predicate == 'onTop':
-                    _RAY_CASTING_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.52
-                    _RAY_CASTING_MAX_ANGLE_WITH_Z_AXIS = 0.17
-                    _RAY_CASTING_BIMODAL_STDEV_FRACTION = 0.01
-                    _RAY_CASTING_BIMODAL_MEAN_FRACTION = 1.0
-                    _RAY_CASTING_MAX_SAMPLING_ATTEMPTS = 50
-                    _RAY_CASTING_AABB_OFFSET = 0.1
+                    params = _ON_TOP_RAY_CASTING_SAMPLING_PARAMS
                 elif predicate == 'inside':
-                    _RAY_CASTING_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.52
-                    _RAY_CASTING_MAX_ANGLE_WITH_Z_AXIS = 0.17
-                    _RAY_CASTING_BIMODAL_STDEV_FRACTION = 0.4
-                    _RAY_CASTING_BIMODAL_MEAN_FRACTION = 0.5
-                    _RAY_CASTING_MAX_SAMPLING_ATTEMPTS = 100
-                    _RAY_CASTING_AABB_OFFSET = -0.01
+                    params = _INSIDE_RAY_CASTING_SAMPLING_PARAMS
                 else:
                     assert False, \
                         'predicate is not onTop or inside: {}'.format(
@@ -85,15 +93,10 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
                 sampling_results = sampling_utils.sample_cuboid_on_object(
                     objB,
                     num_samples=1,
-                    max_sampling_attempts=_RAY_CASTING_MAX_SAMPLING_ATTEMPTS,
                     cuboid_dimensions=aabb_extent,
-                    bimodal_mean_fraction=_RAY_CASTING_BIMODAL_MEAN_FRACTION,
-                    bimodal_stdev_fraction=_RAY_CASTING_BIMODAL_STDEV_FRACTION,
                     axis_probabilities=[0, 0, 1],
-                    aabb_offset=_RAY_CASTING_AABB_OFFSET,
-                    max_angle_with_z_axis=_RAY_CASTING_MAX_ANGLE_WITH_Z_AXIS,
-                    parallel_ray_normal_angle_tolerance=_RAY_CASTING_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE,
-                    refuse_downwards=True)
+                    refuse_downwards=True,
+                    **params)
 
                 sampled_vector = sampling_results[0][0]
                 sampled_quaternion = sampling_results[0][2]
