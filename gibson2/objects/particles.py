@@ -9,11 +9,9 @@ _STASH_POSITION = [0, 0, -100]
 
 # This parameters are used when sampling dirt particles.
 # See gibson2/utils/sampling_utils.py for how they are used.
-_DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY = 0.1
 _DIRT_SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
 _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
 _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
-_DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET = 0.05
 
 _WATER_SOURCE_PERIOD = 0.3  # new water every this many seconds.
 
@@ -23,10 +21,11 @@ class Particle(Object):
     A particle object, used to simulate water stream and dust/stain
     """
 
-    def __init__(self, pos=(0, 0, 0), dim=0.1, visual_only=False, mass=0.1, color=(1, 1, 1, 1), base_shape="sphere"):
+    def __init__(self, pos=(0, 0, 0), half_extent=0.1, visual_only=False, mass=0.1, color=(1, 1, 1, 1),
+                 base_shape="sphere"):
         super(Particle, self).__init__()
         self.base_pos = pos
-        self.dimension = [dim, dim, dim]
+        self.half_extent = np.array([half_extent, half_extent, half_extent])
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
@@ -40,14 +39,14 @@ class Particle(Object):
 
         if self.base_shape == "box":
             colBoxId = p.createCollisionShape(
-                p.GEOM_BOX, halfExtents=self.dimension)
+                p.GEOM_BOX, halfExtents=self.half_extent)
             visualShapeId = p.createVisualShape(
-                p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+                p.GEOM_BOX, halfExtents=self.half_extent, rgbaColor=self.color)
         elif self.base_shape == 'sphere':
             colBoxId = p.createCollisionShape(
-                p.GEOM_SPHERE, radius=self.dimension[0])
+                p.GEOM_SPHERE, radius=self.half_extent[0])
             visualShapeId = p.createVisualShape(
-                p.GEOM_SPHERE, radius=self.dimension[0], rgbaColor=self.color)
+                p.GEOM_SPHERE, radius=self.half_extent[0], rgbaColor=self.color)
 
         if self.visual_only:
             body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
@@ -162,7 +161,7 @@ class AttachedParticleSystem(ParticleSystem):
 class WaterStream(ParticleSystem):
     def __init__(self, water_source_pos, **kwargs):
         super(WaterStream, self).__init__(
-            dim=0.01,
+            half_extent=0.01,
             visual_only=False,
             mass=0.1,
             color=(0, 0, 1, 1),
@@ -200,10 +199,12 @@ class _Dirt(AttachedParticleSystem):
     This class represents common logic between particle-based dirtyness states like
     dusty and stained. It should not be directly instantiated - use subclasses instead.
     """
+    PARTICLE_HALF_EXTENT = 0.01
+
     def __init__(self, parent_obj, color, **kwargs):
         super(_Dirt, self).__init__(
             parent_obj,
-            dim=0.01,
+            half_extent=self.PARTICLE_HALF_EXTENT,
             visual_only=True,
             mass=0,
             color=color,
@@ -211,16 +212,21 @@ class _Dirt(AttachedParticleSystem):
         )
 
     def randomize(self, obj):
-        # Sample points using the raycasting sampler.
-        results = sampling_utils.sample_points_on_object(
-            obj, self.get_num_stashed(), _DIRT_RAY_CASTING_PARALLEL_RAY_SOURCE_OFFSET,
+        # Sample points using the raycasting sampler. Note that we only need a half-height cuboid since we'll
+        # clip the bottom half into the object.
+        cuboid_sizes = [self.PARTICLE_HALF_EXTENT * 2, self.PARTICLE_HALF_EXTENT * 2, self.PARTICLE_HALF_EXTENT]
+        results = sampling_utils.sample_cuboid_on_object(
+            obj, self.get_num_stashed(), cuboid_sizes,
             _DIRT_SAMPLING_BIMODAL_MEAN_FRACTION, _DIRT_SAMPLING_BIMODAL_STDEV_FRACTION,
-            _DIRT_SAMPLING_AXIS_PROBABILITIES, _DIRT_SAMPLING_BOTTOM_SIDE_PROBABILITY, refuse_downwards=True)
+            _DIRT_SAMPLING_AXIS_PROBABILITIES, undo_padding=True,
+            refuse_downwards=True)
 
         # Use the sampled points to set the dirt positions.
-        for position, normal, reasons in results:
+        for position, normal, quaternion, reasons in results:
             if position is not None:
-                self.unstash_particle(position, [0, 0, 0, 1])
+                cuboid_base_to_center = cuboid_sizes[2] / 2.
+                surface_point = position - normal * cuboid_base_to_center
+                self.unstash_particle(surface_point, quaternion)
 
 
 class Dust(_Dirt):
