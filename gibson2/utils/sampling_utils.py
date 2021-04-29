@@ -127,7 +127,7 @@ def sample_cuboid_on_object(obj,
                             bimodal_mean_fraction,
                             bimodal_stdev_fraction,
                             axis_probabilities,
-                            bottom_padding=_DEFAULT_CUBOID_BOTTOM_PADDING,
+                            undo_padding=False,
                             aabb_offset=_DEFAULT_AABB_OFFSET,
                             max_sampling_attempts=_DEFAULT_MAX_SAMPLING_ATTEMPTS,
                             max_angle_with_z_axis=_DEFAULT_MAX_ANGLE_WITH_Z_AXIS,
@@ -145,7 +145,11 @@ def sample_cuboid_on_object(obj,
     :param bimodal_stdev_fraction: float, the standard deviation of one side of the symmetric bimodal distribution as a
         fraction of the min-max range.
     :param axis_probabilities: Array of shape (3, ), the probability of ray casting along each axis.
-    :param bottom_padding: float, padding to leave between object surface and cuboid
+    :param undo_padding: bool. Whether the bottom padding that's applied to the cuboid should be removed before return.
+        Useful when the cuboid needs to be flush with the surface for whatever reason. Note that the padding will still
+        be applied initially (since it's not possible to do the cuboid emptiness check without doing this - otherwise
+        the rays will hit the sampled-on object), so the emptiness check still checks a padded cuboid. This flag will
+        simply make the sampler undo the padding prior to returning.
     :param aabb_offset: float, padding for AABB to make sure rays start outside the actual object.
     :param max_sampling_attempts: int, how many times sampling will be attempted for each requested point.
     :param max_angle_with_z_axis: float, maximum angle between hit normal and positive Z axis allowed. Can be used to
@@ -212,7 +216,7 @@ def sample_cuboid_on_object(obj,
             center_hit_normal = hit_normals[center_idx]
 
             # Apply the padding to all the points.
-            padding = bottom_padding * center_hit_normal
+            padding = _DEFAULT_CUBOID_BOTTOM_PADDING * center_hit_normal
             hit_positions += padding
 
             center_hit_position = hit_positions[center_idx]
@@ -236,6 +240,9 @@ def sample_cuboid_on_object(obj,
 
             # Compute the cuboid center
             cuboid_centroid = center_hit_position + center_hit_normal * this_cuboid_dimensions[2] / 2.
+
+            if undo_padding:
+                cuboid_centroid -= padding
 
             # Compute a rotation from the default AABB to the sampled position.
             rotation = compute_rotation_from_grid_sample(grid, hit_positions, cuboid_centroid,
