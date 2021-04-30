@@ -74,6 +74,10 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
         if sample_on_floor:
             _, pos = objB.scene.get_random_point_by_room_instance(
                 objB.room_instance)
+
+            if pos is not None:
+                pos[2] = stable_z_on_aabb(
+                    objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
         else:
             if use_ray_casting_method:
                 if predicate == 'onTop':
