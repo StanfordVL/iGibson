@@ -139,7 +139,7 @@ def main():
 
     if not args.vr_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
-    vr_reader = VRLogReader(args.vr_log_path, s,
+    vr_reader = VRLogReader(args.vr_log_path, s.vr_settings,
                             emulate_save_fps=False, log_status=False)
 
     if not args.disable_save:

@@ -40,11 +40,11 @@ class VrData(object):
     Key: vr_settings
     Values: touchpad_movement, movement_controller, movement_speed, relative_movement_device
     """
-    def __init__(self, s):
+    def __init__(self, vr_settings):
         """
-        :param s: reference to simulator - required to access current VrSettings
+        :param vr_settings: current VrSettings
         """
-        self.s = s
+        self.vr_settings = vr_settings
         # All internal data is stored in a dictionary
         self.vr_data_dict = dict()
         self.controllers = ['left_controller', 'right_controller']
@@ -83,8 +83,8 @@ class VrData(object):
         for controller in self.controllers:
             for button_press_data in convert_binary_to_button_data(ar_data['vr/vr_event_data/{}'.format(controller)][frame_num]):
                 # Convert (button_idx, press_id) tuple back to an action, if it exists
-                if button_press_data in self.s.vr_settings.button_action_map.keys():
-                    action = self.s.vr_settings.button_action_map[button_press_data]
+                if button_press_data in self.vr_settings.button_action_map.keys():
+                    action = self.vr_settings.button_action_map[button_press_data]
                     events.append((controller, action))
         self.vr_data_dict['event_data'] = events
 

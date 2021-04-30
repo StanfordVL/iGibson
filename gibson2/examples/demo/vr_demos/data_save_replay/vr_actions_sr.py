@@ -154,7 +154,7 @@ def run_action_sr(mode):
         vr_writer.set_up_data_storage()
     else:
         # Playback faster than FPS during saving - can set emulate_save_fps to True to emulate saving FPS
-        vr_reader = VRLogReader(vr_log_path, s, emulate_save_fps=False, log_status=False)
+        vr_reader = VRLogReader(vr_log_path, s.vr_settings, emulate_save_fps=False, log_status=False)
 
     if is_save:
         # Main simulation loop - run for as long as the user specified
