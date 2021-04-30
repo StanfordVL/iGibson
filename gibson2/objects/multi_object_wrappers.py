@@ -87,10 +87,4 @@ class ObjectMultiplexer(StatefulObject):
         return self._multiplexed_objects[self.current_index]
 
     def __getattr__(self, item):
-        obj = self.current_selection()
-        if len(obj) != 1:
-            raise ValueError(
-                "Multi-object selection does not support calling object function. Note that we haven't even checked "
-                "that the attr exists yet, so beware that this error could be because of a missing attribute.")
-
-        return getattr(obj, item)
+        return getattr(self.current_selection(), item)
