@@ -2,7 +2,7 @@ import networkx as nx
 from gibson2.object_states import *
 from gibson2.object_states.object_state_base import BaseObjectState
 
-_ALL_STATES = frozenset([
+ALL_STATES = frozenset([
     AABB,
     VerticalAdjacency,
     Burnt,
@@ -56,7 +56,7 @@ def get_default_states():
 
 
 def get_all_states():
-    return _ALL_STATES
+    return ALL_STATES
 
 
 def get_states_for_ability(ability):
