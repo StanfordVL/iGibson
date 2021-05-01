@@ -1,18 +1,23 @@
+from IPython import embed
+import numpy as np
+
+import gibson2
+from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, get_aabb_volume
 from gibson2.object_states import AABB
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, get_aabb_volume
-import numpy as np
-import gibson2
-from IPython import embed
+import pybullet as p
 
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
-    def set_value(self, other, new_value):
-        for _ in range(10):
+    def set_value(self, other, new_value, use_ray_casting_method=False):
+        state_id = p.saveState()
+
+        for _ in range(100):
             sampling_success = sample_kinematics(
-                'inside', self.obj, other, new_value)
+                'inside', self.obj, other, new_value,
+                use_ray_casting_method=use_ray_casting_method)
             if sampling_success:
                 clear_cached_states(self.obj)
                 clear_cached_states(other)
@@ -23,10 +28,16 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
                     embed()
             if sampling_success:
                 break
+            else:
+                p.restoreState(state_id)
+
+        p.removeState(state_id)
 
         return sampling_success
 
-    def get_value(self, other):
+    def get_value(self, other, use_ray_casting_method=False):
+        del use_ray_casting_method
+
         objA_states = self.obj.states
         objB_states = other.states
 

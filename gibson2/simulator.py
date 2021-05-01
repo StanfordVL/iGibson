@@ -1114,7 +1114,7 @@ class Simulator:
         Checks to see if an object with the given body_id can be grasped. This is done
         by checking its category to see if is in the allowlist.
         """
-        if not hasattr(self.scene, 'objects_by_id') or body_id not in self.scene.objects_by_id or self.scene.objects_by_id[body_id].category == 'object':
+        if not hasattr(self.scene, 'objects_by_id') or body_id not in self.scene.objects_by_id or not hasattr(self.scene.objects_by_id[body_id], 'category') or self.scene.objects_by_id[body_id].category == 'object':
             mass = p.getDynamicsInfo(body_id, c_link)[0]
             return mass <= self.vr_settings.assist_grasp_mass_thresh
         else:
@@ -1397,7 +1397,10 @@ class Simulator:
         """
         if not hasattr(self.scene, 'objects_by_id'):
             return []
-        return [body_id for body_id in self.objects if body_id in self.scene.objects_by_id.keys() and self.scene.objects_by_id[body_id].category == category_name]
+        return [body_id for body_id in self.objects
+                if (body_id in self.scene.objects_by_id.keys() and
+                    hasattr(self.scene.objects_by_id[body_id], "category") and
+                    self.scene.objects_by_id[body_id].category == category_name)]
 
     def update_position(self, instance):
         """

@@ -4,6 +4,7 @@ from gibson2.object_states.object_state_base import BooleanState, RelativeObject
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 import gibson2
 from IPython import embed
+import pybullet as p
 
 
 class Under(KinematicsMixin, RelativeObjectState, BooleanState):
@@ -12,6 +13,8 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
         return KinematicsMixin.get_dependencies() + [VerticalAdjacency]
 
     def set_value(self, other, new_value):
+        state_id = p.saveState()
+
         for _ in range(10):
             sampling_success = sample_kinematics(
                 'under', self.obj, other, new_value)
@@ -25,6 +28,10 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
                     embed()
             if sampling_success:
                 break
+            else:
+                p.restoreState(state_id)
+
+        p.removeState(state_id)
 
         return sampling_success
 
