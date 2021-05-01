@@ -687,7 +687,6 @@ class iGTNTask(TaskNetTask):
 
         # Use ray casting for ontop and inside sampling for non-sampleable objects
         for condition, positive in sampleable_obj_conditions:
-<<<<<<< HEAD
             print(condition.body)
             print(positive)
             success = condition.sample(binary_state=positive)
@@ -698,7 +697,6 @@ class iGTNTask(TaskNetTask):
                 feedback['init_success'] = 'no',
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
-=======
             if condition.STATE_NAME in ['inside', 'ontop']:
                 condition.kwargs['use_ray_casting_method'] = True
 
