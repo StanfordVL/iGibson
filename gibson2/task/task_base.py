@@ -10,6 +10,7 @@ from gibson2.object_states.on_floor import RoomFloor
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
+from gibson2.objects.vr_objects import VrAgent
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -110,6 +111,24 @@ class iGTNTask(TaskNetTask):
                     return False, feedback
                 self.non_sampleable_object_inst.add(obj_inst)
 
+        self.sampling_orders = []
+        cur_batch = self.non_sampleable_object_inst
+        while len(cur_batch) > 0:
+            self.sampling_orders.append(cur_batch)
+            next_batch = set()
+            for cond in self.parsed_initial_conditions:
+                if len(cond) == 3 and cond[2] in cur_batch:
+                    next_batch.add(cond[1])
+            cur_batch = next_batch
+        remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+        if len(remaining_objs) != 0:
+            error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
+                ', '.join(remaining_objs))
+            logging.warning(error_msg)
+            feedback['init_success'] = 'no',
+            feedback['init_feedback'] = error_msg
+            return False, feedback
+
         for obj_cat in self.objects:
             if obj_cat not in NON_SAMPLEABLE_OBJECTS:
                 continue
@@ -193,6 +212,8 @@ class iGTNTask(TaskNetTask):
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
+            if "agent" in obj_cat:
+                continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
             categories = \
@@ -248,6 +269,45 @@ class iGTNTask(TaskNetTask):
 
         return True, feedback
 
+    def import_agent(self):
+        #TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
+        # baserobot api
+        agent = VrAgent(self.simulator)
+        self.simulator.robots.append(agent)
+        assert(len(self.simulator.robots) == 1), "Error, multiple agents is not currently supported"
+        agent.vr_dict['body'].set_base_link_position_orientation(
+            [300, 300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['left_hand'].set_base_link_position_orientation(
+            [300, 300, -300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['right_hand'].set_base_link_position_orientation(
+            [300, -300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+            [300, 300, -300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+            [300, -300, 300], [0, 0, 0, 1]
+        )
+        self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
+        if self.online_sampling == False:
+            agent.vr_dict['body'].set_base_link_position_orientation(
+                self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
+            )
+            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+            )
+            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
+            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+            )
+            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
+
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
@@ -275,6 +335,9 @@ class iGTNTask(TaskNetTask):
                                           name=tasknet_object_scope[obj_inst],
                                           scene=self.scene,
                                           room_instance=room_inst)
+                elif 'agent' in obj_inst:
+                    # Skip adding agent to object scope, handled later by import_agent()
+                    continue
                 else:
                     for _, sim_obj in self.scene.objects_by_name.items():
                         if sim_obj.tasknet_object_scope == obj_inst:
@@ -622,8 +685,9 @@ class iGTNTask(TaskNetTask):
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
 
-        # Do sampling that only involves sampleable object (e.g. apple is cooked)
+        # Use ray casting for ontop and inside sampling for non-sampleable objects
         for condition, positive in sampleable_obj_conditions:
+<<<<<<< HEAD
             print(condition.body)
             print(positive)
             success = condition.sample(binary_state=positive)
@@ -634,6 +698,24 @@ class iGTNTask(TaskNetTask):
                 feedback['init_success'] = 'no',
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
+=======
+            if condition.STATE_NAME in ['inside', 'ontop']:
+                condition.kwargs['use_ray_casting_method'] = True
+
+        # Pop non-sampleable objects
+        self.sampling_orders.pop(0)
+        for cur_batch in self.sampling_orders:
+            for condition, positive in sampleable_obj_conditions:
+                # Sample conditions that involve the current batch of objects
+                if condition.body[0] in cur_batch:
+                    success = condition.sample(binary_state=positive)
+                    if not success:
+                        error_msg = 'Sampleable object conditions failed: {}'.format(
+                            condition.body)
+                        logging.warning(error_msg)
+                        feedback['init_success'] = 'no',
+                        feedback['init_feedback'] = error_msg
+                        return False, feedback
 
         return True, feedback
 

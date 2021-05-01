@@ -8,22 +8,22 @@ class ObjectStateUnaryPredicate(UnaryAtomicPredicate):
     STATE_CLASS = None
     STATE_NAME = None
 
-    def _evaluate(self, obj):
-        return obj.states[self.STATE_CLASS].get_value()
+    def _evaluate(self, obj, **kwargs):
+        return obj.states[self.STATE_CLASS].get_value(**kwargs)
 
-    def _sample(self, obj, binary_state):
-        return obj.states[self.STATE_CLASS].set_value(binary_state)
+    def _sample(self, obj, binary_state, **kwargs):
+        return obj.states[self.STATE_CLASS].set_value(binary_state, **kwargs)
 
 
 class ObjectStateBinaryPredicate(BinaryAtomicPredicate):
     STATE_CLASS = None
     STATE_NAME = None
 
-    def _evaluate(self, obj1, obj2):
-        return obj1.states[self.STATE_CLASS].get_value(obj2)
+    def _evaluate(self, obj1, obj2, **kwargs):
+        return obj1.states[self.STATE_CLASS].get_value(obj2, **kwargs)
 
-    def _sample(self, obj1, obj2, binary_state):
-        return obj1.states[self.STATE_CLASS].set_value(obj2, binary_state)
+    def _sample(self, obj1, obj2, binary_state, **kwargs):
+        return obj1.states[self.STATE_CLASS].set_value(obj2, binary_state, **kwargs)
 
 
 def get_unary_atomic_predicate_for_state(state_class, state_name):
