@@ -145,11 +145,25 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # percentage of objects allowed that CANNOT extend their joints by >66%
         self.link_collision_tolerance = link_collision_tolerance
 
+        # Agent placeholder
+        self.agent = {}
+
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
             if 'category' in link.attrib:
-                # Extract category and model from the link entry
+                # Extract the category from the link entry
                 category = link.attrib["category"]
+
+                if category in ["agent"]:
+                    # For agents, the pose of the base link is stored in the scene 
+                    # URDF, instead of the pose of the centroid of the bounding box
+                    self.agent[link.attrib['name']] = {
+                        'xyz' : np.array([float(val) for val in link.attrib['xyz'].split(" ")]),
+                        'rpy' : np.array([float(val) for val in link.attrib['rpy'].split(" ")])
+                    }
+                    continue
+
+                # Extract the model from the link entry
                 model = link.attrib["model"]
 
                 # An object can in multiple rooms, seperated by commas,
@@ -238,7 +252,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      == object_name][0]
 
                 tasknet_object_scope = link.attrib.get('object_scope', None)
-
                 obj = URDFObject(
                     filename,
                     name=object_name,
@@ -916,6 +929,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         x, y = self.world_to_seg_map(xy)
+        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]: 
+            return None
         ins_id = self.room_ins_map[x, y]
         # room boundary
         if ins_id == 0:
@@ -948,7 +963,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             link = scene_tree.find('link[@name="{}"]'.format(name))
 
             # Convert from center of mass to base link position
-            body_id = obj.body_ids[obj.main_body]
+            if hasattr(obj, "body_ids"):
+                body_id = obj.body_ids[obj.main_body]
+            else:
+                body_id = obj.body_id
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos = dynamics_info[3]
             inertial_orn = dynamics_info[4]
@@ -962,8 +980,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
             # Convert to XYZ position for URDF
             euler = euler_from_quat(obj.get_orientation())
             roll, pitch, yaw = euler
-            offset = rotate_vector_3d(
-                obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+            if hasattr(obj, "scaled_bbxc_in_blf"):
+                offset = rotate_vector_3d(
+                    obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+            else:
+                assert obj.category == "agent"
+                offset = np.array([0, 0, 0])
             bbox_pos = base_link_position - offset
 
             xyz = ' '.join([str(p) for p in bbox_pos])
@@ -1001,20 +1023,24 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 continue
 
             category = obj.category
-            model = os.path.basename(obj.model_path)
             room = self.get_room_instance_by_point(
                 np.array(obj.get_position())[:2])
-            bounding_box = ' '.join([str(b) for b in obj.bounding_box])
 
             new_link = ET.SubElement(tree_root, 'link')
             new_link.attrib = {
-                'bounding_box': bounding_box,
                 'category': category,
-                'model': model,
                 'name': name,
                 'rpy': rpy,
                 'xyz': xyz,
             }
+            if hasattr(obj, "bounding_box"):
+                bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+                new_link.attrib['bounding_box'] = bounding_box
+
+            if hasattr(obj, "model_path"):
+                model = os.path.basename(obj.model_path)
+                new_link.attrib['model'] = model
+
             if room is not None:
                 new_link.attrib['room'] = room
 
