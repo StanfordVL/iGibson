@@ -291,7 +291,7 @@ class iGTNTask(TaskNetTask):
             [300, -300, 300], [0, 0, 0, 1]
         )
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
-        if self.online_sampling == False:
+        if not self.online_sampling and self.scene.agent != {}:
             agent.vr_dict['body'].set_base_link_position_orientation(
                 self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
             )
