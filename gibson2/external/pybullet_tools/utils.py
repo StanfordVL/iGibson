@@ -2561,6 +2561,15 @@ def approximate_as_cylinder(body, **kwargs):
 MAX_DISTANCE = 0.
 
 
+def set_all_collisions(body_id, enabled=1):
+    body_link_idxs = [-1] + [i for i in range(p.getNumJoints(body_id))]
+
+    for col_id in range(p.getNumBodies()):
+        col_link_idxs = [-1] + [i for i in range(p.getNumJoints(col_id))]
+        for body_link_idx in body_link_idxs:
+            for col_link_idx in col_link_idxs:
+                p.setCollisionFilterPair(body_id, col_id, body_link_idx, col_link_idx, enabled)
+
 def contact_collision():
     step_simulation()
     return len(p.getContactPoints(physicsClientId=CLIENT)) != 0
