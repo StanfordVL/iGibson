@@ -392,7 +392,7 @@ class FetchGripper(LocomotorRobot):
         finger_link_ids = [joint_from_name(self.robot_ids[0], jnt) for jnt in ("r_gripper_finger_joint", "l_gripper_finger_joint")]
         for f_id in finger_link_ids:
             p.changeVisualShape(objectUniqueId=self.robot_ids[0], linkIndex=f_id, rgbaColor=[0, 0, 0, 1])
-            p.changeDynamics(bodyUniqueId=self.robot_ids[0], linkIndex=f_id, lateralFriction=1.0)
+            p.changeDynamics(bodyUniqueId=self.robot_ids[0], linkIndex=f_id, lateralFriction=2.0)
 
         # Add disabled collisions when we're planning un/tucking
         self.disabled_tucking_collisions = {

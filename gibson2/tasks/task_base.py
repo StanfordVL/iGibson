@@ -87,3 +87,14 @@ class BaseTask(ABC):
         :param env: environment instance
         """
         return
+
+    @property
+    def task_objects(self):
+        """
+        Returns keyword-mapped objects belonging to this task
+
+        Returns:
+            dict: Name-mapped objects in this task
+        """
+        # No objects by default
+        return {}

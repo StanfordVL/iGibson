@@ -17,6 +17,11 @@ class Cube(Object):
         self.mass = mass
         self.color = color
 
+        # Additional relevant info
+        self.radius = max(dim[0], dim[1])
+        self.height = dim[2] * 2.0
+        self.bottom_offset = -dim[2]
+
     def _load(self):
         """
         Load the object into pybullet

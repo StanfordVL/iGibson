@@ -2,7 +2,10 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.object_base import Object
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.objects.articulated_object import URDFObject
+from gibson2.objects.cube import Cube
 from gibson2.utils.custom_utils import create_uniform_ori_sampler, create_uniform_pos_sampler
+import gibson2.external.pybullet_tools.utils as PBU
+import pybullet as p
 
 import numpy as np
 
@@ -16,7 +19,8 @@ class CustomWrappedObject:
     Args:
         name (str): Name to assign this object -- should be unique
 
-        filename (str): fpath to the urdf associated with this object, OR name associated with YCB object (0XX-name)
+        filename (None or str): If specified, should be fpath to the urdf associated with this object,
+            OR name associated with YCB object (0XX-name)
 
         obj_type (str): type of object. Options are "custom", "furniture", "ycb"
 
@@ -49,6 +53,14 @@ class CustomWrappedObject:
             If None, `'rot_range'` and `'rot_axis'` must be specified.
 
         env (iGibsonEnv): active environment instance
+
+        bottom_offset (float): Distance from object center to bottom, only relevant if using @pos_range as the method
+            for generating position locations
+
+        mass (None or float): If set, will override default mass that when this object is loaded. This is automatically
+            scaled by @scale. Note this only corresponds to the base link mass!
+
+        obj_kwargs (None or dict): Object-specific arguments to pass to native object constructor
     """
     def __init__(
         self,
@@ -65,7 +77,13 @@ class CustomWrappedObject:
         env,
         filename,
         scale=1,
+        bottom_offset=0.0,
+        mass=None,
+        obj_kwargs=None,
     ):
+        # Store env reference
+        self.env = env
+
         # Create the appropriate name based on filename arg
         if obj_type == 'ycb':
             # This is a YCB object
@@ -78,6 +96,9 @@ class CustomWrappedObject:
             model = fname_splits[-2]
             model_path = "/".join(fname_splits[:-1])
             self.obj = URDFObject(name=name, category=category, model=model, model_path=model_path, filename=filename, scale=scale * np.ones(3))
+        elif obj_type == 'cube':
+            # Basic cube object -- we assume necessary obj kwargs are specified
+            self.obj = Cube(mass=mass, **obj_kwargs)
         elif obj_type == 'custom':
             # Default to Articulated (URDF-based) object
             self.obj = ArticulatedObject(filename=filename, scale=scale)
@@ -89,6 +110,7 @@ class CustomWrappedObject:
         # Store other internal vars
         self.name = name
         self.class_id = class_id
+        self.mass = mass if mass is None else mass * scale
 
         # # TODO: For now, hardcoding radius, height, and bottom_offset
         # self.radius = 0.0
@@ -99,11 +121,11 @@ class CustomWrappedObject:
         self.sample_at = sample_at
         if self.sample_at is not None:
             # We override any other position sampling attribute
-            pos_sampler = self._create_stochastic_location_pos_sampler(env=env, only_top=only_top)
+            pos_sampler = self._create_stochastic_location_pos_sampler(only_top=only_top)
 
         elif pos_sampler is None:
             assert pos_range is not None, "Either pos_sampler, pos_range, or sample_at must be specified!"
-            pos_sampler = create_uniform_pos_sampler(low=pos_range[0], high=pos_range[1])
+            pos_sampler = create_uniform_pos_sampler(low=pos_range[0], high=pos_range[1], bottom_offset=scale * bottom_offset)
 
         if ori_sampler is None:
             assert rot_range is not None and rot_axis is not None,\
@@ -113,11 +135,10 @@ class CustomWrappedObject:
         self.pos_sampler = pos_sampler
         self.ori_sampler = ori_sampler
 
-    def _create_stochastic_location_pos_sampler(self, env, only_top=False):
+    def _create_stochastic_location_pos_sampler(self, only_top=False):
         """
         Helper function to generate stochastic sampler for sampling a random location for this object to be placed.
         Args:
-            env (iGibsonEnv): active environment instance
             only_top (bool): determine whether sampled surfaces only consist of the top surface (i.e.: "on" the object),
                 or also inside the object as well (e.g.: inside a drawer)
 
@@ -135,10 +156,32 @@ class CustomWrappedObject:
                 "bottom_offset": self.bottom_offset - 0.02,
                 "surfaces": "top" if only_top else self.sample_at[location].get("surfaces", None),
             }
-            return env.scene.objects_by_name[location].sample_obj_position(**sampler_args)
+            # First try to find location in scene objects
+            if location in self.env.scene.objects_by_name:
+                loc = self.env.scene.objects_by_name[location]
+            # Also check task-specific objects
+            elif location in self.env.task.task_objects:
+                loc = self.env.task.task_objects[location]
+            else:
+                # We couldn't find the object, raise an error ):
+                raise ValueError(f"No object with name {location} could be found in either the scene or task objects!")
+            # Return the sampled pose
+            return loc.sample_obj_position(**sampler_args)
 
         # Return this sampler
         return sampler
+
+    def load(self):
+        """
+        Wraps main object method to also potentially modify base link mass
+        """
+        body_id = self.obj.load()
+
+        # Modify mass if requested
+        if self.mass is not None:
+            p.changeDynamics(bodyUniqueId=body_id, linkIndex=-1, mass=self.mass, physicsClientId=PBU.get_client())
+
+        return body_id
 
     def sample_pose(self):
         """
@@ -172,6 +215,19 @@ class CustomWrappedObject:
         """
         self.ori_sampler = ori_sampler
 
+    def update_sample_at(self, sample_at, only_top=False):
+        """
+        Updates the sample_at arguments and re-generates the corresponding updated pos sampler
+
+        Args:
+            sample_at (dict): Keyword-mapped arguments necessary for sampling positions from various locations
+            only_top (bool): Determines whether sampled surfaces only consist of
+                the top surface (i.e.: "on" the object), or also inside the object as well (e.g.: inside a drawer)
+        """
+        self.sample_at = sample_at
+        self.pos_sampler = self._create_stochastic_location_pos_sampler(only_top=only_top)
+
+
     @property
     def unwrapped(self):
         """
@@ -196,7 +252,7 @@ class CustomWrappedObject:
             def hooked(*args, **kwargs):
                 result = orig_attr(*args, **kwargs)
                 # prevent wrapped_class from becoming unwrapped
-                if result == self.obj:
+                if result is self.obj:
                     return self
                 return result
 

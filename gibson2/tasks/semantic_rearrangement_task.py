@@ -59,6 +59,7 @@ class SemanticRearrangementTask(BaseTask):
         self.robot_body_id = env.robots[0].robot_ids[0]
         self.robot_gripper_joint_ids = env.robots[0].gripper_joint_ids
         # Objects
+        self._all_objects = {}
         self.target_objects = self._create_objects(env=env)
         self.target_objects_id = {k: i for i, k in enumerate(self.target_objects.keys())}
         self.target_object = None                   # this is the current active target object for the current episode
@@ -84,6 +85,14 @@ class SemanticRearrangementTask(BaseTask):
         # Obstacles
         self.obstacles = self._create_obstacles(env=env)
 
+        # Trash (if requested)
+        self.include_trash = self.config.get("include_trash", False)
+        self.trash = None
+        self.trash_bin = None
+        self.trash_sampling_args = None
+        if self.include_trash:
+            self.trash = self._create_trash(env=env)
+
         # Store env
         self.env = env
 
@@ -102,6 +111,9 @@ class SemanticRearrangementTask(BaseTask):
             env.simulator.import_object(obj=obj, class_id=obj.class_id)
             # Store a reference to this object
             objs[obj_config["name"]] = obj
+
+        # Update object registry
+        self._all_objects.update(objs)
 
         # Return created objects
         return objs
@@ -122,8 +134,70 @@ class SemanticRearrangementTask(BaseTask):
             # Store a reference to this object
             obstacles[obj_config["name"]] = obj
 
+        # Update object registry
+        self._all_objects.update(obstacles)
+
         # Return created objects
         return obstacles
+
+    def _create_trash(self, env):
+        """
+        Helper function to create trash objects
+
+        Returns:
+            dict: obstacles mapped from name to BaseObject instances
+        """
+        trash = OrderedDict()
+        # Define specific kwargs to pass to underlying Cube constructor (which will be the trash)
+        trash_kwargs = {
+            "dim": [0.015, 0.015, 0.005],
+            "visual_only": False,
+            "color": [0.1, 0.05, 0.0, 1],
+        }
+
+        # Define sampling args (we will sample directly on target object)
+        self.trash_sampling_args = {
+            "prob": 1.0,
+            "surfaces": ["top"],
+        }
+
+        # Compose dummy sampling dict, since we don't know a priori what target object will be sampled
+        sample_at = {
+            "__DUMMY__": self.trash_sampling_args
+        }
+
+        # Hardcode number of trash particles for now
+        n_trash = 3
+
+        # Loop over number of trash particles and generate them
+        for i in range(n_trash):
+            name = f"trash_{i}"
+            obj = CustomWrappedObject(
+                name=name,
+                obj_type="cube",
+                class_id=999,                       # set class id to something that will presumably be unique from others
+                sample_at=sample_at,
+                only_top=True,
+                pos_range=None,
+                rot_range=[-1.57, 1.57],
+                rot_axis="z",
+                pos_sampler=None,
+                ori_sampler=None,
+                env=env,
+                filename=None,
+                mass=0.5,
+                obj_kwargs=trash_kwargs,
+            )
+            # Import this object into the simulator
+            env.simulator.import_object(obj=obj, class_id=obj.class_id)
+            # Store a reference to this object
+            trash[name] = obj
+
+        # Update object registry
+        self._all_objects.update(trash)
+
+        # Return created objects
+        return trash
 
     def reset_scene(self, env):
         """
@@ -173,6 +247,29 @@ class SemanticRearrangementTask(BaseTask):
         # Store location info
         self.update_location_info()
 
+    def sample_pose_and_place_object(self, obj, check_contact=True):
+        """
+        Method to sample @obj pose and set its pose in the environment
+
+        Args:
+            obj (CustomWrappedObject): Object to place in environment
+            check_contact (bool): If True, will make sure that the object is not in collision when being sampled
+        """
+        # Sample location, checking for collisions
+        success = False if check_contact else True
+        for i in range(100):
+            pos, ori = obj.sample_pose()
+            self.target_object_init_pos = np.array(pos)
+            obj.set_position_orientation(pos, ori)
+            p.stepSimulation()
+            if not self.check_obj_contact(obj=obj):
+                success = True
+            if success:
+                break
+
+        # If we haven't had a success, raise an error
+        assert success, "Failed to successfully sample valid object locations!"
+
     def update_location_info(self):
         """
         Helper function to update location info based on current target object
@@ -212,6 +309,17 @@ class SemanticRearrangementTask(BaseTask):
             self.goal_pos = self.target_locations[self.goal_location].get_surface_position(self.goal_surface)
             self.goal_location_id = self.target_locations[self.goal_location].body_ids[0]
             self.goal_surface_id = self.target_locations[self.goal_location].get_surface_link_id(self.goal_surface)
+
+        # If we have trash, we also need to update its position
+        if self.include_trash:
+            # Update trash bin object
+            self.trash_bin = self.env.scene.objects_by_name["trash_can_77"]
+            for tr in self.trash.values():
+                # Update sampling args
+                sample_at = {self.target_object.name: self.trash_sampling_args}
+                tr.update_sample_at(sample_at=sample_at, only_top=True)
+                # Update trash locations in scene
+                self.sample_pose_and_place_object(obj=tr, check_contact=False)
 
     def sample_initial_pose(self, env):
         """
@@ -300,10 +408,12 @@ class SemanticRearrangementTask(BaseTask):
         # obs_cat.append(task_obs["furniture_joints"])
         # Add concatenated obs also
         task_obs["object-state"] = np.concatenate(obs_cat)
+
         # Add task id
         task_id_one_hot = np.zeros(len(self.target_objects.keys()))
         task_id_one_hot[self.target_objects_id[self.target_object.name]] = 1
         task_obs["task_id"] = task_id_one_hot
+
         # Add location -- this is ID of object robot is at if untucked, else returns -1 (assumes we're not at a location)
         if env.robots[0].tucked:
             task_obs["robot_location"] = -1
@@ -313,8 +423,10 @@ class SemanticRearrangementTask(BaseTask):
                 self.target_locations.keys(),
                 key=lambda x: np.linalg.norm(robot_pos[:2] - self.target_locations[x].init_pos[:2]))
             task_obs["robot_location"] = self.target_location_ids[robot_location]
+
         # Object location
         task_obs["target_obj_location"] = self.target_location_ids[self.target_location]
+
         # Total number of locations
         # task_obs["num_locations"] = len(list(self.target_locations.keys()))
 
@@ -421,6 +533,20 @@ class SemanticRearrangementTask(BaseTask):
         # Compose and success dict
         success_dict = {"task": task_success}
 
+        # If we're using trash, include this as obs
+        if self.include_trash:
+            trash_in_bin = True
+            # Make sure all trash is in bin
+            for tr in self.trash.values():
+                trash_in_bin = len(list(p.getContactPoints(bodyA=tr.body_id, bodyB=self.trash_bin.body_ids[0]))) > 0
+                if not trash_in_bin:
+                    # At least one trash piece isn't in bin, so we can leave immediately
+                    break
+            # Add to success dict
+            success_dict["trash_in_bin"] = trash_in_bin
+            # Modify success condition (trash must be in trash bin to complete task)
+            success_dict["task"] = success_dict["task"] and trash_in_bin
+
         # Return dict
         return success_dict
 
@@ -441,3 +567,17 @@ class SemanticRearrangementTask(BaseTask):
                     # Also update location info
                     self.update_location_info()
                     break
+
+    def check_obj_contact(self, obj):
+        """
+        Checks if object is in contact with any other object
+
+        :param obj: (Object) object ot check collision
+        :return: (bool) whether the object is in contact with another object
+        """
+        contact_pts = list(p.getContactPoints(bodyA=obj.body_id, physicsClientId=PBU.get_client()))
+        return len(contact_pts) > 0
+
+    @property
+    def task_objects(self):
+        return self._all_objects

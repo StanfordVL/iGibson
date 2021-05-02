@@ -470,6 +470,15 @@
         <color rgba="1.0 0 0 0.3" />
       </material>
     </visual>
+    <visual name="grip_site_cylinder_y">
+      <origin rpy="0 0 0" xyz="0.02 0 0" />
+      <geometry>
+        <box size="0.004 0.4 0.004"/>
+      </geometry>
+      <material name="">
+        <color rgba="1.0 0 0 0.3" />
+      </material>
+    </visual>
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
