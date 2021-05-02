@@ -4,6 +4,16 @@ import pybullet as p
 import gibson2.external.pybullet_tools.utils as PBU
 from gibson2.utils.filters import MovingAverageFilter
 
+
+# Different modes
+IK_MODES = {
+    "pose_absolute_ori",                        # 6DOF (dx,dy,dz,ax,ay,az) control over pose, where the orientation is given in absolute axis-angle coordinates
+    "pose_delta_ori",                           # 6DOF (dx,dy,dz,dax,day,daz) control over pose
+    "position_fixed_ori",                       # 3DOF (dx,dy,dz) control over position, with orientation commands being kept as fixed initial absolute orientation
+    "position_compliant_ori",                   # 3DOF (dx,dy,dz) control over position, with orientation commands automatically being sent as 0s (so can drift over time)
+}
+
+
 class IKController:
     """
     Simple controller class to convert (delta) EEF commands into joint velocities
@@ -27,11 +37,31 @@ class IKController:
         self.action_input_transform = (self.input_max + self.input_min) / 2.0
         self.lpf = MovingAverageFilter(obs_dim=len(self.robot.upper_joint_limits), filter_width=2)
 
+        # Set mode and make sure it's valid
+        self.mode = config["controller"].get("mode", "pose_delta_ori")
+        assert self.mode in IK_MODES, f"Invalid IK mode specified. Valid options: {IK_MODES}. Got: {self.mode}"
+
+        # Store global limits
+        self.eef_always_in_frame = config["controller"].get("eef_always_in_frame", False)
+        self.neutral_xy = config["controller"].get("neutral_xy", [0.25, 0])
+        self.radius_limit = config["controller"].get("radius_limit", 0.5)
+        self.height_limits = config["controller"].get("height_limits", [0.2, 1.5])
+
+        # Get vertical and horizontal fov
+        self.vertical_fov = config["vertical_fov"] * np.pi / 180.
+        width, height = config["image_width"], config["image_height"]
+        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 2.0) * width /
+                                            height)
+
+        # Create var to store orientation reference (may be necessary based on mode)
+        self.ori_target = None              # quaternion
+
     def reset(self):
         """
         Reset this controller
         """
         self.lpf = MovingAverageFilter(obs_dim=len(self.robot.upper_joint_limits), filter_width=2)
+        self.ori_target = None
 
     def scale_command(self, command):
         """
@@ -81,17 +111,48 @@ class IKController:
         This function runs inverse kinematics to back out target joint positions
         from the inputted delta command.
 
-        :param delta: a relative pose command defined by (dx, dy, dz, dar, dap, day)
+        :param delta: a relative pose command defined by (dx, dy, dz, and optionally [dar, dap, day])
 
         :return: A list of size @num_joints corresponding to the target joint angles.
         """
-        # Parse command
+        # Compute position
         dpos = delta[:3]
-        dori = T.euler2mat(delta[3:])
-
-        # Compute the new target pose
         target_pos = self.robot.get_relative_eef_position() + dpos
-        target_quat = T.mat2quat(dori @ T.quat2mat(self.robot.get_relative_eef_orientation()))
+
+        # Clip values if they're past the limits
+        xy_vec = target_pos[:2] - self.neutral_xy                   # second value is "neutral" location
+        d = np.linalg.norm(xy_vec)
+        target_pos[:2] = (min(self.radius_limit, d) / d) * xy_vec + self.neutral_xy
+        target_pos[2] = np.clip(target_pos[2], *self.height_limits)
+
+        # Also clip the target pos if we want to keep the eef in frame
+        if self.eef_always_in_frame:
+            # Calculate angle from base to eef in xy plane
+            angle = np.arctan2(target_pos[1], target_pos[0])
+            # Clip angle appropriately
+            angle_clipped = np.clip(angle, -self.horizontal_fov / 2, self.horizontal_fov / 2)
+            # Project the original vector onto a unit vector pointing in the direction of the clipped angle
+            unit_xy_angle_clipped = np.array([np.cos(angle_clipped), np.sin(angle_clipped)])
+            target_pos[:2] = np.dot(target_pos[:2], unit_xy_angle_clipped) * unit_xy_angle_clipped
+
+        # print(f"target pos: {target_pos}")
+
+        # Compute orientation
+        if self.mode == "position_fixed_ori":
+            # We need to grab the current robot orientation as the commanded orientation if there is none saved
+            if self.ori_target is None:
+                self.ori_target = self.robot.get_relative_eef_orientation()
+            target_quat = self.ori_target
+        elif self.mode == "position_compliant_ori":
+            # Target quat is simply the current robot orientation
+            target_quat = self.robot.get_relative_eef_orientation()
+        elif self.mode == "pose_absolute_ori":
+            # Received "delta" ori is in fact the desired absolute orientation
+            target_quat = T.axisangle2quat(delta[3:])
+        else:               # pose_delta_ori control
+            # Grab dori and compute target ori
+            dori = T.quat2mat(T.axisangle2quat(delta[3:]))
+            target_quat = T.mat2quat(dori @ T.quat2mat(self.robot.get_relative_eef_orientation()))
 
         # Convert to world frame
         target_pos, target_quat = self.bullet_base_pose_to_world_pose((target_pos, target_quat))

@@ -8,6 +8,21 @@ import gibson2.utils.transform_utils as T
 from gibson2.controllers.ik_controller import IKController
 
 
+VALID_DEFAULT_ARM_POSES = {
+    "vertical",             # Starts with EEF facing downwards
+    "diagonal15",           # Starts with EEF facing diagonally downwards at ~15deg angle relative to vertical
+    "diagonal30",           # Starts with EEF facing diagonally downwards at ~30deg angle relative to vertical
+    "diagonal45",           # Starts with EEF facing diagonally downwards at ~45deg angle relative to vertical
+    "horizontal",           # Starts with EEF facing horizontal
+}
+
+VALID_EEF_TRACKING_HEURISTICS = {
+    "move_base",            # Rotates base to track EEF
+    "move_head",            # Moves head to track EEF
+    None,                   # No heuristic
+}
+
+
 class FetchGripper(LocomotorRobot):
     def __init__(self, env, config):
         self.env = env
@@ -24,10 +39,13 @@ class FetchGripper(LocomotorRobot):
         self.arm_dim = 7
         self.gripper_dim = 2
         self.head_dim = 2
-        action_dim = self.wheel_dim + self.torso_lift_dim + self.head_dim + self.arm_dim + self.gripper_dim
+        action_dim = self.wheel_dim + self.torso_lift_dim + self.head_dim + 6 + self.gripper_dim
         self.max_velocity = np.array(config.get('max_velocity', np.ones(action_dim)))
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
+        self.default_arm_pose = config.get('default_arm_pose', 'vertical')
+        assert self.default_arm_pose in VALID_DEFAULT_ARM_POSES,\
+            f"Invalid default arm pose. Valid options are: {VALID_DEFAULT_ARM_POSES}; got: {self.default_arm_pose}"
 
         # define subsets of the joint ids
         self.wheel_joint_ids = np.array([1, 2])
@@ -54,6 +72,9 @@ class FetchGripper(LocomotorRobot):
         assert control is not None, "control must be specified for this robot!"
         self.controller_type = config['controller']['type']
         assert self.controller_type in {'vel', 'ik'}, "only IK or velocity control is currently supported for now!"
+        self.eef_tracking_heuristic = config['controller']['eef_tracking_heuristic']
+        assert self.eef_tracking_heuristic in VALID_EEF_TRACKING_HEURISTICS,\
+            f"Invalid eef tracking heuristic. Valid options are: {VALID_EEF_TRACKING_HEURISTICS}; got: {self.eef_tracking_heuristic}"
         self.controller = None
 
         # Tucked info
@@ -105,14 +126,48 @@ class FetchGripper(LocomotorRobot):
 
     @property
     def untucked_default_joints(self):
-        return np.array([
-            0.0, 0.0,  # wheels
-            0.3,  # trunk
-            0.017, 0.303,  # head
-            -1.095292641696146, -0.13764594151800824, 1.5801872514651998, 1.5533028371247326,  # arm
-            -0.7807740632174298, 1.2798540806924843, 1.9078970015451702,
-            0.05, 0.05,  # gripper
-        ])
+        if self.default_arm_pose == "vertical":
+            pose = np.array([
+                0.0, 0.0,  # wheels
+                0.3,  # trunk
+                0.0, 0.45,  # head
+                -0.94121, -0.64134, 1.55186, 1.65672, -0.93218, 1.53416, 2.14474,  # arm
+                0.05, 0.05,  # gripper
+            ])
+        elif self.default_arm_pose == "diagonal15":
+            pose = np.array([
+                0.0, 0.0,  # wheels
+                0.3,  # trunk
+                0.0, 0.45,  # head
+                -0.95587, -0.34778, 1.46388, 1.47821, -0.93813, 1.4587, 1.9939,  # arm
+                0.05, 0.05,  # gripper
+            ])
+        elif self.default_arm_pose == "diagonal30":
+            pose = np.array([
+                0.0, 0.0,  # wheels
+                0.3,  # trunk
+                0.0, 0.45,  # head
+                -1.06595, -0.22184, 1.53448, 1.46076, -0.84995, 1.36904, 1.90996,  # arm
+                0.05, 0.05,  # gripper
+            ])
+        elif self.default_arm_pose == "diagonal45":
+            pose = np.array([
+                0.0, 0.0,  # wheels
+                0.3,  # trunk
+                0.0, 0.45,  # head
+                -1.11479, -0.0685, 1.5696, 1.37304, -0.74273, 1.3983, 1.79618,  # arm
+                0.05, 0.05,  # gripper
+            ])
+        else:                       # horizontal
+            pose = np.array([
+                0.0, 0.0,  # wheels
+                0.3,  # trunk
+                0.0, 0.45,  # head
+                -1.43016, 0.20965, 1.86816, 1.77576, -0.27289, 1.31715, 2.01226,  # arm
+                0.05, 0.05,  # gripper
+            ])
+
+        return pose
 
     @property
     def rest_joints(self):
@@ -449,6 +504,8 @@ class FetchGripper(LocomotorRobot):
             # Update tuck accordingly based on whether the tuck was a success
             if success:
                 self.tucked = bool(tuck)
+                # Also reset controller
+                self.controller.reset()
 
             # Return whether we succeeded or not
             return success
@@ -489,8 +546,8 @@ class FetchGripper(LocomotorRobot):
             threshold = 0.02
             regularization = 2.0
 
-            # for heuristic mode
-            if self.config["controller"]["use_head_tracking_heuristic"]:
+            # potentially modify wheel and head actions based on heuristic mode
+            if self.eef_tracking_heuristic == "move_base":
                 boundary_of_movement = 0.4
 
                 # to make sure our velocity isn't too fast
@@ -515,7 +572,7 @@ class FetchGripper(LocomotorRobot):
                     wheel_action = np.array([0., 0.2])
                 elif ee_pixel_coords[0] < -boundary_of_movement:
                     wheel_action = np.array([0., -0.2])
-            else:
+            elif self.eef_tracking_heuristic == "move_head":
                 if abs(ee_pixel_coords[0] - desired_pixel[0]) > threshold or abs(
                         ee_pixel_coords[1] - desired_pixel[1]) > threshold:
                     pan_diff = (desired_pixel[0] - ee_pixel_coords[0]) / regularization
@@ -523,6 +580,8 @@ class FetchGripper(LocomotorRobot):
                     self.head_error_planning.append((pan_diff, tilt_diff))
                 else:
                     self.head_error_planning.append((0.0, 0.0))
+            else:                       # None
+                self.head_error_planning.append((0.0, 0.0))
 
             # Set head actions to 0
             if len(self.head_error_planning) < 5:
@@ -543,7 +602,7 @@ class FetchGripper(LocomotorRobot):
         Scale the policy action (always in [-1, 1]) to robot action based on action range.
         Extends super method so that the tuck command (the first entry in action array) remains unchanged
 
-        :param action: policy action [tuck, diff drive, joint vels, gripper]
+        :param action: policy action [tuck, diff drive, arm action, gripper]
         """
         # See if we need to update tuck
         tuck_updated = self.update_tucking(tuck=(action[0] > 0.0))
