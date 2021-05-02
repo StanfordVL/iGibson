@@ -1,0 +1,97 @@
+<robot name="12349" version="1.0">
+  <link name="link_0">
+    <visual name="link_0___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.3798690140247345 0.46450431257947683 0.008527271546669019" />
+      <geometry>
+        <mesh filename="shape/visual/link_0_m1_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.3798690140247345 0.46450431257947683 0.008527271546669019" />
+      <geometry>
+        <mesh filename="shape/collision/link_0_cm.obj" />
+      </geometry>
+    </collision>
+
+    <!-- Adding handle collision geom to make it easier to grasp -->
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.3798690140247345 -0.03 0.91" />
+      <geometry>
+        <box size="0.5 0.02 0.05"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0.0 0.0 0.0" xyz="0.3798690140247345 -0.03 0.91" />
+      <geometry>
+        <box size="0.5 0.02 0.05"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.5 0.5 0.5 1" />
+      </material>
+    </visual>
+  </link>
+
+  <link name="link_1">
+    <visual name="link_1___2">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_1_m2_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_1_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="link_2">
+    <visual name="link_2___2">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_2_m2_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_2_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <link name="base_link">
+    <visual name="link_3___1">
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/visual/link_3_m1_vm.obj" />
+      </geometry>
+    </visual>
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+      <geometry>
+        <mesh filename="shape/collision/link_3_cm.obj" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="joint_0" type="revolute">
+    <origin rpy="0.0 0.0 0.0" xyz="-0.3798690140247345 -0.322424457779675 -0.33448384085101257" />
+    <axis xyz="1.0 -0.0 0.0" />
+    <parent link="base_link" />
+    <child link="link_0" />
+    <limit lower="1.1102230246251565e-16" upper="1.5707963267948966" />
+  </joint>
+  <joint name="joint_1" type="prismatic">
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+    <axis xyz="0.0 -1.0 0.0" />
+    <parent link="base_link" />
+    <child link="link_1" />
+    <limit lower="0.016000000000000007" upper="0.5840000000000001" />
+  </joint>
+  <joint name="joint_2" type="prismatic">
+    <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.0 0.0" />
+    <axis xyz="0.0 -1.0 0.0" />
+    <parent link="base_link" />
+    <child link="link_2" />
+    <limit lower="-2.0816681711721685e-17" upper="0.6440000000000001" />
+  </joint>
+</robot>

@@ -17,9 +17,10 @@ VALID_DEFAULT_ARM_POSES = {
 }
 
 VALID_EEF_TRACKING_HEURISTICS = {
-    "move_base",            # Rotates base to track EEF
-    "move_head",            # Moves head to track EEF
-    None,                   # No heuristic
+    "move_base_continuous",                         # Rotates base continuously to track EEF
+    "move_head_horizontal_continuous",              # Moves head Left-Right continuously to track EEF
+    "move_head_vertical_discrete",                  # Moves head Up-Down discretely to track EEF
+    None,                                           # No heuristic
 }
 
 
@@ -65,6 +66,8 @@ class FetchGripper(LocomotorRobot):
 
         # For head tracking
         self.rest_head_qpos = np.array(self.rest_joints)[self.head_joint_action_idx]
+        self.target_head_qpos = np.array(self.untucked_default_joints[self.head_joint_action_idx])
+        self.discrete_head_movement_rate = 0.45          # Hardcoded for now; used to determine how much discrete head movement occurs if corresponding heuristic is set
         self.head_error_planning = []
 
         # Make sure control is specified
@@ -515,6 +518,9 @@ class FetchGripper(LocomotorRobot):
         Calculates the head joint velocities based on a heuristic, where it is fixed during navigation (tucked mode),
         but tracking the hand when manipulating (untucked mode)
         """
+        # Update joint state
+        self.calc_state()
+
         pan_idx, tilt_idx = 0, 1
         head_cmd = np.zeros(2)
 
@@ -545,10 +551,10 @@ class FetchGripper(LocomotorRobot):
             tilt_diff = 0.0
             threshold = 0.02
             regularization = 2.0
+            boundary_of_movement = 0.4
 
             # potentially modify wheel and head actions based on heuristic mode
-            if self.eef_tracking_heuristic == "move_base":
-                boundary_of_movement = 0.4
+            if self.eef_tracking_heuristic == "move_base_continuous":
 
                 # to make sure our velocity isn't too fast
 
@@ -572,7 +578,8 @@ class FetchGripper(LocomotorRobot):
                     wheel_action = np.array([0., 0.2])
                 elif ee_pixel_coords[0] < -boundary_of_movement:
                     wheel_action = np.array([0., -0.2])
-            elif self.eef_tracking_heuristic == "move_head":
+            elif self.eef_tracking_heuristic == "move_head_horizontal_continuous":
+                # TODO: See this and above @albert: What's the difference?
                 if abs(ee_pixel_coords[0] - desired_pixel[0]) > threshold or abs(
                         ee_pixel_coords[1] - desired_pixel[1]) > threshold:
                     pan_diff = (desired_pixel[0] - ee_pixel_coords[0]) / regularization
@@ -580,6 +587,18 @@ class FetchGripper(LocomotorRobot):
                     self.head_error_planning.append((pan_diff, tilt_diff))
                 else:
                     self.head_error_planning.append((0.0, 0.0))
+            elif self.eef_tracking_heuristic == "move_head_vertical_discrete":
+                # If EEF is near vertical edges of frame, then we discretely move camera in that direction
+                if ee_pixel_coords[1] > boundary_of_movement:
+                    # We're close to the top, so shift up
+                    self.target_head_qpos[1] -= self.discrete_head_movement_rate
+                elif ee_pixel_coords[1] < -boundary_of_movement:
+                    # We've close to bottom, so shift down
+                    self.target_head_qpos[1] += self.discrete_head_movement_rate
+                # Update the head error planning
+                self.head_error_planning.append(
+                    self.target_head_qpos - self.joint_position[self.head_joint_action_idx]
+                )
             else:                       # None
                 self.head_error_planning.append((0.0, 0.0))
 

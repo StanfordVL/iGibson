@@ -535,12 +535,12 @@ class SemanticRearrangementTask(BaseTask):
 
         # If we're using trash, include this as obs
         if self.include_trash:
-            trash_in_bin = True
-            # Make sure all trash is in bin
+            trash_in_bin = False
+            # Make sure at least one trash is in bin
             for tr in self.trash.values():
                 trash_in_bin = len(list(p.getContactPoints(bodyA=tr.body_id, bodyB=self.trash_bin.body_ids[0]))) > 0
-                if not trash_in_bin:
-                    # At least one trash piece isn't in bin, so we can leave immediately
+                if trash_in_bin:
+                    # At least one trash piece is in bin, so we can leave immediately
                     break
             # Add to success dict
             success_dict["trash_in_bin"] = trash_in_bin
