@@ -263,17 +263,16 @@ class ToyEnvInt(object):
                 'init_feedback': 'Cannot check until goal state is fixed.',
                 'goal_feedback': 'Goal state has uncontrolled categories.'
             }
-            # self.last_active_time = time.time()
             return accept_scene, feedback
-#         except UnsupportedSentenceError as e:
-#             accept_scene = False
-#             feedback = {
-#                     "init_success": "untested",
-#                     "goal_success": "untested",
-#                     "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
-#                     "goal_feedback": ""
-#             }
-#             return accept_scene, feedback
+        except UnsupportedSentenceError as e:
+            accept_scene = False
+            feedback = {
+                    "init_success": "untested",
+                    "goal_success": "untested",
+                    "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
+                    "goal_feedback": ""
+            }
+            return accept_scene, feedback
 
         accept_scene, feedback = self.task.check_scene()
         if not accept_scene:
