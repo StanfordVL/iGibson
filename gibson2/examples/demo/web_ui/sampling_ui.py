@@ -252,13 +252,9 @@ class ToyEnvInt(object):
         pass
 
     def sample(self, pddl):
-        print("PARSED INIT:", self.task.parsed_initial_conditions)
-        print("PARSED GOAL:", self.task.parsed_goal_conditions)
         try:
             self.task.update_problem(
                 "tester", "tester", predefined_problem=pddl, kinematic_only=True)
-            print("PARSED INIT AFTER UPDATE:", self.task.parsed_initial_conditions)
-            print("PARSED GOAL AFTER UPDATE:", self.task.parsed_goal_conditions)
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
@@ -403,9 +399,7 @@ def check_sampling():
     data = json.loads(request.data)
     atus_activity = data["activityName"]
     init_state = data["initialConditions"]
-    print(init_state)
     goal_state = data["goalConditions"]
-    print(goal_state)
     object_list = data["objectList"]
     # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
     pddl = construct_full_pddl(
