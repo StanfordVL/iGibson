@@ -35,9 +35,6 @@ class iGTNTask(TaskNetTask):
                              gibson2.ig_dataset_path, 'scenes'),
                          predefined_problem=predefined_problem)
 
-        print("PARSED INIT:", self.parsed_initial_conditions)
-        print("PARSED GOAL:", self.parsed_goal_conditions)
-
     def initialize_simulator(self,
                              simulator=None,
                              mode='iggui',
