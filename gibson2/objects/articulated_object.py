@@ -241,20 +241,21 @@ class URDFObject(StatefulObject):
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
         # In the format of {link_name: [linkX, linkY, linkZ]}
+        self.metadata = {}
         meta_links = dict()
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
-                meta_data = json.load(f)
-                bbox_size = np.array(meta_data['bbox_size'])
-                base_link_offset = np.array(meta_data['base_link_offset'])
+                self.metadata = json.load(f)
+                bbox_size = np.array(self.metadata['bbox_size'])
+                base_link_offset = np.array(self.metadata['base_link_offset'])
 
-                if 'orientations' in meta_data and len(meta_data['orientations']) > 0:
-                    self.orientations = meta_data['orientations']
+                if 'orientations' in self.metadata and len(self.metadata['orientations']) > 0:
+                    self.orientations = self.metadata['orientations']
                 else:
                     self.orientations = None
 
-                if 'links' in meta_data:
-                    meta_links = meta_data['links']
+                if 'links' in self.metadata:
+                    meta_links = self.metadata['links']
 
         elif os.path.isfile(bbox_json):
             with open(bbox_json, 'r') as bbox_file:
@@ -461,6 +462,9 @@ class URDFObject(StatefulObject):
             np.dot(rot_matrix, matrix_from_quat(chosen_orientation)))
         return rotated_quat
 
+    def get_prefixed_joint_name(self, name):
+        return self.name + "_" + name
+
     def rename_urdf(self):
         """
         Helper function that renames the file paths in the object urdf
@@ -486,8 +490,7 @@ class URDFObject(StatefulObject):
         # Change the joints of the added object to adapt them to the given name
         for joint_emb in self.object_tree.iter('joint'):
             # We change the joint name
-            joint_emb.attrib["name"] = self.name + \
-                "_" + joint_emb.attrib["name"]
+            joint_emb.attrib["name"] = self.get_prefixed_joint_name(joint_emb.attrib["name"])
             # We change the child link names
             for child_emb in joint_emb.findall('child'):
                 # If the original urdf already contains world link, do not rename

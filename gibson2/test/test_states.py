@@ -110,15 +110,13 @@ def test_open():
         scene = EmptyScene()
         s.import_scene(scene)
 
-        cabinet_0007 = os.path.join(
-            gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
-
-        obj = ArticulatedObject(filename=cabinet_0007)
+        microwave_dir = os.path.join(
+            gibson2.ig_dataset_path, 'objects/microwave/7128/')
+        microwave_filename = os.path.join(microwave_dir, '7128.urdf')
+        obj = URDFObject(filename=microwave_filename, category="microwave", model_path=microwave_dir,
+                         scale=np.array([0.5, 0.5, 0.5]), abilities={"openable": {}})
         s.import_object(obj)
         obj.set_position([0, 0, 0.5])
-
-        obj.abilities = {"openable": {}}
-        prepare_object_states(obj, obj.abilities)
 
         # --------------------------------------------
         # PART 1: Run with joints at default position.
@@ -127,11 +125,11 @@ def test_open():
         for _ in range(5):
             s.step()
 
-        # Check that the cabinet is not open.
+        # Check that the microwave is not open.
         assert not obj.states[object_states.Open].get_value()
 
         # --------------------------------------------
-        # PART 2: Set one joint to the max position
+        # PART 2: Set non-whitelisted joint to the max position
         # --------------------------------------------
         joint_id = 2
         max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
@@ -141,11 +139,25 @@ def test_open():
         for _ in range(5):
             s.step()
 
-        # Check that the cabinet is open.
+        # Check that the microwave is not open.
+        assert not obj.states[object_states.Open].get_value()
+
+        # --------------------------------------------
+        # PART 3: Set whitelisted joint to the max position
+        # --------------------------------------------
+        joint_id = 0
+        max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
+        p.resetJointState(obj.get_body_id(), joint_id, max_pos)
+
+        # Simulate a bit more
+        for _ in range(5):
+            s.step()
+
+        # Check that the microwave is open.
         assert obj.states[object_states.Open].get_value()
 
         # --------------------------------------------
-        # PART 3: Now try sampling a closed position.
+        # PART 4: Now try sampling a closed position.
         # --------------------------------------------
         obj.states[object_states.Open].set_value(False)
 
@@ -153,11 +165,11 @@ def test_open():
         for _ in range(5):
             s.step()
 
-        # Check that the cabinet is closed.
+        # Check that the microwave is closed.
         assert not obj.states[object_states.Open].get_value()
 
         # --------------------------------------------
-        # PART 4: Finally, sample an open position.
+        # PART 5: Finally, sample an open position.
         # --------------------------------------------
         obj.states[object_states.Open].set_value(True)
 
@@ -165,7 +177,7 @@ def test_open():
         for _ in range(5):
             s.step()
 
-        # Check that the cabinet is open.
+        # Check that the microwave is open.
         assert obj.states[object_states.Open].get_value()
     finally:
         s.disconnect()
