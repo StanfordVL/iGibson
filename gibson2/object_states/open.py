@@ -32,36 +32,38 @@ def _get_relevant_joints(obj):
         return None, None
 
     joint_metadata = obj.metadata[_METADATA_FIELD]
-    joint_ids, validate_joint_names = tuple(zip(*joint_metadata))
-    if not joint_ids:
+    _, joint_names = tuple(zip(*joint_metadata))
+    if not joint_names:
         print("No openable joint was listed in metadata for object %s" % obj.name)
         return None, None
-    validate_joint_names = set(obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8")
-                               for joint_name in validate_joint_names)
+    joint_names = set(obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8")
+                      for joint_name in joint_names)
 
     # Get joint infos and compute openness thresholds.
     body_id = obj.get_body_id()
-    joint_infos = [utils.get_joint_info(body_id, joint_id) for joint_id in joint_ids]
-    joint_names = set(joint_info.jointName for joint_info in joint_infos)
+    all_joint_ids = utils.get_joints(body_id)
+    all_joint_infos = [utils.get_joint_info(body_id, joint_id) for joint_id in all_joint_ids]
+    relevant_joint_infos = [joint_info for joint_info in all_joint_infos if joint_info.jointName in joint_names]
 
     # Assert that all of the joints' names match our expectations.
-    assert validate_joint_names == joint_names, \
+    assert len(joint_names) == len(relevant_joint_infos), \
         "Unexpected joints found during Open state joint checking. Expected %r, found %r." % (
-            validate_joint_names, joint_names)
-    assert all(joint_info.jointType in _JOINT_THRESHOLD_BY_TYPE.keys() for joint_info in joint_infos)
+            joint_names, relevant_joint_infos)
+    assert all(joint_info.jointType in _JOINT_THRESHOLD_BY_TYPE.keys() for joint_info in relevant_joint_infos)
 
-    return joint_ids, joint_infos
+    return relevant_joint_infos
 
 
 class Open(CachingEnabledObjectState, BooleanState):
 
     def _compute_value(self):
-        joint_ids, joint_infos = _get_relevant_joints(self.obj)
-        if not joint_ids:
+        relevant_joint_infos = _get_relevant_joints(self.obj)
+        if not relevant_joint_infos:
             return False
 
         # Compute a boolean openness state for each joint by comparing positions to thresholds.
-        joint_thresholds = (_compute_joint_threshold(joint_info) for joint_info in joint_infos)
+        joint_ids = [joint_info.jointIndex for joint_info in relevant_joint_infos]
+        joint_thresholds = (_compute_joint_threshold(joint_info) for joint_info in relevant_joint_infos)
         joint_positions = utils.get_joint_positions(self.obj.get_body_id(), joint_ids)
         joint_openness = (position > threshold for position, threshold in zip(joint_positions, joint_thresholds))
 
@@ -69,19 +71,17 @@ class Open(CachingEnabledObjectState, BooleanState):
         return any(joint_openness)
 
     def set_value(self, new_value):
-        joint_ids, joint_infos = _get_relevant_joints(self.obj)
-        if not joint_ids:
+        relevant_joint_infos = _get_relevant_joints(self.obj)
+        if not relevant_joint_infos:
             return False
-
-        relevant_joints = list(zip(joint_ids, joint_infos))
 
         # All joints are relevant if we are closing, but if we are opening let's sample a subset.
         if new_value:
-            num_to_open = random.randint(1, len(relevant_joints))
-            relevant_joints = random.sample(relevant_joints, num_to_open)
+            num_to_open = random.randint(1, len(relevant_joint_infos))
+            relevant_joints = random.sample(relevant_joint_infos, num_to_open)
 
         # Go through the relevant joints & set random positions.
-        for joint_id, joint_info in relevant_joints:
+        for joint_info in relevant_joint_infos:
             joint_threshold = _compute_joint_threshold(joint_info)
 
             if new_value:
@@ -92,4 +92,4 @@ class Open(CachingEnabledObjectState, BooleanState):
                 joint_pos = random.uniform(joint_info.jointLowerLimit, joint_threshold)
 
             # Save sampled position.
-            p.resetJointState(self.obj.get_body_id(), joint_id, joint_pos)
+            utils.set_joint_position(self.obj.get_body_id(), joint_info.jointIndex, joint_pos)
