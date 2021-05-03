@@ -12,6 +12,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
+from gibson2.objects.vr_objects import VrAgent
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -210,6 +211,8 @@ class iGTNTask(TaskNetTask):
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
+            if "agent" in obj_cat:
+                continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
             is_sliceable = self.object_taxonomy.has_ability(
@@ -298,6 +301,45 @@ class iGTNTask(TaskNetTask):
 
         return True, feedback
 
+    def import_agent(self):
+        #TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
+        # baserobot api
+        agent = VrAgent(self.simulator)
+        self.simulator.robots.append(agent)
+        assert(len(self.simulator.robots) == 1), "Error, multiple agents is not currently supported"
+        agent.vr_dict['body'].set_base_link_position_orientation(
+            [300, 300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['left_hand'].set_base_link_position_orientation(
+            [300, 300, -300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['right_hand'].set_base_link_position_orientation(
+            [300, -300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+            [300, 300, -300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+            [300, -300, 300], [0, 0, 0, 1]
+        )
+        self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
+        if self.online_sampling == False:
+            agent.vr_dict['body'].set_base_link_position_orientation(
+                self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
+            )
+            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+            )
+            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
+            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+            )
+            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
+
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
@@ -327,6 +369,9 @@ class iGTNTask(TaskNetTask):
                                           name=tasknet_object_scope[obj_inst],
                                           scene=self.scene,
                                           room_instance=room_inst)
+                elif 'agent' in obj_inst:
+                    # Skip adding agent to object scope, handled later by import_agent()
+                    continue
                 else:
                     for _, sim_obj in self.scene.objects_by_name.items():
                         if sim_obj.tasknet_object_scope == obj_inst:
