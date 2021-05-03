@@ -176,7 +176,7 @@ class IGVRServer(Server):
         if not self.client.vr_data:
             return
         if not self.latest_vr_data:
-            self.latest_vr_data = VrData(self.s)
+            self.latest_vr_data = VrData(self.s.vr_settings)
 
         # Make a copy of channel's most recent VR data, so it doesn't get mutated if new requests arrive
         self.latest_vr_data.refresh_muvr_data(copy.deepcopy(self.client.vr_data))

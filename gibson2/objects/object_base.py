@@ -53,6 +53,16 @@ class Object(object):
         _, orn = p.getBasePositionAndOrientation(self.body_id)
         return orn
 
+    def get_position_orientation(self):
+        """
+        Get object position and orientation
+
+        :return: position in xyz
+        :return: quaternion in xyzw
+        """
+        pos, orn = p.getBasePositionAndOrientation(self.body_id)
+        return pos, orn
+
     def set_position(self, pos):
         """
         Set object position
@@ -79,6 +89,12 @@ class Object(object):
         """
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
 
+    def set_base_link_position_orientation(self, pos, orn):
+        dynamics_info = p.getDynamicsInfo(self.body_id, -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
+        self.set_position_orientation(pos, orn)
+
     def rotate_by(self, x=0, y=0, z=0):
         """
         Rotates an object by given euler angles
@@ -86,3 +102,4 @@ class Object(object):
         e_x, e_y, e_z = p.getEulerFromQuaternion(self.get_orientation())
         self.set_orientation(p.getQuaternionFromEuler(
             [e_x + x, e_y + y, e_z + z]))
+

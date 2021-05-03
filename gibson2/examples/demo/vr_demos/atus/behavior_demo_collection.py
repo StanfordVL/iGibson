@@ -112,8 +112,7 @@ def main():
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
                                    online_sampling=online_sampling)
-    vr_agent = VrAgent(igtn_task.simulator)
-    igtn_task.simulator.set_vr_start_pos([0, 0, 1.8], vr_height_offset=-0.1)
+    vr_agent = igtn_task.simulator.robots[0]
 
     vr_cs = VrConditionSwitcher(
         igtn_task.simulator,
