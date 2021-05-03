@@ -171,6 +171,12 @@ def sample_cuboid_on_object(obj,
 
     body_id = obj.get_body_id()
 
+    cuboid_dimensions = np.array(cuboid_dimensions)
+    assert cuboid_dimensions.ndim <= 2
+    assert cuboid_dimensions.shape[-1] == 3, "Cuboid dimensions need to contain all three dimensions."
+    if cuboid_dimensions.ndim == 2:
+        assert cuboid_dimensions.shape[0] == num_samples, "Need as many offsets as samples requested."
+
     results = [(None, None, None, defaultdict(list)) for _ in range(num_samples)]
 
     for i in range(num_samples):
@@ -188,13 +194,7 @@ def sample_cuboid_on_object(obj,
             point_on_face = compute_ray_destination(axis, is_top, start_pos, aabb_min, aabb_max)
 
             # If we have a list of offset distances, pick the distance for this particular sample we're getting.
-            this_cuboid_dimensions = cuboid_dimensions
-            assert len(this_cuboid_dimensions), "Cuboid dimensions needs to be a sequence."
-            if isinstance(this_cuboid_dimensions[0], list):
-                assert len(this_cuboid_dimensions) == num_samples, "Need as many offsets as samples requested."
-                this_cuboid_dimensions = this_cuboid_dimensions[i]
-            assert len(this_cuboid_dimensions) == 3
-            this_cuboid_dimensions = np.array(this_cuboid_dimensions)
+            this_cuboid_dimensions = cuboid_dimensions if cuboid_dimensions.ndim == 1 else cuboid_dimensions[i]
 
             # Obtain the parallel rays using the direction sampling method.
             sources, destinations, grid = get_parallel_rays(
