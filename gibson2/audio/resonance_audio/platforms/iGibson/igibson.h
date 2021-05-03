@@ -54,6 +54,10 @@ struct ResonanceAudioSystem {
         is_recording_soundfield = false;
     }
 
+    ~ResonanceAudioSystem() {
+        std::cout << "Destroying Audio System" << std::endl;
+    }
+
     // ResonanceAudio API instance to communicate with the internal system.
     std::unique_ptr<ResonanceAudioApi> api;
 
@@ -66,13 +70,8 @@ struct ResonanceAudioSystem {
 };
 
 
-// Singleton |ResonanceAudioSystem| instance to communicate with the internal
-// API.
-static std::shared_ptr<ResonanceAudioSystem> resonance_audio = nullptr;
-
-
 // Initializes the ResonanceAudio system
-std::shared_ptr<ResonanceAudioSystem> Initialize(int sample_rate, size_t num_channels, size_t frames_per_buffer);
+void Initialize(int sample_rate, size_t num_channels, size_t frames_per_buffer);
 
 // Shuts down the ResonanceAudio system.
 void Shutdown();
@@ -91,7 +90,7 @@ void SetListenerTransform(float px, float py, float pz, float qx, float qy,
 ResonanceAudioApi::SourceId CreateSoundfield(int num_channels);
 
 // Creates a sound object sub-graph and connects it to the audio manager.
-ResonanceAudioApi::SourceId CreateSoundObject(RenderingMode rendering_mode);
+ResonanceAudioApi::SourceId CreateSoundObject(RenderingMode rendering_mode, float min_distance, float max_distance);
 
 // Disconnects the source with |id| from the pipeline and releases its
 // resources.

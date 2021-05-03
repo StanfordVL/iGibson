@@ -9,23 +9,25 @@
 #include "base/misc_math.h"
 #include "graph/resonance_audio_api_impl.h"
 #include "platforms/common/room_effects_utils.h"
+#include "bindings.h"
 
 
 
 namespace vraudio {
 namespace igibson {
 
+// Singleton |ResonanceAudioSystem| instance to communicate with the internal
+// API.
+std::shared_ptr<ResonanceAudioSystem> resonance_audio = nullptr;
 
 
-std::shared_ptr<ResonanceAudioSystem> Initialize(int sample_rate, size_t num_channels,
+void Initialize(int sample_rate, size_t num_channels,
                 size_t frames_per_buffer) {
   CHECK_GE(sample_rate, 0);
   CHECK_EQ(num_channels, kNumOutputChannels);
   CHECK_GE(frames_per_buffer, 0);
   resonance_audio = std::make_shared<ResonanceAudioSystem>(
       sample_rate, num_channels, frames_per_buffer);
-
-  return resonance_audio;
 }
 
 void Shutdown() { resonance_audio.reset(); }
@@ -99,13 +101,13 @@ ResonanceAudioApi::SourceId CreateSoundfield(int num_channels) {
   return ResonanceAudioApi::kInvalidSourceId;
 }
 
-ResonanceAudioApi::SourceId CreateSoundObject(RenderingMode rendering_mode) {
+ResonanceAudioApi::SourceId CreateSoundObject(RenderingMode rendering_mode, float min_distance, float max_distance) {
   SourceId id = ResonanceAudioApi::kInvalidSourceId;
   auto resonance_audio_copy = resonance_audio;
   if (resonance_audio_copy != nullptr) {
     id = resonance_audio_copy->api->CreateSoundObjectSource(rendering_mode);
     resonance_audio_copy->api->SetSourceDistanceModel(
-        id, DistanceRolloffModel::kNone, 0.0f, 0.0f);
+        id, DistanceRolloffModel::kLogarithmic, 0.0f, 0.0f);
   }
   return id;
 }
