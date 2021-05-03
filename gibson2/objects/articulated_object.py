@@ -22,6 +22,7 @@ from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_u
     add_fixed_link
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+from IPython import embed
 
 # Optionally import tasknet for object taxonomy.
 try:
@@ -221,6 +222,8 @@ class URDFObject(StatefulObject):
             mesh.attrib['filename'] = os.path.join(
                 self.model_path, mesh.attrib['filename'])
 
+        self.load_object_parts()
+
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
         if bounding_box is not None and scale is not None:
@@ -304,6 +307,14 @@ class URDFObject(StatefulObject):
             self.prepare_texture()
 
         prepare_object_states(self, abilities, online=True)
+
+    def load_object_parts(self):
+        self.object_parts = []
+        object_parts_json = os.path.join(
+            self.model_path, 'misc', 'object_parts.json')
+        if os.path.isfile(object_parts_json):
+            with open(object_parts_json) as f:
+                self.object_parts = json.load(f)
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
