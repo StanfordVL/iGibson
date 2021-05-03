@@ -55,7 +55,7 @@ else ()
             "${LIBVORBIS_DIR}/lib/libvorbisfile.a")
 endif ()
 
-add_subdirectory(pybind11)
+add_subdirectory("${GIBSON2_DIR}/render/pybind11" "${GIBSON2_DIR}/render/pybind11")
 
 # Create STATIC IMPORTED library targets for static 3P dependencies.
 
@@ -246,10 +246,11 @@ elseif (UNIX)
     set(INSTALL_BIN_DIR "x86_64")
 endif ()
 
+
 install(TARGETS audio
-        LIBRARY DESTINATION "${IGIB_INSTALL_DIR}/${INSTALL_BIN_DIR}/"
-        ARCHIVE DESTINATION "${IGIB_INSTALL_DIR}/${INSTALL_BIN_DIR}/"
-        RUNTIME DESTINATION "${IGIB_INSTALL_DIR}/${INSTALL_BIN_DIR}/")
+        LIBRARY DESTINATION "${AUDIO_DIR}"
+        ARCHIVE DESTINATION "${AUDIO_DIR}"
+        RUNTIME DESTINATION "${AUDIO_DIR}")
 #install(DIRECTORY ${RA_UNITY_SOURCE_DIR}/UnityIntegration/Assets DESTINATION "${INSTALL_DIR}/unity")
 #install(DIRECTORY ${RA_UNITY_SOURCE_DIR}/UnityIntegration/ProjectSettings DESTINATION "${INSTALL_DIR}/unity")
 
