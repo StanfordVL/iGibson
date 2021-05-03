@@ -181,7 +181,7 @@ RendererCreateCallback(UnityAudioEffectState* state) {
   CHECK(state);
   const int sample_rate = static_cast<int>(state->samplerate);
   const size_t frames_per_buffer = static_cast<size_t>(state->dspbuffersize);
-  auto tmp = Initialize(sample_rate, kNumStereoChannels, frames_per_buffer);
+  Initialize(sample_rate, kNumStereoChannels, frames_per_buffer);
   return UNITY_AUDIODSP_OK;
 }
 
@@ -357,7 +357,7 @@ UNITY_AUDIODSP_RESULT UNITY_AUDIODSP_CALLBACK SpatializerProcessCallback(
     } else {
       const auto rendering_mode =
           GetRenderingModeEnum(static_cast<int>(data->p[EffectData::kQuality]));
-      id = CreateSoundObject(rendering_mode);
+      id = CreateSoundObject(rendering_mode, 0.0f, 0.0f);
     }
     data->p[EffectData::kId] = static_cast<float>(id);
   }
