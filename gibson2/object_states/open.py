@@ -23,19 +23,19 @@ def _compute_joint_threshold(joint_info):
 
 def _get_relevant_joints(obj):
     if not hasattr(obj, "metadata"):
-        return None, None
+        return None
 
     # Get joint IDs and names from metadata annotation. If object doesn't have the openable metadata,
     # we stop here and return Open=False.
     if _METADATA_FIELD not in obj.metadata:
         print("No openable joint metadata found for object %s" % obj.name)
-        return None, None
+        return None
 
     joint_metadata = obj.metadata[_METADATA_FIELD]
     _, joint_names = tuple(zip(*joint_metadata))
     if not joint_names:
         print("No openable joint was listed in metadata for object %s" % obj.name)
-        return None, None
+        return None
     joint_names = set(obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8")
                       for joint_name in joint_names)
 
