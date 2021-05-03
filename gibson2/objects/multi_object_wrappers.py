@@ -2,6 +2,7 @@ from gibson2.object_states.factory import ALL_STATES
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.object_base import Object
 from gibson2.objects.stateful_object import StatefulObject
+from IPython import embed
 
 
 class ObjectGrouper(StatefulObject):
@@ -9,13 +10,15 @@ class ObjectGrouper(StatefulObject):
 
     class StateAggregator(object):
         """A fake state that aggregates state between ObjectGrouper objects and propagates updates."""
+
         def __init__(self, state_type, object_grouper):
             self.state_type = state_type
             self.object_grouper = object_grouper
 
         def get_value(self):
             if not isinstance(self.state_type, BooleanState):
-                raise ValueError("Aggregator can only aggregate boolean states.")
+                raise ValueError(
+                    "Aggregator can only aggregate boolean states.")
 
             return all(obj.states[self.state_type].get_value() for obj in self.object_grouper.objects)
 
@@ -44,9 +47,11 @@ class ObjectGrouper(StatefulObject):
         # on each object.
         if callable(attrs[0]):
             def grouped_function(*args, **kwargs):
-                rets = [getattr(obj, item)(*args, **kwargs) for obj in self.objects]
+                rets = [getattr(obj, item)(*args, **kwargs)
+                        for obj in self.objects]
                 if rets.count(rets[0]) != len(rets):
-                    raise ValueError("Methods on grouped objects had different results.")
+                    raise ValueError(
+                        "Methods on grouped objects had different results.")
 
                 return rets[0]
 
@@ -54,9 +59,16 @@ class ObjectGrouper(StatefulObject):
 
         # Otherwise, check that it's the same for everyone and then just return the value.
         if attrs.count(attrs[0]) != len(attrs):
-            raise ValueError("Grouped objects had different values for this attribute.")
+            raise ValueError(
+                "Grouped objects had different values for this attribute.")
 
         return attrs[0]
+
+    def _load(self):
+        body_ids = []
+        for obj in self.objects:
+            body_ids += obj._load()
+        return body_ids
 
 
 class ObjectMultiplexer(StatefulObject):
@@ -65,7 +77,8 @@ class ObjectMultiplexer(StatefulObject):
     def __init__(self, multiplexed_objects, current_index):
         super(StatefulObject, self).__init__()
 
-        assert multiplexed_objects and all(isinstance(obj, Object) for obj in multiplexed_objects)
+        assert multiplexed_objects and all(isinstance(
+            obj, Object) for obj in multiplexed_objects)
         assert 0 <= current_index < len(multiplexed_objects)
 
         self._multiplexed_objects = multiplexed_objects
@@ -88,3 +101,9 @@ class ObjectMultiplexer(StatefulObject):
 
     def __getattr__(self, item):
         return getattr(self.current_selection(), item)
+
+    def _load(self):
+        body_ids = []
+        for obj in self._multiplexed_objects:
+            body_ids += obj._load()
+        return body_ids
