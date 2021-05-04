@@ -3,6 +3,7 @@ from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.object_base import Object
 from gibson2.objects.stateful_object import StatefulObject
 from IPython import embed
+import pybullet as p
 
 
 class ObjectGrouper(StatefulObject):
@@ -16,14 +17,15 @@ class ObjectGrouper(StatefulObject):
             self.object_grouper = object_grouper
 
         def get_value(self):
-            if not isinstance(self.state_type, BooleanState):
+            if not issubclass(self.state_type, BooleanState):
                 raise ValueError(
                     "Aggregator can only aggregate boolean states.")
 
             return all(obj.states[self.state_type].get_value() for obj in self.object_grouper.objects)
 
-        def set_value(self):
-            raise ValueError("Cannot set state on StateAggregator.")
+        def set_value(self, new_value):
+            for obj in self.object_grouper.objects:
+                obj.states[self.state_type].set_value(new_value)
 
         def update(self, simulator):
             for obj in self.object_grouper.objects:
@@ -70,6 +72,36 @@ class ObjectGrouper(StatefulObject):
             body_ids += obj._load()
         return body_ids
 
+    def get_position(self):
+        raise ValueError("Cannot get_position on ObjectGrouper")
+
+    def get_orientation(self):
+        raise ValueError("Cannot get_orientation on ObjectGrouper")
+
+    def get_position_orientation(self):
+        raise ValueError("Cannot get_position_orientation on ObjectGrouper")
+
+    def set_position(self, pos):
+        raise ValueError(
+            "Cannot set_position on ObjectGrouper")
+
+    def set_orientation(self, orn):
+        raise ValueError(
+            "Cannot set_orientation on ObjectGrouper")
+
+    def set_position_orientation(self, pos, orn):
+        for obj in self.objects:
+            new_pos, new_orn = p.multiplyTransforms(
+                pos, orn, obj.object_part_transform['pos'], obj.object_part_transform['orn'])
+            obj.set_position_orientation(new_pos, new_orn)
+
+    def set_base_link_position_orientation(self, pos, orn):
+        raise ValueError(
+            "Cannot set_base_link_position_orientation on ObjectGrouper")
+
+    def rotate_by(self, x=0, y=0, z=0):
+        raise ValueError("Cannot rotate_by on ObjectGrouper")
+
 
 class ObjectMultiplexer(StatefulObject):
     """A multi-object wrapper that acts as a proxy for the selected one between the set of objects it contains."""
@@ -81,9 +113,13 @@ class ObjectMultiplexer(StatefulObject):
             obj, Object) for obj in multiplexed_objects)
         assert 0 <= current_index < len(multiplexed_objects)
 
+        for obj in multiplexed_objects:
+            obj.multiplexer = self
+
         self._multiplexed_objects = multiplexed_objects
         self.current_index = current_index
 
+        # TODO: why is this needed?
         # Combine the abilities in a parameterless manner.
         ability_set = set()
         for obj in self._multiplexed_objects:
@@ -92,8 +128,11 @@ class ObjectMultiplexer(StatefulObject):
         # TODO: Think about whether this makes sense.
         self.abilities = {ability: {} for ability in ability_set}
 
+        # This will help route obj.states to one of the multiplexed_objects
+        del self.states
+
     def set_selection(self, idx):
-        assert 0 <= idx < len(self.multiplexed_objects)
+        assert 0 <= idx < len(self._multiplexed_objects)
         self.current_index = idx
 
     def current_selection(self):
@@ -107,3 +146,27 @@ class ObjectMultiplexer(StatefulObject):
         for obj in self._multiplexed_objects:
             body_ids += obj._load()
         return body_ids
+
+    def get_position(self):
+        return self.current_selection().get_position()
+
+    def get_orientation(self):
+        return self.current_selection().get_orientation()
+
+    def get_position_orientation(self):
+        return self.current_selection().get_position_orientation()
+
+    def set_position(self, pos):
+        return self.current_selection().set_position(pos)
+
+    def set_orientation(self, orn):
+        return self.current_selection().set_orientation(orn)
+
+    def set_position_orientation(self, pos, orn):
+        return self.current_selection().set_position_orientation(pos, orn)
+
+    def set_base_link_position_orientation(self, pos, orn):
+        return self.current_selection().set_base_link_position_orientation(pos, orn)
+
+    def rotate_by(self, x=0, y=0, z=0):
+        return self.current_selection().rotate_by(x, y, z)

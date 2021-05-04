@@ -270,6 +270,7 @@ class iGTNTask(TaskNetTask):
                     for i, part in enumerate(simulator_obj.object_parts):
                         category = part['category']
                         model = part['model']
+                        transform = part['transformation']
                         model_path = get_ig_model_path(category, model)
                         filename = os.path.join(model_path, model + ".urdf")
                         obj_name = whole_object.name + '_part_{}'.format(i)
@@ -284,6 +285,7 @@ class iGTNTask(TaskNetTask):
                             scale=whole_object.scale,
                             texture_randomization=False,
                             overwrite_inertial=True,
+                            object_part_transform=transform,
                             initial_pos=[100 + num_new_obj, 100, -100])
                         num_new_obj += 1
                         object_parts.append(simulator_obj_part)
@@ -302,11 +304,12 @@ class iGTNTask(TaskNetTask):
         return True, feedback
 
     def import_agent(self):
-        #TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
+        # TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
         # baserobot api
         agent = VrAgent(self.simulator)
         self.simulator.robots.append(agent)
-        assert(len(self.simulator.robots) == 1), "Error, multiple agents is not currently supported"
+        assert(len(self.simulator.robots) ==
+               1), "Error, multiple agents is not currently supported"
         agent.vr_dict['body'].set_base_link_position_orientation(
             [300, 300, 300], [0, 0, 0, 1]
         )
@@ -325,19 +328,24 @@ class iGTNTask(TaskNetTask):
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
         if self.online_sampling == False:
             agent.vr_dict['body'].set_base_link_position_orientation(
-                self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
+                self.scene.agent['VrBody']['xyz'], quat_from_euler(
+                    self.scene.agent['VrBody']['rpy'])
             )
             agent.vr_dict['left_hand'].set_base_link_position_orientation(
-                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['left_hand']['rpy'])
             )
             agent.vr_dict['right_hand'].set_base_link_position_orientation(
-                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['right_hand']['rpy'])
             )
             agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['left_hand']['rpy'])
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['right_hand']['rpy'])
             )
 
     def import_scene(self):

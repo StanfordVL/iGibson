@@ -26,6 +26,8 @@ ALL_STATES = frozenset([
     WaterSource,
     CleaningTool,
     OnFloor,
+    Sliced,
+    Slicer,
 ])
 
 _ABILITY_TO_STATE_MAPPING = {
@@ -38,7 +40,9 @@ _ABILITY_TO_STATE_MAPPING = {
     "toggleable": [ToggledOn],
     "burnable": [Burnt],
     "heatSource": [HeatSource],
-    'openable': [Open],
+    "openable": [Open],
+    "sliceable": [Sliced],
+    "slicer": [Slicer],
 }
 
 _DEFAULT_STATE_SET = frozenset([
