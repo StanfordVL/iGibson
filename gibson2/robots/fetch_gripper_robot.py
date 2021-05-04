@@ -677,24 +677,24 @@ class FetchGripper(LocomotorRobot):
             modified_action[self.arm_joint_action_idx] = cmd_joint_vel / self.max_joint_velocities[
                 self.arm_joint_action_idx]
 
-        # Update gripper visualization if active
-        if self.gripper_visualization:
-            # Get x distance from gripper to robot base in robot base frame
-            d = self.get_relative_eef_position()
-            print(f"gripper relative d: {d}")
-            x, min_x, max_x = d[0], 0.3, 0.9
-            z, min_z, max_z = d[2], 0.4, 1.5
-            # Scale color of visualization based on distances
-            red = np.clip((x - min_x) / (max_x - min_x), 0, 1)
-            blue = np.clip((z - min_z) / (max_z - min_z), 0, 1)
-            print(f"red: {red}, blue: {blue}")
-            # Toggle rgba of visual links
-            renderer = self.env.simulator.renderer.robot_instance.renderer
-            visual_gripper = self.env.simulator.renderer.robot_instance.objects[-2]
-            for obj_idx in visual_gripper.VAO_ids:
-                # Set the kd of these renderer bodies
-                renderer.materials_mapping[renderer.mesh_materials[obj_idx]].kd = [red, blue, 0]
-            #p.changeVisualShape(objectUniqueId=self.robot_ids[0], linkIndex=self.gripper_link_id, rgbaColor=[red, blue, 0, 1])
+        # # Update gripper visualization if active
+        # if self.gripper_visualization:
+        #     # Get x distance from gripper to robot base in robot base frame
+        #     d = self.get_relative_eef_position()
+        #     print(f"gripper relative d: {d}")
+        #     x, min_x, max_x = d[0], 0.3, 0.9
+        #     z, min_z, max_z = d[2], 0.4, 1.5
+        #     # Scale color of visualization based on distances
+        #     red = np.clip((x - min_x) / (max_x - min_x), 0, 1)
+        #     blue = np.clip((z - min_z) / (max_z - min_z), 0, 1)
+        #     print(f"red: {red}, blue: {blue}")
+        #     # Toggle rgba of visual links
+        #     renderer = self.env.simulator.renderer.robot_instance.renderer
+        #     visual_gripper = self.env.simulator.renderer.robot_instance.objects[-2]
+        #     for obj_idx in visual_gripper.VAO_ids:
+        #         # Set the kd of these renderer bodies
+        #         renderer.materials_mapping[renderer.mesh_materials[obj_idx]].kd = [red, blue, 0]
+        #     #p.changeVisualShape(objectUniqueId=self.robot_ids[0], linkIndex=self.gripper_link_id, rgbaColor=[red, blue, 0, 1])
 
         return modified_action
 
