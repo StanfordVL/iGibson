@@ -269,6 +269,8 @@ class VRLogWriter():
         self.hf.attrs['/metadata/task_instance'] = self.task.task_instance
         self.hf.attrs['/metadata/scene_id'] = self.task.scene.scene_id
         self.hf.attrs['/metadata/start_time'] = str(datetime.datetime.now())
+        self.hf.attrs['/metadata/physics_timestep'] = self.sim.physics_timestep
+        self.hf.attrs['/metadata/render_timestep'] = self.sim.render_timestep
 
     def get_data_for_name_path(self, name_path):
         """Resolves a list of names (group/dataset) into a numpy array.

@@ -59,7 +59,6 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
 # IMPORTANT: Change the vr_fps settings
 
 s = Simulator(mode='vr', 
-            use_fixed_fps = True,
             rendering_settings=vr_rendering_settings)
 scene = InteractiveIndoorScene('Beechwood_0_int')
 
