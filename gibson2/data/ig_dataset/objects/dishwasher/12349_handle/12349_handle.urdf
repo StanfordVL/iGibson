@@ -25,7 +25,7 @@
       <geometry>
         <box size="0.5 0.02 0.05"/>
       </geometry>
-      <material name="">
+      <material name="dishwasher_handle_mat">
         <color rgba="0.5 0.5 0.5 1" />
       </material>
     </visual>
@@ -44,6 +44,23 @@
         <mesh filename="shape/collision/link_1_cm.obj" />
       </geometry>
     </collision>
+
+    <!-- Adding handle collision geom to make it easier to grasp -->
+    <collision>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.2725 0.2877" />
+      <geometry>
+        <box size="0.30 0.01 0.025"/>
+      </geometry>
+    </collision>
+    <visual>
+      <origin rpy="0.0 0.0 0.0" xyz="0.0 -0.2725 0.2877" />
+      <geometry>
+        <box size="0.30 0.01 0.025"/>
+      </geometry>
+      <material name="dishwasher_tray_handle_mat">
+        <color rgba="0.1 0.1 0.1 1" />
+      </material>
+    </visual>
   </link>
   <link name="link_2">
     <visual name="link_2___2">

@@ -40,7 +40,7 @@ class FetchGripper(LocomotorRobot):
         self.arm_dim = 7
         self.gripper_dim = 2
         self.head_dim = 2
-        action_dim = self.wheel_dim + self.torso_lift_dim + self.head_dim + 6 + self.gripper_dim
+        action_dim = self.wheel_dim + self.torso_lift_dim + self.head_dim + 6 + self.gripper_dim + 1        # 6 = IK command dim, 1 = reset arm
         self.max_velocity = np.array(config.get('max_velocity', np.ones(action_dim)))
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
@@ -67,6 +67,7 @@ class FetchGripper(LocomotorRobot):
         # For head tracking
         self.rest_head_qpos = np.array(self.rest_joints)[self.head_joint_action_idx]
         self.target_head_qpos = np.array(self.untucked_default_joints[self.head_joint_action_idx])
+        self.target_head_change_cooldown = 0             # Counter to prevent spurious consecutive head tracking changes
         self.discrete_head_movement_rate = 0.45          # Hardcoded for now; used to determine how much discrete head movement occurs if corresponding heuristic is set
         self.head_error_planning = []
 
@@ -518,9 +519,6 @@ class FetchGripper(LocomotorRobot):
         Calculates the head joint velocities based on a heuristic, where it is fixed during navigation (tucked mode),
         but tracking the hand when manipulating (untucked mode)
         """
-        # Update joint state
-        self.calc_state()
-
         pan_idx, tilt_idx = 0, 1
         head_cmd = np.zeros(2)
 
@@ -588,13 +586,21 @@ class FetchGripper(LocomotorRobot):
                 else:
                     self.head_error_planning.append((0.0, 0.0))
             elif self.eef_tracking_heuristic == "move_head_vertical_discrete":
-                # If EEF is near vertical edges of frame, then we discretely move camera in that direction
-                if ee_pixel_coords[1] > boundary_of_movement:
-                    # We're close to the top, so shift up
-                    self.target_head_qpos[1] -= self.discrete_head_movement_rate
-                elif ee_pixel_coords[1] < -boundary_of_movement:
-                    # We've close to bottom, so shift down
-                    self.target_head_qpos[1] += self.discrete_head_movement_rate
+                # Decrease counter if it's positive, otherwise we can check for changes
+                if self.target_head_change_cooldown > 0:
+                    self.target_head_change_cooldown -= 1
+                else:
+                    # If EEF is near vertical edges of frame, then we discretely move camera in that direction
+                    if ee_pixel_coords[1] > boundary_of_movement:
+                        # We're close to the top, so shift up
+                        self.target_head_qpos[1] -= self.discrete_head_movement_rate
+                        # Increase cooldown counter
+                        self.target_head_change_cooldown = 20
+                    elif ee_pixel_coords[1] < -boundary_of_movement:
+                        # We've close to bottom, so shift down
+                        self.target_head_qpos[1] += self.discrete_head_movement_rate
+                        # Increase cooldown counter
+                        self.target_head_change_cooldown = 20
                 # Update the head error planning
                 self.head_error_planning.append(
                     self.target_head_qpos - self.joint_position[self.head_joint_action_idx]
@@ -621,16 +627,32 @@ class FetchGripper(LocomotorRobot):
         Scale the policy action (always in [-1, 1]) to robot action based on action range.
         Extends super method so that the tuck command (the first entry in action array) remains unchanged
 
-        :param action: policy action [tuck, diff drive, arm action, gripper]
+        :param action: policy action [tuck, diff drive, arm action, gripper, reset arm].
+
+            tuck (1D): will tuck robot if > 0, else untuck
+            diff drive (2D): (lin vel, ang vel) commands to move base
+            arm action (6D): (dx, dy, dz, dax, day, daz) delta commands to move arm. Delta orientation commands are
+                assumed to be in axis-angle form
+            gripper (1D): will close gripper if > 0, else open gripper
+            reset arm (1D): Logic is as follows:
+                if tucked: No action
+                if untucked: If > 0, will IGNORE arm action and automatically send commands to move the robot back to
+                    its default untucked pose; else no action
         """
+        # Update joint state
+        self.calc_state()
+
         # See if we need to update tuck
         tuck_updated = self.update_tucking(tuck=(action[0] > 0.0))
 
         # Trim the tuck action from the array and initialize a post-processed action array
         modified_action = np.zeros(self.num_joints)
 
-        # Remove the tuck command from the action array
-        action = action[1:]
+        # Process the reset arm action
+        reset_arm = action[-1] > 0
+
+        # Remove the tuck and reset arm command from the action array
+        action = action[1:-1]
 
         # Add in the diff drive, head tracking commands, and gripper command
         modified_action[self.head_joint_action_idx], modified_action[self.wheel_joint_action_idx] = self.calculate_head_wheel_joint_velocities(action[self.wheel_joint_action_idx])
@@ -638,16 +660,41 @@ class FetchGripper(LocomotorRobot):
 
         # If we didn't update our tucking, apply the rest of the action
         if not tuck_updated and not self.tucked:
-            # If we're using IK control, then we need to convert the eef commands into joint velocities first
-            if self.controller_type == 'ik':
-                # Calculate actions
-                cmd_joint_vel = self.controller.control(action[2:-1])[self.arm_joint_action_idx]
+            # If we're resetting our arm, override any arm actions directly
+            if reset_arm:
+                cmd_joint_vel = (self.untucked_default_joints[self.arm_joint_action_idx] -
+                                 self.joint_position[self.arm_joint_action_idx]) * 2.0
+            # Otherwise, we process arm action normally
             else:
-                # we interpret the inputted commands as velocities
-                cmd_joint_vel = action[self.arm_joint_action_idx]
+                # If we're using IK control, then we need to convert the eef commands into joint velocities first
+                if self.controller_type == 'ik':
+                    # Calculate actions
+                    cmd_joint_vel = self.controller.control(action[2:-1])[self.arm_joint_action_idx]
+                else:
+                    # we interpret the inputted commands as velocities
+                    cmd_joint_vel = action[self.arm_joint_action_idx]
             # Normalize joint velocities because they get re-scaled later and apply them
             modified_action[self.arm_joint_action_idx] = cmd_joint_vel / self.max_joint_velocities[
                 self.arm_joint_action_idx]
+
+        # Update gripper visualization if active
+        if self.gripper_visualization:
+            # Get x distance from gripper to robot base in robot base frame
+            d = self.get_relative_eef_position()
+            print(f"gripper relative d: {d}")
+            x, min_x, max_x = d[0], 0.3, 0.9
+            z, min_z, max_z = d[2], 0.4, 1.5
+            # Scale color of visualization based on distances
+            red = np.clip((x - min_x) / (max_x - min_x), 0, 1)
+            blue = np.clip((z - min_z) / (max_z - min_z), 0, 1)
+            print(f"red: {red}, blue: {blue}")
+            # Toggle rgba of visual links
+            renderer = self.env.simulator.renderer.robot_instance.renderer
+            visual_gripper = self.env.simulator.renderer.robot_instance.objects[-2]
+            for obj_idx in visual_gripper.VAO_ids:
+                # Set the kd of these renderer bodies
+                renderer.materials_mapping[renderer.mesh_materials[obj_idx]].kd = [red, blue, 0]
+            #p.changeVisualShape(objectUniqueId=self.robot_ids[0], linkIndex=self.gripper_link_id, rgbaColor=[red, blue, 0, 1])
 
         return modified_action
 
