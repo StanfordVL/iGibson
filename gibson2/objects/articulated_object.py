@@ -13,6 +13,7 @@ import pybullet as p
 import trimesh
 import math
 
+from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
@@ -39,17 +40,18 @@ class ArticulatedObject(StatefulObject):
     They are passive (no motors).
     """
 
-    def __init__(self, filename, scale=1):
+    def __init__(self, filename, scale=1, flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
+        self.flags = flags
 
     def _load(self):
         """
         Load the object into pybullet
         """
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL + self.flags)
         # Enable sleeping for all objects that are loaded in
         p.changeDynamics(
             body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
@@ -110,6 +112,7 @@ class URDFObject(StatefulObject):
                  scene_instance_folder=None,
                  tasknet_object_scope=None,
                  visualize_primitives=False,
+                 flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING,
                  ):
         """
         :param filename: urdf file path of that object model
@@ -143,6 +146,7 @@ class URDFObject(StatefulObject):
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.tasknet_object_scope = tasknet_object_scope
+        self.flags = flags
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -241,20 +245,21 @@ class URDFObject(StatefulObject):
         meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
         bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
         # In the format of {link_name: [linkX, linkY, linkZ]}
+        self.metadata = {}
         meta_links = dict()
         if os.path.isfile(meta_json):
             with open(meta_json, 'r') as f:
-                meta_data = json.load(f)
-                bbox_size = np.array(meta_data['bbox_size'])
-                base_link_offset = np.array(meta_data['base_link_offset'])
+                self.metadata = json.load(f)
+                bbox_size = np.array(self.metadata['bbox_size'])
+                base_link_offset = np.array(self.metadata['base_link_offset'])
 
-                if 'orientations' in meta_data and len(meta_data['orientations']) > 0:
-                    self.orientations = meta_data['orientations']
+                if 'orientations' in self.metadata and len(self.metadata['orientations']) > 0:
+                    self.orientations = self.metadata['orientations']
                 else:
                     self.orientations = None
 
-                if 'links' in meta_data:
-                    meta_links = meta_data['links']
+                if 'links' in self.metadata:
+                    meta_links = self.metadata['links']
 
         elif os.path.isfile(bbox_json):
             with open(bbox_json, 'r') as bbox_file:
@@ -314,6 +319,14 @@ class URDFObject(StatefulObject):
             self.prepare_texture()
 
         prepare_object_states(self, abilities, online=True)
+
+        # Currently a subset of states require access fixed links that will be merged into
+        # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
+        if (self.flags & p.URDF_MERGE_FIXED_LINKS):
+            for state in self.states:
+                if issubclass(state, LinkBasedStateMixin):
+                    self.flags -= p.URDF_MERGE_FIXED_LINKS
+                    break
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
@@ -380,6 +393,13 @@ class URDFObject(StatefulObject):
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
+
+        # Supporting surfaces can potentially refer to the names of the fixed links that are
+        # merged into the world. These links will become inaccessible after the merge, e.g.
+        # link_from_name will raise an error and we won't have any correspounding link id to
+        # invoke get_link_state later.
+        if self.flags & p.URDF_MERGE_FIXED_LINKS:
+            return
 
         heights_file = os.path.join(
             self.model_path, 'misc', 'heights_per_link.json')
@@ -461,6 +481,9 @@ class URDFObject(StatefulObject):
             np.dot(rot_matrix, matrix_from_quat(chosen_orientation)))
         return rotated_quat
 
+    def get_prefixed_joint_name(self, name):
+        return self.name + "_" + name
+
     def rename_urdf(self):
         """
         Helper function that renames the file paths in the object urdf
@@ -486,8 +509,7 @@ class URDFObject(StatefulObject):
         # Change the joints of the added object to adapt them to the given name
         for joint_emb in self.object_tree.iter('joint'):
             # We change the joint name
-            joint_emb.attrib["name"] = self.name + \
-                "_" + joint_emb.attrib["name"]
+            joint_emb.attrib["name"] = self.get_prefixed_joint_name(joint_emb.attrib["name"])
             # We change the child link names
             for child_emb in joint_emb.findall('child'):
                 # If the original urdf already contains world link, do not rename
@@ -872,7 +894,7 @@ class URDFObject(StatefulObject):
         """
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
-            body_id = p.loadURDF(self.urdf_paths[idx])
+            body_id = p.loadURDF(self.urdf_paths[idx], flags=self.flags)
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
