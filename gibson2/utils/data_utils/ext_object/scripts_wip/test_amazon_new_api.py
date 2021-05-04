@@ -7,6 +7,8 @@ import numpy as np
 
 
 def main(args):
+    # refresh_token is retrieved from: https://github.com/amzn/selling-partner-api-docs/blob/main/guides/en-US/developer-guide/SellingPartnerApiDeveloperGuide.md#self-authorization
+    # go to this website and click [Edit > Authorize]: https://sellercentral.amazon.com/marketplacedeveloper/applications#
     payload = {
         'grant_type': 'refresh_token',
         'refresh_token': 'Atzr|IwEBILncU1UpR8HLAvBHk_ONWyqW2jTyYf2gP7iQWlja_XG1VjvUi8RHZfsNAI87XFU-UQRqgrw5wPH9ekcnxp5O5jeN4HGU_5Xp3RCU29hKUBEtusGmrAyMlqG4C_kZihaacYStbyzYrd_MZMbp3kLZIRz8Ku0EL-Edup-kmpJ8JzB_sJllBK1_48QQEhm7Z6yxM13cnr-eYBkValoV8sYKnLIolkVRE01Kt_PXh-rJplB2-QgQBRMp5-mMq1Z0KIjGIqOoid75Wh8GvGUhirmAOXFF1sq04K2RK-3BRQcYgAONp2Zw8tjxKZR6Uy3_-4vIPa8',
