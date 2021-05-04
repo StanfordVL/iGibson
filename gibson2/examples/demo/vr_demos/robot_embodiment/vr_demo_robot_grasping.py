@@ -47,7 +47,6 @@ vr_rendering_settings = MeshRendererSettings(optimized=True,
                                             light_dimming_factor=1.0)
 if VR_MODE:
     s = Simulator(mode='vr', 
-                use_fixed_fps = True,
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
