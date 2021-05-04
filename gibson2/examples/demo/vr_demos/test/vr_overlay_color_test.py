@@ -77,7 +77,6 @@ def main():
                                                 msaa=True,
                                                 light_dimming_factor=1.0)
     s = Simulator(mode='vr', 
-                use_fixed_fps = True,
                 rendering_settings=vr_rendering_settings)
 
     scene = InteractiveIndoorScene('Rs_int', load_object_categories=benchmark_names, load_room_types=['kitchen', 'lobby'])

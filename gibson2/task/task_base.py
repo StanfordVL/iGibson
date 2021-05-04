@@ -61,6 +61,8 @@ class iGTNTask(TaskNetTask):
             self.simulator = simulator
         self.load_clutter = load_clutter
         self.should_debug_sampling = should_debug_sampling
+        if online_sampling:
+            scene_kwargs['merge_fixed_links'] = False
         return self.initialize(InteractiveIndoorScene,
                                scene_id=scene_id,
                                scene_kwargs=scene_kwargs,
