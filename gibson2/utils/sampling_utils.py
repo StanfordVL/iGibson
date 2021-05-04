@@ -177,7 +177,7 @@ def sample_cuboid_on_object(obj,
     if cuboid_dimensions.ndim == 2:
         assert cuboid_dimensions.shape[0] == num_samples, "Need as many offsets as samples requested."
 
-    results = [(None, None, None, defaultdict(list)) for _ in range(num_samples)]
+    results = [(None, None, None, None, defaultdict(list)) for _ in range(num_samples)]
 
     for i in range(num_samples):
         debug_markers = []
@@ -213,6 +213,7 @@ def sample_cuboid_on_object(obj,
             hit_normals /= np.linalg.norm(hit_normals, axis=1)[:, np.newaxis]
 
             center_idx = int(len(cast_results) / 2)
+            hit_link = cast_results[center_idx][1]
             center_hit_normal = hit_normals[center_idx]
 
             # Apply the padding to all the points.
@@ -249,7 +250,7 @@ def sample_cuboid_on_object(obj,
                                                          this_cuboid_dimensions)
 
             # We've found a nice attachment point. Continue onto next point to sample.
-            results[i] = (cuboid_centroid, center_hit_normal, rotation.as_quat(), refusal_reasons)
+            results[i] = (cuboid_centroid, center_hit_normal, rotation.as_quat(), hit_link, refusal_reasons)
             break
 
     if gibson2.debug_sampling:
@@ -257,7 +258,7 @@ def sample_cuboid_on_object(obj,
         counter = Counter()
 
         for instance in results:
-            for reason, refusals in instance[3].items():
+            for reason, refusals in instance[-1].items():
                 counter[reason] += len(refusals)
 
         print("\n".join("%s: %d" % pair for pair in counter.items()))

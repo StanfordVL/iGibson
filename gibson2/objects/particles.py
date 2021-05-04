@@ -4,6 +4,8 @@ from collections import deque
 import gibson2
 import numpy as np
 import pybullet as p
+
+from gibson2.external.pybullet_tools import utils
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
 
@@ -167,13 +169,21 @@ class AttachedParticleSystem(ParticleSystem):
         self._parent_obj = parent_obj
         self._attachment_offsets = {}  # in the format of {particle: offset}
 
-    def unstash_particle(self, position, orientation):
+    def unstash_particle(self, position, orientation, link_id=-1):
         particle = super(AttachedParticleSystem, self).unstash_particle(position, orientation)
 
         # Compute the offset for this particle.
-        base_pos, base_orn = p.invertTransform(self._parent_obj.get_position(), self._parent_obj.get_orientation())
+        if link_id == -1:
+            attachment_source_pos = self._parent_obj.get_position()
+            attachment_source_orn = self._parent_obj.get_orientation()
+        else:
+            link_state = utils.get_link_state(self._parent_obj.get_body_id(), link_id)
+            attachment_source_pos = link_state.linkWorldPosition
+            attachment_source_orn = link_state.linkWorldOrientation
+
+        base_pos, base_orn = p.invertTransform(attachment_source_pos, attachment_source_orn)
         offsets = p.multiplyTransforms(base_pos, base_orn, position, orientation)
-        self._attachment_offsets[particle] = offsets
+        self._attachment_offsets[particle] = (link_id, offsets)
 
         return particle
 
@@ -185,11 +195,19 @@ class AttachedParticleSystem(ParticleSystem):
         super(AttachedParticleSystem, self).update(simulator)
 
         # Move every particle to their known parent object offsets.
-        # TODO: Find the surface link so that we can attach to the correct link rather than main body.
-        base_pos, base_orn = self._parent_obj.get_position(), self._parent_obj.get_orientation()
         for particle in self.get_active_particles():
-            pos_offset, orn_offset = self._attachment_offsets[particle]
-            position, orientation = p.multiplyTransforms(base_pos, base_orn, pos_offset, orn_offset)
+            link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
+
+            if link_id == -1:
+                attachment_source_pos = self._parent_obj.get_position()
+                attachment_source_orn = self._parent_obj.get_orientation()
+            else:
+                link_state = utils.get_link_state(self._parent_obj.get_body_id(), link_id)
+                attachment_source_pos = link_state.linkWorldPosition
+                attachment_source_orn = link_state.linkWorldOrientation
+
+            position, orientation = p.multiplyTransforms(
+                attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
             particle.set_position_orientation(position, orientation)
 
 
@@ -282,7 +300,7 @@ class _Dirt(AttachedParticleSystem):
 
         # Use the sampled points to set the dirt positions.
         for i in range(self.get_num_stashed()):
-            position, normal, quaternion, reasons = results[i]
+            position, normal, quaternion, hit_link, reasons = results[i]
 
             # If we found no position for this particle, move it to the back of the queue.
             if position is None:
@@ -297,7 +315,7 @@ class _Dirt(AttachedParticleSystem):
                 cuboid_base_to_center = bbox_sizes[2] / 2.
                 surface_point -= normal * cuboid_base_to_center
 
-            self.unstash_particle(surface_point, quaternion)
+            self.unstash_particle(surface_point, quaternion, link_id=hit_link)
 
 
 class Dust(_Dirt):
