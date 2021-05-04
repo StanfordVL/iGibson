@@ -254,7 +254,7 @@ class ToyEnvInt(object):
     def sample(self, pddl):
         try:
             self.task.update_problem(
-                "tester", "tester", predefined_problem=pddl, kinematic_only=True)
+                "tester", "tester", predefined_problem=pddl)
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
