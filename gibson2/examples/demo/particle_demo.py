@@ -13,7 +13,8 @@ from gibson2.object_states.factory import prepare_object_states
 
 
 def main():
-    s = Simulator(mode='gui')
+    s = Simulator(mode='iggui', image_width=1280,
+                  image_height=720)
 
     scene = EmptyScene()
     s.import_scene(scene)
