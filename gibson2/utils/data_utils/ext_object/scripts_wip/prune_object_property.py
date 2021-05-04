@@ -70,6 +70,9 @@ def prune_openable():
         if success:
             allowed_categories.append(cat)
 
+    # Manuall remove toilet because even thought they have joints, they can't necessarily open the lid of the toilet.
+    allowed_categories.remove('toilet')
+
     return allowed_categories
 
 
