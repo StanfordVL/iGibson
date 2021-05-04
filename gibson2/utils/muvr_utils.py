@@ -45,6 +45,8 @@ class IGVRClient(ConnectionListener):
         # Deep copy frame data so it doesn't get overwritten by a random async callback
         self.latest_frame_data = copy.deepcopy(self.frame_data)
         for instance in self.renderer.get_instances():
+            if instance.pybullet_uuid not in self.latest_frame_data:
+                continue
             data = self.latest_frame_data[instance.pybullet_uuid]
             if isinstance(instance, Instance):
                 trans = np.array(data[0])
@@ -70,47 +72,21 @@ class IGVRClient(ConnectionListener):
         self.s.viewer.update()
         if self.s.can_access_vr_context:
             self.s.poll_vr_events()
-            # Sets the VR starting position if one has been specified by the user
+            # Sets the VR starting position if one has been specified by the c
             self.s.perform_vr_start_pos_move()
 
             # Update VR offset so updated value can be used in server
+            # TODO: Make sure this still works with new agent refactor
             self.client_agent.update_frame_offset()
 
     def gen_vr_data(self, replay_data=None):
-        if replay_data:
-            # Construct vr dictionary from replay data
-
+        if replay_data and frame_num:
+            vr_send_data = replay_data
         else:
-            if not self.s.can_access_vr_context:
-                self.vr_data = []
-            else:
-                # Store all data in a dictionary to be sent to the server
-                vr_data_dict = defaultdict(list)
-
-                for device in self.devices:
-                    device_data = []
-                    is_valid, trans, rot = self.s.get_data_for_vr_device(device)
-                    device_data.extend([is_valid, trans.tolist(), rot.tolist()])
-                    device_data.extend(self.s.get_device_coordinate_system(device))
-                    if device in ['left_controller', 'right_controller']:
-                        device_data.extend(self.s.get_button_data_for_controller(device))
-                    vr_data_dict[device] = device_data
-
-                vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
-                # We need to get VR events instead of polling here, otherwise the previously events will be erased
-                vr_data_dict['event_data'] = self.s.get_vr_events()
-                vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-                vr_data_dict['vr_offset'] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
-                vr_data_dict['vr_settings'] = [
-                    self.s.vr_settings.eye_tracking,
-                    self.s.vr_settings.touchpad_movement,
-                    self.s.vr_settings.movement_controller,
-                    self.s.vr_settings.relative_movement_device,
-                    self.s.vr_settings.movement_speed
-                ]
-
+            vr_send_data = self.s.gen_vr_data()
+            
         # Convert back to a regular dictionary before sending
-        self.vr_data = dict(vr_data_dict)
+        self.vr_data = copy.deepcopy(vr_send_data.to_dict())
 
     def send_vr_data(self):
         if self.vr_data:
@@ -160,6 +136,7 @@ class IGVRServer(Server):
         self.client = None
         self.latest_vr_data = None
         self.frame_start = 0
+        self.prev_frame_pos_sums = dict()
 
     def Connected(self, channel, addr):
         #print("Someone connected to the server!")
@@ -177,35 +154,31 @@ class IGVRServer(Server):
         self.frame_start = time.time()
         if not self.client:
             return
-        
         if not self.client.vr_data:
             return
         if not self.latest_vr_data:
-            self.latest_vr_data = VrData(self.s)
-
-        # Make a copy of channel's most recent VR data, so it doesn't get mutated if new requests arrive
-        self.latest_vr_data.refresh_muvr_data(copy.deepcopy(self.client.vr_data))
+            self.latest_vr_data = VrData(copy.deepcopy(self.client.vr_data))
 
     def gen_frame_data(self):
         # Frame data is stored as a dictionary mapping pybullet uuid to pose/rot data
+        # We only send the frame data that has changed since the last frame
         self.frame_data = {}
-        # It is assumed that the client renderer will have loaded instances in the same order as the server
         for instance in self.renderer.get_instances():
-            # Loop through all instances and get pos and rot data
+            uuid = instance.pybullet_uuid
             # We convert numpy arrays into lists so they can be serialized and sent over the network
             # Lists can also be easily reconstructed back into numpy arrays on the client side
             if isinstance(instance, Instance):
-                pose = instance.pose_trans.tolist()
-                rot = instance.pose_rot.tolist()
-                self.frame_data[instance.pybullet_uuid] = [pose, rot]
+                ins_pose = instance.pose_trans.tolist()
+                ins_rot = instance.pose_rot.tolist()
+                pose_sum = np.sum(instance.pose_trans)
             elif isinstance(instance, InstanceGroup):
-                poses = []
-                rots = []
-                for pose in instance.poses_trans:
-                    poses.append(pose.tolist())
-                for rot in instance.poses_rot:
-                    rots.append(rot.tolist())
-                self.frame_data[instance.pybullet_uuid] = [poses, rots]
+                ins_pose = [pose.tolist() for pose in instance.poses_trans]
+                ins_rot = [rot.tolist() for rot in instance.poses_rot]
+                pose_sum = np.sum([np.sum(pose) for pose in instance.poses_trans])
+            # Only send data if this is the first frame or if position has changed since last frame
+            if uuid not in self.prev_frame_pos_sums or pose_sum != self.prev_frame_pos_sums[uuid]:
+                self.frame_data[uuid] = [ins_pose, ins_rot]
+                self.prev_frame_pos_sums[uuid] = pose_sum
 
     def send_frame_data(self):
         if self.client:
