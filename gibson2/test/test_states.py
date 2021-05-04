@@ -121,10 +121,6 @@ def test_open():
         # --------------------------------------------
         # PART 1: Run with joints at default position.
         # --------------------------------------------
-        # Run simulation for a few steps
-        for _ in range(5):
-            s.step()
-
         # Check that the microwave is not open.
         assert not obj.states[object_states.Open].get_value()
 
@@ -134,10 +130,7 @@ def test_open():
         joint_id = 2
         max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
         p.resetJointState(obj.get_body_id(), joint_id, max_pos)
-
-        # Simulate a bit more
-        for _ in range(5):
-            s.step()
+        s.step()
 
         # Check that the microwave is not open.
         assert not obj.states[object_states.Open].get_value()
@@ -148,10 +141,7 @@ def test_open():
         joint_id = 0
         max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
         p.resetJointState(obj.get_body_id(), joint_id, max_pos)
-
-        # Simulate a bit more
-        for _ in range(5):
-            s.step()
+        s.step()
 
         # Check that the microwave is open.
         assert obj.states[object_states.Open].get_value()
@@ -160,10 +150,7 @@ def test_open():
         # PART 4: Now try sampling a closed position.
         # --------------------------------------------
         obj.states[object_states.Open].set_value(False)
-
-        # Simulate a bit more
-        for _ in range(5):
-            s.step()
+        s.step()
 
         # Check that the microwave is closed.
         assert not obj.states[object_states.Open].get_value()
@@ -172,10 +159,7 @@ def test_open():
         # PART 5: Finally, sample an open position.
         # --------------------------------------------
         obj.states[object_states.Open].set_value(True)
-
-        # Simulate a bit more
-        for _ in range(5):
-            s.step()
+        s.step()
 
         # Check that the microwave is open.
         assert obj.states[object_states.Open].get_value()
