@@ -72,11 +72,11 @@ class FetchGripper(LocomotorRobot):
         self.head_error_planning = []
 
         # Make sure control is specified
-        control = config.get('control', None)
+        control = self.config.get('control', None)
         assert control is not None, "control must be specified for this robot!"
-        self.controller_type = config['controller']['type']
+        self.controller_type = self.config['controller']['type']
         assert self.controller_type in {'vel', 'ik'}, "only IK or velocity control is currently supported for now!"
-        self.eef_tracking_heuristic = config['controller']['eef_tracking_heuristic']
+        self.eef_tracking_heuristic = self.config['controller'].get('eef_tracking_heuristic', "move_head_vertical_discrete")
         assert self.eef_tracking_heuristic in VALID_EEF_TRACKING_HEURISTICS,\
             f"Invalid eef tracking heuristic. Valid options are: {VALID_EEF_TRACKING_HEURISTICS}; got: {self.eef_tracking_heuristic}"
         self.controller = None
