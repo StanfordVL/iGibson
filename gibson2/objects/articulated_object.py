@@ -13,6 +13,7 @@ import pybullet as p
 import trimesh
 import math
 
+from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
@@ -39,17 +40,18 @@ class ArticulatedObject(StatefulObject):
     They are passive (no motors).
     """
 
-    def __init__(self, filename, scale=1):
+    def __init__(self, filename, scale=1, flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
+        self.flags = flags
 
     def _load(self):
         """
         Load the object into pybullet
         """
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL + self.flags)
         # Enable sleeping for all objects that are loaded in
         p.changeDynamics(
             body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
@@ -110,6 +112,7 @@ class URDFObject(StatefulObject):
                  scene_instance_folder=None,
                  tasknet_object_scope=None,
                  visualize_primitives=False,
+                 flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING,
                  ):
         """
         :param filename: urdf file path of that object model
@@ -143,6 +146,7 @@ class URDFObject(StatefulObject):
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.tasknet_object_scope = tasknet_object_scope
+        self.flags = flags
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -316,6 +320,14 @@ class URDFObject(StatefulObject):
 
         prepare_object_states(self, abilities, online=True)
 
+        # Currently a subset of states require access fixed links that will be merged into
+        # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
+        if (self.flags & p.URDF_MERGE_FIXED_LINKS):
+            for state in self.states:
+                if issubclass(state, LinkBasedStateMixin):
+                    self.flags -= p.URDF_MERGE_FIXED_LINKS
+                    break
+
     def compute_object_pose(self):
         if self.connecting_joint is not None:
             joint_type = self.connecting_joint.attrib['type']
@@ -381,6 +393,13 @@ class URDFObject(StatefulObject):
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
+
+        # Supporting surfaces can potentially refer to the names of the fixed links that are
+        # merged into the world. These links will become inaccessible after the merge, e.g.
+        # link_from_name will raise an error and we won't have any correspounding link id to
+        # invoke get_link_state later.
+        if self.flags & p.URDF_MERGE_FIXED_LINKS:
+            return
 
         heights_file = os.path.join(
             self.model_path, 'misc', 'heights_per_link.json')
@@ -875,7 +894,7 @@ class URDFObject(StatefulObject):
         """
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
-            body_id = p.loadURDF(self.urdf_paths[idx])
+            body_id = p.loadURDF(self.urdf_paths[idx], flags=self.flags)
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
