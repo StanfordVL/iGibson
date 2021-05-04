@@ -103,6 +103,7 @@ class URDFObject(StatefulObject):
                  connecting_joint=None,
                  initial_pos=None,
                  initial_orn=None,
+                 object_part_transform=None,
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
@@ -140,6 +141,7 @@ class URDFObject(StatefulObject):
         self.connecting_joint = connecting_joint
         self.initial_pos = initial_pos
         self.initial_orn = initial_orn
+        self.object_part_transform = object_part_transform
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
@@ -232,8 +234,6 @@ class URDFObject(StatefulObject):
             mesh.attrib['filename'] = os.path.join(
                 self.model_path, mesh.attrib['filename'])
 
-        self.load_object_parts()
-
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
         if bounding_box is not None and scale is not None:
@@ -294,6 +294,8 @@ class URDFObject(StatefulObject):
         self.scale = scale
         self.bounding_box = bounding_box
 
+        self.load_object_parts()
+
         # If no bounding box, cannot compute dynamic properties from density
         if self.bounding_box is None:
             self.overwrite_inertial = False
@@ -325,6 +327,11 @@ class URDFObject(StatefulObject):
         if os.path.isfile(object_parts_json):
             with open(object_parts_json) as f:
                 self.object_parts = json.load(f)
+
+        # The object part offset is computed using scale [1.0, 1.0, 1.0]
+        # Need to scale accordingly
+        for obj in self.object_parts:
+            obj['transformation']['pos'] *= self.scale
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
@@ -1029,6 +1036,13 @@ class URDFObject(StatefulObject):
                 'cannot set_position_orientation for fixed objects')
         else:
             p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+    def set_base_link_position_orientation(self, pos, orn):
+        body_id = self.get_body_id()
+        dynamics_info = p.getDynamicsInfo(body_id, -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
+        self.set_position_orientation(pos, orn)
 
     def get_body_id(self):
         return self.body_ids[self.main_body]
