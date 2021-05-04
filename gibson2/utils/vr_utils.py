@@ -68,8 +68,6 @@ class VrData(object):
 
         return self.vr_data_dict[q]
 
-
-    # TODO: Change to an alternate init function!
     def refresh_action_replay_data(self, ar_data, frame_num):
         """
         Updates the vr dictionary with data from action replay.
