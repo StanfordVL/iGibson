@@ -98,11 +98,7 @@ class Particle(Object):
 
 
 class ParticleSystem(object):
-    def __init__(self, num=None, size=None, color=(1, 1, 1, 1), **kwargs):
-        # We make these a kwarg with default value for ease of propagation but they should be non-null.
-        assert size is not None
-        assert num is not None
-
+    def __init__(self, num, size, color=(1, 1, 1, 1), **kwargs):
         size = np.array(size)
         if size.ndim == 2:
             assert size.shape[0] == num
@@ -224,9 +220,7 @@ class WaterStream(ParticleSystem):
         (0.5, 0.77, 0.87, 1)
     ])
 
-    def __init__(self, water_source_pos, num=None, **kwargs):
-        assert num is not None
-
+    def __init__(self, water_source_pos, num, **kwargs):
         size_idxs = np.random.choice(len(self._SIZE_OPTIONS), num, replace=True)
         sizes = self._SIZE_OPTIONS[size_idxs]
 
@@ -322,7 +316,7 @@ class Dust(_Dirt):
     def __init__(self, parent_obj, **kwargs):
         super(Dust, self).__init__(
             parent_obj,
-            True,
+            clip_into_object=True,
             num=20,
             size=[0.015] * 3,
             visual_only=True,
@@ -340,13 +334,15 @@ class Stain(_Dirt):
     _MESH_BOUNDING_BOX = np.array([0.0368579992, 0.03716399827, 0.004])
 
     def __init__(self, parent_obj, **kwargs):
-        random_bbox_dim1 = np.random.uniform(
+        # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
+        random_bbox_base_size = np.random.uniform(
             self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT, self._PARTICLE_COUNT)
         random_bbox_dims = np.stack(
-            [random_bbox_dim1, random_bbox_dim1, np.full_like(random_bbox_dim1, self._MESH_BOUNDING_BOX[2])], axis=-1)
+            [random_bbox_base_size, random_bbox_base_size,
+             np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2])], axis=-1)
         super(Stain, self).__init__(
             parent_obj,
-            False,
+            clip_into_object=False,
             num=self._PARTICLE_COUNT,
             size=random_bbox_dims,
             base_shape="mesh",
