@@ -31,7 +31,7 @@ WAIT_FOR_CLIENT = False
 CS_VR_SETTINGS = {
     # Use VR, Use Replay
     'client': (False, False),
-    'server': (False, False)
+    'server': (True, False)
 }
 
 
