@@ -1,11 +1,11 @@
 from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
-from gibson2.object_states.texture_mixin import TextureChangeMixin
+from gibson2.object_states.texture_change_state import TextureChangeState
 
 _DEFAULT_COOK_TEMPERATURE = 70
 
 
-class Cooked(CachingEnabledObjectState, BooleanState, TextureChangeMixin):
+class Cooked(TextureChangeState, CachingEnabledObjectState, BooleanState):
     def __init__(self, obj, cook_temperature=_DEFAULT_COOK_TEMPERATURE):
         super(Cooked, self).__init__(obj)
         self.cook_temperature = cook_temperature

@@ -15,7 +15,7 @@ import math
 
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.texture_mixin import TextureChangeMixin
+from gibson2.object_states.texture_change_state import TextureChangeState
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
@@ -321,10 +321,9 @@ class URDFObject(StatefulObject):
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
             self.prepare_texture()
-        if self.texture_procedural_generation:
-            self.generate_texture()
-
         prepare_object_states(self, abilities, online=True)
+        if self.texture_procedural_generation:
+            self.generate_procedural_texture()
 
         # Currently a subset of states require access fixed links that will be merged into
         # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
@@ -895,9 +894,9 @@ class URDFObject(StatefulObject):
                 self.material_to_friction = json.load(f)
 
 
-    def generate_texture(self):
+    def generate_procedural_texture(self):
         """
-        Set up mapping from visual meshes to randomizable materials
+        Set up mapping from visual meshes to procedural materials
         """
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
@@ -921,24 +920,24 @@ class URDFObject(StatefulObject):
                 self.model_path, 'shape', 'visual', old_path)
             visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
             del visual_mesh_to_idx[old_path]
+
         for state in self.states:
-            if issubclass(state, TextureChangeMixin):
+            if issubclass(state, TextureChangeState):
                 procedural_material = ProceduralMaterial(state_type=state,
                                                          material_folder=os.path.join(self.model_path, 'material'))
                 self.states[state].material = procedural_material
 
-        # check each visual object belongs to which sub URDF in case of splitting
-        for i, urdf_path in enumerate(self.urdf_paths):
-            sub_urdf_tree = ET.parse(urdf_path)
-            for visual_mesh_path in visual_mesh_to_idx:
-                # check if this visual object belongs to this URDF
-                if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
-                    self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
+                # check each visual object belongs to which sub URDF in case of splitting
+                for i, urdf_path in enumerate(self.urdf_paths):
+                    sub_urdf_tree = ET.parse(urdf_path)
+                    for visual_mesh_path in visual_mesh_to_idx:
+                        # check if this visual object belongs to this URDF
+                        if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
+                            self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
 
-        # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the main body
-        self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
-
-        self.materials = [procedural_material]
+                # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the main body
+                self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
+                self.materials = [procedural_material]
 
     def _load(self):
         """
