@@ -4,6 +4,8 @@ import os
 import json
 import random
 import math
+from gibson2.utils.utils import transform_texture
+import uuid
 
 class Material(object):
     """
@@ -102,16 +104,24 @@ class ProceduralMaterial(Material):
                 self.roughness_texture_id, self.normal_texture_id, self.kd)
         )
 
-    def register_material_callback_to_state(self, state):
-        state.material_callback = self.material_callback
-
-    def material_callback(self, state_bool):
+    def change_material(self, state_bool):
         if state_bool:
             self.texture_id = self.texture_ids[1]
         else:
             self.texture_id = self.texture_ids[0]
         print(self.texture_id)
 
+    def save_transformed_texture(self):
+        diffuse_tex_filename = os.path.join(self.material_folder, "DIFFUSE.png")
+        diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
+        if self.state_type == "cooked":
+            # 0.5 mixture with brown
+            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139, 69, 19))
+        elif self.state_type == "soaked":
+            # 0.5 mixture with blue
+            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
+
+        self.diffuse_tex_filename_transformed = diffuse_tex_filename_transformed
 
 class RandomizedMaterial(Material):
     """

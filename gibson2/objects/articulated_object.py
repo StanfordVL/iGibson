@@ -15,6 +15,7 @@ import math
 
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
+from gibson2.object_states.texture_mixin import TextureChangeMixin
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
@@ -920,11 +921,11 @@ class URDFObject(StatefulObject):
                 self.model_path, 'shape', 'visual', old_path)
             visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
             del visual_mesh_to_idx[old_path]
-        for state in ["cooked", "soaked"]:
-            if state in self.states:
+        for state in self.states:
+            if issubclass(state, TextureChangeMixin):
                 procedural_material = ProceduralMaterial(state_type=state,
                                                          material_folder=os.path.join(self.model_path, 'material'))
-                procedural_material.register_material_callback_to_state(self.states[state])
+                self.states[state].material = procedural_material
 
         # check each visual object belongs to which sub URDF in case of splitting
         for i, urdf_path in enumerate(self.urdf_paths):
@@ -934,8 +935,8 @@ class URDFObject(StatefulObject):
                 if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
                     self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
 
-        # TODO: why do I have to add this??
-        self.visual_mesh_to_material = self.visual_mesh_to_material[0]
+        # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the main body
+        self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
 
         self.materials = [procedural_material]
 
