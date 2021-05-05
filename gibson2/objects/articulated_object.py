@@ -105,7 +105,6 @@ class URDFObject(StatefulObject):
                  connecting_joint=None,
                  initial_pos=None,
                  initial_orn=None,
-                 object_part_transform=None,
                  avg_obj_dims=None,
                  joint_friction=None,
                  in_rooms=None,
@@ -144,7 +143,6 @@ class URDFObject(StatefulObject):
         self.connecting_joint = connecting_joint
         self.initial_pos = initial_pos
         self.initial_orn = initial_orn
-        self.object_part_transform = object_part_transform
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
@@ -299,8 +297,6 @@ class URDFObject(StatefulObject):
         self.scale = scale
         self.bounding_box = bounding_box
 
-        self.load_object_parts()
-
         # If no bounding box, cannot compute dynamic properties from density
         if self.bounding_box is None:
             self.overwrite_inertial = False
@@ -332,19 +328,6 @@ class URDFObject(StatefulObject):
                 if issubclass(state, LinkBasedStateMixin):
                     self.flags -= p.URDF_MERGE_FIXED_LINKS
                     break
-
-    def load_object_parts(self):
-        self.object_parts = []
-        object_parts_json = os.path.join(
-            self.model_path, 'misc', 'object_parts.json')
-        if os.path.isfile(object_parts_json):
-            with open(object_parts_json) as f:
-                self.object_parts = json.load(f)
-
-        # The object part offset is computed using scale [1.0, 1.0, 1.0]
-        # Need to scale accordingly
-        for obj in self.object_parts:
-            obj['transformation']['pos'] *= self.scale
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:

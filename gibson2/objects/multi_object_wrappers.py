@@ -2,6 +2,7 @@ from gibson2.object_states.factory import ALL_STATES
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.object_base import Object
 from gibson2.objects.stateful_object import StatefulObject
+from gibson2.object_states.object_state_base import AbsoluteObjectState
 from IPython import embed
 import pybullet as p
 
@@ -9,13 +10,18 @@ import pybullet as p
 class ObjectGrouper(StatefulObject):
     """A multi-object wrapper that groups multiple objects and applies operations to all of them in parallel."""
 
-    class StateAggregator(object):
+    class BaseStateAggregator(object):
         """A fake state that aggregates state between ObjectGrouper objects and propagates updates."""
 
         def __init__(self, state_type, object_grouper):
             self.state_type = state_type
             self.object_grouper = object_grouper
 
+        def update(self, simulator):
+            for obj in self.object_grouper.objects:
+                obj.states[self.state_type].update(simulator)
+
+    class AbsoluteStateAggregator(BaseStateAggregator):
         def get_value(self):
             if not issubclass(self.state_type, BooleanState):
                 raise ValueError(
@@ -27,18 +33,33 @@ class ObjectGrouper(StatefulObject):
             for obj in self.object_grouper.objects:
                 obj.states[self.state_type].set_value(new_value)
 
-        def update(self, simulator):
-            for obj in self.object_grouper.objects:
-                obj.states[self.state_type].update(simulator)
+    class RelativeStateAggregator(BaseStateAggregator):
+        def get_value(self, other):
+            if not issubclass(self.state_type, BooleanState):
+                raise ValueError(
+                    "Aggregator can only aggregate boolean states.")
 
-    def __init__(self, objects):
+            return all(obj.states[self.state_type].get_value(other) for obj in self.object_grouper.objects)
+
+        def set_value(self, other, new_value):
+            for obj in self.object_grouper.objects:
+                obj.states[self.state_type].set_value(other, new_value)
+
+    def __init__(self, objects_with_pose_offsets):
         super(StatefulObject, self).__init__()
 
+        objects = [obj for obj, _ in objects_with_pose_offsets]
+        pose_offsets = [trans for _, trans in objects_with_pose_offsets]
         assert objects and all(isinstance(obj, Object) for obj in objects)
         self.objects = objects
+        self.pose_offsets = pose_offsets
 
         self.states = {
-            state_type: ObjectGrouper.StateAggregator(state_type, self)
+            state_type:
+            ObjectGrouper.AbsoluteStateAggregator(state_type, self)
+            if issubclass(state_type, AbsoluteObjectState)
+            else
+            ObjectGrouper.RelativeStateAggregator(state_type, self)
             for state_type in ALL_STATES}
 
     def __getattr__(self, item):
@@ -90,9 +111,9 @@ class ObjectGrouper(StatefulObject):
             "Cannot set_orientation on ObjectGrouper")
 
     def set_position_orientation(self, pos, orn):
-        for obj in self.objects:
+        for obj, (part_pos, part_orn) in zip(self.objects, self.pose_offsets):
             new_pos, new_orn = p.multiplyTransforms(
-                pos, orn, obj.object_part_transform['pos'], obj.object_part_transform['orn'])
+                pos, orn, part_pos, part_orn)
             obj.set_position_orientation(new_pos, new_orn)
 
     def set_base_link_position_orientation(self, pos, orn):

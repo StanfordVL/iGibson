@@ -31,12 +31,12 @@ class Sliced(AbsoluteObjectState, BooleanState):
         if not hasattr(self.obj, 'multiplexer'):
             return
 
-        # Cache whole obj pose
         pos, orn = self.obj.get_position_orientation()
-        # TODO: cache whole obj states
         self.obj.set_position(self.obj.initial_pos)
+        # force_wakeup is needed to properly update the self.obj pose in the renderer
+        self.obj.force_wakeup()
         self.obj.multiplexer.set_selection(1)
-        # Set obj parts using the cached whole obj pose
         self.obj.multiplexer.set_position_orientation(pos, orn)
         self.obj.multiplexer.states[Sliced].set_value(self.value)
-        # TODO: set obj parts states
+
+        # TODO: propagate non-kinematic states (e.g. clean, cooked) from whole object to object parts

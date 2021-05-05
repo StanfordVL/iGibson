@@ -269,10 +269,16 @@ class iGTNTask(TaskNetTask):
                 if is_sliceable:
                     whole_object = simulator_obj
                     object_parts = []
-                    for i, part in enumerate(simulator_obj.object_parts):
+                    assert 'object_parts' in simulator_obj.metadata, \
+                        'object_parts not found in metadata: [{}]'.format(
+                            model_path)
+
+                    for i, part in enumerate(simulator_obj.metadata['object_parts']):
                         category = part['category']
                         model = part['model']
-                        transform = part['transformation']
+                        # Scale the offset accordingly
+                        part_pos = part['pos'] * whole_object.scale
+                        part_orn = part['orn']
                         model_path = get_ig_model_path(category, model)
                         filename = os.path.join(model_path, model + ".urdf")
                         obj_name = whole_object.name + '_part_{}'.format(i)
@@ -287,10 +293,11 @@ class iGTNTask(TaskNetTask):
                             scale=whole_object.scale,
                             texture_randomization=False,
                             overwrite_inertial=True,
-                            object_part_transform=transform,
                             initial_pos=[100 + num_new_obj, 100, -100])
                         num_new_obj += 1
-                        object_parts.append(simulator_obj_part)
+                        object_parts.append(
+                            (simulator_obj_part, (part_pos, part_orn)))
+
                     assert len(object_parts) > 0
                     grouped_obj_parts = ObjectGrouper(object_parts)
                     simulator_obj = ObjectMultiplexer(
@@ -353,8 +360,6 @@ class iGTNTask(TaskNetTask):
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
-        print('done import scene')
-        embed()
 
         if not self.online_sampling:
             for obj_inst in self.object_scope:
