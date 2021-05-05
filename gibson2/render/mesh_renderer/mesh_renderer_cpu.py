@@ -17,8 +17,6 @@ from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import time
-from gibson2.utils.utils import transform_texture
-import uuid
 Image.MAX_IMAGE_PIXELS = None
 
 
@@ -305,25 +303,14 @@ class MeshRenderer(object):
         self.texture_files[tex_filename] = texture_id
         return texture_id
 
-    def synthesize_procedural_material(self, material: ProceduralMaterial):
-        diffuse_tex_filename = os.path.join(material.material_folder, "DIFFUSE.png")
-        material.texture_id = self.load_texture_file(diffuse_tex_filename)
+    def load_procedural_material(self, material):
+        material.save_transformed_texture()
+        material.texture_id =  os.path.join(material.material_folder, "DIFFUSE.png")
         material.metallic_texture_id = self.load_texture_file(os.path.join(material.material_folder, "METALLIC.png"))
         material.roughness_texture_id = self.load_texture_file(os.path.join(material.material_folder, "ROUGHNESS.png"))
         material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))
-
-        diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
-        if material.state_type == "cooked":
-            # 0.5 mixture with brown
-            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139,69,19))
-        elif material.state_type == "soaked":
-            # 0.5 mixture with blue
-            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
-
-        transformed_diffuse_id = self.load_texture_file(diffuse_tex_filename_transformed)
-
-        material.texture_ids = [material.texture_id, transformed_diffuse_id]
-
+        material.transformed_diffuse_id = self.load_texture_file(material.diffuse_tex_filename_transformed)
+        material.texture_ids = [material.texture_id, material.transformed_diffuse_id]
 
     def load_randomized_material(self, material):
         """
@@ -415,7 +402,7 @@ class MeshRenderer(object):
                 if isinstance(overwrite_material, RandomizedMaterial):
                     self.load_randomized_material(overwrite_material)
                 elif isinstance(overwrite_material, ProceduralMaterial):
-                    self.synthesize_procedural_material(overwrite_material)
+                    self.load_procedural_material(overwrite_material)
                 material = overwrite_material
             elif item.diffuse_texname != '' and load_texture:
                 obj_dir = os.path.dirname(obj_path)
