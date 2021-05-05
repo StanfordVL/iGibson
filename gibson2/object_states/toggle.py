@@ -39,8 +39,8 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         return _TOGGLE_LINK_NAME
 
     def update(self, simulator):
-        marker_on_position = self.get_link_position()
-        if marker_on_position is None:
+        button_position_on_object = self.get_link_position()
+        if button_position_on_object is None:
             return
 
         if not self.marker_added:
@@ -56,7 +56,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         hand_in_marker = False
         # detect marker and hand interaction
         for hand in vr_hands:
-            if np.linalg.norm(np.array(hand.get_position()) - np.array(marker_on_position)) < _TOGGLE_DISTANCE_THRESHOLD:
+            if np.linalg.norm(np.array(hand.get_position()) - np.array(button_position_on_object)) < _TOGGLE_DISTANCE_THRESHOLD:
                 # hand in marker
                 hand_in_marker = True
 
@@ -69,11 +69,18 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             self.value = not self.value
 
         # swap two types of markers when toggled
-        # TODO: Currently we're not showing the on-marker either since it is not camera-ready.
-        # The on-marker should be moved to the marker_on_position when this works properly.
+        # when hud overlay is on, we show the toggle buttons, otherwise the buttons are hidden
+
+        hud_overlay_show_state = simulator.get_hud_show_state()
         if self.get_value():
-            self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
+            if hud_overlay_show_state:
+                self.visual_marker_on.set_position(button_position_on_object)
+            else:
+                self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
             self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
         else:
+            if hud_overlay_show_state:
+                self.visual_marker_off.set_position(button_position_on_object)
+            else:
+                self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
             self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
-            self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
