@@ -272,6 +272,7 @@ class iGTNTask(TaskNetTask):
         #TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
         # baserobot api
         agent = VrAgent(self.simulator)
+        self.agent = agent
         self.simulator.robots.append(agent)
         assert(len(self.simulator.robots) == 1), "Error, multiple agents is not currently supported"
         agent.vr_dict['body'].set_base_link_position_orientation(
@@ -290,7 +291,7 @@ class iGTNTask(TaskNetTask):
             [300, -300, 300], [0, 0, 0, 1]
         )
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
-        if self.online_sampling == False:
+        if self.online_sampling == False and self.scene.agent != {}:
             agent.vr_dict['body'].set_base_link_position_orientation(
                 self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
             )
@@ -305,6 +306,25 @@ class iGTNTask(TaskNetTask):
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
                 self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
+
+    def move_agent(self):
+        if self.online_sampling == False and self.scene.agent == {}:
+            agent = self.agent
+            agent.vr_dict['body'].set_base_link_position_orientation(
+                [0, 0, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+                [0, 0.2, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+                [0, -0.2, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+                [0, 0.2, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+                [0, 0.2, 0.5], [0, 0, 0, 1]
             )
 
     def import_scene(self):
