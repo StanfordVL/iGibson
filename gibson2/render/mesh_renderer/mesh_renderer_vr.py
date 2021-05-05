@@ -1,7 +1,151 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from gibson2.utils.mesh_util import lookat
+from gibson2.utils.utils import parse_config
+from gibson2 import assets_path
 import numpy as np
+import os
 import time
+
+
+class VrOverlayBase(object):
+    """
+    Base class representing a VR overlay. Use one of the subclasses to create a specific overlay.
+    """
+    def __init__(self, overlay_name, renderer, width=1, pos=[0, 0, -1]):
+        """
+        :param overlay_name: the name of the overlay - must be a unique string
+        :param renderer: instance of MeshRendererVR
+        :param width: width of the overlay quad in meters
+        :param pos: location of overlay quad - x is left, y is up and z is away from camera in VR headset space
+        """
+        self.overlay_name = overlay_name
+        self.renderer = renderer
+        self.width = width
+        self.pos = pos
+        # Note: overlay will only be instantiated in subclasses
+    
+    def set_overlay_show_state(self, show):
+        """
+        Sets show state of an overlay
+        :param state: True to show, False to hide
+        """
+        self.show_state = show
+        if self.show_state:
+            self.renderer.vrsys.showOverlay(self.overlay_name)
+        else:
+            self.renderer.vrsys.hideOverlay(self.overlay_name)
+    
+    def get_overlay_show_state(self):
+        """
+        Returns show state of an overlay
+        """
+        return self.show_state
+
+
+class VrHUDOverlay(VrOverlayBase):
+    """
+    Class that renders all Text objects with render_to_tex=True to a Vr overlay. Can be used for rendering user instructions, for example.
+    Text should not be rendered to the non-VR screen, as it will then appear as part of the VR image!
+    There should only be one of these VrHUDOverlays per scene, as it will render all text. HUD stands for heads-up-display.
+    """
+    def __init__(self, 
+                 overlay_name, 
+                 renderer, 
+                 width=1, 
+                 pos=[0, 0, -1]):
+        """
+        :param overlay_name: the name of the overlay - must be a unique string
+        :param renderer: instance of MeshRendererVR
+        :param width: width of the overlay quad in meters
+        :param pos: location of overlay quad - x is left, y is up and z is away from camera in VR headset space
+        """
+        super().__init__(overlay_name, renderer, width=width, pos=pos)
+        self.renderer.vrsys.createOverlay(self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], '')
+
+    def refresh_text(self):
+        """
+        Updates VR overlay texture with new text.
+        """
+        # Skip update if there is no text to render
+        if len(self.renderer.texts) == 0:
+            return
+        rtex = self.renderer.text_manager.get_render_tex()
+        self.renderer.vrsys.updateOverlayTexture(self.overlay_name, rtex)
+
+class VrStaticImageOverlay(VrOverlayBase):
+    """
+    Class that renders a static image to the VR overlay a single time.
+    """
+    def __init__(self, 
+                 overlay_name, 
+                 renderer, 
+                 image_fpath,
+                 width=1, 
+                 pos=[0, 0, -1]):
+        """
+        :param overlay_name: the name of the overlay - must be a unique string
+        :param renderer: instance of MeshRendererVR
+        :param image_fpath: path to image to render to overlay
+        :param width: width of the overlay quad in meters
+        :param pos: location of overlay quad - x is left, y is up and z is away from camera in VR headset space
+        """
+        super().__init__(overlay_name, renderer, width=width, pos=pos)
+        self.image_fpath = image_fpath
+        self.renderer.vrsys.createOverlay(self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], self.image_fpath)
+
+
+class VrConditionSwitcher(object):
+    """
+    Class that handles switching of various ATUS conditions - including overlays and objects.
+    """
+    def __init__(self, s, show_instr_func, switch_instr_func):
+        """
+        :param s: reference to simulator
+        """
+        self.s = s
+        # Store list of previous objects, so they can be un-highlighted
+        self.prev_obj_list = []
+        self.start_text = 'Welcome!\nPlease press toggle\nto see the next goal condition!'
+        self.show_instr_func = show_instr_func
+        self.switch_instr_func = switch_instr_func  
+
+        self.is_showing = True
+
+        # Text displaying next conditions
+        self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=40, font_style='Bold', 
+                                                    color=[0,0,0], pos=[0, 75], size=[90, 50])
+    
+    def refresh_condition(self, switch = True):
+        """
+        Switches to the next condition. This involves displaying the text for
+        the new condition, as well as highlighting/un-highlighting the appropriate objects.
+        """
+        # 1) Query tasknet for next state - get (text, color, obj_list) tuple
+        if switch:
+            self.switch_instr_func()
+        new_text, new_color, new_obj_list = self.show_instr_func()
+        # 2) Render new text
+        self.condition_text.set_text(new_text)
+        self.condition_text.set_attribs(color=new_color)
+        # 3) Un-highlight previous objects, then highlight new objects
+        for prev_obj in self.prev_obj_list:
+            prev_obj.unhighlight()
+        if self.is_showing:
+            for new_obj in new_obj_list:
+                new_obj.highlight()
+        self.prev_obj_list = new_obj_list
+
+    def toggle_show_state(self):
+        """
+        Toggles show state of switcher (which is on by default)
+        """
+        self.s.set_hud_show_state(not self.s.get_hud_show_state())
+        self.is_showing = not self.is_showing
+        if self.is_showing:
+            for obj in self.prev_obj_list:
+                obj.highlight()
+        else:
+            for obj in self.prev_obj_list:
+                obj.unhighlight()
 
 
 class VrSettings(object):
@@ -9,37 +153,82 @@ class VrSettings(object):
     Class containing VR settings pertaining to both the VR renderer
     and VR functionality in the simulator/of VR objects
     """
-    def __init__(self,
-                use_vr = True,
-                eye_tracking = True,
-                touchpad_movement = True,
-                movement_controller = 'right',
-                relative_movement_device = 'hmd',
-                movement_speed = 0.01,
-                reset_sim = True,
-                vr_fps = 30):
+    def __init__(self):
         """
-        Initializes VR settings:
-        1) use_vr - whether to render to the HMD and use VR system or just render to screen (used for debugging)
-        2) eye_tracking - whether to use eye tracking
-        3) touchpad_movement - whether to enable use of touchpad to move
-        4) movement_controller - device to controler movement - can be right or left (representing the corresponding controllers)
-        4) relative_movement_device - which device to use to control touchpad movement direction (can be any VR device)
-        5) movement_speed - touchpad movement speed
-        6) reset_sim - whether to call resetSimulation at the start of each simulation
-        7) vr_fps - the fixed fps to run VR at - initialized to 33 by default, since this FPS works well in all iGibson environments
+        Initializes VR settings.
         """
-        assert movement_controller in ['left', 'right']
+        # VR is enabled by default - can be set off on a case-by-case basis
+        self.use_vr = True
+        # Simulation is reset at start by default
+        self.reset_sim = True
+        # No frame save path by default
+        self.frame_save_path = None
 
-        self.use_vr = use_vr
-        self.eye_tracking = eye_tracking
-        self.touchpad_movement = touchpad_movement
-        self.movement_controller = movement_controller
-        self.relative_movement_device = relative_movement_device
-        self.movement_speed = movement_speed
-        self.reset_sim = reset_sim
-        self.vr_fps = vr_fps
+        mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
+        self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.yaml')
+        self.load_vr_config()
 
+    def load_vr_config(self):
+        """
+        Loads in VR config and sets all settings accordingly.
+        """
+        vr_config = parse_config(self.vr_config_path)
+        
+        shared_settings = vr_config['shared_settings']
+        self.touchpad_movement = shared_settings['touchpad_movement']
+        self.movement_controller = shared_settings['movement_controller']
+        assert self.movement_controller in ['left', 'right']
+        self.relative_movement_device = shared_settings['relative_movement_device']
+        assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
+        self.movement_speed = shared_settings['movement_speed']
+        self.vr_fps = shared_settings['vr_fps']
+        self.assist_percent = shared_settings['assist_percent']
+        self.assist_grasp_mass_thresh = shared_settings['assist_grasp_mass_thresh']
+        self.release_window = shared_settings['release_window']
+        self.hud_width = shared_settings['hud_width']
+        self.hud_pos = shared_settings['hud_pos']
+        self.height_bounds = shared_settings['height_bounds']
+        self.use_companion_window = shared_settings['use_companion_window']
+        self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
+        self.torso_tracker_serial = shared_settings['torso_tracker_serial']
+        if self.torso_tracker_serial == '': self.torso_tracker_serial = None
+
+        device_settings = vr_config['device_settings']
+        curr_device_candidate = vr_config['current_device']
+        if curr_device_candidate not in device_settings.keys():
+            self.curr_device = 'OTHER_VR'
+        else:
+            self.curr_device = curr_device_candidate
+        # Disable waist tracker by default for Oculus
+        if self.curr_device == 'OCULUS':
+            self.torso_tracker_serial = None
+        specific_device_settings = device_settings[self.curr_device]
+        self.eye_tracking = specific_device_settings['eye_tracking']
+        self.action_button_map = specific_device_settings['action_button_map']
+        self.gen_button_action_map()
+
+    def gen_button_action_map(self):
+        """
+        Generates a button_action_map, which is needed to convert from
+        (button_idx, press_id) tuples back to actions.
+        """
+        self.button_action_map = {}
+        for k, v in self.action_button_map.items():
+            self.button_action_map[tuple(v)] = k
+
+    def turn_off_vr_mode(self):
+        """
+        Turns off VR mode so the MeshRendererVR can be debugged.
+        """
+        self.use_vr = False
+        # Enable rendering of companion window
+        self.use_companion_window = True
+
+    def set_frame_save_path(self, frame_save_path):
+        """
+        :param frame_save_path: sets path to save frames (used in action replay)
+        """
+        self.frame_save_path = frame_save_path
 
 class MeshRendererVR(MeshRenderer):
     """
@@ -48,13 +237,16 @@ class MeshRendererVR(MeshRenderer):
     """
 
     def __init__(self, rendering_settings=MeshRendererSettings(), vr_settings=VrSettings()):
+        """
+        :param rendering_settings: mesh renderer settings
+        :param vr_settings: VR settings - see class definition above
+        """
         self.vr_rendering_settings = rendering_settings
         self.vr_settings = vr_settings
-        self.base_width = 1080
-        self.base_height = 1200
-        self.scale_factor = 1.2
-        self.width = int(self.base_width * self.scale_factor)
-        self.height = int(self.base_height * self.scale_factor)
+        # Override glfw window show settings
+        self.vr_rendering_settings.show_glfw_window = self.vr_settings.use_companion_window
+        self.width = 1296
+        self.height = 1440
         super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
 
         # Rename self.r to self.vrsys
@@ -67,14 +259,44 @@ class MeshRendererVR(MeshRenderer):
 
         # Always turn MSAA off for VR
         self.msaa = False
+        # The VrTextOverlay that serves as the VR HUD (heads-up-display)
+        self.vr_hud = None
 
-    # Calls WaitGetPoses() to acquire pose data, and returns 3ms before next vsync so
-    # rendering can benefit from a "running start"
+    def gen_vr_hud(self):
+        """
+        Generates VR HUD (heads-up-display).
+        """
+        # Create a unique overlay name based on current nanosecond
+        uniq_name = 'overlay{}'.format(time.perf_counter())
+        self.vr_hud = VrHUDOverlay(uniq_name, 
+                                   self, 
+                                   width=self.vr_settings.hud_width, 
+                                   pos=self.vr_settings.hud_pos)
+        self.vr_hud.set_overlay_show_state(True)
+
+    def gen_static_overlay(self, image_fpath, width=1, pos=[0, 0, -1]):
+        """
+        Generates and returns an overlay containing a static image. This will display in addition to the HUD.
+        """
+        uniq_name = 'overlay{}'.format(time.perf_counter())
+        static_overlay = VrStaticImageOverlay(uniq_name, 
+                                    self, 
+                                    image_fpath,
+                                    width=width, 
+                                    pos=pos)
+        static_overlay.set_overlay_show_state(True)
+        return static_overlay
+
     def update_vr_data(self):
+        """
+        Calls WaitGetPoses() to acquire pose data, and return 3ms before next vsync.
+        """
         self.vrsys.updateVRData()
 
-    # Renders VR scenes and returns the left eye frame
-    def render(self):
+    def render(self, return_frame=False):
+        """
+        Renders VR scenes.
+        """
         if self.vr_settings.use_vr:
             left_proj, left_view, left_cam_pos, right_proj, right_view, right_cam_pos = self.vrsys.preRenderVR()
 
@@ -94,17 +316,27 @@ class MeshRendererVR(MeshRenderer):
             self.camera = right_cam_pos
             
             # We don't need to render the shadow pass a second time for the second eye
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False)
+            # We also don't need to render the text pass a second time
+            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False, render_text_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
-        else:
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
 
-    # Submit data to the compositor
+            # Update HUD so it renders in the HMD
+            if self.vr_hud:
+                self.vr_hud.refresh_text()
+        else:
+            if return_frame:
+                return super().render(modes=('rgb'), return_buffer=return_frame, render_shadow_pass=True)
+
     def vr_compositor_update(self):
+        """
+        Submit data to VR compositor after rendering.
+        """
         self.vrsys.postRenderVR(True)
 
-    # Releases VR system and renderer
     def release(self):
+        """
+        Releases Vr system and renderer.
+        """
         super().release()
         if self.vr_settings.use_vr:
             self.vrsys.releaseVR()

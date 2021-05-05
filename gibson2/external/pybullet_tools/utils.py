@@ -1624,7 +1624,7 @@ def link_from_name(body, name):
     for link in get_joints(body):
         if get_link_name(body, link) == name:
             return link
-    raise ValueError(body, name)
+    raise ValueError("Could not find link %s for body %d" % (name, body))
 
 
 def has_link(body, name):
@@ -1633,6 +1633,15 @@ def has_link(body, name):
     except ValueError:
         return False
     return True
+
+
+def get_link_position_from_name(body_id, name):
+    try:
+        link_id = link_from_name(body_id, name)
+    except ValueError:
+        return None
+
+    return get_link_state(body_id, link_id).linkWorldPosition
 
 
 LinkState = namedtuple('LinkState', ['linkWorldPosition', 'linkWorldOrientation',
@@ -2551,6 +2560,15 @@ def approximate_as_cylinder(body, **kwargs):
 #MAX_DISTANCE = 1e-3
 MAX_DISTANCE = 0.
 
+
+def set_all_collisions(body_id, enabled=1):
+    body_link_idxs = [-1] + [i for i in range(p.getNumJoints(body_id))]
+
+    for col_id in range(p.getNumBodies()):
+        col_link_idxs = [-1] + [i for i in range(p.getNumJoints(col_id))]
+        for body_link_idx in body_link_idxs:
+            for col_link_idx in col_link_idxs:
+                p.setCollisionFilterPair(body_id, col_id, body_link_idx, col_link_idx, enabled)
 
 def contact_collision():
     step_simulation()

@@ -16,6 +16,7 @@
 #include <glad/egl.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
@@ -54,8 +55,8 @@ py::list VRRendererContext::getButtonDataForController(char* controllerType) {
 }
 
 // Returns device data in order: isValidData, position, rotation, hmdActualPos (valid only if hmd)
-	// Device type can be either hmd, left_controller or right_controller
-	// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
+// Device type can be either hmd, left_controller or right_controller
+// TIMELINE: Call at any time after postRenderVR to poll the VR system for device data
 py::list VRRendererContext::getDataForVRDevice(char* deviceType) {
 	bool isValid = false;
 
@@ -63,7 +64,6 @@ py::list VRRendererContext::getDataForVRDevice(char* deviceType) {
 	py::array_t<float> rotationData;
 	py::array_t<float> hmdActualPosData;
 
-	// TODO: Extend this to work with multiple headsets in future
 	if (!strcmp(deviceType, "hmd")) {
 		glm::vec3 transformedPos(vrToGib * glm::vec4(hmdData.devicePos, 1.0));
 		positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
@@ -92,6 +92,31 @@ py::list VRRendererContext::getDataForVRDevice(char* deviceType) {
 	deviceData.append(hmdActualPosData);
 
 	return deviceData;
+}
+
+// Returns tracker data in order: isValidData, position, rotation
+// An empty list will be returned if the input serial number is invalid
+py::list VRRendererContext::getDataForVRTracker(char* trackerSerialNumber) {
+	std::string trackerSerialString = std::string(trackerSerialNumber);
+	bool isValid = false;
+	py::list trackerData;
+
+	py::array_t<float> positionData;
+	py::array_t<float> rotationData;
+
+	// Return empty tracker data list if the tracker serial number is invalid
+	if (this->trackerNamesToData.find(trackerSerialString) != this->trackerNamesToData.end()) {
+		DeviceData currTrackerData = this->trackerNamesToData[trackerSerialString];
+		glm::vec3 transformedPos(vrToGib * glm::vec4(currTrackerData.devicePos, 1.0));
+		positionData = py::array_t<float>({ 3, }, glm::value_ptr(transformedPos));
+		rotationData = py::array_t<float>({ 4, }, glm::value_ptr(vrToGib * currTrackerData.deviceRot));
+		isValid = currTrackerData.isValidData;
+		trackerData.append(isValid);
+		trackerData.append(positionData);
+		trackerData.append(rotationData);
+	}
+
+	return trackerData;
 }
 
 // Gets normalized vectors representing HMD coordinate system
@@ -216,23 +241,25 @@ void VRRendererContext::initVR(bool useEyeTracking) {
 }
 
 // Polls for VR events, such as button presses
+// Guaranteed to only return valid events
 // TIMELINE: Ideally call before rendering (eg. before simulator step function)
 py::list VRRendererContext::pollVREvents() {
 	vr::VREvent_t vrEvent;
 	py::list eventData;
 
 	while (m_pHMD->PollNextEvent(&vrEvent, sizeof(vrEvent))) {
-		std::string deviceType, eventType;
-		processVREvent(vrEvent, deviceType, eventType);
+		int controller, event_idx, press;
+		processVREvent(vrEvent, &controller, &event_idx, &press);
 
-		if (deviceType == "invalid" || eventType == "invalid") {
+		// -1 for controller or event indicates an invalid event
+		if (controller == -1 || event_idx == -1 || press == -1) {
 			continue;
 		}
 
 		py::list singleEventData;
-		singleEventData.append(deviceType);
-		singleEventData.append(eventType);
-
+		singleEventData.append(controller);
+		singleEventData.append(event_idx);
+		singleEventData.append(press);
 		eventData.append(singleEventData);
 	}
 
@@ -267,6 +294,8 @@ void VRRendererContext::postRenderVR(bool shouldHandoff) {;
 	if (shouldHandoff) {
 		vr::VRCompositor()->PostPresentHandoff();
 	}
+	// Flush rendering queue to get GPU working ASAP
+	glFlush();
 }
 
 // Returns the projection and view matrices for the left and right eyes, to be used in rendering
@@ -438,6 +467,98 @@ void VRRendererContext::updateVRData() {
 				rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
 			}
 		}
+		else if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_GenericTracker) {
+			// We identify generic trackers by their serial number
+			char serial_name[vr::k_unMaxPropertyStringSize];
+			uint32_t serial_name_len = m_pHMD->GetStringTrackedDeviceProperty(idx, vr::ETrackedDeviceProperty::Prop_SerialNumber_String, serial_name, vr::k_unMaxPropertyStringSize);
+			std::string serial(serial_name, serial_name_len-1);
+
+			// Apply VR offset to tracker position
+			glm::vec3 trackerPos = getPositionFromSteamVRMatrix(transformMat);
+			setSteamVRMatrixPos(trackerPos + vrOffsetVec, transformMat);
+
+			if (this->trackerNamesToData.find(serial) != this->trackerNamesToData.end()) {
+				this->trackerNamesToData[serial].index = idx;
+				this->trackerNamesToData[serial].isValidData = true;
+				this->trackerNamesToData[serial].deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				this->trackerNamesToData[serial].devicePos = getPositionFromSteamVRMatrix(transformMat);
+				this->trackerNamesToData[serial].deviceRot = getRotationFromSteamVRMatrix(transformMat);
+			}
+			else {
+				DeviceData trackerData;
+				trackerData.index = idx;
+				trackerData.isValidData = true;
+				trackerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
+				trackerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
+				trackerData.deviceRot = getRotationFromSteamVRMatrix(transformMat);
+				this->trackerNamesToData[serial] = trackerData;
+			}
+		}
+	}
+}
+
+// VR overlay methods
+void VRRendererContext::createOverlay(char* name, float width, float pos_x, float pos_y, float pos_z, char* fpath) {
+	vr::VROverlayHandle_t handle;
+	vr::VROverlay()->CreateOverlay(name, name, &handle);
+	if (strcmp(fpath, "") != 0) {
+		vr::VROverlay()->SetOverlayFromFile(handle, fpath);
+	}
+	vr::VROverlay()->SetOverlayWidthInMeters(handle, width);
+	
+	vr::HmdMatrix34_t transform = {
+		1.0f, 0.0f, 0.0f, pos_x,
+		0.0f, 1.0f, 0.0f, pos_y,
+		0.0f, 0.0f, 1.0f, pos_z
+	};
+	std::string ovName = std::string(name);
+	this->overlayNamesToHandles[ovName] = handle;
+
+	vr::VROverlayError overlayError = vr::VROverlay()->SetOverlayTransformTrackedDeviceRelative(handle, vr::k_unTrackedDeviceIndex_Hmd, &transform);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to set overlay relative to HMD for name " << ovName << std::endl;
+	}
+}
+
+void VRRendererContext::cropOverlay(char* name, float start_u, float start_v, float end_u, float end_v) {
+	std::string ovName(name);
+	vr::VROverlayHandle_t handle = this->overlayNamesToHandles[ovName];
+
+	// Create texture bounds and crop overlay
+	vr::VRTextureBounds_t texBounds;
+	texBounds.uMin = start_u;
+	texBounds.vMin = start_v;
+	texBounds.uMax = end_u;
+	texBounds.vMax = end_v;
+
+	vr::VROverlayError overlayError = vr::VROverlay()->SetOverlayTextureBounds(handle, &texBounds);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to crop overlay with name " << ovName << std::endl;
+	}
+}
+
+void VRRendererContext::destroyOverlay(char* name) {
+	std::string ovName(name);
+	vr::VROverlayHandle_t handle = this->overlayNamesToHandles[ovName];
+	vr::VROverlayError overlayError = vr::VROverlay()->DestroyOverlay(handle);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to destroy overlay with name " << ovName << std::endl;
+	}
+}
+
+void VRRendererContext::hideOverlay(char* name) {
+	vr::VROverlay()->HideOverlay(this->overlayNamesToHandles[std::string(name)]);
+}
+
+void VRRendererContext::showOverlay(char* name) {
+	vr::VROverlay()->ShowOverlay(this->overlayNamesToHandles[std::string(name)]);
+}
+
+void VRRendererContext::updateOverlayTexture(char* name, GLuint texID) {
+	vr::Texture_t texture = { (void*)(uintptr_t)texID, vr::TextureType_OpenGL, vr::ColorSpace_Auto };
+	vr::VROverlayError overlayError = vr::VROverlay()->SetOverlayTexture(this->overlayNamesToHandles[std::string(name)], &texture);
+	if (overlayError != vr::VROverlayError_None) {
+		std::cerr << "VR OVERLAY ERROR: unable to set texture for overlay with name " << std::string(name) << std::endl;
 	}
 }
 
@@ -607,98 +728,40 @@ void VRRendererContext::printVec3(glm::vec3& v) {
 }
 
 // Processes a single VR event
-void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, std::string& deviceType, std::string& eventType) {
+// Controller: -1 (invalid), 0 (left controller), 1 (right controller)
+// Event idx: integer given by EVRButtonId enum in openvr.h header file
+// Press: -1 (invalid), 0 (for unpress/untouch), 1 (for press/touch)
+void VRRendererContext::processVREvent(vr::VREvent_t& vrEvent, int* controller, int* event_idx, int* press) {
 	vr::ETrackedDeviceClass trackedDeviceClass = m_pHMD->GetTrackedDeviceClass(vrEvent.trackedDeviceIndex);
 
 	// Exit if we found a non-controller event
 	if (trackedDeviceClass != vr::ETrackedDeviceClass::TrackedDeviceClass_Controller) {
-		deviceType = "invalid";
+		*controller = -1;
 		return;
 	}
 
 	vr::ETrackedControllerRole role = m_pHMD->GetControllerRoleForTrackedDeviceIndex(vrEvent.trackedDeviceIndex);
 	if (role == vr::TrackedControllerRole_Invalid) {
-		deviceType = "invalid";
+		*controller = -1;
 	}
 	else if (role == vr::TrackedControllerRole_LeftHand) {
-		deviceType = "left_controller";
+		*controller = 0;
 	}
 	else if (role == vr::TrackedControllerRole_RightHand) {
-		deviceType = "right_controller";
+		*controller = 1;
 	}
 
-	switch (vrEvent.data.controller.button) {
-	case vr::k_EButton_Grip:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "grip_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "grip_unpress";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	case vr::k_EButton_SteamVR_Trigger:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "trigger_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "trigger_unpress";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	case vr::k_EButton_SteamVR_Touchpad:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "touchpad_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "touchpad_unpress";
-			break;
-
-		case vr::VREvent_ButtonTouch:
-			eventType = "touchpad_touch";
-			break;
-
-		case vr::VREvent_ButtonUntouch:
-			eventType = "touchpad_untouch";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	case vr::k_EButton_ApplicationMenu:
-		switch (vrEvent.eventType) {
-		case vr::VREvent_ButtonPress:
-			eventType = "menu_press";
-			break;
-
-		case vr::VREvent_ButtonUnpress:
-			eventType = "menu_unpress";
-			break;
-		default:
-			eventType = "invalid";
-			break;
-		}
-		break;
-
-	default:
-		eventType = "invalid";
-		break;
+	*event_idx = vrEvent.data.controller.button;
+	// Both ButtonPress and ButtonTouch count as "press" (same goes for unpress/untouch)
+	int press_id = vrEvent.eventType;
+	if (press_id == vr::VREvent_ButtonUnpress || press_id == vr::VREvent_ButtonUntouch) {
+		*press = 0;
+	}
+	else if (press_id == vr::VREvent_ButtonPress || press_id == vr::VREvent_ButtonTouch) {
+		*press = 1;
+	}
+	else {
+		*press = -1;
 	}
 }
 
@@ -782,13 +845,25 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");
 
-	//for skybox
+	// for skybox
 	pymodule.def("loadSkyBox", &VRRendererContext::loadSkyBox, "TBA");
 	pymodule.def("renderSkyBox", &VRRendererContext::renderSkyBox, "TBA");
+
+	// for text
+	pymodule.def("loadCharTexture", &VRRendererContext::loadCharTexture, "TBA");
+	pymodule.def("setupTextRender", &VRRendererContext::setupTextRender, "TBA");
+	pymodule.def("preRenderTextFramebufferSetup", &VRRendererContext::preRenderTextFramebufferSetup, "TBA");
+	pymodule.def("preRenderText", &VRRendererContext::preRenderText, "TBA");
+	pymodule.def("renderChar", &VRRendererContext::renderChar, "TBA");
+	pymodule.def("postRenderText", &VRRendererContext::postRenderText, "TBA");
+	pymodule.def("genTextFramebuffer", &VRRendererContext::genTextFramebuffer, "TBA");
+	pymodule.def("renderBackgroundQuad", &VRRendererContext::renderBackgroundQuad, "TBA");
+	pymodule.def("read_fbo_color_tex_to_numpy", &VRRendererContext::read_fbo_color_tex_to_numpy, "TBA");
 
 	// VR functions
 	pymodule.def("getButtonDataForController", &VRRendererContext::getButtonDataForController);
 	pymodule.def("getDataForVRDevice", &VRRendererContext::getDataForVRDevice);
+	pymodule.def("getDataForVRTracker", &VRRendererContext::getDataForVRTracker);
 	pymodule.def("getDeviceCoordinateSystem", &VRRendererContext::getDeviceCoordinateSystem);
 	pymodule.def("getEyeTrackingData", &VRRendererContext::getEyeTrackingData);
 	pymodule.def("getVROffset", &VRRendererContext::getVROffset);
@@ -802,6 +877,14 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("setVROffset", &VRRendererContext::setVROffset);
 	pymodule.def("triggerHapticPulseForDevice", &VRRendererContext::triggerHapticPulseForDevice);
 	pymodule.def("updateVRData", &VRRendererContext::updateVRData);
+
+	// VR overlay methods
+	pymodule.def("createOverlay", &VRRendererContext::createOverlay);
+	pymodule.def("cropOverlay", &VRRendererContext::cropOverlay);
+	pymodule.def("destroyOverlay", &VRRendererContext::destroyOverlay);
+	pymodule.def("hideOverlay", &VRRendererContext::hideOverlay);
+	pymodule.def("showOverlay", &VRRendererContext::showOverlay);
+	pymodule.def("updateOverlayTexture", &VRRendererContext::updateOverlayTexture);
 
 #ifdef VERSION_INFO
 	m.attr("__version__") = VERSION_INFO;
