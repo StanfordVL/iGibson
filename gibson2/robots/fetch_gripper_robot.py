@@ -68,7 +68,7 @@ class FetchGripper(LocomotorRobot):
         self.rest_head_qpos = np.array(self.rest_joints)[self.head_joint_action_idx]
         self.target_head_qpos = np.array(self.untucked_default_joints[self.head_joint_action_idx])
         self.target_head_change_cooldown = 0             # Counter to prevent spurious consecutive head tracking changes
-        self.discrete_head_movement_rate = 0.45          # Hardcoded for now; used to determine how much discrete head movement occurs if corresponding heuristic is set
+        self.discrete_head_movement_rate = 0.35          # Hardcoded for now; used to determine how much discrete head movement occurs if corresponding heuristic is set
         self.head_error_planning = []
 
         # Make sure control is specified
@@ -82,7 +82,9 @@ class FetchGripper(LocomotorRobot):
         self.controller = None
 
         # Tucked info
-        self.tucked = True          # Always starts tucked by default
+        self.start_tucked = self.config.get('start_tucked', True)           # whether to start tucked or untucked at beginning of episode
+        self.tucked = self.start_tucked                                     # Start according to corresponding setting
+        self.use_tuck_action = self.config.get('use_tuck_action', True)     # Whether to include tuck action as first dim in action array or not
         self.disabled_tucking_collisions = None
 
         # Action limits
@@ -295,10 +297,11 @@ class FetchGripper(LocomotorRobot):
 
         # Initiate robot in untucked pose
         idx = np.sort(np.concatenate([self.head_joint_action_idx, self.arm_joint_action_idx]))
-        set_joint_positions(self.robot_ids[0], self.joint_ids, self.tucked_default_joints)
+        joints = self.tucked_default_joints if self.start_tucked else self.untucked_default_joints
+        set_joint_positions(self.robot_ids[0], self.joint_ids, joints)
 
         # Reset internal vars
-        self.tucked = True
+        self.tucked = self.start_tucked
         self.head_error_planning = []
 
         # Reset controller
@@ -627,9 +630,10 @@ class FetchGripper(LocomotorRobot):
         Scale the policy action (always in [-1, 1]) to robot action based on action range.
         Extends super method so that the tuck command (the first entry in action array) remains unchanged
 
-        :param action: policy action [tuck, diff drive, arm action, gripper, reset arm].
+        :param action: policy action [[tuck, ]diff drive, arm action, gripper, reset arm].
 
             tuck (1D): will tuck robot if > 0, else untuck
+                (OPTIONAL, only should be included if self.use_tuck_action is set to True!)
             diff drive (2D): (lin vel, ang vel) commands to move base
             arm action (6D): (dx, dy, dz, dax, day, daz) delta commands to move arm. Delta orientation commands are
                 assumed to be in axis-angle form
@@ -642,17 +646,25 @@ class FetchGripper(LocomotorRobot):
         # Update joint state
         self.calc_state()
 
-        # See if we need to update tuck
-        tuck_updated = self.update_tucking(tuck=(action[0] > 0.0))
+        # Tuck is not updated by default
+        tuck_updated = False
 
-        # Trim the tuck action from the array and initialize a post-processed action array
+        # Process tuck action if we're using it
+        if self.use_tuck_action:
+            # See if we need to update tuck
+            tuck_updated = self.update_tucking(tuck=(action[0] > 0.0))
+
+            # Remove the tuck and reset arm command from the action array
+            action = action[1:]
+
+        # Initialize a post-processed action array
         modified_action = np.zeros(self.num_joints)
 
         # Process the reset arm action
         reset_arm = action[-1] > 0
 
-        # Remove the tuck and reset arm command from the action array
-        action = action[1:-1]
+        # Remove reset action from the array
+        action = action[:-1]
 
         # Add in the diff drive, head tracking commands, and gripper command
         modified_action[self.head_joint_action_idx], modified_action[self.wheel_joint_action_idx] = self.calculate_head_wheel_joint_velocities(action[self.wheel_joint_action_idx])

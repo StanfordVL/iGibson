@@ -150,7 +150,7 @@ class SemanticRearrangementTask(BaseTask):
         trash = OrderedDict()
         # Define specific kwargs to pass to underlying Cube constructor (which will be the trash)
         trash_kwargs = {
-            "dim": [0.015, 0.015, 0.005],
+            "dim": [0.015, 0.015, 0.015],
             "visual_only": False,
             "color": [0.1, 0.05, 0.0, 1],
         }
@@ -167,7 +167,7 @@ class SemanticRearrangementTask(BaseTask):
         }
 
         # Hardcode number of trash particles for now
-        n_trash = 3
+        n_trash = 2
 
         # Loop over number of trash particles and generate them
         for i in range(n_trash):
@@ -233,16 +233,17 @@ class SemanticRearrangementTask(BaseTask):
 
         # Reset objects belonging to this task specifically
         for obj_name, obj in self.target_objects.items():
-            # Only sample pose if this is the actual active target object
-            if self.target_object.name == obj_name:
-                pos, ori = obj.sample_pose()
-                self.target_object_init_pos = np.array(pos)
-            else:
-                # Otherwise, we'll remove the object from the scene and exclude its body ids from the state
-                pos, ori = [30, 30, 30], [0, 0, 0, 1]
-                self.exclude_body_ids.append(self.target_object.body_id)
-            obj.set_position_orientation(pos, ori)
-        p.stepSimulation()
+            # # Only sample pose if this is the actual active target object
+            # if self.target_object.name == obj_name:
+            #     pos, ori = obj.sample_pose()
+            #     self.target_object_init_pos = np.array(pos)
+            # else:
+            #     # Otherwise, we'll remove the object from the scene and exclude its body ids from the state
+            #     pos, ori = [30, 30, 30], [0, 0, 0, 1]
+            #     self.exclude_body_ids.append(self.target_object.body_id)
+
+            # Sample location, checking for collisions
+            self.sample_pose_and_place_object(obj=obj, check_contact=False)
 
         # Store location info
         self.update_location_info()
@@ -512,7 +513,7 @@ class SemanticRearrangementTask(BaseTask):
                         touching_left_finger = True
         elif self.success_condition == "pick_place":
             # See if height condition is met
-            if self.target_object.get_position()[2] > self.goal_pos[2]:
+            if self.target_object.get_position()[2] > self.goal_pos[2] - 0.1:
                 # Make sure target object is only touching desired surface
                 touching_surface = False
                 touching_other_objects = False
