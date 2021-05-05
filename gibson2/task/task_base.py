@@ -84,7 +84,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'You have assigned room type for [{}], but [{}] is sampleable. Only non-sampleable objects can have room assignment.'.format(
                         obj_cat, obj_cat)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
                 # Room type missing in the scene
@@ -92,7 +92,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'Room type [{}] missing in scene [{}].'.format(
                         room_type, self.scene.scene_id)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
 
@@ -104,7 +104,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'Object [{}] has more than one room assignment'.format(
                         obj_inst)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
                 self.non_sampleable_object_inst.add(obj_inst)
@@ -123,7 +123,7 @@ class iGTNTask(TaskNetTask):
             error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
                 ', '.join(remaining_objs))
             logging.warning(error_msg)
-            feedback['init_success'] = 'no',
+            feedback['init_success'] = 'no'
             feedback['init_feedback'] = error_msg
             return False, feedback
 
@@ -135,7 +135,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'All non-sampleable objects should have room assignment. [{}] does not have one.'.format(
                         obj_inst)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
 
@@ -194,7 +194,7 @@ class iGTNTask(TaskNetTask):
                     error_msg += '{}: '.format(obj_inst) + ', '.join(
                         room_type_to_scene_objs[room_type][obj_inst].keys()) + '\n'
                 logging.warning(error_msg)
-                feedback['init_success'] = 'no',
+                feedback['init_success'] = 'no'
                 feedback['init_feedback'] = error_msg
                 return False, feedback
 
@@ -679,7 +679,7 @@ class iGTNTask(TaskNetTask):
                 logging.warning(
                     'Non-sampleable object conditions failed even after successful matching: {}'.format(
                         condition.body))
-                feedback['init_success'] = 'no',
+                feedback['init_success'] = 'no'
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
 
@@ -692,7 +692,7 @@ class iGTNTask(TaskNetTask):
                 logging.warning(
                     'Sampleable object conditions failed: {}'.format(
                         condition.body))
-                feedback['init_success'] = 'no',
+                feedback['init_success'] = 'no'
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
             if condition.STATE_NAME in ['inside', 'ontop']:
@@ -709,7 +709,7 @@ class iGTNTask(TaskNetTask):
                         error_msg = 'Sampleable object conditions failed: {}'.format(
                             condition.body)
                         logging.warning(error_msg)
-                        feedback['init_success'] = 'no',
+                        feedback['init_success'] = 'no'
                         feedback['init_feedback'] = error_msg
                         return False, feedback
 
