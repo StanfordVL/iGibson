@@ -12,15 +12,19 @@ Important - VR functionality and where to find it:
 
 import numpy as np
 import os
+import pdb
+import tasknet
 
 import gibson2
 from gibson2.objects.vr_objects import VrAgent
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
 from gibson2.utils.vr_logging import VRLogWriter
+
+
+tasknet.set_backend("iGibson")
 
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False
@@ -37,23 +41,28 @@ background_texture = os.path.join(
 
 # VR rendering settings
 vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                            fullscreen=False,
-                                            env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=True, 
-                                            enable_pbr=True,
-                                            msaa=True,
-                                            light_dimming_factor=1.0)
+                                             fullscreen=False,
+                                             env_texture_filename=hdr_texture,
+                                             env_texture_filename2=hdr_texture2,
+                                             env_texture_filename3=background_texture,
+                                             light_modulation_map_filename=light_modulation_map_filename,
+                                             enable_shadow=True,
+                                             enable_pbr=True,
+                                             msaa=True,
+                                             light_dimming_factor=1.0)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
-vr_settings = VrSettings(use_vr=True)
-s = Simulator(mode='vr', 
-            rendering_settings=vr_rendering_settings,
-            vr_settings=vr_settings)
-igtn_task = iGTNTask('lunchpacking_demo', 0)
-igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
+vr_settings = VrSettings()
+s = Simulator(mode='vr',
+              rendering_settings=vr_rendering_settings,
+              vr_settings=vr_settings)
+
+igtn_task = iGTNTask('assembling_gift_baskets_filtered', 1)
+# igtn_task = iGTNTask('packing_lunches_filtered', 1)
+# igtn_task = iGTNTask('sorting_books_filtered', 0)
+# igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
+pdb.set_trace()
+igtn_task.initialize_simulator(simulator=s)
 
 kitchen_middle = [-3.7, -2.7, 1.8]
 
@@ -77,17 +86,18 @@ mode = 'save'
 if mode == 'save':
     # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
     vr_log_path = "./log.hdf5"
-    vr_writer = VRLogWriter(frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True)
+    vr_writer = VRLogWriter(frames_before_write=200,
+                            log_filepath=vr_log_path, profiling_mode=True)
 
     # Call set_up_data_storage once all actions have been registered (in this demo we only save states so there are none)
     # Despite having no actions, we need to call this function
     vr_writer.set_up_data_storage()
 
-s.optimize_vertex_and_texture()
+# s.optimize_vertex_and_texture()
 
 # Main simulation loop
 while True:
-    s.step(print_time=PRINT_FPS)
+    s.step()
 
     # Don't update VR agents or query events if we are not using VR
     if not vr_settings.use_vr:

@@ -15,6 +15,11 @@ import sys
 import numpy as np
 import pybullet as p
 
+import tasknet
+tasknet.set_backend("iGibson")
+
+
+
 optimize = True
 
 # HDR files for PBR rendering

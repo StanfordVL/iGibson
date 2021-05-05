@@ -72,19 +72,22 @@ class Scene(with_metaclass(ABCMeta)):
             (in that case, the object is stored to be loaded together with the scene).
         """
         if self.loaded and not _is_call_from_simulator:
-            raise ValueError("To add an object to an already-loaded scene, use the Simulator's import_object function.")
+            raise ValueError(
+                "To add an object to an already-loaded scene, use the Simulator's import_object function.")
 
         if isinstance(obj, VisualMarker):
-            raise ValueError("VisualMarker objects and subclasses should be added directly to simulator.")
-
-        self._add_object(obj)
+            raise ValueError(
+                "VisualMarker objects and subclasses should be added directly to simulator.")
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
         # let scene._load() load the object when called later on.
+        body_id_or_ids = None
         if self.loaded:
-            return obj.load()
+            body_id_or_ids = obj.load()
 
-        return None
+        self._add_object(obj)
+
+        return body_id_or_ids
 
     def get_random_floor(self):
         """

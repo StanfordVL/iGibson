@@ -1,4 +1,7 @@
 from gibson2.external.pybullet_tools.utils import get_aabb_center
+from gibson2.object_states.aabb import AABB
+from gibson2.object_states.heat_source import HeatSource
+from gibson2.object_states.inside import Inside
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.utils.utils import l2_distance
 
@@ -9,27 +12,15 @@ DEFAULT_TEMPERATURE = 23.0  # degrees Celsius
 # What fraction of the temperature difference with the default temperature should be decayed every step.
 TEMPERATURE_DECAY_SPEED = 0.02  # per second. We'll do the conversion to steps later.
 
-# Search distance for heat sources. We'll get heat from sources closer than this.
-# TODO: Figure out a way of finding distance between heat source and our object's boundary.
-HEAT_SOURCE_DISTANCE_THRESHOLD = 0.2  # meters.
-
-# TODO: Consider sourcing heat source temperature from heat source object metadata.
-# The temperature of the heat source.
-HEAT_SOURCE_TEMPERATURE = 200  # degrees Celsius
-
-# TODO: Consider sourcing heat source heating speed from heat source object metadata.
-# What fraction of the temperature difference with the heat source temperature should be received every step.
-HEAT_SOURCE_HEATING_SPEED = 0.04  # per second. We'll do the conversion to steps later.
-
 
 class Temperature(AbsoluteObjectState):
     @staticmethod
     def get_dependencies():
-        return AbsoluteObjectState.get_dependencies() + ['aabb']
+        return AbsoluteObjectState.get_dependencies() + [AABB]
 
     @staticmethod
     def get_optional_dependencies():
-        return AbsoluteObjectState.get_optional_dependencies() + ['heatSource']
+        return AbsoluteObjectState.get_optional_dependencies() + [HeatSource]
 
     def __init__(self, obj):
         super(Temperature, self).__init__(obj)
@@ -47,23 +38,34 @@ class Temperature(AbsoluteObjectState):
         new_temperature = self.value
 
         # Apply temperature decay.
-        new_temperature += (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * simulator.physics_timestep
+        new_temperature += (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * simulator.render_timestep
 
         # Compute the center of our aabb.
-        center = get_aabb_center(self.obj.states['aabb'].get_value())
+        # TODO: We need to be more clever about this. Check shortest dist between aabb and heat source.
+        center = None
 
         # Find all heat source objects.
-        for obj2 in simulator.scene.get_objects():
-            if 'heatSource' in obj2.states:
-                # Obtain heat source position.
-                heat_source_position = obj2.states['heatSource'].get_value()
-                if heat_source_position:
-                    # Compute distance to heat source from the center of our AABB.
-                    dist = l2_distance(heat_source_position, center)
+        for obj2 in simulator.scene.get_objects_with_state(HeatSource):
+            # Obtain heat source position.
+            heat_source = obj2.states[HeatSource]
+            heat_source_position = heat_source.get_value()
+            if heat_source_position:
+                # Compute the AABB center if needed.
+                if center is None:
+                    center = get_aabb_center(self.obj.states[AABB].get_value())
 
-                    # If it is within range, we'll heat up.
-                    if dist < HEAT_SOURCE_DISTANCE_THRESHOLD:
-                        new_temperature += ((HEAT_SOURCE_TEMPERATURE - self.value) * HEAT_SOURCE_HEATING_SPEED *
-                                            simulator.physics_timestep)
+                # Compute distance to heat source from the center of our AABB.
+                dist = l2_distance(heat_source_position, center)
+                if dist > heat_source.distance_threshold:
+                    continue
+
+                # Check whether the requires_inside criteria is satisfied.
+                if heat_source.requires_inside:
+                    inside_criteria_satisfied = self.obj.states[Inside].get_value(obj2)
+                    if not inside_criteria_satisfied:
+                        continue
+
+                new_temperature += ((heat_source.temperature - self.value) * heat_source.heating_rate *
+                                    simulator.render_timestep)
 
         self.value = new_temperature

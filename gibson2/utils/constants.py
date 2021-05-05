@@ -32,10 +32,30 @@ class PyBulletSleepState(IntEnum):
 
 
 # iGATUS-related
-with open(os.path.join(gibson2.ig_dataset_path, 'metadata/categories.txt')) as f:
-    NON_SAMPLEABLE_OBJECTS = [line.strip() for line in f.readlines()]
+FLOOR_SYNSET = 'floor.n.01'
+with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
+    NON_SAMPLEABLE_OBJECTS = [FLOOR_SYNSET] + \
+        [line.strip() for line in f.readlines()]
 
-UNDER_OBJECTS = ['table', 'console_table', 'coffee_table', 'chair', 'bench']
+
+UNDER_OBJECTS = [
+    'breakfast_table',
+    'coffee_table',
+    'console_table',
+    'desk',
+    'gaming_table',
+    'pedestal_table',
+    'pool_table',
+    'stand',
+    'armchair',
+    'chaise_longue',
+    'folding_chair',
+    'highchair',
+    'rocking_chair',
+    'straight_chair',
+    'swivel_chair',
+    'bench'
+]
 
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')

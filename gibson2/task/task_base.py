@@ -1,37 +1,47 @@
 import numpy as np
 import os
 
-import tasknet as tn
 from tasknet.task_base import TaskNetTask
 import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.objects.articulated_object import URDFObject, ArticulatedObject
+from gibson2.objects.articulated_object import URDFObject
+from gibson2.object_states.on_floor import RoomFloor
 from gibson2.external.pybullet_tools.utils import *
-from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS
+from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
-import random
+from gibson2.objects.vr_objects import VrAgent
 import pybullet as p
 import cv2
+from tasknet.condition_evaluation import Negation
+import logging
+import networkx as nx
+from IPython import embed
 
 
 class iGTNTask(TaskNetTask):
-    def __init__(self, atus_activity, task_instance=0):
+    def __init__(self, atus_activity, task_instance=0, predefined_problem=None):
         '''
         Initialize simulator with appropriate scene and sampled objects.
         :param atus_activity: string, official ATUS activity label
         :param task_instance: int, specific instance of atus_activity init/final conditions
                                    optional, randomly generated if not specified
+        :param predefined_problem: string, in format of a BEHAVIOR problem file read
         '''
         super().__init__(atus_activity,
                          task_instance=task_instance,
-                         scene_path=os.path.join(gibson2.ig_dataset_path, 'scenes'))
+                         scene_path=os.path.join(
+                             gibson2.ig_dataset_path, 'scenes'),
+                         predefined_problem=predefined_problem)
 
     def initialize_simulator(self,
+                             simulator=None,
                              mode='iggui',
                              scene_id=None,
-                             simulator=None):
+                             scene_kwargs=None,
+                             load_clutter=False,
+                             should_debug_sampling=False,
+                             online_sampling=True):
         '''
         Get scene populated with objects such that scene satisfies initial conditions
         :param simulator: Simulator class, populated simulator that should completely
@@ -44,129 +54,729 @@ class iGTNTask(TaskNetTask):
         if simulator is None:
             self.simulator = Simulator(
                 mode=mode, image_width=960, image_height=720, device_idx=0)
-            self.initialize(InteractiveIndoorScene,
-                            scene_id=scene_id)
         else:
             print('INITIALIZING TASK WITH PREDEFINED SIMULATOR')
             self.simulator = simulator
-            self.initialize(InteractiveIndoorScene,
-                            scene_id=scene_id)
+        self.load_clutter = load_clutter
+        self.should_debug_sampling = should_debug_sampling
+        if online_sampling:
+            scene_kwargs['merge_fixed_links'] = False
+        return self.initialize(InteractiveIndoorScene,
+                               scene_id=scene_id,
+                               scene_kwargs=scene_kwargs,
+                               online_sampling=online_sampling,
+                               )
 
     def check_scene(self):
-        for obj_cat in self.objects:
-            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
-                continue
-            if obj_cat not in self.scene.objects_by_category or \
-                    len(self.objects[obj_cat]) > len(self.scene.objects_by_category[obj_cat]):
-                return False
-
+        feedback = {
+            'init_success': 'yes',
+            'goal_success': 'untested',
+            'init_feedback': '',
+            'goal_feedback': ''
+        }
+        self.newly_added_objects = set()
         room_type_to_obj_inst = {}
+        self.non_sampleable_object_inst = set()
         for cond in self.parsed_initial_conditions:
             if cond[0] == 'inroom':
                 obj_inst, room_type = cond[1], cond[2]
-
+                obj_cat = self.obj_inst_to_obj_cat[obj_inst]
+                if obj_cat not in NON_SAMPLEABLE_OBJECTS:
+                    error_msg = 'You have assigned room type for [{}], but [{}] is sampleable. Only non-sampleable objects can have room assignment.'.format(
+                        obj_cat, obj_cat)
+                    logging.warning(error_msg)
+                    feedback['init_success'] = 'no',
+                    feedback['init_feedback'] = error_msg
+                    return False, feedback
                 # Room type missing in the scene
                 if room_type not in self.scene.room_sem_name_to_ins_name:
-                    return False
+                    error_msg = 'Room type [{}] missing in scene [{}].'.format(
+                        room_type, self.scene.scene_id)
+                    logging.warning(error_msg)
+                    feedback['init_success'] = 'no',
+                    feedback['init_feedback'] = error_msg
+                    return False, feedback
 
                 if room_type not in room_type_to_obj_inst:
                     room_type_to_obj_inst[room_type] = []
 
                 room_type_to_obj_inst[room_type].append(obj_inst)
+                if obj_inst in self.non_sampleable_object_inst:
+                    error_msg = 'Object [{}] has more than one room assignment'.format(
+                        obj_inst)
+                    logging.warning(error_msg)
+                    feedback['init_success'] = 'no',
+                    feedback['init_feedback'] = error_msg
+                    return False, feedback
+                self.non_sampleable_object_inst.add(obj_inst)
 
-        selected_obj_names = set()
+        self.sampling_orders = []
+        cur_batch = self.non_sampleable_object_inst
+        while len(cur_batch) > 0:
+            self.sampling_orders.append(cur_batch)
+            next_batch = set()
+            for cond in self.parsed_initial_conditions:
+                if len(cond) == 3 and cond[2] in cur_batch:
+                    next_batch.add(cond[1])
+            cur_batch = next_batch
+        remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+        if len(remaining_objs) != 0:
+            error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
+                ', '.join(remaining_objs))
+            logging.warning(error_msg)
+            feedback['init_success'] = 'no',
+            feedback['init_feedback'] = error_msg
+            return False, feedback
+
+        for obj_cat in self.objects:
+            if obj_cat not in NON_SAMPLEABLE_OBJECTS:
+                continue
+            for obj_inst in self.objects[obj_cat]:
+                if obj_inst not in self.non_sampleable_object_inst:
+                    error_msg = 'All non-sampleable objects should have room assignment. [{}] does not have one.'.format(
+                        obj_inst)
+                    logging.warning(error_msg)
+                    feedback['init_success'] = 'no',
+                    feedback['init_feedback'] = error_msg
+                    return False, feedback
+
+        room_type_to_scene_objs = {}
         for room_type in room_type_to_obj_inst:
-            room_type_success = False
-            # Loop through all instances of the room, e.g. bedroom_0, bedroom_1
-            for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
-                tmp_scope = {}
-                tmp_selected_obj_names = set()
-                room_inst_success = True
-                room_objs = self.scene.objects_by_room[room_inst]
-                # Try to assign obj instances to this room instance
-                for obj_inst in room_type_to_obj_inst[room_type]:
-                    obj_cat = self.obj_inst_to_obj_cat[obj_inst]
-                    # Assume inroom relationship can only be defined w.r.t non-sampleable object
-                    assert obj_cat in NON_SAMPLEABLE_OBJECTS
-                    room_objs_of_cat = [
-                        obj for obj in room_objs
-                        if obj.category == obj_cat
-                        and obj.name not in tmp_selected_obj_names]
-                    if len(room_objs_of_cat) == 0:
-                        room_inst_success = False
-                        break
+            room_type_to_scene_objs[room_type] = {}
+            for obj_inst in room_type_to_obj_inst[room_type]:
+                room_type_to_scene_objs[room_type][obj_inst] = {}
+                obj_cat = self.obj_inst_to_obj_cat[obj_inst]
+                categories = \
+                    self.object_taxonomy.get_subtree_igibson_categories(
+                        obj_cat)
+                for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
+                    room_objs = self.scene.objects_by_room[room_inst]
+                    if obj_cat == FLOOR_SYNSET:
+                        # Create a RoomFloor for each room instance
+                        # This object is NOT imported by the simulator
+                        scene_objs = [
+                            RoomFloor(category='room_floor',
+                                      name='room_floor_{}'.format(room_inst),
+                                      scene=self.scene,
+                                      room_instance=room_inst)
+                        ]
+                    else:
+                        scene_objs = [obj for obj in room_objs
+                                      if obj.category in categories]
+                    if len(scene_objs) != 0:
+                        room_type_to_scene_objs[room_type][obj_inst][room_inst] = scene_objs
 
-                    selected_obj = np.random.choice(room_objs_of_cat)
-                    tmp_scope[obj_inst] = selected_obj
-                    tmp_selected_obj_names.add(selected_obj.name)
+        # Store options for non-sampleable objects in self.non_sampleable_object_scope
+        # {
+        #     "table1": {
+        #         "living_room_0": [URDFObject, URDFObject, URDFObject],
+        #         "living_room_1": [URDFObject]
+        #     },
+        #     "table2": {
+        #         "living_room_0": [URDFObject, URDFObject],
+        #         "living_room_1": [URDFObject, URDFObject]
+        #     },
+        #     "chair1": {
+        #         "living_room_0": [URDFObject],
+        #         "living_room_1": [URDFObject]
+        #     },
+        # }
+        for room_type in room_type_to_scene_objs:
+            # For each room_type, filter in room_inst that has non-empty
+            # options for all obj_inst in this room_type
+            room_inst_satisfied = set.intersection(
+                *[set(room_type_to_scene_objs[room_type][obj_inst].keys())
+                  for obj_inst in room_type_to_scene_objs[room_type]]
+            )
+            if len(room_inst_satisfied) == 0:
+                error_msg = 'Room type [{}] of scene [{}] does not contain all the objects needed.\nThe following are the possible room instances for each object, the intersection of which is an empty set.\n'.format(
+                    room_type, self.scene.scene_id)
+                for obj_inst in room_type_to_scene_objs[room_type]:
+                    error_msg += '{}: '.format(obj_inst) + ', '.join(
+                        room_type_to_scene_objs[room_type][obj_inst].keys()) + '\n'
+                logging.warning(error_msg)
+                feedback['init_success'] = 'no',
+                feedback['init_feedback'] = error_msg
+                return False, feedback
 
-                # If successful, permanently assign object scope
-                if room_inst_success:
-                    for obj_inst in tmp_scope:
-                        self.object_scope[obj_inst] = tmp_scope[obj_inst]
-                        selected_obj_names.add(tmp_scope[obj_inst].name)
-                    room_type_success = True
-                    break
+            for obj_inst in room_type_to_scene_objs[room_type]:
+                room_type_to_scene_objs[room_type][obj_inst] = \
+                    {key: val for key, val
+                     in room_type_to_scene_objs[room_type][obj_inst].items()
+                     if key in room_inst_satisfied}
 
-            # Fail to assign obj instances to any room instance;
-            # Hence, initial condition cannot be fulfilled
-            if not room_type_success:
-                return False
+        self.non_sampleable_object_scope = room_type_to_scene_objs
 
+        num_new_obj = 0
+        # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
+            if "agent" in obj_cat:
+                continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
-                # Remaining non-sampleable objects that have NOT been sampled
-                # in the previous room assignment phase
-                obj_inst_remain = [
-                    obj_inst for obj_inst in self.objects[obj_cat]
-                    if self.object_scope[obj_inst] is None]
-
-                obj_remain = [
-                    obj for obj in self.scene.objects_by_category[obj_cat]
-                    if obj.name not in selected_obj_names
-                ]
-
-                simulator_objs = np.random.choice(
-                    obj_remain, len(obj_inst_remain), replace=False)
-                for obj_inst, simulator_obj in \
-                        zip(obj_inst_remain, simulator_objs):
+                continue
+            categories = \
+                self.object_taxonomy.get_subtree_igibson_categories(
+                    obj_cat)
+            existing_scene_objs = []
+            for category in categories:
+                existing_scene_objs += self.scene.objects_by_category.get(
+                    category, [])
+            for obj_inst in self.objects[obj_cat]:
+                # This obj category already exists in the scene
+                # Priortize using those objects first before importing new ones
+                if len(existing_scene_objs) > 0:
+                    simulator_obj = np.random.choice(existing_scene_objs)
                     self.object_scope[obj_inst] = simulator_obj
-            else:
-                category_path = get_ig_category_path(obj_cat)
-                for i, obj_inst in enumerate(self.objects[obj_cat]):
-                    model = random.choice(os.listdir(category_path))
-                    model_path = get_ig_model_path(obj_cat, model)
-                    filename = os.path.join(model_path, model + ".urdf")
-                    obj_name = '{}_{}'.format(
-                        obj_cat,
-                        len(self.scene.objects_by_category.get(obj_cat, [])))
-                    simulator_obj = URDFObject(
-                        filename,
-                        name=obj_name,
-                        category=obj_cat,
-                        model_path=model_path,
-                        avg_obj_dims=avg_category_spec.get(obj_cat),
-                        fit_avg_dim_volume=True,
-                        texture_randomization=False,
-                        overwrite_inertial=True)
+                    existing_scene_objs.remove(simulator_obj)
+                    continue
+
+                category = np.random.choice(categories)
+                # we always select pop, not pop_case
+                if 'pop' in categories:
+                    category = 'pop'
+                # # cantaloup is a suitable category for melon.n.01
+                # if 'cantaloup' in categories:
+                #     category = 'cantaloup'
+                category_path = get_ig_category_path(category)
+                model = np.random.choice(os.listdir(category_path))
+                # we can ONLY put stuff into this specific bag model
+                if category == 'bag':
+                    model = 'bag_001'
+                model_path = get_ig_model_path(category, model)
+                filename = os.path.join(model_path, model + ".urdf")
+                obj_name = '{}_{}'.format(
+                    category,
+                    len(self.scene.objects_by_category.get(category, [])))
+                simulator_obj = URDFObject(
+                    filename,
+                    name=obj_name,
+                    category=category,
+                    model_path=model_path,
+                    avg_obj_dims=avg_category_spec.get(category),
+                    fit_avg_dim_volume=True,
+                    texture_randomization=False,
+                    overwrite_inertial=True,
+                    initial_pos=[100 + num_new_obj, 100, -100])
+                if not self.scene.loaded:
                     self.scene.add_object(simulator_obj)
-                    self.object_scope[obj_inst] = simulator_obj
+                else:
+                    self.simulator.import_object(simulator_obj)
+                self.newly_added_objects.add(simulator_obj)
+                self.object_scope[obj_inst] = simulator_obj
+                num_new_obj += 1
 
-        return True
+        return True, feedback
+
+    def import_agent(self):
+        #TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
+        # baserobot api
+        agent = VrAgent(self.simulator)
+        self.simulator.robots.append(agent)
+        assert(len(self.simulator.robots) == 1), "Error, multiple agents is not currently supported"
+        agent.vr_dict['body'].set_base_link_position_orientation(
+            [300, 300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['left_hand'].set_base_link_position_orientation(
+            [300, 300, -300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['right_hand'].set_base_link_position_orientation(
+            [300, -300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+            [300, 300, -300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+            [300, -300, 300], [0, 0, 0, 1]
+        )
+        self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
+        if self.online_sampling == False:
+            agent.vr_dict['body'].set_base_link_position_orientation(
+                self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
+            )
+            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+            )
+            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
+            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+            )
+            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+            )
 
     def import_scene(self):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
 
-    def sample(self, failed_conditions):
-        failed_conditions = [cond.children[0] for cond in failed_conditions]
-        # TODO: assume initial condition is always true
-        for failed_condition in failed_conditions:
-            success = failed_condition.sample(binary_state=True)
+        if not self.online_sampling:
+            for obj_inst in self.object_scope:
+                matched_sim_obj = None
+
+                if 'floor.n.01' in obj_inst:
+                    for _, sim_obj in self.scene.objects_by_name.items():
+                        if sim_obj.tasknet_object_scope is not None and \
+                                obj_inst in sim_obj.tasknet_object_scope:
+                            tasknet_object_scope = \
+                                sim_obj.tasknet_object_scope.split(',')
+                            tasknet_object_scope = {
+                                item.split(':')[0]: item.split(':')[1]
+                                for item in tasknet_object_scope
+                            }
+                            assert obj_inst in tasknet_object_scope
+                            room_inst = tasknet_object_scope[obj_inst].replace(
+                                'room_floor_', '')
+
+                            matched_sim_obj = \
+                                RoomFloor(category='room_floor',
+                                          name=tasknet_object_scope[obj_inst],
+                                          scene=self.scene,
+                                          room_instance=room_inst)
+                elif 'agent' in obj_inst:
+                    # Skip adding agent to object scope, handled later by import_agent()
+                    continue
+                else:
+                    for _, sim_obj in self.scene.objects_by_name.items():
+                        if sim_obj.tasknet_object_scope == obj_inst:
+                            matched_sim_obj = sim_obj
+                            break
+                assert matched_sim_obj is not None, obj_inst
+                self.object_scope[obj_inst] = matched_sim_obj
+
+    def sample(self):
+        feedback = {
+            'init_success': 'yes',
+            'goal_success': 'yes',
+            'init_feedback': '',
+            'goal_feedback': ''
+        }
+        non_sampleable_obj_conditions = []
+        sampleable_obj_conditions = []
+
+        # TODO: currently we assume self.initial_conditions is a list of
+        # tasknet.condition_evaluation.HEAD, each with one child.
+        # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
+        # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
+        for condition in self.initial_conditions:
+            if isinstance(condition.children[0], Negation):
+                condition = condition.children[0].children[0]
+                positive = False
+            else:
+                condition = condition.children[0]
+                positive = True
+            condition_body = set(condition.body)
+            if len(self.non_sampleable_object_inst.intersection(condition_body)) > 0:
+                non_sampleable_obj_conditions.append((condition, positive))
+            else:
+                sampleable_obj_conditions.append((condition, positive))
+
+        # First, try to fulfill the initial conditions that involve non-sampleable objects
+        # Filter in all simulator objects that allow successful sampling for each object inst
+        init_sampling_log = []
+        scene_object_scope_filtered = {}
+        for room_type in self.non_sampleable_object_scope:
+            scene_object_scope_filtered[room_type] = {}
+            for scene_obj in self.non_sampleable_object_scope[room_type]:
+                scene_object_scope_filtered[room_type][scene_obj] = {}
+                for room_inst in self.non_sampleable_object_scope[room_type][scene_obj]:
+                    for obj in self.non_sampleable_object_scope[room_type][scene_obj][room_inst]:
+                        self.object_scope[scene_obj] = obj
+
+                        success = True
+                        # If this object is not involved in any initial conditions,
+                        # success will be True by default and any simulator obj will qualify
+                        for condition, positive in non_sampleable_obj_conditions:
+                            # Only sample conditions that involve this object
+                            if scene_obj not in condition.body:
+                                continue
+                            success = condition.sample(binary_state=positive)
+                            log_msg = ' '.join(['initial condition sampling',
+                                                room_type,
+                                                scene_obj,
+                                                room_inst,
+                                                obj.name,
+                                                condition.STATE_NAME,
+                                                str(condition.body),
+                                                str(success)])
+                            print(log_msg)
+                            init_sampling_log.append(log_msg)
+
+                            if not success:
+                                break
+
+                        if not success:
+                            continue
+
+                        if room_inst not in scene_object_scope_filtered[room_type][scene_obj]:
+                            scene_object_scope_filtered[room_type][scene_obj][room_inst] = [
+                            ]
+                        scene_object_scope_filtered[room_type][scene_obj][room_inst].append(
+                            obj)
+
+        for room_type in scene_object_scope_filtered:
+            # For each room_type, filter in room_inst that has successful
+            # sampling options for all obj_inst in this room_type
+            room_inst_satisfied = set.intersection(
+                *[set(scene_object_scope_filtered[room_type][obj_inst].keys())
+                  for obj_inst in scene_object_scope_filtered[room_type]]
+            )
+
+            if len(room_inst_satisfied) == 0:
+                error_msg = 'Room type [{}] of scene [{}] cannot sample all the objects needed.\nThe following are the possible room instances for each object, the intersection of which is an empty set.\n'.format(
+                    room_type, self.scene.scene_id)
+                for obj_inst in scene_object_scope_filtered[room_type]:
+                    error_msg += '{}: '.format(obj_inst) + ', '.join(
+                        scene_object_scope_filtered[room_type][obj_inst].keys()) + '\n'
+                error_msg += 'The following are the initial condition sampling history:\n'
+                error_msg += '\n'.join(init_sampling_log)
+                logging.warning(error_msg)
+                feedback['init_success'] = 'no'
+                feedback['goal_success'] = 'untested'
+                feedback['init_feedback'] = error_msg
+
+                if self.should_debug_sampling:
+                    self.debug_sampling(scene_object_scope_filtered,
+                                        non_sampleable_obj_conditions)
+                return False, feedback
+
+            for obj_inst in scene_object_scope_filtered[room_type]:
+                scene_object_scope_filtered[room_type][obj_inst] = \
+                    {key: val for key, val
+                     in scene_object_scope_filtered[room_type][obj_inst].items()
+                     if key in room_inst_satisfied}
+
+        # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
+        # Left nodes: a list of object instance in scope
+        # Right nodes: a list of simulator objects
+        # Edges: if the simulator object can support the sampling requirement of ths object instance
+        for room_type in scene_object_scope_filtered:
+            # The same room instances will be shared across all scene obj in a given room type
+            some_obj = list(scene_object_scope_filtered[room_type].keys())[0]
+            room_insts = list(scene_object_scope_filtered[room_type][some_obj].keys(
+            ))
+            success = False
+            init_mbm_log = []
+            # Loop through each room instance
+            for room_inst in room_insts:
+                graph = nx.Graph()
+                # For this given room instance, gether mapping from obj instance to a list of simulator obj
+                obj_inst_to_obj_per_room_inst = {}
+                for obj_inst in scene_object_scope_filtered[room_type]:
+                    obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
+                top_nodes = []
+                log_msg = 'MBM for room instance [{}]'.format(room_inst)
+                print(log_msg)
+                init_mbm_log.append(log_msg)
+                for obj_inst in obj_inst_to_obj_per_room_inst:
+                    for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
+                        # Create an edge between obj instance and each of the simulator obj that supports sampling
+                        graph.add_edge(obj_inst, obj)
+                        log_msg = 'Adding edge: {} <-> {}'.format(
+                            obj_inst, obj.name)
+                        print(log_msg)
+                        init_mbm_log.append(log_msg)
+                        top_nodes.append(obj_inst)
+                # Need to provide top_nodes that contain all nodes in one bipartite node set
+                # The matches will have two items for each match (e.g. A -> B, B -> A)
+                matches = nx.bipartite.maximum_matching(
+                    graph, top_nodes=top_nodes)
+                if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
+                    print('Object scope finalized:')
+                    for obj_inst, obj in matches.items():
+                        if obj_inst in obj_inst_to_obj_per_room_inst:
+                            self.object_scope[obj_inst] = obj
+                            print(obj_inst, obj.name)
+                    success = True
+                    break
             if not success:
-                return False
-        return True
+                error_msg = 'Room type [{}] of scene [{}] do not have enough simulator objects that can successfully sample all the objects needed. This is usually caused by specifying too many object instances in the object scope or the conditions are so stringent that too few simulator objects can satisfy them via sampling.\n'.format(
+                    room_type, self.scene.scene_id)
+                error_msg += 'The following are the initial condition matching history:\n'
+                error_msg += '\n'.join(init_mbm_log)
+                logging.warning(error_msg)
+                feedback['init_success'] = 'no'
+                feedback['goal_success'] = 'untested'
+                feedback['init_feedback'] = error_msg
+                return False, feedback
+
+        np.random.shuffle(self.ground_goal_state_options)
+        print('number of ground_goal_state_options',
+              len(self.ground_goal_state_options))
+        num_goal_condition_set_to_test = 10
+
+        goal_sampling_error_msgs = []
+        # Next, try to fulfill different set of ground goal conditions (maximum num_goal_condition_set_to_test)
+        for goal_condition_set in \
+                self.ground_goal_state_options[:num_goal_condition_set_to_test]:
+            goal_condition_set_success = True
+            goal_sampling_log = []
+            # Try to fulfill the current set of ground goal conditions
+            scene_object_scope_filtered_goal_cond = {}
+            for room_type in scene_object_scope_filtered:
+                scene_object_scope_filtered_goal_cond[room_type] = {}
+                for scene_obj in scene_object_scope_filtered[room_type]:
+                    scene_object_scope_filtered_goal_cond[room_type][scene_obj] = {
+                    }
+                    for room_inst in scene_object_scope_filtered[room_type][scene_obj]:
+                        for obj in scene_object_scope_filtered[room_type][scene_obj][room_inst]:
+                            self.object_scope[scene_obj] = obj
+
+                            success = True
+                            for goal_condition in goal_condition_set:
+                                goal_condition = goal_condition.children[0]
+                                # do not sample negative goal condition
+                                if isinstance(goal_condition, Negation):
+                                    continue
+                                # only sample kinematic goal condition
+                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                                    continue
+                                if scene_obj not in goal_condition.body:
+                                    continue
+                                success = goal_condition.sample(
+                                    binary_state=True)
+                                log_msg = ' '.join(['goal condition sampling',
+                                                    room_type,
+                                                    scene_obj,
+                                                    room_inst,
+                                                    obj.name,
+                                                    goal_condition.STATE_NAME,
+                                                    str(goal_condition.body),
+                                                    str(success)])
+                                print(log_msg)
+                                goal_sampling_log.append(log_msg)
+                                if not success:
+                                    break
+                            if not success:
+                                continue
+
+                            if room_inst not in scene_object_scope_filtered_goal_cond[room_type][scene_obj]:
+                                scene_object_scope_filtered_goal_cond[room_type][scene_obj][room_inst] = [
+                                ]
+                            scene_object_scope_filtered_goal_cond[room_type][scene_obj][room_inst].append(
+                                obj)
+
+            for room_type in scene_object_scope_filtered_goal_cond:
+                # For each room_type, filter in room_inst that has successful
+                # sampling options for all obj_inst in this room_type
+                room_inst_satisfied = set.intersection(
+                    *[set(scene_object_scope_filtered_goal_cond[room_type][obj_inst].keys())
+                      for obj_inst in scene_object_scope_filtered_goal_cond[room_type]]
+                )
+
+                if len(room_inst_satisfied) == 0:
+                    error_msg = 'Room type [{}] of scene [{}] cannot sample all the objects needed.\nThe following are the possible room instances for each object, the intersection of which is an empty set.\n'.format(
+                        room_type, self.scene.scene_id)
+                    for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
+                        error_msg += '{}: '.format(obj_inst) + ', '.join(
+                            scene_object_scope_filtered_goal_cond[room_type][obj_inst].keys()) + '\n'
+                    error_msg += 'The following are the goal condition sampling history:\n'
+                    error_msg += '\n'.join(goal_sampling_log)
+                    logging.warning(error_msg)
+                    goal_sampling_error_msgs.append(error_msg)
+                    if self.should_debug_sampling:
+                        self.debug_sampling(scene_object_scope_filtered_goal_cond,
+                                            non_sampleable_obj_conditions,
+                                            goal_condition_set)
+                    goal_condition_set_success = False
+                    break
+
+                for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
+                    scene_object_scope_filtered_goal_cond[room_type][obj_inst] = \
+                        {key: val for key, val
+                         in scene_object_scope_filtered_goal_cond[room_type][obj_inst].items()
+                         if key in room_inst_satisfied}
+
+            if not goal_condition_set_success:
+                continue
+            # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
+            # Left nodes: a list of object instance in scope
+            # Right nodes: a list of simulator objects
+            # Edges: if the simulator object can support the sampling requirement of ths object instance
+            for room_type in scene_object_scope_filtered_goal_cond:
+                # The same room instances will be shared across all scene obj in a given room type
+                some_obj = list(
+                    scene_object_scope_filtered_goal_cond[room_type].keys())[0]
+                room_insts = list(scene_object_scope_filtered_goal_cond[room_type][some_obj].keys(
+                ))
+                success = False
+                goal_mbm_log = []
+                # Loop through each room instance
+                for room_inst in room_insts:
+                    graph = nx.Graph()
+                    # For this given room instance, gether mapping from obj instance to a list of simulator obj
+                    obj_inst_to_obj_per_room_inst = {}
+                    for obj_inst in scene_object_scope_filtered_goal_cond[room_type]:
+                        obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered_goal_cond[room_type][obj_inst][room_inst]
+                    top_nodes = []
+                    log_msg = 'MBM for room instance [{}]'.format(room_inst)
+                    print(log_msg)
+                    goal_mbm_log.append(log_msg)
+                    for obj_inst in obj_inst_to_obj_per_room_inst:
+                        for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
+                            # Create an edge between obj instance and each of the simulator obj that supports sampling
+                            graph.add_edge(obj_inst, obj)
+                            log_msg = 'Adding edge: {} <-> {}'.format(
+                                obj_inst, obj.name)
+                            print(log_msg)
+                            goal_mbm_log.append(log_msg)
+                            top_nodes.append(obj_inst)
+                    # Need to provide top_nodes that contain all nodes in one bipartite node set
+                    # The matches will have two items for each match (e.g. A -> B, B -> A)
+                    matches = nx.bipartite.maximum_matching(
+                        graph, top_nodes=top_nodes)
+                    if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
+                        print('Object scope finalized:')
+                        for obj_inst, obj in matches.items():
+                            if obj_inst in obj_inst_to_obj_per_room_inst:
+                                self.object_scope[obj_inst] = obj
+                                print(obj_inst, obj.name)
+                        success = True
+                        break
+                if not success:
+                    error_msg = 'Room type [{}] of scene [{}] do not have enough simulator objects that can successfully sample all the objects needed. This is usually caused by specifying too many object instances in the object scope or the conditions are so stringent that too few simulator objects can satisfy them via sampling.\n'.format(
+                        room_type, self.scene.scene_id)
+                    error_msg += 'The following are the goal condition matching history:\n'
+                    error_msg += '\n'.join(goal_mbm_log)
+                    logging.warning(error_msg)
+                    goal_sampling_error_msgs.append(error_msg)
+                    goal_condition_set_success = False
+                    break
+
+            if not goal_condition_set_success:
+                continue
+
+            # if one set of goal conditions (and initial conditions) are satisfied, sampling is successful
+            break
+
+        if not goal_condition_set_success:
+            goal_sampling_error_msg_compiled = ''
+            for i, log_msg in enumerate(goal_sampling_error_msgs):
+                goal_sampling_error_msg_compiled += '-' * 30 + '\n'
+                goal_sampling_error_msg_compiled += 'Ground condition set #{}/{}:\n'.format(
+                    i + 1, len(goal_sampling_error_msgs))
+                goal_sampling_error_msg_compiled += log_msg + '\n'
+            feedback['goal_success'] = 'no'
+            feedback['goal_feedback'] = goal_sampling_error_msg_compiled
+            return False, feedback
+
+        # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
+        for condition, positive in non_sampleable_obj_conditions:
+            num_trials = 10
+            for _ in range(num_trials):
+                success = condition.sample(binary_state=positive)
+                # This should always succeed because it has succeeded before.
+                if success:
+                    break
+            if not success:
+                logging.warning(
+                    'Non-sampleable object conditions failed even after successful matching: {}'.format(
+                        condition.body))
+                feedback['init_success'] = 'no',
+                feedback['init_feedback'] = 'Please run test sampling again.'
+                return False, feedback
+
+        # Use ray casting for ontop and inside sampling for non-sampleable objects
+        for condition, positive in sampleable_obj_conditions:
+            if condition.STATE_NAME in ['inside', 'ontop']:
+                condition.kwargs['use_ray_casting_method'] = True
+
+        # Pop non-sampleable objects
+        self.sampling_orders.pop(0)
+        for cur_batch in self.sampling_orders:
+            for condition, positive in sampleable_obj_conditions:
+                # Sample conditions that involve the current batch of objects
+                if condition.body[0] in cur_batch:
+                    success = condition.sample(binary_state=positive)
+                    if not success:
+                        error_msg = 'Sampleable object conditions failed: {}'.format(
+                            condition.body)
+                        logging.warning(error_msg)
+                        feedback['init_success'] = 'no',
+                        feedback['init_feedback'] = error_msg
+                        return False, feedback
+
+        return True, feedback
+
+    def debug_sampling(self,
+                       scene_object_scope_filtered,
+                       non_sampleable_obj_conditions,
+                       goal_condition_set=None):
+        gibson2.debug_sampling = True
+        for room_type in self.non_sampleable_object_scope:
+            for scene_obj in self.non_sampleable_object_scope[room_type]:
+                if len(scene_object_scope_filtered[room_type][scene_obj].keys()) != 0:
+                    continue
+                for room_inst in self.non_sampleable_object_scope[room_type][scene_obj]:
+                    for obj in self.non_sampleable_object_scope[room_type][scene_obj][room_inst]:
+                        self.object_scope[scene_obj] = obj
+
+                        for condition, positive in non_sampleable_obj_conditions:
+                            # Only sample conditions that involve this object
+                            if scene_obj not in condition.body:
+                                continue
+                            print('debug initial condition sampling',
+                                  room_type,
+                                  scene_obj,
+                                  room_inst,
+                                  obj.name,
+                                  condition.STATE_NAME,
+                                  condition.body)
+                            obj_pos = obj.get_position()
+                            # Set the pybullet camera to have a bird's eye view
+                            # of the sampling process
+                            p.resetDebugVisualizerCamera(
+                                cameraDistance=3.0, cameraYaw=0,
+                                cameraPitch=-89.99999,
+                                cameraTargetPosition=obj_pos)
+                            success = condition.sample(binary_state=positive)
+                            print('success', success)
+
+                        if goal_condition_set is None:
+                            continue
+
+                        for goal_condition in goal_condition_set:
+                            goal_condition = goal_condition.children[0]
+                            if isinstance(goal_condition, Negation):
+                                continue
+                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                                continue
+                            if scene_obj not in goal_condition.body:
+                                continue
+                            print('goal condition sampling',
+                                  room_type,
+                                  scene_obj,
+                                  room_inst, obj.name,
+                                  goal_condition.STATE_NAME,
+                                  goal_condition.body)
+                            obj_pos = obj.get_position()
+                            # Set the pybullet camera to have a bird's eye view
+                            # of the sampling process
+                            p.resetDebugVisualizerCamera(
+                                cameraDistance=3.0, cameraYaw=0,
+                                cameraPitch=-89.99999,
+                                cameraTargetPosition=obj_pos)
+                            success = goal_condition.sample(
+                                binary_state=True)
+                            print('success', success)
+
+    def clutter_scene(self):
+        if not self.load_clutter:
+            return
+
+        scene_id = self.scene.scene_id
+        clutter_ids = [''] + list(range(2, 5))
+        clutter_id = np.random.choice(clutter_ids)
+        clutter_scene = InteractiveIndoorScene(
+            scene_id, '{}_clutter{}'.format(scene_id, clutter_id))
+        existing_objects = [
+            value for key, value in self.object_scope.items()
+            if 'floor.n.01' not in key]
+        self.simulator.import_non_colliding_objects(
+            objects=clutter_scene.objects_by_name,
+            existing_objects=existing_objects,
+            min_distance=0.5)
 
     #### CHECKERS ####
     def onTop(self, objA, objB):

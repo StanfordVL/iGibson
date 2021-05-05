@@ -12,6 +12,7 @@ import os
 import sys
 from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
 from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
+from gibson2.render.mesh_renderer.text import TextManager, Text
 from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
@@ -64,6 +65,9 @@ class MeshRenderer(object):
         self.pose_rot_array = None
         self.last_trans_array = None
         self.last_rot_array = None
+        # Manages text data that is shared across multiple Text instances
+        self.text_manager = TextManager(self)
+        self.texts = []
 
         device = None
         """
@@ -109,7 +113,7 @@ class MeshRenderer(object):
                 width, height,
                 int(self.rendering_settings.glfw_gl_version[0]),
                 int(self.rendering_settings.glfw_gl_version[1]),
-                False,
+                self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen
             )
         elif self.platform == 'Windows':
@@ -118,7 +122,7 @@ class MeshRenderer(object):
                 width, height,
                 int(self.rendering_settings.glfw_gl_version[0]),
                 int(self.rendering_settings.glfw_gl_version[1]),
-                True,
+                self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen
             )
         else:
@@ -150,6 +154,13 @@ class MeshRenderer(object):
                     "".join(open(
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
                                      'shaders', '410', 'frag.shader')).readlines()))
+                self.textShaderProgram = self.r.compile_shader_meshrenderer(
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '410', 'text_vert.shader')).readlines()),
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '410', 'text_frag.shader')).readlines()))
             else:
                 if self.optimized:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
@@ -167,6 +178,13 @@ class MeshRenderer(object):
                         "".join(open(
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                          'shaders', '450', 'frag.shader')).readlines()))
+                self.textShaderProgram = self.r.compile_shader_meshrenderer(
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '450', 'text_vert.shader')).readlines()),
+                "".join(open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                 'shaders', '450', 'text_frag.shader')).readlines()))
 
             self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
                 "".join(open(
@@ -211,6 +229,9 @@ class MeshRenderer(object):
             self.setup_pbr()
 
         self.setup_lidar_param()
+
+        # Set up text FBO
+        self.text_manager.gen_text_fbo()
 
     def setup_pbr(self):
         """
@@ -468,6 +489,9 @@ class MeshRenderer(object):
                 # Rotate the shape after they are scaled
                 orn = quat2rotmat(xyzw2wxyz(transform_orn))
                 shape_vertex = shape_vertex.dot(orn[:3, :3].T)
+                # Also rotate the surface normal, note that tangent space does not need to be rotated since they
+                # are derived from shape_vertex
+                shape_normal = shape_normal.dot(orn[:3, :3].T)
             if transform_pos is not None:
                 # Translate the shape after they are scaled
                 shape_vertex += np.array(transform_pos)
@@ -657,6 +681,46 @@ class MeshRenderer(object):
                       use_pbr_mapping=False)
         self.instances.append(robot)
 
+    def add_text(self,
+                 text_data='PLACEHOLDER: PLEASE REPLACE!',
+                 font_name='OpenSans',
+                 font_style='Regular',
+                 font_size=48,
+                 color=[0, 0, 0],
+                 pixel_pos=[0, 0],
+                 pixel_size=[200, 200],
+                 scale=1.0,
+                 background_color=None,
+                 render_to_tex=False):
+        """
+        Creates a Text object with the given parameters. Returns the text object to the caller,
+        so various settings can be changed - eg. text content, position, scale, etc.
+        :param text_data: starting text to display (can be changed at a later time by set_text)
+        :param font_name: name of font to render - same as font folder in iGibson assets
+        :param font_style: style of font - one of [regular, italic, bold]
+        :param font_size: size of font to render
+        :param color: [r, g, b] color
+        :param pixel_pos: [x, y] position of top-left corner of text box, in pixel coordinates
+        :param pixel_size: [w, h] size of text box in pixel coordinates
+        :param scale: scale factor for resizing text
+        :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
+        :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
+        """
+        text = Text(text_data=text_data,
+                    font_name=font_name, 
+                    font_style=font_style, 
+                    font_size=font_size, 
+                    color=color, 
+                    pos=pixel_pos,
+                    scale=scale,
+                    tbox_height=pixel_size[1],
+                    tbox_width=pixel_size[0],
+                    render_to_tex=render_to_tex,
+                    background_color=background_color,
+                    text_manager=self.text_manager)
+        self.texts.append(text)
+        return text
+
     def set_camera(self, camera, target, up, cache=False):
         """
         Set camera pose
@@ -780,7 +844,7 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
-    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True):
+    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -814,7 +878,7 @@ class MeshRenderer(object):
                     i for i in self.instances if not i.shadow_caster and not i.hidden]
                 for instance in shadow_hidden_instances:
                     instance.hidden = True
-                self.update_hidden_state(shadow_hidden_instances)
+                self.update_hidden_highlight_state(shadow_hidden_instances)
                 self.r.updateDynamicData(
                     self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
                     self.last_rot_array, self.V, self.last_V, self.P,
@@ -822,7 +886,7 @@ class MeshRenderer(object):
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
                     instance.hidden = False
-                self.update_hidden_state(shadow_hidden_instances)
+                self.update_hidden_highlight_state(shadow_hidden_instances)
             else:
                 for instance in self.instances:
                     if (instance not in hidden) and instance.shadow_caster:
@@ -837,6 +901,12 @@ class MeshRenderer(object):
 
             self.r.readbuffer_meshrenderer_shadow_depth(
                 self.width, self.height, self.fbo, self.depth_tex_shadow)
+
+        if self.optimized:
+            all_instances = [
+                i for i in self.instances if i.or_buffer_indices is not None]
+            self.update_hidden_highlight_state(all_instances)
+            # TODO: support highlighting for non-optimized renderer
 
         # main pass
         if self.msaa:
@@ -868,6 +938,12 @@ class MeshRenderer(object):
                     else:
                         instance.render(
                             shadow_pass=ShadowPass.NO_SHADOW)
+
+        # render text
+        if render_text_pass:
+            self.r.preRenderTextFramebufferSetup(self.text_manager.FBO)
+            for text in self.texts:
+                text.render()
 
         self.r.render_meshrenderer_post()
 
@@ -957,22 +1033,26 @@ class MeshRenderer(object):
         """
         clean_list = [
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow
-        ]
-        fbo_list = [self.fbo]
+            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow, self.text_manager.render_tex
+        ] + [i for i in self.text_manager.tex_ids]
+        fbo_list = [self.fbo, self.text_manager.FBO]
         if self.msaa:
             clean_list += [
                 self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
                 self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms
             ]
             fbo_list += [self.fbo_ms]
+            
+        text_vaos = [t.VAO for t in self.texts]
+        text_vbos = [t.VBO for t in self.texts]
 
         if self.optimized and self.optimization_process_executed:
             self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
-                                                [self.optimized_VAO], [self.optimized_VBO], [self.optimized_EBO])
+                                                [self.optimized_VAO] + text_vaos, [self.optimized_VBO] + text_vbos, [self.optimized_EBO])
         else:
             self.r.clean_meshrenderer(
-                clean_list, self.textures, fbo_list, self.VAOs, self.VBOs)
+                clean_list, self.textures, fbo_list, self.VAOs + text_vaos, self.VBOs + text_vbos)
+        self.text_manager.tex_ids = []
         self.color_tex_rgb = None
         self.color_tex_normal = None
         self.color_tex_semantics = None
@@ -1291,7 +1371,7 @@ class MeshRenderer(object):
                                self.depth_tex_shadow)
         self.optimization_process_executed = True
 
-    def update_hidden_state(self, instances):
+    def update_hidden_highlight_state(self, instances):
         """
         Updates the hidden state of a list of instances
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
@@ -1303,7 +1383,11 @@ class MeshRenderer(object):
                     'ERROR: trying to set hidden state of an instance that has no visual objects!')
             # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
             vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
+            vec4_buf_idxs_highlight = [idx * 4+1 for idx in buf_idxs]
+
             self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
+            # highlight data stored in 4n + 1
+            self.merged_hidden_data[vec4_buf_idxs_highlight] = float(instance.highlight)
         self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(
             self.merged_hidden_data, dtype=np.float32))
 
