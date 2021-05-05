@@ -14,7 +14,7 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
     def set_value(self, other, new_value, use_ray_casting_method=False):
         state_id = p.saveState()
 
-        for _ in range(100):
+        for _ in range(10):
             sampling_success = sample_kinematics(
                 'inside', self.obj, other, new_value,
                 use_ray_casting_method=use_ray_casting_method)
