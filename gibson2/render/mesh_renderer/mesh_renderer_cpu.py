@@ -305,7 +305,7 @@ class MeshRenderer(object):
 
     def load_procedural_material(self, material):
         material.save_transformed_texture()
-        material.texture_id =  os.path.join(material.material_folder, "DIFFUSE.png")
+        material.texture_id = self.load_texture_file(os.path.join(material.material_folder, "DIFFUSE.png"))
         material.metallic_texture_id = self.load_texture_file(os.path.join(material.material_folder, "METALLIC.png"))
         material.roughness_texture_id = self.load_texture_file(os.path.join(material.material_folder, "ROUGHNESS.png"))
         material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))

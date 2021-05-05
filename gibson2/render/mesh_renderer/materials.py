@@ -5,6 +5,7 @@ import json
 import random
 import math
 from gibson2.utils.utils import transform_texture
+from gibson2 import object_states
 import uuid
 
 class Material(object):
@@ -114,10 +115,10 @@ class ProceduralMaterial(Material):
     def save_transformed_texture(self):
         diffuse_tex_filename = os.path.join(self.material_folder, "DIFFUSE.png")
         diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
-        if self.state_type == "cooked":
+        if self.state_type == object_states.Cooked:
             # 0.5 mixture with brown
             transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139, 69, 19))
-        elif self.state_type == "soaked":
+        elif self.state_type == object_states.Soaked:
             # 0.5 mixture with blue
             transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
 
