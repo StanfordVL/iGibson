@@ -71,7 +71,11 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         # swap two types of markers when toggled
         # when hud overlay is on, we show the toggle buttons, otherwise the buttons are hidden
 
-        hud_overlay_show_state = simulator.get_hud_show_state()
+        if simulator.can_access_vr_context:
+            hud_overlay_show_state = simulator.get_hud_show_state()
+        else:
+            hud_overlay_show_state = False
+
         if self.get_value():
             if hud_overlay_show_state:
                 self.visual_marker_on.set_position(button_position_on_object)
