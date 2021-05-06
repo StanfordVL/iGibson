@@ -58,7 +58,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
             self.water_stream.set_running(True)  # turn on the water by default
 
         # water reusing logic
-        contacted_water_body_ids = set(item[2] for item in list(
+        contacted_water_body_ids = set(item.bodyUniqueIdB for item in list(
             self.obj.states[ContactBodies].get_value()))
         for particle in self.water_stream.get_active_particles():
             if particle.body_id in contacted_water_body_ids:

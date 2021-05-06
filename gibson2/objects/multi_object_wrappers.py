@@ -140,15 +140,6 @@ class ObjectMultiplexer(StatefulObject):
         self._multiplexed_objects = multiplexed_objects
         self.current_index = current_index
 
-        # TODO: why is this needed?
-        # Combine the abilities in a parameterless manner.
-        ability_set = set()
-        for obj in self._multiplexed_objects:
-            ability_set.update(obj.abilities.keys())
-
-        # TODO: Think about whether this makes sense.
-        self.abilities = {ability: {} for ability in ability_set}
-
         # This will help route obj.states to one of the multiplexed_objects
         del self.states
 
