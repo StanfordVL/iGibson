@@ -2,6 +2,7 @@ import time
 import gibson2
 import logging
 import numpy as np
+from gibson2.object_states.factory import get_state_name, get_state_from_name
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.utils.utils import rotate_vector_3d, rotate_vector_2d
 import pybullet as p
@@ -275,6 +276,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     tasknet_object_scope=tasknet_object_scope,
                     flags=flags
                     )
+
+                # Load object states.
+                if "states" in link.keys():
+                    state_cache = json.loads(link.attrib["states"])
+                    for state_name, state_dump in state_cache.items():
+                        obj.states[get_state_from_name(state_name)].load(state_dump)
 
                 self.add_object(obj)
 
@@ -1000,8 +1007,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
             xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
 
+            # Get the object states
+            state_cache = None
+            if hasattr(obj, "states"):
+                state_cache = {}
+                for state_class, state_obj in obj.states.items():
+                    state_cache[get_state_name(state_class)] = state_obj.dump()
+
             # The object is already in the scene URDF
             if link is not None:
+                if state_cache is not None:
+                    link.attrib["states"] = json.dumps(state_cache)
+
                 if obj.category == 'floors':
                     floor_names = \
                         [obj_name for obj_name in additional_attribs_by_name
@@ -1042,6 +1059,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 'rpy': rpy,
                 'xyz': xyz,
             }
+
+            if state_cache is not None:
+                new_link.attrib['states'] = json.dumps(state_cache)
+
             if hasattr(obj, "bounding_box"):
                 bounding_box = ' '.join([str(b) for b in obj.bounding_box])
                 new_link.attrib['bounding_box'] = bounding_box
