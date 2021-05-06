@@ -25,6 +25,13 @@ class Soaked(AbsoluteObjectState, BooleanState):
                 if particle.body_id in contacted_water_body_ids:
                     self.value = True
 
+    # For this state, we simply store its value.
+    def dump(self):
+        return self.value
+
+    def load(self, data):
+        self.set_value(data)
+
     @staticmethod
     def get_optional_dependencies():
         return [WaterSource]

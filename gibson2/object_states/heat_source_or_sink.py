@@ -143,3 +143,11 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     def set_value(self, new_value):
         raise NotImplementedError(
             "Setting heat source capability is not supported.")
+
+    # Nothing needs to be done to save/load HeatSource since it's stateless except for
+    # the marker.
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return

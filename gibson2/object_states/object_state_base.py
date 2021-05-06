@@ -37,12 +37,6 @@ class BaseObjectState(with_metaclass(ABCMeta, object)):
         super(BaseObjectState, self).__init__()
         self.obj = obj
 
-    def dump(self):
-        return {}
-
-    def load(self, data):
-        return
-
     def update(self, simulator):
         pass
 
@@ -58,6 +52,14 @@ class AbsoluteObjectState(BaseObjectState):
 
     @abstractmethod
     def set_value(self, new_value):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def dump(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def load(self, data):
         raise NotImplementedError()
 
 

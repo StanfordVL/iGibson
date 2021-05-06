@@ -1,3 +1,4 @@
+from gibson2 import object_states
 from gibson2.task.task_base import iGTNTask
 from gibson2.simulator import Simulator
 from IPython import embed
@@ -100,6 +101,11 @@ def main():
                     break
 
             if success:
+                # Enable some particle states
+                for obj in igtn_task.scene.get_objects_with_state(object_states.Stained):
+                    if object_states.Stained in obj.states:
+                        obj.states[object_states.Stained].set_value(True)
+
                 sim_obj_to_pddl_obj = {
                     value.name: {'object_scope': key}
                     for key, value in igtn_task.object_scope.items()}

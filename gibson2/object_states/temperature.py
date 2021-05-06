@@ -65,3 +65,10 @@ class Temperature(AbsoluteObjectState):
                                     simulator.render_timestep)
 
         self.value = new_temperature
+
+    # For this state, we simply store its value.
+    def dump(self):
+        return self.value
+
+    def load(self, data):
+        self.set_value(data)
