@@ -6,7 +6,9 @@ import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
+from gibson2.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from gibson2.object_states.on_floor import RoomFloor
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
@@ -220,9 +222,13 @@ class iGTNTask(TaskNetTask):
                 continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
+            is_sliceable = self.object_taxonomy.has_ability(
+                obj_cat, 'sliceable')
             categories = \
                 self.object_taxonomy.get_subtree_igibson_categories(
                     obj_cat)
+            if is_sliceable:
+                categories = [cat for cat in categories if 'half_' not in cat]
             existing_scene_objs = []
             for category in categories:
                 existing_scene_objs += self.scene.objects_by_category.get(
@@ -263,13 +269,51 @@ class iGTNTask(TaskNetTask):
                     texture_randomization=False,
                     overwrite_inertial=True,
                     initial_pos=[100 + num_new_obj, 100, -100])
+                num_new_obj += 1
+
+                if is_sliceable:
+                    whole_object = simulator_obj
+                    object_parts = []
+                    assert 'object_parts' in simulator_obj.metadata, \
+                        'object_parts not found in metadata: [{}]'.format(
+                            model_path)
+
+                    for i, part in enumerate(simulator_obj.metadata['object_parts']):
+                        category = part['category']
+                        model = part['model']
+                        # Scale the offset accordingly
+                        part_pos = part['pos'] * whole_object.scale
+                        part_orn = part['orn']
+                        model_path = get_ig_model_path(category, model)
+                        filename = os.path.join(model_path, model + ".urdf")
+                        obj_name = whole_object.name + '_part_{}'.format(i)
+                        simulator_obj_part = URDFObject(
+                            filename,
+                            name=obj_name,
+                            category=whole_object.category,
+                            model_path=model_path,
+                            avg_obj_dims=avg_category_spec.get(
+                                whole_object.category),
+                            fit_avg_dim_volume=False,
+                            scale=whole_object.scale,
+                            texture_randomization=False,
+                            overwrite_inertial=True,
+                            initial_pos=[100 + num_new_obj, 100, -100])
+                        num_new_obj += 1
+                        object_parts.append(
+                            (simulator_obj_part, (part_pos, part_orn)))
+
+                    assert len(object_parts) > 0
+                    grouped_obj_parts = ObjectGrouper(object_parts)
+                    simulator_obj = ObjectMultiplexer(
+                        [whole_object, grouped_obj_parts], 0)
+
                 if not self.scene.loaded:
                     self.scene.add_object(simulator_obj)
                 else:
                     self.simulator.import_object(simulator_obj)
                 self.newly_added_objects.add(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
-                num_new_obj += 1
 
         return True, feedback
 
@@ -297,7 +341,7 @@ class iGTNTask(TaskNetTask):
             [300, -300, 300], [0, 0, 0, 1]
         )
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
-        if self.online_sampling == False and self.scene.agent != {}:
+        if not self.online_sampling and self.scene.agent != {}:
             agent.vr_dict['body'].set_base_link_position_orientation(
                 self.scene.agent['VrBody']['xyz'], quat_from_euler(
                     self.scene.agent['VrBody']['rpy'])
@@ -320,7 +364,7 @@ class iGTNTask(TaskNetTask):
             )
 
     def move_agent(self):
-        if self.online_sampling == False and self.scene.agent == {}:
+        if not self.online_sampling and self.scene.agent == {}:
             agent = self.agent
             agent.vr_dict['body'].set_base_link_position_orientation(
                 [0, 0, 0.5], [0, 0, 0, 1]

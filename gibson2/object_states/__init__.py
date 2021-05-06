@@ -20,3 +20,5 @@ from gibson2.object_states.touching import Touching
 from gibson2.object_states.under import Under
 from gibson2.object_states.water_source import WaterSource
 from gibson2.object_states.on_floor import OnFloor
+from gibson2.object_states.sliced import Sliced
+from gibson2.object_states.slicer import Slicer
