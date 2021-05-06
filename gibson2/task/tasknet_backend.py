@@ -44,6 +44,7 @@ SUPPORTED_PREDICATES = {
     'under': get_binary_atomic_predicate_for_state(object_states.Under, 'under'),
     'touching': get_binary_atomic_predicate_for_state(object_states.Touching, 'touching'),
     'onfloor': get_binary_atomic_predicate_for_state(object_states.OnFloor, 'onfloor'),
+    'sliced': get_unary_atomic_predicate_for_state(object_states.Sliced, 'sliced'),
 }
 
 
