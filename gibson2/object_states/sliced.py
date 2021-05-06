@@ -4,8 +4,7 @@ from gibson2.object_states import *
 import gibson2
 from IPython import embed
 
-# TODO: tune in VR
-_DEFAULT_SLICE_FORCE = 1e-6
+_DEFAULT_SLICE_FORCE = 10
 
 _SLICED_PROPAGATION_STATE_SET = frozenset([
     Temperature,
