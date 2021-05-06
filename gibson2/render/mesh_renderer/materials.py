@@ -94,6 +94,7 @@ class ProceduralMaterial(Material):
         self.texture_ids = {}
         self.texture_filenames = {}
         self.states = []
+        self.request_update = False
 
     def __str__(self):
         return (
@@ -105,7 +106,9 @@ class ProceduralMaterial(Material):
         )
 
     def change_material(self, state, state_bool):
-        self.texture_id = self.texture_ids[state][state_bool]
+        if self.texture_ids[state][state_bool] != self.texture_id:
+            self.texture_id = self.texture_ids[state][state_bool]
+            self.request_update = True
 
     def add_state(self, state):
         self.states.append(state)

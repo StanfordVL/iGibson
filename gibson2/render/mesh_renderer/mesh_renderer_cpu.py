@@ -695,10 +695,10 @@ class MeshRenderer(object):
         :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
         """
         text = Text(text_data=text_data,
-                    font_name=font_name, 
-                    font_style=font_style, 
-                    font_size=font_size, 
-                    color=color, 
+                    font_name=font_name,
+                    font_style=font_style,
+                    font_size=font_size,
+                    color=color,
                     pos=pixel_pos,
                     scale=scale,
                     tbox_height=pixel_size[1],
@@ -832,6 +832,20 @@ class MeshRenderer(object):
             results.append(frame)
         return results
 
+    def update_optimized_texture(self):
+        request_update = False
+        for material in self.materials_mapping:
+            if isinstance(self.materials_mapping[material], ProceduralMaterial) and \
+                    self.materials_mapping[material].request_update:
+                request_update = True
+                break
+
+        if request_update:
+            self.update_optimized_texture_internal()
+            for material in self.materials_mapping:
+                if isinstance(self.materials_mapping[material], ProceduralMaterial):
+                    self.materials_mapping[material].request_update = False
+
     def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
@@ -845,6 +859,8 @@ class MeshRenderer(object):
         # run optimization process the first time render is called
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
+
+        self.update_optimized_texture()
 
         render_shadow_pass = render_shadow_pass and 'rgb' in modes
         need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
@@ -1030,7 +1046,7 @@ class MeshRenderer(object):
                 self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms
             ]
             fbo_list += [self.fbo_ms]
-            
+
         text_vaos = [t.VAO for t in self.texts]
         text_vbos = [t.VBO for t in self.texts]
 
@@ -1358,6 +1374,198 @@ class MeshRenderer(object):
                                    self.rendering_settings.enable_pbr),
                                self.depth_tex_shadow)
         self.optimization_process_executed = True
+
+    def update_optimized_texture_internal(self):
+        """
+        Optimize vertex and texture for optimized renderer
+        """
+
+        # List of all primitives to render - these are the shapes that each have a vao_id
+        # Some of these may share visual data, but have unique transforms
+        duplicate_vao_ids = []
+        class_id_array = []
+        # Stores use_pbr, use_pbr_mapping and shadow caster, with 1.0 for padding of fourth element
+        pbr_data_array = []
+        # Stores whether object is hidden or not - we store as a vec4, since this is the smallest
+        # alignment unit in the std140 layout that our shaders use for their uniform buffers
+        # Note: we can store other variables in the other 3 components in future
+        hidden_array = []
+
+
+        for instance in self.instances:
+            if isinstance(instance, Instance):
+                ids = instance.object.VAO_ids
+                or_buffer_idx_start = len(duplicate_vao_ids)
+                duplicate_vao_ids.extend(ids)
+                or_buffer_idx_end = len(duplicate_vao_ids)
+                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
+                instance.or_buffer_indices = list(
+                    np.arange(or_buffer_idx_start, or_buffer_idx_end))
+                class_id_array.extend(
+                    [float(instance.class_id) / 255.0] * len(ids))
+                pbr_data_array.extend(
+                    [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
+                hidden_array.extend(
+                    [[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
+            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                id_sum = 0
+                # Collect OR buffer indices over all visual objects in this group
+                temp_or_buffer_indices = []
+                for vo in instance.objects:
+                    ids = vo.VAO_ids
+                    or_buffer_idx_start = len(duplicate_vao_ids)
+                    duplicate_vao_ids.extend(ids)
+                    or_buffer_idx_end = len(duplicate_vao_ids)
+                    # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
+                    temp_or_buffer_indices.extend(
+                        list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
+                    id_sum += len(ids)
+                instance.or_buffer_indices = list(temp_or_buffer_indices)
+                class_id_array.extend(
+                    [float(instance.class_id) / 255.0] * id_sum)
+                pbr_data_array.extend(
+                    [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
+                hidden_array.extend(
+                    [[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
+
+        # Variables needed for multi draw elements call
+        index_ptr_offsets = []
+        index_counts = []
+        indices = []
+        diffuse_color_array = []
+        tex_num_array = []
+        tex_layer_array = []
+        roughness_tex_num_array = []
+        roughness_tex_layer_array = []
+        metallic_tex_num_array = []
+        metallic_tex_layer_array = []
+        normal_tex_num_array = []
+        normal_tex_layer_array = []
+        transform_param_array = []
+
+        # index_offset = 0
+        for id in duplicate_vao_ids:
+        #     index_ptr_offsets.append(index_offset)
+        #     id_idxs = list(offset_faces[id].flatten())
+        #     indices.extend(id_idxs)
+        #     index_count = len(id_idxs)
+        #     index_counts.append(index_count)
+        #     index_offset += index_count
+
+            # Generate other rendering data, including diffuse color and texture layer
+            id_material = self.materials_mapping[self.mesh_materials[id]]
+            texture_id = id_material.texture_id
+            if texture_id == -1 or texture_id is None:
+                tex_num_array.append(-1)
+                tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[texture_id]
+                tex_num_array.append(tex_num)
+                tex_layer_array.append(tex_layer)
+
+            roughness_texture_id = id_material.roughness_texture_id
+            if roughness_texture_id == -1 or roughness_texture_id is None:
+                roughness_tex_num_array.append(-1)
+                roughness_tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[roughness_texture_id]
+                roughness_tex_num_array.append(tex_num)
+                roughness_tex_layer_array.append(tex_layer)
+
+            metallic_texture_id = id_material.metallic_texture_id
+            if metallic_texture_id == -1 or metallic_texture_id is None:
+                metallic_tex_num_array.append(-1)
+                metallic_tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[metallic_texture_id]
+                metallic_tex_num_array.append(tex_num)
+                metallic_tex_layer_array.append(tex_layer)
+
+            normal_texture_id = id_material.normal_texture_id
+            if normal_texture_id == -1 or normal_texture_id is None:
+                normal_tex_num_array.append(-1)
+                normal_tex_layer_array.append(-1)
+            else:
+                tex_num, tex_layer = self.tex_id_layer_mapping[normal_texture_id]
+                normal_tex_num_array.append(tex_num)
+                normal_tex_layer_array.append(tex_layer)
+
+            # List of 3 floatsduplicate_vao_ids
+            transform_param = id_material.transform_param
+            transform_param_array.append(
+                [transform_param[0], transform_param[1], transform_param[2], 1.0])
+
+            kd = np.asarray(id_material.kd, dtype=np.float32)
+            # Add padding so can store diffuse color as vec4
+            # The 4th element is set to 1 as that is what is used by the fragment shader
+            kd_vec_4 = [kd[0], kd[1], kd[2], 1.0]
+            diffuse_color_array.append(
+                np.ascontiguousarray(kd_vec_4, dtype=np.float32))
+
+        # Convert data into numpy arrays for easy use in pybind
+        # index_ptr_offsets = np.ascontiguousarray(
+        #     index_ptr_offsets, dtype=np.int32)
+        # index_counts = np.ascontiguousarray(index_counts, dtype=np.int32)
+        # indices = np.ascontiguousarray(indices, dtype=np.int32)
+
+        # Convert frag shader data to list of vec4 for use in uniform buffer objects
+        frag_shader_data = []
+        pbr_data = []
+        hidden_data = []
+        uv_data = []
+        frag_shader_roughness_metallic_data = []
+        frag_shader_normal_data = []
+
+        for i in range(len(duplicate_vao_ids)):
+            data_list = [float(tex_num_array[i]), float(
+                tex_layer_array[i]), class_id_array[i], 0.0]
+            frag_shader_data.append(
+                np.ascontiguousarray(data_list, dtype=np.float32))
+            pbr_data.append(
+                np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
+            hidden_data.append(
+                np.ascontiguousarray(hidden_array[i], dtype=np.float32))
+            roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
+                                            float(
+                                                roughness_tex_layer_array[i]),
+                                            float(metallic_tex_num_array[i]),
+                                            float(metallic_tex_layer_array[i]),
+                                            ]
+            frag_shader_roughness_metallic_data.append(
+                np.ascontiguousarray(roughness_metallic_data_list, dtype=np.float32))
+            normal_data_list = [float(normal_tex_num_array[i]),
+                                float(normal_tex_layer_array[i]),
+                                0.0, 0.0
+                                ]
+            frag_shader_normal_data.append(
+                np.ascontiguousarray(normal_data_list, dtype=np.float32))
+            uv_data.append(
+                np.ascontiguousarray(transform_param_array[i], dtype=np.float32))
+
+        merged_frag_shader_data = np.ascontiguousarray(
+            np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_frag_shader_roughness_metallic_data = np.ascontiguousarray(
+            np.concatenate(frag_shader_roughness_metallic_data, axis=0), np.float32)
+        merged_frag_shader_normal_data = np.ascontiguousarray(
+            np.concatenate(frag_shader_normal_data, axis=0), np.float32)
+        merged_diffuse_color_array = np.ascontiguousarray(
+            np.concatenate(diffuse_color_array, axis=0), np.float32)
+        merged_pbr_data = np.ascontiguousarray(
+            np.concatenate(pbr_data, axis=0), np.float32)
+        self.merged_hidden_data = np.ascontiguousarray(
+            np.concatenate(hidden_data, axis=0), np.float32)
+        self.merged_uv_data = np.ascontiguousarray(
+            np.concatenate(uv_data, axis=0), np.float32)
+        #from IPython import embed; embed()
+        self.r.update_texture_id_arrays(self.shaderProgram,
+                           merged_frag_shader_data,
+                           merged_frag_shader_roughness_metallic_data,
+                           merged_frag_shader_normal_data,
+                           merged_diffuse_color_array,
+                           merged_pbr_data,
+                           self.merged_hidden_data,
+                           self.merged_uv_data
+                           )
 
     def update_hidden_highlight_state(self, instances):
         """
