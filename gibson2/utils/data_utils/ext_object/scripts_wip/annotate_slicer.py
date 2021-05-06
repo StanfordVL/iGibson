@@ -59,10 +59,17 @@ for synset in slicer_synsets:
             embed()
             p.removeBody(obj_id)
 
-            sizes = np.array([0.03, 0.002, 0.00035]) * 20
-            visual_id = p.createVisualShape(
-                p.GEOM_BOX, halfExtents=sizes / 2)
-            collision_id = p.createVisualShape(
-                p.GEOM_BOX, halfExtents=sizes / 2)
-            box_id = p.createMultiBody(
-                baseVisualShapeIndex=visual_id, baseCollisionShapeIndex=collision_id)
+            # # Example of adding a box and setting its pose
+            # sizes = np.array([0.03, 0.002, 0.00035])
+            # visual_id = p.createVisualShape(
+            #     p.GEOM_BOX, halfExtents=sizes / 2)
+            # collision_id = p.createVisualShape(
+            #     p.GEOM_BOX, halfExtents=sizes / 2)
+            # sizes = sizes.tolist()
+            # box_id = p.createMultiBody(
+            #     baseVisualShapeIndex=visual_id, baseCollisionShapeIndex=collision_id)
+            # set_pos_orn(box_id, pos, orn)
+
+            # # After the adjustment is done
+            # save_box(obj_inst_dir, box_id, sizes)
+            # p.removeBody(box_id)
