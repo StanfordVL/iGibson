@@ -859,8 +859,8 @@ class MeshRenderer(object):
         # run optimization process the first time render is called
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
-
-        self.update_optimized_texture()
+        if self.optimized:
+            self.update_optimized_texture()
 
         render_shadow_pass = render_shadow_pass and 'rgb' in modes
         need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
@@ -1377,10 +1377,8 @@ class MeshRenderer(object):
 
     def update_optimized_texture_internal(self):
         """
-        Optimize vertex and texture for optimized renderer
+        Update the texture_id for optimized renderer
         """
-
-        # List of all primitives to render - these are the shapes that each have a vao_id
         # Some of these may share visual data, but have unique transforms
         duplicate_vao_ids = []
         class_id_array = []
@@ -1390,7 +1388,6 @@ class MeshRenderer(object):
         # alignment unit in the std140 layout that our shaders use for their uniform buffers
         # Note: we can store other variables in the other 3 components in future
         hidden_array = []
-
 
         for instance in self.instances:
             if isinstance(instance, Instance):
@@ -1443,15 +1440,7 @@ class MeshRenderer(object):
         normal_tex_layer_array = []
         transform_param_array = []
 
-        # index_offset = 0
         for id in duplicate_vao_ids:
-        #     index_ptr_offsets.append(index_offset)
-        #     id_idxs = list(offset_faces[id].flatten())
-        #     indices.extend(id_idxs)
-        #     index_count = len(id_idxs)
-        #     index_counts.append(index_count)
-        #     index_offset += index_count
-
             # Generate other rendering data, including diffuse color and texture layer
             id_material = self.materials_mapping[self.mesh_materials[id]]
             texture_id = id_material.texture_id
@@ -1502,12 +1491,6 @@ class MeshRenderer(object):
             diffuse_color_array.append(
                 np.ascontiguousarray(kd_vec_4, dtype=np.float32))
 
-        # Convert data into numpy arrays for easy use in pybind
-        # index_ptr_offsets = np.ascontiguousarray(
-        #     index_ptr_offsets, dtype=np.int32)
-        # index_counts = np.ascontiguousarray(index_counts, dtype=np.int32)
-        # indices = np.ascontiguousarray(indices, dtype=np.int32)
-
         # Convert frag shader data to list of vec4 for use in uniform buffer objects
         frag_shader_data = []
         pbr_data = []
@@ -1556,7 +1539,6 @@ class MeshRenderer(object):
             np.concatenate(hidden_data, axis=0), np.float32)
         self.merged_uv_data = np.ascontiguousarray(
             np.concatenate(uv_data, axis=0), np.float32)
-        #from IPython import embed; embed()
         self.r.update_texture_id_arrays(self.shaderProgram,
                            merged_frag_shader_data,
                            merged_frag_shader_roughness_metallic_data,
