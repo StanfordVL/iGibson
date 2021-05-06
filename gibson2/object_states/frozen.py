@@ -1,4 +1,4 @@
-from gibson2.object_states import Temperature
+from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
 
 _DEFAULT_FREEZE_TEMPERATURE = 0.0
