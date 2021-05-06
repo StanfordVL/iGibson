@@ -896,7 +896,7 @@ class URDFObject(StatefulObject):
 
     def generate_procedural_texture(self):
         """
-        Set up mapping from visual meshes to procedural materials
+        Set up mapping from visual meshes to procedural materials, largely mirror prepare_texture
         """
         for _ in range(len(self.urdf_paths)):
             self.visual_mesh_to_material.append({})
@@ -921,12 +921,12 @@ class URDFObject(StatefulObject):
             visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
             del visual_mesh_to_idx[old_path]
 
+        has_procedural_material = False
+        procedural_material = None
+
         for state in self.states:
             if issubclass(state, TextureChangeState):
-                procedural_material = ProceduralMaterial(state_type=state,
-                                                         material_folder=os.path.join(self.model_path, 'material'))
-                self.states[state].material = procedural_material
-
+                procedural_material = ProceduralMaterial(material_folder=os.path.join(self.model_path, 'material'))
                 # check each visual object belongs to which sub URDF in case of splitting
                 for i, urdf_path in enumerate(self.urdf_paths):
                     sub_urdf_tree = ET.parse(urdf_path)
@@ -935,9 +935,18 @@ class URDFObject(StatefulObject):
                         if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
                             self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
 
-                # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the main body
+                # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the
+                #  main body
                 self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
                 self.materials = [procedural_material]
+                has_procedural_material = True
+                break
+
+        if has_procedural_material:
+            for state in self.states:
+                if issubclass(state, TextureChangeState):
+                    procedural_material.add_state(state)
+                    self.states[state].material = procedural_material
 
     def _load(self):
         """

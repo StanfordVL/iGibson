@@ -66,7 +66,6 @@ class Material(object):
 
 class ProceduralMaterial(Material):
     def __init__(self,
-                 state_type,
                  material_folder="",
                  material_type='texture',
                  kd=[0.5, 0.5, 0.5],
@@ -75,7 +74,6 @@ class ProceduralMaterial(Material):
                  roughness_texture_id=None,
                  normal_texture_id=None):
         """
-        :param state_type: 'cooked' | 'burnt' | 'soaked'
         :param material_type: color or texture
         :param kd: color parameters
         :param texture_id: albedo texture id
@@ -92,9 +90,10 @@ class ProceduralMaterial(Material):
             roughness_texture_id=roughness_texture_id,
             normal_texture_id=normal_texture_id,
         )
-        self.state_type = state_type
         self.material_folder = material_folder
-        self.texture_ids = []
+        self.texture_ids = {}
+        self.texture_filenames = {}
+        self.states = []
 
     def __str__(self):
         return (
@@ -105,24 +104,26 @@ class ProceduralMaterial(Material):
                 self.roughness_texture_id, self.normal_texture_id, self.kd)
         )
 
-    def change_material(self, state_bool):
-        if state_bool:
-            self.texture_id = self.texture_ids[1]
-        else:
-            self.texture_id = self.texture_ids[0]
-        print(self.texture_id)
+    def change_material(self, state, state_bool):
+        self.texture_id = self.texture_ids[state][state_bool]
+
+    def add_state(self, state):
+        self.states.append(state)
 
     def save_transformed_texture(self):
-        diffuse_tex_filename = os.path.join(self.material_folder, "DIFFUSE.png")
-        diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
-        if self.state_type == object_states.Cooked:
-            # 0.5 mixture with brown
-            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139, 69, 19))
-        elif self.state_type == object_states.Soaked:
-            # 0.5 mixture with blue
-            transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
-
-        self.diffuse_tex_filename_transformed = diffuse_tex_filename_transformed
+        for state in self.states:
+            diffuse_tex_filename = os.path.join(self.material_folder, "DIFFUSE.png")
+            diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
+            if state == object_states.Cooked:
+                # 0.5 mixture with brown
+                transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139, 69, 19))
+            elif state == object_states.Soaked:
+                # 0.5 mixture with blue
+                transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
+            elif state == object_states.Burnt:
+                # 0.5 mixture with blue
+                transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.8, (0, 0, 0))
+            self.texture_filenames[state] = diffuse_tex_filename_transformed
 
 class RandomizedMaterial(Material):
     """

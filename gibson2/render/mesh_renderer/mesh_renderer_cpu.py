@@ -309,8 +309,9 @@ class MeshRenderer(object):
         material.metallic_texture_id = self.load_texture_file(os.path.join(material.material_folder, "METALLIC.png"))
         material.roughness_texture_id = self.load_texture_file(os.path.join(material.material_folder, "ROUGHNESS.png"))
         material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))
-        material.transformed_diffuse_id = self.load_texture_file(material.diffuse_tex_filename_transformed)
-        material.texture_ids = [material.texture_id, material.transformed_diffuse_id]
+        for state in material.states:
+            transformed_diffuse_id = self.load_texture_file(material.texture_filenames[state])
+            material.texture_ids[state] = [material.texture_id, transformed_diffuse_id]
 
     def load_randomized_material(self, material):
         """

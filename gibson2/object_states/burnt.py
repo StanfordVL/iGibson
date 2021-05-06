@@ -1,10 +1,11 @@
 from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from gibson2.object_states.texture_change_state import TextureChangeState
 
 _DEFAULT_BURN_TEMPERATURE = 200
 
 
-class Burnt(CachingEnabledObjectState, BooleanState):
+class Burnt(TextureChangeState, CachingEnabledObjectState, BooleanState):
     def __init__(self, obj, burn_temperature=_DEFAULT_BURN_TEMPERATURE):
         super(Burnt, self).__init__(obj)
         self.burn_temperature = burn_temperature
