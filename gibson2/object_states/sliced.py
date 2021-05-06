@@ -14,7 +14,6 @@ _SLICED_PROPAGATION_STATE_SET = frozenset([
     Stained,
     Soaked,
     ToggledOn,
-    Sliced,
 ])
 
 
@@ -49,8 +48,9 @@ class Sliced(AbsoluteObjectState, BooleanState):
         self.obj.force_wakeup()
         self.obj.multiplexer.set_selection(1)
         self.obj.multiplexer.set_position_orientation(pos, orn)
+        self.obj.multiplexer.states[Sliced].set_value(self.value)
 
-        # propagate non-kinematic states (e.g. sliced, temperature, dusty) from whole object to object parts
+        # propagate non-kinematic states (e.g. temperature, dusty) from whole object to object parts
         for state in _SLICED_PROPAGATION_STATE_SET:
             if state in self.obj.states:
                 self.obj.multiplexer.states[state].set_value(
