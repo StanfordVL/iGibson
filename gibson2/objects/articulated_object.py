@@ -23,7 +23,6 @@ from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_u
     add_fixed_link
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
-from IPython import embed
 
 # Optionally import tasknet for object taxonomy.
 try:

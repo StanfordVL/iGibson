@@ -16,6 +16,6 @@ class Touching(KinematicsMixin, RelativeObjectState, BooleanState):
         assert ContactBodies in objB_states
 
         for item in objA_states[ContactBodies].get_value():
-            if item[2] == other.get_body_id():
+            if item.bodyUniqueIdB == other.get_body_id():
                 return True
         return False
