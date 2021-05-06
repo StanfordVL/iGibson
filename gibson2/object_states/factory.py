@@ -67,6 +67,15 @@ def get_all_states():
     return _ALL_STATES
 
 
+def get_state_name(state):
+    # Get the name of the class.
+    return state.__name__
+
+
+def get_state_from_name(name):
+    return next(state for state in _ALL_STATES if get_state_name(state) == name)
+
+
 def get_states_for_ability(ability):
     if ability not in _ABILITY_TO_STATE_MAPPING:
         return []

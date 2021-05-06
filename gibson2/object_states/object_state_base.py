@@ -37,6 +37,12 @@ class BaseObjectState(with_metaclass(ABCMeta, object)):
         super(BaseObjectState, self).__init__()
         self.obj = obj
 
+    def dump(self):
+        return {}
+
+    def load(self, data):
+        return
+
     def update(self, simulator):
         pass
 
