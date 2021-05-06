@@ -1061,5 +1061,5 @@ class URDFObject(StatefulObject):
         :param meta_links: Dictionary of meta links in the form of {link_name: [linkX, linkY, linkZ]}
         :return: None.
         """
-        for meta_link_name, offset in meta_links.items():
-            add_fixed_link(self.object_tree, meta_link_name, offset)
+        for meta_link_name, link_info in meta_links.items():
+            add_fixed_link(self.object_tree, meta_link_name, link_info)

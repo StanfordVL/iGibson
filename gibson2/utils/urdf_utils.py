@@ -305,13 +305,14 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
     return urdfs_no_floating
 
 
-def add_fixed_link(tree, link_name, offset):
+def add_fixed_link(tree, link_name, link_info):
     """
     Add a fixed link onto a URDF tree.
 
     :param tree: The URDF tree (ElementTree) to add to.
     :param link_name: The name of the link to add.
-    :param offset: The 3-length sequence XYZ offset of the link from the base.
+    :param link_info: A dict that stores the link info, including geometry
+    (box or None), size (for box), xyz and rpy of the origin of the joint
     :return: None
     """
     tree = tree.getroot()
@@ -334,11 +335,43 @@ def add_fixed_link(tree, link_name, offset):
     # mat = ET.SubElement(visual, "material", {"name": "red"})
     # ET.SubElement(mat, "color", {"rgba": "255 0 0 1.0"})
 
+    if link_info['geometry'] is not None:
+        visual = ET.SubElement(link, 'visual')
+        visual_origin = ET.SubElement(visual, 'origin')
+        visual_origin.attrib = {
+            'xyz': '0. 0. 0.',
+            'rpy': '0. 0. 0.',
+        }
+        visual_geometry = ET.SubElement(visual, 'geometry')
+        collision = ET.SubElement(link, 'collision')
+        collision_origin = ET.SubElement(collision, 'origin')
+        collision_origin.attrib = {
+            'xyz': '0. 0. 0.',
+            'rpy': '0. 0. 0.',
+        }
+        collision_geometry = ET.SubElement(collision, 'geometry')
+        if link_info['geometry'] == 'box':
+            # Make the visual box infinitely small so that it won't appear
+            # in the renderer
+            visual_box = ET.SubElement(visual_geometry, 'box')
+            visual_box.attrib = {
+                'size': "%.4f %.4f %.4f" % tuple([0., 0., 0.])}
+            collision_box = ET.SubElement(collision_geometry, 'box')
+            collision_box.attrib = {
+                'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
+        else:
+            raise ValueError('add_fixed_link only supports box')
+
     # Add the joint
-    joint = ET.SubElement(tree, "joint", {"name": link_name + "_joint", "type": "fixed"})
+    joint = ET.SubElement(
+        tree, "joint", {"name": link_name + "_joint", "type": "fixed"})
     ET.SubElement(joint, "parent", {"link": base_link_name})
     ET.SubElement(joint, "child", {"link": link_name})
 
     # Finally, apply the offset
-    offset_str = "%.4f %.4f %.4f" % tuple(offset)
-    ET.SubElement(joint, "origin", {"rpy": "0 0 0", "xyz": offset_str})
+    xyz = link_info['xyz'] if link_info['xyz'] is not None else [0., 0., 0.]
+    rpy = link_info['rpy'] if link_info['rpy'] is not None else [0., 0., 0.]
+
+    ET.SubElement(joint, "origin",
+                  {"rpy": "%.4f %.4f %.4f" % tuple(rpy),
+                   "xyz": "%.4f %.4f %.4f" % tuple(xyz)})
