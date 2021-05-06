@@ -147,9 +147,14 @@ class iGTNTask(TaskNetTask):
             for obj_inst in room_type_to_obj_inst[room_type]:
                 room_type_to_scene_objs[room_type][obj_inst] = {}
                 obj_cat = self.obj_inst_to_obj_cat[obj_inst]
+                # We allow burners to be used as if they are stoves
                 categories = \
                     self.object_taxonomy.get_subtree_igibson_categories(
                         obj_cat)
+                if obj_cat == 'stove.n.01':
+                    categories += \
+                        self.object_taxonomy.get_subtree_igibson_categories(
+                            'burner.n.01')
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     room_objs = self.scene.objects_by_room[room_inst]
                     if obj_cat == FLOOR_SYNSET:
@@ -270,11 +275,13 @@ class iGTNTask(TaskNetTask):
         return True, feedback
 
     def import_agent(self):
-        #TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
+        # TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
         # baserobot api
         agent = VrAgent(self.simulator)
+        self.agent = agent
         self.simulator.robots.append(agent)
-        assert(len(self.simulator.robots) == 1), "Error, multiple agents is not currently supported"
+        assert(len(self.simulator.robots) ==
+               1), "Error, multiple agents is not currently supported"
         agent.vr_dict['body'].set_base_link_position_orientation(
             [300, 300, 300], [0, 0, 0, 1]
         )
@@ -291,21 +298,45 @@ class iGTNTask(TaskNetTask):
             [300, -300, 300], [0, 0, 0, 1]
         )
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
-        if not self.online_sampling and self.scene.agent != {}:
+        if self.online_sampling == False and self.scene.agent != {}:
             agent.vr_dict['body'].set_base_link_position_orientation(
-                self.scene.agent['VrBody']['xyz'], quat_from_euler(self.scene.agent['VrBody']['rpy'])
+                self.scene.agent['VrBody']['xyz'], quat_from_euler(
+                    self.scene.agent['VrBody']['rpy'])
             )
             agent.vr_dict['left_hand'].set_base_link_position_orientation(
-                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['left_hand']['rpy'])
             )
             agent.vr_dict['right_hand'].set_base_link_position_orientation(
-                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['right_hand']['rpy'])
             )
             agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent['left_hand']['xyz'], quat_from_euler(self.scene.agent['left_hand']['rpy'])
+                self.scene.agent['left_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['left_hand']['rpy'])
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent['right_hand']['xyz'], quat_from_euler(self.scene.agent['right_hand']['rpy'])
+                self.scene.agent['right_hand']['xyz'], quat_from_euler(
+                    self.scene.agent['right_hand']['rpy'])
+            )
+
+    def move_agent(self):
+        if self.online_sampling == False and self.scene.agent == {}:
+            agent = self.agent
+            agent.vr_dict['body'].set_base_link_position_orientation(
+                [0, 0, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+                [0, 0.2, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+                [0, -0.2, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+                [0, 0.2, 0.5], [0, 0, 0, 1]
+            )
+            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+                [0, 0.2, 0.5], [0, 0, 0, 1]
             )
 
     def import_scene(self):
