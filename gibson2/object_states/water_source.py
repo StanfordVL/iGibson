@@ -34,10 +34,12 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         if water_source_position is None:
             return
 
-        water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
+        water_source_position = list(
+            np.array(water_source_position) + _OFFSET_FROM_LINK)
         if self.water_stream is None:
             self.water_stream = WaterStream(water_source_position, num=10)
-            body_ids = simulator.import_particle_system(self.water_stream, use_pbr=True)
+            body_ids = simulator.import_particle_system(
+                self.water_stream, use_pbr=True)
 
             # Set some renderer settings on these particles.
             instances = simulator.renderer.get_instances()
@@ -50,12 +52,14 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         if ToggledOn in self.obj.states:
             # sync water source state with toggleable
-            self.water_stream.set_running(self.obj.states[ToggledOn].get_value())
+            self.water_stream.set_running(
+                self.obj.states[ToggledOn].get_value())
         else:
             self.water_stream.set_running(True)  # turn on the water by default
 
         # water reusing logic
-        contacted_water_body_ids = set(item[1] for item in list(self.obj.states[ContactBodies].get_value()))
+        contacted_water_body_ids = set(item[2] for item in list(
+            self.obj.states[ContactBodies].get_value()))
         for particle in self.water_stream.get_active_particles():
             if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)

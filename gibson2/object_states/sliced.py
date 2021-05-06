@@ -3,7 +3,8 @@ from gibson2.object_states.object_state_base import AbsoluteObjectState, Boolean
 import gibson2
 from IPython import embed
 
-_DEFAULT_SLICE_FORCE = 70
+# TODO: tune in VR
+_DEFAULT_SLICE_FORCE = 1e-6
 
 
 class Sliced(AbsoluteObjectState, BooleanState):
