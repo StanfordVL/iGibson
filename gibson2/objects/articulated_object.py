@@ -971,7 +971,8 @@ class URDFObject(StatefulObject):
         :return: position in xyz
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             pos, _ = p.getLinkState(body_id, 0)[0:2]
         else:
             pos, _ = p.getBasePositionAndOrientation(body_id)
@@ -984,7 +985,8 @@ class URDFObject(StatefulObject):
         :return: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             _, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             _, orn = p.getBasePositionAndOrientation(body_id)
@@ -998,7 +1000,8 @@ class URDFObject(StatefulObject):
         :return: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             pos, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             pos, orn = p.getBasePositionAndOrientation(body_id)
@@ -1011,7 +1014,8 @@ class URDFObject(StatefulObject):
         :param pos: position in xyz
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             logging.warning('cannot set_position for fixed objects')
         else:
             _, old_orn = p.getBasePositionAndOrientation(body_id)
@@ -1024,7 +1028,8 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             logging.warning('cannot set_orientation for fixed objects')
         else:
             old_pos, _ = p.getBasePositionAndOrientation(body_id)
@@ -1037,7 +1042,8 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             logging.warning(
                 'cannot set_position_orientation for fixed objects')
         else:
