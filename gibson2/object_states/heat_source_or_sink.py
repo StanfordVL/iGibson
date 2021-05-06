@@ -19,10 +19,13 @@ _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
 class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     """
-    This state indicates the heat source state of the object.
+    This state indicates the heat source or heat sink state of the object.
 
-    Currently, if the object is not an active heat source, this returns None. Otherwise, it returns the position of the
-    heat source element. E.g. on a stove object the coordinates of the heating element will be returned.
+    Currently, if the object is not an active heat source/sink, this returns (False, None).
+    Otherwise, it returns True and the position of the heat source element, or (True, None) if the heat source has no
+    heating element / only checks for Inside.
+    E.g. on a stove object, True and the coordinates of the heating element will be returned.
+    on a microwave object, True and None will be returned.
     """
 
     def __init__(self,
@@ -48,7 +51,9 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
             closed (e.g. in terms of the joints) to emit heat. Requires openable
             ability if set to True.
         :param requires_inside: Whether an object needs to be `inside` the
-            heat source to receive heat. See the Inside state for details.
+            heat source to receive heat. See the Inside state for details. This
+            will mean that the "heating element" link for the object will be
+            ignored.
         """
         super(HeatSourceOrSink, self).__init__(obj)
         self.temperature = temperature
@@ -72,7 +77,7 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         self.requires_inside = requires_inside
 
         self.marker = None
-
+        self.status = None
         self.position = None
 
     @staticmethod
@@ -87,27 +92,28 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _HEATING_ELEMENT_LINK_NAME
 
-    def _compute_position(self):
-        # Find the link first.
+    def _compute_state_and_position(self):
+        # Find the link first. Note that the link is only required
+        # if the object is not in self.requires_inside mode.
         heating_element_position = self.get_link_position()
-        if heating_element_position is None:
-            return None
+        if not self.requires_inside and heating_element_position is None:
+            return False, None
 
         # Check the toggle state.
         if self.requires_toggled_on and not self.obj.states[ToggledOn].get_value():
-            return None
+            return False, None
 
         # Check the open state.
         if self.requires_closed and self.obj.states[Open].get_value():
-            return None
+            return False, None
 
-        # Return the heating element position.
-        return heating_element_position
+        # Return True and the heating element position.
+        return True, heating_element_position
 
     def update(self, simulator):
-        self.position = self._compute_position()
+        self.status, self.position = self._compute_position()
 
-        if self.marker is None:
+        if self.marker is None and self.position is not None:
             self.marker = VisualMarker(
                 rgba_color=[1, 0, 0, 0.5],
                 radius=_HEATING_ELEMENT_MARKER_RADIUS,
@@ -118,7 +124,7 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         self.marker.set_position(marker_position)
 
     def get_value(self):
-        return self.position
+        return self.status, self.position
 
     def set_value(self, new_value):
         raise NotImplementedError(
