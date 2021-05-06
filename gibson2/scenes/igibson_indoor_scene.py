@@ -50,6 +50,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  load_room_instances=None,
                  seg_map_resolution=0.1,
                  scene_source="IG",
+                 merge_fixed_links=True,
                  ):
         """
         :param scene_id: Scene id
@@ -119,6 +120,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.objects_by_room = {}
         self.objects_by_state = {}
         self.category_ids = get_ig_category_ids()
+        self.merge_fixed_links = merge_fixed_links
 
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -252,6 +254,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      == object_name][0]
 
                 tasknet_object_scope = link.attrib.get('object_scope', None)
+                if self.merge_fixed_links:
+                    flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING
+                else:
+                    flags=p.URDF_ENABLE_SLEEPING
+
                 obj = URDFObject(
                     filename,
                     name=object_name,
@@ -265,7 +272,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     texture_randomization=texture_randomization,
                     overwrite_inertial=True,
                     scene_instance_folder=self.scene_instance_folder,
-                    tasknet_object_scope=tasknet_object_scope)
+                    tasknet_object_scope=tasknet_object_scope,
+                    flags=flags
+                    )
 
                 self.add_object(obj)
 
