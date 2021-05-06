@@ -1,3 +1,6 @@
+import os
+
+import gibson2
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
@@ -7,9 +10,14 @@ from gibson2.object_states.toggle import ToggledOn
 from gibson2.objects.visual_marker import VisualMarker
 
 # The name of the heat source link inside URDF files.
+from gibson2.objects.visual_shape import VisualShape
+
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
 
-_HEATING_ELEMENT_MARKER_RADIUS = 0.1
+_HEATING_ELEMENT_MARKER_SCALE = 1.0
+_HEATING_ELEMENT_MARKER_FILENAME = os.path.join(
+    gibson2.assets_path, "models/fire/fire.obj"
+)
 
 # TODO: Delete default values for this and make them required.
 _DEFAULT_TEMPERATURE = 200
@@ -114,10 +122,13 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         self.status, self.position = self._compute_state_and_position()
 
         if self.marker is None and self.position is not None:
-            self.marker = VisualMarker(
-                rgba_color=[1, 0, 0, 0.5],
-                radius=_HEATING_ELEMENT_MARKER_RADIUS,
-                initial_offset=[0, 0, 0])
+            # self.marker = VisualMarker(
+            #     rgba_color=[1, 0, 0, 0.5],
+            #     radius=_HEATING_ELEMENT_MARKER_RADIUS,
+            #     initial_offset=[0, 0, 0])
+            self.marker = VisualShape(
+                _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
+
             simulator.import_object(self.marker)
 
         marker_position = self.position if self.position is not None else [0, 0, -100]
