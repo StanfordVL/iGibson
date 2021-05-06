@@ -15,6 +15,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
+from tasknet.logic_base import AtomicPredicate
 import logging
 import networkx as nx
 from IPython import embed
@@ -120,7 +121,10 @@ class iGTNTask(TaskNetTask):
                 if len(cond) == 3 and cond[2] in cur_batch:
                     next_batch.add(cond[1])
             cur_batch = next_batch
-        remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+        if len(self.sampling_orders) > 0:
+            remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+        else:
+            remaining_objs = self.object_scope.keys()
         if len(remaining_objs) != 0:
             error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
                 ', '.join(remaining_objs))
@@ -392,6 +396,9 @@ class iGTNTask(TaskNetTask):
         # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
+            if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
+                print("Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
                     if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under"]:
@@ -718,8 +725,6 @@ class iGTNTask(TaskNetTask):
 
         # Use ray casting for ontop and inside sampling for non-sampleable objects
         for condition, positive in sampleable_obj_conditions:
-            print(condition.body)
-            print(positive)
             success = condition.sample(binary_state=positive)
             if not success:
                 logging.warning(
@@ -732,19 +737,20 @@ class iGTNTask(TaskNetTask):
                 condition.kwargs['use_ray_casting_method'] = True
 
         # Pop non-sampleable objects
-        self.sampling_orders.pop(0)
-        for cur_batch in self.sampling_orders:
-            for condition, positive in sampleable_obj_conditions:
-                # Sample conditions that involve the current batch of objects
-                if condition.body[0] in cur_batch:
-                    success = condition.sample(binary_state=positive)
-                    if not success:
-                        error_msg = 'Sampleable object conditions failed: {}'.format(
-                            condition.body)
-                        logging.warning(error_msg)
-                        feedback['init_success'] = 'no'
-                        feedback['init_feedback'] = error_msg
-                        return False, feedback
+        if len(self.sampling_orders) > 0:
+            self.sampling_orders.pop(0)
+            for cur_batch in self.sampling_orders:
+                for condition, positive in sampleable_obj_conditions:
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        success = condition.sample(binary_state=positive)
+                        if not success:
+                            error_msg = 'Sampleable object conditions failed: {}'.format(
+                                condition.body)
+                            logging.warning(error_msg)
+                            feedback['init_success'] = 'no'
+                            feedback['init_feedback'] = error_msg
+                            return False, feedback
 
         return True, feedback
 

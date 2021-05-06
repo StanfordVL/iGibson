@@ -244,7 +244,7 @@ class ToyEnvInt(object):
             load_clutter=False,
             should_debug_sampling=False,
             scene_kwargs={},
-            online_sampling=False,
+            online_sampling=True,
         )
         self.state_id = p.saveState()
 
