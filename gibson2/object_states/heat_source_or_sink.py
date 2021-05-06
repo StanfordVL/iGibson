@@ -126,14 +126,10 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
             hud_overlay_show_state = False
 
         if self.marker is None:
-            # self.marker = VisualMarker(
-            #     rgba_color=[1, 0, 0, 0.5],
-            #     radius=_HEATING_ELEMENT_MARKER_RADIUS,
-            #     initial_offset=[0, 0, 0])
             self.marker = VisualShape(
                 _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
 
-            simulator.import_object(self.marker)
+            simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
 
         marker_position = [0, 0, -100]
         if self.position is not None and hud_overlay_show_state:
