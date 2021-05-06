@@ -1,6 +1,6 @@
 from gibson2.external.pybullet_tools.utils import get_aabb_center
 from gibson2.object_states.aabb import AABB
-from gibson2.object_states.heat_source import HeatSource
+from gibson2.object_states.heat_source_or_sink import HeatSourceOrSink
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.utils.utils import l2_distance
@@ -20,7 +20,7 @@ class Temperature(AbsoluteObjectState):
 
     @staticmethod
     def get_optional_dependencies():
-        return AbsoluteObjectState.get_optional_dependencies() + [HeatSource]
+        return AbsoluteObjectState.get_optional_dependencies() + [HeatSourceOrSink]
 
     def __init__(self, obj):
         super(Temperature, self).__init__(obj)
@@ -45,9 +45,9 @@ class Temperature(AbsoluteObjectState):
         center = None
 
         # Find all heat source objects.
-        for obj2 in simulator.scene.get_objects_with_state(HeatSource):
+        for obj2 in simulator.scene.get_objects_with_state(HeatSourceOrSink):
             # Obtain heat source position.
-            heat_source = obj2.states[HeatSource]
+            heat_source = obj2.states[HeatSourceOrSink]
             heat_source_position = heat_source.get_value()
             if heat_source_position:
                 # Compute the AABB center if needed.

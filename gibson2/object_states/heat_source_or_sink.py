@@ -2,22 +2,22 @@ from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.object_states.toggle import ToggledOn
 from gibson2.object_states.open import Open
-
-# The name of the heat source link inside URDF files.
+from gibson2.object_states.toggle import ToggledOn
 from gibson2.objects.visual_marker import VisualMarker
 
+# The name of the heat source link inside URDF files.
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
 
 _HEATING_ELEMENT_MARKER_RADIUS = 0.1
 
+# TODO: Delete default values for this and make them required.
 _DEFAULT_TEMPERATURE = 200
 _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
 
-class HeatSource(AbsoluteObjectState, LinkBasedStateMixin):
+class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     """
     This state indicates the heat source state of the object.
 
@@ -50,7 +50,7 @@ class HeatSource(AbsoluteObjectState, LinkBasedStateMixin):
         :param requires_inside: Whether an object needs to be `inside` the
             heat source to receive heat. See the Inside state for details.
         """
-        super(HeatSource, self).__init__(obj)
+        super(HeatSourceOrSink, self).__init__(obj)
         self.temperature = temperature
         self.heating_rate = heating_rate
         self.distance_threshold = distance_threshold
