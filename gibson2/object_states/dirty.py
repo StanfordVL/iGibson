@@ -17,6 +17,9 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         self.value = False
         self.dirt = None
 
+        # Keep dump data for when we initialize our water stream.
+        self.from_dump = None
+
     def get_value(self):
         return self.value
 
@@ -33,7 +36,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
 
         # Load the dirt if necessary.
         if self.dirt is None:
-            self.dirt = self.DIRT_CLASS(self.obj)
+            self.dirt = self.DIRT_CLASS(self.obj, from_dump=self.from_dump)
             simulator.import_particle_system(self.dirt)
 
         # Attach if necessary
@@ -43,6 +46,18 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         # update self.value based on particle count
         self.prev_value = self.value
         self.value = self.dirt.get_num_active() > self.dirt.get_num() * CLEAN_THRESHOLD
+
+    def dump(self):
+        return {
+            "prev_value": self.value,
+            "value": self.value,
+            "particles": self.dirt.dump(),
+        }
+
+    def load(self, data):
+        self.prev_value = data["prev_value"]  # This is not good. Best to get rid of these weird lazy loads ASAP.
+        self.set_value(data["value"])
+        self.from_dump = data["particles"]
 
 
 class Dusty(_Dirty):

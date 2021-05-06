@@ -16,6 +16,8 @@ _WATER_SOURCE_LINK_NAME = "water_source"
 # the particles slightly lower.
 _OFFSET_FROM_LINK = np.array([0, 0, -0.05])
 
+_NUM_DROPS = 10
+
 
 class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
@@ -24,6 +26,9 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         # Reduced to a single water stream for now since annotations don't support more.
         self.water_stream = None
+
+        # Keep dump data for when we initialize our water stream.
+        self.from_dump = None
 
     @staticmethod
     def get_state_link_name():
@@ -37,9 +42,9 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         water_source_position = list(
             np.array(water_source_position) + _OFFSET_FROM_LINK)
         if self.water_stream is None:
-            self.water_stream = WaterStream(water_source_position, num=10)
+            self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS)
             body_ids = simulator.import_particle_system(
-                self.water_stream, use_pbr=True)
+                self.water_stream, use_pbr=True, from_dump=self.from_dump)
 
             # Set some renderer settings on these particles.
             instances = simulator.renderer.get_instances()
@@ -69,6 +74,14 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
     def get_value(self):
         pass
+
+    def dump(self):
+        return self.water_stream.dump()
+
+    def load(self, data):
+        # We need to not have loaded a water stream yet.
+        assert self.water_stream is None
+        self.from_dump = data
 
     @staticmethod
     def get_optional_dependencies():
