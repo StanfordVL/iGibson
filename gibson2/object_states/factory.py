@@ -8,7 +8,6 @@ _ALL_STATES = frozenset([
     CleaningTool,
     ContactBodies,
     Cooked,
-    DummyState,
     Dusty,
     Frozen,
     HeatSourceOrSink,
@@ -82,7 +81,7 @@ def get_states_for_ability(ability):
     return _ABILITY_TO_STATE_MAPPING[ability]
 
 
-def get_object_state_instance(state_class, obj, params=None, online=True):
+def get_object_state_instance(state_class, obj, params=None):
     """
     Create an BaseObjectState child class instance for a given object & state.
 
@@ -92,17 +91,11 @@ def get_object_state_instance(state_class, obj, params=None, online=True):
     :param state_class: The state name from the state name dictionary.
     :param obj: The object for which the state is being constructed.
     :param params: Dict of {param: value} corresponding to the state's params.
-    :param online: Whether or not the instance should be generated for an online
-        object. Offline mode involves using dummy objects rather than real state
-        objects.
     :return: The constructed state object, an instance of a child of
         BaseObjectState.
     """
     if not issubclass(state_class, BaseObjectState):
         assert False, 'unknown state class: {}'.format(state_class)
-
-    if not online:
-        return DummyState(obj)
 
     if params is None:
         params = {}
