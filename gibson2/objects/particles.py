@@ -107,6 +107,7 @@ class ParticleSystem(object):
         if color.ndim == 2:
             assert color.shape[0] == num
 
+        self._all_particles = []
         self._active_particles = []
         self._stashed_particles = deque()
 
@@ -115,8 +116,9 @@ class ParticleSystem(object):
             this_size = size if size.ndim == 1 else size[i]
             this_color = color if color.ndim == 1 else color[i]
 
-            self._stashed_particles.append(
-                Particle(this_size, _STASH_POSITION, color=this_color, **kwargs))
+            particle = Particle(this_size, _STASH_POSITION, color=this_color, **kwargs)
+            self._all_particles.append(particle)
+            self._stashed_particles.append(particle)
 
     def update(self, simulator):
         pass
@@ -137,7 +139,7 @@ class ParticleSystem(object):
         return list(self._active_particles)
 
     def get_particles(self):
-        return self.get_active_particles() + self.get_stashed_particles()
+        return self._all_particles
 
     def stash_particle(self, particle):
         assert particle in self._active_particles
@@ -147,9 +149,13 @@ class ParticleSystem(object):
         particle.set_position(_STASH_POSITION)
         particle.force_sleep()
 
-    def unstash_particle(self, position, orientation):
-        # This assumes that the stashed particle has been moved to the appropriate position already.
-        particle = self._stashed_particles.popleft()
+    def unstash_particle(self, position, orientation, particle=None):
+        # If the user wants a particular particle, give it to them. Otherwise, unstash one.
+        if particle is not None:
+            self._stashed_particles.remove(particle)
+        else:
+            # This assumes that the stashed particle has been moved to the appropriate position already.
+            particle = self._stashed_particles.popleft()
         particle.set_position_orientation(position, orientation)
         particle.force_wakeup()
 
@@ -165,8 +171,8 @@ class AttachedParticleSystem(ParticleSystem):
         self._parent_obj = parent_obj
         self._attachment_offsets = {}  # in the format of {particle: offset}
 
-    def unstash_particle(self, position, orientation, link_id=-1):
-        particle = super(AttachedParticleSystem, self).unstash_particle(position, orientation)
+    def unstash_particle(self, position, orientation, link_id=-1, **kwargs):
+        particle = super(AttachedParticleSystem, self).unstash_particle(position, orientation, **kwargs)
 
         # Compute the offset for this particle.
         if link_id == -1:
@@ -220,25 +226,36 @@ class WaterStream(ParticleSystem):
         (0.5, 0.77, 0.87, 1)
     ])
 
-    def __init__(self, water_source_pos, num, **kwargs):
-        size_idxs = np.random.choice(len(self._SIZE_OPTIONS), num, replace=True)
-        sizes = self._SIZE_OPTIONS[size_idxs]
+    def __init__(self, water_source_pos, num, from_dump=None, **kwargs):
+        if from_dump is not None:
+            self.sizes = np.array(from_dump["sizes"])
+            self.colors = np.array(from_dump["colors"])
+        else:
+            size_idxs = np.random.choice(len(self._SIZE_OPTIONS), num, replace=True)
+            self.sizes = self._SIZE_OPTIONS[size_idxs]
 
-        color_idxs = np.random.choice(len(self._COLOR_OPTIONS), num, replace=True)
-        colors = self._COLOR_OPTIONS[color_idxs]
+            color_idxs = np.random.choice(len(self._COLOR_OPTIONS), num, replace=True)
+            self.colors = self._COLOR_OPTIONS[color_idxs]
 
         super(WaterStream, self).__init__(
             num=num,
-            size=sizes,
-            color=colors,
+            size=self.sizes,
+            color=self.colors,
             visual_only=False,
             mass=0.1,
             **kwargs
         )
 
-        self.steps_since_last_drop_step = float('inf')
+        self.steps_since_last_drop_step = float('inf') if from_dump is None else from_dump["steps_since_last_drop_step"]
         self.water_source_pos = water_source_pos
         self.on = False
+
+        # Unstash particles in dump.
+        if from_dump:
+            for i, particle_pose in enumerate(from_dump["particle_poses"]):
+                if particle_pose is not None:
+                    particle = self.get_particles()[i]
+                    self.unstash_particle(particle_pose[0], particle_pose[1], particle)
 
     def set_running(self, on):
         self.on = on
@@ -261,6 +278,20 @@ class WaterStream(ParticleSystem):
         self.unstash_particle(self.water_source_pos, [0, 0, 0, 1])
         self.steps_since_last_drop_step = 0
 
+    def dump(self):
+        data = {
+            "sizes": [tuple(size) for size in self.sizes],
+            "colors": [tuple(color) for color in self.colors],
+            "steps_since_last_drop_step": self.steps_since_last_drop_step,
+            "particle_poses": []
+        }
+
+        for particle in self.get_particles():
+            data["particle_poses"].append(particle.get_position_orientation()
+                                          if particle in self.get_active_particles() else None)
+
+        return data
+
 
 class _Dirt(AttachedParticleSystem):
     """
@@ -275,9 +306,18 @@ class _Dirt(AttachedParticleSystem):
     _SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
     _SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
 
-    def __init__(self, parent_obj, clip_into_object, **kwargs):
+    def __init__(self, parent_obj, clip_into_object, from_dump=None, **kwargs):
         super(_Dirt, self).__init__(parent_obj, **kwargs)
         self._clip_into_object = clip_into_object
+
+        # Unstash particles in dump.
+        if from_dump:
+            for i, particle_data in from_dump:
+                if particle_data is not None:
+                    particle_attached_link_id, particle_pos, particle_orn = particle_data
+                    particle = self.get_particles()[i]
+                    self.unstash_particle(particle_pos, particle_orn, parent_obj.get_body_id(),
+                                          link_id=particle_attached_link_id, particle=particle)
 
     def randomize(self, obj):
         bbox_sizes = [particle.bounding_box for particle in self.get_stashed_particles()]
@@ -293,24 +333,40 @@ class _Dirt(AttachedParticleSystem):
             refuse_downwards=True)
 
         # Use the sampled points to set the dirt positions.
-        for i in range(self.get_num_stashed()):
+        for i, particle in enumerate(self.get_stashed_particles()):
             position, normal, quaternion, hit_link, reasons = results[i]
 
-            # If we found no position for this particle, move it to the back of the queue.
-            if position is None:
-                self.stash_particle(self.unstash_particle(_STASH_POSITION, [0, 0, 0, 1]))
-                continue
-
-            # Otherwise, unstash the particle.
+            # Compute the point to stick the particle to.
             surface_point = position
-
             if self._clip_into_object:
                 # Shift the object halfway down.
                 cuboid_base_to_center = bbox_sizes[2] / 2.
                 surface_point -= normal * cuboid_base_to_center
 
-            self.unstash_particle(surface_point, quaternion, link_id=hit_link)
+            # Unstash the particle (and make sure we get the correct one!)
+            assert self.unstash_particle(surface_point, quaternion, link_id=hit_link, particle=particle) == particle
 
+    def dump(self):
+        data = []
+        for particle in self.get_particles():
+            if particle in self.get_stashed_particles():
+                data.append(None)
+            else:
+                link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
+
+                if link_id == -1:
+                    attachment_source_pos = self._parent_obj.get_position()
+                    attachment_source_orn = self._parent_obj.get_orientation()
+                else:
+                    link_state = utils.get_link_state(self._parent_obj.get_body_id(), link_id)
+                    attachment_source_pos = link_state.linkWorldPosition
+                    attachment_source_orn = link_state.linkWorldOrientation
+
+                position, orientation = p.multiplyTransforms(
+                    attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
+                data.append((link_id, position, orientation))
+
+        return data
 
 class Dust(_Dirt):
     def __init__(self, parent_obj, **kwargs):
