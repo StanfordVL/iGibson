@@ -93,3 +93,10 @@ class Open(CachingEnabledObjectState, BooleanState):
 
             # Save sampled position.
             utils.set_joint_position(self.obj.get_body_id(), joint_info.jointIndex, joint_pos)
+
+    # We don't need to do anything here - since the joints are saved, this should work directly.
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return

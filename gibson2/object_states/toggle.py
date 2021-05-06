@@ -88,3 +88,10 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             else:
                 self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
             self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
+
+    # For this state, we simply store its value.
+    def dump(self):
+        return self.value
+
+    def load(self, data):
+        self.set_value(data)

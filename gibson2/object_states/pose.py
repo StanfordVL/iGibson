@@ -11,3 +11,10 @@ class Pose(CachingEnabledObjectState):
 
     def set_value(self, new_value):
         raise NotImplementedError("Pose state currently does not support setting.")
+
+    # Nothing needs to be done to save/load Pose since it will happen due to pose caching.
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return
