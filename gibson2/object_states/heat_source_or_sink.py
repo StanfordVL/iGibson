@@ -7,7 +7,6 @@ from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.open import Open
 from gibson2.object_states.toggle import ToggledOn
-from gibson2.objects.visual_marker import VisualMarker
 
 # The name of the heat source link inside URDF files.
 from gibson2.objects.visual_shape import VisualShape
@@ -121,7 +120,12 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     def update(self, simulator):
         self.status, self.position = self._compute_state_and_position()
 
-        if self.marker is None and self.position is not None:
+        if simulator.can_access_vr_context:
+            hud_overlay_show_state = simulator.get_hud_show_state()
+        else:
+            hud_overlay_show_state = False
+
+        if self.marker is None:
             # self.marker = VisualMarker(
             #     rgba_color=[1, 0, 0, 0.5],
             #     radius=_HEATING_ELEMENT_MARKER_RADIUS,
@@ -131,7 +135,10 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
 
             simulator.import_object(self.marker)
 
-        marker_position = self.position if self.position is not None else [0, 0, -100]
+        marker_position = [0, 0, -100]
+        if self.position is not None and hud_overlay_show_state:
+            marker_position = self.position
+
         self.marker.set_position(marker_position)
 
     def get_value(self):
