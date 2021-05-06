@@ -111,7 +111,7 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         return True, heating_element_position
 
     def update(self, simulator):
-        self.status, self.position = self._compute_position()
+        self.status, self.position = self._compute_state_and_position()
 
         if self.marker is None and self.position is not None:
             self.marker = VisualMarker(
