@@ -39,7 +39,6 @@ class Simulator:
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
-                 use_fixed_fps=False,
                  mode='gui',
                  image_width=128,
                  image_height=128,
@@ -67,7 +66,10 @@ class Simulator:
         self.gravity = gravity
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
-        self.use_fixed_fps = use_fixed_fps
+        self.physics_timestep_num = self.render_timestep / self.physics_timestep
+        assert self.physics_timestep_num.is_integer(), "render_timestep must be a multiple of physics_timestep"
+        self.physics_timestep_num = int(self.physics_timestep_num)
+
         self.mode = mode
 
         self.scene = None
@@ -117,10 +119,6 @@ class Simulator:
         self.vr_overlay_initialized = False
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
-        # If we are using VR, inherit fixed_fps setting from VrSettings
-        if self.can_access_vr_context:
-            self.use_fixed_fps = self.vr_settings.use_fixed_fps
-
         # Get expected duration of frame
         self.fixed_frame_dur = 1/float(self.vr_settings.vr_fps)
         # Duration of a vsync frame - assumes 90Hz refresh rate
@@ -132,11 +130,6 @@ class Simulator:
         # Total amount of time we want non-blocking actions to take each frame
         # Leave a small amount of time before the last vsync, just in case we overrun
         self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 10e-3
-        # Number of physics steps based on fixed VR fps
-        # Use integer division to guarantee we don't exceed 1.0 realtime factor
-        # It is recommended to use an FPS that is a multiple of the timestep
-        self.num_phys_steps = max(
-            1, int(self.fixed_frame_dur/self.physics_timestep))
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
 
@@ -943,8 +936,7 @@ class Simulator:
             outside_step_dur = time.perf_counter() - self.frame_end_time
         # Simulate Physics in PyBullet
         physics_start_time = time.perf_counter()
-        physics_timestep_num = self.num_phys_steps
-        for _ in range(physics_timestep_num):
+        for _ in range(self.physics_timestep_num):
             p.stepSimulation()
         self._non_physics_step()
         physics_dur = time.perf_counter() - physics_start_time
@@ -957,7 +949,7 @@ class Simulator:
         # Sleep until last possible Vsync
         pre_sleep_dur = outside_step_dur + physics_dur + render_dur
         sleep_start_time = time.perf_counter()
-        if pre_sleep_dur < self.non_block_frame_time and self.use_fixed_fps:
+        if pre_sleep_dur < self.non_block_frame_time:
             sleep(self.non_block_frame_time - pre_sleep_dur)
         sleep_dur = time.perf_counter() - sleep_start_time
 
@@ -983,7 +975,6 @@ class Simulator:
         # Set variables for data saving and replay
         self.last_physics_timestep = physics_dur
         self.last_render_timestep = render_dur
-        self.last_physics_step_num = physics_timestep_num
         self.last_frame_dur = frame_dur
 
         if print_stats:
@@ -996,7 +987,7 @@ class Simulator:
             print('Total frame duration: {} and fps: {}'.format(
                 frame_dur * 1000, 1/frame_dur))
             print('Realtime factor: {}'.format(
-                round(physics_timestep_num * self.physics_timestep / frame_dur, 3)))
+                round((self.physics_timestep_num * self.physics_timestep) / frame_dur, 3)))
             print('-------------------------')
 
         self.frame_count += 1
@@ -1036,7 +1027,7 @@ class Simulator:
         # Values are in ms
         return (vr_system_dur * 1000, non_vr_dur * 1000)
 
-    def step(self, print_stats=False, forced_timestep=None):
+    def step(self, print_stats=False):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
@@ -1045,11 +1036,9 @@ class Simulator:
             self.step_vr(print_stats=print_stats)
             return
 
-        # Always guarantee at least one physics timestep
-        physics_timestep_num = forced_timestep if forced_timestep else max(
-            1, int(self.render_timestep / self.physics_timestep))
-        for _ in range(physics_timestep_num):
+        for _ in range(self.physics_timestep_num):
             p.stepSimulation()
+
         self._non_physics_step()
         self.sync()
         self.frame_count += 1

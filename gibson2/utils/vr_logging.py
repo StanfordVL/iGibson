@@ -269,6 +269,8 @@ class VRLogWriter():
         self.hf.attrs['/metadata/task_instance'] = self.task.task_instance
         self.hf.attrs['/metadata/scene_id'] = self.task.scene.scene_id
         self.hf.attrs['/metadata/start_time'] = str(datetime.datetime.now())
+        self.hf.attrs['/metadata/physics_timestep'] = self.sim.physics_timestep
+        self.hf.attrs['/metadata/render_timestep'] = self.sim.render_timestep
 
     def get_data_for_name_path(self, name_path):
         """Resolves a list of names (group/dataset) into a numpy array.
@@ -442,7 +444,7 @@ class VRLogWriter():
             # We have accumulated enough data, which we will write to hd5
             self.write_to_hd5()
             if print_vr_data:
-                self.temp_vr_data = VrData(s)
+                self.temp_vr_data = VrData(s.vr_settings)
                 for hf_idx in range(self.persistent_frame_count - self.frames_before_write, self.persistent_frame_count):
                     self.temp_vr_data.refresh_action_replay_data(
                         self.hf, hf_idx)
@@ -488,15 +490,14 @@ class VRLogWriter():
 
 class VRLogReader():
     # TIMELINE: Initialize the VRLogReader before reading any frames
-    def __init__(self, log_filepath, s, emulate_save_fps=True, log_status=True):
+    def __init__(self, log_filepath, vr_settings, emulate_save_fps=True, log_status=True):
         """
         :param log_filepath: path for logging files to be read from
-        :param s: current Simulator object
+        :param vr_settings: VrSettings object
         :param emulate_save_fps: whether to emulate the FPS when the data was recorded
         :param log_status: whether to print status updates to the command line
         """
         self.log_filepath = log_filepath
-        self.s = s
         self.emulate_save_fps = emulate_save_fps
         self.log_status = log_status
         # Frame counter keeping track of how many frames have been reproduced
@@ -506,7 +507,7 @@ class VRLogReader():
         # Get total frame num (dataset row length) from an arbitary dataset
         self.total_frame_num = self.hf['vr/vr_device_data/hmd'].shape[0]
         # Placeholder VrData object, which will be filled every frame if we are performing action replay
-        self.vr_data = VrData(self.s)
+        self.vr_data = VrData(vr_settings)
         if self.log_status:
             print('----- VRLogReader initialized -----')
             print('Preparing to read {0} frames'.format(self.total_frame_num))
@@ -530,7 +531,7 @@ class VRLogReader():
         """Function called right before step to set various parameters - eg. timing variables."""
         self.frame_start_time = time.time()
 
-    def read_frame(self, s, full_replay=True, print_vr_data=False):
+    def read_frame(self, s=None, full_replay=True, print_vr_data=False):
         """Reads a frame from the VR logger and steps simulation with stored data."""
 
         """Reads a frame from the VR logger and steps simulation with stored data.
@@ -552,12 +553,13 @@ class VRLogReader():
         frame_duration = self.hf['frame_data'][self.frame_counter][4]
 
         # Each frame we first set the camera data
-        s.renderer.V = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
-        s.renderer.P = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
-        right_cam_pos = self.hf['vr/vr_camera/right_camera_pos'][self.frame_counter]
-        s.renderer.camera = right_cam_pos
-        s.renderer.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [
-                                                right_cam_pos[0], right_cam_pos[1], 0])
+        if s is not None:
+            s.renderer.V = self.hf['vr/vr_camera/right_eye_view'][self.frame_counter]
+            s.renderer.P = self.hf['vr/vr_camera/right_eye_proj'][self.frame_counter]
+            right_cam_pos = self.hf['vr/vr_camera/right_camera_pos'][self.frame_counter]
+            s.renderer.camera = right_cam_pos
+            s.renderer.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [
+                                                    right_cam_pos[0], right_cam_pos[1], 0])
 
         if full_replay:
             # If doing full replay we update the physics manually each frame

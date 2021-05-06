@@ -109,6 +109,8 @@ def main():
     task = f.attrs['/metadata/task_name']
     task_id = f.attrs['/metadata/task_instance']
     scene = f.attrs['/metadata/scene_id']
+    physics_timestep = f.attrs['/metadata/physics_timestep']
+    render_timestep = f.attrs['/metadata/render_timestep']
 
     if 'metadata/filter_objects' in f.attrs:
         filter_objects = f.attrs['metadata/filter_objects']
@@ -116,8 +118,14 @@ def main():
         filter_objects = True
 
     # VR system settings
-    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings,
-                  vr_settings=vr_replay_settings)
+    s = Simulator(
+          mode='vr',
+          physics_timestep = physics_timestep,
+          render_timestep = render_timestep,
+          rendering_settings=vr_rendering_settings,
+          vr_settings=vr_replay_settings,
+        )
+
     igtn_task = iGTNTask(task, task_id)
 
     scene_kwargs = None
@@ -138,7 +146,7 @@ def main():
     vr_agent = igtn_task.simulator.robots[0]
     if not args.vr_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
-    vr_reader = VRLogReader(args.vr_log_path, s,
+    vr_reader = VRLogReader(args.vr_log_path, s.vr_settings,
                             emulate_save_fps=False, log_status=False)
 
     if not args.disable_save:
