@@ -457,8 +457,9 @@ def teardown():
     data = json.loads(request.data)
     scenes_ids = data["scenes_ids"]
     for scene, unique_id in scenes_ids:
-        app.stop_env(unique_id)
-        print(f"uuid {unique_id} stopped")
+        if unique_id in app.envs:
+            app.stop_env(unique_id)
+            print(f"uuid {unique_id} stopped")
 
     # TODO need anything else?
     return Response(json.dumps({"success": True}))
