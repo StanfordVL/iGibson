@@ -15,6 +15,7 @@ class Soaked(AbsoluteObjectState, BooleanState):
 
     def _set_value(self, new_value):
         self.value = new_value
+        return True
 
     def _update(self, simulator):
         water_source_objs = simulator.scene.get_objects_with_state(WaterSource)

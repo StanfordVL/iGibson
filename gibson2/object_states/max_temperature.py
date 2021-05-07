@@ -21,6 +21,7 @@ class MaxTemperature(AbsoluteObjectState):
 
     def _set_value(self, new_value):
         self.value = new_value
+        return True
 
     def _update(self, simulator):
         self.value = max(self.obj.states[Temperature].get_value(), self.value)

@@ -55,6 +55,8 @@ class Sliced(AbsoluteObjectState, BooleanState):
                 self.obj.multiplexer.states[state].set_value(
                     self.obj.states[state].get_value())
 
+        return True
+
     # TODO (Eric): We need to do something here!
     def _dump(self):
         return None

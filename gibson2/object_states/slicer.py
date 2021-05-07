@@ -30,7 +30,7 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
                     contact_obj.states[Sliced].set_value(True)
 
     def _set_value(self, new_value):
-        pass
+        raise ValueError("set_value not supported for valueless states like Slicer.")
 
     def _get_value(self):
         pass

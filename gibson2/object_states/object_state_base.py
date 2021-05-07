@@ -125,7 +125,7 @@ class CachingEnabledObjectState(AbsoluteObjectState):
 
     def _update(self, simulator):
         # Reset the cached state value on Simulator step.
-        super(CachingEnabledObjectState, self).update(simulator)
+        super(CachingEnabledObjectState, self)._update(simulator)
         self.clear_cached_value()
 
 

@@ -76,7 +76,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
                 self.water_stream.stash_particle(particle)
 
     def _set_value(self, new_value):
-        pass
+        raise ValueError("set_value not supported for WaterSource.")
 
     def _get_value(self):
         pass
