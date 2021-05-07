@@ -13,18 +13,18 @@ class Burnt(AbsoluteObjectState, BooleanState):
     def get_dependencies():
         return AbsoluteObjectState.get_dependencies() + [MaxTemperature]
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         current_max_temp = self.obj.states[MaxTemperature].get_value()
         desired_max_temp = max(current_max_temp, self.burn_temperature)
         return self.obj.states[MaxTemperature].set_value(desired_max_temp)
 
-    def get_value(self):
+    def _get_value(self):
         return self.obj.states[MaxTemperature].get_value() >= self.burn_temperature
 
     # Nothing needs to be done to save/load Burnt since it will happen due to
     # MaxTemperature caching.
-    def dump(self):
+    def _dump(self):
         return None
 
-    def load(self, data):
+    def _load(self, data):
         return

@@ -27,10 +27,10 @@ class Temperature(AbsoluteObjectState):
 
         self.value = DEFAULT_TEMPERATURE
 
-    def get_value(self):
+    def _get_value(self):
         return self.value
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         self.value = new_value
 
     def _update(self, simulator):
@@ -67,8 +67,8 @@ class Temperature(AbsoluteObjectState):
         self.value = new_temperature
 
     # For this state, we simply store its value.
-    def dump(self):
+    def _dump(self):
         return self.value
 
-    def load(self, data):
+    def _load(self, data):
         self.set_value(data)

@@ -46,12 +46,23 @@ class BaseObjectState(with_metaclass(ABCMeta, object)):
         """This function will be called once, after the object has been loaded."""
         pass
 
-    def update(self, simulator):
-        if not self._initialized:
-            self._initialize(simulator)
-            self._initialized = True
+    def initialize(self, simulator):
+        assert not self._initialized, "State is already initialized."
 
+        self._initialize(simulator)
+        self._initialized = True
+
+    def update(self, simulator):
+        assert self._initialized, "Cannot update uninitalized state."
         return self._update(simulator)
+
+    def get_value(self, *args, **kwargs):
+        assert self._initialized
+        return self._get_value(*args, **kwargs)
+
+    def set_value(self, *args, **kwargs):
+        assert self._initialized
+        return self._set_value(*args, **kwargs)
 
 
 class AbsoluteObjectState(BaseObjectState):
@@ -60,20 +71,28 @@ class AbsoluteObjectState(BaseObjectState):
     the value.
     """
     @abstractmethod
-    def get_value(self):
+    def _get_value(self):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         raise NotImplementedError()
 
     @abstractmethod
+    def _dump(self):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def _load(self, data):
+        raise NotImplementedError()
+
     def dump(self):
-        raise NotImplementedError()
+        assert self._initialized
+        return self._dump()
 
-    @abstractmethod
     def load(self, data):
-        raise NotImplementedError()
+        assert not self._initialized
+        return self._load(data)
 
 
 class CachingEnabledObjectState(AbsoluteObjectState):
@@ -94,7 +113,7 @@ class CachingEnabledObjectState(AbsoluteObjectState):
         """
         raise NotImplementedError()
 
-    def get_value(self):
+    def _get_value(self):
         # If we don't have a value cached, compute it now.
         if self.value is None:
             self.value = self._compute_value()
@@ -117,11 +136,11 @@ class RelativeObjectState(BaseObjectState):
     """
 
     @abstractmethod
-    def get_value(self, other):
+    def _get_value(self, other):
         raise NotImplementedError()
 
     @abstractmethod
-    def set_value(self, other, new_value):
+    def _set_value(self, other, new_value):
         raise NotImplementedError()
 
 

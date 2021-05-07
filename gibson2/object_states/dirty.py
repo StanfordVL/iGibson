@@ -23,24 +23,24 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         self.dirt = self.DIRT_CLASS(self.obj, from_dump=self.from_dump)
         simulator.import_particle_system(self.dirt)
 
-    def get_value(self):
+    def _get_value(self):
         return self.dirt.get_num_active() > self.dirt.get_num() * CLEAN_THRESHOLD
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         self.value = new_value
         if not self.value:
             for particle in self.dirt.get_active_particles():
                 self.dirt.stash_particle(particle)
         else:
-            self.dirt.randomize(self.obj)
+            self.dirt.randomize()
 
-    def dump(self):
+    def _dump(self):
         return {
             "value": self.value,
             "particles": self.dirt.dump(),
         }
 
-    def load(self, data):
+    def _load(self, data):
         self.set_value(data["value"])
         self.from_dump = data["particles"]
 

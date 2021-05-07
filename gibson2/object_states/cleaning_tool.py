@@ -29,16 +29,16 @@ class CleaningTool(AbsoluteObjectState):
                 if aabb_contains_point(pos, aabb):
                     particle_system.stash_particle(particle)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         pass
 
-    def get_value(self):
+    def _get_value(self):
         pass
 
-    def dump(self):
+    def _dump(self):
         return None
 
-    def load(self, data):
+    def _load(self, data):
         return
 
     @staticmethod

@@ -12,7 +12,7 @@ class OnTop(RelativeObjectState, BooleanState):
     def get_dependencies():
         return RelativeObjectState.get_dependencies() + [Touching, VerticalAdjacency]
 
-    def set_value(self, other, new_value, use_ray_casting_method=False):
+    def _set_value(self, other, new_value, use_ray_casting_method=False):
         state_id = p.saveState()
 
         for _ in range(10):
@@ -36,7 +36,7 @@ class OnTop(RelativeObjectState, BooleanState):
 
         return sampling_success
 
-    def get_value(self, other, use_ray_casting_method=False):
+    def _get_value(self, other, use_ray_casting_method=False):
         del use_ray_casting_method
 
         # Touching is the less costly of our conditions.

@@ -13,7 +13,7 @@ class OnFloor(KinematicsMixin, RelativeObjectState, BooleanState):
     def get_dependencies():
         return KinematicsMixin.get_dependencies() + [Touching]
 
-    def set_value(self, other, new_value):
+    def _set_value(self, other, new_value):
         for _ in range(10):
             sampling_success = sample_kinematics(
                 'onFloor', self.obj, other, new_value)
@@ -26,7 +26,7 @@ class OnFloor(KinematicsMixin, RelativeObjectState, BooleanState):
 
         return sampling_success
 
-    def get_value(self, other):
+    def _get_value(self, other):
         objA_states = self.obj.states
         center, extent = get_center_extent(objA_states)
         room_instance = other.scene.get_room_instance_by_point(center[:2])
