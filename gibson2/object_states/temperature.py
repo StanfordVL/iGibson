@@ -32,6 +32,7 @@ class Temperature(AbsoluteObjectState):
 
     def _set_value(self, new_value):
         self.value = new_value
+        return True
 
     def _update(self, simulator):
         # Start at the current temperature.

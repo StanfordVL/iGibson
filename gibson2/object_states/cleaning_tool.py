@@ -30,7 +30,7 @@ class CleaningTool(AbsoluteObjectState):
                     particle_system.stash_particle(particle)
 
     def _set_value(self, new_value):
-        pass
+        raise ValueError("Cannot set valueless state CleaningTool.")
 
     def _get_value(self):
         pass

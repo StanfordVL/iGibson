@@ -34,6 +34,8 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         else:
             self.dirt.randomize()
 
+        return True
+
     def _dump(self):
         return {
             "value": self.value,

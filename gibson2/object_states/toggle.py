@@ -22,6 +22,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
     def _set_value(self, new_value):
         self.value = new_value
+        return True
 
     @staticmethod
     def get_state_link_name():

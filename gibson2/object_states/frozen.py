@@ -14,7 +14,7 @@ class Frozen(CachingEnabledObjectState, BooleanState):
         return CachingEnabledObjectState.get_dependencies() + [Temperature]
 
     def _set_value(self, new_value):
-        raise NotImplementedError("Frozen cannot be set directly - set temperature instead.")
+        return self.obj.states[Temperature].set_value(self.freeze_temperature)
 
     def _compute_value(self):
         return self.obj.states[Temperature].get_value() <= self.freeze_temperature
