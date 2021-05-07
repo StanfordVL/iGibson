@@ -60,7 +60,7 @@ def main():
         "Wainscott_0_int",
         "Wainscott_1_int",
     ]
-    # scene_choices = ['Rs_int']
+    scene_choices = ['Beechwood_0_int']
     num_initializations = args.num_initializations
     num_trials = args.max_trials
     simulator = Simulator(
@@ -94,7 +94,7 @@ def main():
                     mode='headless',
                     load_clutter=True,
                     should_debug_sampling=False,
-                    scene_kwargs={},
+                    scene_kwargs=scene_kwargs,
                     online_sampling=True,
                 )
                 if success:
