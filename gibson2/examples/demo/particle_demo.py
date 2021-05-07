@@ -48,9 +48,9 @@ def main():
                       )
 
     print(desk.states.keys())
-    desk.states[object_states.Stained].set_value(True)
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
+    desk.states[object_states.Stained].set_value(True)
 
     # Main simulation loop
     try:
