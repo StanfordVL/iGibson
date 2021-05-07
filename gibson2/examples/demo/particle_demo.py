@@ -32,11 +32,11 @@ def main():
     sink.set_position([1, 1, 0.8])
     sink.states[object_states.ToggledOn].set_value(True)
 
-    # block = YCBObject(name='036_wood_block')
-    # s.import_object(block)
-    # block.set_position([1, 1, 1.8])
-    # block.abilities = ["soakable", "cleaning_tool"]
-    # prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
+    block = YCBObject(name='036_wood_block')
+    s.import_object(block)
+    block.set_position([1, 1, 1.8])
+    block.abilities = ["soakable", "cleaning_tool"]
+    prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
     # assume block can soak water
 
     model_path = os.path.join(get_ig_model_path('breakfast_table', '19203'), '19203.urdf')

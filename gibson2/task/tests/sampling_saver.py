@@ -106,6 +106,9 @@ def main():
                     if object_states.Stained in obj.states:
                         obj.states[object_states.Stained].set_value(True)
 
+                # Step the simulation once to let everything initialize.
+                igtn_task.simulator.step()
+
                 sim_obj_to_pddl_obj = {
                     value.name: {'object_scope': key}
                     for key, value in igtn_task.object_scope.items()}
