@@ -6,10 +6,12 @@ class TextureChangeState(BaseObjectState):
         super(TextureChangeState, self).__init__(obj)
         self.material = None
 
+        # TODO: not sure where to put frozen here, the logic is a bit complicated since frozen
+        # is reversible, not like the states used here.
         self.resolution_priotiy = {
-            object_states.Burnt: 2,
-            object_states.Cooked: 1,
-            object_states.Soaked: 0,
+            object_states.Burnt: 3,
+            object_states.Cooked: 2,
+            object_states.Soaked: 1,
         }
 
         self.current_priority = 0

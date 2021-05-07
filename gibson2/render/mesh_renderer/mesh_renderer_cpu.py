@@ -838,13 +838,10 @@ class MeshRenderer(object):
             if isinstance(self.materials_mapping[material], ProceduralMaterial) and \
                     self.materials_mapping[material].request_update:
                 request_update = True
-                break
+                self.materials_mapping[material].request_update = False
 
         if request_update:
             self.update_optimized_texture_internal()
-            for material in self.materials_mapping:
-                if isinstance(self.materials_mapping[material], ProceduralMaterial):
-                    self.materials_mapping[material].request_update = False
 
     def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True):
         """
@@ -1479,7 +1476,7 @@ class MeshRenderer(object):
                 normal_tex_num_array.append(tex_num)
                 normal_tex_layer_array.append(tex_layer)
 
-            # List of 3 floatsduplicate_vao_ids
+            # List of 3 floats
             transform_param = id_material.transform_param
             transform_param_array.append(
                 [transform_param[0], transform_param[1], transform_param[2], 1.0])
@@ -1539,7 +1536,7 @@ class MeshRenderer(object):
             np.concatenate(hidden_data, axis=0), np.float32)
         self.merged_uv_data = np.ascontiguousarray(
             np.concatenate(uv_data, axis=0), np.float32)
-        self.r.update_texture_id_arrays(self.shaderProgram,
+        self.r.updateTextureIdArrays(self.shaderProgram,
                            merged_frag_shader_data,
                            merged_frag_shader_roughness_metallic_data,
                            merged_frag_shader_normal_data,

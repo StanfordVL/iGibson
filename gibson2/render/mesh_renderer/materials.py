@@ -95,6 +95,7 @@ class ProceduralMaterial(Material):
         self.texture_filenames = {}
         self.states = []
         self.request_update = False
+        # after material changes, request_update is set to True so that optimized renderer can update the texture ids
 
     def __str__(self):
         return (
