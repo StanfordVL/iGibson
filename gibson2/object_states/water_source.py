@@ -88,8 +88,6 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         return self.water_stream.dump()
 
     def _load(self, data):
-        # We need to not have loaded a water stream yet.
-        assert self.water_stream is None
         self.from_dump = data
 
     @staticmethod

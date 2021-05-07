@@ -43,7 +43,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         }
 
     def _load(self, data):
-        self.set_value(data["value"])
+        self.value = data["value"]
         self.from_dump = data["particles"]
 
 

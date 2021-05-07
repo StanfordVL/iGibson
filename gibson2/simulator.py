@@ -1,5 +1,6 @@
 from gibson2.objects.stateful_object import StatefulObject
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.utils.semantics_utils import get_class_name_to_class_id
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -395,7 +396,7 @@ class Simulator:
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
 
-        if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
+        if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
             new_object_pb_id_or_ids = obj.load()
         else:
