@@ -64,18 +64,18 @@ class VrAgent(object):
         self.vr_dict = dict()
 
         if 'left' in self.hands:
-            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', normal_color=self.normal_color, use_prim=self.use_hand_prim) if not use_gripper 
-                                        else VrGripper(self.sim, hand='left'))
+            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', normal_color=self.normal_color, use_prim=self.use_hand_prim, agent_num=self.agent_num) if not use_gripper 
+                                        else VrGripper(self.sim, hand='left', use_constraints=self.use_constraints, agent_num=self.agent_num))
         if 'right' in self.hands:
-            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', normal_color=self.normal_color, use_prim=self.use_hand_prim) if not use_gripper 
-                                        else VrGripper(self.sim, hand='right'))
+            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', normal_color=self.normal_color, use_prim=self.use_hand_prim, agent_num=self.agent_num) if not use_gripper 
+                                        else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints, agent_num=self.agent_num))
 
         # Store reference between hands
         if 'left' in self.hands and 'right' in self.hands:
             self.vr_dict['left_hand'].set_other_hand(self.vr_dict['right_hand'])
             self.vr_dict['right_hand'].set_other_hand(self.vr_dict['left_hand'])
         if self.use_body:
-            self.vr_dict['body'] = VrBody(self.sim, self, normal_color=self.normal_color)
+            self.vr_dict['body'] = VrBody(self.sim, self, normal_color=self.normal_color, agent_num=self.agent_num)
             self.vr_dict['left_hand'].set_body(self.vr_dict['body'])
             self.vr_dict['right_hand'].set_body(self.vr_dict['body'])
         if self.use_gaze_marker:
@@ -157,7 +157,7 @@ class VrBody(ArticulatedObject):
     them from moving through physical objects and wall, as well
     as other VR users.
     """
-    def __init__(self, s, parent, normal_color=True):
+    def __init__(self, s, parent, normal_color=True, agent_num=1):
         self.sim = s
         self.parent = parent
         self.normal_color = normal_color
@@ -168,7 +168,8 @@ class VrBody(ArticulatedObject):
         self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
         super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
         # Number of degrees of forward axis away from +/- z axis at which HMD stops rotating body
-        self.name = "VrBody"
+        self.agent_num = agent_num
+        self.name = "VrBody_{}".format(self.agent_num)
         self.category = "agent"
         self.model = self.name
         self.min_z = 20.0
@@ -237,8 +238,8 @@ class VrBody(ArticulatedObject):
         """
         # Reset the body position to the HMD if either of the controller reset buttons are pressed
         if vr_data:
-            reset_agent =(('left_controller', 'reset_agent') in vr_data.query('event_data') 
-                        or ('right_controller', 'reset_agent') in vr_data.query('event_data'))
+            reset_agent =(('left_controller',  self.sim.get_button_for_action('reset_agent')) in vr_data.query('event_data') 
+                        or ('right_controller', self.sim.get_button_for_action('reset_agent')) in vr_data.query('event_data'))
         else:
             reset_agent = (self.sim.query_vr_event('left_controller', 'reset_agent') or self.sim.query_vr_event('right_controller', 'reset_agent'))
 
@@ -310,7 +311,7 @@ class VrHandBase(ArticulatedObject):
     The base VR Hand class from which other VrHand objects derive. It is intended
     that subclasses override most of the methods to implement their own functionality.
     """
-    def __init__(self, s, fpath, hand='right', base_rot=[0,0,0,1]):
+    def __init__(self, s, fpath, hand='right', base_rot=[0,0,0,1], agent_num=1):
         """
         Initializes VrHandBase.
         s is the simulator, fpath is the filepath of the VrHandBase, hand is either left or right 
@@ -333,7 +334,8 @@ class VrHandBase(ArticulatedObject):
         self.has_spawned = False
         self.movement_cid = None
         self.activated = False
-        self.name = "{}_hand".format(self.hand)
+        self.agent_num = agent_num
+        self.name = "{}_hand_{}".format(self.hand, self.agent_num)
         self.model = self.name
         self.category = "agent"
 
@@ -396,7 +398,7 @@ class VrHandBase(ArticulatedObject):
         if is_valid:
             # Detect hand-relevant VR events
             if vr_data:
-                reset_agent = (self.vr_device, 'reset_agent') in vr_data.query('event_data')
+                reset_agent = (self.vr_device, self.sim.get_button_for_action('reset_agent')) in vr_data.query('event_data')
             else:
                 reset_agent = self.sim.query_vr_event(self.vr_device, 'reset_agent')
 
@@ -464,7 +466,7 @@ class VrHand(VrHandBase):
     """
     Represents the human hand used for VR programs. Has 11 joints, including invisible base joint.
     """
-    def __init__(self, s, hand='right', normal_color=True, use_prim=True):
+    def __init__(self, s, hand='right', normal_color=True, use_prim=True, agent_num=1):
         self.s = s
         self.use_reduced_joint_hand = (self.s.vr_settings.assist_percent > 0)
         self.normal_color = normal_color
@@ -482,7 +484,7 @@ class VrHand(VrHandBase):
         final_suffix = '{}_{}.urdf'.format(suffix, hand)
         base_rot_handed = p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80])
         super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
-                                    hand=hand, base_rot=base_rot_handed)
+                                    hand=hand, base_rot=base_rot_handed, agent_num=agent_num)
         self.open_pos = 0
         self.finger_close_pos = 1.2
         self.thumb_close_pos = 0.6
@@ -571,7 +573,6 @@ class VrHand(VrHandBase):
         for body_link_idx in body_link_idxs:
             for target_link_idx in target_link_idxs:
                 p.setCollisionFilterPair(self.body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
-
 
     def gen_freeze_vals(self):
         """
@@ -895,12 +896,12 @@ class VrGripper(VrHandBase):
     """
     Gripper utilizing the pybullet gripper URDF from their VR demo.
     """
-    def __init__(self, s, hand='right', normal_color=True):
+    def __init__(self, s, hand='right', use_constraints=True, normal_color=True, agent_num=1):
         self.normal_color = normal_color
         gripper_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_gripper', gripper_path, 'vr_gripper.urdf')
         super(VrGripper, self).__init__(s, self.vr_gripper_fpath,
-                                    hand=hand, base_rot=p.getQuaternionFromEuler([0, 0, 0]))
+                                    hand=hand, base_rot=p.getQuaternionFromEuler([0, 0, 0]), agent_num=agent_num)
         self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         self.joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
 
@@ -980,5 +981,4 @@ class VrGazeMarker(VisualMarker):
             self.position_vector = origin
             self.orientation_vector = dir
             self.eye_data_valid = is_eye_data_valid
-
 

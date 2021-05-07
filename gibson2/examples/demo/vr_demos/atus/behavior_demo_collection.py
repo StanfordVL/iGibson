@@ -12,7 +12,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
-from gibson2.utils.vr_logging import VRLogWriter
+from gibson2.utils.ig_logging import IGLogWriter
 import tasknet
 
 
@@ -125,9 +125,8 @@ def main():
         if args.vr_log_path == None:
             args.vr_log_path = "{}_{}_{}_{}.hdf5".format(
                 args.task, args.task_id, args.scene, timestamp)
-        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200,
-                                log_filepath=args.vr_log_path, profiling_mode=args.profile)
-        vr_writer.set_up_data_storage()
+        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=args.vr_log_path, task=igtn_task, store_vr=True, vr_agent=vr_agent, profiling_mode=args.profile)
+        log_writer.set_up_data_storage()
 
     satisfied_predicates_cached = {}
     while True:
@@ -147,8 +146,10 @@ def main():
             vr_cs.toggle_show_state()
 
         if not args.disable_save:
-            vr_writer.process_frame(s)
-
+            log_writer.process_frame()
+    
+    if not args.disable_save:
+        log_writer.end_log_session()
     s.disconnect()
 
 

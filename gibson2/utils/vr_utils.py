@@ -14,6 +14,10 @@ VR_BUTTON_COMBOS = [
 ]
 VR_BUTTON_COMBO_NUM = 28
 
+# List of VR controllers and devices
+VR_CONTROLLERS = ['left_controller', 'right_controller']
+VR_DEVICES = ['left_controller', 'right_controller', 'hmd']
+
 # ----- Utility classes ------
 
 class VrData(object):
@@ -25,6 +29,9 @@ class VrData(object):
     Key: hmd, left_controller, right_controller
     Values: is_valid, trans, rot, right, up, forward
 
+    Key: torso_tracker
+    Values: is_valid, trans, rot
+
     Key: left_controller_button, right_controller_button
     Values: trig_frac, touch_x, touch_y
 
@@ -32,7 +39,7 @@ class VrData(object):
     Values: is_valid, origin, direction, left_pupil_diameter, right_pupil_diameter
 
     Key: event_data
-    Values: list of lists, where each sublist is a device, event_type pair
+    Values: list of lists, where each sublist is a device, (button, status) pair
 
     Key: vr_positions
     Values: vr_pos (world position of VR in iGibson), vr_offset (offset of VR system from origin)
@@ -40,15 +47,14 @@ class VrData(object):
     Key: vr_settings
     Values: touchpad_movement, movement_controller, movement_speed, relative_movement_device
     """
-    def __init__(self, vr_settings):
+    def __init__(self, data_dict=None):
         """
-        :param vr_settings: current VrSettings
+        Constructs VrData object
+        :param s: reference to simulator
+        :param data_dict: dictionary containing all information necessary to fill out VrData class
         """
-        self.vr_settings = vr_settings
         # All internal data is stored in a dictionary
-        self.vr_data_dict = dict()
-        self.controllers = ['left_controller', 'right_controller']
-        self.devices = ['hmd'] + self.controllers
+        self.vr_data_dict = data_dict if data_dict else dict()
 
     def query(self, q):
         """
@@ -64,13 +70,14 @@ class VrData(object):
 
     def refresh_action_replay_data(self, ar_data, frame_num):
         """
-        Updates the vr dictionary with data from action replay. Needs a frame number
-        to get the correct slice of the saved data.
+        Updates the vr dictionary with data from action replay.
+        :param ar_data: data from action replay
+        :param frame_num: frame to recover action replay data on
         """
-        for device in self.devices:
+        for device in VR_DEVICES:
             device_data = ar_data['vr/vr_device_data/{}'.format(device)][frame_num].tolist()
-            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:]]
-            if device in self.controllers:
+            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:17]]
+            if device in VR_CONTROLLERS:
                 self.vr_data_dict['{}_button'.format(device)] = ar_data['vr/vr_button_data/{}'.format(device)][frame_num].tolist()
 
         torso_tracker_data = ar_data['vr/vr_device_data/torso_tracker'][frame_num].tolist()
@@ -80,12 +87,9 @@ class VrData(object):
         self.vr_data_dict['eye_data'] = [eye_data[0], eye_data[1:4], eye_data[4:7], eye_data[7], eye_data[8]]
 
         events = []
-        for controller in self.controllers:
+        for controller in VR_CONTROLLERS:
             for button_press_data in convert_binary_to_button_data(ar_data['vr/vr_event_data/{}'.format(controller)][frame_num]):
-                # Convert (button_idx, press_id) tuple back to an action, if it exists
-                if button_press_data in self.vr_settings.button_action_map.keys():
-                    action = self.vr_settings.button_action_map[button_press_data]
-                    events.append((controller, action))
+                events.append((controller, button_press_data))
         self.vr_data_dict['event_data'] = events
 
         pos_data = ar_data['vr/vr_device_data/vr_position_data'][frame_num].tolist()
@@ -93,20 +97,11 @@ class VrData(object):
         # Action replay does not use VR settings, so we leave this as an empty list
         self.vr_data_dict['vr_settings'] = []
 
-    def refresh_muvr_data(self, muvr_data):
+    def to_dict(self):
         """
-        Updates the vr dictionary with data from MUVR.
+        Returns dictionary form of the VrData class - perfect for sending over networks
         """
-        for device in self.devices:
-            device_data = muvr_data[device]
-            self.vr_data_dict[device] = device_data[:6]
-            if device in self.controllers:
-                self.vr_data_dict['{}_button'.format(device)] = device_data[6:]
-
-        self.vr_data_dict['eye_data'] = muvr_data['eye_data']
-        self.vr_data_dict['event_data'] = muvr_data['event_data']
-        self.vr_data_dict['vr_positions'] = [muvr_data['vr_pos'], muvr_data['vr_offset']]
-        self.vr_data_dict['vr_settings'] = muvr_data['vr_settings']
+        return self.vr_data_dict
 
     def print_data(self):
         """ Utility function to print VrData object in a pretty fashion. """
