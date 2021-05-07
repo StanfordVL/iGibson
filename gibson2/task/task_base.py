@@ -16,6 +16,8 @@ from gibson2.objects.vr_objects import VrAgent
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
+from tasknet.logic_base import AtomicPredicate
+
 import logging
 import networkx as nx
 from IPython import embed
@@ -121,7 +123,12 @@ class iGTNTask(TaskNetTask):
                 if len(cond) == 3 and cond[2] in cur_batch:
                     next_batch.add(cond[1])
             cur_batch = next_batch
-        remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+
+        if len(self.sampling_orders) > 0:
+            remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
+        else:
+            remaining_objs = self.object_scope.keys()
+
         if len(remaining_objs) != 0:
             error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
                 ', '.join(remaining_objs))
@@ -409,7 +416,7 @@ class iGTNTask(TaskNetTask):
                                           name=tasknet_object_scope[obj_inst],
                                           scene=self.scene,
                                           room_instance=room_inst)
-                elif 'agent' in obj_inst:
+                elif obj_inst == "agent.n.01_1":
                     # Skip adding agent to object scope, handled later by import_agent()
                     continue
                 else:
@@ -435,6 +442,10 @@ class iGTNTask(TaskNetTask):
         # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
+            if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
+                print(
+                    "Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
                 positive = False
@@ -605,7 +616,7 @@ class iGTNTask(TaskNetTask):
                                 if isinstance(goal_condition, Negation):
                                     continue
                                 # only sample kinematic goal condition
-                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
                                     continue
                                 if scene_obj not in goal_condition.body:
                                     continue
@@ -757,20 +768,21 @@ class iGTNTask(TaskNetTask):
             if condition.STATE_NAME in ['inside', 'ontop']:
                 condition.kwargs['use_ray_casting_method'] = True
 
-        # Pop non-sampleable objects
-        self.sampling_orders.pop(0)
-        for cur_batch in self.sampling_orders:
-            for condition, positive in sampleable_obj_conditions:
-                # Sample conditions that involve the current batch of objects
-                if condition.body[0] in cur_batch:
-                    success = condition.sample(binary_state=positive)
-                    if not success:
-                        error_msg = 'Sampleable object conditions failed: {}'.format(
-                            condition.body)
-                        logging.warning(error_msg)
-                        feedback['init_success'] = 'no',
-                        feedback['init_feedback'] = error_msg
-                        return False, feedback
+        if len(self.sampling_orders) > 0:
+            # Pop non-sampleable objects
+            self.sampling_orders.pop(0)
+            for cur_batch in self.sampling_orders:
+                for condition, positive in sampleable_obj_conditions:
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        success = condition.sample(binary_state=positive)
+                        if not success:
+                            error_msg = 'Sampleable object conditions failed: {}'.format(
+                                condition.body)
+                            logging.warning(error_msg)
+                            feedback['init_success'] = 'no',
+                            feedback['init_feedback'] = error_msg
+                            return False, feedback
 
         return True, feedback
 
@@ -815,7 +827,7 @@ class iGTNTask(TaskNetTask):
                             goal_condition = goal_condition.children[0]
                             if isinstance(goal_condition, Negation):
                                 continue
-                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
                                 continue
                             if scene_obj not in goal_condition.body:
                                 continue
