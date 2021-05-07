@@ -49,7 +49,8 @@ SUPPORTED_PREDICATES = {
     'soaked': get_unary_atomic_predicate_for_state(object_states.Soaked, 'soaked'),
     'open': get_unary_atomic_predicate_for_state(object_states.Open, 'open'),
     'dusty': get_unary_atomic_predicate_for_state(object_states.Dusty, 'dusty'),
-    'stained': get_unary_atomic_predicate_for_state(object_states.Stained, 'stained')
+    'stained': get_unary_atomic_predicate_for_state(object_states.Stained, 'stained'),
+    'sliced': get_unary_atomic_predicate_for_state(object_states.Sliced, 'sliced'),
 }
 
 

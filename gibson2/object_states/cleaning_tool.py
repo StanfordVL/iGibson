@@ -1,5 +1,5 @@
 from gibson2.external.pybullet_tools.utils import aabb_contains_point
-from gibson2.object_states import AABB
+from gibson2.object_states.aabb import AABB
 from gibson2.object_states.dirty import Dusty, Stained
 from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.toggle import ToggledOn

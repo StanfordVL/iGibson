@@ -2,7 +2,7 @@ import numpy as np
 import pybullet as p
 import cv2
 from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb, get_aabb
-from gibson2.object_states import AABB
+from gibson2.object_states.aabb import AABB
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
 import gibson2
 from IPython import embed
