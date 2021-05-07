@@ -54,6 +54,7 @@ class VrAgent(object):
         self.normal_color = normal_color
         self.use_hand_prim = use_hand_prim
         self.activated = False
+        self.constraints_active = False
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
@@ -70,7 +71,7 @@ class VrAgent(object):
             self.vr_dict['left_hand'].set_other_hand(self.vr_dict['right_hand'])
             self.vr_dict['right_hand'].set_other_hand(self.vr_dict['left_hand'])
         if self.use_body:
-            self.vr_dict['body'] = VrBody(self.sim, normal_color=self.normal_color)
+            self.vr_dict['body'] = VrBody(self.sim, self, normal_color=self.normal_color)
             self.vr_dict['left_hand'].set_body(self.vr_dict['body'])
             self.vr_dict['right_hand'].set_body(self.vr_dict['body'])
         if self.use_gaze_marker:
@@ -86,6 +87,23 @@ class VrAgent(object):
         self.vr_dict['right_hand'].set_colliders(enabled)
         self.vr_dict['body'].set_colliders(enabled)
 
+    def set_position_orientation(self, pos, orn):
+        self.vr_dict['body'].set_position_orientation_unwrapped(pos, orn)
+        self.vr_dict['left_hand'].set_position_orientation((pos[0], pos[1] + 0.2, 0.7), orn)
+        self.vr_dict['right_hand'].set_position_orientation((pos[0], pos[1] - 0.2, 0.7), orn)
+
+        if not self.constraints_active:
+            self.activate_constraints()
+            self.constraints_active = True
+
+        body_pos, body_orn = self.vr_dict['body'].get_position_orientation()
+        left_pos, left_orn = self.vr_dict['left_hand'].get_position_orientation()
+        right_pos, right_orn = self.vr_dict['right_hand'].get_position_orientation()
+
+        self.vr_dict['body'].move(body_pos, body_orn)
+        self.vr_dict['left_hand'].move(left_pos, left_orn)
+        self.vr_dict['right_hand'].move(right_pos, right_orn)
+
     def update(self, vr_data=None):
         """
         Updates VR agent - transforms of all objects managed by this class.
@@ -94,11 +112,13 @@ class VrAgent(object):
         if not self.activated:
             self.set_colliders(enabled=False)
             body_position = self.vr_dict['body'].get_position()
-            self.vr_dict['left_hand'].set_position((body_position[0], body_position[1]-0.2, 1.0))
-            self.vr_dict['right_hand'].set_position((body_position[0], body_position[1]+0.2, 1.0))
+            self.vr_dict['left_hand'].set_position((body_position[0], body_position[1] + 0.2, 1.0))
+            self.vr_dict['right_hand'].set_position((body_position[0], body_position[1] - 0.2, 1.0))
             if not vr_data:
                 self.sim.set_vr_offset((body_position[0], body_position[1], 0.0))
-            self.activate_constraints()
+            if not self.constraints_active:
+                self.activate_constraints()
+                self.constraints_active = True
             self.activated = True
 
         for vr_obj in self.vr_dict.values():
@@ -139,8 +159,9 @@ class VrBody(ArticulatedObject):
     them from moving through physical objects and wall, as well
     as other VR users.
     """
-    def __init__(self, s, normal_color=True):
+    def __init__(self, s, parent, normal_color=True):
         self.sim = s
+        self.parent = parent
         self.normal_color = normal_color
         # Determine whether to use torso tracker for control
         self.torso_tracker_serial = self.sim.vr_settings.torso_tracker_serial
@@ -172,6 +193,12 @@ class VrBody(ArticulatedObject):
 
         return body_id
 
+    def set_position_orientation_unwrapped(self, pos, orn):
+        super(VrBody, self).set_position_orientation(pos, orn)
+
+    def set_position_orientation(self, pos, orn):
+        self.parent.set_position_orientation(pos, orn)
+            
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
         set_all_collisions(self.body_id, int(enabled))
@@ -202,6 +229,9 @@ class VrBody(ArticulatedObject):
                 for col_link_idx in col_link_idxs:
                     p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
     
+    def move(self, pos, orn):
+        p.changeConstraint(self.movement_cid, pos, orn, maxForce=50)
+
     def update(self, vr_data=None):
         """
         Updates VrBody to new position and rotation, via constraints.
@@ -526,7 +556,7 @@ class VrHand(VrHandBase):
                                     targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position())
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
         # Start ghost hand where the VR hand starts
         if self.enable_ghost_hand:
             self.ghost_hand.set_position(self.get_position())
