@@ -5,8 +5,7 @@ import json
 import random
 import math
 import uuid
-
-
+from gibson2.object_states.factory import _TEXTURE_CHANGE_PRIORITY
 
 class Material(object):
     """
@@ -108,11 +107,19 @@ class ProceduralMaterial(Material):
                 self.roughness_texture_id, self.normal_texture_id, self.kd)
         )
 
-    def change_material(self, state, state_bool):
-        print(self.texture_ids)
-        if self.texture_ids[state][state_bool] != self.texture_id:
-            self.texture_id = self.texture_ids[state][state_bool]
-            self.request_update = True
+    def request_texture_change(self, state, state_bool):
+        if state_bool:
+            if _TEXTURE_CHANGE_PRIORITY[state] > self.priority_stack[-1]:
+                if self.texture_ids[state][state_bool] != self.texture_id:
+                    self.texture_id = self.texture_ids[state][state_bool]
+                    self.request_update = True
+                self.priority_stack.append(_TEXTURE_CHANGE_PRIORITY[state])
+        elif _TEXTURE_CHANGE_PRIORITY[state] == self.priority_stack[-1]:
+            # if a high priority item gets set to False, pop the priority stack
+            if self.texture_ids[state][state_bool] != self.texture_id:
+                self.texture_id = self.texture_ids[state][state_bool]
+                self.request_update = True
+            self.priority_stack.pop()
 
     def add_state(self, state):
         self.states.append(state)
