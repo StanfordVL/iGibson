@@ -93,5 +93,5 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         }
 
     def _load(self, data):
-        self.set_value(data["value"])
+        self.value = data["value"]
         self.hand_in_marker_steps = data["hand_in_marker_steps"]

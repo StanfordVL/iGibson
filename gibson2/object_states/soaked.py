@@ -31,7 +31,7 @@ class Soaked(AbsoluteObjectState, BooleanState):
         return self.value
 
     def _load(self, data):
-        self.set_value(data)
+        self.value = data
 
     @staticmethod
     def get_optional_dependencies():

@@ -72,4 +72,4 @@ class Temperature(AbsoluteObjectState):
         return self.value
 
     def _load(self, data):
-        self.set_value(data)
+        self.value = data
