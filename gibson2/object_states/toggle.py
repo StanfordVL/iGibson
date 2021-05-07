@@ -14,7 +14,6 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
     def __init__(self, obj):
         super(ToggledOn, self).__init__(obj)
         self.value = False
-        self.marker_added = False
         self.hand_in_marker_steps = 0
 
     def _get_value(self):

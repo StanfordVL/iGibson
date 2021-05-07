@@ -157,7 +157,6 @@ class ParticleSystem(object):
         if particle is not None:
             self._stashed_particles.remove(particle)
         else:
-            # This assumes that the stashed particle has been moved to the appropriate position already.
             particle = self._stashed_particles.popleft()
         particle.set_position_orientation(position, orientation)
         particle.force_wakeup()
@@ -258,6 +257,7 @@ class WaterStream(ParticleSystem):
         # Unstash particles in dump.
         if self.particle_poses_from_dump:
             for i, particle_pose in enumerate(self.particle_poses_from_dump):
+                # particle_data will be None for stashed particles
                 if particle_pose is not None:
                     particle = self.get_particles()[i]
                     self.unstash_particle(particle_pose[0], particle_pose[1], particle)
@@ -322,6 +322,7 @@ class _Dirt(AttachedParticleSystem):
         # Unstash particles in dump.
         if self.from_dump:
             for i, particle_data in enumerate(self.from_dump):
+                # particle_data will be None for stashed particles
                 if particle_data is not None:
                     particle_attached_link_id, particle_pos, particle_orn = particle_data
                     particle = self.get_particles()[i]
