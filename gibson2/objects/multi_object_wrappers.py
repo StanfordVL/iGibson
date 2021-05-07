@@ -1,4 +1,4 @@
-from gibson2.object_states.factory import ALL_STATES
+from gibson2.object_states.factory import get_all_states
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.object_base import Object
 from gibson2.objects.stateful_object import StatefulObject
@@ -60,7 +60,7 @@ class ObjectGrouper(StatefulObject):
             if issubclass(state_type, AbsoluteObjectState)
             else
             ObjectGrouper.RelativeStateAggregator(state_type, self)
-            for state_type in ALL_STATES}
+            for state_type in get_all_states()}
 
     def __getattr__(self, item):
         # Check if the attr is the same for everything

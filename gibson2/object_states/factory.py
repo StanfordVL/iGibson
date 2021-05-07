@@ -2,56 +2,60 @@ import networkx as nx
 from gibson2.object_states import *
 from gibson2.object_states.object_state_base import BaseObjectState
 
-ALL_STATES = frozenset([
+_ALL_STATES = frozenset([
     AABB,
-    VerticalAdjacency,
     Burnt,
+    CleaningTool,
     ContactBodies,
     Cooked,
     DummyState,
-    HeatSource,
+    Dusty,
+    Frozen,
+    HeatSourceOrSink,
+    HorizontalAdjacency,
     Inside,
     MaxTemperature,
     NextTo,
+    OnFloor,
     OnTop,
     Open,
     Pose,
-    Temperature,
-    Touching,
-    Under,
-    Soaked,
-    Dusty,
-    Stained,
-    ToggledOn,
-    WaterSource,
-    CleaningTool,
-    OnFloor,
     Sliced,
     Slicer,
+    Soaked,
+    Stained,
+    Temperature,
+    ToggledOn,
+    Touching,
+    Under,
+    VerticalAdjacency,
+    WaterSource,
 ])
 
 _ABILITY_TO_STATE_MAPPING = {
-    "cookable": [Cooked],
-    "soakable": [Soaked],
-    "dustyable": [Dusty],
-    "scrubbable": [Stained],
-    "water_source": [WaterSource],
-    "cleaning_tool": [CleaningTool],
-    "toggleable": [ToggledOn],
     "burnable": [Burnt],
-    "heatSource": [HeatSource],
+    "cleaning_tool": [CleaningTool],
+    "coldSource": [HeatSourceOrSink],
+    "cookable": [Cooked],
+    "dustyable": [Dusty],
+    "freezable": [Frozen],
+    "heatSource": [HeatSourceOrSink],
     "openable": [Open],
+    "scrubbable": [Stained],
     "sliceable": [Sliced],
     "slicer": [Slicer],
+    "soakable": [Soaked],
+    "toggleable": [ToggledOn],
+    "water_source": [WaterSource],
 }
 
 _DEFAULT_STATE_SET = frozenset([
-    OnTop,
     Inside,
     NextTo,
-    Under,
-    Touching,
     OnFloor,
+    OnTop,
+    Touching,
+    Under,
 ])
 
 
@@ -60,7 +64,7 @@ def get_default_states():
 
 
 def get_all_states():
-    return ALL_STATES
+    return _ALL_STATES
 
 
 def get_states_for_ability(ability):
