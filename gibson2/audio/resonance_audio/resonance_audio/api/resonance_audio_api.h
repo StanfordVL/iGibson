@@ -387,6 +387,13 @@ class ResonanceAudioApi {
   virtual void SetSoundObjectOcclusionIntensity(SourceId sound_object_source_id,
                                                 float intensity) = 0;
 
+ // Sets the given sound object source's occlusion intensity based on number
+ // of collisions with the scene on a ray from source to listener.
+ //
+ // @param sound_object_source_id Id of sound object source.
+
+  virtual void EstimateAndSetSourceOcclusionIntensity(SourceId id, const SceneManager& scene_manager);
+
   // Sets the given sound object source's spread.
   //
   // @param sound_object_source_id Id of sound object source.
