@@ -36,9 +36,22 @@ class BaseObjectState(with_metaclass(ABCMeta, object)):
     def __init__(self, obj):
         super(BaseObjectState, self).__init__()
         self.obj = obj
+        self._initialized = False
+
+    def _update(self, simulator):
+        """This function will be called once for every simulator step."""
+        pass
+
+    def _initialize(self, simulator):
+        """This function will be called once, after the object has been loaded."""
+        pass
 
     def update(self, simulator):
-        pass
+        if not self._initialized:
+            self._initialize(simulator)
+            self._initialized = True
+
+        return self._update(simulator)
 
 
 class AbsoluteObjectState(BaseObjectState):
@@ -91,7 +104,7 @@ class CachingEnabledObjectState(AbsoluteObjectState):
     def clear_cached_value(self):
         self.value = None
 
-    def update(self, simulator):
+    def _update(self, simulator):
         # Reset the cached state value on Simulator step.
         super(CachingEnabledObjectState, self).update(simulator)
         self.clear_cached_value()

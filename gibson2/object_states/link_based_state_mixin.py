@@ -13,7 +13,7 @@ class LinkBasedStateMixin(object):
         raise ValueError(
             "LinkBasedState child should specify link name by overriding get_state_link_name.")
 
-    def _load_link(self):
+    def _initialize(self):
         # If we haven't tried to load the link before
         if self.body_id is None:
             # Get the body id
@@ -26,9 +26,6 @@ class LinkBasedStateMixin(object):
                 pass
 
     def get_link_position(self):
-        # Load the link if it is the first time this function is called
-        self._load_link()
-
         # The necessary link is not found
         if self.link_id is None:
             return

@@ -34,26 +34,32 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _WATER_SOURCE_LINK_NAME
 
-    def update(self, simulator):
+    def _initialize(self, simulator):
+        super(WaterSource, self)._initialize(simulator)
         water_source_position = self.get_link_position()
         if water_source_position is None:
             return
 
         water_source_position = list(
             np.array(water_source_position) + _OFFSET_FROM_LINK)
-        if self.water_stream is None:
-            self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, from_dump=self.from_dump)
-            body_ids = simulator.import_particle_system(
-                self.water_stream, use_pbr=True)
+        self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, from_dump=self.from_dump)
+        del self.from_dump
+        body_ids = simulator.import_particle_system(
+            self.water_stream, use_pbr=True)
 
-            # Set some renderer settings on these particles.
-            instances = simulator.renderer.get_instances()
-            for instance in instances:
-                if instance.pybullet_uuid in body_ids:
-                    instance.roughness = 0
-                    instance.metalness = 1
-        else:
-            self.water_stream.water_source_pos = water_source_position
+        # Set some renderer settings on these particles.
+        instances = simulator.renderer.get_instances()
+        for instance in instances:
+            if instance.pybullet_uuid in body_ids:
+                instance.roughness = 0
+                instance.metalness = 1
+
+    def _update(self, simulator):
+        water_source_position = self.get_link_position()
+        if water_source_position is None:
+            return
+
+        self.water_stream.water_source_pos = water_source_position
 
         if ToggledOn in self.obj.states:
             # sync water source state with toggleable

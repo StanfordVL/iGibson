@@ -12,7 +12,7 @@ class CleaningTool(AbsoluteObjectState):
     def __init__(self, obj):
         super(CleaningTool, self).__init__(obj)
 
-    def update(self, simulator):
+    def _update(self, simulator):
         # Check if this tool interacts with any dirt particles.
         for particle_system in simulator.particle_systems:
             if not isinstance(particle_system, _Dirt):
