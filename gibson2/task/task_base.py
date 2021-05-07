@@ -371,22 +371,22 @@ class iGTNTask(TaskNetTask):
             )
 
     def move_agent(self):
+        agent = self.agent
         if not self.online_sampling and self.scene.agent == {}:
-            agent = self.agent
             agent.vr_dict['body'].set_base_link_position_orientation(
                 [0, 0, 0.5], [0, 0, 0, 1]
             )
             agent.vr_dict['left_hand'].set_base_link_position_orientation(
-                [0, 0.2, 0.5], [0, 0, 0, 1]
+                [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5], 
             )
             agent.vr_dict['right_hand'].set_base_link_position_orientation(
-                [0, -0.2, 0.5], [0, 0, 0, 1]
+                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5] 
             )
             agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
-                [0, 0.2, 0.5], [0, 0, 0, 1]
+                [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5]
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
-                [0, 0.2, 0.5], [0, 0, 0, 1]
+                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
             )
 
     def import_scene(self):
