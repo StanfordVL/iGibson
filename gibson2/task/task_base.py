@@ -19,6 +19,7 @@ import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
 from tasknet.logic_base import AtomicPredicate
+
 import logging
 import networkx as nx
 from IPython import embed
@@ -124,10 +125,12 @@ class iGTNTask(TaskNetTask):
                 if len(cond) == 3 and cond[2] in cur_batch:
                     next_batch.add(cond[1])
             cur_batch = next_batch
+
         if len(self.sampling_orders) > 0:
             remaining_objs = self.object_scope.keys() - set.union(*self.sampling_orders)
         else:
             remaining_objs = self.object_scope.keys()
+
         if len(remaining_objs) != 0:
             error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
                 ', '.join(remaining_objs))
@@ -623,7 +626,7 @@ class iGTNTask(TaskNetTask):
                                 if isinstance(goal_condition, Negation):
                                     continue
                                 # only sample kinematic goal condition
-                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
                                     continue
                                 if scene_obj not in goal_condition.body:
                                     continue
@@ -783,8 +786,8 @@ class iGTNTask(TaskNetTask):
             if condition.STATE_NAME in ['inside', 'ontop']:
                 condition.kwargs['use_ray_casting_method'] = True
 
-        # Pop non-sampleable objects
         if len(self.sampling_orders) > 0:
+            # Pop non-sampleable objects
             self.sampling_orders.pop(0)
             for cur_batch in self.sampling_orders:
                 for condition, positive in sampleable_obj_conditions:
@@ -842,7 +845,7 @@ class iGTNTask(TaskNetTask):
                             goal_condition = goal_condition.children[0]
                             if isinstance(goal_condition, Negation):
                                 continue
-                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under']:
+                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
                                 continue
                             if scene_obj not in goal_condition.body:
                                 continue
