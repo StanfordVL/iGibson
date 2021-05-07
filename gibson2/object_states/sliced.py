@@ -54,3 +54,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
             if state in self.obj.states:
                 self.obj.multiplexer.states[state].set_value(
                     self.obj.states[state].get_value())
+
+    # TODO (Eric): We need to do something here!
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return

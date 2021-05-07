@@ -35,6 +35,12 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
     def get_value(self):
         pass
 
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return
+
     @staticmethod
     def get_dependencies():
         return AbsoluteObjectState.get_dependencies() + [ContactBodies]
