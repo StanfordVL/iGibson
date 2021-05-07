@@ -29,16 +29,16 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
                         item.normalForce > contact_obj.states[Sliced].slice_force:
                     contact_obj.states[Sliced].set_value(True)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         pass
 
-    def get_value(self):
+    def _get_value(self):
         pass
 
-    def dump(self):
+    def _dump(self):
         return None
 
-    def load(self, data):
+    def _load(self, data):
         return
 
     @staticmethod

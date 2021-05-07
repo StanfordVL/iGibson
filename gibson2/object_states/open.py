@@ -70,7 +70,7 @@ class Open(CachingEnabledObjectState, BooleanState):
         # Return open if any joint is open, false otherwise.
         return any(joint_openness)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         relevant_joint_infos = _get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
@@ -95,8 +95,8 @@ class Open(CachingEnabledObjectState, BooleanState):
             utils.set_joint_position(self.obj.get_body_id(), joint_info.jointIndex, joint_pos)
 
     # We don't need to do anything here - since the joints are saved, this should work directly.
-    def dump(self):
+    def _dump(self):
         return None
 
-    def load(self, data):
+    def _load(self, data):
         return

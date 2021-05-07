@@ -10,10 +10,10 @@ class Soaked(AbsoluteObjectState, BooleanState):
         super(Soaked, self).__init__(obj)
         self.value = False
 
-    def get_value(self):
+    def _get_value(self):
         return self.value
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         self.value = new_value
 
     def _update(self, simulator):
@@ -26,10 +26,10 @@ class Soaked(AbsoluteObjectState, BooleanState):
                     self.value = True
 
     # For this state, we simply store its value.
-    def dump(self):
+    def _dump(self):
         return self.value
 
-    def load(self, data):
+    def _load(self, data):
         self.set_value(data)
 
     @staticmethod

@@ -75,16 +75,16 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
             if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         pass
 
-    def get_value(self):
+    def _get_value(self):
         pass
 
-    def dump(self):
+    def _dump(self):
         return self.water_stream.dump()
 
-    def load(self, data):
+    def _load(self, data):
         # We need to not have loaded a water stream yet.
         assert self.water_stream is None
         self.from_dump = data

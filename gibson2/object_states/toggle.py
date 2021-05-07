@@ -17,10 +17,10 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         self.marker_added = False
         self.hand_in_marker_steps = 0
 
-    def get_value(self):
+    def _get_value(self):
         return self.value
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         self.value = new_value
 
     @staticmethod
@@ -84,12 +84,12 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         put_away_marker.set_position(_TOGGLE_MARKER_OFF_POSITION)
 
     # For this state, we simply store its value and the hand-in-marker steps.
-    def dump(self):
+    def _dump(self):
         return {
             "value": self.value,
             "hand_in_marker_steps": self.hand_in_marker_steps
         }
 
-    def load(self, data):
+    def _load(self, data):
         self.set_value(data["value"])
         self.hand_in_marker_steps = data["hand_in_marker_steps"]

@@ -17,12 +17,12 @@ class AABB(CachingEnabledObjectState):
 
         return np.array(aabb_low), np.array(aabb_hi)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         raise NotImplementedError("AABB state currently does not support setting.")
 
     # Nothing needs to be done to save/load AABB since it will happen due to pose caching.
-    def dump(self):
+    def _dump(self):
         return None
 
-    def load(self, data):
+    def _load(self, data):
         return
