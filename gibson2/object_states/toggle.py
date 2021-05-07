@@ -30,6 +30,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
     def _initialize(self, simulator):
         super(ToggledOn, self)._initialize(simulator)
+        self.initialize_link_mixin()
         self.visual_marker_on = VisualMarker(
             rgba_color=[0, 1, 0, 0.5],
             radius=_TOGGLE_BUTTON_RADIUS,

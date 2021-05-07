@@ -15,6 +15,9 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _SLICER_LINK_NAME
 
+    def _initialize(self, simulator):
+        self.initialize_link_mixin()
+
     def _update(self, simulator):
         slicer_position = self.get_link_position()
         if slicer_position is None:
