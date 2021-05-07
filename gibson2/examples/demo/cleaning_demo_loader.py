@@ -10,7 +10,6 @@ def main():
                   image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
         'Rs_int', urdf_file="potato",
-        load_object_categories=['breakfast_table'],
     )
     s.import_ig_scene(scene)
     try:
