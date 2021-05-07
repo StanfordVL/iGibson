@@ -36,6 +36,18 @@ def parse_config(config):
         config_data = yaml.load(f, Loader=yaml.FullLoader)
     return config_data
 
+def parse_str_config(config):
+    """
+    Parse string config
+    """
+    return yaml.safe_load(config)
+
+def dump_config(config):
+    """
+    Converts YML config into a string
+    """
+    return yaml.dump(config)
+
 # Geometry related
 
 
