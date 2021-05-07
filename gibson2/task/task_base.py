@@ -446,10 +446,12 @@ class iGTNTask(TaskNetTask):
                 continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
-                    if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under"]:
+                    if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
                         continue
                 else:
-                    if condition.children[0].STATE_NAME not in ["ontop", "inside", "under"]:
+                    if "agent.n.01" in condition.body:
+                        print(condition.children[0].STATE_NAME, condition.body)
+                    if condition.children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
                         continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
