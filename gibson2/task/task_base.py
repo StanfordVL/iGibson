@@ -371,7 +371,7 @@ class iGTNTask(TaskNetTask):
                                           name=tasknet_object_scope[obj_inst],
                                           scene=self.scene,
                                           room_instance=room_inst)
-                elif 'agent' in obj_inst:
+                elif obj_inst == "agent.n.01_1":
                     # Skip adding agent to object scope, handled later by import_agent()
                     continue
                 else:
