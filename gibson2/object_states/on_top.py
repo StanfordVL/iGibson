@@ -1,17 +1,16 @@
 import gibson2
-from gibson2.object_states.kinematics import KinematicsMixin
+import pybullet as p
+from IPython import embed
+from gibson2.object_states.adjacency import VerticalAdjacency
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.touching import Touching
 from gibson2.object_states.utils import clear_cached_states, sample_kinematics
-from gibson2.object_states.vertical_adjacency import VerticalAdjacency
-from IPython import embed
-import pybullet as p
 
 
-class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
+class OnTop(RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + [Touching, VerticalAdjacency]
+        return RelativeObjectState.get_dependencies() + [Touching, VerticalAdjacency]
 
     def set_value(self, other, new_value, use_ray_casting_method=False):
         state_id = p.saveState()
@@ -40,7 +39,14 @@ class OnTop(KinematicsMixin, RelativeObjectState, BooleanState):
     def get_value(self, other, use_ray_casting_method=False):
         del use_ray_casting_method
 
-        touching = self.obj.states[Touching].get_value(other)
-        adjacency = self.obj.states[VerticalAdjacency].get_value()
+        # Touching is the less costly of our conditions.
+        # Check it first.
+        if not self.obj.states[Touching].get_value(other):
+            return False
 
-        return other.get_body_id() in adjacency[0] and touching
+        # Then check vertical adjacency - it's the second least
+        # costly.
+        adjacency = self.obj.states[VerticalAdjacency].get_value()
+        return (
+            other.get_body_id() in adjacency.negative_neighbors and
+            other.get_body_id() not in adjacency.positive_neighbors)

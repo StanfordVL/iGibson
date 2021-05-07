@@ -5,6 +5,7 @@ import networkx as nx
 import numpy as np
 import pybullet as p
 from gibson2 import object_states
+from gibson2.external.pybullet_tools.utils import quat_from_euler, Euler
 from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
     prepare_object_states
 from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
@@ -85,20 +86,33 @@ def test_inside():
         obj3.set_position_orientation([0, 0, 2.1], [0, 0, 0, 1])
 
         # Run simulation for 1000 steps
-        for _ in range(1000):
+        for _ in range(100):
             s.step()
+
+        # Check that the box is not inside / touching the lower cabinet
+        assert not obj3.states[object_states.Touching].get_value(obj1)
+        assert not obj3.states[object_states.Inside].get_value(obj1)
+        assert not obj3.states[object_states.OnTop].get_value(obj1)
 
         # Now check that the box is inside / touching the upper cabinet
         assert obj3.states[object_states.Touching].get_value(obj2)
         assert obj3.states[object_states.Inside].get_value(obj2)
 
-        # Now onTop will also return True because of ray casting
-        # assert not obj3.states[object_states.OnTop].get_value(obj2)
+        # Open the doors of the cabinet and check that this still holds.
+        for joint_id in [0, 1]:
+            max_pos = p.getJointInfo(obj2.get_body_id(), joint_id)[9]
+            p.resetJointState(obj2.get_body_id(), joint_id, max_pos)
+        s.step()
+        assert obj3.states[object_states.Touching].get_value(obj2)
+        assert obj3.states[object_states.Inside].get_value(obj2)
 
-        # Now check that the box is not inside / touching the upper cabinet
-        assert not obj3.states[object_states.Touching].get_value(obj1)
-        assert not obj3.states[object_states.Inside].get_value(obj1)
-        assert not obj3.states[object_states.OnTop].get_value(obj1)
+        # Now rotate the cabinet to see if inside checking still succeeds.
+        angles = np.linspace(0, np.pi / 2, 20)
+        for angle in angles:
+            obj2.set_orientation(quat_from_euler(Euler(yaw=angle)))
+            s.step()
+            assert obj3.states[object_states.Touching].get_value(obj2)
+            assert obj3.states[object_states.Inside].get_value(obj2)
     finally:
         s.disconnect()
 
