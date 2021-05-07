@@ -129,7 +129,7 @@ class Simulator:
             round(self.fixed_frame_dur / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
         # Leave a small amount of time before the last vsync, just in case we overrun
-        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 10e-3
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
 

@@ -514,7 +514,8 @@ class URDFObject(StatefulObject):
         # Change the joints of the added object to adapt them to the given name
         for joint_emb in self.object_tree.iter('joint'):
             # We change the joint name
-            joint_emb.attrib["name"] = self.get_prefixed_joint_name(joint_emb.attrib["name"])
+            joint_emb.attrib["name"] = self.get_prefixed_joint_name(
+                joint_emb.attrib["name"])
             # We change the child link names
             for child_emb in joint_emb.findall('child'):
                 # If the original urdf already contains world link, do not rename
@@ -1029,7 +1030,8 @@ class URDFObject(StatefulObject):
         :return: position in xyz
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             pos, _ = p.getLinkState(body_id, 0)[0:2]
         else:
             pos, _ = p.getBasePositionAndOrientation(body_id)
@@ -1042,7 +1044,8 @@ class URDFObject(StatefulObject):
         :return: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             _, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             _, orn = p.getBasePositionAndOrientation(body_id)
@@ -1056,7 +1059,8 @@ class URDFObject(StatefulObject):
         :return: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             pos, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             pos, orn = p.getBasePositionAndOrientation(body_id)
@@ -1069,7 +1073,8 @@ class URDFObject(StatefulObject):
         :param pos: position in xyz
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             logging.warning('cannot set_position for fixed objects')
         else:
             _, old_orn = p.getBasePositionAndOrientation(body_id)
@@ -1082,7 +1087,8 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             logging.warning('cannot set_orientation for fixed objects')
         else:
             old_pos, _ = p.getBasePositionAndOrientation(body_id)
@@ -1095,11 +1101,19 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
             logging.warning(
                 'cannot set_position_orientation for fixed objects')
         else:
             p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+    def set_base_link_position_orientation(self, pos, orn):
+        body_id = self.get_body_id()
+        dynamics_info = p.getDynamicsInfo(body_id, -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
+        self.set_position_orientation(pos, orn)
 
     def get_body_id(self):
         return self.body_ids[self.main_body]
@@ -1112,5 +1126,5 @@ class URDFObject(StatefulObject):
         :param meta_links: Dictionary of meta links in the form of {link_name: [linkX, linkY, linkZ]}
         :return: None.
         """
-        for meta_link_name, offset in meta_links.items():
-            add_fixed_link(self.object_tree, meta_link_name, offset)
+        for meta_link_name, link_info in meta_links.items():
+            add_fixed_link(self.object_tree, meta_link_name, link_info)
