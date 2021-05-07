@@ -47,7 +47,7 @@ def main():
         tray_urdf = os.path.join(tray_dir, 'tray_000.urdf')
         tray = URDFObject(tray_urdf, name="tray", category="tray", model_path=tray_dir, scale=np.array([0.1,0.1,0.1]))
         s.import_object(tray)
-        tray.set_position([0, 0, 1.5])
+        tray.set_position([0, 0, 1.55])
 
         fridge_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/fridge/12252/')
@@ -64,9 +64,17 @@ def main():
         apple_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/apple/00_0/')
         apple_urdf = os.path.join(apple_dir, "00_0.urdf")
-        apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir, texture_procedural_generation=True)
-        s.import_object(apple)
-        apple.set_position([0, 0, 1.6])
+
+        apples = []
+        for i in range(5):
+            apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir, texture_procedural_generation=True)
+            s.import_object(apple)
+            apple.set_position([0, i * 0.05, 1.65])
+            apples.append(apple)
+
+        s.step()
+        for apple in apples:
+            apple.states[object_states.Temperature].set_value(-50)
 
         # Run simulation for 1000 steps
         while True:
