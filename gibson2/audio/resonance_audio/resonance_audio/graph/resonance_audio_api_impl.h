@@ -101,6 +101,7 @@ class ResonanceAudioApiImpl : public ResonanceAudioApi {
                                          float gain) override;
   void SetSoundObjectOcclusionIntensity(SourceId sound_object_source_id,
                                         float intensity) override;
+  void EstimateAndSetSourceOcclusionIntensity(SourceId id, const SceneManager& scene_manager);
   void SetSoundObjectSpread(SourceId sound_object_source_id,
                             float spread_deg) override;
 

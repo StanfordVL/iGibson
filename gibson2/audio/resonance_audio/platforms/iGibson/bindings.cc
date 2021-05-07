@@ -291,6 +291,8 @@ namespace igibson {
         py::buffer_info out_buf = output_py.request();
         int16* output = static_cast<int16*>(out_buf.ptr);
 
+        EstimateAndUpdateOcclusion(source_id);
+
         ProcessListener(num_frames, output);
 
         return output_py; 

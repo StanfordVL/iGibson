@@ -33,6 +33,10 @@ limitations under the License.
 #include "utils/planar_interleaved_conversion.h"
 #include "utils/sample_type_conversion.h"
 
+#include "geometrical_acoustics/acoustic_ray.h"
+#include "geometrical_acoustics/occlusion_ray.h"
+#include "geometrical_acoustics/scene_manager.h"
+
 namespace vraudio {
 
 namespace {
@@ -408,6 +412,27 @@ void ResonanceAudioApiImpl::SetSoundObjectOcclusionIntensity(
   };
   task_queue_.Post(task);
 }
+
+void ResonanceAudioApiImpl::EstimateAndSetSourceOcclusionIntensity(SourceId id, const SceneManager& scene_manager) {
+    const auto& listener_position = system_settings_.GetHeadPosition();
+    const auto source_parameters = system_settings_.GetSourceParametersManager()->GetParameters(id);
+    const auto& source_position = source_parameters->object_transform.position;
+    auto direction = listener_position - source_position;
+
+    AcousticRay ray;
+    ray.set_origin(source_position.data());
+    ray.set_direction(direction.data());
+    ray.set_t_far(direction.norm());
+
+    HitList hits;
+    RayHits(ray, hits, scene_manager.scene());
+    if (hits.size() != source_parameters->occlusion_intensity) {
+        LOG(WARNING) << "Changing occlusion to " << hits.size();
+    }
+    
+    this->SetSoundObjectOcclusionIntensity(id, hits.size());
+}
+
 
 void ResonanceAudioApiImpl::SetSoundObjectSpread(
     SourceId sound_object_source_id, float spread_deg) {

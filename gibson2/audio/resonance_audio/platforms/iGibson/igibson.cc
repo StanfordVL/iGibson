@@ -8,6 +8,7 @@
 #include "base/logging.h"
 #include "base/misc_math.h"
 #include "graph/resonance_audio_api_impl.h"
+#include "geometrical_acoustics/occlusion_ray.h"
 #include "platforms/common/room_effects_utils.h"
 #include "bindings.h"
 
@@ -238,6 +239,11 @@ void SetRoomProperties(RoomProperties* room_properties, float* rt60s) {
                 rt60s, room_properties->reverb_brightness,
                 room_properties->reverb_time, room_properties->reverb_gain);
   resonance_audio_copy->api->SetReverbProperties(reverb_properties);
+}
+
+void EstimateAndUpdateOcclusion(int id) {
+    auto resonance_audio_copy = resonance_audio;
+    resonance_audio_copy->api->EstimateAndSetSourceOcclusionIntensity(id);
 }
 
 }

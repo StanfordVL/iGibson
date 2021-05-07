@@ -127,6 +127,8 @@ void SetSourceNearFieldEffectGain(ResonanceAudioApi::SourceId id,
 void SetSourceOcclusionIntensity(ResonanceAudioApi::SourceId id,
                                  float intensity);
 
+void EstimateAndUpdateOcclusion(int id);
+
 // Sets the room effects gain for the source.
 void SetSourceRoomEffectsGain(ResonanceAudioApi::SourceId id,
                               float room_effects_gain);
