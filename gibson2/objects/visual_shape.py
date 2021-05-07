@@ -14,6 +14,7 @@ class VisualShape(Object):
         Create a visual shape to show in pybullet and MeshRenderer
 
         :param filename: obj filename
+        :param scale: obj scale
         """
         super(VisualShape, self).__init__()
         self.filename = filename
