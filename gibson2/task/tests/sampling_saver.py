@@ -1,4 +1,3 @@
-from gibson2 import object_states
 from gibson2.task.task_base import iGTNTask
 from gibson2.simulator import Simulator
 from IPython import embed
@@ -60,7 +59,7 @@ def main():
         "Wainscott_0_int",
         "Wainscott_1_int",
     ]
-    scene_choices = ['Beechwood_0_int']
+    # scene_choices = ['Rs_int']
     num_initializations = args.num_initializations
     num_trials = args.max_trials
     simulator = Simulator(
@@ -101,11 +100,6 @@ def main():
                     break
 
             if success:
-                # Enable some particle states
-                for obj in igtn_task.scene.get_objects_with_state(object_states.Stained):
-                    if object_states.Stained in obj.states:
-                        obj.states[object_states.Stained].set_value(True)
-
                 # Step the simulation once to let everything initialize.
                 igtn_task.simulator.step()
 
