@@ -119,6 +119,7 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
 
     def _initialize(self, simulator):
         super(HeatSourceOrSink, self)._initialize(simulator)
+        self.initialize_link_mixin()
         self.marker = VisualShape(
             _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
         simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)

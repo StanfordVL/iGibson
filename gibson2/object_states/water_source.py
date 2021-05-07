@@ -36,6 +36,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
     def _initialize(self, simulator):
         super(WaterSource, self)._initialize(simulator)
+        self.initialize_link_mixin()
         water_source_position = self.get_link_position()
         if water_source_position is None:
             return
@@ -59,6 +60,8 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         if water_source_position is None:
             return
 
+        water_source_position = list(
+            np.array(water_source_position) + _OFFSET_FROM_LINK)
         self.water_stream.water_source_pos = water_source_position
 
         if ToggledOn in self.obj.states:
