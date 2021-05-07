@@ -47,7 +47,7 @@ def main():
             gibson2.ig_dataset_path, 'objects/fridge/12252/')
         fridge_urdf = os.path.join(fridge_dir, "12252.urdf")
         fridge = URDFObject(fridge_urdf, name="fridge", category="fridge", model_path=fridge_dir, abilities={
-            "cold_source": {
+            "coldSource": {
                 "temperature": -100.0,
                 "requires_inside": True,
             }
