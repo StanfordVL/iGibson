@@ -100,9 +100,6 @@ def main():
                     break
 
             if success:
-                # Step the simulation once to let everything initialize.
-                igtn_task.simulator.step()
-
                 sim_obj_to_pddl_obj = {
                     value.name: {'object_scope': key}
                     for key, value in igtn_task.object_scope.items()}
