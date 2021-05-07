@@ -222,8 +222,7 @@ class iGTNTask(TaskNetTask):
                 continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
-            is_sliceable = self.object_taxonomy.has_ability(
-                obj_cat, 'sliceable')
+            is_sliceable = False
             categories = \
                 self.object_taxonomy.get_subtree_igibson_categories(
                     obj_cat)

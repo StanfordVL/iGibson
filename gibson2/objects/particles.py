@@ -336,15 +336,16 @@ class _Dirt(AttachedParticleSystem):
         for i, particle in enumerate(self.get_stashed_particles()):
             position, normal, quaternion, hit_link, reasons = results[i]
 
-            # Compute the point to stick the particle to.
-            surface_point = position
-            if self._clip_into_object:
-                # Shift the object halfway down.
-                cuboid_base_to_center = bbox_sizes[2] / 2.
-                surface_point -= normal * cuboid_base_to_center
+            if position is not None:
+                # Compute the point to stick the particle to.
+                surface_point = position
+                if self._clip_into_object:
+                    # Shift the object halfway down.
+                    cuboid_base_to_center = bbox_sizes[2] / 2.
+                    surface_point -= normal * cuboid_base_to_center
 
-            # Unstash the particle (and make sure we get the correct one!)
-            assert self.unstash_particle(surface_point, quaternion, link_id=hit_link, particle=particle) == particle
+                # Unstash the particle (and make sure we get the correct one!)
+                assert self.unstash_particle(surface_point, quaternion, link_id=hit_link, particle=particle) == particle
 
     def dump(self):
         data = []
