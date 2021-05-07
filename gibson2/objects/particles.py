@@ -217,7 +217,6 @@ class AttachedParticleSystem(ParticleSystem):
 
 class WaterStream(ParticleSystem):
     _DROP_PERIOD = 0.1  # new water every this many seconds.
-    _STEP_RANDOMIZATION_MULTIPLIER = 3  # Each step will count between 0 and this # of steps for interval randomization.
     _SIZE_OPTIONS = np.array([
         [0.02] * 3,
         [0.018] * 3,
@@ -278,7 +277,7 @@ class WaterStream(ParticleSystem):
 
         # If enough time hasn't passed since last drop, return.
         if self.steps_since_last_drop_step < self._DROP_PERIOD / simulator.render_timestep:
-            self.steps_since_last_drop_step += np.random.uniform(0, self._STEP_RANDOMIZATION_MULTIPLIER)
+            self.steps_since_last_drop_step += 1
             return
 
         # Otherwise, create & drop the water.
