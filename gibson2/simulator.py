@@ -560,10 +560,13 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
-                    overwrite_material = None
-                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
-                        overwrite_material = visual_mesh_to_material[filename]
+                overwrite_material = None
+                if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                    overwrite_material = visual_mesh_to_material[filename]
+
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys() or \
+                    overwrite_material is not None:
+                    # create separate objects for each overwrite material
                     self.renderer.load_object(
                         filename,
                         transform_orn=rel_orn,

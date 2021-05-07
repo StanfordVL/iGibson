@@ -2,10 +2,11 @@ from gibson2.object_states.contact_bodies import ContactBodies
 from gibson2.object_states.water_source import WaterSource
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
-from gibson2.object_states.texture_change_state import TextureChangeState
+from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from gibson2.utils.utils import transform_texture
 
 
-class Soaked(TextureChangeState, AbsoluteObjectState, BooleanState):
+class Soaked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
 
     def __init__(self, obj):
         super(Soaked, self).__init__(obj)
@@ -25,7 +26,13 @@ class Soaked(TextureChangeState, AbsoluteObjectState, BooleanState):
             for particle in water_source_obj.states[WaterSource].water_stream.get_active_particles():
                 if particle.body_id in contacted_water_body_ids:
                     self.value = True
+        self.update_texture()
 
     @staticmethod
     def get_optional_dependencies():
         return [WaterSource]
+
+    @staticmethod
+    def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
+        # 0.5 mixture with blue
+        transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))

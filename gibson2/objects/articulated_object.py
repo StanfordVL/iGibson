@@ -15,7 +15,7 @@ import math
 
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.texture_change_state import TextureChangeState
+from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
@@ -926,7 +926,7 @@ class URDFObject(StatefulObject):
         procedural_material = None
 
         for state in self.states:
-            if issubclass(state, TextureChangeState):
+            if issubclass(state, TextureChangeStateMixin):
                 procedural_material = ProceduralMaterial(material_folder=os.path.join(self.model_path, 'material'))
                 # check each visual object belongs to which sub URDF in case of splitting
                 for i, urdf_path in enumerate(self.urdf_paths):
@@ -945,7 +945,7 @@ class URDFObject(StatefulObject):
 
         if has_procedural_material:
             for state in self.states:
-                if issubclass(state, TextureChangeState):
+                if issubclass(state, TextureChangeStateMixin):
                     procedural_material.add_state(state)
                     self.states[state].material = procedural_material
 

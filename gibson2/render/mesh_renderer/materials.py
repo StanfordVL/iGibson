@@ -4,9 +4,9 @@ import os
 import json
 import random
 import math
-from gibson2.utils.utils import transform_texture
-from gibson2 import object_states
 import uuid
+
+
 
 class Material(object):
     """
@@ -96,6 +96,8 @@ class ProceduralMaterial(Material):
         self.states = []
         self.request_update = False
         # after material changes, request_update is set to True so that optimized renderer can update the texture ids
+        self.priority_stack = [0]
+        # priority_stack keeps track of which state can write the texture
 
     def __str__(self):
         return (
@@ -107,6 +109,7 @@ class ProceduralMaterial(Material):
         )
 
     def change_material(self, state, state_bool):
+        print(self.texture_ids)
         if self.texture_ids[state][state_bool] != self.texture_id:
             self.texture_id = self.texture_ids[state][state_bool]
             self.request_update = True
@@ -118,15 +121,8 @@ class ProceduralMaterial(Material):
         for state in self.states:
             diffuse_tex_filename = os.path.join(self.material_folder, "DIFFUSE.png")
             diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
-            if state == object_states.Cooked:
-                # 0.5 mixture with brown
-                transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (139, 69, 19))
-            elif state == object_states.Soaked:
-                # 0.5 mixture with blue
-                transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
-            elif state == object_states.Burnt:
-                # 0.5 mixture with blue
-                transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.8, (0, 0, 0))
+            state.create_transformed_texture(diffuse_tex_filename=diffuse_tex_filename,
+                                             diffuse_tex_filename_transformed=diffuse_tex_filename_transformed)
             self.texture_filenames[state] = diffuse_tex_filename_transformed
 
 class RandomizedMaterial(Material):
