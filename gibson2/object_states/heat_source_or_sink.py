@@ -1,24 +1,38 @@
+import os
+
+import gibson2
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.inside import Inside
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.toggle import ToggledOn
+from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.open import Open
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
+from gibson2.object_states.toggle import ToggledOn
 
 # The name of the heat source link inside URDF files.
+from gibson2.objects.visual_shape import VisualShape
+
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
 
+_HEATING_ELEMENT_MARKER_SCALE = 1.0
+_HEATING_ELEMENT_MARKER_FILENAME = os.path.join(
+    gibson2.assets_path, "models/fire/fire.obj"
+)
+
+# TODO: Delete default values for this and make them required.
 _DEFAULT_TEMPERATURE = 200
 _DEFAULT_HEATING_RATE = 0.04
 _DEFAULT_DISTANCE_THRESHOLD = 0.2
 
 
-class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
+class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     """
-    This state indicates the heat source state of the object.
+    This state indicates the heat source or heat sink state of the object.
 
-    Currently, if the object is not an active heat source, this returns None. Otherwise, it returns the position of the
-    heat source element. E.g. on a stove object the coordinates of the heating element will be returned.
+    Currently, if the object is not an active heat source/sink, this returns (False, None).
+    Otherwise, it returns True and the position of the heat source element, or (True, None) if the heat source has no
+    heating element / only checks for Inside.
+    E.g. on a stove object, True and the coordinates of the heating element will be returned.
+    on a microwave object, True and None will be returned.
     """
 
     def __init__(self,
@@ -44,9 +58,11 @@ class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
             closed (e.g. in terms of the joints) to emit heat. Requires openable
             ability if set to True.
         :param requires_inside: Whether an object needs to be `inside` the
-            heat source to receive heat. See the Inside state for details.
+            heat source to receive heat. See the Inside state for details. This
+            will mean that the "heating element" link for the object will be
+            ignored.
         """
-        super(HeatSource, self).__init__(obj)
+        super(HeatSourceOrSink, self).__init__(obj)
         self.temperature = temperature
         self.heating_rate = heating_rate
         self.distance_threshold = distance_threshold
@@ -67,34 +83,62 @@ class HeatSource(CachingEnabledObjectState, LinkBasedStateMixin):
         # we record that for use in the heat transfer process.
         self.requires_inside = requires_inside
 
+        self.marker = None
+        self.status = None
+        self.position = None
+
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [AABB, Inside]
+        return AbsoluteObjectState.get_dependencies() + [AABB, Inside]
 
     @staticmethod
     def get_optional_dependencies():
-        return CachingEnabledObjectState.get_optional_dependencies() + [ToggledOn, Open]
+        return AbsoluteObjectState.get_optional_dependencies() + [ToggledOn, Open]
 
     @staticmethod
     def get_state_link_name():
         return _HEATING_ELEMENT_LINK_NAME
 
-    def _compute_value(self):
-        # Find the link first.
+    def _compute_state_and_position(self):
+        # Find the link first. Note that the link is only required
+        # if the object is not in self.requires_inside mode.
         heating_element_position = self.get_link_position()
-        if heating_element_position is None:
-            return None
+        if not self.requires_inside and heating_element_position is None:
+            return False, None
 
         # Check the toggle state.
         if self.requires_toggled_on and not self.obj.states[ToggledOn].get_value():
-            return None
+            return False, None
 
         # Check the open state.
         if self.requires_closed and self.obj.states[Open].get_value():
-            return None
+            return False, None
 
-        # Return the heating element position.
-        return heating_element_position
+        # Return True and the heating element position (or None if not required).
+        return True, (heating_element_position if not self.requires_inside else None)
+
+    def update(self, simulator):
+        self.status, self.position = self._compute_state_and_position()
+
+        if simulator.can_access_vr_context:
+            hud_overlay_show_state = simulator.get_hud_show_state()
+        else:
+            hud_overlay_show_state = False
+
+        if self.marker is None:
+            self.marker = VisualShape(
+                _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
+
+            simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
+
+        marker_position = [0, 0, -100]
+        if self.position is not None and hud_overlay_show_state:
+            marker_position = self.position
+
+        self.marker.set_position(marker_position)
+
+    def get_value(self):
+        return self.status, self.position
 
     def set_value(self, new_value):
         raise NotImplementedError(

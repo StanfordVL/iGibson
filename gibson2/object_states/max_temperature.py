@@ -20,7 +20,7 @@ class MaxTemperature(AbsoluteObjectState):
         return self.value
 
     def set_value(self, new_value):
-        raise NotImplementedError("Setting max temperature is not supported - set temperature instead.")
+        self.value = new_value
 
     def update(self, simulator):
         self.value = max(self.obj.states[Temperature].get_value(), self.value)
