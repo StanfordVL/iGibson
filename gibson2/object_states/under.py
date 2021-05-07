@@ -1,16 +1,15 @@
-from gibson2.object_states.vertical_adjacency import VerticalAdjacency
-from gibson2.object_states.kinematics import KinematicsMixin
+import gibson2
+import pybullet as p
+from IPython import embed
+from gibson2.object_states.adjacency import VerticalAdjacency
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
-import gibson2
-from IPython import embed
-import pybullet as p
 
 
-class Under(KinematicsMixin, RelativeObjectState, BooleanState):
+class Under(RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + [VerticalAdjacency]
+        return RelativeObjectState.get_dependencies() + [VerticalAdjacency]
 
     def set_value(self, other, new_value):
         state_id = p.saveState()
@@ -37,5 +36,6 @@ class Under(KinematicsMixin, RelativeObjectState, BooleanState):
 
     def get_value(self, other):
         adjacency = self.obj.states[VerticalAdjacency].get_value()
-
-        return other.get_body_id() in adjacency[1]
+        return (
+            other.get_body_id() in adjacency.positive_neighbors and
+            other.get_body_id() not in adjacency.negative_neighbors)
