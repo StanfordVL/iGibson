@@ -3,6 +3,7 @@ import gibson2
 import logging
 import numpy as np
 from gibson2.object_states.factory import get_state_name, get_state_from_name
+from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.utils.utils import rotate_vector_3d, rotate_vector_2d
 import pybullet as p
@@ -1012,7 +1013,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if hasattr(obj, "states"):
                 state_cache = {}
                 for state_class, state_obj in obj.states.items():
-                    state_cache[get_state_name(state_class)] = state_obj.dump()
+                    if isinstance(state_obj, AbsoluteObjectState):
+                        state_cache[get_state_name(state_class)] = state_obj.dump()
 
             # The object is already in the scene URDF
             if link is not None:
