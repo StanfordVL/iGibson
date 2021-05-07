@@ -14,7 +14,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
-from gibson2.objects.particles import ParticleSystem
+from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
 
@@ -358,6 +358,7 @@ class Simulator:
             new_object_pb_ids.append(particle_pb_id)
 
         self.particle_systems.append(obj)
+        obj.initialize()
 
         return new_object_pb_ids
 
@@ -380,7 +381,7 @@ class Simulator:
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
 
-        if isinstance(obj, VisualMarker):
+        if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
             new_object_pb_id_or_ids = obj.load()
         else:
