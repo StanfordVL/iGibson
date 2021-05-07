@@ -139,6 +139,14 @@ class VerticalAdjacency(CachingEnabledObjectState):
     def get_dependencies():
         return CachingEnabledObjectState.get_dependencies() + [Pose]
 
+    # Nothing needs to be done to save/load adjacency since it will happen due to pose caching.
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return
+
+
 
 class HorizontalAdjacency(CachingEnabledObjectState):
     """State representing the object's horizontal adjacencies in a preset number of directions.
@@ -178,3 +186,10 @@ class HorizontalAdjacency(CachingEnabledObjectState):
     @staticmethod
     def get_dependencies():
         return CachingEnabledObjectState.get_dependencies() + [Pose]
+
+    # Nothing needs to be done to save/load adjacency since it will happen due to pose caching.
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return

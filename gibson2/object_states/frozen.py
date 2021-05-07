@@ -18,3 +18,10 @@ class Frozen(CachingEnabledObjectState, BooleanState):
 
     def _compute_value(self):
         return self.obj.states[Temperature].get_value() <= self.freeze_temperature
+
+    # Nothing needs to be done to save/load Frozen since it will happen due to temperature caching.
+    def dump(self):
+        return None
+
+    def load(self, data):
+        return
