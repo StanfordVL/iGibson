@@ -1,3 +1,4 @@
+import pprint 
 import numpy as np
 import os
 
@@ -725,14 +726,14 @@ class iGTNTask(TaskNetTask):
 
         # Use ray casting for ontop and inside sampling for non-sampleable objects
         for condition, positive in sampleable_obj_conditions:
-            success = condition.sample(binary_state=positive)
-            if not success:
-                logging.warning(
-                    'Sampleable object conditions failed: {}'.format(
-                        condition.body))
-                feedback['init_success'] = 'no'
-                feedback['init_feedback'] = 'Please run test sampling again.'
-                return False, feedback
+#             success = condition.sample(binary_state=positive)
+#             if not success:
+#                 logging.warning(
+#                     'Sampleable object conditions failed: {}'.format(
+#                         condition.body))
+#                 feedback['init_success'] = 'no'
+#                 feedback['init_feedback'] = 'Please run test sampling again.'
+#                 return False, feedback
             if condition.STATE_NAME in ['inside', 'ontop']:
                 condition.kwargs['use_ray_casting_method'] = True
 
