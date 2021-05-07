@@ -222,7 +222,7 @@ class iGTNTask(TaskNetTask):
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
         for obj_cat in self.objects:
-            if "agent" in obj_cat:
+            if obj_cat == 'agent.n.01':
                 continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
                 continue
