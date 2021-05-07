@@ -120,6 +120,9 @@ class ParticleSystem(object):
             self._all_particles.append(particle)
             self._stashed_particles.append(particle)
 
+    def initialize(self):
+        pass
+
     def update(self, simulator):
         pass
 
@@ -168,7 +171,7 @@ class AttachedParticleSystem(ParticleSystem):
     def __init__(self, parent_obj, **kwargs):
         super(AttachedParticleSystem, self).__init__(**kwargs)
 
-        self._parent_obj = parent_obj
+        self.parent_obj = parent_obj
         self._attachment_offsets = {}  # in the format of {particle: offset}
 
     def unstash_particle(self, position, orientation, link_id=-1, **kwargs):
@@ -176,10 +179,10 @@ class AttachedParticleSystem(ParticleSystem):
 
         # Compute the offset for this particle.
         if link_id == -1:
-            attachment_source_pos = self._parent_obj.get_position()
-            attachment_source_orn = self._parent_obj.get_orientation()
+            attachment_source_pos = self.parent_obj.get_position()
+            attachment_source_orn = self.parent_obj.get_orientation()
         else:
-            link_state = utils.get_link_state(self._parent_obj.get_body_id(), link_id)
+            link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
             attachment_source_pos = link_state.linkWorldPosition
             attachment_source_orn = link_state.linkWorldOrientation
 
@@ -201,10 +204,10 @@ class AttachedParticleSystem(ParticleSystem):
             link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
 
             if link_id == -1:
-                attachment_source_pos = self._parent_obj.get_position()
-                attachment_source_orn = self._parent_obj.get_orientation()
+                attachment_source_pos = self.parent_obj.get_position()
+                attachment_source_orn = self.parent_obj.get_orientation()
             else:
-                link_state = utils.get_link_state(self._parent_obj.get_body_id(), link_id)
+                link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
                 attachment_source_pos = link_state.linkWorldPosition
                 attachment_source_orn = link_state.linkWorldOrientation
 
@@ -249,13 +252,17 @@ class WaterStream(ParticleSystem):
         self.steps_since_last_drop_step = float('inf') if from_dump is None else from_dump["steps_since_last_drop_step"]
         self.water_source_pos = water_source_pos
         self.on = False
+        self.particle_poses_from_dump = from_dump["particle_poses"] if from_dump else None
 
+    def initialize(self):
         # Unstash particles in dump.
-        if from_dump:
-            for i, particle_pose in enumerate(from_dump["particle_poses"]):
+        if self.particle_poses_from_dump:
+            for i, particle_pose in enumerate(self.particle_poses_from_dump):
                 if particle_pose is not None:
                     particle = self.get_particles()[i]
                     self.unstash_particle(particle_pose[0], particle_pose[1], particle)
+
+            del self.particle_poses_from_dump
 
     def set_running(self, on):
         self.on = on
@@ -309,17 +316,21 @@ class _Dirt(AttachedParticleSystem):
     def __init__(self, parent_obj, clip_into_object, from_dump=None, **kwargs):
         super(_Dirt, self).__init__(parent_obj, **kwargs)
         self._clip_into_object = clip_into_object
+        self.from_dump = from_dump
 
+    def initialize(self):
         # Unstash particles in dump.
-        if from_dump:
-            for i, particle_data in from_dump:
+        if self.from_dump:
+            for i, particle_data in enumerate(self.from_dump):
                 if particle_data is not None:
                     particle_attached_link_id, particle_pos, particle_orn = particle_data
                     particle = self.get_particles()[i]
-                    self.unstash_particle(particle_pos, particle_orn, parent_obj.get_body_id(),
-                                          link_id=particle_attached_link_id, particle=particle)
+                    self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
+                                          particle=particle)
 
-    def randomize(self, obj):
+            del self.from_dump
+
+    def randomize(self):
         bbox_sizes = [particle.bounding_box for particle in self.get_stashed_particles()]
 
         # If we are going to clip into object we need half the height.
@@ -327,7 +338,7 @@ class _Dirt(AttachedParticleSystem):
             bbox_sizes = [bbox_size * np.array([1, 1, 0.5]) for bbox_size in bbox_sizes]
 
         results = sampling_utils.sample_cuboid_on_object(
-            obj, self.get_num_stashed(), [list(x) for x in bbox_sizes],
+            self.parent_obj, self.get_num_stashed(), [list(x) for x in bbox_sizes],
             self._SAMPLING_BIMODAL_MEAN_FRACTION, self._SAMPLING_BIMODAL_STDEV_FRACTION,
             self._SAMPLING_AXIS_PROBABILITIES, undo_padding=True, aabb_offset=self._SAMPLING_AABB_OFFSET,
             refuse_downwards=True)
@@ -356,10 +367,10 @@ class _Dirt(AttachedParticleSystem):
                 link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
 
                 if link_id == -1:
-                    attachment_source_pos = self._parent_obj.get_position()
-                    attachment_source_orn = self._parent_obj.get_orientation()
+                    attachment_source_pos = self.parent_obj.get_position()
+                    attachment_source_orn = self.parent_obj.get_orientation()
                 else:
-                    link_state = utils.get_link_state(self._parent_obj.get_body_id(), link_id)
+                    link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
                     attachment_source_pos = link_state.linkWorldPosition
                     attachment_source_orn = link_state.linkWorldOrientation
 
@@ -368,6 +379,7 @@ class _Dirt(AttachedParticleSystem):
                 data.append((link_id, position, orientation))
 
         return data
+
 
 class Dust(_Dirt):
     def __init__(self, parent_obj, **kwargs):
@@ -390,21 +402,33 @@ class Stain(_Dirt):
     _MESH_FILENAME = os.path.join(gibson2.assets_path, "models/stain/stain.obj")
     _MESH_BOUNDING_BOX = np.array([0.0368579992, 0.03716399827, 0.004])
 
-    def __init__(self, parent_obj, **kwargs):
-        # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
-        random_bbox_base_size = np.random.uniform(
-            self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT, self._PARTICLE_COUNT)
-        random_bbox_dims = np.stack(
-            [random_bbox_base_size, random_bbox_base_size,
-             np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2])], axis=-1)
+    def __init__(self, parent_obj, from_dump=None, **kwargs):
+        if from_dump:
+            self.random_bbox_dims = np.array(from_dump["random_bbox_dims"])
+        else:
+            # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
+            random_bbox_base_size = np.random.uniform(
+                self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT, self._PARTICLE_COUNT)
+            self.random_bbox_dims = np.stack(
+                [random_bbox_base_size, random_bbox_base_size,
+                 np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2])], axis=-1)
+
         super(Stain, self).__init__(
             parent_obj,
             clip_into_object=False,
             num=self._PARTICLE_COUNT,
-            size=random_bbox_dims,
+            size=self.random_bbox_dims,
             base_shape="mesh",
             mesh_filename=self._MESH_FILENAME,
             mesh_bounding_box=self._MESH_BOUNDING_BOX,
             visual_only=True,
+            from_dump=from_dump["dirt_dump"] if from_dump else None,
             **kwargs
         )
+
+    def dump(self):
+        return {
+            "dirt_dump": super(Stain, self).dump(),
+            "random_bbox_dims": [tuple(bbox) for bbox in self.random_bbox_dims]
+        }
+
