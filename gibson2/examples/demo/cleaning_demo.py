@@ -13,20 +13,24 @@ def main():
     s.import_ig_scene(scene)
 
     block = YCBObject(name='036_wood_block')
-    s.import_object(block)
-    block.set_position([1, 1, 1.8])
     block.abilities = ["soakable", "cleaning_tool"]
     prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
+    s.import_object(block)
+    block.set_position([1, 1, 1.8])
 
     # Set everything that can go dirty.
-    dirtyable_objects = set(
-        scene.get_objects_with_state(object_states.Dusty) + scene.get_objects_with_state(object_states.Stained))
-    for obj in dirtyable_objects:
+    stateful_objects = set(
+        scene.get_objects_with_state(object_states.Dusty) + scene.get_objects_with_state(object_states.Stained) +
+        scene.get_objects_with_state(object_states.WaterSource))
+    for obj in stateful_objects:
         if object_states.Dusty in obj.states:
             obj.states[object_states.Dusty].set_value(True)
 
         if object_states.Stained in obj.states:
             obj.states[object_states.Stained].set_value(True)
+
+        if object_states.WaterSource in obj.states:
+            obj.states[object_states.ToggledOn].set_value(True)
 
     try:
         while True:
