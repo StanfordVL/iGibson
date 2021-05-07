@@ -114,8 +114,8 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         if self.requires_closed and self.obj.states[Open].get_value():
             return False, None
 
-        # Return True and the heating element position.
-        return True, heating_element_position
+        # Return True and the heating element position (or None if not required).
+        return True, (heating_element_position if not self.requires_inside else None)
 
     def update(self, simulator):
         self.status, self.position = self._compute_state_and_position()
