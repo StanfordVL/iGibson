@@ -160,6 +160,7 @@ def sample_cuboid_on_object(obj,
         are set to None when no successful sampling happens within the max number of attempts. Refusal details are only
         filled if the debug_sampling flag is globally set to True.
     """
+    # This is imported here to avoid a circular import with object_states.
     from gibson2.object_states import AABB
     aabb = obj.states[AABB].get_value()
     aabb_min = np.array(aabb[0])
