@@ -1,4 +1,4 @@
-import pprint 
+import pprint
 import numpy as np
 import os
 
@@ -23,6 +23,9 @@ from tasknet.logic_base import AtomicPredicate
 import logging
 import networkx as nx
 from IPython import embed
+
+
+KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
 
 
 class iGTNTask(TaskNetTask):
@@ -379,10 +382,10 @@ class iGTNTask(TaskNetTask):
                 [0, 0, 0.5], [0, 0, 0, 1]
             )
             agent.vr_dict['left_hand'].set_base_link_position_orientation(
-                [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5], 
+                [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5],
             )
             agent.vr_dict['right_hand'].set_base_link_position_orientation(
-                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5] 
+                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
             )
             agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
                 [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5]
@@ -445,16 +448,15 @@ class iGTNTask(TaskNetTask):
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
             if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
-                print("Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                print(
+                    "Skipping over sampling of predicate that is not a negation or an atomic predicate")
                 continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
-                    if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
+                    if condition.children[0].children[0].STATE_NAME not in KINEMATICS_STATES:
                         continue
                 else:
-                    if "agent.n.01" in condition.body:
-                        print(condition.children[0].STATE_NAME, condition.body)
-                    if condition.children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
+                    if condition.children[0].STATE_NAME not in KINEMATICS_STATES:
                         continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
@@ -484,6 +486,9 @@ class iGTNTask(TaskNetTask):
                         # If this object is not involved in any initial conditions,
                         # success will be True by default and any simulator obj will qualify
                         for condition, positive in non_sampleable_obj_conditions:
+                            # Always skip non-kinematic state sampling. Only do so after the object scope has been finalized
+                            if condition.STATE_NAME not in KINEMATICS_STATES:
+                                continue
                             # Only sample conditions that involve this object
                             if scene_obj not in condition.body:
                                 continue
@@ -626,7 +631,7 @@ class iGTNTask(TaskNetTask):
                                 if isinstance(goal_condition, Negation):
                                     continue
                                 # only sample kinematic goal condition
-                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
+                                if goal_condition.STATE_NAME not in KINEMATICS_STATES:
                                     continue
                                 if scene_obj not in goal_condition.body:
                                     continue
@@ -837,7 +842,7 @@ class iGTNTask(TaskNetTask):
                             goal_condition = goal_condition.children[0]
                             if isinstance(goal_condition, Negation):
                                 continue
-                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
+                            if goal_condition.STATE_NAME not in KINEMATICS_STATES:
                                 continue
                             if scene_obj not in goal_condition.body:
                                 continue
