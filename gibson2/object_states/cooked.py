@@ -15,7 +15,13 @@ class Cooked(AbsoluteObjectState, BooleanState):
 
     def _set_value(self, new_value):
         current_max_temp = self.obj.states[MaxTemperature].get_value()
-        desired_max_temp = max(current_max_temp, self.cook_temperature)
+        if new_value:
+            # Set at exactly the cook temperature (or higher if we have it in history)
+            desired_max_temp = max(current_max_temp, self.cook_temperature)
+        else:
+            # Set at exactly one below cook temperature (or lower if in history).
+            desired_max_temp = min(current_max_temp, self.cook_temperature - 1.0)
+
         return self.obj.states[MaxTemperature].set_value(desired_max_temp)
 
     def _get_value(self):
