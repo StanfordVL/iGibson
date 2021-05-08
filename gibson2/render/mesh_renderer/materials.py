@@ -5,7 +5,8 @@ import json
 import random
 import math
 import uuid
-from gibson2.object_states.factory import _TEXTURE_CHANGE_PRIORITY
+from gibson2.object_states.factory import TEXTURE_CHANGE_PRIORITY
+
 
 class Material(object):
     """
@@ -63,6 +64,7 @@ class Material(object):
     def __repr__(self):
         return self.__str__()
 
+
 class ProceduralMaterial(Material):
     def __init__(self,
                  material_folder="",
@@ -90,13 +92,24 @@ class ProceduralMaterial(Material):
             normal_texture_id=normal_texture_id,
         )
         self.material_folder = material_folder
-        self.texture_ids = {}
-        self.texture_filenames = {}
+        # a list of object states that can change the material
         self.states = []
+        # mapping from object states to transformed material filenames
+        # that should be applied when the states are evaluated to be True
+        self.texture_filenames = {}
+        # mapping from object states to loaded texture ids from the material
+        # filenames stored in self.texture_filenames. Will be popuated by
+        # load_procedural_material in mesh_renderer_cpu.py
+        self.texture_ids = {}
+        # default texture id. Will be populated by load_procedural_material
+        # in mesh_renderer_cpu.py
+        self.default_texture_id = None
+
+        # after material changes, request_update is set to True so that
+        # optimized renderer can update the texture ids
         self.request_update = False
-        # after material changes, request_update is set to True so that optimized renderer can update the texture ids
-        self.priority_stack = [0]
-        # priority_stack keeps track of which state can write the texture
+        # keep tracks of all the requests since the last texture update
+        self.requests = []
 
     def __str__(self):
         return (
@@ -107,30 +120,39 @@ class ProceduralMaterial(Material):
                 self.roughness_texture_id, self.normal_texture_id, self.kd)
         )
 
-    def request_texture_change(self, state, state_bool):
-        if state_bool:
-            if _TEXTURE_CHANGE_PRIORITY[state] > self.priority_stack[-1]:
-                if self.texture_ids[state][state_bool] != self.texture_id:
-                    self.texture_id = self.texture_ids[state][state_bool]
-                    self.request_update = True
-                self.priority_stack.append(_TEXTURE_CHANGE_PRIORITY[state])
-        elif _TEXTURE_CHANGE_PRIORITY[state] == self.priority_stack[-1]:
-            # if a high priority item gets set to False, pop the priority stack
-            if self.texture_ids[state][state_bool] != self.texture_id:
-                self.texture_id = self.texture_ids[state][state_bool]
-                self.request_update = True
-            self.priority_stack.pop()
+    def request_texture_change(self, state):
+        self.requests.append(state)
 
     def add_state(self, state):
         self.states.append(state)
 
     def save_transformed_texture(self):
         for state in self.states:
-            diffuse_tex_filename = os.path.join(self.material_folder, "DIFFUSE.png")
-            diffuse_tex_filename_transformed = os.path.join('/tmp', str(uuid.uuid4()) + '.png')
+            diffuse_tex_filename = os.path.join(
+                self.material_folder, "DIFFUSE.png")
+            diffuse_tex_filename_transformed = os.path.join(
+                '/tmp', str(uuid.uuid4()) + '.png')
             state.create_transformed_texture(diffuse_tex_filename=diffuse_tex_filename,
                                              diffuse_tex_filename_transformed=diffuse_tex_filename_transformed)
             self.texture_filenames[state] = diffuse_tex_filename_transformed
+
+    def update(self):
+        if len(self.requests) == 0:
+            texture_id = self.default_texture_id
+        else:
+            requests = sorted(
+                self.requests,
+                key=lambda state: TEXTURE_CHANGE_PRIORITY[state])
+            highest_priority_state = requests[-1]
+            texture_id = self.texture_ids[highest_priority_state]
+
+        # Request update if the texture_id doesn't match the current one
+        if self.texture_id != texture_id:
+            self.texture_id = texture_id
+            self.request_update = True
+
+        self.requests.clear()
+
 
 class RandomizedMaterial(Material):
     """
@@ -164,8 +186,8 @@ class RandomizedMaterial(Material):
             normal_texture_id=normal_texture_id,
         )
         # a list of material classes, str
-        self.material_classes = \
-            self.postprocess_material_classes(material_classes)
+        self.material_classes = self.postprocess_material_classes(
+            material_classes)
         # a dict that maps from material class to a list of material files
         # {
         #     'wood': [
