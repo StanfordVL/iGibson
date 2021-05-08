@@ -122,19 +122,16 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         self.initialize_link_mixin()
         self.marker = VisualShape(
             _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
-        simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
+        simulator.import_object(
+            self.marker, use_pbr=False, use_pbr_mapping=False)
         self.marker.set_position([0, 0, -100])
 
     def _update(self, simulator):
         self.status, self.position = self._compute_state_and_position()
 
         # Move the marker.
-        if simulator.can_access_vr_context:
-            hud_overlay_show_state = simulator.get_hud_show_state()
-        else:
-            hud_overlay_show_state = False
         marker_position = [0, 0, -100]
-        if self.position is not None and hud_overlay_show_state:
+        if self.position is not None:
             marker_position = self.position
         self.marker.set_position(marker_position)
 
