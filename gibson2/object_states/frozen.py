@@ -1,6 +1,8 @@
 import numpy as np
-from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from gibson2.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from gibson2.object_states.temperature import Temperature
+from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from gibson2.utils.utils import transform_texture
 
 _DEFAULT_FREEZE_TEMPERATURE = 0.0
 
@@ -9,14 +11,21 @@ _DEFAULT_FREEZE_TEMPERATURE = 0.0
 _FROZEN_SAMPLING_RANGE_MAX = -10.0
 _FROZEN_SAMPLING_RANGE_MIN = -50.0
 
-class Frozen(CachingEnabledObjectState, BooleanState):
+
+class Frozen(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
     def __init__(self, obj, freeze_temperature=_DEFAULT_FREEZE_TEMPERATURE):
         super(Frozen, self).__init__(obj)
         self.freeze_temperature = freeze_temperature
 
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [Temperature]
+        return AbsoluteObjectState.get_dependencies() + [Temperature]
+
+    @staticmethod
+    def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
+        # 0.8 mixture with white
+        transform_texture(diffuse_tex_filename,
+                          diffuse_tex_filename_transformed, 0.8, (255, 255, 255))
 
     def _set_value(self, new_value):
         if new_value:
@@ -29,7 +38,7 @@ class Frozen(CachingEnabledObjectState, BooleanState):
             # isn't in a fridge.
             return self.obj.states[Temperature].set_value(self.freeze_temperature + 1.0)
 
-    def _compute_value(self):
+    def _get_value(self):
         return self.obj.states[Temperature].get_value() <= self.freeze_temperature
 
     # Nothing needs to be done to save/load Frozen since it will happen due to temperature caching.
@@ -38,3 +47,6 @@ class Frozen(CachingEnabledObjectState, BooleanState):
 
     def _load(self, data):
         return
+
+    def _update(self, simulator):
+        self.update_texture()

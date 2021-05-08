@@ -15,7 +15,7 @@ from gibson2.task.task_base import iGTNTask
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.simulator import Simulator
-from tasknet.logic_base import UncontrolledCategoryError
+from tasknet.utils import UncontrolledCategoryError, UnsupportedSentenceError
 from tasknet.parsing import construct_full_pddl
 import tasknet
 import json
@@ -244,7 +244,7 @@ class ToyEnvInt(object):
             load_clutter=False,
             should_debug_sampling=False,
             scene_kwargs={},
-            online_sampling=False,
+            online_sampling=True,
         )
         self.state_id = p.saveState()
 
@@ -255,6 +255,7 @@ class ToyEnvInt(object):
         try:
             self.task.update_problem(
                 "tester", "tester", predefined_problem=pddl)
+            self.task.object_scope['agent.n.01_1'] = self.task.agent.vr_dict['body']
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
@@ -263,7 +264,15 @@ class ToyEnvInt(object):
                 'init_feedback': 'Cannot check until goal state is fixed.',
                 'goal_feedback': 'Goal state has uncontrolled categories.'
             }
-            # self.last_active_time = time.time()
+            return accept_scene, feedback
+        except UnsupportedSentenceError as e:
+            accept_scene = False
+            feedback = {
+                    "init_success": "untested",
+                    "goal_success": "untested",
+                    "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
+                    "goal_feedback": ""
+            }
             return accept_scene, feedback
 
         accept_scene, feedback = self.task.check_scene()
@@ -276,7 +285,7 @@ class ToyEnvInt(object):
             p.restoreState(self.state_id)
             return accept_scene, feedback
 
-        accept_scene, feedback = self.task.sample()
+        accept_scene, feedback = self.task.sample(kinematic_only=True)
         if not accept_scene:
             # self.last_active_time = time.time()
             for sim_obj in self.task.newly_added_objects:
@@ -449,8 +458,9 @@ def teardown():
     data = json.loads(request.data)
     scenes_ids = data["scenes_ids"]
     for scene, unique_id in scenes_ids:
-        app.stop_env(unique_id)
-        print(f"uuid {unique_id} stopped")
+        if unique_id in app.envs:
+            app.stop_env(unique_id)
+            print(f"uuid {unique_id} stopped")
 
     # TODO need anything else?
     return Response(json.dumps({"success": True}))
