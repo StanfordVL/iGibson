@@ -7,6 +7,7 @@ import os
 import json
 import pybullet as p
 from IPython import embed
+import gibson2
 
 
 def parse_args():
@@ -43,7 +44,9 @@ def main():
     with open(scene_json) as f:
         activity_to_scenes = json.load(f)
 
-    assert task in activity_to_scenes
+    if task not in activity_to_scenes:
+        return
+
     scene_choices = activity_to_scenes[task]
     print(scene_choices)
     # scene_choices = [
@@ -102,6 +105,12 @@ def main():
         #     continue
 
         for init_id in range(num_initializations):
+            urdf_path = '{}_neurips_task_{}_{}_{}'.format(
+                scene_id, task, task_id, init_id)
+            # full_path = os.path.join(
+            #     gibson2.ig_dataset_path, 'scenes', scene_id, 'urdf', urdf_path + '.urdf')
+            # if os.path.isfile(full_path):
+            #     continue
             for _ in range(num_trials):
                 success = igtn_task.initialize_simulator(
                     simulator=simulator,
@@ -119,8 +128,6 @@ def main():
                 sim_obj_to_pddl_obj = {
                     value.name: {'object_scope': key}
                     for key, value in igtn_task.object_scope.items()}
-                urdf_path = '{}_neurips_task_{}_{}_{}'.format(
-                    scene_id, task, task_id, init_id)
                 igtn_task.scene.save_modified_urdf(
                     urdf_path, sim_obj_to_pddl_obj)
                 print('Saved:', urdf_path)
