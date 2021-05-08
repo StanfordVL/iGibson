@@ -182,6 +182,9 @@ class AttachedParticleSystem(ParticleSystem):
                 # particle_data will be None for stashed particles
                 if particle_data is not None:
                     particle_attached_link_name, particle_pos, particle_orn = particle_data
+                    # If particle_attached_link_id cannot be found, it’s because it has been merged (p.URDF_MERGE_FIXED_LINKS). 
+                    # Since it’s a fixed link anyways and the absolute pose (not link-relative pose) of the particle is dumped,
+                    # we can safely assign this particle to the base link.
                     particle_attached_link_id = -1
                     if particle_attached_link_name is not None:
                         try:
