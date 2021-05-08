@@ -205,6 +205,15 @@ public:
 		float use_pbr,
 		int depth_tex_id);
 
+    void updateTextureIdArrays(int shaderProgram,
+        py::array_t<float> mergedFragData,
+        py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		py::array_t<float> mergedPBRData,
+		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData);
+
 	void updateHiddenData(int shaderProgram, py::array_t<float> hidden_array);
 
 	void updateUVData(int shaderProgram, py::array_t<float> uv_data);

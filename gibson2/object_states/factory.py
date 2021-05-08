@@ -58,6 +58,13 @@ _DEFAULT_STATE_SET = frozenset([
     Under,
 ])
 
+TEXTURE_CHANGE_PRIORITY = {
+    Frozen: 4,
+    Burnt: 3,
+    Cooked: 2,
+    Soaked: 1,
+}
+
 
 def get_default_states():
     return _DEFAULT_STATE_SET
