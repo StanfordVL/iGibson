@@ -1446,6 +1446,76 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		return renderData;
 	}
 
+    void MeshRendererContext::updateTextureIdArrays(int shaderProgram,
+        py::array_t<float> mergedFragData,
+        py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		py::array_t<float> mergedPBRData,
+		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData) {
+		// Set up shaders
+		float* fragData = (float*)mergedFragData.request().ptr;
+		float* fragRMData = (float*)mergedFragRMData.request().ptr;
+		float* fragNData = (float*)mergedFragNData.request().ptr;
+		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
+		int fragDataSize = mergedFragData.size();
+		int diffuseDataSize = mergedDiffuseData.size();
+
+		glUseProgram(shaderProgram);
+
+		glGenBuffers(1, &uboTexColorData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
+		texColorDataSize = 4 * 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, texColorDataSize, NULL, GL_STATIC_DRAW);
+		GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
+		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 2 * 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragNData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 3 * 16 * MAX_ARRAY_SIZE, diffuseDataSize * sizeof(float), diffuseData);
+
+		float* pbrData = (float*)mergedPBRData.request().ptr;
+		int pbrDataSize = mergedPBRData.size();
+
+		glGenBuffers(1, &uboPbrData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboPbrData);
+		int pbrDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, pbrDataMaxSize, NULL, GL_STATIC_DRAW);
+		GLuint pbrDataIdx = glGetUniformBlockIndex(shaderProgram, "PBRData");
+		glUniformBlockBinding(shaderProgram, pbrDataIdx, 1);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboPbrData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, pbrDataSize * sizeof(float), pbrData);
+
+
+		float *hiddenData = (float*)mergedHiddenData.request().ptr;
+		int hiddenDataSize = mergedHiddenData.size();
+
+		glGenBuffers(1, &uboHidden);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
+		int hiddenDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, hiddenDataMaxSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint hiddenIdx = glGetUniformBlockIndex(shaderProgram, "Hidden");
+		glUniformBlockBinding(shaderProgram, hiddenIdx, 4);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 4, uboHidden);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
+
+		float* uvData = (float*)mergedUVData.request().ptr;
+		int uvDataSize = mergedUVData.size();
+
+		glGenBuffers(1, &uboUV);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboUV);
+		int uvMaxDataSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, uvMaxDataSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint uvIdx = glGetUniformBlockIndex(shaderProgram, "UVData");
+		glUniformBlockBinding(shaderProgram, uvIdx, 5);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 5, uboUV);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uvDataSize * sizeof(float), uvData);
+
+		glUseProgram(0);
+	}
+
 	// Updates hidden states in vertex shader
 	void MeshRendererContext::updateHiddenData(int shaderProgram, py::array_t<float> hidden_array) {
 		glUseProgram(shaderProgram);
