@@ -153,12 +153,12 @@ class MeshRenderer(object):
                         os.path.join(os.path.dirname(mesh_renderer.__file__),
                                      'shaders', '410', 'frag.shader')).readlines()))
                 self.textShaderProgram = self.r.compile_shader_meshrenderer(
-                "".join(open(
-                    os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                 'shaders', '410', 'text_vert.shader')).readlines()),
-                "".join(open(
-                    os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                 'shaders', '410', 'text_frag.shader')).readlines()))
+                    "".join(open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders', '410', 'text_vert.shader')).readlines()),
+                    "".join(open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders', '410', 'text_frag.shader')).readlines()))
             else:
                 if self.optimized:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
@@ -177,12 +177,12 @@ class MeshRenderer(object):
                             os.path.join(os.path.dirname(mesh_renderer.__file__),
                                          'shaders', '450', 'frag.shader')).readlines()))
                 self.textShaderProgram = self.r.compile_shader_meshrenderer(
-                "".join(open(
-                    os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                 'shaders', '450', 'text_vert.shader')).readlines()),
-                "".join(open(
-                    os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                 'shaders', '450', 'text_frag.shader')).readlines()))
+                    "".join(open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders', '450', 'text_vert.shader')).readlines()),
+                    "".join(open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__),
+                                     'shaders', '450', 'text_frag.shader')).readlines()))
 
             self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
                 "".join(open(
@@ -305,13 +305,19 @@ class MeshRenderer(object):
 
     def load_procedural_material(self, material):
         material.save_transformed_texture()
-        material.texture_id = self.load_texture_file(os.path.join(material.material_folder, "DIFFUSE.png"))
-        material.metallic_texture_id = self.load_texture_file(os.path.join(material.material_folder, "METALLIC.png"))
-        material.roughness_texture_id = self.load_texture_file(os.path.join(material.material_folder, "ROUGHNESS.png"))
-        material.normal_texture_id = self.load_texture_file(os.path.join(material.material_folder, "NORMAL.png"))
+        material.texture_id = self.load_texture_file(
+            os.path.join(material.material_folder, "DIFFUSE.png"))
+        material.metallic_texture_id = self.load_texture_file(
+            os.path.join(material.material_folder, "METALLIC.png"))
+        material.roughness_texture_id = self.load_texture_file(
+            os.path.join(material.material_folder, "ROUGHNESS.png"))
+        material.normal_texture_id = self.load_texture_file(
+            os.path.join(material.material_folder, "NORMAL.png"))
         for state in material.states:
-            transformed_diffuse_id = self.load_texture_file(material.texture_filenames[state])
-            material.texture_ids[state] = [material.texture_id, transformed_diffuse_id]
+            transformed_diffuse_id = self.load_texture_file(
+                material.texture_filenames[state])
+            material.texture_ids[state] = transformed_diffuse_id
+        material.default_texture_id = material.texture_id
 
     def load_randomized_material(self, material):
         """
@@ -1537,14 +1543,14 @@ class MeshRenderer(object):
         self.merged_uv_data = np.ascontiguousarray(
             np.concatenate(uv_data, axis=0), np.float32)
         self.r.updateTextureIdArrays(self.shaderProgram,
-                           merged_frag_shader_data,
-                           merged_frag_shader_roughness_metallic_data,
-                           merged_frag_shader_normal_data,
-                           merged_diffuse_color_array,
-                           merged_pbr_data,
-                           self.merged_hidden_data,
-                           self.merged_uv_data
-                           )
+                                     merged_frag_shader_data,
+                                     merged_frag_shader_roughness_metallic_data,
+                                     merged_frag_shader_normal_data,
+                                     merged_diffuse_color_array,
+                                     merged_pbr_data,
+                                     self.merged_hidden_data,
+                                     self.merged_uv_data
+                                     )
 
     def update_hidden_highlight_state(self, instances):
         """
@@ -1562,7 +1568,8 @@ class MeshRenderer(object):
 
             self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
             # highlight data stored in 4n + 1
-            self.merged_hidden_data[vec4_buf_idxs_highlight] = float(instance.highlight)
+            self.merged_hidden_data[vec4_buf_idxs_highlight] = float(
+                instance.highlight)
         self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(
             self.merged_hidden_data, dtype=np.float32))
 

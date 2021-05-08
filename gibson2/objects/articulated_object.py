@@ -207,8 +207,10 @@ class URDFObject(StatefulObject):
         # ]
         self.visual_mesh_to_material = []
 
-        # a list of all materials used, RandomizedMaterial
-        self.materials = []
+        # a list of all materials used for RandomizedMaterial
+        self.randomized_materials = []
+        # procedural material that can change based on state changes
+        self.procedural_material = None
 
         self.material_to_friction = None
 
@@ -801,7 +803,7 @@ class URDFObject(StatefulObject):
         """
         Randomize texture and material for each link / visual shape
         """
-        for material in self.materials:
+        for material in self.randomized_materials:
             material.randomize()
         self.update_friction()
 
@@ -886,14 +888,13 @@ class URDFObject(StatefulObject):
                     self.visual_mesh_to_material[i][visual_mesh_path] = \
                         all_materials[visual_mesh_to_idx[visual_mesh_path]]
 
-        self.materials = list(all_materials.values())
+        self.randomized_materials = list(all_materials.values())
 
         friction_json = os.path.join(
             gibson2.ig_dataset_path, 'materials', 'material_friction.json')
         if os.path.isfile(friction_json):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)
-
 
     def generate_procedural_texture(self):
         """
@@ -927,7 +928,8 @@ class URDFObject(StatefulObject):
 
         for state in self.states:
             if issubclass(state, TextureChangeStateMixin):
-                procedural_material = ProceduralMaterial(material_folder=os.path.join(self.model_path, 'material'))
+                procedural_material = ProceduralMaterial(
+                    material_folder=os.path.join(self.model_path, 'material'))
                 # check each visual object belongs to which sub URDF in case of splitting
                 for i, urdf_path in enumerate(self.urdf_paths):
                     sub_urdf_tree = ET.parse(urdf_path)
@@ -939,7 +941,6 @@ class URDFObject(StatefulObject):
                 # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the
                 #  main body
                 self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
-                self.materials = [procedural_material]
                 has_procedural_material = True
                 break
 
@@ -948,6 +949,8 @@ class URDFObject(StatefulObject):
                 if issubclass(state, TextureChangeStateMixin):
                     procedural_material.add_state(state)
                     self.states[state].material = procedural_material
+
+        self.procedural_material = procedural_material
 
     def _load(self):
         """
