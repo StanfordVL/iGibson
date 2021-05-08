@@ -54,7 +54,11 @@ class VrAgent(object):
         self.normal_color = normal_color
         self.use_hand_prim = use_hand_prim
         self.activated = False
-        self.constraints_active = False
+        self.constraints_active = {
+                'left_hand': False,
+                'right_hand': False,
+                'body': False,
+                }
 
         # Dictionary of vr object names to objects
         self.vr_dict = dict()
@@ -77,11 +81,6 @@ class VrAgent(object):
         if self.use_gaze_marker:
             self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord, normal_color=self.normal_color)
 
-    def activate_constraints(self):
-        self.vr_dict['left_hand'].activate_constraints()
-        self.vr_dict['right_hand'].activate_constraints()
-        self.vr_dict['body'].activate_constraints()
-
     def set_colliders(self, enabled=False):
         self.vr_dict['left_hand'].set_colliders(enabled)
         self.vr_dict['right_hand'].set_colliders(enabled)
@@ -92,15 +91,14 @@ class VrAgent(object):
         self.vr_dict['left_hand'].set_position_orientation((pos[0], pos[1] + 0.2, 0.7), orn)
         self.vr_dict['right_hand'].set_position_orientation((pos[0], pos[1] - 0.2, 0.7), orn)
 
-        if not self.constraints_active:
-            self.activate_constraints()
-            self.constraints_active = True
+        for constraint, activated in self.constraints_active.items():
+            if not activated and constraint != 'body':
+                self.vr_dict[constraint].activate_constraints()
+                self.constraints_active[constraint] = True
 
-        body_pos, body_orn = self.vr_dict['body'].get_position_orientation()
         left_pos, left_orn = self.vr_dict['left_hand'].get_position_orientation()
         right_pos, right_orn = self.vr_dict['right_hand'].get_position_orientation()
 
-        self.vr_dict['body'].move(body_pos, body_orn)
         self.vr_dict['left_hand'].move(left_pos, left_orn)
         self.vr_dict['right_hand'].move(right_pos, right_orn)
 
@@ -116,9 +114,9 @@ class VrAgent(object):
             self.vr_dict['right_hand'].set_position((body_position[0], body_position[1] - 0.2, 1.0))
             if not vr_data:
                 self.sim.set_vr_offset((body_position[0], body_position[1], 0.0))
-            if not self.constraints_active:
-                self.activate_constraints()
-                self.constraints_active = True
+            for constraint, activated in self.constraints_active.items():
+                if not activated and constraint != ['body']:
+                    self.vr_dict[constraint].activate_constraints()
             self.activated = True
 
         for vr_obj in self.vr_dict.values():
