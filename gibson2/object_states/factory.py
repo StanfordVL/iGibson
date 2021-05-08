@@ -45,7 +45,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "slicer": [Slicer],
     "soakable": [Soaked],
     "toggleable": [ToggledOn],
-    "water_source": [WaterSource],
+    "waterSource": [WaterSource],
 }
 
 _DEFAULT_STATE_SET = frozenset([
