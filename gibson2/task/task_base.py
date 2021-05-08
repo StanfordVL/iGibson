@@ -9,12 +9,10 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from gibson2.object_states.on_floor import RoomFloor
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.objects.vr_objects import VrAgent
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -61,9 +59,8 @@ class iGTNTask(TaskNetTask):
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
         if simulator is None:
-            settings = MeshRendererSettings(texture_scale=0.01)
             self.simulator = Simulator(
-                mode=mode, image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
+                mode=mode, image_width=960, image_height=720, device_idx=0)
         else:
             self.simulator = simulator
         self.load_clutter = load_clutter

@@ -238,7 +238,11 @@ class ToyEnvInt(object):
         tasknet.set_backend("iGibson")
         self.task = iGTNTask('trivial', task_instance=0)
 
+        settings = MeshRendererSettings(texture_scale=0.01)
+        simulator = Simulator(mode='headless', image_width=400,
+                              image_height=400, rendering_settings=settings)
         self.task.initialize_simulator(
+            simulator=simulator,
             scene_id=scene,
             mode='headless',
             load_clutter=False,
@@ -268,10 +272,10 @@ class ToyEnvInt(object):
         except UnsupportedSentenceError as e:
             accept_scene = False
             feedback = {
-                    "init_success": "untested",
-                    "goal_success": "untested",
-                    "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
-                    "goal_feedback": ""
+                "init_success": "untested",
+                "goal_success": "untested",
+                "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
+                "goal_feedback": ""
             }
             return accept_scene, feedback
 
