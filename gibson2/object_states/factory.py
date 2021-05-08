@@ -41,7 +41,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "freezable": [Frozen],
     "heatSource": [HeatSourceOrSink],
     "openable": [Open],
-    "scrubbable": [Stained],
+    "stainable": [Stained],
     "sliceable": [Sliced],
     "slicer": [Slicer],
     "soakable": [Soaked],
