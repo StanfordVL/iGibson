@@ -182,11 +182,13 @@ class AttachedParticleSystem(ParticleSystem):
                 # particle_data will be None for stashed particles
                 if particle_data is not None:
                     particle_attached_link_name, particle_pos, particle_orn = particle_data
+                    particle_attached_link_id = -1
                     if particle_attached_link_name is not None:
-                        particle_attached_link_id = link_from_name(
-                            self.parent_obj.get_body_id(), particle_attached_link_name)
-                    else:
-                        particle_attached_link_id = -1
+                        try:
+                            particle_attached_link_id = link_from_name(
+                                self.parent_obj.get_body_id(), particle_attached_link_name)
+                        except ValueError:
+                            pass
 
                     particle = self.get_particles()[i]
                     self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
