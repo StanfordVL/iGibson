@@ -6,6 +6,7 @@ import numpy as np
 import pybullet as p
 
 from gibson2.external.pybullet_tools import utils
+from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
 
@@ -167,11 +168,31 @@ class ParticleSystem(object):
 
 
 class AttachedParticleSystem(ParticleSystem):
-    def __init__(self, parent_obj, **kwargs):
+    def __init__(self, parent_obj, from_dump=None, **kwargs):
         super(AttachedParticleSystem, self).__init__(**kwargs)
 
         self.parent_obj = parent_obj
         self._attachment_offsets = {}  # in the format of {particle: offset}
+        self.from_dump = from_dump
+
+    def initialize(self):
+        # Unstash particles in dump.
+        if self.from_dump:
+            for i, particle_data in enumerate(self.from_dump):
+                # particle_data will be None for stashed particles
+                if particle_data is not None:
+                    particle_attached_link_name, particle_pos, particle_orn = particle_data
+                    if particle_attached_link_name is not None:
+                        particle_attached_link_id = link_from_name(
+                            self.parent_obj.get_body_id(), particle_attached_link_name)
+                    else:
+                        particle_attached_link_id = -1
+
+                    particle = self.get_particles()[i]
+                    self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
+                                          particle=particle)
+
+            del self.from_dump
 
     def unstash_particle(self, position, orientation, link_id=-1, **kwargs):
         particle = super(AttachedParticleSystem, self).unstash_particle(position, orientation, **kwargs)
@@ -214,6 +235,29 @@ class AttachedParticleSystem(ParticleSystem):
                 attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
             particle.set_position_orientation(position, orientation)
 
+    def dump(self):
+        data = []
+        for particle in self.get_particles():
+            if particle in self.get_stashed_particles():
+                data.append(None)
+            else:
+                link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
+
+                if link_id == -1:
+                    link_name = None
+                    attachment_source_pos = self.parent_obj.get_position()
+                    attachment_source_orn = self.parent_obj.get_orientation()
+                else:
+                    link_name = get_link_name(self.parent_obj.get_body_id(), link_id)
+                    link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+                    attachment_source_pos = link_state.linkWorldPosition
+                    attachment_source_orn = link_state.linkWorldOrientation
+
+                position, orientation = p.multiplyTransforms(
+                    attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
+                data.append((link_name, position, orientation))
+
+        return data
 
 class WaterStream(ParticleSystem):
     _DROP_PERIOD = 0.1  # new water every this many seconds.
@@ -312,23 +356,9 @@ class _Dirt(AttachedParticleSystem):
     _SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
     _SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
 
-    def __init__(self, parent_obj, clip_into_object, from_dump=None, **kwargs):
+    def __init__(self, parent_obj, clip_into_object, **kwargs):
         super(_Dirt, self).__init__(parent_obj, **kwargs)
         self._clip_into_object = clip_into_object
-        self.from_dump = from_dump
-
-    def initialize(self):
-        # Unstash particles in dump.
-        if self.from_dump:
-            for i, particle_data in enumerate(self.from_dump):
-                # particle_data will be None for stashed particles
-                if particle_data is not None:
-                    particle_attached_link_id, particle_pos, particle_orn = particle_data
-                    particle = self.get_particles()[i]
-                    self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
-                                          particle=particle)
-
-            del self.from_dump
 
     def randomize(self):
         bbox_sizes = [particle.bounding_box for particle in self.get_stashed_particles()]
@@ -357,28 +387,6 @@ class _Dirt(AttachedParticleSystem):
 
                 # Unstash the particle (and make sure we get the correct one!)
                 assert self.unstash_particle(surface_point, quaternion, link_id=hit_link, particle=particle) == particle
-
-    def dump(self):
-        data = []
-        for particle in self.get_particles():
-            if particle in self.get_stashed_particles():
-                data.append(None)
-            else:
-                link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
-
-                if link_id == -1:
-                    attachment_source_pos = self.parent_obj.get_position()
-                    attachment_source_orn = self.parent_obj.get_orientation()
-                else:
-                    link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
-                    attachment_source_pos = link_state.linkWorldPosition
-                    attachment_source_orn = link_state.linkWorldOrientation
-
-                position, orientation = p.multiplyTransforms(
-                    attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
-                data.append((link_id, position, orientation))
-
-        return data
 
 
 class Dust(_Dirt):
