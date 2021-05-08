@@ -1,3 +1,4 @@
+import pprint 
 import numpy as np
 import os
 
@@ -13,6 +14,7 @@ from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.objects.vr_objects import VrAgent
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -56,10 +58,10 @@ class iGTNTask(TaskNetTask):
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
         if simulator is None:
+            settings = MeshRendererSettings(texture_scale=0.01)
             self.simulator = Simulator(
-                mode=mode, image_width=960, image_height=720, device_idx=0)
+                mode=mode, image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
         else:
-            print('INITIALIZING TASK WITH PREDEFINED SIMULATOR')
             self.simulator = simulator
         self.load_clutter = load_clutter
         self.should_debug_sampling = should_debug_sampling
@@ -89,7 +91,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'You have assigned room type for [{}], but [{}] is sampleable. Only non-sampleable objects can have room assignment.'.format(
                         obj_cat, obj_cat)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
                 # Room type missing in the scene
@@ -97,7 +99,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'Room type [{}] missing in scene [{}].'.format(
                         room_type, self.scene.scene_id)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
 
@@ -109,7 +111,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'Object [{}] has more than one room assignment'.format(
                         obj_inst)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
                 self.non_sampleable_object_inst.add(obj_inst)
@@ -133,7 +135,7 @@ class iGTNTask(TaskNetTask):
             error_msg = 'Some objects do not have any kinematic condition defined for them in the initial conditions: {}'.format(
                 ', '.join(remaining_objs))
             logging.warning(error_msg)
-            feedback['init_success'] = 'no',
+            feedback['init_success'] = 'no'
             feedback['init_feedback'] = error_msg
             return False, feedback
 
@@ -145,7 +147,7 @@ class iGTNTask(TaskNetTask):
                     error_msg = 'All non-sampleable objects should have room assignment. [{}] does not have one.'.format(
                         obj_inst)
                     logging.warning(error_msg)
-                    feedback['init_success'] = 'no',
+                    feedback['init_success'] = 'no'
                     feedback['init_feedback'] = error_msg
                     return False, feedback
 
@@ -209,7 +211,7 @@ class iGTNTask(TaskNetTask):
                     error_msg += '{}: '.format(obj_inst) + ', '.join(
                         room_type_to_scene_objs[room_type][obj_inst].keys()) + '\n'
                 logging.warning(error_msg)
-                feedback['init_success'] = 'no',
+                feedback['init_success'] = 'no'
                 feedback['init_feedback'] = error_msg
                 return False, feedback
 
@@ -427,7 +429,7 @@ class iGTNTask(TaskNetTask):
                 assert matched_sim_obj is not None, obj_inst
                 self.object_scope[obj_inst] = matched_sim_obj
 
-    def sample(self):
+    def sample(self, kinematic_only=False):
         feedback = {
             'init_success': 'yes',
             'goal_success': 'yes',
@@ -443,9 +445,17 @@ class iGTNTask(TaskNetTask):
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
             if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
-                print(
-                    "Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                print("Skipping over sampling of predicate that is not a negation or an atomic predicate")
                 continue
+            if kinematic_only:
+                if isinstance(condition.children[0], Negation):
+                    if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
+                        continue
+                else:
+                    if "agent.n.01" in condition.body:
+                        print(condition.children[0].STATE_NAME, condition.body)
+                    if condition.children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
+                        continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
                 positive = False
@@ -759,7 +769,7 @@ class iGTNTask(TaskNetTask):
                 logging.warning(
                     'Non-sampleable object conditions failed even after successful matching: {}'.format(
                         condition.body))
-                feedback['init_success'] = 'no',
+                feedback['init_success'] = 'no'
                 feedback['init_feedback'] = 'Please run test sampling again.'
                 return False, feedback
 
@@ -780,7 +790,7 @@ class iGTNTask(TaskNetTask):
                             error_msg = 'Sampleable object conditions failed: {}'.format(
                                 condition.body)
                             logging.warning(error_msg)
-                            feedback['init_success'] = 'no',
+                            feedback['init_success'] = 'no'
                             feedback['init_feedback'] = error_msg
                             return False, feedback
 

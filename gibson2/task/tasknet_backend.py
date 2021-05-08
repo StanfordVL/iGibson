@@ -44,6 +44,12 @@ SUPPORTED_PREDICATES = {
     'under': get_binary_atomic_predicate_for_state(object_states.Under, 'under'),
     'touching': get_binary_atomic_predicate_for_state(object_states.Touching, 'touching'),
     'onfloor': get_binary_atomic_predicate_for_state(object_states.OnFloor, 'onfloor'),
+    'cooked': get_unary_atomic_predicate_for_state(object_states.Cooked, 'cooked'),
+    'burnt': get_unary_atomic_predicate_for_state(object_states.Burnt, 'burnt'),
+    'soaked': get_unary_atomic_predicate_for_state(object_states.Soaked, 'soaked'),
+    'open': get_unary_atomic_predicate_for_state(object_states.Open, 'open'),
+    'dusty': get_unary_atomic_predicate_for_state(object_states.Dusty, 'dusty'),
+    'stained': get_unary_atomic_predicate_for_state(object_states.Stained, 'stained'),
     'sliced': get_unary_atomic_predicate_for_state(object_states.Sliced, 'sliced'),
 }
 
