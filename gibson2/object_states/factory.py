@@ -40,7 +40,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "freezable": [Frozen],
     "heatSource": [HeatSourceOrSink],
     "openable": [Open],
-    "scrubbable": [Stained],
+    "stainable": [Stained],
     "sliceable": [Sliced],
     "slicer": [Slicer],
     "soakable": [Soaked],
@@ -56,6 +56,13 @@ _DEFAULT_STATE_SET = frozenset([
     Touching,
     Under,
 ])
+
+TEXTURE_CHANGE_PRIORITY = {
+    Frozen: 4,
+    Burnt: 3,
+    Cooked: 2,
+    Soaked: 1,
+}
 
 
 def get_default_states():

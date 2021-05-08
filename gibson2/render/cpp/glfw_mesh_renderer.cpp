@@ -157,6 +157,7 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
     // for optimized renderer
     pymodule.def("generateArrayTextures", &GLFWRendererContext::generateArrayTextures, "TBA");
     pymodule.def("renderSetup", &GLFWRendererContext::renderSetup, "TBA");
+    pymodule.def("updateTextureIdArrays", &GLFWRendererContext::updateTextureIdArrays, "TBA");
 	pymodule.def("updateHiddenData", &GLFWRendererContext::updateHiddenData, "TBA");
 	pymodule.def("updateUVData", &GLFWRendererContext::updateUVData, "TBA");
     pymodule.def("updateDynamicData", &GLFWRendererContext::updateDynamicData, "TBA");
