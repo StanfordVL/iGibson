@@ -15,7 +15,7 @@ task_choices = [
     "putting_dishes_away_after_cleaning_filtered",
     "cleaning_out_drawers_filtered",
 ]
-task = 're-shelving_library_books_filtered'
+task = 'assembling_gift_baskets'
 task_id = 0
 scene = 'Rs_int'
 

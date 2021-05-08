@@ -1,4 +1,6 @@
+from gibson2.objects.stateful_object import StatefulObject
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.utils.semantics_utils import get_class_name_to_class_id
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -14,7 +16,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
-from gibson2.objects.particles import ParticleSystem
+from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
 
@@ -278,6 +280,13 @@ class Simulator:
             # TODO: add instance renferencing for iG v1 scenes
 
         self.scene = scene
+
+        # Load the states of all the objects in the scene.
+        for obj in scene.get_objects():
+            if isinstance(obj, StatefulObject):
+                for state in obj.states.values():
+                    state.initialize(self)
+
         return new_object_pb_ids
 
     @load_without_pybullet_vis
@@ -330,6 +339,12 @@ class Simulator:
                     physical_object=scene.objects_by_id[body_id])
         self.scene = scene
 
+        # Load the states of all the objects in the scene.
+        for obj in scene.get_objects():
+            if isinstance(obj, StatefulObject):
+                for state in obj.states.values():
+                    state.initialize(self)
+
         return new_object_ids
 
     @load_without_pybullet_vis
@@ -361,6 +376,7 @@ class Simulator:
             new_object_pb_ids.append(particle_pb_id)
 
         self.particle_systems.append(obj)
+        obj.initialize()
 
         return new_object_pb_ids
 
@@ -383,7 +399,7 @@ class Simulator:
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
 
-        if isinstance(obj, VisualMarker):
+        if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
             new_object_pb_id_or_ids = obj.load()
         else:
@@ -426,6 +442,11 @@ class Simulator:
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster,
                     physical_object=obj)
+
+        # Finally, initialize the object's states
+        if isinstance(obj, StatefulObject):
+            for state in obj.states.values():
+                state.initialize(self)
 
         return new_object_pb_id_or_ids
 

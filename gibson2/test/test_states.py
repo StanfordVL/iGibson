@@ -264,8 +264,8 @@ def test_water_source():
                           abilities={'water_source': {}, 'toggleable': {}}
                           )
 
-        sink.states[object_states.ToggledOn].set_value(True)
         s.import_object(sink)
+        sink.states[object_states.ToggledOn].set_value(True)
         sink.set_position([1, 1, 0.8])
         assert 'water_source' in sink.abilities
         assert object_states.WaterSource in sink.states

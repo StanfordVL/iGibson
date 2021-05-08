@@ -5,10 +5,10 @@ from gibson2.object_states.object_state_base import BooleanState, RelativeObject
 
 class Touching(KinematicsMixin, RelativeObjectState, BooleanState):
 
-    def set_value(self, other, new_value):
+    def _set_value(self, other, new_value):
         raise NotImplementedError()
 
-    def get_value(self, other):
+    def _get_value(self, other):
         objA_states = self.obj.states
         objB_states = other.states
 

@@ -6,17 +6,14 @@ from gibson2.simulator import Simulator
 
 
 def main():
-    s = Simulator(mode='gui', image_width=512,
-                  image_height=512, device_idx=0)
+    s = Simulator(mode='gui', device_idx=0)
     scene = InteractiveIndoorScene(
-        'Rs_int', texture_randomization=False, object_randomization=False)
+        'Rs_int',
+        texture_randomization=False,
+        object_randomization=False,
+        merge_fixed_links=False
+    )
     s.import_ig_scene(scene)
-
-    block = YCBObject(name='036_wood_block')
-    block.abilities = ["soakable", "cleaning_tool"]
-    prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
-    s.import_object(block)
-    block.set_position([1, 1, 1.8])
 
     # Set everything that can go dirty.
     stateful_objects = set(
@@ -32,9 +29,16 @@ def main():
         if object_states.WaterSource in obj.states:
             obj.states[object_states.ToggledOn].set_value(True)
 
+    # Take some steps so water drops appear
+    for i in range(100):
+        s.step()
+
+    scene.save_modified_urdf("cleaning_demo")
+
+    # Let the user view the frozen scene in the UI for purposes of comparison.
     try:
         while True:
-            s.step()
+            pass
     finally:
         s.disconnect()
 
