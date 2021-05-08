@@ -116,6 +116,7 @@ set(RA_GEO_ACOUSTICS_SOURCES
         ${RA_SOURCE_DIR}/geometrical_acoustics/acoustic_listener.h
         ${RA_SOURCE_DIR}/geometrical_acoustics/acoustic_ray.cc
         ${RA_SOURCE_DIR}/geometrical_acoustics/acoustic_ray.h
+        ${RA_SOURCE_DIR}/geometrical_acoustics/occlusion_ray.cc
         ${RA_SOURCE_DIR}/geometrical_acoustics/occlusion_ray.h
         ${RA_SOURCE_DIR}/geometrical_acoustics/acoustic_source.h
         ${RA_SOURCE_DIR}/geometrical_acoustics/collection_kernel.cc

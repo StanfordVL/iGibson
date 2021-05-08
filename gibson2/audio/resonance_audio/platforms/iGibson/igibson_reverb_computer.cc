@@ -37,9 +37,11 @@ limitations under the License.
 namespace vraudio {
 namespace igibson {
 
+std::unique_ptr<SceneManager> scene_manager = nullptr;
+
 namespace {
 
-static std::unique_ptr<SceneManager> scene_manager = nullptr;
+
 static std::function<float()> random_number_generator = nullptr;
 static std::unique_ptr<PathTracer> path_tracer = nullptr;
 
