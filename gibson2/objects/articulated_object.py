@@ -1069,6 +1069,30 @@ class URDFObject(StatefulObject):
             pos, orn = p.getBasePositionAndOrientation(body_id)
         return pos, orn
 
+    def get_base_link_position_orientation(self):
+        """
+        Get object base link position and orientation
+
+        :return: position in xyz
+        :return: quaternion in xyzw
+        """
+        # TODO: not used anywhere yet, but probably should be put in ObjectBase
+        body_id = self.get_body_id()
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+            pos, orn = p.getLinkState(body_id, 0)[4:6]
+        else:
+            pos, orn = p.getBasePositionAndOrientation(body_id)
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos = dynamics_info[3]
+            inertial_orn = dynamics_info[4]
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+        return pos, orn
+
     def set_position(self, pos):
         """
         Set object position
@@ -1076,12 +1100,12 @@ class URDFObject(StatefulObject):
         :param pos: position in xyz
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning('cannot set_position for fixed objects')
-        else:
-            _, old_orn = p.getBasePositionAndOrientation(body_id)
-            p.resetBasePositionAndOrientation(body_id, pos, old_orn)
+            return
+
+        _, old_orn = p.getBasePositionAndOrientation(body_id)
+        p.resetBasePositionAndOrientation(body_id, pos, old_orn)
 
     def set_orientation(self, orn):
         """
@@ -1090,12 +1114,12 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning('cannot set_orientation for fixed objects')
-        else:
-            old_pos, _ = p.getBasePositionAndOrientation(body_id)
-            p.resetBasePositionAndOrientation(body_id, old_pos, orn)
+            return
+
+        old_pos, _ = p.getBasePositionAndOrientation(body_id)
+        p.resetBasePositionAndOrientation(body_id, old_pos, orn)
 
     def set_position_orientation(self, pos, orn):
         """
@@ -1104,15 +1128,19 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning(
                 'cannot set_position_orientation for fixed objects')
-        else:
-            p.resetBasePositionAndOrientation(body_id, pos, orn)
+            return
+
+        p.resetBasePositionAndOrientation(body_id, pos, orn)
 
     def set_base_link_position_orientation(self, pos, orn):
         body_id = self.get_body_id()
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            logging.warning(
+                'cannot set_base_link_position_orientation for fixed objects')
+            return
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)

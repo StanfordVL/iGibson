@@ -22,10 +22,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
         self.slice_force = slice_force
         self.value = False
 
-    def get_value(self):
+    def _get_value(self):
         return self.value
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         if not new_value:
             raise ValueError('Cannot set sliced to be False')
 
@@ -54,3 +54,12 @@ class Sliced(AbsoluteObjectState, BooleanState):
             if state in self.obj.states:
                 self.obj.multiplexer.states[state].set_value(
                     self.obj.states[state].get_value())
+
+        return True
+
+    # TODO (Eric): We need to do something here!
+    def _dump(self):
+        return None
+
+    def _load(self, data):
+        return

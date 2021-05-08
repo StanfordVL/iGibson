@@ -10,13 +10,13 @@ def test_simulator():
     s = Simulator(mode='headless')
     scene = StadiumScene()
     s.import_scene(scene)
-    obj = YCBObject('006_mustard_bottle')
 
     for i in range(10):
+        obj = YCBObject('006_mustard_bottle')
         s.import_object(obj)
 
-    obj = YCBObject('002_master_chef_can')
     for i in range(10):
+        obj = YCBObject('002_master_chef_can')
         s.import_object(obj)
 
     for i in range(1000):
