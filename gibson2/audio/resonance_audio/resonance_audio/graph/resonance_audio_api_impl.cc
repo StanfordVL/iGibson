@@ -33,10 +33,6 @@ limitations under the License.
 #include "utils/planar_interleaved_conversion.h"
 #include "utils/sample_type_conversion.h"
 
-#include "geometrical_acoustics/acoustic_ray.h"
-#include "geometrical_acoustics/occlusion_ray.h"
-#include "geometrical_acoustics/scene_manager.h"
-
 namespace vraudio {
 
 namespace {
@@ -138,6 +134,10 @@ void ResonanceAudioApiImpl::SetHeadPosition(float x, float y, float z) {
     system_settings_.SetHeadPosition(head_position);
   };
   task_queue_.Post(task);
+}
+
+const WorldPosition ResonanceAudioApiImpl::GetHeadPosition() {
+  return system_settings_.GetHeadPosition();
 }
 
 void ResonanceAudioApiImpl::SetHeadRotation(float x, float y, float z,
@@ -320,6 +320,10 @@ void ResonanceAudioApiImpl::SetSourcePosition(SourceId source_id, float x,
   task_queue_.Post(task);
 }
 
+const WorldPosition ResonanceAudioApiImpl::GetSourcePosition(SourceId source_id) {
+  return system_settings_.GetSourceParametersManager()->GetParameters(source_id)->object_transform.position;
+}
+
 void ResonanceAudioApiImpl::SetSourceRoomEffectsGain(SourceId source_id,
                                                      float room_effects_gain) {
   auto task = [this, source_id, room_effects_gain]() {
@@ -412,27 +416,9 @@ void ResonanceAudioApiImpl::SetSoundObjectOcclusionIntensity(
   };
   task_queue_.Post(task);
 }
-
-void ResonanceAudioApiImpl::EstimateAndSetSourceOcclusionIntensity(SourceId id, const SceneManager& scene_manager) {
-    const auto& listener_position = system_settings_.GetHeadPosition();
-    const auto source_parameters = system_settings_.GetSourceParametersManager()->GetParameters(id);
-    const auto& source_position = source_parameters->object_transform.position;
-    auto direction = listener_position - source_position;
-
-    AcousticRay ray;
-    ray.set_origin(source_position.data());
-    ray.set_direction(direction.data());
-    ray.set_t_far(direction.norm());
-
-    HitList hits;
-    RayHits(ray, hits, scene_manager.scene());
-    if (hits.size() != source_parameters->occlusion_intensity) {
-        LOG(WARNING) << "Changing occlusion to " << hits.size();
-    }
-    
-    this->SetSoundObjectOcclusionIntensity(id, hits.size());
+float ResonanceAudioApiImpl::GetSoundObjectOcclusionIntensity(SourceId sound_object_source_id) {
+  return system_settings_.GetSourceParametersManager()->GetParameters(sound_object_source_id)->occlusion_intensity;
 }
-
 
 void ResonanceAudioApiImpl::SetSoundObjectSpread(
     SourceId sound_object_source_id, float spread_deg) {

@@ -21,13 +21,13 @@ limitations under the License.
 #include "platforms/common/room_properties.h"
 #include "base/audio_buffer.h"
 #include "base/constants_and_types.h"
-
+#include "geometrical_acoustics/scene_manager.h"
 
 namespace vraudio {
 namespace igibson {
 
 
-
+extern std::unique_ptr<SceneManager> scene_manager;
 
 // Output channels must be stereo for the ResonanceAudio system to run properly.
 const size_t kNumOutputChannels = 2;

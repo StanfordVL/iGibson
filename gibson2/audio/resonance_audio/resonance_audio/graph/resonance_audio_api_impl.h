@@ -59,6 +59,7 @@ class ResonanceAudioApiImpl : public ResonanceAudioApi {
 
   // Listener configuration.
   void SetHeadPosition(float x, float y, float z) override;
+  const WorldPosition GetHeadPosition() override;
   void SetHeadRotation(float x, float y, float z, float w) override;
   void SetMasterVolume(float volume) override;
   void SetStereoSpeakerMode(bool enabled) override;
@@ -86,6 +87,7 @@ class ResonanceAudioApiImpl : public ResonanceAudioApi {
                               float min_distance, float max_distance) override;
   void SetSourcePosition(SourceId source_id, float x, float y,
                          float z) override;
+  const WorldPosition GetSourcePosition(SourceId source_id) override;
   void SetSourceRoomEffectsGain(SourceId source_id,
                                 float room_effects_gain) override;
   void SetSourceRotation(SourceId source_id, float x, float y, float z,
@@ -101,7 +103,7 @@ class ResonanceAudioApiImpl : public ResonanceAudioApi {
                                          float gain) override;
   void SetSoundObjectOcclusionIntensity(SourceId sound_object_source_id,
                                         float intensity) override;
-  void EstimateAndSetSourceOcclusionIntensity(SourceId id, const SceneManager& scene_manager);
+  float GetSoundObjectOcclusionIntensity(SourceId sound_object_source_id) override;
   void SetSoundObjectSpread(SourceId sound_object_source_id,
                             float spread_deg) override;
 

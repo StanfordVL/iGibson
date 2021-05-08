@@ -8,6 +8,7 @@
 #include "base/logging.h"
 #include "base/misc_math.h"
 #include "graph/resonance_audio_api_impl.h"
+#include "geometrical_acoustics/acoustic_ray.h"
 #include "geometrical_acoustics/occlusion_ray.h"
 #include "platforms/common/room_effects_utils.h"
 #include "bindings.h"
@@ -243,7 +244,23 @@ void SetRoomProperties(RoomProperties* room_properties, float* rt60s) {
 
 void EstimateAndUpdateOcclusion(int id) {
     auto resonance_audio_copy = resonance_audio;
-    resonance_audio_copy->api->EstimateAndSetSourceOcclusionIntensity(id);
+    const auto& listener_position = resonance_audio_copy->api->GetHeadPosition();
+    const auto& source_position = resonance_audio_copy->api->GetSourcePosition(id);
+    auto direction = listener_position - source_position;
+
+    AcousticRay ray;
+    ray.set_origin(source_position.data());
+    float dir[3] = {direction[0], direction[1], direction[2]};
+    ray.set_direction(dir);
+    ray.set_t_far(direction.norm());
+
+    HitList hits;
+    RayHits(ray, hits, scene_manager->scene());
+    if (hits.size() != resonance_audio_copy->api->GetSoundObjectOcclusionIntensity(id)) {
+        LOG(WARNING) << "Changing occlusion to " << hits.size();
+    }
+    
+    resonance_audio_copy->api->SetSoundObjectOcclusionIntensity(id, hits.size());
 }
 
 }

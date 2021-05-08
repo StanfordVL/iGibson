@@ -25,10 +25,11 @@ limitations under the License.
 #include "embree2/rtcore_scene.h"
 #include "base/constants_and_types.h"
 #include "base/logging.h"
+#include "geometrical_acoustics/acoustic_ray.h"
 
 namespace vraudio {
 
-#define MAX_TOTAL_HITS 16*1024
+#define MAX_TOTAL_HITS 16
 
 /* extended ray structure that gathers all hits along the ray */
 struct HitList
@@ -45,7 +46,7 @@ struct HitList
             : t(t), primID(primID), geomID(geomID), instID(instID) {}
 
         /* lexicographical order (t,instID,geomID,primID) */
-        __forceinline friend bool operator < (const Hit& a, const Hit& b)
+        inline friend bool operator < (const Hit& a, const Hit& b)
         {
             if (a.t == b.t) {
                 if (a.instID == b.instID) {
@@ -57,22 +58,22 @@ struct HitList
             return a.t < b.t;
         }
 
-        __forceinline friend bool operator == (const Hit& a, const Hit& b) {
+        inline friend bool operator == (const Hit& a, const Hit& b) {
             return a.t == b.t && a.primID == b.primID && a.geomID == b.geomID && a.instID == b.instID;
         }
 
-        __forceinline friend bool operator <= (const Hit& a, const Hit& b)
+        inline friend bool operator <= (const Hit& a, const Hit& b)
         {
             if (a == b) return true;
             else return a < b;
         }
 
-        __forceinline friend bool operator != (const Hit& a, const Hit& b) {
+        inline friend bool operator != (const Hit& a, const Hit& b) {
             return !(a == b);
         }
 
         friend std::ostream& operator<<(std::ostream& cout, const Hit& hit) {
-            return cout << "Hit { opaque = " << hit.opaque << ", t = " << hit.t << ", instID = " << hit.instID << ", geomID = " << hit.geomID << ", primID = " << hit.primID << " }";
+            return cout << "Hit { t = " << hit.t << ", instID = " << hit.instID << ", geomID = " << hit.geomID << ", primID = " << hit.primID << " }";
         }
 
     public:
@@ -110,55 +111,9 @@ struct IntersectContext
 
 
 /* Filter callback function that gathers all hits */
-void gather_all_hits(const struct RTCFilterFunctionNArguments* args)
-{
-    assert(*args->valid == -1);
-    IntersectContext* context = (IntersectContext*)args->context;
-    HitList& hits = context->hits;
-    RTCRay* ray = (RTCRay*)args->ray;
-    RTCHit* hit = (RTCHit*)args->hit;
-    assert(args->N == 1);
-    args->valid[0] = 0; // ignore all hits
-
-    /* avoid overflow of hits array */
-    if (hits.end >= MAX_TOTAL_HITS) return;
-
-    /* add hit to list */
-    hits.hits[hits.end++] = HitList::Hit(ray->tfar, hit->primID, hit->geomID, hit->instID[0]);
-}
-
+void gather_all_hits(const struct RTCFilterFunctionNArguments* args);
 /* gathers hits in a single pass */
-void RayHits(const Ray& ray_i, HitList& hits_o, RTCScene scene)
-{
-    /* trace ray to gather all hits */
-    Ray ray = ray_i;
-    IntersectContext context(hits_o);
-    rtcInitIntersectContext(&context.context);
-    context.context.filter = gather_all_hits;
-    rtcIntersect1(scene, &context.context, RTCRayHit_(ray));
-    //RayStats_addRay(stats);
-
-    /* sort hits by extended order */
-    std::sort(&context.hits.hits[context.hits.begin], &context.hits.hits[context.hits.end]);
-
-    /* ignore duplicated hits that can occur for tesselated primitives */
-    if (hits_o.size())
-    {
-        unsigned int i = 0;
-        while (hits_o.hits[i].t == 0) {
-            i = i + 1;
-            LOG(WARNING) << "Hit at t=0" << std::endl;
-        }
-        unsigned int j = i + 1;
-        for (; j < hits_o.size(); j++) {
-            if (hits_o.hits[i] == hits_o.hits[j]) continue;
-            hits_o.hits[++i] = hits_o.hits[j];
-            LOG(WARNING) << "Duplicate hit" << std::endl;
-        }
-        hits_o.end = i + 1;
-    }
-}
-
+void RayHits(const AcousticRay& ray_i, HitList& hits_o, RTCScene scene);
 
 
 
