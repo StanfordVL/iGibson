@@ -8,7 +8,7 @@ from gibson2.simulator import Simulator
 def main():
     s = Simulator(mode='gui', device_idx=0)
     scene = InteractiveIndoorScene(
-        'Rs_int', urdf_file="cleaning_demo",
+        'Rs_int', urdf_file="cleaning_demo", merge_fixed_links=True
     )
     s.import_ig_scene(scene)
 
