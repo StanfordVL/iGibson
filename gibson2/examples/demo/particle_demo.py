@@ -25,7 +25,7 @@ def main():
                       category='sink',
                       name='sink_1',
                       scale=np.array([0.8, 0.8, 0.8]),
-                      abilities={'toggleable': {}, 'water_source': {}}
+                      abilities={'toggleable': {}, 'waterSource': {}}
                       )
 
     s.import_object(sink)
@@ -44,12 +44,13 @@ def main():
                       category='table',
                       name='19898',
                       scale=np.array([0.8, 0.8, 0.8]),
-                      abilities={'scrubbable': {}}
+                      abilities={'stainable': {}}
                       )
 
     print(desk.states.keys())
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
+    s.step()
     desk.states[object_states.Stained].set_value(True)
 
     # Main simulation loop
