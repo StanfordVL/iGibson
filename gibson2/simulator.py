@@ -348,37 +348,17 @@ class Simulator:
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_particle_system(self,
-                               obj,
-                               class_id=SemanticClass.USER_ADDED_OBJS,
-                               use_pbr=False,
-                               use_pbr_mapping=False,
-                               shadow_caster=True):
+    def import_particle_system(self, obj):
         """
         Import an object into the simulator
         :param obj: ParticleSystem to load
-        :param class_id: Class id for rendering semantic segmentation
-        :param use_pbr: Whether to use pbr, default to False
-        :param use_pbr_mapping: Whether to use pbr mapping, default to False
-        :param shadow_caster: Whether to cast shadow
         """
 
         assert isinstance(obj, ParticleSystem), \
             'import_particle_system can only be called with ParticleSystem'
 
-        new_object_pb_ids = []
-        for o in obj.get_particles():
-            particle_pb_id = self.import_object(o,
-                                                class_id=class_id,
-                                                use_pbr=use_pbr,
-                                                use_pbr_mapping=use_pbr_mapping,
-                                                shadow_caster=shadow_caster)
-            new_object_pb_ids.append(particle_pb_id)
-
         self.particle_systems.append(obj)
-        obj.initialize()
-
-        return new_object_pb_ids
+        obj.initialize(self)
 
     @load_without_pybullet_vis
     def import_object(self,
