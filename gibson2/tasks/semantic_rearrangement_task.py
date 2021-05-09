@@ -70,6 +70,7 @@ class SemanticRearrangementTask(BaseTask):
         self.init_rot_range = np.array(self.config.get("rot_range", np.zeros(2)))
         self.init_sample_by_group = self.config.get("sample_by_group", False)
         self.target_object_init_pos = None                        # will be initial x,y,z sampled placement in active episode
+        self.current_subtask_id = 0                               # current subtask in env
         # Observation mode
         self.task_obs_format = self.config.get("task_obs_format", "global") # Options are global, egocentric
         self.task_use_memory_obs = self.config.get("task_use_memory_obs", False)
@@ -227,7 +228,7 @@ class SemanticRearrangementTask(BaseTask):
             # If we haven't had a success, raise an error
             assert success, "Failed to successfully sample valid obstacle locations!"
 
-        # Sample new target object and reset exlude body ids
+        # Sample new target object and reset exclude body ids
         self.target_object = np.random.choice(list(self.target_objects.values()))
         self.exclude_body_ids = []
 
@@ -244,6 +245,9 @@ class SemanticRearrangementTask(BaseTask):
 
             # Sample location, checking for collisions
             self.sample_pose_and_place_object(obj=obj, check_contact=False)
+
+        # Reset subtask id
+        self.current_subtask_id = 0
 
         # Store location info
         self.update_location_info()
@@ -415,6 +419,9 @@ class SemanticRearrangementTask(BaseTask):
         task_id_one_hot[self.target_objects_id[self.target_object.name]] = 1
         task_obs["task_id"] = task_id_one_hot
 
+        # Add subtask id
+        task_obs["current_subtask_id"] = self.current_subtask_id
+
         # Add location -- this is ID of object robot is at if untucked, else returns -1 (assumes we're not at a location)
         if env.robots[0].tucked:
             task_obs["robot_location"] = -1
@@ -494,23 +501,24 @@ class SemanticRearrangementTask(BaseTask):
             dict: Success criteria mapped to bools
         """
         task_success = False
+        # Check contact with gripper
+        collisions = list(p.getContactPoints(bodyA=self.target_object.body_id, bodyB=self.robot_body_id))
+        touching_left_finger, touching_right_finger = False, False
+        for item in collisions:
+            if touching_left_finger and touching_right_finger:
+                # No need to continue iterating
+                break
+            # check linkB to see if it matches either gripper finger
+            if item[4] == self.robot_gripper_joint_ids[0]:
+                touching_right_finger = True
+            elif item[4] == self.robot_gripper_joint_ids[1]:
+                touching_left_finger = True
+        grasping_target_object = touching_left_finger and touching_right_finger
         # Lift success condition
         if self.success_condition == "lift":
             # Task is considered success if target object is touching both gripper fingers and lifted by small margin
-            collisions = list(p.getContactPoints(bodyA=self.target_object.body_id, bodyB=self.robot_body_id))
-            touching_left_finger, touching_right_finger = False, False
-            if self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05:
-                # Object is lifted, now check for gripping contact
-                for item in collisions:
-                    if touching_left_finger and touching_right_finger:
-                        # No need to continue iterating
-                        task_success = True
-                        break
-                    # check linkB to see if it matches either gripper finger
-                    if item[4] == self.robot_gripper_joint_ids[0]:
-                        touching_right_finger = True
-                    elif item[4] == self.robot_gripper_joint_ids[1]:
-                        touching_left_finger = True
+            if self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05 and grasping_target_object:
+                task_success = True
         elif self.success_condition == "pick_place":
             # See if height condition is met
             if self.target_object.get_position()[2] > self.goal_pos[2] - 0.1:
@@ -547,6 +555,34 @@ class SemanticRearrangementTask(BaseTask):
             success_dict["trash_in_bin"] = trash_in_bin
             # Modify success condition (trash must be in trash bin to complete task)
             success_dict["task"] = success_dict["task"] and trash_in_bin
+
+        # Get subtask ID
+        if self.include_trash:
+            # 0 - not grasping bowl, trash not in bin
+            # 1 - grasping bowl, trash not in bin
+            # 2 - grasping bowl, trash in bin
+            # 3 - task solved
+            if task_success:
+                self.current_subtask_id = 3
+            elif not grasping_target_object:
+                self.current_subtask_id = 0
+            elif not trash_in_bin:
+                self.current_subtask_id = 1
+            else:
+                self.current_subtask_id = 2
+        else:
+            # 0 - not grasping bowl
+            # 1 - grasping bowl
+            # 2 - task solved
+            if task_success:
+                self.current_subtask_id = 2
+            elif not grasping_target_object:
+                self.current_subtask_id = 0
+            else:
+                self.current_subtask_id = 1
+
+        # Store the current subtask id in the success dict
+        success_dict["current_subtask_id"] = self.current_subtask_id
 
         # Return dict
         return success_dict
