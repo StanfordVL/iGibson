@@ -558,21 +558,21 @@ class SemanticRearrangementTask(BaseTask):
 
         # Get subtask ID
         if self.include_trash:
-            # 0 - not grasping bowl, trash not in bin
-            # 1 - grasping bowl, trash not in bin
-            # 2 - grasping bowl, trash in bin
+            # 0 - not grasping target object, trash not in bin
+            # 1 - grasping target object, trash not in bin
+            # 2 - trash in bin
             # 3 - task solved
             if task_success:
                 self.current_subtask_id = 3
-            elif not grasping_target_object:
-                self.current_subtask_id = 0
-            elif not trash_in_bin:
+            elif trash_in_bin:
+                self.current_subtask_id = 2
+            elif grasping_target_object:
                 self.current_subtask_id = 1
             else:
-                self.current_subtask_id = 2
+                self.current_subtask_id = 0
         else:
-            # 0 - not grasping bowl
-            # 1 - grasping bowl
+            # 0 - not grasping target object
+            # 1 - grasping target object
             # 2 - task solved
             if task_success:
                 self.current_subtask_id = 2
