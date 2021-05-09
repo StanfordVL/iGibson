@@ -186,7 +186,7 @@ def sample_cuboid_on_object(obj,
         samples = sample_origin_positions(sampling_aabb_min, sampling_aabb_max, max_sampling_attempts,
                                           bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities)
 
-        refusal_reasons = results[i][3]
+        refusal_reasons = results[i][4]
 
         # Try each sampled position in the AABB.
         for axis, is_top, start_pos in samples:
@@ -380,7 +380,7 @@ def check_cuboid_empty(debug_markers, grid, hit_normal, hit_positions, refusal_r
     check_cast_results = p.rayTestBatch(rayFromPositions=all_pairs[:, 0, :], rayToPositions=all_pairs[:, 1, :])
     if not all(ray[0] == -1 for ray in check_cast_results):
         if gibson2.debug_sampling:
-            refusal_reasons["cuboid_not_empty"].append("check ray info: %s" % check_cast_results)
+            refusal_reasons["cuboid_not_empty"].append("check ray info: %r" % (check_cast_results,))
 
         return False
 
