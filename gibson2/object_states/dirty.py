@@ -1,3 +1,4 @@
+from gibson2.object_states import AABB
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust, Stain
@@ -10,6 +11,9 @@ class _Dirty(AbsoluteObjectState, BooleanState):
     This class represents common logic between particle-based dirtyness states like
     dusty and stained. It should not be directly instantiated - use subclasses instead.
     """
+    @staticmethod
+    def get_dependencies():
+        return AbsoluteObjectState.get_dependencies() + [AABB]
 
     def __init__(self, obj):
         super(_Dirty, self).__init__(obj)
