@@ -12,6 +12,11 @@ def main():
     )
     s.import_ig_scene(scene)
 
+    water_sources = (set(scene.get_objects_with_state(object_states.WaterSource)) &
+                     set(scene.get_objects_with_state(object_states.ToggledOn)))
+    for obj in water_sources:
+        obj.states[object_states.ToggledOn].set_value(True)
+
     # Let the user view the frozen scene in the UI for purposes of comparison.
     try:
         while True:

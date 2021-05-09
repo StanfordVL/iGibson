@@ -29,7 +29,7 @@ def main():
         if object_states.Stained in obj.states:
             obj.states[object_states.Stained].set_value(True)
 
-        if object_states.WaterSource in obj.states:
+        if object_states.WaterSource in obj.states and object_states.ToggledOn in obj.states:
             obj.states[object_states.ToggledOn].set_value(True)
 
     try:
