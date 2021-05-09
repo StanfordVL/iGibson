@@ -40,10 +40,10 @@ _ABILITY_TO_STATE_MAPPING = {
     "freezable": [Frozen],
     "heatSource": [HeatSourceOrSink],
     "openable": [Open],
-    "stainable": [Stained],
     "sliceable": [Sliced],
     "slicer": [Slicer],
     "soakable": [Soaked],
+    "stainable": [Stained],
     "toggleable": [ToggledOn],
     "waterSource": [WaterSource],
 }
