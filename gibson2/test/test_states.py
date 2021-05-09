@@ -261,13 +261,13 @@ def test_water_source():
                           category='sink',
                           name='sink_1',
                           scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'water_source': {}, 'toggleable': {}}
+                          abilities={'waterSource': {}, 'toggleable': {}}
                           )
 
         s.import_object(sink)
         sink.states[object_states.ToggledOn].set_value(True)
         sink.set_position([1, 1, 0.8])
-        assert 'water_source' in sink.abilities
+        assert 'waterSource' in sink.abilities
         assert object_states.WaterSource in sink.states
 
         for i in range(2):
