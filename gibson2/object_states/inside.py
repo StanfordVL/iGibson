@@ -10,6 +10,10 @@ from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
+    @staticmethod
+    def get_dependencies():
+        return KinematicsMixin.get_dependencies() + [AABB, HorizontalAdjacency, VerticalAdjacency]
+
     def _set_value(self, other, new_value, use_ray_casting_method=False):
         state_id = p.saveState()
 
