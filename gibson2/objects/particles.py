@@ -9,6 +9,7 @@ from gibson2.external.pybullet_tools import utils
 from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
+from gibson2.utils.constants import SemanticClass
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -100,7 +101,8 @@ class Particle(Object):
 
 
 class ParticleSystem(object):
-    def __init__(self, num, size, color=(1, 1, 1, 1), **kwargs):
+    def __init__(self, num, size, color=(1, 1, 1, 1), class_id=SemanticClass.USER_ADDED_OBJS, use_pbr=False,
+                 use_pbr_mapping=False, shadow_caster=True, **kwargs):
         size = np.array(size)
         if size.ndim == 2:
             assert size.shape[0] == num
@@ -113,6 +115,14 @@ class ParticleSystem(object):
         self._active_particles = []
         self._stashed_particles = deque()
 
+        self._simulator = None
+        self._import_params = {
+            "class_id": class_id,
+            "use_pbr": use_pbr,
+            "use_pbr_mapping": use_pbr_mapping,
+            "shadow_caster": shadow_caster,
+        }
+
         for i in range(num):
             # If different sizes / colors provided for each instance, pick the correct one for this instance.
             this_size = size if size.ndim == 1 else size[i]
@@ -123,8 +133,9 @@ class ParticleSystem(object):
             self._all_particles.append(particle)
             self._stashed_particles.append(particle)
 
-    def initialize(self):
-        pass
+    def initialize(self, simulator):
+        # Keep a handle to the simulator for lazy loads later.
+        self._simulator = simulator
 
     def update(self, simulator):
         pass
@@ -155,12 +166,20 @@ class ParticleSystem(object):
         particle.set_position(_STASH_POSITION)
         particle.force_sleep()
 
+    def _load_particle(self, particle):
+        return self._simulator.import_object(particle, **self._import_params)
+
     def unstash_particle(self, position, orientation, particle=None):
         # If the user wants a particular particle, give it to them. Otherwise, unstash one.
         if particle is not None:
             self._stashed_particles.remove(particle)
         else:
             particle = self._stashed_particles.popleft()
+
+        # Lazy loading of the particle now if not already loaded
+        if not particle.loaded:
+            self._load_particle(particle)
+
         particle.set_position_orientation(position, orientation)
         particle.force_wakeup()
 
@@ -177,7 +196,9 @@ class AttachedParticleSystem(ParticleSystem):
         self._attachment_offsets = {}  # in the format of {particle: offset}
         self.from_dump = from_dump
 
-    def initialize(self):
+    def initialize(self, simulator):
+        super(AttachedParticleSystem, self).initialize(simulator)
+
         # Unstash particles in dump.
         if self.from_dump:
             for i, particle_data in enumerate(self.from_dump):
@@ -307,6 +328,7 @@ class WaterStream(ParticleSystem):
             color=self.colors,
             visual_only=False,
             mass=0.1,
+            use_pbr=True,  # PBR needs to be on for the shiny water particles.
             **kwargs
         )
 
@@ -316,7 +338,9 @@ class WaterStream(ParticleSystem):
         self.on = False
         self.particle_poses_from_dump = from_dump["particle_poses"] if from_dump else None
 
-    def initialize(self):
+    def initialize(self, simulator):
+        super(WaterStream, self).initialize(simulator)
+
         # Unstash particles in dump.
         if self.particle_poses_from_dump:
             for i, particle_pose in enumerate(self.particle_poses_from_dump):
@@ -327,6 +351,19 @@ class WaterStream(ParticleSystem):
                         particle_pose[0], particle_pose[1], particle)
 
             del self.particle_poses_from_dump
+
+    def _load_particle(self, particle):
+        # First load the particle normally.
+        body_id = super(WaterStream, self)._load_particle(particle)
+
+        # Set renderer instance settings on the particles.
+        instances = self._simulator.renderer.get_instances()
+        for instance in instances:
+            if instance.pybullet_uuid == body_id:
+                instance.roughness = 0
+                instance.metalness = 1
+
+        return body_id
 
     def set_running(self, on):
         self.on = on
