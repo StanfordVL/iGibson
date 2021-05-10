@@ -44,16 +44,8 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         water_source_position = list(
             np.array(water_source_position) + _OFFSET_FROM_LINK)
         self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, from_dump=self.from_dump)
+        simulator.import_particle_system(self.water_stream)
         del self.from_dump
-        body_ids = simulator.import_particle_system(
-            self.water_stream, use_pbr=True)
-
-        # Set some renderer settings on these particles.
-        instances = simulator.renderer.get_instances()
-        for instance in instances:
-            if instance.pybullet_uuid in body_ids:
-                instance.roughness = 0
-                instance.metalness = 1
 
     def _update(self, simulator):
         water_source_position = self.get_link_position()
