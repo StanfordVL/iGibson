@@ -13,8 +13,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
-from gibson2.utils.vr_logging import VRLogReader
-from gibson2.utils.vr_logging import VRLogWriter
+from gibson2.utils.ig_logging import IGLogReader, IGLogWriter
 import tasknet
 
 import numpy as np
@@ -62,8 +61,8 @@ def parse_args():
                         help='Path to save frames (frame number added automatically, as well as .jpg extension)')
     parser.add_argument('--disable_scene_cache', action='store_true',
                         help='Whether to disable using pre-initialized scene caches.')
-    parser.add_argument('--disable_save',
-                        action='store_true', help='Whether to disable saving log of replayed trajectory.')
+    parser.add_argument('--enable_save',
+                        action='store_true', help='Whether to enable saving log of replayed trajectory.')
     parser.add_argument('--highlight_gaze', action='store_true',
                         help='Whether to highlight the object at gaze location.')
     parser.add_argument('--profile', action='store_true',
@@ -100,22 +99,25 @@ def main():
     )
 
     # Initialize settings to save action replay frames
-    vr_replay_settings = VrSettings()
-    vr_replay_settings.turn_off_vr_mode()
-    vr_replay_settings.set_frame_save_path(args.frame_save_path)
-    vr_replay_settings.use_companion_window = False
+    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/vr_settings'))
+    vr_settings.turn_off_vr_mode()
+    vr_settings.set_frame_save_path(args.frame_save_path)
+    vr_settings.use_companion_window = False
 
-    f = h5py.File(args.vr_log_path, 'r')
-    task = f.attrs['/metadata/task_name']
-    task_id = f.attrs['/metadata/task_instance']
-    scene = f.attrs['/metadata/scene_id']
-    physics_timestep = f.attrs['/metadata/physics_timestep']
-    render_timestep = f.attrs['/metadata/render_timestep']
+    task = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_name')
+    task_id = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_instance')
+    scene = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/scene_id')
+    physics_timestep = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/physics_timestep')
+    render_timestep = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/render_timestep')
 
-    if 'metadata/filter_objects' in f.attrs:
-        filter_objects = f.attrs['metadata/filter_objects']
+    if IGLogReader.has_metadata_attr(args.vr_log_path, 'metadata/filter_objects'):
+        filter_objects = IGLogReader.read_metadata_attr(args.vr_log_path, 'metadata/filter_objects')
     else:
         filter_objects = True
+
+    # Get dictionary mapping object body id to name, also check it is a dictionary
+    obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(args.vr_log_path)
+    assert type(obj_body_id_to_name) == dict
 
     # VR system settings
     s = Simulator(
@@ -123,7 +125,7 @@ def main():
           physics_timestep = physics_timestep,
           render_timestep = render_timestep,
           rendering_settings=vr_rendering_settings,
-          vr_settings=vr_replay_settings,
+          vr_settings=vr_settings,
         )
 
     igtn_task = iGTNTask(task, task_id)
@@ -146,25 +148,22 @@ def main():
     vr_agent = igtn_task.simulator.robots[0]
     if not args.vr_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
-    vr_reader = VRLogReader(args.vr_log_path, s.vr_settings,
-                            emulate_save_fps=False, log_status=False)
+    log_reader = IGLogReader(args.vr_log_path, log_status=False)
 
-    if not args.disable_save:
+    if args.enable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_replay_log_path == None:
             args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
                 task, task_id, scene, timestamp)
 
-        vr_writer = VRLogWriter(s, igtn_task, vr_agent, frames_before_write=200,
-                                log_filepath=args.vr_replay_log_path, profiling_mode=args.profile, filter_objects=filter_objects)
-        vr_writer.set_up_data_storage()
+        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=args.vr_log_path, task=igtn_task, store_vr=True, vr_agent=vr_agent, profiling_mode=args.profile)
+        log_writer.set_up_data_storage()
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
     target_obj = -1
     gaze_max_distance = 100.0
     satisfied_predicates_cached = {}
-    while vr_reader.get_data_left_to_read():
-
+    while log_reader.get_data_left_to_read():
         if args.highlight_gaze:
             if vr_agent.vr_dict['gaze_marker'].eye_data_valid:
                 if target_obj in s.scene.objects_by_id:
@@ -181,24 +180,23 @@ def main():
                     if obj.category not in disallowed_categories:
                         obj.highlight()
 
-        vr_reader.pre_step()
-        igtn_task.simulator.step(
-            print_stats=args.profile, forced_timestep=vr_reader.get_phys_step_n())
+        igtn_task.simulator.step(print_stats=args.profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
-        # TODO: If this doesn't work, set full_replay to True to guarantee we see the same thing that the VR users saw
-        vr_reader.read_frame(s, full_replay=False, print_vr_data=False)
+        # Set camera each frame
+        log_reader.set_replay_camera(s)
 
         # Get relevant VR action data and update VR agent
-        vr_action_data = vr_reader.get_vr_action_data()
-        vr_agent.update(vr_action_data)
+        vr_agent.update(vr_data=log_reader.get_vr_data())
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
 
-        if not args.disable_save:
-            vr_writer.process_frame(s, store_vr_data=False)
+        if args.enable_save:
+            log_writer.process_frame()
 
+    if args.enable_save:
+        log_writer.end_log_session()
     s.disconnect()
 
 
