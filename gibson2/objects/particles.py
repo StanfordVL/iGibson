@@ -167,7 +167,9 @@ class ParticleSystem(object):
         particle.force_sleep()
 
     def _load_particle(self, particle):
-        return self._simulator.import_object(particle, **self._import_params)
+        body_id = self._simulator.import_object(particle, **self._import_params)
+        particle.set_position(_STASH_POSITION)  # Put loaded particles at the stash position initially.
+        return body_id
 
     def unstash_particle(self, position, orientation, particle=None):
         # If the user wants a particular particle, give it to them. Otherwise, unstash one.
@@ -340,6 +342,11 @@ class WaterStream(ParticleSystem):
 
     def initialize(self, simulator):
         super(WaterStream, self).initialize(simulator)
+
+        # For a water source, we are guaranteed to eventually use each particle, so we
+        # can immediately load all of them.
+        for particle in self.get_particles():
+            self._load_particle(particle)
 
         # Unstash particles in dump.
         if self.particle_poses_from_dump:
