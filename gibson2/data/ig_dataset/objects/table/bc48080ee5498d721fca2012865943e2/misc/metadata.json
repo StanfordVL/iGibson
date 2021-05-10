@@ -6,7 +6,7 @@
       "name": "top",
       "link": "root",
       "offset_from_base": [0.0, 0.0, 0.2086],
-      "size": [0.9, 0.9],
+      "size": [1.5, 1.5],
       "max_height": 10000.0,
       "prob": 1.0
     }
