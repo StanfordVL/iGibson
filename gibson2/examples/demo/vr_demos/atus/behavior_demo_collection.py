@@ -36,6 +36,7 @@ def parse_args():
     ]
 
     task_choices = [
+        "assembling_gift_baskets",
         "packing_lunches_filtered",
         "assembling_gift_baskets_filtered",
         "organizing_school_stuff_filtered",
