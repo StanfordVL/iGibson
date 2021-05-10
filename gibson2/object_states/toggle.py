@@ -76,13 +76,22 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             hud_overlay_show_state = False
 
         # Choose which marker to put on object vs which to put away
-        put_here_marker = self.visual_marker_on if self.get_value() else self.visual_marker_off
-        put_away_marker = self.visual_marker_off if self.get_value() else self.visual_marker_on
+        show_marker = self.visual_marker_on if self.get_value() else self.visual_marker_off
+        hidden_marker = self.visual_marker_off if self.get_value() else self.visual_marker_on
 
         # Place them where they belong. If HUD is off, put both away.
-        put_here_marker.set_position(
-            button_position_on_object if hud_overlay_show_state else _TOGGLE_MARKER_OFF_POSITION)
-        put_away_marker.set_position(_TOGGLE_MARKER_OFF_POSITION)
+        show_marker.set_position(button_position_on_object)
+        hidden_marker.set_position(button_position_on_object)
+
+        if hud_overlay_show_state:
+            for instance in show_marker.renderer_instances:
+                instance.hidden = False
+        else:
+            for instance in show_marker.renderer_instances:
+                instance.hidden = True
+
+        for instance in hidden_marker.renderer_instances:
+            instance.hidden = True
 
     # For this state, we simply store its value and the hand-in-marker steps.
     def _dump(self):
