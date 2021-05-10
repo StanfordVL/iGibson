@@ -19,6 +19,7 @@ from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
+from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES
 
 import pybullet as p
 import gibson2
@@ -122,18 +123,15 @@ class Simulator:
         self.vr_overlay_initialized = False
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
-        # Get expected duration of frame
-        self.fixed_frame_dur = 1/float(self.vr_settings.vr_fps)
         # Duration of a vsync frame - assumes 90Hz refresh rate
-        self.vsync_frame_dur = 11.11e-3
+        self.vsync_frame_dur = 11.11e-3 
         # Get expected number of vsync frames per iGibson frame
         # Note: currently assumes a 90Hz VR system
         self.vsync_frame_num = int(
-            round(self.fixed_frame_dur / self.vsync_frame_dur))
+            round(self.render_timestep / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
         # Leave a small amount of time before the last vsync, just in case we overrun
-        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + \
-            5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
 
@@ -1170,11 +1168,18 @@ class Simulator:
         """
         return self.vr_event_data
 
+    def get_button_for_action(self, action):
+        """
+        Returns (button, state) tuple corresponding to an action
+        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.yml
+        """
+        return None if action not in self.vr_settings.action_button_map else tuple(self.vr_settings.action_button_map[action])
+
     def query_vr_event(self, controller, action):
         """
         Queries system for a VR event, and returns true if that event happened this frame
         :param controller: device to query for - can be left_controller or right_controller
-        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.json
+        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.yml
         """
         # Return false if any of input parameters are invalid
         if (controller not in ['left_controller', 'right_controller'] or
@@ -1323,7 +1328,7 @@ class Simulator:
         """
         Gets the world position of the VR system in iGibson space.
         """
-        return self.get_hmd_world_pos() + self.get_vr_offset()
+        return self.get_hmd_world_pos() + np.array(self.get_vr_offset())
 
     def set_vr_offset(self, pos=None):
         """
@@ -1379,6 +1384,39 @@ class Simulator:
 
         self.renderer.vrsys.triggerHapticPulseForDevice(
             device, int(self.max_haptic_duration * strength))
+
+    def gen_vr_data(self):
+        """
+        Generates a VrData object containing all of the data required to describe the VR system in the current frame.
+        This is used in MUVR and to power the VrAgent.
+        """
+        if not self.can_access_vr_context:
+            return VrData()
+
+        v = dict()
+        for device in VR_DEVICES:
+            is_valid, trans, rot = self.get_data_for_vr_device(device)
+            device_data = [[is_valid, trans.tolist(), rot.tolist()]]
+            device_data.extend(self.get_device_coordinate_system(device))
+            if device in VR_CONTROLLERS:
+                device_data.extend(self.get_button_data_for_controller(device))
+            v[device] = device_data
+
+        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(self.vr_settings.torso_tracker_serial)
+        v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
+        v['eye_data'] = self.get_eye_tracking_data()
+        v['event_data'] = self.get_vr_events()
+        v['vr_pos'] = self.get_vr_pos().tolist()
+        v['vr_offset'] = list(self.get_vr_offset())
+        v['vr_settings'] = [
+            self.vr_settings.eye_tracking,
+            self.vr_settings.touchpad_movement,
+            self.vr_settings.movement_controller,
+            self.vr_settings.relative_movement_device,
+            self.vr_settings.movement_speed
+        ]
+
+        return VrData(v)
 
     def set_hidden_state(self, obj, hide=True):
         """
