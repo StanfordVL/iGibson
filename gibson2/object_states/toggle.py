@@ -84,11 +84,14 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         hidden_marker.set_position(button_position_on_object)
 
         if hud_overlay_show_state:
-            simulator.set_hidden_state(show_marker, hide=False)
+            for instance in show_marker.renderer_instances:
+                instance.hidden = False
         else:
-            simulator.set_hidden_state(show_marker, hide=True)
+            for instance in show_marker.renderer_instances:
+                instance.hidden = True
 
-        simulator.set_hidden_state(hidden_marker, hide=True)
+        for instance in hidden_marker.renderer_instances:
+            instance.hidden = True
 
     # For this state, we simply store its value and the hand-in-marker steps.
     def _dump(self):
