@@ -530,9 +530,13 @@ class Viewer:
                 camera_pose, camera_pose + self.view_direction, self.up)
 
         if self.renderer is not None:
+            # start = time.time()
             frame = cv2.cvtColor(
                 np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
                 cv2.COLOR_RGB2BGR)
+            # elapsed = time.time() - start
+            # print("{} fps".format(1/elapsed))
+            # print(frame.shape)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
 

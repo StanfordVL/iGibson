@@ -427,11 +427,11 @@ class MeshRenderer(object):
             # import pdb; pdb.set_trace();
         
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd, texture_id=-1)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd)
             # self.materials_mapping[len(
                 # materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5])
             # self.materials_mapping[len(
                 # materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
 
@@ -513,7 +513,9 @@ class MeshRenderer(object):
                 shape_normal = shape_normal.dot(orn[:3, :3].T)
             if transform_pos is not None:
                 # Translate the shape after they are scaled
+                # print(shape_vertex.shape, transform_pos, shape_normal.shape, transform_orn)
                 shape_vertex += np.array(transform_pos)
+                # shape_normal += np.array(transformnp.array(transform_pos)_pos)
 
             v0 = shape_vertex[0::3, :]
             v1 = shape_vertex[1::3, :]
@@ -1150,6 +1152,7 @@ class MeshRenderer(object):
         texture_files = sorted(self.texture_files.items(), key=lambda x: x[1])
         texture_files = [item[0] for item in texture_files]
 
+        # import pdb; pdb.set_trace();
         self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = \
             self.r.generateArrayTextures(texture_files,
                                          cutoff,
@@ -1209,6 +1212,7 @@ class MeshRenderer(object):
                         list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
+                # import pdb; pdb.set_trace();
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
                 pbr_data_array.extend(
@@ -1249,6 +1253,7 @@ class MeshRenderer(object):
             # Generate other rendering data, including diffuse color and texture layer
             id_material = self.materials_mapping[self.mesh_materials[id]]
             texture_id = id_material.texture_id
+            # import pdb; pdb.set_trace()
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)

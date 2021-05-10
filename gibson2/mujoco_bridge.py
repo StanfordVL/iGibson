@@ -16,6 +16,8 @@ from transforms3d import quaternions
 import logging
 import gibson2
 from pathlib import Path
+import string
+import random
 
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
@@ -38,7 +40,7 @@ class iGibsonMujocoBridge:
         """
         """
         # physics simulator
-        self.mode = mode
+        self.mode = mode #'headless'
 
         # renderer
         self.camera_name = camera_name
@@ -51,7 +53,7 @@ class iGibsonMujocoBridge:
         self.render_collision_mesh = 0
         self.render_visual_mesh = 0
         # print("self.render_visual_mesh", self.render_visual_mesh)
-        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.2)
+        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.0)
         self.mrs_no_tensor = self.mrs_tensor # MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.5)
         self.settings = self.mrs_tensor if render_to_tensor else self.mrs_no_tensor
         print("##"*80)
@@ -69,7 +71,8 @@ class iGibsonMujocoBridge:
     def add_viewer(self, 
                  initial_pos = [0,0,1], 
                  initial_view_direction = [1,0,0], 
-                 initial_up = [0,0,1]):
+                 initial_up = [0,0,1],
+                 add_renderer=True):
         """
         Attach a debugging viewer to the renderer. This will make the step much slower so should be avoided when
         training agents
@@ -79,7 +82,8 @@ class iGibsonMujocoBridge:
             initial_up=initial_up
             )
 
-        self.viewer.renderer = self.renderer
+        if add_renderer:
+            self.viewer.renderer = self.renderer
 
     def reload(self):
         """
@@ -142,6 +146,11 @@ class iGibsonMujocoBridge:
             # self.viewer.renderer = self.renderer
             self.add_viewer(initial_pos=camera_position, 
                             initial_view_direction=view_direction)#camera_position, camera_position - view_direction, [0, 0, 1])     
+        else:
+            self.viewer = None
+            # self.add_viewer(initial_pos=camera_position, 
+            #                 initial_view_direction=view_direction,
+            #                 add_renderer=False)
 
         self.visual_objects = {}
         self.robots = []
@@ -157,6 +166,8 @@ class iGibsonMujocoBridge:
         with open("/home/divyansh/xml.xml", 'w') as f:
             f.write(mjpy_model.get_xml())
         with open("/home/divyansh/walls.xml", 'r') as f:
+            spheres_xml = f.read()
+        with open("/home/divyansh/meshes.xml", 'r') as f:
             spheres_xml = f.read()
         xml_root = ET.fromstring(mjpy_model.get_xml())
         # xml_root = ET.fromstring(spheres_xml)  #Create a workable XML object
@@ -188,7 +199,7 @@ class iGibsonMujocoBridge:
             # print(texture.get('type'), texture.get('name'), texture.get('file'))
             if texture.get('file') is not None:
                 textures[texture.get('name')] = texture.attrib
-                texture_ids[texture.get('name')] = (self.renderer.r.loadTexture(texture.get('file'), self.settings.texture_scale), texture_type)
+                texture_ids[texture.get('name')] = (self.renderer.load_texture_file(texture.get('file')), texture_type)
                 p = Path(texture.get('file'))
                 # if 'wood-tiles' in str(p):
                 #     print(texture_ids)
@@ -199,18 +210,18 @@ class iGibsonMujocoBridge:
                 metallic_fname = p.parent / (p.stem + '-metallic.png')
                 
                 if roughness_fname.exists():
-                    roughness_ids[texture.get('name')] = self.renderer.r.loadTexture(str(roughness_fname), self.settings.texture_scale)
+                    roughness_ids[texture.get('name')] = self.renderer.load_texture_file(str(roughness_fname))
                     # print(texture.get('name'), roughness_ids)
                 else:
                     roughness_ids[texture.get('name')] = -1
 
                 if normal_fname.exists():
-                    normal_ids[texture.get('name')] = self.renderer.r.loadTexture(str(normal_fname), self.settings.texture_scale)
+                    normal_ids[texture.get('name')] = self.renderer.load_texture_file(str(normal_fname))
                 else:
                     normal_ids[texture.get('name')] = -1
 
                 if metallic_fname.exists():
-                    metallic_ids[texture.get('name')] = self.renderer.r.loadTexture(str(metallic_fname), self.settings.texture_scale)  
+                    metallic_ids[texture.get('name')] = self.renderer.load_texture_file(str(metallic_fname))  
                 else:
                     metallic_ids[texture.get('name')] = -1               
 
@@ -235,28 +246,35 @@ class iGibsonMujocoBridge:
         #Create a dictionary of all materials and Material objects
         materials = {}
         material_objs = {}
+        normal_id = None
         print(roughness_ids)
 
+        def random_string():
+            res = ''.join(random.choices(string.ascii_letters +
+                             string.digits, k=10))
+            return res
+
         def get_id(intensity, name, self):
+            # import pdb; pdb.set_trace()
             if isinstance(intensity, np.ndarray):
                 im = intensity
             else:
-                im = np.array([intensity] * 3).reshape(1,1,3) * 255
-                im = im.astype(np.uint8)
-                # im = np.array([intensity]).reshape(1,1)
-            tmpdirname =  tempfile.TemporaryDirectory()
-            fname = os.path.join(tmpdirname.name, f'{name}.png')
+                # im = np.array([intensity] * 3).reshape(1,1,3) * 255
+                # im = im.astype(np.uint8)
+                im = np.array([intensity]).reshape(1,1)
+                
+            tmpdirname = os.path.join(tempfile.gettempdir(), f'igibson_{random_string()}')
+            os.makedirs(tmpdirname, exist_ok=True)
+            fname = os.path.join(tmpdirname, f'{name}.png')
             plt.imsave(fname, im)
             print(fname)
-            return self.renderer.r.loadTexture(str(fname), self.settings.texture_scale)
+            return self.renderer.load_texture_file(str(fname))
 
         for material in xml_root.iter('material'):
         
             materials[material.get('name')] = material.attrib
             texture_name = material.get('texture')
             
-            if texture_name is None:
-                import pdb; pdb.set_trace();
 
             if texture_name is not None:
                 (texture_id, texture_type) = texture_ids[texture_name]
@@ -266,23 +284,24 @@ class iGibsonMujocoBridge:
                     specular = float(specular)
                     roughness = 1 - specular
                 else:
-                    roughness = 1.0
+                    roughness = 0.5
 
                 if shininess is not None:
                     shininess = float(shininess)
                     metallic = shininess
                 else:
-                    metallic = 0.0
-                
-                # if material.get('name') == 'walls_mat':
-                #     metallic = 0.5
+                    metallic = 0.5
+            
                     
                     
-                roughness_id = get_id(roughness, 'roughness', self)
-                metallic_id = get_id(metallic, 'metallic', self)                    
+                # roughness_id = get_id(roughness, 'roughness', self)
+                # metallic_id = get_id(metallic, 'metallic', self)                    
+                # roughness_id = get_id(np.array([127, 127, 255]).reshape(1,1,3).astype(np.uint8), 'normal', self) if specular is None else get_id(roughness, 'roughness', self)
+                # metallic_id = get_id(np.array([127, 127, 255]).reshape(1,1,3).astype(np.uint8), 'normal', self) if shininess is None else get_id(metallic, 'metallic', self)
                 roughness_id = -1 if specular is None else get_id(roughness, 'roughness', self)
-                metallic_id = -1 if shininess is None else get_id(metallic, 'metallic', self)
-                normal_id = get_id(np.array([127, 127, 255]).reshape(1,1,3).astype(np.uint8), 'normal', self)
+                metallic_id = -1 if shininess is None else get_id(metallic, 'metallic', self)  
+                if normal_id is None:
+                    normal_id = get_id(np.array([127, 127, 255]).reshape(1,1,3).astype(np.uint8), 'normal', self) #tempfile.gettempdir())
 
                 # normal_id = normal_ids[texture_name]
                 # metallic_id = metallic_ids[texture_name]
@@ -374,7 +393,7 @@ class iGibsonMujocoBridge:
                                 [],
                                 [],
                                 [],
-                                [],
+                                0,
                                 dynamic=False,
                                 robot=mujoco_robot)     
 
@@ -438,7 +457,10 @@ class iGibsonMujocoBridge:
                 if geom_material_name is not None:
                     load_texture = False
                     geom_material = material_objs[geom_material_name]
-                
+
+                if geom.get('name') == 'Door_r_frame_visual':
+                    pass
+                    # import pdb; pdb.set_trace();
 
                 # if geom_material_name is not None:
                 #     if 'legs' in geom_material_name:
@@ -486,6 +508,21 @@ class iGibsonMujocoBridge:
 
                 elif geom_type == 'cylinder':
                     filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cylinder.obj')
+
+                    if geom_material is None:
+                        color = np.array(properties['rgba'][:3]).reshape(1,1,3)
+                        cylinder_texture_id = get_id(color, 'texture', self)
+                        # cylinder_roughness_id = get_id(0.5, 'roughness', self)
+                        # cylinder_metallic_id = get_id(1, 'metallic', self)                    
+                        # cylinder_roughness_id = get_id(np.array([0.0]).reshape(1,1), 'roughness', self)
+                        cylinder_metallic_id = get_id(np.array([1.]*3).reshape(1,1,3), 'metallic', self)
+                        cylinder_material = Material('texture',
+                                            texture_id=cylinder_texture_id,
+                                            metallic_texture_id=-1,
+                                            roughness_texture_id=-1,
+                                            normal_texture_id=normal_id,
+                                            texuniform=False)
+                        geom_material = cylinder_material
 
                     geom_orn = [geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]]
                     self.renderer.load_object(filename,
@@ -538,7 +575,29 @@ class iGibsonMujocoBridge:
 
                     # This line is commented out to "reload" the same meshes with different tranformations, for example, robot fingers
                     # We need to find a better way to do it if we are going to load the same object many times (save space)
-                    # if not filename in self.visual_objects.keys(): 
+                    # if not filename in self.visual_objects.keys():
+
+                    # import pdb; pdb.set_trace();
+                    # color = np.array(properties['rgba'][:3]).reshape(1,1,3)
+                    # size = 1
+                    # # import pdb; pdb.set_trace();
+                    # mesh_texture_id = get_id(np.tile(color, (size, size, 1)), 'texture', self)
+                    # # import pdb; pdb.set_trace();
+                    # # mesh_roughness_id = get_id(0.0, 'roughness', self)
+                    # # mesh_metallic_id = get_id(0.9, 'metallic', self)                    
+                    # mesh_roughness_id = -1 #get_id(np.array([float(geom.get('roughness'))]*3*size*size).reshape(size,size,3), 'roughness', self)
+                    # mesh_metallic_id = -1 #get_id(np.array([float(geom.get('metallic'))]*3*size*size).reshape(size,size,3), 'metallic', self)
+                    # print(mesh_texture_id, mesh_roughness_id, mesh_metallic_id)
+                    # mesh_material = Material('texture',
+                    #                     # kd = properties['rgba'][:3],
+                    #                     texture_id=mesh_texture_id,
+                    #                     metallic_texture_id=mesh_metallic_id,
+                    #                     roughness_texture_id=mesh_roughness_id,
+                    #                     normal_texture_id=normal_id,
+                    #                     texuniform=True,
+                    #                     texture_type='cube')
+
+                    # geom_material = None
                     
                     print(filename)
                     print(geom_material)
@@ -546,7 +605,7 @@ class iGibsonMujocoBridge:
                                             scale=scale,
                                             transform_orn=geom_orn,
                                             transform_pos=geom_pos,
-                                            input_kd=properties['rgba'],
+                                            input_kd=properties['rgba'][:3],
                                             load_texture = True,
                                             input_material = None,  
                                             geom_type=geom_type                                          
@@ -673,11 +732,19 @@ class iGibsonMujocoBridge:
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
+        # import time
+        # start = time.time()
+        # for i in range(200):
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance, self.env)
-        if self.mode == 'gui' and not self.viewer is None:
+        if self.mode == 'gui' and self.viewer is not None:
             self.viewer.update()
+        
+        # elapsed = time.time() - start
+        # print(f'{200/elapsed} FPS')
+        # exit()
+
 
     @staticmethod
     def update_position(instance, env):
