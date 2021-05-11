@@ -14,9 +14,12 @@ import os
 from gibson2.utils.assets_utils import get_ig_model_path
 import pybullet as p
 
+
 def main():
-    config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
-    settings = MeshRendererSettings(enable_shadow=False, msaa=False, optimized=True)
+    config = parse_config(os.path.join(
+        gibson2.example_config_path, 'turtlebot_demo.yaml'))
+    settings = MeshRendererSettings(
+        enable_shadow=False, msaa=False, optimized=True)
     s = Simulator(mode='gui', image_width=512,
                   image_height=512, rendering_settings=settings)
 
@@ -26,11 +29,11 @@ def main():
     apple_dir = get_ig_model_path('apple', '00_0')
     apple_urdf = os.path.join(get_ig_model_path('apple', '00_0'), '00_0.urdf')
 
-    
-    apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir)
+    apple = URDFObject(apple_urdf, name="apple",
+                       category="apple", model_path=apple_dir)
 
     s.import_object(apple)
-    apple.set_position([0,0,0.2])
+    apple.set_position([0, 0, 0.2])
     temp = 0
     for i in range(10000):
         if i % 10 == 0:

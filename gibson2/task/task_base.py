@@ -352,24 +352,24 @@ class iGTNTask(TaskNetTask):
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
         if not self.online_sampling and self.scene.agent != {}:
             agent.vr_dict['body'].set_base_link_position_orientation(
-                self.scene.agent['VrBody']['xyz'], quat_from_euler(
-                    self.scene.agent['VrBody']['rpy'])
+                self.scene.agent['VrBody_1']['xyz'], quat_from_euler(
+                    self.scene.agent['VrBody_1']['rpy'])
             )
             agent.vr_dict['left_hand'].set_base_link_position_orientation(
-                self.scene.agent['left_hand']['xyz'], quat_from_euler(
-                    self.scene.agent['left_hand']['rpy'])
+                self.scene.agent['left_hand_1']['xyz'], quat_from_euler(
+                    self.scene.agent['left_hand_1']['rpy'])
             )
             agent.vr_dict['right_hand'].set_base_link_position_orientation(
-                self.scene.agent['right_hand']['xyz'], quat_from_euler(
-                    self.scene.agent['right_hand']['rpy'])
+                self.scene.agent['right_hand_1']['xyz'], quat_from_euler(
+                    self.scene.agent['right_hand_1']['rpy'])
             )
             agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent['left_hand']['xyz'], quat_from_euler(
-                    self.scene.agent['left_hand']['rpy'])
+                self.scene.agent['left_hand_1']['xyz'], quat_from_euler(
+                    self.scene.agent['left_hand_1']['rpy'])
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent['right_hand']['xyz'], quat_from_euler(
-                    self.scene.agent['right_hand']['rpy'])
+                self.scene.agent['right_hand_1']['xyz'], quat_from_euler(
+                    self.scene.agent['right_hand_1']['rpy'])
             )
 
     def move_agent(self):
