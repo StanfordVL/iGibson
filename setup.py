@@ -171,7 +171,8 @@ setup(
             'sphinx_markdown_tables',
             'sphinx>=1.8.0',
             'recommonmark',
-            'sphinx_rtd_theme'
+            'sphinx_rtd_theme',
+            'h5py'
     ],
     ext_modules=[CMakeExtension(
         'MeshRendererContext', sourcedir='gibson2/render')],
