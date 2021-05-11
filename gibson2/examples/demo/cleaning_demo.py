@@ -13,8 +13,9 @@ def main():
     s.import_ig_scene(scene)
 
     block = YCBObject(name='036_wood_block')
-    block.abilities = ["soakable", "cleaning_tool"]
-    prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
+    block.abilities = ["soakable", "cleaningTool"]
+    prepare_object_states(
+        block, abilities={"soakable": {}, "cleaningTool": {}})
     s.import_object(block)
     block.set_position([1, 1, 1.8])
 
