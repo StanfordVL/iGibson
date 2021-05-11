@@ -9,7 +9,7 @@ from gibson2.external.pybullet_tools import utils
 from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
-from gibson2.utils.constants import SemanticClass
+from gibson2.utils.constants import SemanticClass, PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -270,6 +270,18 @@ class AttachedParticleSystem(ParticleSystem):
         for particle in self.get_active_particles():
             link_id, (pos_offset,
                       orn_offset) = self._attachment_offsets[particle]
+
+            dynamics_info = p.getDynamicsInfo(
+                self.parent_obj.get_body_id(), link_id)
+
+            if len(dynamics_info) == 13:
+                activation_state = dynamics_info[12]
+            else:
+                activation_state = PyBulletSleepState.AWAKE
+
+            if activation_state != PyBulletSleepState.AWAKE:
+                # If parent object is in sleep, don't update particle poses
+                continue
 
             if link_id == -1:
                 attachment_source_pos = self.parent_obj.get_position()
