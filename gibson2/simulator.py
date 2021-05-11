@@ -19,7 +19,7 @@ from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
-from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES
+from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset
 
 import pybullet as p
 import gibson2
@@ -135,6 +135,7 @@ class Simulator:
             5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
+        self.main_vr_agent = None
 
         # Variables for data saving and replay in VR
         self.last_physics_timestep = -1
@@ -152,6 +153,7 @@ class Simulator:
         # List of categories that can be grasped by assisted grasping
         self.assist_grasp_category_allow_list = []
         self.gen_assisted_grasping_categories()
+        self.assist_grasp_mass_thresh = 10.0
 
         self.object_state_types = get_states_by_dependency_order()
 
@@ -980,6 +982,8 @@ class Simulator:
         self.perform_vr_start_pos_move()
         # Update VR data and wait until 3ms before the next vsync
         self.renderer.update_vr_data()
+        # Update VR system data - eg. offsets, haptics, etc.
+        self.vr_system_update()
         vr_system_dur = time.perf_counter() - vr_system_start
 
         # Calculate final frame duration
@@ -1006,40 +1010,6 @@ class Simulator:
 
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
-
-    def step_block_test(self, sleep_time):
-        """
-        Function that sleeps and renders simple scene to VR, to figure
-        out relationship between frame time and VR blocking time.
-        """
-        non_vr_start = time.perf_counter()
-        # Takes less than 3ms
-        render_start_time = time.perf_counter()
-        for _ in range(1):
-            p.stepSimulation()
-        self.sync()
-        render_dur = time.perf_counter() - render_start_time
-
-        # Sleep for remainder of frame
-        # First frame is invalid, so return None
-        if sleep_time < render_dur:
-            return (None, None)
-
-        time.sleep(sleep_time - render_dur)
-        non_vr_dur = time.perf_counter() - non_vr_start
-
-        # Do VR system stuff
-        vr_system_start = time.perf_counter()
-        self.sync_vr_compositor()
-        self.poll_vr_events()
-        self.fix_eye_tracking_value()
-        self.perform_vr_start_pos_move()
-        self.renderer.update_vr_data()
-        vr_system_dur = time.perf_counter() - vr_system_start
-
-        # Return Vr system duration to user, as well as non-vr frame time
-        # Values are in ms
-        return (vr_system_dur * 1000, non_vr_dur * 1000)
 
     def step(self, print_stats=False):
         """
@@ -1069,6 +1039,77 @@ class Simulator:
             self.viewer.update()
         if self.first_sync:
             self.first_sync = False
+
+    def vr_system_update(self):
+        """
+        Updates the VR system for a single frame. This includes moving the vr offset,
+        adjusting the user's height based on button input, and triggering haptics.
+        """
+        # Update VR offset using appropriate controller
+        if self.vr_settings.touchpad_movement:
+            vr_offset_device = '{}_controller'.format(self.vr_settings.movement_controller)
+            is_valid, _, _ = self.get_data_for_vr_device(vr_offset_device)
+            if is_valid:
+                _, touch_x, touch_y = self.get_button_data_for_controller(vr_offset_device)
+                new_offset = calc_offset(self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
+                self.set_vr_offset(new_offset)
+
+        # Adjust user height based on y-axis (vertical direction) touchpad input
+        vr_height_device = 'left_controller' if self.vr_settings.movement_controller == 'right' else 'right_controller'
+        is_height_valid, _, _ = self.get_data_for_vr_device(vr_height_device)
+        if is_height_valid:
+            curr_offset = self.get_vr_offset()
+            hmd_height = self.get_hmd_world_pos()[2]
+            _, _, height_y = self.get_button_data_for_controller(vr_height_device)
+            if height_y < -0.7:
+                vr_z_offset = -0.01
+                if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
+                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+            elif height_y > 0.7:
+                vr_z_offset = 0.01
+                if hmd_height + curr_offset[2] + vr_z_offset <= self.vr_settings.height_bounds[1]:
+                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])                
+
+        # Update haptics for body and hands
+        # TODO: Change how this works if VrAgent becomes a robot
+        if self.main_vr_agent:
+            vr_body_id = self.main_vr_agent.vr_dict['body'].body_id
+            vr_hands = [('left_controller', self.main_vr_agent.vr_dict['left_hand']), ('right_controller', self.main_vr_agent.vr_dict['right_hand'])]
+
+            # Check for body haptics
+            wall_ids = self.get_category_ids('walls')
+            for c_info in p.getContactPoints(vr_body_id):
+                if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
+                    for controller in ['left_controller', 'right_controller']:
+                        is_valid, _, _ = self.get_data_for_vr_device(controller)
+                        if is_valid:
+                            # Use 90% strength for body to warn user of collision with wall
+                            self.trigger_haptic_pulse(controller, 0.9)
+
+            # Check for hand haptics
+            for hand_device, hand_obj in vr_hands:
+                is_valid, _, _ = self.get_data_for_vr_device(hand_device)
+                if is_valid:
+                    if len(p.getContactPoints(hand_obj.body_id)) > 0 or (hasattr(hand_obj, 'object_in_hand') and hand_obj.object_in_hand):
+                        # Only use 30% strength for normal collisions, to help add realism to the experience
+                        self.trigger_haptic_pulse(hand_device, 0.3)
+
+    def register_main_agent(self, agent):
+        """
+        Register the agent representing the VR user.
+        TODO: Replace this with robot-loading function eventually!
+        """
+        self.main_vr_agent = agent
+
+    def import_vr_agent(self, agent):
+        """
+        Import registered vr agent in to the scene.
+        TODO: Replace this with robot-loading function eventually!
+        """
+        for part_name, part_obj in agent.vr_dict.items():
+            self.import_object(part_obj, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+            if agent.use_ghost_hands and part_name in ['left_hand', 'right_hand']:
+                self.import_object(part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def sync_vr_compositor(self):
         """
@@ -1119,7 +1160,7 @@ class Simulator:
         """
         if not hasattr(self.scene, 'objects_by_id') or body_id not in self.scene.objects_by_id or not hasattr(self.scene.objects_by_id[body_id], 'category') or self.scene.objects_by_id[body_id].category == 'object':
             mass = p.getDynamicsInfo(body_id, c_link)[0]
-            return mass <= self.vr_settings.assist_grasp_mass_thresh
+            return mass <= self.assist_grasp_mass_thresh
         else:
             return self.scene.objects_by_id[body_id].category in self.assist_grasp_category_allow_list
 
@@ -1377,34 +1418,30 @@ class Simulator:
     def gen_vr_data(self):
         """
         Generates a VrData object containing all of the data required to describe the VR system in the current frame.
-        This is used in MUVR and to power the VrAgent.
+        This data is used to power the VrAgent each frame.
         """
         if not self.can_access_vr_context:
-            return VrData()
+            raise RuntimeError('Unable to get VR data for current frame since VR system is not being used!')
 
         v = dict()
         for device in VR_DEVICES:
             is_valid, trans, rot = self.get_data_for_vr_device(device)
-            device_data = [[is_valid, trans.tolist(), rot.tolist()]]
+            device_data = [is_valid, trans.tolist(), rot.tolist()]
             device_data.extend(self.get_device_coordinate_system(device))
-            if device in VR_CONTROLLERS:
-                device_data.extend(self.get_button_data_for_controller(device))
             v[device] = device_data
+            if device in VR_CONTROLLERS:
+                v['{}_button'.format(device)] = self.get_button_data_for_controller(device)
 
         is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(
             self.vr_settings.torso_tracker_serial)
         v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
         v['eye_data'] = self.get_eye_tracking_data()
         v['event_data'] = self.get_vr_events()
-        v['vr_pos'] = self.get_vr_pos().tolist()
-        v['vr_offset'] = list(self.get_vr_offset())
-        v['vr_settings'] = [
-            self.vr_settings.eye_tracking,
-            self.vr_settings.touchpad_movement,
-            self.vr_settings.movement_controller,
-            self.vr_settings.relative_movement_device,
-            self.vr_settings.movement_speed
-        ]
+        reset_actions = []
+        for controller in VR_CONTROLLERS:
+            reset_actions.append(self.query_vr_event(controller, 'reset_agent'))
+        v['reset_actions'] = reset_actions
+        v['vr_positions'] = [self.get_vr_pos().tolist(), list(self.get_vr_offset())]
 
         return VrData(v)
 

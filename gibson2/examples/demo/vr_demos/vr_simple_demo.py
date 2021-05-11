@@ -13,7 +13,6 @@ from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrAgent
-from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
 
@@ -83,11 +82,6 @@ def main():
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    for i in range(3):
-        obj = YCBObject('003_cracker_box')
-        s.import_object(obj)
-        obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
-
     obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
         'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                             scale=2)
@@ -95,16 +89,17 @@ def main():
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
     vr_agent = VrAgent(s)
+    s.import_vr_agent(vr_agent)
+    s.register_main_agent(vr_agent)
 
     # Main simulation loop
     while True:
         s.step()
 
         # Update VR agent using data from simulator
-        vr_agent.update()
+        vr_agent.update(s.gen_vr_data())
 
     s.disconnect()
-
 
 if __name__ == '__main__':
     main()
