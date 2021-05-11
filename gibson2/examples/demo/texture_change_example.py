@@ -27,7 +27,7 @@ def main():
     apple_urdf = os.path.join(get_ig_model_path('apple', '00_0'), '00_0.urdf')
 
     
-    apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir, texture_procedural_generation=True)
+    apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir)
 
     s.import_object(apple)
     apple.set_position([0,0,0.2])
