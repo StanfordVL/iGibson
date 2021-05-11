@@ -342,7 +342,7 @@ class WaterStream(ParticleSystem):
             size=self.sizes,
             color=self.colors,
             visual_only=False,
-            mass=0.1,
+            mass=0.00005,  # each drop is around 0.05 grams
             use_pbr=True,  # PBR needs to be on for the shiny water particles.
             **kwargs
         )
