@@ -50,7 +50,6 @@ def main():
     print(desk.states.keys())
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
-    s.step()
     desk.states[object_states.Stained].set_value(True)
 
     # Main simulation loop
