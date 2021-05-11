@@ -263,7 +263,7 @@ class ToyEnvInt(object):
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
-                'init_success': 'untested',
+                'init_success': 'no',
                 'goal_success': 'no',
                 'init_feedback': 'Cannot check until goal state is fixed.',
                 'goal_feedback': 'Goal state has uncontrolled categories.'
@@ -272,14 +272,36 @@ class ToyEnvInt(object):
         except UnsupportedSentenceError as e:
             accept_scene = False
             feedback = {
-                "init_success": "untested",
-                "goal_success": "untested",
+                "init_success": "no",
+                "goal_success": "no",
                 "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
                 "goal_feedback": ""
             }
             return accept_scene, feedback
+        except AssertionError as message:
+            if message == "No ground goal options":
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": "",
+                    "goal_feedback": "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time)."
+                } 
+            return accept_scene, feedback
 
-        accept_scene, feedback = self.task.check_scene()
+        try:
+            accept_scene, feedback = self.task.check_scene()
+        except AssertionError as message:
+            if "Invalid" in str(message):
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": f"We do not currently support {str(message).split(' ')[1]}. Please try a different object!",
+                    "goal_feedback": ""
+                }
+                return accept_scene, feedback
+
         if not accept_scene:
             # self.last_active_time = time.time()
             for sim_obj in self.task.newly_added_objects:
