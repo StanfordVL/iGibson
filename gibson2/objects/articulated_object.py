@@ -189,28 +189,6 @@ class URDFObject(StatefulObject):
         # whether this object is fixed or not, boolean
         self.is_fixed = []
         self.main_body = -1
-        # mapping between visual objects and possible textures
-        # multiple visual objects can share the same material
-        # if some sub URDF does not have visual object or this URDF is part of
-        # the building structure, it will have an empty dict
-        # [
-        #     {                                             # 1st sub URDF
-        #         'visual_1.obj': randomized_material_1
-        #         'visual_2.obj': randomized_material_1
-        #     },
-        #     {},                                            # 2nd sub URDF
-        #     {                                              # 3rd sub URDF
-        #         'visual_3.obj': randomized_material_2
-        #     }
-        # ]
-        self.visual_mesh_to_material = []
-
-        # a list of all materials used for RandomizedMaterial
-        self.randomized_materials = []
-        # procedural material that can change based on state changes
-        self.procedural_material = None
-
-        self.material_to_friction = None
 
         logging.info("Category " + self.category)
         self.filename = filename
@@ -319,16 +297,9 @@ class URDFObject(StatefulObject):
         self.scale_object()
         self.compute_object_pose()
         self.remove_floating_joints(self.scene_instance_folder)
-        if self.texture_randomization:
-            self.prepare_texture()
+
         prepare_object_states(self, abilities, online=True)
-        self.texture_procedural_generation = False
-        for state in self.states:
-            if issubclass(state, TextureChangeStateMixin):
-                self.texture_procedural_generation = True
-                break
-        if self.texture_procedural_generation:
-            self.generate_procedural_texture()
+        self.prepare_visual_mesh_to_material()
 
         # Currently a subset of states require access fixed links that will be merged into
         # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
@@ -802,6 +773,47 @@ class URDFObject(StatefulObject):
             if urdfs_no_floating[urdf][3]:
                 self.main_body = i
 
+    def prepare_visual_mesh_to_material(self):
+        # mapping between visual objects and possible textures
+        # multiple visual objects can share the same material
+        # if some sub URDF does not have visual object or this URDF is part of
+        # the building structure, it will have an empty dict
+        # [
+        #     {                                             # 1st sub URDF
+        #         'visual_1.obj': randomized_material_1
+        #         'visual_2.obj': randomized_material_1
+        #     },
+        #     {},                                            # 2nd sub URDF
+        #     {                                              # 3rd sub URDF
+        #         'visual_3.obj': randomized_material_2
+        #     }
+        # ]
+
+        self.visual_mesh_to_material = [{} for _ in self.urdf_paths]
+
+        # a list of all materials used for RandomizedMaterial
+        self.randomized_materials = []
+        # mapping from material class to friction coefficient
+        self.material_to_friction = None
+
+        # procedural material that can change based on state changes
+        self.procedural_material = None
+
+        self.texture_procedural_generation = False
+        for state in self.states:
+            if issubclass(state, TextureChangeStateMixin):
+                self.texture_procedural_generation = True
+                break
+
+        if self.texture_randomization and self.texture_procedural_generation:
+            raise ValueError(
+                'Cannot support both randomized and procedural texture')
+
+        if self.texture_randomization:
+            self.prepare_randomized_texture()
+        if self.texture_procedural_generation:
+            self.prepare_procedural_texture()
+
     def randomize_texture(self):
         """
         Randomize texture and material for each link / visual shape
@@ -848,13 +860,10 @@ class URDFObject(StatefulObject):
                 link_friction = np.mean(link_frictions)
                 p.changeDynamics(body_id, j, lateralFriction=link_friction)
 
-    def prepare_texture(self):
+    def prepare_randomized_texture(self):
         """
         Set up mapping from visual meshes to randomizable materials
         """
-        for _ in range(len(self.urdf_paths)):
-            self.visual_mesh_to_material.append({})
-
         if self.category in ["walls", "floors", "ceilings"]:
             material_groups_file = os.path.join(
                 self.model_path, 'misc', '{}_material_groups.json'.format(self.category))
@@ -899,59 +908,25 @@ class URDFObject(StatefulObject):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)
 
-    def generate_procedural_texture(self):
+    def prepare_procedural_texture(self):
         """
-        Set up mapping from visual meshes to procedural materials, largely mirror prepare_texture
+        Set up mapping from visual meshes to procedural materials
+        Assign all visual meshes to the same ProceduralMaterial
         """
-        for _ in range(len(self.urdf_paths)):
-            self.visual_mesh_to_material.append({})
+        procedural_material = ProceduralMaterial(
+            material_folder=os.path.join(self.model_path, 'material'))
 
-        if self.category in ["walls", "floors", "ceilings"]:
-            material_groups_file = os.path.join(
-                self.model_path, 'misc', '{}_material_groups.json'.format(self.category))
-        else:
-            material_groups_file = os.path.join(
-                self.model_path, 'misc', 'material_groups.json')
-
-        assert os.path.isfile(material_groups_file), \
-            'cannot find material group: {}'.format(material_groups_file)
-        with open(material_groups_file) as f:
-            material_groups = json.load(f)
-
-        # make visual mesh file path absolute
-        visual_mesh_to_idx = material_groups[1]
-        for old_path in list(visual_mesh_to_idx.keys()):
-            new_path = os.path.join(
-                self.model_path, 'shape', 'visual', old_path)
-            visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
-            del visual_mesh_to_idx[old_path]
-
-        has_procedural_material = False
-        procedural_material = None
+        for i, urdf_path in enumerate(self.urdf_paths):
+            sub_urdf_tree = ET.parse(urdf_path)
+            for visual_mesh in sub_urdf_tree.findall('link/visual/geometry/mesh'):
+                filename = visual_mesh.attrib['filename']
+                self.visual_mesh_to_material[i][filename] = \
+                    procedural_material
 
         for state in self.states:
             if issubclass(state, TextureChangeStateMixin):
-                procedural_material = ProceduralMaterial(
-                    material_folder=os.path.join(self.model_path, 'material'))
-                # check each visual object belongs to which sub URDF in case of splitting
-                for i, urdf_path in enumerate(self.urdf_paths):
-                    sub_urdf_tree = ET.parse(urdf_path)
-                    for visual_mesh_path in visual_mesh_to_idx:
-                        # check if this visual object belongs to this URDF
-                        if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
-                            self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
-
-                # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the
-                #  main body
-                self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
-                has_procedural_material = True
-                break
-
-        if has_procedural_material:
-            for state in self.states:
-                if issubclass(state, TextureChangeStateMixin):
-                    procedural_material.add_state(state)
-                    self.states[state].material = procedural_material
+                procedural_material.add_state(state)
+                self.states[state].material = procedural_material
 
         self.procedural_material = procedural_material
 
