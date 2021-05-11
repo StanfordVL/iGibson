@@ -131,7 +131,9 @@ class VrConditionSwitcher(object):
             prev_obj.unhighlight()
         if self.is_showing:
             for new_obj in new_obj_list:
-                new_obj.highlight()
+                # TODO: certain objects (floor) do not yet have the ability to be highlighted
+                if hasattr(new_obj, "highlight"):
+                    new_obj.highlight()
         self.prev_obj_list = new_obj_list
 
     def toggle_show_state(self):
