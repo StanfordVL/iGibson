@@ -67,7 +67,7 @@ def main():
 
         apples = []
         for i in range(5):
-            apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir, texture_procedural_generation=True)
+            apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir)
             s.import_object(apple)
             apple.set_position([0, i * 0.05, 1.65])
             apples.append(apple)
