@@ -110,6 +110,7 @@ class URDFObject(StatefulObject):
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
+                 texture_procedural_generation=False,
                  overwrite_inertial=True,
                  scene_instance_folder=None,
                  tasknet_object_scope=None,
@@ -145,6 +146,7 @@ class URDFObject(StatefulObject):
         self.initial_pos = initial_pos
         self.initial_orn = initial_orn
         self.texture_randomization = texture_randomization
+        self.texture_procedural_generation = texture_procedural_generation
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.tasknet_object_scope = tasknet_object_scope
@@ -322,11 +324,6 @@ class URDFObject(StatefulObject):
         if self.texture_randomization:
             self.prepare_texture()
         prepare_object_states(self, abilities, online=True)
-        self.texture_procedural_generation = False
-        for state in self.states:
-            if issubclass(state, TextureChangeStateMixin):
-                self.texture_procedural_generation = True
-                break
         if self.texture_procedural_generation:
             self.generate_procedural_texture()
 
