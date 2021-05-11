@@ -12,7 +12,7 @@ class CleaningTool(AbsoluteObjectState):
     def __init__(self, obj):
         super(CleaningTool, self).__init__(obj)
 
-    def update(self, simulator):
+    def _update(self, simulator):
         # Check if this tool interacts with any dirt particles.
         for particle_system in simulator.particle_systems:
             if not isinstance(particle_system, _Dirt):
@@ -29,11 +29,17 @@ class CleaningTool(AbsoluteObjectState):
                 if aabb_contains_point(pos, aabb):
                     particle_system.stash_particle(particle)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
+        raise ValueError("Cannot set valueless state CleaningTool.")
+
+    def _get_value(self):
         pass
 
-    def get_value(self):
-        pass
+    def _dump(self):
+        return None
+
+    def _load(self, data):
+        return
 
     @staticmethod
     def get_dependencies():

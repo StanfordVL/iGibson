@@ -131,13 +131,21 @@ class VerticalAdjacency(CachingEnabledObjectState):
         # Return the adjacencies from the only axis we passed in.
         return bodies_by_axis[0]
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         raise NotImplementedError(
             "VerticalAdjacency state currently does not support setting.")
 
     @staticmethod
     def get_dependencies():
         return CachingEnabledObjectState.get_dependencies() + [Pose]
+
+    # Nothing needs to be done to save/load adjacency since it will happen due to pose caching.
+    def _dump(self):
+        return None
+
+    def _load(self, data):
+        return
+
 
 
 class HorizontalAdjacency(CachingEnabledObjectState):
@@ -171,10 +179,17 @@ class HorizontalAdjacency(CachingEnabledObjectState):
         # Return the adjacencies.
         return bodies_by_plane
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         raise NotImplementedError(
             "HorizontalAdjacency state currently does not support setting.")
 
     @staticmethod
     def get_dependencies():
         return CachingEnabledObjectState.get_dependencies() + [Pose]
+
+    # Nothing needs to be done to save/load adjacency since it will happen due to pose caching.
+    def _dump(self):
+        return None
+
+    def _load(self, data):
+        return

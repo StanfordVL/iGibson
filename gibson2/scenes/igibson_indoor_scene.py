@@ -2,6 +2,8 @@ import time
 import gibson2
 import logging
 import numpy as np
+from gibson2.object_states.factory import get_state_name, get_state_from_name
+from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.utils.utils import rotate_vector_3d, rotate_vector_2d
 import pybullet as p
@@ -157,11 +159,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 category = link.attrib["category"]
 
                 if category in ["agent"]:
-                    # For agents, the pose of the base link is stored in the scene 
+                    # For agents, the pose of the base link is stored in the scene
                     # URDF, instead of the pose of the centroid of the bounding box
                     self.agent[link.attrib['name']] = {
-                        'xyz' : np.array([float(val) for val in link.attrib['xyz'].split(" ")]),
-                        'rpy' : np.array([float(val) for val in link.attrib['rpy'].split(" ")])
+                        'xyz': np.array([float(val) for val in link.attrib['xyz'].split(" ")]),
+                        'rpy': np.array([float(val) for val in link.attrib['rpy'].split(" ")])
                     }
                     continue
 
@@ -255,9 +257,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
                 tasknet_object_scope = link.attrib.get('object_scope', None)
                 if self.merge_fixed_links:
-                    flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING
+                    flags = p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING
                 else:
-                    flags=p.URDF_ENABLE_SLEEPING
+                    flags = p.URDF_ENABLE_SLEEPING
 
                 obj = URDFObject(
                     filename,
@@ -274,7 +276,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     scene_instance_folder=self.scene_instance_folder,
                     tasknet_object_scope=tasknet_object_scope,
                     flags=flags
-                    )
+                )
+
+                # Load object states.
+                if "states" in link.keys():
+                    state_cache = json.loads(link.attrib["states"])
+                    for state_name, state_dump in state_cache.items():
+                        obj.states[get_state_from_name(
+                            state_name)].load(state_dump)
 
                 self.add_object(obj)
 
@@ -938,7 +947,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         x, y = self.world_to_seg_map(xy)
-        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]: 
+        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]:
             return None
         ins_id = self.room_ins_map[x, y]
         # room boundary
@@ -976,6 +985,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 body_id = obj.body_ids[obj.main_body]
             else:
                 body_id = obj.body_id
+
+            # TODO: This base link computation only works for floating objects
+            # Fixed objects (if not merged links) should call
+            # p.getDynamicsInfo(body_id, 0) instead because base_link (-1) is
+            # world and link 0 is the actual object base link.
+            # We can create a function get_base_link_position_orientation
+            # in ObjectBase class later.
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos = dynamics_info[3]
             inertial_orn = dynamics_info[4]
@@ -1000,8 +1016,20 @@ class InteractiveIndoorScene(StaticIndoorScene):
             xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
 
+            # Get the object states
+            state_cache = None
+            if hasattr(obj, "states"):
+                state_cache = {}
+                for state_class, state_obj in obj.states.items():
+                    if isinstance(state_obj, AbsoluteObjectState):
+                        state_cache[get_state_name(
+                            state_class)] = state_obj.dump()
+
             # The object is already in the scene URDF
             if link is not None:
+                if state_cache is not None:
+                    link.attrib["states"] = json.dumps(state_cache)
+
                 if obj.category == 'floors':
                     floor_names = \
                         [obj_name for obj_name in additional_attribs_by_name
@@ -1015,20 +1043,24 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                     additional_attribs_by_name[floor_name][key], floor_name))
                             link.attrib[key] = ','.join(floor_mappings)
                 else:
+                    # Overwrite the pose in the original URDF with the pose
+                    # from the simulator for floating objects (typically
+                    # floating objects will fall by a few millimeters due to
+                    # gravity).
+                    joint = scene_tree.find(
+                        'joint[@name="{}"]'.format('j_{}'.format(name)))
+                    if joint is not None and joint.attrib['type'] != 'fixed':
+                        link.attrib['rpy'] = rpy
+                        link.attrib['xyz'] = xyz
+                        origin = joint.find('origin')
+                        origin.attrib['rpy'] = rpy
+                        origin.attrib['xyz'] = xyz
+
                     # If some scene objects are used as task-relevant objects
                     if name in additional_attribs_by_name:
                         # Add tasknet_scope
                         for key in additional_attribs_by_name[name]:
                             link.attrib[key] = additional_attribs_by_name[name][key]
-                        # Overwrite the original pose based on the results of
-                        # the initial condition sampling
-                        link.attrib['rpy'] = rpy
-                        link.attrib['xyz'] = xyz
-                        joint = scene_tree.find(
-                            'joint[@name="{}"]'.format('j_{}'.format(name)))
-                        origin = joint.find('origin')
-                        origin.attrib['rpy'] = rpy
-                        origin.attrib['xyz'] = xyz
                 continue
 
             category = obj.category
@@ -1042,6 +1074,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 'rpy': rpy,
                 'xyz': xyz,
             }
+
+            if state_cache is not None:
+                new_link.attrib['states'] = json.dumps(state_cache)
+
             if hasattr(obj, "bounding_box"):
                 bounding_box = ' '.join([str(b) for b in obj.bounding_box])
                 new_link.attrib['bounding_box'] = bounding_box

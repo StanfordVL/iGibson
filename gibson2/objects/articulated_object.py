@@ -13,7 +13,9 @@ import pybullet as p
 import trimesh
 import math
 
+from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
+from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from gibson2.external.pybullet_tools.utils import link_from_name
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
@@ -108,6 +110,7 @@ class URDFObject(StatefulObject):
                  joint_friction=None,
                  in_rooms=None,
                  texture_randomization=False,
+                 texture_procedural_generation=False,
                  overwrite_inertial=True,
                  scene_instance_folder=None,
                  tasknet_object_scope=None,
@@ -143,6 +146,7 @@ class URDFObject(StatefulObject):
         self.initial_pos = initial_pos
         self.initial_orn = initial_orn
         self.texture_randomization = texture_randomization
+        self.texture_procedural_generation = texture_procedural_generation
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.tasknet_object_scope = tasknet_object_scope
@@ -203,8 +207,10 @@ class URDFObject(StatefulObject):
         # ]
         self.visual_mesh_to_material = []
 
-        # a list of all materials used, RandomizedMaterial
-        self.materials = []
+        # a list of all materials used for RandomizedMaterial
+        self.randomized_materials = []
+        # procedural material that can change based on state changes
+        self.procedural_material = None
 
         self.material_to_friction = None
 
@@ -317,8 +323,9 @@ class URDFObject(StatefulObject):
         self.remove_floating_joints(self.scene_instance_folder)
         if self.texture_randomization:
             self.prepare_texture()
-
         prepare_object_states(self, abilities, online=True)
+        if self.texture_procedural_generation:
+            self.generate_procedural_texture()
 
         # Currently a subset of states require access fixed links that will be merged into
         # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
@@ -796,7 +803,7 @@ class URDFObject(StatefulObject):
         """
         Randomize texture and material for each link / visual shape
         """
-        for material in self.materials:
+        for material in self.randomized_materials:
             material.randomize()
         self.update_friction()
 
@@ -881,13 +888,69 @@ class URDFObject(StatefulObject):
                     self.visual_mesh_to_material[i][visual_mesh_path] = \
                         all_materials[visual_mesh_to_idx[visual_mesh_path]]
 
-        self.materials = list(all_materials.values())
+        self.randomized_materials = list(all_materials.values())
 
         friction_json = os.path.join(
             gibson2.ig_dataset_path, 'materials', 'material_friction.json')
         if os.path.isfile(friction_json):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)
+
+    def generate_procedural_texture(self):
+        """
+        Set up mapping from visual meshes to procedural materials, largely mirror prepare_texture
+        """
+        for _ in range(len(self.urdf_paths)):
+            self.visual_mesh_to_material.append({})
+
+        if self.category in ["walls", "floors", "ceilings"]:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc', '{}_material_groups.json'.format(self.category))
+        else:
+            material_groups_file = os.path.join(
+                self.model_path, 'misc', 'material_groups.json')
+
+        assert os.path.isfile(material_groups_file), \
+            'cannot find material group: {}'.format(material_groups_file)
+        with open(material_groups_file) as f:
+            material_groups = json.load(f)
+
+        # make visual mesh file path absolute
+        visual_mesh_to_idx = material_groups[1]
+        for old_path in list(visual_mesh_to_idx.keys()):
+            new_path = os.path.join(
+                self.model_path, 'shape', 'visual', old_path)
+            visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
+            del visual_mesh_to_idx[old_path]
+
+        has_procedural_material = False
+        procedural_material = None
+
+        for state in self.states:
+            if issubclass(state, TextureChangeStateMixin):
+                procedural_material = ProceduralMaterial(
+                    material_folder=os.path.join(self.model_path, 'material'))
+                # check each visual object belongs to which sub URDF in case of splitting
+                for i, urdf_path in enumerate(self.urdf_paths):
+                    sub_urdf_tree = ET.parse(urdf_path)
+                    for visual_mesh_path in visual_mesh_to_idx:
+                        # check if this visual object belongs to this URDF
+                        if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
+                            self.visual_mesh_to_material[i][visual_mesh_path] = procedural_material
+
+                # TODO: For texture_procedural_generation, self.visual_mesh_to_material will only has the info for the
+                #  main body
+                self.visual_mesh_to_material = self.visual_mesh_to_material[self.main_body]
+                has_procedural_material = True
+                break
+
+        if has_procedural_material:
+            for state in self.states:
+                if issubclass(state, TextureChangeStateMixin):
+                    procedural_material.add_state(state)
+                    self.states[state].material = procedural_material
+
+        self.procedural_material = procedural_material
 
     def _load(self):
         """
@@ -1006,6 +1069,30 @@ class URDFObject(StatefulObject):
             pos, orn = p.getBasePositionAndOrientation(body_id)
         return pos, orn
 
+    def get_base_link_position_orientation(self):
+        """
+        Get object base link position and orientation
+
+        :return: position in xyz
+        :return: quaternion in xyzw
+        """
+        # TODO: not used anywhere yet, but probably should be put in ObjectBase
+        body_id = self.get_body_id()
+        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
+                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+            pos, orn = p.getLinkState(body_id, 0)[4:6]
+        else:
+            pos, orn = p.getBasePositionAndOrientation(body_id)
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos = dynamics_info[3]
+            inertial_orn = dynamics_info[4]
+            inv_inertial_pos, inv_inertial_orn =\
+                p.invertTransform(inertial_pos, inertial_orn)
+            pos, orn = p.multiplyTransforms(
+                pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+        return pos, orn
+
     def set_position(self, pos):
         """
         Set object position
@@ -1013,12 +1100,12 @@ class URDFObject(StatefulObject):
         :param pos: position in xyz
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning('cannot set_position for fixed objects')
-        else:
-            _, old_orn = p.getBasePositionAndOrientation(body_id)
-            p.resetBasePositionAndOrientation(body_id, pos, old_orn)
+            return
+
+        _, old_orn = p.getBasePositionAndOrientation(body_id)
+        p.resetBasePositionAndOrientation(body_id, pos, old_orn)
 
     def set_orientation(self, orn):
         """
@@ -1027,12 +1114,12 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning('cannot set_orientation for fixed objects')
-        else:
-            old_pos, _ = p.getBasePositionAndOrientation(body_id)
-            p.resetBasePositionAndOrientation(body_id, old_pos, orn)
+            return
+
+        old_pos, _ = p.getBasePositionAndOrientation(body_id)
+        p.resetBasePositionAndOrientation(body_id, old_pos, orn)
 
     def set_position_orientation(self, pos, orn):
         """
@@ -1041,15 +1128,19 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             logging.warning(
                 'cannot set_position_orientation for fixed objects')
-        else:
-            p.resetBasePositionAndOrientation(body_id, pos, orn)
+            return
+
+        p.resetBasePositionAndOrientation(body_id, pos, orn)
 
     def set_base_link_position_orientation(self, pos, orn):
         body_id = self.get_body_id()
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            logging.warning(
+                'cannot set_base_link_position_orientation for fixed objects')
+            return
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
