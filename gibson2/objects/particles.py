@@ -74,11 +74,13 @@ class Particle(Object):
 
         if self.visual_only:
             body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                        baseVisualShapeIndex=visualShapeId)
+                                        baseVisualShapeIndex=visualShapeId,
+                                        flags=p.URDF_ENABLE_SLEEPING)
         else:
             body_id = p.createMultiBody(baseMass=self.mass,
                                         baseCollisionShapeIndex=colBoxId,
-                                        baseVisualShapeIndex=visualShapeId)
+                                        baseVisualShapeIndex=visualShapeId,
+                                        flags=p.URDF_ENABLE_SLEEPING)
 
         p.resetBasePositionAndOrientation(
             body_id, np.array(self.base_pos), base_orientation)
@@ -91,12 +93,11 @@ class Particle(Object):
         if body_id is None:
             body_id = self.body_id
 
-        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + \
-            p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
+        activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
-        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_WAKE_UP
+        activationState = p.ACTIVATION_STATE_WAKE_UP
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
 
@@ -164,11 +165,23 @@ class ParticleSystem(object):
         self._stashed_particles.append(particle)
 
         particle.set_position(_STASH_POSITION)
-        particle.force_sleep()
+        if particle.visual_only:
+            # Stain and Dust need to be woken up before stashing because if
+            # they are asleep, their poses will not be updated in the renderer
+            particle.force_wakeup()
+        else:
+            # Water (awake when stash_particle is called) needs to be
+            # put to sleep because they would collide in _STASH_POSITION
+            # It's okay to call force_sleep() because the sleep state will only
+            # be reflected after p.stepSimulation() is called. Thus, the
+            # renderer should still update its pose in the curren timestep
+            particle.force_sleep()
 
     def _load_particle(self, particle):
-        body_id = self._simulator.import_object(particle, **self._import_params)
-        particle.set_position(_STASH_POSITION)  # Put loaded particles at the stash position initially.
+        body_id = self._simulator.import_object(
+            particle, **self._import_params)
+        # Put loaded particles at the stash position initially.
+        particle.set_position(_STASH_POSITION)
         return body_id
 
     def unstash_particle(self, position, orientation, particle=None):
