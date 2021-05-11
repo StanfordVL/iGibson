@@ -187,7 +187,7 @@ def main():
         log_reader.set_replay_camera(s)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(vr_data=log_reader.get_vr_data())
+        vr_agent.update(log_reader.get_vr_data())
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates

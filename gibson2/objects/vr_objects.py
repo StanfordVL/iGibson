@@ -5,7 +5,6 @@ also be individually created. These are:
 
 1) VrBody
 2) VrHand or VrGripper (both concrete instantiations of the abstract VrHandBase class)
-3) VrGazeMarker
 """
 
 import itertools
@@ -16,11 +15,11 @@ import time
 
 from gibson2 import assets_path
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.utils import multQuatLists
-from gibson2.utils.vr_utils import move_player, calc_offset, translate_vr_position_by_vecs, calc_z_rot_from_right
+from gibson2.utils.vr_utils import calc_z_rot_from_right
 from gibson2.external.pybullet_tools.utils import set_all_collisions
+
 
 class VrAgent(object):
     """
@@ -29,30 +28,28 @@ class VrAgent(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
-    def __init__(self, sim, agent_num=1, hands=['left', 'right'], use_body=True, use_gaze_marker=True, use_gripper=False, normal_color=True, use_hand_prim=True):
+    def __init__(self, sim, agent_num=1, hands=['left', 'right'], use_body=True, use_gripper=False, use_ghost_hands=True, normal_color=True):
         """
-        Initializes VR body:
+        Initializes VrAgent:
         :parm sim: iGibson simulator object
         :parm agent_num: the number of the agent - used in multi-user VR
         :parm use_constraints: whether to use constraints to move agent (normally set to True - set to false in state replay mode)
         :parm hands: list containing left, right or no hands
         :parm use_body: true if using VrBody
-        :parm use_gaze_marker: true if we want to visualize gaze point
         :parm use_gripper: whether the agent should use the pybullet gripper or the iGibson VR hand
         :parm normal_color: whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
-        :parm color: is helpful for distinguishing between the client and server in multi-user VR.
-        :parm use_hand_prim: whether to use cylinder primitives for the VR hand's fingers, instead of VHACD meshes
         """
+        # Basic parameters
         self.sim = sim
         self.agent_num = agent_num
-        # Start z coordinate for all VR objects belonging to this agent (they are spaced out along the x axis at a given height value)
-        self.z_coord = 50 * agent_num
         self.hands = hands
         self.use_body = use_body
-        self.use_gaze_marker = use_gaze_marker
+        self.use_tracked_body = self.sim.vr_settings.using_tracked_body
         self.use_gripper = use_gripper
+        self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
-        self.use_hand_prim = use_hand_prim
+
+        # Activation parameters
         self.activated = False
         self.constraints_active = {
                 'left_hand': False,
@@ -60,26 +57,26 @@ class VrAgent(object):
                 'body': False,
                 }
 
-        # Dictionary of vr object names to objects
+        # Set up body parts
         self.vr_dict = dict()
 
         if 'left' in self.hands:
-            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', normal_color=self.normal_color, use_prim=self.use_hand_prim, agent_num=self.agent_num) if not use_gripper 
-                                        else VrGripper(self.sim, hand='left', use_constraints=self.use_constraints, agent_num=self.agent_num))
+            self.vr_dict['left_hand'] = (VrHand(self.sim, hand='left', use_ghost_hands=self.use_ghost_hands, normal_color=self.normal_color, agent_num=self.agent_num) if not use_gripper 
+                                        else VrGripper(self.sim, hand='left',  use_ghost_hands=self.use_ghost_hands, agent_num=self.agent_num))
         if 'right' in self.hands:
-            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right', normal_color=self.normal_color, use_prim=self.use_hand_prim, agent_num=self.agent_num) if not use_gripper 
-                                        else VrGripper(self.sim, hand='right', use_constraints=self.use_constraints, agent_num=self.agent_num))
+            self.vr_dict['right_hand'] = (VrHand(self.sim, hand='right',  use_ghost_hands=self.use_ghost_hands, normal_color=self.normal_color, agent_num=self.agent_num) if not use_gripper 
+                                        else VrGripper(self.sim, hand='right',  use_ghost_hands=self.use_ghost_hands, agent_num=self.agent_num))
 
         # Store reference between hands
         if 'left' in self.hands and 'right' in self.hands:
             self.vr_dict['left_hand'].set_other_hand(self.vr_dict['right_hand'])
             self.vr_dict['right_hand'].set_other_hand(self.vr_dict['left_hand'])
         if self.use_body:
-            self.vr_dict['body'] = VrBody(self.sim, self, normal_color=self.normal_color, agent_num=self.agent_num)
+            self.vr_dict['body'] = VrBody(self.sim, self, use_tracked_body=self.use_tracked_body, normal_color=self.normal_color, agent_num=self.agent_num)
             self.vr_dict['left_hand'].set_body(self.vr_dict['body'])
             self.vr_dict['right_hand'].set_body(self.vr_dict['body'])
-        if self.use_gaze_marker:
-            self.vr_dict['gaze_marker'] = VrGazeMarker(self.sim, self.z_coord, normal_color=self.normal_color)
+
+        self.vr_dict['eye'] = VrEye(self.sim, self, agent_num=self.agent_num)
 
     def set_colliders(self, enabled=False):
         self.vr_dict['left_hand'].set_colliders(enabled)
@@ -90,6 +87,7 @@ class VrAgent(object):
         self.vr_dict['body'].set_position_orientation_unwrapped(pos, orn)
         self.vr_dict['left_hand'].set_position_orientation((pos[0], pos[1] + 0.2, 0.7), orn)
         self.vr_dict['right_hand'].set_position_orientation((pos[0], pos[1] - 0.2, 0.7), orn)
+        self.vr_dict['eye'].set_position_orientation((pos[0], pos[1], 1.5), orn)
 
         for constraint, activated in self.constraints_active.items():
             if not activated and constraint != 'body':
@@ -102,17 +100,18 @@ class VrAgent(object):
         self.vr_dict['left_hand'].move(left_pos, left_orn)
         self.vr_dict['right_hand'].move(right_pos, right_orn)
 
-    def update(self, vr_data=None):
+    def update(self, vr_data):
         """
         Updates VR agent - transforms of all objects managed by this class.
-        If vr_data is set to a non-None value (a VrData object), we use this data and overwrite all data from the simulator.
+        :param vr_data: VrData object containing relevant VR data for updates.
         """
         if not self.activated:
             self.set_colliders(enabled=False)
             body_position = self.vr_dict['body'].get_position()
-            self.vr_dict['left_hand'].set_position((body_position[0], body_position[1] + 0.2, 1.0))
-            self.vr_dict['right_hand'].set_position((body_position[0], body_position[1] - 0.2, 1.0))
-            if not vr_data:
+            self.vr_dict['left_hand'].set_position((body_position[0], body_position[1]+0.2, 1.0))
+            self.vr_dict['right_hand'].set_position((body_position[0], body_position[1]-0.2, 1.0))
+            self.vr_dict['eye'].set_position((body_position[0], body_position[1], 1.6))
+            if self.sim.can_access_vr_context:
                 self.sim.set_vr_offset((body_position[0], body_position[1], 0.0))
             for constraint, activated in self.constraints_active.items():
                 if not activated and constraint != ['body']:
@@ -120,25 +119,7 @@ class VrAgent(object):
             self.activated = True
 
         for vr_obj in self.vr_dict.values():
-            vr_obj.update(vr_data=vr_data)
-
-    def update_frame_offset(self):
-        """
-        Calculates and sets the new VR offset after a single frame of VR interaction. This function
-        is used in the MUVR code on the client side to set its offset every frame.
-        """
-        new_offset = self.sim.get_vr_offset()
-        for hand in ['left', 'right']:
-            vr_device = '{}_controller'.format(hand)
-            is_valid, trans, rot = self.sim.get_data_for_vr_device(vr_device)
-            if not is_valid:
-                continue
-
-            trig_frac, touch_x, touch_y = self.sim.get_button_data_for_controller(vr_device)
-            if hand == self.sim.vr_settings.movement_controller and self.sim.vr_settings.touchpad_movement:
-                new_offset = calc_offset(self.sim, touch_x, touch_y, self.sim.vr_settings.movement_speed, self.sim.vr_settings.relative_movement_device)
-
-            self.sim.set_vr_offset(new_offset)
+            vr_obj.update(vr_data)
 
     def _print_positions(self):
         """
@@ -157,17 +138,12 @@ class VrBody(ArticulatedObject):
     them from moving through physical objects and wall, as well
     as other VR users.
     """
-    def __init__(self, s, parent, normal_color=True, agent_num=1):
+    def __init__(self, s, parent, use_tracked_body=False, normal_color=True, agent_num=1):
+        # Set up class
         self.sim = s
         self.parent = parent
+        self.use_tracked_body = use_tracked_body
         self.normal_color = normal_color
-        # Determine whether to use torso tracker for control
-        self.torso_tracker_serial = self.sim.vr_settings.torso_tracker_serial
-        body_path = 'normal_color' if self.normal_color else 'alternative_color'
-        body_path_suffix = 'vr_body.urdf' if not self.torso_tracker_serial else 'vr_body_tracker.urdf'
-        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
-        super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
-        # Number of degrees of forward axis away from +/- z axis at which HMD stops rotating body
         self.agent_num = agent_num
         self.name = "VrBody_{}".format(self.agent_num)
         self.category = "agent"
@@ -175,12 +151,14 @@ class VrBody(ArticulatedObject):
         self.min_z = 20.0
         self.max_z = 45.0
         self.body_id = None
-        self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-        self.wall_ids = self.sim.get_category_ids('walls')
-        # Determine whether to use torso tracker for control
-        self.torso_tracker_serial = self.sim.vr_settings.torso_tracker_serial
         self.movement_cid = None
         self.activated = False
+
+        # Load in body from correct urdf, depending on user settings
+        body_path = 'normal_color' if self.normal_color else 'alternative_color'
+        body_path_suffix = 'vr_body.urdf' if not self.use_tracked_body else 'vr_body_tracker.urdf'
+        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
+        super(VrBody, self).__init__(filename=self.vr_body_fpath, scale=1)
 
     def _load(self):
         """
@@ -188,6 +166,9 @@ class VrBody(ArticulatedObject):
         """
         body_id = p.loadURDF(self.filename, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.body_ids = [body_id]
+        self.main_body = -1
+        self.bounding_box = [0.5, 0.5, 1]
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
 
         return body_id
@@ -231,28 +212,20 @@ class VrBody(ArticulatedObject):
     def move(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=50)
 
-    def update(self, vr_data=None):
+    def update(self, vr_data):
         """
         Updates VrBody to new position and rotation, via constraints.
-        If vr_data is passed in, uses this data to update the VrBody instead of the simulator's data.
+        :param vr_data: VrData object containing relevant VR data for updates.
         """
         # Reset the body position to the HMD if either of the controller reset buttons are pressed
-        if vr_data:
-            reset_agent =(('left_controller',  self.sim.get_button_for_action('reset_agent')) in vr_data.query('event_data') 
-                        or ('right_controller', self.sim.get_button_for_action('reset_agent')) in vr_data.query('event_data'))
-        else:
-            reset_agent = (self.sim.query_vr_event('left_controller', 'reset_agent') or self.sim.query_vr_event('right_controller', 'reset_agent'))
+        reset_actions = vr_data.query('reset_actions')
+        reset_agent = (reset_actions[0] or reset_actions[1])
 
         # Use body update algorithm if no torso tracker is present
-        if not self.torso_tracker_serial:
+        if not self.use_tracked_body:
             # Get HMD data
-            if vr_data:
-                hmd_is_valid, _, hmd_rot, right, up, forward = vr_data.query('hmd')
-                hmd_pos, _ = vr_data.query('vr_positions')
-            else:
-                hmd_is_valid, _, hmd_rot = self.sim.get_data_for_vr_device('hmd')
-                right, up, forward = self.sim.get_device_coordinate_system('hmd')
-                hmd_pos = self.sim.get_vr_pos()
+            hmd_is_valid, _, hmd_rot, right, up, forward = vr_data.query('hmd')
+            hmd_pos, _ = vr_data.query('vr_positions')
 
             # Only update the body if the HMD data is valid - this also only teleports the body to the player
             # once the HMD has started tracking when they first load into a scene
@@ -278,11 +251,7 @@ class VrBody(ArticulatedObject):
                     new_body_rot = p.getQuaternionFromEuler([0, 0, new_z])
                     p.changeConstraint(self.movement_cid, hmd_pos, new_body_rot, maxForce=50)
         else:
-            # Get torso tracker data
-            if vr_data:
-                torso_is_valid, torso_trans, torso_rot = vr_data.query('torso_tracker')
-            else:
-                torso_is_valid, torso_trans, torso_rot = self.sim.get_data_for_vr_tracker(self.torso_tracker_serial)
+            torso_is_valid, torso_trans, torso_rot = vr_data.query('torso_tracker')
 
             if torso_is_valid:
                 curr_pos = np.array(self.get_position())
@@ -294,24 +263,14 @@ class VrBody(ArticulatedObject):
                     p.changeConstraint(self.movement_cid, torso_trans, torso_rot, maxForce=50)
                 if dist_to_dest < 2.0:
                     p.changeConstraint(self.movement_cid, torso_trans, torso_rot, maxForce=50)
-            
-        # Use 90% strength haptic pulse in both controllers for body collisions with walls - this should notify the user immediately
-        # Note: haptics can't be used in networking situations like MUVR (due to network latency)
-        # or in action replay, since no VR device is connected
-        if not vr_data:
-            for c_info in p.getContactPoints(self.body_id):
-                if self.wall_ids and (c_info[1] in self.wall_ids or c_info[2] in self.wall_ids):
-                    for controller in ['left_controller', 'right_controller']:
-                        is_valid, _, _ = self.sim.get_data_for_vr_device(controller)
-                        if is_valid:
-                            self.sim.trigger_haptic_pulse(controller, 0.9)
+
 
 class VrHandBase(ArticulatedObject):
     """
     The base VR Hand class from which other VrHand objects derive. It is intended
     that subclasses override most of the methods to implement their own functionality.
     """
-    def __init__(self, s, fpath, hand='right', base_rot=[0,0,0,1], agent_num=1):
+    def __init__(self, s, fpath, hand='right', base_rot=[0,0,0,1], use_ghost_hands=True, agent_num=1):
         """
         Initializes VrHandBase.
         s is the simulator, fpath is the filepath of the VrHandBase, hand is either left or right 
@@ -321,7 +280,6 @@ class VrHandBase(ArticulatedObject):
         """
         # We store a reference to the simulator so that VR data can be acquired under the hood
         self.sim = s
-        self.vr_settings = self.sim.vr_settings
         self.fpath = fpath
         self.model_path = fpath
         self.hand = hand
@@ -329,15 +287,22 @@ class VrHandBase(ArticulatedObject):
         self.body = None
         self.base_rot = base_rot
         self.vr_device = '{}_controller'.format(self.hand)
-        self.height_bounds = self.sim.vr_settings.height_bounds
         # Bool indicating whether the hands have been spwaned by pressing the trigger reset
         self.has_spawned = False
         self.movement_cid = None
         self.activated = False
+        self.use_ghost_hands = use_ghost_hands
         self.agent_num = agent_num
         self.name = "{}_hand_{}".format(self.hand, self.agent_num)
         self.model = self.name
         self.category = "agent"
+        # Data for ghost hands
+        self.ghost_hand_appear_thresh = 0.15
+        # Keeps track of previous ghost hand hidden state
+        self.prev_ghost_hand_hidden_state = False
+        if self.use_ghost_hands:
+            self.ghost_hand = VisualShape(os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', 'ghost_hand_{}.obj'.format(self.hand)), scale=0.001)
+            self.ghost_hand.category = 'agent'
 
         if self.hand not in ['left', 'right']:
             raise RuntimeError('ERROR: VrHandBase can only accept left or right as a hand argument!')
@@ -366,41 +331,34 @@ class VrHandBase(ArticulatedObject):
         """
         self.body = body
 
-    @staticmethod
-    def activate_constraints():
-        raise NotImplementedError("Needs to be implemented by child class")
+    def activate_constraints(self):
+        # Start ghost hand where the VR hand starts
+        if self.use_ghost_hands:
+            self.ghost_hand.set_position(self.get_position())
 
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
         set_all_collisions(self.body_id, int(enabled))
 
     # TIMELINE: Call after step in main while loop
-    def update(self, vr_data=None):
+    def update(self, vr_data):
         """
-        Updates position and close fraction of hand, and also moves player.
-        If vr_data is passed in, uses this data to update the hand instead of the simulator's data.
+        Updates position and close fraction of hand.
+        :param vr_data: VrData object containing relevant VR data for updates.
         """
-        if vr_data:
-            transform_data = vr_data.query(self.vr_device)[:3]
-            touch_data = vr_data.query('{}_button'.format(self.vr_device))
-            curr_offset = vr_data.query('vr_positions')[3:]
-            _, _, hmd_height = vr_data.query('hmd')[1:4]
-        else:
-            transform_data = self.sim.get_data_for_vr_device(self.vr_device)
-            touch_data = self.sim.get_button_data_for_controller(self.vr_device)
-            curr_offset = self.sim.get_vr_offset()
-            _, _, hmd_height = self.sim.get_hmd_world_pos()
+        transform_data = vr_data.query(self.vr_device)[:3]
+        touch_data = vr_data.query('{}_button'.format(self.vr_device))
+        curr_offset = vr_data.query('vr_positions')[3:]
+        _, _, hmd_height = vr_data.query('hmd')[1:4]
 
         # Unpack transform and touch data
         is_valid, trans, rot = transform_data
         trig_frac, touch_x, touch_y = touch_data
 
         if is_valid:
-            # Detect hand-relevant VR events
-            if vr_data:
-                reset_agent = (self.vr_device, self.sim.get_button_for_action('reset_agent')) in vr_data.query('event_data')
-            else:
-                reset_agent = self.sim.query_vr_event(self.vr_device, 'reset_agent')
+            # Detect reset action
+            reset_actions = vr_data.query('reset_actions')
+            reset_agent = reset_actions[0] if self.hand == 'left' else reset_actions[1]
 
             # Reset the hand if the grip has been pressed
             if reset_agent:
@@ -413,26 +371,10 @@ class VrHandBase(ArticulatedObject):
                 self.set_orientation(final_rot)
                 self.has_spawned = True
 
-            # Adjust user height based on analog stick press (along y axis)
-            if not vr_data and self.hand != self.vr_settings.movement_controller:
-                if touch_y < -0.7:
-                    vr_z_offset = -0.01
-                    if hmd_height + curr_offset[2] + vr_z_offset >= self.height_bounds[0]:
-                        self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
-                elif touch_y > 0.7:
-                    vr_z_offset = 0.01
-                    if hmd_height + curr_offset[2] + vr_z_offset <= self.height_bounds[1]:
-                        self.sim.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
-
-            # Move player based on direction of touchpad
-            if not vr_data and self.vr_settings.touchpad_movement and self.hand == self.vr_settings.movement_controller:
-                move_player(self.sim, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
-
             self.move(trans, rot)
             self.set_close_fraction(trig_frac)
-            # Haptic updates only occur when using VR mode
-            if not vr_data:
-                self.update_haptic()
+            if self.use_ghost_hands:
+                self.update_ghost_hands(vr_data)
 
     def move(self, trans, rot):
         """
@@ -454,46 +396,58 @@ class VrHandBase(ArticulatedObject):
         Sets the close fraction of the hand - this must be implemented by each subclass.
         """
         raise NotImplementedError()
+    
+    def update_ghost_hands(self, vr_data):
+        """
+        Updates ghost hand if the real and virtual hands are too far apart.
+        :param vr_data: VrData object containing relevant VR data for updates.
+        """
+        if not self.has_spawned:
+            return
 
-    def update_haptic(self):
-        """
-        Updates haptic information and triggers haptic response - this must be implemented by each subclass.
-        """
-        raise NotImplementedError()
+        transform_data = vr_data.query(self.vr_device)[:3]
+        is_valid, trans, rot = transform_data
+        if not is_valid:
+            return
+        
+        # Ghost hand tracks real hand whether it is hidden or not
+        self.ghost_hand.set_position(trans)
+        self.ghost_hand.set_orientation(rot)
+
+        # If distance between hand and controller is greater than threshold,
+        # ghost hand appears
+        dist_to_real_controller = np.linalg.norm(np.array(trans) - np.array(self.get_position()))
+        should_hide = dist_to_real_controller <= self.ghost_hand_appear_thresh
+        
+        # Only toggle hidden state if we are transition from hidden to unhidden, or the other way around
+        if not self.prev_ghost_hand_hidden_state and should_hide:
+            self.sim.set_hidden_state(self.ghost_hand, hide=True)
+            self.prev_ghost_hand_hidden_state = True
+        elif self.prev_ghost_hand_hidden_state and not should_hide:
+            self.sim.set_hidden_state(self.ghost_hand, hide=False)
+            self.prev_ghost_hand_hidden_state = False
 
 
 class VrHand(VrHandBase):
     """
     Represents the human hand used for VR programs. Has 11 joints, including invisible base joint.
     """
-    def __init__(self, s, hand='right', normal_color=True, use_prim=True, agent_num=1):
-        self.s = s
-        self.use_reduced_joint_hand = (self.s.vr_settings.assist_percent > 0)
+    def __init__(self, s, hand='right', use_ghost_hands=True, normal_color=True, agent_num=1):
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
-        self.use_prim = use_prim
-        # Reduced joint hand takes priority over other two types
-        if self.use_reduced_joint_hand:
-            suffix = 'vr_hand_reduced'
-        else:
-            if self.use_prim:
-                suffix = 'vr_hand_prim'
-            else:
-                suffix = 'vr_hand_vhacd'
-        final_suffix = '{}_{}.urdf'.format(suffix, hand)
+        final_suffix = '{}_{}.urdf'.format('vr_hand_vhacd', hand)
         base_rot_handed = p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80])
         super(VrHand, self).__init__(s, os.path.join(self.vr_hand_folder, final_suffix),
-                                    hand=hand, base_rot=base_rot_handed, agent_num=agent_num)
+                                    hand=hand, base_rot=base_rot_handed, use_ghost_hands=use_ghost_hands, agent_num=agent_num)
         self.open_pos = 0
         self.finger_close_pos = 1.2
         self.thumb_close_pos = 0.6
         self.hand_friction = 2.5
         self.hand_close_force = 3
-        self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         # Variables for assisted grasping
         self.object_in_hand = None
-        self.assist_percent = self.s.vr_settings.assist_percent
+        self.assist_percent = 100
         self.articulated_assist_percentage = 0.7
         self.min_assist_force = 0
         self.max_assist_force = 500
@@ -505,16 +459,13 @@ class VrHand(VrHandBase):
         self.should_freeze_joints = False
         self.release_start_time = None
         self.should_execute_release = False
-        self.release_window = self.s.vr_settings.release_window
+        self.release_window = 6
         # Used to debug AG
         self.candidate_data = None
         self.movement_cid = None
-        if self.use_reduced_joint_hand:
-            self.finger_tip_link_idxs = [1, 2, 3, 4, 5]
-            self.thumb_link_idx = 4
-            self.non_thumb_fingers = [1, 2, 3, 5]
-        else:
-            self.finger_tip_link_idxs = [2, 4, 6, 8, 10]
+        self.finger_tip_link_idxs = [1, 2, 3, 4, 5]
+        self.thumb_link_idx = 4
+        self.non_thumb_fingers = [1, 2, 3, 5]
 
         # Local transforms of AG raycast start/endpoints
         # Need to flip y offsets for left hand, since it has -1 scale along the y axis
@@ -524,26 +475,6 @@ class VrHand(VrHandBase):
         self.palm_center_pos = [0, -0.04 * y_modifier, 0.01]
         self.thumb_1_pos = [0, -0.015 * y_modifier, -0.02]
         self.thumb_2_pos = [0, -0.02 * y_modifier, -0.05]
-
-        # Spheres to optionally visualize the ray start/end points
-        # Note: toggle this on/off to toggle visible ray start and end points
-        self.display_raypoints = False
-        if self.display_raypoints:
-            self.ray_markers = []
-            for _ in range(8):
-                ray_marker = VisualMarker(visual_shape=p.GEOM_SPHERE, radius=0.008, rgba_color=[1, 0, 0, 1])
-                self.ray_markers.append(ray_marker)
-                s.import_object(ray_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
-
-        # Create ghost hand
-        self.enable_ghost_hand = True
-        self.ghost_hand_appear_thresh = 0.1
-        # Keeps track of previous ghost hand hidden state
-        self.prev_ghost_hand_hidden_state = False
-        if self.enable_ghost_hand:
-            self.ghost_hand = VisualShape(os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', 'ghost_hand_{}.obj'.format(self.hand)), scale=0.001)
-            self.ghost_hand.category = "agent"
-            self.s.import_object(self.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
 
     def activate_constraints(self):
         p.changeDynamics(self.body_id, -1, mass=1, lateralFriction=self.hand_friction)
@@ -557,9 +488,7 @@ class VrHand(VrHandBase):
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
-        # Start ghost hand where the VR hand starts
-        if self.enable_ghost_hand:
-            self.ghost_hand.set_position(self.get_position())
+        super(VrHand, self).activate_constraints()
 
     def set_hand_coll_filter(self, target_id, enable):
         """
@@ -618,10 +547,6 @@ class VrHand(VrHandBase):
             finger_tip_pos, _ = p.multiplyTransforms(link_pos, link_orn, self.finger_tip_pos, [0, 0, 0, 1])
             raypoints.append(finger_tip_pos)
             raycast_endpoints.extend([finger_tip_pos] * 4)
-
-        if self.display_raypoints:
-            for i in range(8):
-                self.ray_markers[i].set_position(raypoints[i])
 
         # Raycast from each start point to each end point - 8 in total between 4 finger start points and 2 palm end points
         ray_results = p.rayTestBatch(raycast_startpoints, raycast_endpoints)
@@ -693,7 +618,7 @@ class VrHand(VrHandBase):
             return None
 
         # Return None if any of the following edge cases are activated
-        if (not self.s.can_assisted_grasp(ag_bid, ag_link) or 
+        if (not self.sim.can_assisted_grasp(ag_bid, ag_link) or 
             (self.other_hand and self.other_hand.object_in_hand == ag_bid) or 
             (self.body and self.body.body_id == ag_bid) or 
             (self.other_hand and self.other_hand.body_id == ag_bid)):
@@ -701,14 +626,12 @@ class VrHand(VrHandBase):
 
         return ag_bid, ag_link
 
-    def handle_assisted_grasping(self, vr_data=None):
+    def handle_assisted_grasping(self, vr_data):
         """
         Handles assisted grasping.
+        :param vr_data: VrData object containing relevant VR data for updates.
         """
-        if vr_data:
-            trig_frac, _, _ = vr_data.query('{}_button'.format(self.vr_device))
-        else:
-            trig_frac, _, _ = self.s.get_button_data_for_controller(self.vr_device)
+        trig_frac, _, _ = vr_data.query('{}_button'.format(self.vr_device))
 
         # Execute gradual release of object
         if self.should_execute_release and self.release_start_time:
@@ -810,52 +733,16 @@ class VrHand(VrHandBase):
         diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
         return diff
 
-    def update_ghost_hand(self, vr_data=None):
+    def update(self, vr_data):
         """
-        Updates ghost hand if the real and virtual hands are too far apart.
-        """
-        if not self.has_spawned:
-            return
-
-        if vr_data:
-            transform_data = vr_data.query(self.vr_device)[:3]
-        else:
-            transform_data = self.sim.get_data_for_vr_device(self.vr_device)
-        is_valid, trans, rot = transform_data
-        if not is_valid:
-            return
-        
-        # Ghost hand tracks real hand whether it is hidden or not
-        self.ghost_hand.set_position(trans)
-        self.ghost_hand.set_orientation(rot)
-
-        # If distance between hand and controller is greater than threshold,
-        # ghost hand appears
-        dist_to_real_controller = np.linalg.norm(np.array(trans) - np.array(self.get_position()))
-        should_hide = dist_to_real_controller <= self.ghost_hand_appear_thresh
-        
-        # Only toggle hidden state if we are transition from hidden to unhidden, or the other way around
-        if not self.prev_ghost_hand_hidden_state and should_hide:
-            self.s.set_hidden_state(self.ghost_hand, hide=True)
-            self.prev_ghost_hand_hidden_state = True
-        elif self.prev_ghost_hand_hidden_state and not should_hide:
-            self.s.set_hidden_state(self.ghost_hand, hide=False)
-            self.prev_ghost_hand_hidden_state = False
-
-    def update(self, vr_data=None):
-        """
-        Overriden update that can handle assisted grasping. Note that this only
-        available for the VrHand, and not the VrGripper.
+        Overriden update that can handle assisted grasping. AG is only enabled for VrHand and not VrGripper.
+        :param vr_data: VrData object containing relevant VR data for updates.
         """
         # AG is only enable for the reduced joint hand
-        if self.assist_percent > 0 and self.use_reduced_joint_hand:
-            self.handle_assisted_grasping(vr_data=vr_data)
+        if self.assist_percent > 0:
+            self.handle_assisted_grasping(vr_data)
 
-        # Move ghost hand if necessary
-        if self.enable_ghost_hand:
-            self.update_ghost_hand(vr_data=vr_data)
-
-        super(VrHand, self).update(vr_data=vr_data)
+        super(VrHand, self).update(vr_data)
 
         # Freeze joints if object is actively being assistively grasping
         if self.should_freeze_joints:
@@ -882,30 +769,22 @@ class VrHand(VrHandBase):
             target_pos = self.open_pos + interp_frac
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
 
-    def update_haptic(self):
-        """
-        Updates haptic response, which triggers whenever the hand collides with
-        an object or when an object is "in-hand" during assisted grasping.
-        """
-        # Use 30% strength haptic pulse
-        if len(p.getContactPoints(self.body_id)) > 0 or self.object_in_hand:
-            self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
-
 
 class VrGripper(VrHandBase):
     """
     Gripper utilizing the pybullet gripper URDF from their VR demo.
     """
-    def __init__(self, s, hand='right', use_constraints=True, normal_color=True, agent_num=1):
+    def __init__(self, s, hand='right', use_ghost_hands=True, normal_color=True, agent_num=1):
         self.normal_color = normal_color
         gripper_path = 'normal_color' if self.normal_color else 'alternative_color'
         self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_gripper', gripper_path, 'vr_gripper.urdf')
         super(VrGripper, self).__init__(s, self.vr_gripper_fpath,
-                                    hand=hand, base_rot=p.getQuaternionFromEuler([0, 0, 0]), agent_num=agent_num)
-        self.sim.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+                                    hand=hand, base_rot=p.getQuaternionFromEuler([0, 0, 0]), use_ghost_hands=use_ghost_hands, agent_num=agent_num)
+        # Need large ghost hand threshold for VrGripper
+        self.ghost_hand_appear_thresh = 0.25
         self.joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
 
-    def activate_constraints(self, use_constraints):
+    def activate_constraints(self):
         """
         Sets up constraints in addition to superclass hand setup.
         """
@@ -913,19 +792,19 @@ class VrGripper(VrHandBase):
             p.resetJointState(self.body_id, joint_idx, self.joint_positions[joint_idx])
             p.setJointMotorControl2(self.body_id, joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
 
-        if use_constraints:
-            # Movement constraint
-            self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position())
-            # Gripper gear constraint
-            self.grip_cid = p.createConstraint(self.body_id,
-                              0,
-                              self.body_id,
-                              2,
-                              jointType=p.JOINT_GEAR,
-                              jointAxis=[0, 1, 0],
-                              parentFramePosition=[0, 0, 0],
-                              childFramePosition=[0, 0, 0])
-            p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
+        # Movement constraint
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position())
+        # Gripper gear constraint
+        self.grip_cid = p.createConstraint(self.body_id,
+                            0,
+                            self.body_id,
+                            2,
+                            jointType=p.JOINT_GEAR,
+                            jointAxis=[0, 1, 0],
+                            parentFramePosition=[0, 0, 0],
+                            childFramePosition=[0, 0, 0])
+        p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
+        super(VrGripper, self).activate_constraints()
 
     def set_close_fraction(self, close_frac):
         # PyBullet recommmends doing this to keep the gripper centered/symmetric
@@ -939,46 +818,30 @@ class VrGripper(VrHandBase):
                          relativePositionTarget=1-close_frac,
                          maxForce=3)
 
-    def update_haptic(self):
-        """
-        Updates hand haptic whenever an object is touched.
-        """
-        # Use 30% strength haptic pulse
-        if len(p.getContactPoints(self.body_id)) > 0:
-            self.sim.trigger_haptic_pulse(self.vr_device, 0.3)
 
-
-class VrGazeMarker(VisualMarker):
+class VrEye(ArticulatedObject):
     """
-    Represents the marker used for VR gaze tracking
+    Class representing the eye of the agent - robots can use this eye's position
+    to move the camera and render the same thing that the VR users see.
     """
-    def __init__(self, s, z_coord=100, normal_color=True):
-        # We store a reference to the simulator so that VR data can be acquired under the hood
+    def __init__(self, s, parent, agent_num=1):
+        # Set up class
         self.sim = s
-        self.normal_color = normal_color
-        self.orientation_vector = None
-        self.position_vector = None
-        self.eye_data_valid = None
-        super(VrGazeMarker, self).__init__(visual_shape=p.GEOM_SPHERE, radius=0.02, rgba_color=[1, 0, 0, 1] if self.normal_color else [0, 0, 1, 1])
-        s.import_object(self, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
-        # Set high above scene initially
-        self.set_position([0, 0, z_coord])
+        self.parent = parent
+        self.agent_num = agent_num
+        self.name = "VrEye_{}".format(self.agent_num)
+        self.category = "agent"
 
-    def update(self, vr_data=None):
+        # Load in body from correct urdf, depending on user settings
+        self.eye_path = os.path.join(assets_path, 'models', 'vr_agent', 'vr_eye', 'vr_eye.urdf')
+        super(VrEye, self).__init__(filename=self.eye_path, scale=1)
+
+    def update(self, vr_data):
         """
-        Updates the gaze marker using simulator data - if vr_data is not None, we use this data instead.
+        Updates VrEye to be where HMD is.
+        :param vr_data: VrData object containing relevant VR data for updates.
         """
-        if vr_data:
-            eye_data = vr_data.query('eye_data')
-        else:
-            eye_data = self.sim.get_eye_tracking_data()
-
-        # Unpack eye tracking data
-        is_eye_data_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = eye_data
-        if is_eye_data_valid:
-            updated_marker_pos = [origin[0] + dir[0], origin[1] + dir[1], origin[2] + dir[2]]
-            self.set_position(updated_marker_pos)
-            self.position_vector = origin
-            self.orientation_vector = dir
-            self.eye_data_valid = is_eye_data_valid
-
+        # Get HMD data
+        hmd_is_valid, hmd_trans, hmd_rot, _, _, _ = vr_data.query('hmd')
+        if hmd_is_valid:
+            self.set_position_orientation(hmd_trans, hmd_rot)
