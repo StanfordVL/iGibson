@@ -117,29 +117,35 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         # Return True and the heating element position (or None if not required).
         return True, (heating_element_position if not self.requires_inside else None)
 
-    def update(self, simulator):
+    def _initialize(self, simulator):
+        super(HeatSourceOrSink, self)._initialize(simulator)
+        self.initialize_link_mixin()
+        self.marker = VisualShape(
+            _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
+        simulator.import_object(
+            self.marker, use_pbr=False, use_pbr_mapping=False)
+        self.marker.set_position([0, 0, -100])
+
+    def _update(self, simulator):
         self.status, self.position = self._compute_state_and_position()
 
-        if simulator.can_access_vr_context:
-            hud_overlay_show_state = simulator.get_hud_show_state()
-        else:
-            hud_overlay_show_state = False
-
-        if self.marker is None:
-            self.marker = VisualShape(
-                _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
-
-            simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
-
+        # Move the marker.
         marker_position = [0, 0, -100]
-        if self.position is not None and hud_overlay_show_state:
+        if self.position is not None:
             marker_position = self.position
-
         self.marker.set_position(marker_position)
 
-    def get_value(self):
+    def _get_value(self):
         return self.status, self.position
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         raise NotImplementedError(
             "Setting heat source capability is not supported.")
+
+    # Nothing needs to be done to save/load HeatSource since it's stateless except for
+    # the marker.
+    def _dump(self):
+        return None
+
+    def _load(self, data):
+        return

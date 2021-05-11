@@ -16,6 +16,8 @@ _WATER_SOURCE_LINK_NAME = "water_source"
 # the particles slightly lower.
 _OFFSET_FROM_LINK = np.array([0, 0, -0.05])
 
+_NUM_DROPS = 10
+
 
 class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
@@ -25,30 +27,34 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         # Reduced to a single water stream for now since annotations don't support more.
         self.water_stream = None
 
+        # Keep dump data for when we initialize our water stream.
+        self.from_dump = None
+
     @staticmethod
     def get_state_link_name():
         return _WATER_SOURCE_LINK_NAME
 
-    def update(self, simulator):
+    def _initialize(self, simulator):
+        super(WaterSource, self)._initialize(simulator)
+        self.initialize_link_mixin()
         water_source_position = self.get_link_position()
         if water_source_position is None:
             return
 
         water_source_position = list(
             np.array(water_source_position) + _OFFSET_FROM_LINK)
-        if self.water_stream is None:
-            self.water_stream = WaterStream(water_source_position, num=10)
-            body_ids = simulator.import_particle_system(
-                self.water_stream, use_pbr=True)
+        self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, from_dump=self.from_dump)
+        simulator.import_particle_system(self.water_stream)
+        del self.from_dump
 
-            # Set some renderer settings on these particles.
-            instances = simulator.renderer.get_instances()
-            for instance in instances:
-                if instance.pybullet_uuid in body_ids:
-                    instance.roughness = 0
-                    instance.metalness = 1
-        else:
-            self.water_stream.water_source_pos = water_source_position
+    def _update(self, simulator):
+        water_source_position = self.get_link_position()
+        if water_source_position is None:
+            return
+
+        water_source_position = list(
+            np.array(water_source_position) + _OFFSET_FROM_LINK)
+        self.water_stream.water_source_pos = water_source_position
 
         if ToggledOn in self.obj.states:
             # sync water source state with toggleable
@@ -64,11 +70,17 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
             if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
+        raise ValueError("set_value not supported for WaterSource.")
+
+    def _get_value(self):
         pass
 
-    def get_value(self):
-        pass
+    def _dump(self):
+        return self.water_stream.dump()
+
+    def _load(self, data):
+        self.from_dump = data
 
     @staticmethod
     def get_optional_dependencies():

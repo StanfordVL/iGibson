@@ -1,4 +1,6 @@
+from gibson2.objects.stateful_object import StatefulObject
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.visual_shape import VisualShape
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
 from gibson2.utils.semantics_utils import get_class_name_to_class_id
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -14,9 +16,10 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
-from gibson2.objects.particles import ParticleSystem
+from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
+from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES
 
 import pybullet as p
 import gibson2
@@ -67,7 +70,8 @@ class Simulator:
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
         self.physics_timestep_num = self.render_timestep / self.physics_timestep
-        assert self.physics_timestep_num.is_integer(), "render_timestep must be a multiple of physics_timestep"
+        assert self.physics_timestep_num.is_integer(
+        ), "render_timestep must be a multiple of physics_timestep"
         self.physics_timestep_num = int(self.physics_timestep_num)
 
         self.mode = mode
@@ -119,17 +123,15 @@ class Simulator:
         self.vr_overlay_initialized = False
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
-        # Get expected duration of frame
-        self.fixed_frame_dur = 1/float(self.vr_settings.vr_fps)
         # Duration of a vsync frame - assumes 90Hz refresh rate
-        self.vsync_frame_dur = 11.11e-3
+        self.vsync_frame_dur = 11.11e-3 
         # Get expected number of vsync frames per iGibson frame
         # Note: currently assumes a 90Hz VR system
         self.vsync_frame_num = int(
-            round(self.fixed_frame_dur / self.vsync_frame_dur))
+            round(self.render_timestep / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
         # Leave a small amount of time before the last vsync, just in case we overrun
-        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + 5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
 
@@ -175,7 +177,8 @@ class Simulator:
         This will make the step much slower so should be avoided when training agents
         """
         if self.use_vr_renderer:
-            self.viewer = ViewerVR(self.vr_settings.use_companion_window, frame_save_path=self.vr_settings.frame_save_path)
+            self.viewer = ViewerVR(self.vr_settings.use_companion_window,
+                                   frame_save_path=self.vr_settings.frame_save_path)
         elif self.use_simple_viewer:
             self.viewer = ViewerSimple()
         else:
@@ -275,6 +278,13 @@ class Simulator:
             # TODO: add instance renferencing for iG v1 scenes
 
         self.scene = scene
+
+        # Load the states of all the objects in the scene.
+        for obj in scene.get_objects():
+            if isinstance(obj, StatefulObject):
+                for state in obj.states.values():
+                    state.initialize(self)
+
         return new_object_pb_ids
 
     @load_without_pybullet_vis
@@ -327,39 +337,26 @@ class Simulator:
                     physical_object=scene.objects_by_id[body_id])
         self.scene = scene
 
+        # Load the states of all the objects in the scene.
+        for obj in scene.get_objects():
+            if isinstance(obj, StatefulObject):
+                for state in obj.states.values():
+                    state.initialize(self)
+
         return new_object_ids
 
     @load_without_pybullet_vis
-    def import_particle_system(self,
-                               obj,
-                               class_id=SemanticClass.USER_ADDED_OBJS,
-                               use_pbr=False,
-                               use_pbr_mapping=False,
-                               shadow_caster=True):
+    def import_particle_system(self, obj):
         """
         Import an object into the simulator
         :param obj: ParticleSystem to load
-        :param class_id: Class id for rendering semantic segmentation
-        :param use_pbr: Whether to use pbr, default to False
-        :param use_pbr_mapping: Whether to use pbr mapping, default to False
-        :param shadow_caster: Whether to cast shadow
         """
 
         assert isinstance(obj, ParticleSystem), \
             'import_particle_system can only be called with ParticleSystem'
 
-        new_object_pb_ids = []
-        for o in obj.get_particles():
-            particle_pb_id = self.import_object(o,
-                                                class_id=class_id,
-                                                use_pbr=use_pbr,
-                                                use_pbr_mapping=use_pbr_mapping,
-                                                shadow_caster=shadow_caster)
-            new_object_pb_ids.append(particle_pb_id)
-
         self.particle_systems.append(obj)
-
-        return new_object_pb_ids
+        obj.initialize(self)
 
     @load_without_pybullet_vis
     def import_object(self,
@@ -380,7 +377,7 @@ class Simulator:
         assert isinstance(obj, Object), \
             'import_object can only be called with Object'
 
-        if isinstance(obj, VisualMarker):
+        if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
             new_object_pb_id_or_ids = obj.load()
         else:
@@ -402,11 +399,15 @@ class Simulator:
 
         for new_object_pb_id in new_object_pb_ids:
             if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
+                visual_mesh_to_material = None
+                if hasattr(obj, 'visual_mesh_to_material'):
+                    visual_mesh_to_material = obj.visual_mesh_to_material
                 self.load_articulated_object_in_renderer(
                     new_object_pb_id,
                     class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
+                    visual_mesh_to_material=visual_mesh_to_material,
                     shadow_caster=shadow_caster,
                     physical_object=obj)
             else:
@@ -419,6 +420,11 @@ class Simulator:
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster,
                     physical_object=obj)
+
+        # Finally, initialize the object's states
+        if isinstance(obj, StatefulObject):
+            for state in obj.states.values():
+                state.initialize(self)
 
         return new_object_pb_id_or_ids
 
@@ -524,7 +530,8 @@ class Simulator:
                                            shadow_caster=shadow_caster
                                            )
                 if physical_object is not None:
-                    physical_object.renderer_instances.append(self.renderer.instances[-1])
+                    physical_object.renderer_instances.append(
+                        self.renderer.instances[-1])
 
     @load_without_pybullet_vis
     def load_articulated_object_in_renderer(self,
@@ -556,10 +563,14 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
-                    overwrite_material = None
-                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
-                        overwrite_material = visual_mesh_to_material[filename]
+                overwrite_material = None
+                if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                    overwrite_material = visual_mesh_to_material[filename]
+
+                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys() or \
+                        overwrite_material is not None:
+                    # if the object has an overwrite material, always create a
+                    # new visual object even if the same visual shape exsits
                     self.renderer.load_object(
                         filename,
                         transform_orn=rel_orn,
@@ -628,7 +639,8 @@ class Simulator:
                                          shadow_caster=shadow_caster)
 
         if physical_object is not None:
-            physical_object.renderer_instances.append(self.renderer.instances[-1])
+            physical_object.renderer_instances.append(
+                self.renderer.instances[-1])
 
     def import_non_colliding_objects(self,
                                      objects,
@@ -794,15 +806,15 @@ class Simulator:
         return ids
 
     def add_normal_text(self,
-                 text_data='PLACEHOLDER: PLEASE REPLACE!',
-                 font_name='OpenSans',
-                 font_style='Regular',
-                 font_size=48,
-                 color=[0, 0, 0],
-                 pos=[0, 100],
-                 size=[20, 20],
-                 scale=1.0,
-                 background_color=None):
+                        text_data='PLACEHOLDER: PLEASE REPLACE!',
+                        font_name='OpenSans',
+                        font_style='Regular',
+                        font_size=48,
+                        color=[0, 0, 0],
+                        pos=[0, 100],
+                        size=[20, 20],
+                        scale=1.0,
+                        background_color=None):
         """
         Creates a Text object to be rendered to a non-VR screen. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
@@ -818,8 +830,10 @@ class Simulator:
         """
         # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
         # Calculate pixel positions for text
-        pixel_pos = [int(pos[0]/100.0 * self.renderer.width), int(pos[1]/100.0 * self.renderer.height)]
-        pixel_size = [int(size[0]/100.0 * self.renderer.width), int(size[1]/100.0 * self.renderer.height)]
+        pixel_pos = [int(pos[0]/100.0 * self.renderer.width),
+                     int(pos[1]/100.0 * self.renderer.height)]
+        pixel_size = [int(size[0]/100.0 * self.renderer.width),
+                      int(size[1]/100.0 * self.renderer.height)]
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
                                       font_style=font_style,
@@ -832,15 +846,15 @@ class Simulator:
                                       render_to_tex=False)
 
     def add_vr_overlay_text(self,
-                 text_data='PLACEHOLDER: PLEASE REPLACE!',
-                 font_name='OpenSans',
-                 font_style='Regular',
-                 font_size=48,
-                 color=[0, 0, 0],
-                 pos=[20, 80],
-                 size=[70, 80],
-                 scale=1.0,
-                 background_color=[1,1,1,0.8]):
+                            text_data='PLACEHOLDER: PLEASE REPLACE!',
+                            font_name='OpenSans',
+                            font_style='Regular',
+                            font_size=48,
+                            color=[0, 0, 0],
+                            pos=[20, 80],
+                            size=[70, 80],
+                            scale=1.0,
+                            background_color=[1, 1, 1, 0.8]):
         """
         Creates Text for use in a VR overlay. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
@@ -855,7 +869,8 @@ class Simulator:
         :param background_color: color of the background in form [r, g, b, a] - default is semi-transparent white so text is easy to read in VR
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         if not self.vr_overlay_initialized:
             # This function automatically creates a VR text overlay the first time text is added
             self.renderer.gen_vr_hud()
@@ -863,8 +878,10 @@ class Simulator:
 
         # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
         # Calculate pixel positions for text
-        pixel_pos = [int(pos[0]/100.0 * self.renderer.width), int(pos[1]/100.0 * self.renderer.height)]
-        pixel_size = [int(size[0]/100.0 * self.renderer.width), int(size[1]/100.0 * self.renderer.height)]
+        pixel_pos = [int(pos[0]/100.0 * self.renderer.width),
+                     int(pos[1]/100.0 * self.renderer.height)]
+        pixel_size = [int(size[0]/100.0 * self.renderer.width),
+                      int(size[1]/100.0 * self.renderer.height)]
         return self.renderer.add_text(text_data=text_data,
                                       font_name=font_name,
                                       font_style=font_style,
@@ -877,16 +894,17 @@ class Simulator:
                                       render_to_tex=True)
 
     def add_overlay_image(self,
-                        image_fpath,
-                        width=1,
-                        pos=[0,0,-1]):
+                          image_fpath,
+                          width=1,
+                          pos=[0, 0, -1]):
         """
         Add an image with a given file path to the VR overlay. This image will be displayed
         in addition to any text that the users wishes to display. This function returns a handle
         to the VrStaticImageOverlay, so the user can display/hide it at will.
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         return self.renderer.gen_static_overlay(image_fpath, width=width, pos=pos)
 
     def set_hud_show_state(self, show_state):
@@ -895,7 +913,8 @@ class Simulator:
         :param show_state: whether to show HUD or not
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         self.renderer.vr_hud.set_overlay_show_state(show_state)
 
     def get_hud_show_state(self):
@@ -903,7 +922,8 @@ class Simulator:
         Returns the show state of the main VR HUD.
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         return self.renderer.vr_hud.get_overlay_show_state()
 
     def _non_physics_step(self):
@@ -918,6 +938,11 @@ class Simulator:
         for state_type in self.object_state_types:
             for obj in self.scene.get_objects_with_state(state_type):
                 obj.states[state_type].update(self)
+
+        # Step the object procedural materials based on the updated object states
+        for obj in self.scene.get_objects():
+            if hasattr(obj, 'procedural_material') and obj.procedural_material is not None:
+                obj.procedural_material.update()
 
     def step_vr(self, print_stats=False):
         """
@@ -1134,7 +1159,7 @@ class Simulator:
                     temp_event_data.append(ev_data)
                     event_set.add(key)
             self.vr_event_data = temp_event_data[:]
-        
+
         return self.vr_event_data
 
     def get_vr_events(self):
@@ -1143,15 +1168,22 @@ class Simulator:
         """
         return self.vr_event_data
 
+    def get_button_for_action(self, action):
+        """
+        Returns (button, state) tuple corresponding to an action
+        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.yml
+        """
+        return None if action not in self.vr_settings.action_button_map else tuple(self.vr_settings.action_button_map[action])
+
     def query_vr_event(self, controller, action):
         """
         Queries system for a VR event, and returns true if that event happened this frame
         :param controller: device to query for - can be left_controller or right_controller
-        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.json
+        :param action: an action name listed in "action_button_map" dictionary for the current device in the vr_config.yml
         """
         # Return false if any of input parameters are invalid
-        if (controller not in ['left_controller', 'right_controller'] or 
-            action not in self.vr_settings.action_button_map.keys()):
+        if (controller not in ['left_controller', 'right_controller'] or
+                action not in self.vr_settings.action_button_map.keys()):
             return False
 
         # Search through event list to try to find desired event
@@ -1175,7 +1207,8 @@ class Simulator:
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         # Use fourth variable in list to get actual hmd position in space
-        is_valid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(device_name)
+        is_valid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(
+            device_name)
         return [is_valid, translation, rotation]
 
     def get_data_for_vr_tracker(self, tracker_serial_number):
@@ -1187,15 +1220,16 @@ class Simulator:
         if not self.can_access_vr_context:
             raise RuntimeError(
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
-            
-        if not tracker_serial_number:
-            return [False, [0,0,0], [0,0,0,0]]
 
-        tracker_data = self.renderer.vrsys.getDataForVRTracker(tracker_serial_number)
+        if not tracker_serial_number:
+            return [False, [0, 0, 0], [0, 0, 0, 0]]
+
+        tracker_data = self.renderer.vrsys.getDataForVRTracker(
+            tracker_serial_number)
         # Set is_valid to false, and assume the user will check for invalid data
         if not tracker_data:
-            return [False, [0,0,0], [0,0,0,0]]
-        
+            return [False, [0, 0, 0], [0, 0, 0, 0]]
+
         is_valid, translation, rotation = tracker_data
         return [is_valid, translation, rotation]
 
@@ -1220,9 +1254,11 @@ class Simulator:
         :param controller_name: one of left_controller or right_controller
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
-        
-        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(controller_name)
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+
+        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(
+            controller_name)
         return [trigger_fraction, touch_x, touch_y]
 
     def get_scroll_input(self):
@@ -1235,7 +1271,8 @@ class Simulator:
         other_controller = 'right' if mov_controller == 'left' else 'left'
         other_controller = '{}_controller'.format(other_controller)
         # Data indicating whether user has pressed top or bottom of the touchpad
-        _, touch_x, _ = self.renderer.vrsys.getButtonDataForController(other_controller)
+        _, touch_x, _ = self.renderer.vrsys.getButtonDataForController(
+            other_controller)
         # Detect no touch in extreme regions of x axis
         if touch_x > 0.7 and touch_x <= 1.0:
             return 1
@@ -1243,7 +1280,7 @@ class Simulator:
             return 0
         else:
             return -1
-    
+
     def get_eye_tracking_data(self):
         """
         Returns eye tracking data as list of lists. Order: is_valid, gaze origin, gaze direction, gaze point, 
@@ -1251,7 +1288,7 @@ class Simulator:
         Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
         """
         if self.eye_tracking_data is None:
-            return [0, [0,0,0], [0,0,0], 0, 0]
+            return [0, [0, 0, 0], [0, 0, 0], 0, 0]
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
         return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
@@ -1291,7 +1328,7 @@ class Simulator:
         """
         Gets the world position of the VR system in iGibson space.
         """
-        return self.get_hmd_world_pos() + self.get_vr_offset()
+        return self.get_hmd_world_pos() + np.array(self.get_vr_offset())
 
     def set_vr_offset(self, pos=None):
         """
@@ -1341,10 +1378,45 @@ class Simulator:
         :param strength: strength of haptic pulse (0 is weakest, 1 is strongest)
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         assert device in ['left_controller', 'right_controller']
-      
-        self.renderer.vrsys.triggerHapticPulseForDevice(device, int(self.max_haptic_duration * strength))
+
+        self.renderer.vrsys.triggerHapticPulseForDevice(
+            device, int(self.max_haptic_duration * strength))
+
+    def gen_vr_data(self):
+        """
+        Generates a VrData object containing all of the data required to describe the VR system in the current frame.
+        This is used in MUVR and to power the VrAgent.
+        """
+        if not self.can_access_vr_context:
+            return VrData()
+
+        v = dict()
+        for device in VR_DEVICES:
+            is_valid, trans, rot = self.get_data_for_vr_device(device)
+            device_data = [[is_valid, trans.tolist(), rot.tolist()]]
+            device_data.extend(self.get_device_coordinate_system(device))
+            if device in VR_CONTROLLERS:
+                device_data.extend(self.get_button_data_for_controller(device))
+            v[device] = device_data
+
+        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(self.vr_settings.torso_tracker_serial)
+        v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
+        v['eye_data'] = self.get_eye_tracking_data()
+        v['event_data'] = self.get_vr_events()
+        v['vr_pos'] = self.get_vr_pos().tolist()
+        v['vr_offset'] = list(self.get_vr_offset())
+        v['vr_settings'] = [
+            self.vr_settings.eye_tracking,
+            self.vr_settings.touchpad_movement,
+            self.vr_settings.movement_controller,
+            self.vr_settings.relative_movement_device,
+            self.vr_settings.movement_speed
+        ]
+
+        return VrData(v)
 
     def set_hidden_state(self, obj, hide=True):
         """
@@ -1368,7 +1440,8 @@ class Simulator:
         :param state: one of 'show' or 'hide'
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
+            raise RuntimeError(
+                'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
         if self.renderer.vr_hud:
             self.renderer.vr_hud.set_overlay_state(state)
 

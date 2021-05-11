@@ -11,7 +11,7 @@ class Under(RelativeObjectState, BooleanState):
     def get_dependencies():
         return RelativeObjectState.get_dependencies() + [VerticalAdjacency]
 
-    def set_value(self, other, new_value):
+    def _set_value(self, other, new_value):
         state_id = p.saveState()
 
         for _ in range(10):
@@ -34,7 +34,7 @@ class Under(RelativeObjectState, BooleanState):
 
         return sampling_success
 
-    def get_value(self, other):
+    def _get_value(self, other):
         adjacency = self.obj.states[VerticalAdjacency].get_value()
         return (
             other.get_body_id() in adjacency.positive_neighbors and

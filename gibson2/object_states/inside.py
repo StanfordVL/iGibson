@@ -10,7 +10,11 @@ from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
-    def set_value(self, other, new_value, use_ray_casting_method=False):
+    @staticmethod
+    def get_dependencies():
+        return KinematicsMixin.get_dependencies() + [AABB, HorizontalAdjacency, VerticalAdjacency]
+
+    def _set_value(self, other, new_value, use_ray_casting_method=False):
         state_id = p.saveState()
 
         for _ in range(10):
@@ -34,7 +38,7 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
 
         return sampling_success
 
-    def get_value(self, other, use_ray_casting_method=False):
+    def _get_value(self, other, use_ray_casting_method=False):
         del use_ray_casting_method
 
         objA_states = self.obj.states

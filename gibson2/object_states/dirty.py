@@ -1,8 +1,9 @@
+from gibson2.object_states import AABB
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust, Stain
 
-CLEAN_THRESHOLD = 0.9
+CLEAN_THRESHOLD = 0.5
 
 
 class _Dirty(AbsoluteObjectState, BooleanState):
@@ -10,39 +11,44 @@ class _Dirty(AbsoluteObjectState, BooleanState):
     This class represents common logic between particle-based dirtyness states like
     dusty and stained. It should not be directly instantiated - use subclasses instead.
     """
+    @staticmethod
+    def get_dependencies():
+        return AbsoluteObjectState.get_dependencies() + [AABB]
 
     def __init__(self, obj):
         super(_Dirty, self).__init__(obj)
-        self.prev_value = False
         self.value = False
         self.dirt = None
 
-    def get_value(self):
-        return self.value
+        # Keep dump data for when we initialize our dirt.
+        self.from_dump = None
 
-    def set_value(self, new_value):
+    def _initialize(self, simulator):
+        self.dirt = self.DIRT_CLASS(self.obj, from_dump=self.from_dump)
+        simulator.import_particle_system(self.dirt)
+
+    def _get_value(self):
+        return self.dirt.get_num_active() > self.dirt.get_num() * CLEAN_THRESHOLD
+
+    def _set_value(self, new_value):
         self.value = new_value
-        if not self.value and self.dirt is not None:
+        if not self.value:
             for particle in self.dirt.get_active_particles():
                 self.dirt.stash_particle(particle)
+        else:
+            self.dirt.randomize()
 
-    def update(self, simulator):
-        # Nothing to do if not dusty.
-        if not self.value:
-            return
+        return True
 
-        # Load the dirt if necessary.
-        if self.dirt is None:
-            self.dirt = self.DIRT_CLASS(self.obj)
-            simulator.import_particle_system(self.dirt)
+    def _dump(self):
+        return {
+            "value": self.value,
+            "particles": self.dirt.dump(),
+        }
 
-        # Attach if necessary
-        if self.value and not self.prev_value:
-            self.dirt.randomize(self.obj)
-
-        # update self.value based on particle count
-        self.prev_value = self.value
-        self.value = self.dirt.get_num_active() > self.dirt.get_num() * CLEAN_THRESHOLD
+    def _load(self, data):
+        self.value = data["value"]
+        self.from_dump = data["particles"]
 
 
 class Dusty(_Dirty):
