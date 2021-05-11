@@ -896,7 +896,7 @@ class MeshRenderer(object):
                 self.update_hidden_highlight_state(shadow_hidden_instances)
             else:
                 for instance in self.instances:
-                    if (instance not in hidden) and instance.shadow_caster:
+                    if (instance not in hidden and not instance.hidden) and instance.shadow_caster:
                         instance.render(
                             shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SHADOW)
 
@@ -938,7 +938,7 @@ class MeshRenderer(object):
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
-                if instance not in hidden:
+                if instance not in hidden and not instance.hidden:
                     if self.enable_shadow:
                         instance.render(
                             shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
