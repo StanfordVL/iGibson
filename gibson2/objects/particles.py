@@ -283,6 +283,7 @@ class AttachedParticleSystem(ParticleSystem):
             position, orientation = p.multiplyTransforms(
                 attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
             particle.set_position_orientation(position, orientation)
+            particle.force_wakeup()
 
     def dump(self):
         data = []
