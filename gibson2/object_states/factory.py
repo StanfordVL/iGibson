@@ -33,7 +33,7 @@ _ALL_STATES = frozenset([
 
 _ABILITY_TO_STATE_MAPPING = {
     "burnable": [Burnt],
-    "cleaning_tool": [CleaningTool],
+    "cleaningTool": [CleaningTool],
     "coldSource": [HeatSourceOrSink],
     "cookable": [Cooked],
     "dustyable": [Dusty],

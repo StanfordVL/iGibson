@@ -35,22 +35,10 @@ def parse_args():
         "Wainscott_1_int",
     ]
 
-    task_choices = [
-        "assembling_gift_baskets",
-        "packing_lunches_filtered",
-        "assembling_gift_baskets_filtered",
-        "organizing_school_stuff_filtered",
-        "re-shelving_library_books_filtered",
-        "serving_hors_d_oeuvres_filtered",
-        "putting_away_toys_filtered",
-        "putting_away_Christmas_decorations_filtered",
-        "putting_dishes_away_after_cleaning_filtered",
-        "cleaning_out_drawers_filtered",
-    ]
     task_id_choices = [0, 1]
     parser = argparse.ArgumentParser(
         description='Run and collect an ATUS demo')
-    parser.add_argument('--task', type=str, required=True, choices=task_choices,
+    parser.add_argument('--task', type=str, required=True,
                         nargs='?', help='Name of ATUS task matching PDDL parent folder in tasknet.')
     parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
                         nargs='?', help='PDDL integer ID, matching suffix of pddl.')
@@ -104,7 +92,7 @@ def main():
 
     if not args.disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
+            'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
         }
         online_sampling = False
 

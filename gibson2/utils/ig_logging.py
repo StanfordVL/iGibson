@@ -57,11 +57,17 @@ class IGLogWriter(object):
         self.vr_agent = vr_agent
         self.data_map = None
         if self.task:
-            self.obj_body_id_to_name = {obj.body_id[0] if type(obj.body_id) != int else obj.body_id: obj_name for obj_name, obj in self.task.object_scope.items()}
+            self.obj_body_id_to_name = {}
+            for obj_name, obj in self.task.object_scope.items():
+                if hasattr(obj, "body_id"):
+                    self.obj_body_id_to_name[obj.get_body_id()] = obj_name
             self.obj_body_id_to_name_str = dump_config(self.obj_body_id_to_name)
 
         if self.task and self.filter_objects:
-            self.tracked_objects = {obj.body_id[0] if type(obj.body_id) != int else obj.body_id: obj for obj_name, obj in self.task.object_scope.items()}
+            self.tracked_objects = {}
+            for obj_name, obj in self.task.object_scope.items():
+                if hasattr(obj, "body_id"):
+                    self.tracked_objects[obj.get_body_id()] = obj
         else:
             self.tracked_objects = [p.getBodyUniqueId(i)  for i in range(p.getNumBodies())]
 
