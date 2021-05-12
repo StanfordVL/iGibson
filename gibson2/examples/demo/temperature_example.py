@@ -21,7 +21,8 @@ def main():
         stove_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/stove/101930/')
         stove_urdf = os.path.join(stove_dir, "101930.urdf")
-        stove = URDFObject(stove_urdf, name="stove", category="stove", model_path=stove_dir)
+        stove = URDFObject(stove_urdf, name="stove",
+                           category="stove", model_path=stove_dir)
         s.import_object(stove)
         stove.set_position([0, 0, 0.782])
         stove.states[object_states.ToggledOn].set_value(True)
@@ -29,7 +30,8 @@ def main():
         microwave_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/microwave/7128/')
         microwave_urdf = os.path.join(microwave_dir, "7128.urdf")
-        microwave = URDFObject(microwave_urdf, name="microwave", category="microwave", model_path=microwave_dir)
+        microwave = URDFObject(microwave_urdf, name="microwave",
+                               category="microwave", model_path=microwave_dir)
         s.import_object(microwave)
         microwave.set_position([2, 0, 0.401])
         microwave.states[object_states.ToggledOn].set_value(True)
@@ -37,7 +39,8 @@ def main():
         oven_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/oven/7120/')
         oven_urdf = os.path.join(oven_dir, "7120.urdf")
-        oven = URDFObject(oven_urdf, name="oven", category="oven", model_path=oven_dir)
+        oven = URDFObject(oven_urdf, name="oven",
+                          category="oven", model_path=oven_dir)
         s.import_object(oven)
         oven.set_position([-2, 0, 0.816])
         oven.states[object_states.ToggledOn].set_value(True)
@@ -45,7 +48,8 @@ def main():
         tray_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/tray/tray_000/')
         tray_urdf = os.path.join(tray_dir, 'tray_000.urdf')
-        tray = URDFObject(tray_urdf, name="tray", category="tray", model_path=tray_dir, scale=np.array([0.1,0.1,0.1]))
+        tray = URDFObject(tray_urdf, name="tray", category="tray",
+                          model_path=tray_dir, scale=np.array([0.1, 0.1, 0.1]))
         s.import_object(tray)
         tray.set_position([0, 0, 1.55])
 
@@ -67,7 +71,8 @@ def main():
 
         apples = []
         for i in range(5):
-            apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir, texture_procedural_generation=True)
+            apple = URDFObject(apple_urdf, name="apple",
+                               category="apple", model_path=apple_dir)
             s.import_object(apple)
             apple.set_position([0, i * 0.05, 1.65])
             apples.append(apple)
