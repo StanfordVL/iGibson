@@ -811,6 +811,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
+        assert len(visual_mesh_to_material) == len(body_ids)
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):

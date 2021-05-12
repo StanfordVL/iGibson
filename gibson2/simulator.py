@@ -124,14 +124,15 @@ class Simulator:
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
         # Duration of a vsync frame - assumes 90Hz refresh rate
-        self.vsync_frame_dur = 11.11e-3 
+        self.vsync_frame_dur = 11.11e-3
         # Get expected number of vsync frames per iGibson frame
         # Note: currently assumes a 90Hz VR system
         self.vsync_frame_num = int(
             round(self.render_timestep / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
         # Leave a small amount of time before the last vsync, just in case we overrun
-        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (
+            5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
 
@@ -299,42 +300,29 @@ class Simulator:
             'import_ig_scene can only be called with InteractiveIndoorScene'
         new_object_ids = scene.load()
         self.objects += new_object_ids
-        if scene.texture_randomization:
-            # use randomized texture
-            for body_id, visual_mesh_to_material in \
-                    zip(new_object_ids, scene.visual_mesh_to_material):
-                shadow_caster = True
+
+        for body_id, visual_mesh_to_material in \
+                zip(new_object_ids, scene.visual_mesh_to_material):
+            use_pbr = True
+            use_pbr_mapping = True
+            shadow_caster = True
+            if scene.scene_source == 'IG':
+                if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
+                    use_pbr = False
+                    use_pbr_mapping = False
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-                class_id = self.class_name_to_class_id.get(
-                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
-                self.load_articulated_object_in_renderer(
-                    body_id,
-                    class_id=class_id,
-                    visual_mesh_to_material=visual_mesh_to_material,
-                    shadow_caster=shadow_caster,
-                    physical_object=scene.objects_by_id[body_id])
-        else:
-            # use default texture
-            for body_id in new_object_ids:
-                use_pbr = True
-                use_pbr_mapping = True
-                shadow_caster = True
-                if scene.scene_source == 'IG':
-                    if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
-                        use_pbr = False
-                        use_pbr_mapping = False
-                if scene.objects_by_id[body_id].category == 'ceilings':
-                    shadow_caster = False
-                class_id = self.class_name_to_class_id.get(
-                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
-                self.load_articulated_object_in_renderer(
-                    body_id,
-                    class_id=class_id,
-                    use_pbr=use_pbr,
-                    use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster,
-                    physical_object=scene.objects_by_id[body_id])
+            class_id = self.class_name_to_class_id.get(
+                scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
+            self.load_articulated_object_in_renderer(
+                body_id,
+                class_id=class_id,
+                visual_mesh_to_material=visual_mesh_to_material,
+                use_pbr=use_pbr,
+                use_pbr_mapping=use_pbr_mapping,
+                shadow_caster=shadow_caster,
+                physical_object=scene.objects_by_id[body_id])
+
         self.scene = scene
 
         # Load the states of all the objects in the scene.
@@ -397,11 +385,12 @@ class Simulator:
             new_object_pb_ids = [new_object_pb_id_or_ids]
         self.objects += new_object_pb_ids
 
-        for new_object_pb_id in new_object_pb_ids:
+        for i, new_object_pb_id in enumerate(new_object_pb_ids):
             if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
-                visual_mesh_to_material = None
-                if hasattr(obj, 'visual_mesh_to_material'):
-                    visual_mesh_to_material = obj.visual_mesh_to_material
+                if isinstance(obj, ArticulatedObject):
+                    visual_mesh_to_material = None
+                else:
+                    visual_mesh_to_material = obj.visual_mesh_to_material[i]
                 self.load_articulated_object_in_renderer(
                     new_object_pb_id,
                     class_id,
@@ -1402,7 +1391,8 @@ class Simulator:
                 device_data.extend(self.get_button_data_for_controller(device))
             v[device] = device_data
 
-        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(self.vr_settings.torso_tracker_serial)
+        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(
+            self.vr_settings.torso_tracker_serial)
         v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
         v['eye_data'] = self.get_eye_tracking_data()
         v['event_data'] = self.get_vr_events()

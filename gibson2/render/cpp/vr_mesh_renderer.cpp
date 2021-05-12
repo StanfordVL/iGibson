@@ -818,6 +818,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 		"load object into VAO and VBO");
 	pymodule.def("loadTexture", &VRRendererContext::loadTexture, "load texture function");
 	pymodule.def("allocateTexture", &VRRendererContext::allocateTexture, "load texture function");
+	pymodule.def("updateTextureIdArrays", &VRRendererContext::updateTextureIdArrays);
 
 	// class Instance
 	pymodule.def("render_softbody_instance", &VRRendererContext::render_softbody_instance,
