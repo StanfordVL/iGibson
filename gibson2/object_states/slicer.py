@@ -15,7 +15,10 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _SLICER_LINK_NAME
 
-    def update(self, simulator):
+    def _initialize(self, simulator):
+        self.initialize_link_mixin()
+
+    def _update(self, simulator):
         slicer_position = self.get_link_position()
         if slicer_position is None:
             return
@@ -29,11 +32,17 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
                         item.normalForce > contact_obj.states[Sliced].slice_force:
                     contact_obj.states[Sliced].set_value(True)
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
+        raise ValueError("set_value not supported for valueless states like Slicer.")
+
+    def _get_value(self):
         pass
 
-    def get_value(self):
-        pass
+    def _dump(self):
+        return None
+
+    def _load(self, data):
+        return
 
     @staticmethod
     def get_dependencies():

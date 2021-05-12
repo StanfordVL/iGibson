@@ -16,11 +16,19 @@ class MaxTemperature(AbsoluteObjectState):
 
         self.value = float("-inf")
 
-    def get_value(self):
+    def _get_value(self):
         return self.value
 
-    def set_value(self, new_value):
+    def _set_value(self, new_value):
         self.value = new_value
+        return True
 
-    def update(self, simulator):
+    def _update(self, simulator):
         self.value = max(self.obj.states[Temperature].get_value(), self.value)
+
+    # For our serialization, we just dump the value.
+    def _dump(self):
+        return self.value
+
+    def _load(self, data):
+        self.value = data

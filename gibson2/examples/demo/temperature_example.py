@@ -3,7 +3,6 @@ import os
 import gibson2
 import numpy as np
 from gibson2 import object_states
-from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
@@ -43,11 +42,18 @@ def main():
         oven.set_position([-2, 0, 0.816])
         oven.states[object_states.ToggledOn].set_value(True)
 
+        tray_dir = os.path.join(
+            gibson2.ig_dataset_path, 'objects/tray/tray_000/')
+        tray_urdf = os.path.join(tray_dir, 'tray_000.urdf')
+        tray = URDFObject(tray_urdf, name="tray", category="tray", model_path=tray_dir, scale=np.array([0.1,0.1,0.1]))
+        s.import_object(tray)
+        tray.set_position([0, 0, 1.55])
+
         fridge_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/fridge/12252/')
         fridge_urdf = os.path.join(fridge_dir, "12252.urdf")
         fridge = URDFObject(fridge_urdf, name="fridge", category="fridge", model_path=fridge_dir, abilities={
-            "cold_source": {
+            "coldSource": {
                 "temperature": -100.0,
                 "requires_inside": True,
             }
@@ -58,9 +64,17 @@ def main():
         apple_dir = os.path.join(
             gibson2.ig_dataset_path, 'objects/apple/00_0/')
         apple_urdf = os.path.join(apple_dir, "00_0.urdf")
-        apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir)
-        s.import_object(apple)
-        apple.set_position([-1, -2, 0.05])
+
+        apples = []
+        for i in range(5):
+            apple = URDFObject(apple_urdf, name="apple", category="apple", model_path=apple_dir, texture_procedural_generation=True)
+            s.import_object(apple)
+            apple.set_position([0, i * 0.05, 1.65])
+            apples.append(apple)
+
+        s.step()
+        for apple in apples:
+            apple.states[object_states.Temperature].set_value(-50)
 
         # Run simulation for 1000 steps
         while True:
