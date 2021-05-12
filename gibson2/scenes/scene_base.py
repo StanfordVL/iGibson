@@ -1,8 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
 from future.utils import with_metaclass
-
+from gibson2.objects.particles import Particle
 from gibson2.objects.visual_marker import VisualMarker
+from gibson2.objects.visual_shape import VisualShape
 
 
 class Scene(with_metaclass(ABCMeta)):
@@ -75,9 +76,9 @@ class Scene(with_metaclass(ABCMeta)):
             raise ValueError(
                 "To add an object to an already-loaded scene, use the Simulator's import_object function.")
 
-        if isinstance(obj, VisualMarker):
+        if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
             raise ValueError(
-                "VisualMarker objects and subclasses should be added directly to simulator.")
+                "VisualMarker, VisualShape and Particle objects and subclasses should be added directly to simulator.")
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
         # let scene._load() load the object when called later on.

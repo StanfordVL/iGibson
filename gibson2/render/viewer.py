@@ -26,7 +26,7 @@ class ViewerVR:
 
     def update(self):
         """
-        :param return_frame: whether to return a frame (cv2 image) or not
+        Updates viewer.
         """
         if not self.renderer:
             raise RuntimeError(

@@ -5,7 +5,7 @@ import collections
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
 from packaging import version
-
+from PIL import Image
 # The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
 # We will use the version number for backcompatibility
 import scipy
@@ -35,6 +35,18 @@ def parse_config(config):
     with open(config, 'r') as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
     return config_data
+
+def parse_str_config(config):
+    """
+    Parse string config
+    """
+    return yaml.safe_load(config)
+
+def dump_config(config):
+    """
+    Converts YML config into a string
+    """
+    return yaml.dump(config)
 
 # Geometry related
 
@@ -160,3 +172,9 @@ def quat_pos_to_mat(pos, quat):
     mat[:3, -1] = pos
     # Return: roll, pitch, yaw
     return mat
+
+def transform_texture(input_filename, output_filename, mixture_weight=0, mixture_color=(0,0,0)):
+    img = np.array(Image.open(input_filename))
+    img = img * (1-mixture_weight) + np.array(list(mixture_color))[None, None, :] * mixture_weight
+    img = img.astype(np.uint8)
+    Image.fromarray(img).save(output_filename)

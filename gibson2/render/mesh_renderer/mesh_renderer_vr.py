@@ -1,5 +1,5 @@
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from gibson2.utils.utils import parse_config
+from gibson2.utils.utils import parse_config, parse_str_config, dump_config
 from gibson2 import assets_path
 import numpy as np
 import os
@@ -153,10 +153,11 @@ class VrSettings(object):
     Class containing VR settings pertaining to both the VR renderer
     and VR functionality in the simulator/of VR objects
     """
-    def __init__(self):
+    def __init__(self, config_str=None):
         """
         Initializes VR settings.
         """
+        self.config_str = config_str
         # VR is enabled by default - can be set off on a case-by-case basis
         self.use_vr = True
         # Simulation is reset at start by default
@@ -166,22 +167,25 @@ class VrSettings(object):
 
         mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
         self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.yaml')
-        self.load_vr_config()
+        self.load_vr_config(config_str)
 
-    def load_vr_config(self):
+    def load_vr_config(self, config_str=None):
         """
         Loads in VR config and sets all settings accordingly.
+        :param config_str: string to override current vr config - used in data replay
         """
-        vr_config = parse_config(self.vr_config_path)
+        if config_str:
+            self.vr_config = parse_str_config(config_str)
+        else:
+            self.vr_config = parse_config(self.vr_config_path)
         
-        shared_settings = vr_config['shared_settings']
+        shared_settings = self.vr_config['shared_settings']
         self.touchpad_movement = shared_settings['touchpad_movement']
         self.movement_controller = shared_settings['movement_controller']
         assert self.movement_controller in ['left', 'right']
         self.relative_movement_device = shared_settings['relative_movement_device']
         assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
         self.movement_speed = shared_settings['movement_speed']
-        self.vr_fps = shared_settings['vr_fps']
         self.assist_percent = shared_settings['assist_percent']
         self.assist_grasp_mass_thresh = shared_settings['assist_grasp_mass_thresh']
         self.release_window = shared_settings['release_window']
@@ -193,8 +197,8 @@ class VrSettings(object):
         self.torso_tracker_serial = shared_settings['torso_tracker_serial']
         if self.torso_tracker_serial == '': self.torso_tracker_serial = None
 
-        device_settings = vr_config['device_settings']
-        curr_device_candidate = vr_config['current_device']
+        device_settings = self.vr_config['device_settings']
+        curr_device_candidate = self.vr_config['current_device']
         if curr_device_candidate not in device_settings.keys():
             self.curr_device = 'OTHER_VR'
         else:
@@ -206,6 +210,12 @@ class VrSettings(object):
         self.eye_tracking = specific_device_settings['eye_tracking']
         self.action_button_map = specific_device_settings['action_button_map']
         self.gen_button_action_map()
+
+    def dump_vr_settings(self):
+        """
+        Returns a string version of the vr settings
+        """
+        return dump_config(self.vr_config)
 
     def gen_button_action_map(self):
         """
@@ -223,6 +233,13 @@ class VrSettings(object):
         self.use_vr = False
         # Enable rendering of companion window
         self.use_companion_window = True
+
+    def use_untracked_body(self):
+        """
+        Force VR system to use VR body without the tracker, even if a tracker serial number
+        is provided.
+        """
+        self.torso_tracker_serial = None
 
     def set_frame_save_path(self, frame_save_path):
         """
@@ -326,6 +343,8 @@ class MeshRendererVR(MeshRenderer):
         else:
             if return_frame:
                 return super().render(modes=('rgb'), return_buffer=return_frame, render_shadow_pass=True)
+            else:
+                super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """
@@ -340,3 +359,12 @@ class MeshRendererVR(MeshRenderer):
         super().release()
         if self.vr_settings.use_vr:
             self.vrsys.releaseVR()
+
+if __name__ == '__main__':
+    x = {'hello': 8, 8:10, 'test': 99}
+    x_str = dump_config(x)
+    print(type(x_str))
+    print(x_str)
+    x_recovered = parse_str_config(x_str)
+    print(type(x_recovered))
+    print(x_recovered)

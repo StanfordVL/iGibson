@@ -21,8 +21,6 @@ shared_settings:
   relative_movement_device: "hmd"
   # Speed of touchpad/joystick movement
   movement_speed: 0.01
-  # Fixed frame rate of VR system
-  vr_fps: 30.0
   # Assisted grasping percentage (0 if fully physics-based, 100 is magic grasping)
   assist_percent: 100
   # Mass threshold for assisted grasping - this is only used for non-URDF objects

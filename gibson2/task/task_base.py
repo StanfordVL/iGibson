@@ -1,4 +1,4 @@
-import pprint 
+import pprint
 import numpy as np
 import os
 
@@ -9,12 +9,10 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from gibson2.object_states.on_floor import RoomFloor
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.objects.vr_objects import VrAgent
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -23,6 +21,9 @@ from tasknet.logic_base import AtomicPredicate
 import logging
 import networkx as nx
 from IPython import embed
+
+
+KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
 
 
 class iGTNTask(TaskNetTask):
@@ -58,9 +59,8 @@ class iGTNTask(TaskNetTask):
         '''
         # Set self.scene_name, self.scene, self.sampled_simulator_objects, and self.sampled_dsl_objects
         if simulator is None:
-            settings = MeshRendererSettings(texture_scale=0.01)
             self.simulator = Simulator(
-                mode=mode, image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
+                mode=mode, image_width=960, image_height=720, device_idx=0)
         else:
             self.simulator = simulator
         self.load_clutter = load_clutter
@@ -373,22 +373,22 @@ class iGTNTask(TaskNetTask):
             )
 
     def move_agent(self):
+        agent = self.agent
         if not self.online_sampling and self.scene.agent == {}:
-            agent = self.agent
             agent.vr_dict['body'].set_base_link_position_orientation(
                 [0, 0, 0.5], [0, 0, 0, 1]
             )
             agent.vr_dict['left_hand'].set_base_link_position_orientation(
-                [0, 0.2, 0.5], [0, 0, 0, 1]
+                [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5],
             )
             agent.vr_dict['right_hand'].set_base_link_position_orientation(
-                [0, -0.2, 0.5], [0, 0, 0, 1]
+                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
             )
             agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
-                [0, 0.2, 0.5], [0, 0, 0, 1]
+                [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5]
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
-                [0, 0.2, 0.5], [0, 0, 0, 1]
+                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
             )
 
     def import_scene(self):
@@ -445,16 +445,15 @@ class iGTNTask(TaskNetTask):
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
             if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
-                print("Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                print(
+                    "Skipping over sampling of predicate that is not a negation or an atomic predicate")
                 continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
-                    if condition.children[0].children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
+                    if condition.children[0].children[0].STATE_NAME not in KINEMATICS_STATES:
                         continue
                 else:
-                    if "agent.n.01" in condition.body:
-                        print(condition.children[0].STATE_NAME, condition.body)
-                    if condition.children[0].STATE_NAME not in ["ontop", "inside", "under", "onfloor"]:
+                    if condition.children[0].STATE_NAME not in KINEMATICS_STATES:
                         continue
             if isinstance(condition.children[0], Negation):
                 condition = condition.children[0].children[0]
@@ -484,6 +483,9 @@ class iGTNTask(TaskNetTask):
                         # If this object is not involved in any initial conditions,
                         # success will be True by default and any simulator obj will qualify
                         for condition, positive in non_sampleable_obj_conditions:
+                            # Always skip non-kinematic state sampling. Only do so after the object scope has been finalized
+                            if condition.STATE_NAME not in KINEMATICS_STATES:
+                                continue
                             # Only sample conditions that involve this object
                             if scene_obj not in condition.body:
                                 continue
@@ -626,7 +628,7 @@ class iGTNTask(TaskNetTask):
                                 if isinstance(goal_condition, Negation):
                                     continue
                                 # only sample kinematic goal condition
-                                if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
+                                if goal_condition.STATE_NAME not in KINEMATICS_STATES:
                                     continue
                                 if scene_obj not in goal_condition.body:
                                     continue
@@ -837,7 +839,7 @@ class iGTNTask(TaskNetTask):
                             goal_condition = goal_condition.children[0]
                             if isinstance(goal_condition, Negation):
                                 continue
-                            if goal_condition.STATE_NAME not in ['inside', 'ontop', 'under', 'onfloor']:
+                            if goal_condition.STATE_NAME not in KINEMATICS_STATES:
                                 continue
                             if scene_obj not in goal_condition.body:
                                 continue

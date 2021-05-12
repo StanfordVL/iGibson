@@ -7,8 +7,6 @@ from scipy.spatial.transform import Rotation
 from scipy.stats import truncnorm
 
 import gibson2
-from gibson2 import object_states
-from gibson2.objects.visual_marker import VisualMarker
 
 _DEFAULT_AABB_OFFSET = 0.1
 _DEFAULT_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.2
@@ -162,7 +160,9 @@ def sample_cuboid_on_object(obj,
         are set to None when no successful sampling happens within the max number of attempts. Refusal details are only
         filled if the debug_sampling flag is globally set to True.
     """
-    aabb = obj.states[object_states.AABB].get_value()
+    # This is imported here to avoid a circular import with object_states.
+    from gibson2.object_states import AABB
+    aabb = obj.states[AABB].get_value()
     aabb_min = np.array(aabb[0])
     aabb_max = np.array(aabb[1])
 
@@ -186,7 +186,7 @@ def sample_cuboid_on_object(obj,
         samples = sample_origin_positions(sampling_aabb_min, sampling_aabb_max, max_sampling_attempts,
                                           bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities)
 
-        refusal_reasons = results[i][3]
+        refusal_reasons = results[i][4]
 
         # Try each sampled position in the AABB.
         for axis, is_top, start_pos in samples:
@@ -380,7 +380,7 @@ def check_cuboid_empty(debug_markers, grid, hit_normal, hit_positions, refusal_r
     check_cast_results = p.rayTestBatch(rayFromPositions=all_pairs[:, 0, :], rayToPositions=all_pairs[:, 1, :])
     if not all(ray[0] == -1 for ray in check_cast_results):
         if gibson2.debug_sampling:
-            refusal_reasons["cuboid_not_empty"].append("check ray info: %s" % check_cast_results)
+            refusal_reasons["cuboid_not_empty"].append("check ray info: %r" % (check_cast_results,))
 
         return False
 

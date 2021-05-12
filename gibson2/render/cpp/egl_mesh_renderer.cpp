@@ -277,6 +277,7 @@ PYBIND11_MODULE(EGLRendererContext, m) {
     // for optimized renderer
     pymodule.def("generateArrayTextures", &EGLRendererContext::generateArrayTextures, "TBA");
     pymodule.def("renderSetup", &EGLRendererContext::renderSetup, "TBA");
+    pymodule.def("updateTextureIdArrays", &EGLRendererContext::updateTextureIdArrays, "TBA");
 	pymodule.def("updateHiddenData", &EGLRendererContext::updateHiddenData, "TBA");
 	pymodule.def("updateUVData", &EGLRendererContext::updateUVData, "TBA");
     pymodule.def("updateDynamicData", &EGLRendererContext::updateDynamicData, "TBA");
