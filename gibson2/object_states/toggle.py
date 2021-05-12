@@ -3,6 +3,8 @@ from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.visual_marker import VisualMarker
 import numpy as np
+import pybullet as p
+from gibson2.utils.constants import PyBulletSleepState
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
@@ -79,9 +81,17 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         show_marker = self.visual_marker_on if self.get_value() else self.visual_marker_off
         hidden_marker = self.visual_marker_off if self.get_value() else self.visual_marker_on
 
-        # Place them where they belong. If HUD is off, put both away.
-        show_marker.set_position(button_position_on_object)
-        hidden_marker.set_position(button_position_on_object)
+        # update toggle button position depending if parent is awake
+        dynamics_info = p.getDynamicsInfo(self.body_id, self.link_id)
+
+        if len(dynamics_info) == 13:
+            activation_state = dynamics_info[12]
+        else:
+            activation_state = PyBulletSleepState.AWAKE
+
+        if activation_state == PyBulletSleepState.AWAKE:
+            show_marker.set_position(button_position_on_object)
+            hidden_marker.set_position(button_position_on_object)
 
         if hud_overlay_show_state:
             for instance in show_marker.renderer_instances:
