@@ -166,17 +166,21 @@ class iGTNTask(TaskNetTask):
                         self.object_taxonomy.get_subtree_igibson_categories(
                             'burner.n.01')
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
-                    room_objs = self.scene.objects_by_room[room_inst]
                     if obj_cat == FLOOR_SYNSET:
                         # Create a RoomFloor for each room instance
                         # This object is NOT imported by the simulator
-                        scene_objs = [
-                            RoomFloor(category='room_floor',
-                                      name='room_floor_{}'.format(room_inst),
-                                      scene=self.scene,
-                                      room_instance=room_inst)
-                        ]
+                        room_floor = RoomFloor(
+                            category='room_floor',
+                            name='room_floor_{}'.format(
+                                room_inst),
+                            scene=self.scene,
+                            room_instance=room_inst,
+                            floor_obj=self.scene.objects_by_name['floors'])
+                        scene_objs = [room_floor]
                     else:
+                        room_objs = []
+                        if room_inst in self.scene.objects_by_room:
+                            room_objs = self.scene.objects_by_room[room_inst]
                         scene_objs = [obj for obj in room_objs
                                       if obj.category in categories]
                     if len(scene_objs) != 0:
@@ -424,12 +428,13 @@ class iGTNTask(TaskNetTask):
                             assert obj_inst in tasknet_object_scope
                             room_inst = tasknet_object_scope[obj_inst].replace(
                                 'room_floor_', '')
-
                             matched_sim_obj = \
-                                RoomFloor(category='room_floor',
-                                          name=tasknet_object_scope[obj_inst],
-                                          scene=self.scene,
-                                          room_instance=room_inst)
+                                RoomFloor(
+                                    category='room_floor',
+                                    name=tasknet_object_scope[obj_inst],
+                                    scene=self.scene,
+                                    room_instance=room_inst,
+                                    floor_obj=self.scene.objects_by_name['floors'])
                 elif obj_inst == "agent.n.01_1":
                     # Skip adding agent to object scope, handled later by import_agent()
                     continue
