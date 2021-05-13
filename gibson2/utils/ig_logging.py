@@ -119,7 +119,8 @@ class IGLogWriter(object):
                 ['vr', 'vr_button_data', 'right_controller'],
                 ['vr', 'vr_eye_tracking_data'],
                 ['vr', 'vr_event_data', 'left_controller'],
-                ['vr', 'vr_event_data', 'right_controller']
+                ['vr', 'vr_event_data', 'right_controller'],
+                ['vr', 'vr_event_data', 'reset_actions']
             ])
 
     def create_data_map(self):
@@ -171,7 +172,8 @@ class IGLogWriter(object):
                 'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel, dtype=self.np_dtype),
                 'vr_event_data': {
                     'left_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype),
-                    'right_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype)
+                    'right_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype),
+                    'reset_actions': np.full((self.frames_before_write, 2), self.default_fill_sentinel, dtype=self.np_dtype)
                 }
             }
 
@@ -353,6 +355,11 @@ class IGLogWriter(object):
         for controller in controller_events.keys():
             bin_button_data = convert_button_data_to_binary(controller_events[controller])
             self.data_map['vr']['vr_event_data'][controller][self.frame_counter, ...] = np.array(bin_button_data)
+
+        reset_actions = []
+        for controller in controller_events.keys():
+            reset_actions.append(self.sim.query_vr_event(controller, 'reset_agent'))
+        self.data_map['vr']['vr_event_data']['reset_actions'][self.frame_counter, ...] = np.array(reset_actions)
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""

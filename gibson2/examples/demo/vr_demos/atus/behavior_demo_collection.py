@@ -122,7 +122,7 @@ def main():
         igtn_task.simulator.step(print_stats=args.profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
-        vr_agent.update()
+        vr_agent.update(igtn_task.simulator.gen_vr_data())
 
         if satisfied_predicates != satisfied_predicates_cached:
             vr_cs.refresh_condition(switch=False)
