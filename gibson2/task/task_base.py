@@ -330,6 +330,8 @@ class iGTNTask(TaskNetTask):
         # TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
         # baserobot api
         agent = VrAgent(self.simulator)
+        self.simulator.import_vr_agent(agent)
+        self.simulator.register_main_agent(agent)
         self.agent = agent
         self.simulator.robots.append(agent)
         assert(len(self.simulator.robots) ==
@@ -348,6 +350,9 @@ class iGTNTask(TaskNetTask):
         )
         agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
             [300, -300, 300], [0, 0, 0, 1]
+        )
+        agent.vr_dict['eye'].set_base_link_position_orientation(
+            [300, -300, -300], [0, 0, 0, 1]
         )
         self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
         if not self.online_sampling and self.scene.agent != {}:
@@ -371,6 +376,10 @@ class iGTNTask(TaskNetTask):
                 self.scene.agent['right_hand_1']['xyz'], quat_from_euler(
                     self.scene.agent['right_hand_1']['rpy'])
             )
+            agent.vr_dict['eye'].set_base_link_position_orientation(
+                self.scene.agent['VrEye_1']['xyz'], quat_from_euler(
+                    self.scene.agent['VrEye_1']['rpy'])
+            )
 
     def move_agent(self):
         agent = self.agent
@@ -389,6 +398,9 @@ class iGTNTask(TaskNetTask):
             )
             agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
                 [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
+            )
+            agent.vr_dict['eye'].set_base_link_position_orientation(
+                [0, 0, 1.5], [0, 0, 0, 1]
             )
 
     def import_scene(self):

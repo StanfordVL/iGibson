@@ -136,7 +136,7 @@ def main():
 
     if not args.disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
+            'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
         }
         online_sampling = False
 
@@ -156,7 +156,7 @@ def main():
             args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
                 task, task_id, scene, timestamp)
 
-        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=args.vr_log_path, task=igtn_task, store_vr=True, vr_agent=vr_agent, profiling_mode=args.profile)
+        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=args.vr_log_path + "_replay", task=igtn_task, store_vr=False, vr_agent=vr_agent, profiling_mode=args.profile)
         log_writer.set_up_data_storage()
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
@@ -187,7 +187,7 @@ def main():
         log_reader.set_replay_camera(s)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(vr_data=log_reader.get_vr_data())
+        vr_agent.update(log_reader.get_vr_data())
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates

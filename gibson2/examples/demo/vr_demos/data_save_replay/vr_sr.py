@@ -27,7 +27,6 @@ from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.vr_objects import VrAgent
 from gibson2.objects.visual_marker import VisualMarker
-from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2.utils.ig_logging import IGLogWriter, IGLogReader
 from gibson2 import assets_path
@@ -74,8 +73,6 @@ def run_action_sr(mode):
     else:
         vr_settings = VrSettings()
 
-    # Comment this out to use torso tracker for HTC Vive
-    vr_settings.use_untracked_body()
     s = Simulator(mode='vr', 
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
@@ -86,6 +83,8 @@ def run_action_sr(mode):
     # Create a VrAgent and it will handle all initialization and importing under-the-hood
     # Data replay uses constraints during both save and replay modes
     vr_agent = VrAgent(s)
+    s.import_vr_agent(vr_agent)
+    s.register_main_agent(vr_agent)
     
     if is_save:
         # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
@@ -126,11 +125,6 @@ def run_action_sr(mode):
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    for i in range(3):
-        obj = YCBObject('003_cracker_box')
-        s.import_object(obj)
-        obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
-
     obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
         'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                             scale=2)
@@ -156,13 +150,13 @@ def run_action_sr(mode):
     if is_save:
         # Main simulation loop - run for as long as the user specified
         for i in range(FRAMES_TO_SAVE):
-            s.step(print_stats=False)
+            s.step()
 
             # Example of storing a simple mock action
             log_writer.save_action(mock_vr_action_path, np.array([1]))
 
             # Update VR objects
-            vr_agent.update()
+            vr_agent.update(s.gen_vr_data())
 
             # Print debugging information
             if PRINT_PB:
@@ -186,7 +180,7 @@ def run_action_sr(mode):
             mock_action = int(log_reader.read_action(mock_vr_action_path)[0])
 
             # Get relevant VR action data and update VR agent
-            vr_agent.update(vr_data=log_reader.get_vr_data())
+            vr_agent.update(log_reader.get_vr_data())
 
             # Print debugging information
             if PRINT_PB:
