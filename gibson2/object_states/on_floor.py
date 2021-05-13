@@ -7,8 +7,22 @@ from IPython import embed
 from collections import namedtuple
 import pybullet as p
 
-RoomFloor = namedtuple(
-    'RoomFloor', ['category', 'name', 'scene', 'room_instance'])
+
+class RoomFloor(object):
+    def __init__(self,
+                 category,
+                 name,
+                 scene,
+                 room_instance,
+                 floor_obj):
+        self.category = category
+        self.name = name
+        self.scene = scene
+        self.room_instance = room_instance
+        self.floor_obj = floor_obj
+
+    def __get_attr__(self, item):
+        return getattr(self.floor_obj, item)
 
 
 class OnFloor(KinematicsMixin, RelativeObjectState, BooleanState):
