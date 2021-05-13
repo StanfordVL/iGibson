@@ -581,6 +581,9 @@ class SemanticRearrangementTask(BaseTask):
             else:
                 self.current_subtask_id = 1
 
+        # Store whether we grasped object or not
+        success_dict["grasp_object"] = self.current_subtask_id > 0
+
         # Store the current subtask id in the success dict
         success_dict["current_subtask_id"] = self.current_subtask_id
 
