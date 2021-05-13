@@ -324,7 +324,7 @@ class SemanticRearrangementTask(BaseTask):
                 sample_at = {self.target_object.name: self.trash_sampling_args}
                 tr.update_sample_at(sample_at=sample_at, only_top=True)
                 # Update trash locations in scene
-                self.sample_pose_and_place_object(obj=tr, check_contact=False)
+                self.sample_pose_and_place_object(obj=tr, check_contact=True)
 
     def sample_initial_pose(self, env):
         """

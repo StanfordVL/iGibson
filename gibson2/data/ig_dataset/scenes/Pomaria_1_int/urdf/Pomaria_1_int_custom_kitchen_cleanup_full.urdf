@@ -20,14 +20,12 @@
 		<parent link="world"/>
 	</joint>
 
-	<!--
 	<link bounding_box="0.700000 0.620000 0.396000" category="table" model="98bab29db492767bc3bd24f986301745" name="table_0" room="corridor_0"/>
 	<joint name="j_table_0" type="floating">
 		<origin rpy="0 0 -3.141593" xyz="-8.250000 -2.590000 0.200000"/>
 		<child link="table_0"/>
 		<parent link="world"/>
 	</joint>
-	-->
 
 	<!--
 	<link bounding_box="0.770000 0.670000 0.792000" category="chair" model="2f1a67cdabe2a70c492d9da2668ec34c" name="chair_1" room="living_room_0"/>
@@ -107,7 +105,6 @@
 	</joint>
 	-->
 
-	<!--
 	<link bounding_box="3.321128 2.380719 0.000990" category="carpet" model="carpet_0" name="carpet_13" room="corridor_0"/>
 	<joint name="j_carpet_13" type="fixed">
 		<origin rpy="0 0 -1.555760" xyz="-6.684743 -0.871725 0.000500"/>
@@ -247,7 +244,6 @@
 		<parent link="world"/>
 	</joint>
 
-	-->
 	<link bounding_box="0.550000 0.590000 0.891000" category="dishwasher" model="12349_handle" name="dishwasher_36" room="kitchen_0"/>
 	<joint name="j_dishwasher_36" type="fixed">
 		<origin rpy="0 0 -3.141593" xyz="-2.505000 -2.625000 0.450000"/>
@@ -255,7 +251,6 @@
 		<parent link="world"/>
 	</joint>
 
-	<!--
 	<link bounding_box="0.930000 0.490000 0.891000" category="sink" model="sink_2" name="sink_37" room="kitchen_0"/>
 	<joint name="j_sink_37" type="fixed">
 		<origin rpy="0 0 0.000" xyz="-3.455000 0.630000 0.450000"/>
@@ -304,7 +299,6 @@
 		<child link="oven_46"/>
 		<parent link="world"/>
 	</joint>
-	-->
 
 	<!--
 	<link bounding_box="0.840000 0.600000 0.891000" category="bottom_cabinet_no_top" model="45620" name="bottom_cabinet_no_top_44" room="kitchen_0"/>

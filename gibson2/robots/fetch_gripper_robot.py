@@ -303,6 +303,7 @@ class FetchGripper(LocomotorRobot):
         # Reset internal vars
         self.tucked = self.start_tucked
         self.head_error_planning = []
+        self.target_head_qpos = np.array(self.untucked_default_joints[self.head_joint_action_idx])
 
         # Reset controller
         self.controller.reset()
