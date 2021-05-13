@@ -109,6 +109,7 @@ def main():
         igtn_task.iterate_instruction
     )
 
+    log_writer = None
     if not args.disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_log_path == None:
@@ -118,6 +119,8 @@ def main():
         log_writer.set_up_data_storage()
 
     satisfied_predicates_cached = {}
+    post_task_steps = 200
+
     while True:
         igtn_task.simulator.step(print_stats=args.profile)
         task_done, satisfied_predicates = igtn_task.check_success()
@@ -134,11 +137,17 @@ def main():
         if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
             vr_cs.toggle_show_state()
 
-        if not args.disable_save:
+        if log_writer and not args.disable_save:
             log_writer.process_frame()
+
+        if task_done:
+            post_task_steps -= 1
+            if post_task_steps == 0:
+                break
     
-    if not args.disable_save:
+    if log_writer and not args.disable_save:
         log_writer.end_log_session()
+
     s.disconnect()
 
 
