@@ -4,7 +4,7 @@ Rs_int PBR scene.
 Important - VR functionality and where to find it:
 
 1) Most VR functions can be found in the gibson2/simulator.py
-2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
+2) The BehaviorRobot and its associated parts can be found in gibson2/robots/behavior_robot.py
 3) VR utility functions are found in gibson2/utils/vr_utils.py
 4) The VR renderer can be found in gibson2/render/mesh_renderer.py
 5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
@@ -21,7 +21,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
@@ -77,8 +77,8 @@ view_direction = np.array([0, 1, 0])
 s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 s.renderer.set_fov(90)
 
-# Create a VrAgent and it will handle all initialization and importing under-the-hood
-vr_agent = VrAgent(s, use_gripper=False)
+# Create a BehaviorRobot and it will handle all initialization and importing under-the-hood
+vr_agent = BehaviorRobot(s, use_gripper=False)
 
 # List of object names to filename mapping
 lunch_pack_folder = os.path.join(gibson2.assets_path, 'models', 'pack_lunch')

@@ -1,5 +1,5 @@
-""" This is a VR demo in a simple scene consisting of some objects to interact with, and space to move around.
-Can be used to verify everything is working in VR, and iterate on current VR designs.
+""" VR demo to test that eye tracking is working by visualizing a gaze marker where
+the user is looking.
 """
 
 import numpy as np
@@ -93,12 +93,26 @@ def main():
     s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
+    # Represents gaze
+    eye_marker = ArticulatedObject("sphere_small.urdf", scale=2)
+    s.import_object(eye_marker, use_pbr=False, use_pbr_mapping=False)
+    gaze_max_dist = 1.5
+
     # Main simulation loop
     while True:
+        # Make sure eye marker never goes to sleep so it is always ready to track gaze
+        eye_marker.force_wakeup()
         s.step()
 
         # Update VR agent using action data from simulator
         bvr_robot.update(s.gen_vr_robot_action())
+
+        # Update gaze marker
+        is_valid, origin, dir, _, _ = s.get_eye_tracking_data()
+        print('Data validity: {}'.format(is_valid))
+        if is_valid:
+            new_pos = list(np.array(origin) + np.array(dir) * gaze_max_dist)
+            eye_marker.set_position(new_pos)
 
     s.disconnect()
 

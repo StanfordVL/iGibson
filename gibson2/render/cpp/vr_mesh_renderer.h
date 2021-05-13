@@ -49,7 +49,7 @@ public:
 		float trig_frac;
 		// analog touch vector - controllers only!
 		glm::vec2 touchpad_analog_vec;
-		// both indices are used to obtain analog data for trigger and touchpadd - controllers only!
+		// both indices are used to obtain analog data for trigger and touchpad - controllers only!
 		int trigger_axis_index;
 		int touchpad_axis_index;
 	};
@@ -85,7 +85,7 @@ public:
 	// Struct storing eye data for SR anipal - we only return origin and direction in world space
 	// As most users will want to use this ray to query intersection or something similar
 	struct EyeTrackingData {
-		bool isValid;
+		bool isValid = false;
 		glm::vec3 origin;
 		glm::vec3 dir;
 		// Both in mm
