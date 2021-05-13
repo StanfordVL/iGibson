@@ -772,6 +772,11 @@ class MeshRenderer(object):
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
 
+        if 'seg' in modes and self.rendering_settings.msaa:
+            logging.warning(
+                "Rendering segmentation masks with MSAA on may generate interpolation artifacts. "
+                "It is recommended to turn MSAA off when rendering segmentation.")
+
         render_shadow_pass = render_shadow_pass and 'rgb' in modes
         need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
         self.update_dynamic_positions(need_flow_info=need_flow_info)
