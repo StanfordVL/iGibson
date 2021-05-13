@@ -61,8 +61,8 @@ def parse_args():
                         help='Path to save frames (frame number added automatically, as well as .jpg extension)')
     parser.add_argument('--disable_scene_cache', action='store_true',
                         help='Whether to disable using pre-initialized scene caches.')
-    parser.add_argument('--enable_save',
-                        action='store_true', help='Whether to enable saving log of replayed trajectory.')
+    parser.add_argument('--disable_save',
+                        action='store_true', help='Whether to disable saving log of replayed trajectory, used for validation.')
     parser.add_argument('--highlight_gaze', action='store_true',
                         help='Whether to highlight the object at gaze location.')
     parser.add_argument('--profile', action='store_true',
@@ -150,18 +150,20 @@ def main():
         raise RuntimeError('Must provide a VR log path to run action replay!')
     log_reader = IGLogReader(args.vr_log_path, log_status=False)
 
-    if args.enable_save:
+    if not args.disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if args.vr_replay_log_path == None:
             args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
                 task, task_id, scene, timestamp)
 
-        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=args.vr_log_path + "_replay", task=igtn_task, store_vr=False, vr_agent=vr_agent, profiling_mode=args.profile)
+        replay_path = args.vr_log_path[:-5] + "_replay.hdf5"
+        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=replay_path, task=igtn_task, store_vr=False, vr_agent=vr_agent, profiling_mode=args.profile)
         log_writer.set_up_data_storage()
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
     target_obj = -1
     gaze_max_distance = 100.0
+    task_done = False
     satisfied_predicates_cached = {}
     while log_reader.get_data_left_to_read():
         if args.highlight_gaze:
@@ -192,11 +194,24 @@ def main():
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
 
-        if args.enable_save:
+        if not args.disable_save:
             log_writer.process_frame()
 
-    if args.enable_save:
+    print("Demo was succesfully completed: ", task_done)
+
+    if not args.disable_save:
         log_writer.end_log_session()
+        original_file = h5py.File(args.vr_log_path)
+        new_file = h5py.File(replay_path)
+        is_deterministic = True
+        for obj in original_file['physics_data']:
+            for attribute in original_file['physics_data'][obj]:
+                is_close = np.isclose(original_file['physics_data'][obj][attribute], new_file['physics_data'][obj][attribute]).all()
+                is_deterministic = is_deterministic and is_close
+                if not is_close:
+                    print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
+            
+        print("Demo was deterministic: ", is_deterministic)
     s.disconnect()
 
 
