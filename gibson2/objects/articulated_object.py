@@ -16,7 +16,7 @@ import math
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
-from gibson2.external.pybullet_tools.utils import link_from_name
+from gibson2.external.pybullet_tools.utils import link_from_name, get_joint_info, get_joints, set_joint_position
 from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
 from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.stateful_object import StatefulObject
@@ -114,6 +114,7 @@ class URDFObject(StatefulObject):
                  scene_instance_folder=None,
                  tasknet_object_scope=None,
                  visualize_primitives=False,
+                 joint_positions=None,
                  flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING,
                  ):
         """
@@ -135,6 +136,8 @@ class URDFObject(StatefulObject):
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
         :param tasknet_object_scope: tasknet object scope name, e.g. chip.n.04_2
         :param visualize_primitives: whether to render geometric primitives
+        :param joint_positions: Joint positions, keyed by body index and joint name, in the form of
+            List[Dict[name, position]]
         """
         super(URDFObject, self).__init__()
 
@@ -148,6 +151,7 @@ class URDFObject(StatefulObject):
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.tasknet_object_scope = tasknet_object_scope
+        self.joint_positions = joint_positions
         self.flags = flags
 
         # Load abilities from taxonomy if needed & possible
@@ -952,13 +956,19 @@ class URDFObject(StatefulObject):
                 body_id, -1,
                 activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
 
-            for j in range(p.getNumJoints(body_id)):
-                info = p.getJointInfo(body_id, j)
-                jointType = info[2]
+            for j in get_joints(body_id):
+                info = get_joint_info(body_id, j)
+                jointType = info.jointType
                 if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
                     p.setJointMotorControl2(
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
+
+                if self.joint_positions:
+                    joint_name = str(info.jointName, encoding="utf-8")
+                    joint_position = self.joint_positions[idx][joint_name]
+                    set_joint_position(body_id, j, joint_position)
+
             self.body_ids.append(body_id)
 
         self.load_supporting_surfaces()
