@@ -110,8 +110,8 @@ def main():
     physics_timestep = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/physics_timestep')
     render_timestep = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/render_timestep')
 
-    if IGLogReader.has_metadata_attr(args.vr_log_path, 'metadata/filter_objects'):
-        filter_objects = IGLogReader.read_metadata_attr(args.vr_log_path, 'metadata/filter_objects')
+    if IGLogReader.has_metadata_attr(args.vr_log_path, '/metadata/filter_objects'):
+        filter_objects = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/filter_objects')
     else:
         filter_objects = True
 
