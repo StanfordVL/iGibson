@@ -93,6 +93,12 @@ class ObjectGrouper(StatefulObject):
             body_ids += obj._load()
         return body_ids
 
+    def get_visual_mesh_to_material(self):
+        visual_mesh_to_material = []
+        for obj in self.objects:
+            visual_mesh_to_material += obj.visual_mesh_to_material
+        return visual_mesh_to_material
+
     def get_position(self):
         raise ValueError("Cannot get_position on ObjectGrouper")
 
@@ -152,6 +158,15 @@ class ObjectMultiplexer(StatefulObject):
 
     def __getattr__(self, item):
         return getattr(self.current_selection(), item)
+
+    def get_visual_mesh_to_material(self):
+        visual_mesh_to_material = []
+        for obj in self._multiplexed_objects:
+            if isinstance(obj, ObjectGrouper):
+                visual_mesh_to_material += obj.get_visual_mesh_to_material()
+            else:
+                visual_mesh_to_material += obj.visual_mesh_to_material
+        return visual_mesh_to_material
 
     def _load(self):
         body_ids = []
