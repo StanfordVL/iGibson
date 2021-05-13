@@ -157,7 +157,14 @@ def main():
                 task, task_id, scene, timestamp)
 
         replay_path = args.vr_log_path[:-5] + "_replay.hdf5"
-        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=replay_path, task=igtn_task, store_vr=False, vr_agent=vr_agent, profiling_mode=args.profile)
+        log_writer = IGLogWriter(
+            s,
+            frames_before_write=200,
+            log_filepath=replay_path, task=igtn_task,
+            store_vr=False, vr_agent=vr_agent,
+            profiling_mode=args.profile,
+            filter_objects=filter_objects
+        )
         log_writer.set_up_data_storage()
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
