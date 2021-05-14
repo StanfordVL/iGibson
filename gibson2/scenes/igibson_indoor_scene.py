@@ -1,3 +1,4 @@
+from collections import defaultdict
 import time
 import logging
 import numpy as np
@@ -24,7 +25,7 @@ from gibson2.utils.utils import rotate_vector_3d
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
 from gibson2.external.pybullet_tools.utils import euler_from_quat
-from gibson2.objects.multi_object_wrappers import ObjectMultiplexer
+from gibson2.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
 
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
@@ -160,19 +161,37 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # Agent placeholder
         self.agent = {}
 
+        # ObjectMultiplexer
+        self.object_multiplexers = defaultdict(dict)
+
+        # ObjectGrouper
+        self.object_groupers = defaultdict(dict)
+
         # Parse all the special link entries in the root URDF that defines the scene
         for link in self.scene_tree.findall('link'):
             if 'category' in link.attrib:
                 # Extract the category from the link entry
                 category = link.attrib["category"]
 
-                if category in ["agent"]:
+                if category == "agent":
                     # For agents, the pose of the base link is stored in the scene
                     # URDF, instead of the pose of the centroid of the bounding box
                     self.agent[link.attrib['name']] = {
                         'xyz': np.array([float(val) for val in link.attrib['xyz'].split(" ")]),
                         'rpy': np.array([float(val) for val in link.attrib['rpy'].split(" ")])
                     }
+                    continue
+
+                if category == 'multiplexer':
+                    self.object_multiplexers[link.attrib['name']]['current_index'] = \
+                        link.attrib['current_index']
+                    continue
+
+                if category == 'grouper':
+                    self.object_groupers[link.attrib['name']]['pose_offsets'] = \
+                        json.loads(link.attrib['pose_offsets'])
+                    self.object_multiplexers[link.attrib['multiplexer']]['grouper'] = \
+                        link.attrib['name']
                     continue
 
                 # Extract the model from the link entry
@@ -296,11 +315,34 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         obj.states[get_state_from_name(
                             state_name)].load(state_dump)
 
-                self.add_object(obj)
+                if 'multiplexer' in link.keys():
+                    self.object_multiplexers[link.attrib['multiplexer']]['whole_object'] = \
+                        obj
+                elif 'grouper' in link.keys():
+                    if 'object_parts' not in self.object_groupers[link.attrib['grouper']]:
+                        self.object_groupers[link.attrib['grouper']]['object_parts'] = \
+                            []
+                    self.object_groupers[link.attrib['grouper']
+                                         ]['object_parts'].append(obj)
+                else:
+                    self.add_object(obj)
 
             elif link.attrib["name"] != "world":
                 logging.error(
                     "iGSDF should only contain links that represent embedded URDF objects")
+
+        for multiplexer in self.object_multiplexers:
+            current_index = int(
+                self.object_multiplexers[multiplexer]['current_index'])
+            whole_object = self.object_multiplexers[multiplexer]['whole_object']
+            grouper = self.object_groupers[self.object_multiplexers[multiplexer]['grouper']]
+            object_parts = grouper['object_parts']
+            pose_offsets = grouper['pose_offsets']
+            grouped_obj_parts = ObjectGrouper(
+                list(zip(object_parts, pose_offsets)))
+            obj = ObjectMultiplexer(
+                [whole_object, grouped_obj_parts], current_index)
+            self.add_object(obj)
 
     def get_objects(self):
         return list(self.objects_by_name.values())
@@ -983,6 +1025,174 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 ids.extend(self.objects_by_name[obj_name].body_id)
         return ids
 
+    def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
+        if isinstance(obj, ObjectMultiplexer):
+            multiplexer_link = ET.SubElement(tree_root, 'link')
+            multiplexer_link.attrib = {
+                'category': 'multiplexer',
+                'name': obj.name + '_multiplexer',
+                'current_index': str(obj.current_index)
+            }
+            for sub_obj in obj._multiplexed_objects:
+                if isinstance(sub_obj, ObjectGrouper):
+                    grouper_link = ET.SubElement(tree_root, 'link')
+                    grouper_link.attrib = {
+                        'category': 'grouper',
+                        'name': obj.name + '_grouper',
+                        'pose_offsets': json.dumps(
+                            [(list(pos), list(orn))
+                             for pos, orn in sub_obj.pose_offsets]),
+                        'multiplexer': obj.name + '_multiplexer',
+                    }
+                    for group_sub_obj in sub_obj.objects:
+                        if group_sub_obj.name not in additional_attribs_by_name:
+                            additional_attribs_by_name[group_sub_obj.name] = {}
+                        additional_attribs_by_name[group_sub_obj.name]['grouper'] = obj.name + '_grouper'
+                        self.save_obj(group_sub_obj,
+                                      tree_root,
+                                      additional_attribs_by_name)
+                else:
+                    if sub_obj.name not in additional_attribs_by_name:
+                        additional_attribs_by_name[sub_obj.name] = {}
+                    additional_attribs_by_name[sub_obj.name]['multiplexer'] = obj.name + '_multiplexer'
+                    self.save_obj(sub_obj,
+                                  tree_root,
+                                  additional_attribs_by_name)
+        else:
+            self.save_obj(obj, tree_root, additional_attribs_by_name)
+
+    def save_obj(self, obj, tree_root, additional_attribs_by_name):
+        name = obj.name
+        link = tree_root.find('link[@name="{}"]'.format(name))
+
+        # Convert from center of mass to base link position
+        if hasattr(obj, "body_ids"):
+            body_id = obj.body_ids[obj.main_body]
+        else:
+            body_id = obj.body_id
+
+        # TODO: This base link computation only works for floating objects
+        # Fixed objects (if not merged links) should call
+        # p.getDynamicsInfo(body_id, 0) instead because base_link (-1) is
+        # world and link 0 is the actual object base link.
+        # We can create a function get_base_link_position_orientation
+        # in ObjectBase class later.
+        dynamics_info = p.getDynamicsInfo(body_id, -1)
+        inertial_pos = dynamics_info[3]
+        inertial_orn = dynamics_info[4]
+
+        pos, orn = obj.get_position_orientation()
+        inv_inertial_pos, inv_inertial_orn =\
+            p.invertTransform(inertial_pos, inertial_orn)
+        base_link_position, base_link_orientation = p.multiplyTransforms(
+            pos, orn, inv_inertial_pos, inv_inertial_orn)
+
+        # Convert to XYZ position for URDF
+        euler = euler_from_quat(obj.get_orientation())
+        roll, pitch, yaw = euler
+        if hasattr(obj, "scaled_bbxc_in_blf"):
+            offset = rotate_vector_3d(
+                obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+        else:
+            assert obj.category == "agent"
+            offset = np.array([0, 0, 0])
+        bbox_pos = base_link_position - offset
+
+        xyz = ' '.join([str(p) for p in bbox_pos])
+        rpy = ' '.join([str(e) for e in euler])
+
+        # The object is already in the scene URDF
+        if link is not None:
+            if obj.category == 'floors':
+                floor_names = \
+                    [obj_name for obj_name in additional_attribs_by_name
+                        if 'room_floor' in obj_name]
+                if len(floor_names) > 0:
+                    floor_name = floor_names[0]
+                    for key in additional_attribs_by_name[floor_name]:
+                        floor_mappings = []
+                        for floor_name in floor_names:
+                            floor_mappings.append('{}:{}'.format(
+                                additional_attribs_by_name[floor_name][key], floor_name))
+                        link.attrib[key] = ','.join(floor_mappings)
+            else:
+                # Overwrite the pose in the original URDF with the pose
+                # from the simulator for floating objects (typically
+                # floating objects will fall by a few millimeters due to
+                # gravity).
+                joint = tree_root.find(
+                    'joint[@name="{}"]'.format('j_{}'.format(name)))
+                if joint is not None and joint.attrib['type'] != 'fixed':
+                    link.attrib['rpy'] = rpy
+                    link.attrib['xyz'] = xyz
+                    origin = joint.find('origin')
+                    origin.attrib['rpy'] = rpy
+                    origin.attrib['xyz'] = xyz
+        else:
+            # We need to add the object to the scene URDF
+            category = obj.category
+            room = self.get_room_instance_by_point(
+                np.array(obj.get_position())[:2])
+
+            link = ET.SubElement(tree_root, 'link')
+            link.attrib = {
+                'category': category,
+                'name': name,
+                'rpy': rpy,
+                'xyz': xyz,
+            }
+
+            if hasattr(obj, "bounding_box"):
+                bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+                link.attrib['bounding_box'] = bounding_box
+
+            if hasattr(obj, "model_path"):
+                model = os.path.basename(obj.model_path)
+                link.attrib['model'] = model
+
+            if room is not None:
+                link.attrib['room'] = room
+
+            new_joint = ET.SubElement(tree_root, 'joint')
+            new_joint.attrib = {
+                'name': 'j_{}'.format(name), 'type': 'floating'}
+            new_origin = ET.SubElement(new_joint, 'origin')
+            new_origin.attrib = {'rpy': rpy, 'xyz': xyz}
+            new_child = ET.SubElement(new_joint, 'child')
+            new_child.attrib['link'] = name
+            new_parent = ET.SubElement(new_joint, 'parent')
+            new_parent.attrib['link'] = 'world'
+
+        # Common logic for objects that are both in the scene & otherwise.
+        # Add joints
+        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
+        joint_data = []
+        for bid in body_ids:
+            this_joint_data = {}
+            joints = get_joints(bid)
+            if joints:
+                joint_names = get_joint_names(bid, joints)
+                joint_positions = get_joint_positions(bid, joints)
+                this_joint_data = {
+                    str(name, encoding="utf-8"): position
+                    for name, position in zip(joint_names, joint_positions)}
+            joint_data.append(this_joint_data)
+        link.attrib["joint_positions"] = json.dumps(joint_data)
+
+        # Add states
+        if hasattr(obj, "states"):
+            state_cache = {}
+            for state_class, state_obj in obj.states.items():
+                if isinstance(state_obj, AbsoluteObjectState):
+                    state_cache[get_state_name(
+                        state_class)] = state_obj.dump()
+            link.attrib["states"] = json.dumps(state_cache)
+
+        # Add additional attributes.
+        if name in additional_attribs_by_name:
+            for key in additional_attribs_by_name[name]:
+                link.attrib[key] = additional_attribs_by_name[name][key]
+
     def save_modified_urdf(self, urdf_name, additional_attribs_by_name={}):
         """
         Saves a modified URDF file in the scene urdf directory having all objects added to the scene.
@@ -992,136 +1202,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
         scene_tree = ET.parse(self.scene_file)
         tree_root = scene_tree.getroot()
         for name in self.objects_by_name:
-            obj = self.objects_by_name[name]
-            link = scene_tree.find('link[@name="{}"]'.format(name))
-
-            # Convert from center of mass to base link position
-            if hasattr(obj, "body_ids"):
-                body_id = obj.body_ids[obj.main_body]
-            else:
-                body_id = obj.body_id
-
-            # TODO: This base link computation only works for floating objects
-            # Fixed objects (if not merged links) should call
-            # p.getDynamicsInfo(body_id, 0) instead because base_link (-1) is
-            # world and link 0 is the actual object base link.
-            # We can create a function get_base_link_position_orientation
-            # in ObjectBase class later.
-            dynamics_info = p.getDynamicsInfo(body_id, -1)
-            inertial_pos = dynamics_info[3]
-            inertial_orn = dynamics_info[4]
-
-            pos, orn = obj.get_position_orientation()
-            inv_inertial_pos, inv_inertial_orn =\
-                p.invertTransform(inertial_pos, inertial_orn)
-            base_link_position, base_link_orientation = p.multiplyTransforms(
-                pos, orn, inv_inertial_pos, inv_inertial_orn)
-
-            # Convert to XYZ position for URDF
-            euler = euler_from_quat(obj.get_orientation())
-            roll, pitch, yaw = euler
-            if hasattr(obj, "scaled_bbxc_in_blf"):
-                offset = rotate_vector_3d(
-                    obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
-            else:
-                assert obj.category == "agent"
-                offset = np.array([0, 0, 0])
-            bbox_pos = base_link_position - offset
-
-            xyz = ' '.join([str(p) for p in bbox_pos])
-            rpy = ' '.join([str(e) for e in euler])
-
-            # The object is already in the scene URDF
-            if link is not None:
-                if obj.category == 'floors':
-                    floor_names = \
-                        [obj_name for obj_name in additional_attribs_by_name
-                         if 'room_floor' in obj_name]
-                    if len(floor_names) > 0:
-                        floor_name = floor_names[0]
-                        for key in additional_attribs_by_name[floor_name]:
-                            floor_mappings = []
-                            for floor_name in floor_names:
-                                floor_mappings.append('{}:{}'.format(
-                                    additional_attribs_by_name[floor_name][key], floor_name))
-                            link.attrib[key] = ','.join(floor_mappings)
-                else:
-                    # Overwrite the pose in the original URDF with the pose
-                    # from the simulator for floating objects (typically
-                    # floating objects will fall by a few millimeters due to
-                    # gravity).
-                    joint = scene_tree.find(
-                        'joint[@name="{}"]'.format('j_{}'.format(name)))
-                    if joint is not None and joint.attrib['type'] != 'fixed':
-                        link.attrib['rpy'] = rpy
-                        link.attrib['xyz'] = xyz
-                        origin = joint.find('origin')
-                        origin.attrib['rpy'] = rpy
-                        origin.attrib['xyz'] = xyz
-            else:
-                # We need to add the object to the scene URDF
-                category = obj.category
-                room = self.get_room_instance_by_point(
-                    np.array(obj.get_position())[:2])
-
-                link = ET.SubElement(tree_root, 'link')
-                link.attrib = {
-                    'category': category,
-                    'name': name,
-                    'rpy': rpy,
-                    'xyz': xyz,
-                }
-
-                if hasattr(obj, "bounding_box"):
-                    bounding_box = ' '.join([str(b) for b in obj.bounding_box])
-                    link.attrib['bounding_box'] = bounding_box
-
-                if hasattr(obj, "model_path"):
-                    model = os.path.basename(obj.model_path)
-                    link.attrib['model'] = model
-
-                if room is not None:
-                    link.attrib['room'] = room
-
-                new_joint = ET.SubElement(tree_root, 'joint')
-                new_joint.attrib = {
-                    'name': 'j_{}'.format(name), 'type': 'floating'}
-                new_origin = ET.SubElement(new_joint, 'origin')
-                new_origin.attrib = {'rpy': rpy, 'xyz': xyz}
-                new_child = ET.SubElement(new_joint, 'child')
-                new_child.attrib['link'] = name
-                new_parent = ET.SubElement(new_joint, 'parent')
-                new_parent.attrib['link'] = 'world'
-
-            # Common logic for objects that are both in the scene & otherwise.
-            # Add joints
-            body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
-            joint_data = []
-            for body_idx, bid in enumerate(body_ids):
-                this_joint_data = {}
-                joints = get_joints(bid)
-                if joints:
-                    joint_names = get_joint_names(bid, joints)
-                    joint_positions = get_joint_positions(bid, joints)
-                    this_joint_data = {
-                        str(name, encoding="utf-8"): position
-                        for name, position in zip(joint_names, joint_positions)}
-                joint_data.append(this_joint_data)
-            link.attrib["joint_positions"] = json.dumps(joint_data)
-
-            # Add states
-            if hasattr(obj, "states"):
-                state_cache = {}
-                for state_class, state_obj in obj.states.items():
-                    if isinstance(state_obj, AbsoluteObjectState):
-                        state_cache[get_state_name(state_class)] = state_obj.dump()
-                link.attrib["states"] = json.dumps(state_cache)
-
-            # Add additional attributes.
-            if name in additional_attribs_by_name:
-                for key in additional_attribs_by_name[name]:
-                    link.attrib[key] = additional_attribs_by_name[name][key]
-
+            self.save_obj_or_multiplexer(
+                self.objects_by_name[name],
+                tree_root,
+                additional_attribs_by_name)
 
         path_to_urdf = os.path.join(self.scene_dir, 'urdf', urdf_name+'.urdf')
         xmlstr = minidom.parseString(

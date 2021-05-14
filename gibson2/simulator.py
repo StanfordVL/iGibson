@@ -20,6 +20,7 @@ from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
 from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset
+from gibson2.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
 
 import pybullet as p
 import gibson2
@@ -285,8 +286,18 @@ class Simulator:
         # Load the states of all the objects in the scene.
         for obj in scene.get_objects():
             if isinstance(obj, StatefulObject):
-                for state in obj.states.values():
-                    state.initialize(self)
+                if isinstance(obj, ObjectMultiplexer):
+                    for sub_obj in obj._multiplexed_objects:
+                        if isinstance(sub_obj, ObjectGrouper):
+                            for group_sub_obj in sub_obj.objects:
+                                for state in group_sub_obj.states.values():
+                                    state.initialize(self)
+                        else:
+                            for state in sub_obj.states.values():
+                                state.initialize(self)
+                else:
+                    for state in obj.states.values():
+                        state.initialize(self)
 
         return new_object_pb_ids
 
@@ -330,8 +341,18 @@ class Simulator:
         # Load the states of all the objects in the scene.
         for obj in scene.get_objects():
             if isinstance(obj, StatefulObject):
-                for state in obj.states.values():
-                    state.initialize(self)
+                if isinstance(obj, ObjectMultiplexer):
+                    for sub_obj in obj._multiplexed_objects:
+                        if isinstance(sub_obj, ObjectGrouper):
+                            for group_sub_obj in sub_obj.objects:
+                                for state in group_sub_obj.states.values():
+                                    state.initialize(self)
+                        else:
+                            for state in sub_obj.states.values():
+                                state.initialize(self)
+                else:
+                    for state in obj.states.values():
+                        state.initialize(self)
 
         return new_object_ids
 
@@ -414,8 +435,18 @@ class Simulator:
 
         # Finally, initialize the object's states
         if isinstance(obj, StatefulObject):
-            for state in obj.states.values():
-                state.initialize(self)
+            if isinstance(obj, ObjectMultiplexer):
+                for sub_obj in obj._multiplexed_objects:
+                    if isinstance(sub_obj, ObjectGrouper):
+                        for group_sub_obj in sub_obj.objects:
+                            for state in group_sub_obj.states.values():
+                                state.initialize(self)
+                    else:
+                        for state in sub_obj.states.values():
+                            state.initialize(self)
+            else:
+                for state in obj.states.values():
+                    state.initialize(self)
 
         return new_object_pb_id_or_ids
 
@@ -1047,11 +1078,14 @@ class Simulator:
         """
         # Update VR offset using appropriate controller
         if self.vr_settings.touchpad_movement:
-            vr_offset_device = '{}_controller'.format(self.vr_settings.movement_controller)
+            vr_offset_device = '{}_controller'.format(
+                self.vr_settings.movement_controller)
             is_valid, _, _ = self.get_data_for_vr_device(vr_offset_device)
             if is_valid:
-                _, touch_x, touch_y = self.get_button_data_for_controller(vr_offset_device)
-                new_offset = calc_offset(self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
+                _, touch_x, touch_y = self.get_button_data_for_controller(
+                    vr_offset_device)
+                new_offset = calc_offset(
+                    self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
                 self.set_vr_offset(new_offset)
 
         # Adjust user height based on y-axis (vertical direction) touchpad input
@@ -1060,28 +1094,33 @@ class Simulator:
         if is_height_valid:
             curr_offset = self.get_vr_offset()
             hmd_height = self.get_hmd_world_pos()[2]
-            _, _, height_y = self.get_button_data_for_controller(vr_height_device)
+            _, _, height_y = self.get_button_data_for_controller(
+                vr_height_device)
             if height_y < -0.7:
                 vr_z_offset = -0.01
                 if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
-                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+                    self.set_vr_offset(
+                        [curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
             elif height_y > 0.7:
                 vr_z_offset = 0.01
                 if hmd_height + curr_offset[2] + vr_z_offset <= self.vr_settings.height_bounds[1]:
-                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])                
+                    self.set_vr_offset(
+                        [curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
         # Update haptics for body and hands
         # TODO: Change how this works if VrAgent becomes a robot
         if self.main_vr_agent:
             vr_body_id = self.main_vr_agent.vr_dict['body'].body_id
-            vr_hands = [('left_controller', self.main_vr_agent.vr_dict['left_hand']), ('right_controller', self.main_vr_agent.vr_dict['right_hand'])]
+            vr_hands = [('left_controller', self.main_vr_agent.vr_dict['left_hand']),
+                        ('right_controller', self.main_vr_agent.vr_dict['right_hand'])]
 
             # Check for body haptics
             wall_ids = self.get_category_ids('walls')
             for c_info in p.getContactPoints(vr_body_id):
                 if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
                     for controller in ['left_controller', 'right_controller']:
-                        is_valid, _, _ = self.get_data_for_vr_device(controller)
+                        is_valid, _, _ = self.get_data_for_vr_device(
+                            controller)
                         if is_valid:
                             # Use 90% strength for body to warn user of collision with wall
                             self.trigger_haptic_pulse(controller, 0.9)
@@ -1107,9 +1146,11 @@ class Simulator:
         TODO: Replace this with robot-loading function eventually!
         """
         for part_name, part_obj in agent.vr_dict.items():
-            self.import_object(part_obj, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+            self.import_object(part_obj, use_pbr=False,
+                               use_pbr_mapping=False, shadow_caster=True)
             if agent.use_ghost_hands and part_name in ['left_hand', 'right_hand']:
-                self.import_object(part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+                self.import_object(
+                    part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
 
     def sync_vr_compositor(self):
         """
@@ -1421,7 +1462,8 @@ class Simulator:
         This data is used to power the VrAgent each frame.
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('Unable to get VR data for current frame since VR system is not being used!')
+            raise RuntimeError(
+                'Unable to get VR data for current frame since VR system is not being used!')
 
         v = dict()
         for device in VR_DEVICES:
@@ -1430,7 +1472,8 @@ class Simulator:
             device_data.extend(self.get_device_coordinate_system(device))
             v[device] = device_data
             if device in VR_CONTROLLERS:
-                v['{}_button'.format(device)] = self.get_button_data_for_controller(device)
+                v['{}_button'.format(
+                    device)] = self.get_button_data_for_controller(device)
 
         is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(
             self.vr_settings.torso_tracker_serial)
@@ -1439,7 +1482,8 @@ class Simulator:
         v['event_data'] = self.get_vr_events()
         reset_actions = []
         for controller in VR_CONTROLLERS:
-            reset_actions.append(self.query_vr_event(controller, 'reset_agent'))
+            reset_actions.append(
+                self.query_vr_event(controller, 'reset_agent'))
         v['reset_actions'] = reset_actions
         v['vr_positions'] = [self.get_vr_pos().tolist(), list(self.get_vr_offset())]
 

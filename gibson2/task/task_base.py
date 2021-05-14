@@ -299,10 +299,9 @@ class iGTNTask(TaskNetTask):
                         simulator_obj_part = URDFObject(
                             filename,
                             name=obj_name,
-                            category=whole_object.category,
+                            category=category,
                             model_path=model_path,
-                            avg_obj_dims=avg_category_spec.get(
-                                whole_object.category),
+                            avg_obj_dims=avg_category_spec.get(category),
                             fit_avg_dim_volume=False,
                             scale=whole_object.scale,
                             texture_randomization=False,
