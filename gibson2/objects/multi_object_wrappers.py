@@ -145,6 +145,7 @@ class ObjectMultiplexer(StatefulObject):
 
         self._multiplexed_objects = multiplexed_objects
         self.current_index = current_index
+        self.name = self.current_selection().name + '_multiplexer'
 
         # This will help route obj.states to one of the multiplexed_objects
         del self.states

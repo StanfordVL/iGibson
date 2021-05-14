@@ -1030,7 +1030,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             multiplexer_link = ET.SubElement(tree_root, 'link')
             multiplexer_link.attrib = {
                 'category': 'multiplexer',
-                'name': obj.name + '_multiplexer',
+                'name': obj.name,
                 'current_index': str(obj.current_index)
             }
             for sub_obj in obj._multiplexed_objects:
@@ -1042,7 +1042,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         'pose_offsets': json.dumps(
                             [(list(pos), list(orn))
                              for pos, orn in sub_obj.pose_offsets]),
-                        'multiplexer': obj.name + '_multiplexer',
+                        'multiplexer': obj.name,
                     }
                     for group_sub_obj in sub_obj.objects:
                         if group_sub_obj.name not in additional_attribs_by_name:
@@ -1054,7 +1054,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 else:
                     if sub_obj.name not in additional_attribs_by_name:
                         additional_attribs_by_name[sub_obj.name] = {}
-                    additional_attribs_by_name[sub_obj.name]['multiplexer'] = obj.name + '_multiplexer'
+                    additional_attribs_by_name[sub_obj.name]['multiplexer'] = obj.name
                     self.save_obj(sub_obj,
                                   tree_root,
                                   additional_attribs_by_name)

@@ -796,6 +796,22 @@ class iGTNTask(TaskNetTask):
             self.sampling_orders.pop(0)
             for cur_batch in self.sampling_orders:
                 for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME == 'sliced':
+                        continue
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        success = condition.sample(binary_state=positive)
+                        if not success:
+                            error_msg = 'Sampleable object conditions failed: {}'.format(
+                                condition.body)
+                            logging.warning(error_msg)
+                            feedback['init_success'] = 'no'
+                            feedback['init_feedback'] = error_msg
+                            return False, feedback
+
+                for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME != 'sliced':
+                        continue
                     # Sample conditions that involve the current batch of objects
                     if condition.body[0] in cur_batch:
                         success = condition.sample(binary_state=positive)
