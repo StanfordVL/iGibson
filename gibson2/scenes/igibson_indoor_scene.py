@@ -1,11 +1,8 @@
 import time
-import gibson2
 import logging
 import numpy as np
-from gibson2.object_states.factory import get_state_name, get_state_from_name
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import rotate_vector_3d, rotate_vector_2d
+import random
+import json
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
@@ -17,6 +14,17 @@ from gibson2.external.pybullet_tools.utils import euler_from_quat, get_joints, g
 from PIL import Image
 from xml.dom import minidom
 from IPython import embed
+
+import gibson2
+
+from gibson2.object_states.factory import get_state_name, get_state_from_name
+from gibson2.object_states.object_state_base import AbsoluteObjectState
+from gibson2.objects.articulated_object import URDFObject
+from gibson2.utils.utils import rotate_vector_3d
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from gibson2.external.pybullet_tools.utils import euler_from_quat
+from gibson2.objects.multi_object_wrappers import ObjectMultiplexer
 
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
@@ -810,7 +818,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for id in new_ids:
                 self.objects_by_id[id] = obj
             body_ids += new_ids
-            visual_mesh_to_material += obj.visual_mesh_to_material
+            if isinstance(obj, ObjectMultiplexer):
+                visual_mesh_to_material += obj.get_visual_mesh_to_material()
+            else:
+                visual_mesh_to_material += obj.visual_mesh_to_material
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
