@@ -17,6 +17,7 @@ from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
 import cv2
+from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -27,6 +28,19 @@ light_modulation_map_filename = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+
+def get_push_point(bvr_robot):
+    eye_pos, eye_orn = bvr_robot.parts['eye'].get_position_orientation()
+    mat = quat2rotmat(xyzw2wxyz(eye_orn))[:3, :3]
+    view_direction = mat.dot(np.array([1, 0, 0]))
+    res = p.rayTest(eye_pos, eye_pos + view_direction * 3)
+    hit_pos = None
+    if len(res) > 0 and res[0][0] != -1:
+        # there is hit
+        object_id, link_id, _, hit_pos, hit_normal = res[0]
+
+    return hit_pos
+
 
 
 def main():
@@ -94,7 +108,7 @@ def main():
     bvr_robot = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True, use_ghost_hands=False)
     s.import_behavior_robot(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
-    bvr_robot.set_position_orientation([0, 0, 0.2], [0, 0, 0, 1])
+
     max_num_steps = 100
 
     # bvr_robot.parts['body'].set_position_orientation(
@@ -113,11 +127,14 @@ def main():
     step = 0
     move_dist = 0.3
     rotate_angle = 0.3
+    current_pitch = 0
+    pitch_angle = 0.5
 
     action = np.zeros((28,))
     action[19] = 1
     action[27] = 1
     for _ in range(10):
+        bvr_robot.set_position_orientation([0, 0, 0.2], [0, 0, 0, 1])
         bvr_robot.update(action)
         s.step()
 
@@ -178,16 +195,52 @@ def main():
                 if d > rotate_angle:
                     break
 
-        # elif user_input == ord('o'):
-        #     hit_pos = get_push_point(bvr_robot)
-        #     if hit_pos is not None:
-        #         push_vector = np.array(hit_pos) - np.array(bvr_robot.parts['right_hand'].get_position())
-        #         action[20:23] = push_vector / 100
+        elif user_input == ord('o'):
+            hit_pos = get_push_point(bvr_robot)
+            if hit_pos is not None:
+                push_vector = np.array(hit_pos) - np.array(bvr_robot.parts['right_hand'].get_position())
+                action[20:23] = push_vector / 100
+
+            for _ in range(max_num_steps):
+                bvr_robot.update(action)
+                s.step()
+                if len(p.getContactPoints(bodyA=bvr_robot.parts['right_hand'].body_id)) > 0:
+                    break
 
         elif user_input == ord('y'):
-            action[10] = 0.001
+            current_pitch += 1
+            if current_pitch > 1:
+                current_pitch = 1
+            else:
+                action[10] = 0.01
+                for _ in range(max_num_steps):
+                    bvr_robot.update(action)
+                    s.step()
+                    d = np.abs(p.getEulerFromQuaternion(bvr_robot.parts['eye'].get_orientation())[1] - pitch_angle * current_pitch)
+                    print(d)
+                    if d > np.pi / 2:
+                        d = np.pi - d
+                    if d < 0.01:
+                        break
+
         elif user_input == ord('u'):
-            action[10] = -0.001
+            current_pitch -= 1
+            if current_pitch < -1:
+                current_pitch = -1
+            else:
+                action[10] = -0.01
+                for _ in range(max_num_steps):
+                    bvr_robot.update(action)
+                    s.step()
+                    d = np.abs(p.getEulerFromQuaternion(bvr_robot.parts['eye'].get_orientation())[1] - pitch_angle * current_pitch)
+                    if d > np.pi / 2:
+                        d = np.pi - d
+                    if d < 0.01:
+                        break
+
+        elif user_input == ord('p'):
+            bvr_robot.set_position_orientation(*bvr_robot.parts['body'].get_position_orientation())
+            print(bvr_robot.parts['body'].get_position_orientation())
 
         rgb = bvr_robot.render_camera_image()[0]
         rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)

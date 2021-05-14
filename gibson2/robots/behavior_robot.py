@@ -117,9 +117,14 @@ class BehaviorRobot(object):
 
     def set_position_orientation(self, pos, orn):
         self.parts['body'].set_position_orientation_unwrapped(pos, orn)
-        self.parts['left_hand'].set_position_orientation((pos[0], pos[1] + 0.2, 1.0), orn)
-        self.parts['right_hand'].set_position_orientation((pos[0], pos[1] - 0.2, 1.0), orn)
-        self.parts['eye'].set_position_orientation((pos[0], pos[1], 1.5), orn)
+        left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, [0,0.2,0.7], [0,0,0,1])
+        print('left hand', left_hand_pos, left_hand_orn)
+        self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
+        right_hand_pos, right_hand_orn = p.multiplyTransforms(pos, orn, [0,-0.2,0.7], [0,0,0,1])
+        self.parts['right_hand'].set_position_orientation(right_hand_pos, right_hand_orn)
+        eye_pos, eye_orn = p.multiplyTransforms(pos, orn, [0,0,1.5], [0,0,0,1])
+        print('eye', eye_pos, eye_orn)
+        self.parts['eye'].set_position_orientation(eye_pos, eye_orn)
 
         for constraint, activated in self.constraints_active.items():
             if not activated and constraint != 'body':
@@ -128,7 +133,7 @@ class BehaviorRobot(object):
 
         left_pos, left_orn = self.parts['left_hand'].get_position_orientation()
         right_pos, right_orn = self.parts['right_hand'].get_position_orientation()
-
+        print('left hand pos', left_pos, left_orn)
         self.parts['left_hand'].move(left_pos, left_orn)
         self.parts['right_hand'].move(right_pos, right_orn)
 
@@ -404,6 +409,8 @@ class BRHandBase(ArticulatedObject):
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
+        if self.activated:
+            self.move(self.new_pos, self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -982,6 +989,7 @@ class BREye(ArticulatedObject):
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
+        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -1038,6 +1046,6 @@ class BREye(ArticulatedObject):
 
         # Calculate new world position based on local transform and new body pose
         self.new_pos, self.new_orn = p.multiplyTransforms(self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
-        self.set_position_orientation(self.new_pos, self.new_orn)
+        super(BREye, self).set_position_orientation(self.new_pos, self.new_orn)
         # Move head marker regardless of hiding settings
         self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
