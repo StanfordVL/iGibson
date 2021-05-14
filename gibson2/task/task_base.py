@@ -357,8 +357,8 @@ class iGTNTask(TaskNetTask):
         self.object_scope['agent.n.01_1'] = agent.parts['body']
         if not self.online_sampling and self.scene.agent != {}:
             agent.parts['body'].set_base_link_position_orientation(
-                self.scene.agent['VrBody_1']['xyz'], quat_from_euler(
-                    self.scene.agent['VrBody_1']['rpy'])
+                self.scene.agent['BRBody_1']['xyz'], quat_from_euler(
+                    self.scene.agent['BRBody_1']['rpy'])
             )
             agent.parts['left_hand'].set_base_link_position_orientation(
                 self.scene.agent['left_hand_1']['xyz'], quat_from_euler(
@@ -377,8 +377,8 @@ class iGTNTask(TaskNetTask):
                     self.scene.agent['right_hand_1']['rpy'])
             )
             agent.parts['eye'].set_base_link_position_orientation(
-                self.scene.agent['VrEye_1']['xyz'], quat_from_euler(
-                    self.scene.agent['VrEye_1']['rpy'])
+                self.scene.agent['BREye_1']['xyz'], quat_from_euler(
+                    self.scene.agent['BREye_1']['rpy'])
             )
 
     def move_agent(self):
