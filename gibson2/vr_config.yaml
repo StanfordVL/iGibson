@@ -32,7 +32,7 @@ shared_settings:
   # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
   store_only_first_event_per_button: True
   # Whether to use the torso tracker for the vr body - set to True and make sure a serial is entered below to use a torso tracker
-  use_tracked_body: False
+  use_tracked_body: True
   # Serial number of VR torso tracker - this can be found by connecting/pairing the tracker,
   # then going into Steam VR settings -> controllers -> manage vive trackers
   # Note: replace this with your own tracker serial number or leave blank to not use one

@@ -8,7 +8,7 @@ import datetime
 import h5py
 
 import gibson2
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from gibson2.simulator import Simulator
@@ -100,9 +100,7 @@ def main():
 
     # Initialize settings to save action replay frames
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/vr_settings'))
-    vr_settings.turn_off_vr_mode()
     vr_settings.set_frame_save_path(args.frame_save_path)
-    vr_settings.use_companion_window = False
 
     task = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_name')
     task_id = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_instance')
@@ -160,8 +158,10 @@ def main():
         log_writer = IGLogWriter(
             s,
             frames_before_write=200,
-            log_filepath=replay_path, task=igtn_task,
-            store_vr=False, vr_agent=vr_agent,
+            log_filepath=replay_path,
+            task=igtn_task,
+            store_vr=False,
+            vr_robot=vr_agent,
             profiling_mode=args.profile,
             filter_objects=filter_objects
         )
@@ -174,12 +174,13 @@ def main():
     satisfied_predicates_cached = {}
     while log_reader.get_data_left_to_read():
         if args.highlight_gaze:
-            if vr_agent.vr_dict['gaze_marker'].eye_data_valid:
+            eye_data = log_reader.get_vr_data().query('eye_data')
+            if eye_data[0]:
                 if target_obj in s.scene.objects_by_id:
                     s.scene.objects_by_id[target_obj].unhighlight()
 
-                origin = vr_agent.vr_dict['gaze_marker'].position_vector
-                direction = vr_agent.vr_dict['gaze_marker'].orientation_vector
+                origin = eye_data[1]
+                direction = eye_data[2]
                 intersection = p.rayTest(origin, np.array(
                     origin) + (np.array(direction) * gaze_max_distance))
                 target_obj = intersection[0][0]
@@ -196,7 +197,7 @@ def main():
         log_reader.set_replay_camera(s)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_vr_data())
+        vr_agent.update(log_reader.get_agent_action('vr_robot'))
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates

@@ -27,7 +27,7 @@ class VrData(object):
 
     The class contains a dictionary with the following key/value pairs:
     Key: hmd, left_controller, right_controller
-    Values: is_valid, trans, rot, right, up, forward
+    Values: is_valid, trans, rot, right, up, forward, left/right model rotation quaternion
 
     Key: torso_tracker
     Values: is_valid, trans, rot
@@ -79,8 +79,12 @@ class VrData(object):
         """
         for device in VR_DEVICES:
             device_data = ar_data['vr/vr_device_data/{}'.format(device)][frame_num].tolist()
-            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:17]]
+            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:17], device_data[17:21]]
+            # TODO: Remove!!!
             if device in VR_CONTROLLERS:
+                # Check if we have stored model rotations for an agent
+                if len(device_data) > 18:
+                    self.vr_data_dict['{}_model_rotation'.format(device)] = device_data[17:21]
                 self.vr_data_dict['{}_button'.format(device)] = ar_data['vr/vr_button_data/{}'.format(device)][frame_num].tolist()
 
         torso_tracker_data = ar_data['vr/vr_device_data/torso_tracker'][frame_num].tolist()
