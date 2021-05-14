@@ -20,7 +20,7 @@
 import sphinx_rtd_theme
 from recommonmark.parser import CommonMarkParser
 import sys, os
-import gibson2
+import igibson
 
 
 
@@ -31,9 +31,9 @@ author = 'Bokui Shen*, Fei Xia*, Chengshu Li*, Roberto Martín-Martín*, Linxi F
 github_doc_root = 'https://github.com/StanfordVL/iGibson'
 
 # The short X.Y version
-version = gibson2.__version__
+version = igibson.__version__
 # The full version, including alpha/beta/rc tags
-release = gibson2.__version__
+release = igibson.__version__
 
 sys.path.insert(0, os.path.abspath('../'))
 sys.path.insert(0, os.path.abspath('../../'))

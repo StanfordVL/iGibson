@@ -7,7 +7,7 @@ We developed an easy-to-use iGibson-human interface called **Viewer** for users 
 To play with an example of viewer, you can run the following command:
 
 ```bash
-python -m gibson2.examples.demo.mouse_interaction
+python -m igibson.examples.demo.mouse_interaction
 ```
 ![viewer.png](images/viewer.png)
 
@@ -40,4 +40,4 @@ Mouse control in planning mode
 
 In manipulation and planning modes, a visual indicator will be visualized in the `Viewer` to assist control (e.g. the blue sphere at the bottom in the image above).
 
-Most of the code can be found in [gibson2/render/viewer.py](https://github.com/StanfordVL/iGibson/tree/master/gibson2/render/viewer.py).
+Most of the code can be found in [igibson/render/viewer.py](https://github.com/StanfordVL/iGibson/tree/master/igibson/render/viewer.py).
