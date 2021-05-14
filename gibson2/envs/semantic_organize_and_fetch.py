@@ -1,5 +1,6 @@
 from gibson2.envs.igibson_env import iGibsonEnv
 from gibson2.tasks.semantic_rearrangement_task import SemanticRearrangementTask
+from gibson2.utils.motion_planning_wrapper import MotionPlanningWrapper
 import numpy as np
 import pybullet as p
 
@@ -32,10 +33,12 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
+        motion_planning=False,
     ):
         # Store other internal variables
         self.task = None
         self.task_mode = task_mode
+        self.motion_planning = motion_planning
 
         # Run super init
         super().__init__(
@@ -49,13 +52,14 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
             automatic_reset=automatic_reset,
         )
 
+        if motion_planning:
+            self.motion_planner = MotionPlanningWrapper(self)
+
     def load(self):
         """
         Load environment
         """
         # Make sure "task" in config isn't filled in, since we write directly to it here
-        assert "task" not in self.config, "Task type is already pre-determined for this env," \
-                                          "please remove key from config file!"
         self.config["task"] = "semantic_rearrangement"
 
         # Run super call

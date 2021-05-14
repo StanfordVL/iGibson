@@ -576,7 +576,7 @@ class FetchGripper(LocomotorRobot):
                     else:
                         tilt_diff = (desired_pixel[1] - ee_pixel_coords[1]) / regularization
                         self.head_error_planning.append((0.0, tilt_diff))
-                elif ee_pixel_coords[0] > boundary_of_movement: 
+                elif ee_pixel_coords[0] > boundary_of_movement:
                     wheel_action = np.array([0., 0.2])
                 elif ee_pixel_coords[0] < -boundary_of_movement:
                     wheel_action = np.array([0., -0.2])
@@ -749,3 +749,15 @@ class FetchGripper(LocomotorRobot):
         self.calc_state()
         self.tucked = np.linalg.norm(self.joint_position[self.arm_joint_action_idx] -
                                      self.tucked_arm_joint_positions) < 0.1
+
+    def get_end_effector_position(self):
+        """
+        Get end-effector position
+        """
+        return self.parts['gripper_link'].get_position()
+
+    def end_effector_part_index(self):
+        """
+        Get end-effector link id
+        """
+        return self.parts['gripper_link'].body_part_index
