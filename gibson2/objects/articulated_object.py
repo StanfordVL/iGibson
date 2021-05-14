@@ -1137,3 +1137,7 @@ class URDFObject(StatefulObject):
         """
         for meta_link_name, link_info in meta_links.items():
             add_fixed_link(self.object_tree, meta_link_name, link_info)
+
+    def set_room_floor(self, room_floor):
+        assert self.category == 'floors'
+        self.room_floor = room_floor

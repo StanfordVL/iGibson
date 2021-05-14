@@ -21,7 +21,9 @@ class RoomFloor(object):
         self.room_instance = room_instance
         self.floor_obj = floor_obj
 
-    def __get_attr__(self, item):
+    def __getattr__(self, item):
+        if item == 'states':
+            self.floor_obj.set_room_floor(self)
         return getattr(self.floor_obj, item)
 
 
