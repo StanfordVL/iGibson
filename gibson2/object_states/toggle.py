@@ -51,15 +51,23 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         vr_hands = []
         for object in simulator.scene.get_objects():
             if object.__class__.__name__ == "VrHand":
-               vr_hands.append(object)
+                vr_hands.append(object)
 
         hand_in_marker = False
         # detect marker and hand interaction
         for hand in vr_hands:
             if (np.linalg.norm(np.array(hand.get_position()) - np.array(button_position_on_object))
                     < _TOGGLE_DISTANCE_THRESHOLD):
-                # hand in marker
                 hand_in_marker = True
+                break
+            for finger in hand.finger_tip_link_idxs:
+                finger_link_state = p.getLinkState(hand.body_id, finger)
+                link_pos = finger_link_state[0]
+                if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
+                        < _TOGGLE_DISTANCE_THRESHOLD):
+                    hand_in_marker = True
+                    break
+            if hand_in_marker:
                 break
 
         if hand_in_marker:
