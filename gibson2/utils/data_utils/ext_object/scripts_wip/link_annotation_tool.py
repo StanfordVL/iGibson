@@ -1,5 +1,8 @@
+import itertools
 import json
 import os
+
+from tasknet.object_taxonomy import ObjectTaxonomy
 
 import gibson2
 from pynput import keyboard
@@ -14,9 +17,27 @@ from gibson2.utils.assets_utils import download_assets
 
 download_assets()
 
-CATEGORIES = ["stove", "oven", "microwave", "sink"]
-LINK_NAME = "toggle_button"
-SKIP_EXISTING = True
+ABILITY_NAME = "cleaningTool"
+CATEGORIES = [
+    "broom",
+    "carpet_sweeper",
+    "scraper",
+    "scrub_brush",
+    "toothbrush",
+    "vacuum",
+]
+USE_ABILITY_TO_FETCH_CATEGORIES = False
+
+LINK_NAME = "cleaning_tool_area"
+IS_CUBOID = True
+SKIP_EXISTING = False
+
+OBJECT_TAXONOMY = ObjectTaxonomy()
+
+
+def get_categories():
+    dir = os.path.join(gibson2.ig_dataset_path, 'objects')
+    return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
 
 
 def get_category_directory(category):
@@ -30,9 +51,47 @@ def get_obj(folder):
 def get_metadata_filename(objdir):
     return os.path.join(objdir, "misc", "metadata.json")
 
+def get_corner_positions(base, rotation, size):
+    quat = p.getQuaternionFromEuler(rotation)
+    options = [-1, 1]
+    outputs = []
+    for pos in itertools.product(options, options, options):
+        res = p.multiplyTransforms(base, quat, np.array(pos) * size / 2., [0, 0, 0, 1])
+        outputs.append(res)
+    return outputs
 
 def main():
-    for cat in CATEGORIES:
+    # Collect the relevant categories.
+    categories = CATEGORIES
+    if USE_ABILITY_TO_FETCH_CATEGORIES:
+        categories = []
+        for cat in get_categories():
+            # Check that the category has this label.
+            klass = OBJECT_TAXONOMY.get_class_name_from_igibson_category(cat)
+            if not klass:
+                continue
+
+            if not OBJECT_TAXONOMY.has_ability(klass, ABILITY_NAME):
+                continue
+
+            categories.append(cat)
+
+    print("%d categories: %s" % (len(categories), ", ".join(categories)))
+
+    # Now collect the actual objects.
+    objects = []
+    objects_by_category = {}
+    for cat in categories:
+        cd = get_category_directory(cat)
+        objects_by_category[cat] = []
+        for objdir in os.listdir(cd):
+            objdirfull = os.path.join(cd, objdir)
+            objects.append(objdirfull)
+            objects_by_category[cat].append(objdirfull)
+
+    print("%d objects.\n" % len(objects))
+
+    for cat in categories:
         cd = get_category_directory(cat)
         for objdir in os.listdir(cd):
             objdirfull = os.path.join(cd, objdir)
@@ -41,7 +100,9 @@ def main():
             with open(mfn, "r") as mf:
                 meta = json.load(mf)
 
-            offset = np.array([0., 0., 1.])
+            offset = np.array([0., 0., 0.])
+            size = np.array([0., 0., 0.])
+            rotation = np.array([0., 0., 0.])
 
             existing = False
             if "links" in meta and LINK_NAME in meta["links"]:
@@ -51,7 +112,10 @@ def main():
                     continue
 
                 existing = True
-                offset = np.array(meta["links"][LINK_NAME])
+                offset = np.array(meta["links"][LINK_NAME]["xyz"])
+                if IS_CUBOID:
+                    size = np.array(meta["links"][LINK_NAME]["size"])
+                    rotation = np.array(meta["links"][LINK_NAME]["rpy"])
 
             s = Simulator(mode='gui')
             scene = EmptyScene()
@@ -61,17 +125,30 @@ def main():
             obj_pos = np.array([0., 0., 1.])
             obj.set_position(obj_pos)
 
-            m = VisualMarker(radius=0.02, rgba_color=[0, 1, 0, 0.5])
+            dim = max(obj.bounding_box)
+            marker_size = dim / 100.
+            steps = [dim * 0.1, dim * 0.01, dim * 0.001]
+            rot_steps = [np.deg2rad(1), np.deg2rad(5), np.deg2rad(10)]
+
+            m = VisualMarker(radius=marker_size, rgba_color=[0, 0, 1, 0.5])
             s.import_object(m)
+            if IS_CUBOID:
+                initial_poses = get_corner_positions(obj_pos + offset, rotation, size)
+                markers = [
+                    VisualMarker(radius=marker_size, rgba_color=[0, 1, 0, 0.5])
+                    for _ in initial_poses
+                ]
+                [s.import_object(m) for m in markers]
+                for marker, (pos, orn) in zip(markers, initial_poses):
+                    marker.set_position_orientation(pos, orn)
 
-            if existing:
-                e = VisualMarker(radius=0.02, rgba_color=[1, 0, 0, 0.5])
-                s.import_object(e)
-                e.set_position(obj_pos + offset)
+            # if existing:
+            #     e = VisualMarker(radius=0.02, rgba_color=[1, 0, 0, 0.5])
+            #     s.import_object(e)
+            #     e.set_position(obj_pos + offset)
 
-            m.set_position(obj_pos + offset)
-
-            step_size = 0.01
+            step_size = steps[1]
+            rot_step_size = rot_steps[1]
             done = False
             while not done:
                 with keyboard.Events() as events:
@@ -97,21 +174,72 @@ def main():
                         elif event.key.char == "z":
                             print("Moving down one")
                             offset += np.array([0, 0, -1]) * step_size
+                        elif event.key.char == "1":
+                            print("Sizing forward one")
+                            size += np.array([0, 1, 0]) * step_size
+                        elif event.key.char == "2":
+                            print("Sizing back one")
+                            size += np.array([0, -1, 0]) * step_size
+                        elif event.key.char == "4":
+                            print("Sizing left one")
+                            size += np.array([-1, 0, 0]) * step_size
+                        elif event.key.char == "5":
+                            print("Sizing right one")
+                            size += np.array([1, 0, 0]) * step_size
+                        elif event.key.char == "7":
+                            print("Sizing up one")
+                            size += np.array([0, 0, 1]) * step_size
+                        elif event.key.char == "8":
+                            print("Sizing down one")
+                            size += np.array([0, 0, -1]) * step_size
+                        elif event.key.char == "t":
+                            print("Rotation +X one")
+                            rotation += np.array([1, 0, 0]) * rot_step_size
+                        elif event.key.char == "y":
+                            print("Rotation -X one")
+                            rotation += np.array([-1, 0, 0]) * rot_step_size
+                        elif event.key.char == "u":
+                            print("Rotation +Y one")
+                            rotation += np.array([0, 1, 0]) * rot_step_size
+                        elif event.key.char == "i":
+                            print("Rotation -Y one")
+                            rotation += np.array([0, -1, 0]) * rot_step_size
+                        elif event.key.char == "o":
+                            print("Rotation +Z one")
+                            rotation += np.array([0, 0, 1]) * rot_step_size
+                        elif event.key.char == "p":
+                            print("Rotation -Z one")
+                            rotation += np.array([0, 0, -1]) * rot_step_size
                         elif event.key.char == "h":
-                            print("Sizing to 0.1")
-                            step_size = 0.1
+                            print("Step to 0.1")
+                            step_size = steps[0]
+                            rot_step_size = rot_steps[0]
                         elif event.key.char == "j":
-                            print("Sizing to 0.01")
-                            step_size = 0.01
+                            print("Step to 0.01")
+                            step_size = steps[1]
+                            rot_step_size = rot_steps[1]
                         elif event.key.char == "k":
-                            print("Sizing to 0.001")
-                            step_size = 0.001
+                            print("Step to 0.001")
+                            step_size = steps[2]
+                            rot_step_size = rot_steps[2]
+                        elif event.key.char == "b":
+                            print("Updating box to match bounding box.")
+                            offset = np.array([0., 0., 0.])
+                            rotation = np.array([0., 0., 0.])
+                            size = np.array(obj.bounding_box, dtype=float)
                         elif event.key.char == "c":
                             done = True
                             break
 
                         print("New position:", offset)
                         m.set_position(obj_pos + offset)
+                        if IS_CUBOID:
+                            print("New rotation:", rotation)
+                            print("New size:", size)
+                            print("")
+                            poses = get_corner_positions(obj_pos + offset, rotation, size)
+                            for marker, (pos, orn) in zip(markers, poses):
+                                marker.set_position_orientation(pos, orn)
 
             # Record it into the meta file.
             if 'links' not in meta:
@@ -120,12 +248,21 @@ def main():
             dynamics_info = p.getDynamicsInfo(obj.get_body_id(), -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
 
-            rel_position, _ = p.multiplyTransforms(
-                offset, [0, 0, 0, 1], inertial_pos, inertial_orn)
+            rel_position, rel_orn = p.multiplyTransforms(
+                offset, p.getQuaternionFromEuler(rotation), inertial_pos, inertial_orn)
 
-            meta['links'][LINK_NAME] = list(rel_position)
-            px, py, pz = tuple(rel_position)
-            print("('%s', '%s'): [%.3f, %.3f, %.3f]," % (cat, objdir, px, py, pz))
+            if IS_CUBOID:
+                meta['links'][LINK_NAME] = {
+                    "geometry": "box",
+                    "size": list(size),
+                    "xyz": list(rel_position),
+                    "rpy": list(p.getEulerFromQuaternion(rel_orn))
+                }
+            else:
+                meta['links'][LINK_NAME] = {
+                    "geometry": "box",
+                    "xyz": list(rel_position),
+                }
 
             with open(mfn, "w") as mf:
                 json.dump(meta, mf)
