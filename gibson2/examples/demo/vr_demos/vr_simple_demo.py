@@ -40,9 +40,11 @@ def main():
                                                 enable_pbr=True,
                                                 msaa=True,
                                                 light_dimming_factor=1.0)
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings(use_vr=True))
+    s = Simulator(mode='iggui',
+                 rendering_settings=vr_rendering_settings,
+                 vr_settings=VrSettings(use_vr=True),
+                 image_width=512,
+                 image_height=512)
 
     scene = InteractiveIndoorScene('Rs_int', load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
     s.import_ig_scene(scene)
@@ -88,17 +90,31 @@ def main():
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
-    bvr_robot = BehaviorRobot(s)
+    bvr_robot = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True)
     s.import_behavior_robot(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
-    bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
+    bvr_robot.set_position_orientation([0, 0, 0.3], [0, 0,  0.383, 0.924])
+
+
 
     # Main simulation loop
+    step = 0
     while True:
         s.step()
 
+        action = np.zeros((28,))
         # Update VR agent using action data from simulator
-        bvr_robot.update(s.gen_vr_robot_action())
+
+        if step < 5:
+            action[19] = 1
+            action[27] = 1
+            # activate
+
+        action[0] = 0.001
+        # move forward
+
+        bvr_robot.update(action)
+        step += 1
 
     s.disconnect()
 
