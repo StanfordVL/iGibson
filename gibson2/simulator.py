@@ -17,9 +17,9 @@ from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem, Particle
-from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d, multQuatLists
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
-from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES
+from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset, calc_z_rot_from_right
 
 import pybullet as p
 import gibson2
@@ -124,16 +124,18 @@ class Simulator:
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
         # Duration of a vsync frame - assumes 90Hz refresh rate
-        self.vsync_frame_dur = 11.11e-3 
+        self.vsync_frame_dur = 11.11e-3
         # Get expected number of vsync frames per iGibson frame
         # Note: currently assumes a 90Hz VR system
         self.vsync_frame_num = int(
             round(self.render_timestep / self.vsync_frame_dur))
         # Total amount of time we want non-blocking actions to take each frame
         # Leave a small amount of time before the last vsync, just in case we overrun
-        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
+        self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (
+            5e-3 if self.vr_settings.curr_device == 'OCULUS' else 10e-3)
         # Timing variables for functions called outside of step() that also take up frame time
         self.frame_end_time = None
+        self.main_vr_robot = None
 
         # Variables for data saving and replay in VR
         self.last_physics_timestep = -1
@@ -148,9 +150,10 @@ class Simulator:
         self.body_links_awake = 0
         # First sync always sync all objects (regardless of their sleeping states)
         self.first_sync = True
-        # List of categories that can be grasped by assisted grasping
-        self.assist_grasp_category_allow_list = []
+        # Set of categories that can be grasped by assisted grasping
+        self.assist_grasp_category_allow_list = set()
         self.gen_assisted_grasping_categories()
+        self.assist_grasp_mass_thresh = 10.0
 
         self.object_state_types = get_states_by_dependency_order()
 
@@ -299,42 +302,29 @@ class Simulator:
             'import_ig_scene can only be called with InteractiveIndoorScene'
         new_object_ids = scene.load()
         self.objects += new_object_ids
-        if scene.texture_randomization:
-            # use randomized texture
-            for body_id, visual_mesh_to_material in \
-                    zip(new_object_ids, scene.visual_mesh_to_material):
-                shadow_caster = True
+
+        for body_id, visual_mesh_to_material in \
+                zip(new_object_ids, scene.visual_mesh_to_material):
+            use_pbr = True
+            use_pbr_mapping = True
+            shadow_caster = True
+            if scene.scene_source == 'IG':
+                if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
+                    use_pbr = False
+                    use_pbr_mapping = False
                 if scene.objects_by_id[body_id].category == 'ceilings':
                     shadow_caster = False
-                class_id = self.class_name_to_class_id.get(
-                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
-                self.load_articulated_object_in_renderer(
-                    body_id,
-                    class_id=class_id,
-                    visual_mesh_to_material=visual_mesh_to_material,
-                    shadow_caster=shadow_caster,
-                    physical_object=scene.objects_by_id[body_id])
-        else:
-            # use default texture
-            for body_id in new_object_ids:
-                use_pbr = True
-                use_pbr_mapping = True
-                shadow_caster = True
-                if scene.scene_source == 'IG':
-                    if scene.objects_by_id[body_id].category in ['walls', 'floors', 'ceilings']:
-                        use_pbr = False
-                        use_pbr_mapping = False
-                if scene.objects_by_id[body_id].category == 'ceilings':
-                    shadow_caster = False
-                class_id = self.class_name_to_class_id.get(
-                    scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
-                self.load_articulated_object_in_renderer(
-                    body_id,
-                    class_id=class_id,
-                    use_pbr=use_pbr,
-                    use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster,
-                    physical_object=scene.objects_by_id[body_id])
+            class_id = self.class_name_to_class_id.get(
+                scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
+            self.load_articulated_object_in_renderer(
+                body_id,
+                class_id=class_id,
+                visual_mesh_to_material=visual_mesh_to_material,
+                use_pbr=use_pbr,
+                use_pbr_mapping=use_pbr_mapping,
+                shadow_caster=shadow_caster,
+                physical_object=scene.objects_by_id[body_id])
+
         self.scene = scene
 
         # Load the states of all the objects in the scene.
@@ -397,11 +387,12 @@ class Simulator:
             new_object_pb_ids = [new_object_pb_id_or_ids]
         self.objects += new_object_pb_ids
 
-        for new_object_pb_id in new_object_pb_ids:
+        for i, new_object_pb_id in enumerate(new_object_pb_ids):
             if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
-                visual_mesh_to_material = None
-                if hasattr(obj, 'visual_mesh_to_material'):
-                    visual_mesh_to_material = obj.visual_mesh_to_material
+                if isinstance(obj, ArticulatedObject):
+                    visual_mesh_to_material = None
+                else:
+                    visual_mesh_to_material = obj.visual_mesh_to_material[i]
                 self.load_articulated_object_in_renderer(
                     new_object_pb_id,
                     class_id,
@@ -991,6 +982,8 @@ class Simulator:
         self.perform_vr_start_pos_move()
         # Update VR data and wait until 3ms before the next vsync
         self.renderer.update_vr_data()
+        # Update VR system data - eg. offsets, haptics, etc.
+        self.vr_system_update()
         vr_system_dur = time.perf_counter() - vr_system_start
 
         # Calculate final frame duration
@@ -1017,40 +1010,6 @@ class Simulator:
 
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
-
-    def step_block_test(self, sleep_time):
-        """
-        Function that sleeps and renders simple scene to VR, to figure
-        out relationship between frame time and VR blocking time.
-        """
-        non_vr_start = time.perf_counter()
-        # Takes less than 3ms
-        render_start_time = time.perf_counter()
-        for _ in range(1):
-            p.stepSimulation()
-        self.sync()
-        render_dur = time.perf_counter() - render_start_time
-
-        # Sleep for remainder of frame
-        # First frame is invalid, so return None
-        if sleep_time < render_dur:
-            return (None, None)
-
-        time.sleep(sleep_time - render_dur)
-        non_vr_dur = time.perf_counter() - non_vr_start
-
-        # Do VR system stuff
-        vr_system_start = time.perf_counter()
-        self.sync_vr_compositor()
-        self.poll_vr_events()
-        self.fix_eye_tracking_value()
-        self.perform_vr_start_pos_move()
-        self.renderer.update_vr_data()
-        vr_system_dur = time.perf_counter() - vr_system_start
-
-        # Return Vr system duration to user, as well as non-vr frame time
-        # Values are in ms
-        return (vr_system_dur * 1000, non_vr_dur * 1000)
 
     def step(self, print_stats=False):
         """
@@ -1080,6 +1039,227 @@ class Simulator:
             self.viewer.update()
         if self.first_sync:
             self.first_sync = False
+
+    def vr_system_update(self):
+        """
+        Updates the VR system for a single frame. This includes moving the vr offset,
+        adjusting the user's height based on button input, and triggering haptics.
+        """
+        # Update VR offset using appropriate controller
+        if self.vr_settings.touchpad_movement:
+            vr_offset_device = '{}_controller'.format(self.vr_settings.movement_controller)
+            is_valid, _, _ = self.get_data_for_vr_device(vr_offset_device)
+            if is_valid:
+                _, touch_x, touch_y = self.get_button_data_for_controller(vr_offset_device)
+                new_offset = calc_offset(self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
+                self.set_vr_offset(new_offset)
+
+        # Adjust user height based on y-axis (vertical direction) touchpad input
+        vr_height_device = 'left_controller' if self.vr_settings.movement_controller == 'right' else 'right_controller'
+        is_height_valid, _, _ = self.get_data_for_vr_device(vr_height_device)
+        if is_height_valid:
+            curr_offset = self.get_vr_offset()
+            hmd_height = self.get_hmd_world_pos()[2]
+            _, _, height_y = self.get_button_data_for_controller(vr_height_device)
+            if height_y < -0.7:
+                vr_z_offset = -0.01
+                if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
+                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+            elif height_y > 0.7:
+                vr_z_offset = 0.01
+                if hmd_height + curr_offset[2] + vr_z_offset <= self.vr_settings.height_bounds[1]:
+                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])                
+
+        # Update haptics for body and hands
+        if self.main_vr_robot:
+            vr_body_id = self.main_vr_robot.parts['body'].body_id
+            vr_hands = [('left_controller', self.main_vr_robot.parts['left_hand']), ('right_controller', self.main_vr_robot.parts['right_hand'])]
+
+            # Check for body haptics
+            wall_ids = self.get_category_ids('walls')
+            for c_info in p.getContactPoints(vr_body_id):
+                if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
+                    for controller in ['left_controller', 'right_controller']:
+                        is_valid, _, _ = self.get_data_for_vr_device(controller)
+                        if is_valid:
+                            # Use 90% strength for body to warn user of collision with wall
+                            self.trigger_haptic_pulse(controller, 0.9)
+
+            # Check for hand haptics
+            for hand_device, hand_obj in vr_hands:
+                is_valid, _, _ = self.get_data_for_vr_device(hand_device)
+                if is_valid:
+                    if len(p.getContactPoints(hand_obj.body_id)) > 0 or (hasattr(hand_obj, 'object_in_hand') and hand_obj.object_in_hand):
+                        # Only use 30% strength for normal collisions, to help add realism to the experience
+                        self.trigger_haptic_pulse(hand_device, 0.3)
+
+    def register_main_vr_robot(self, vr_robot):
+        """
+        Register the robot representing the VR user.
+        """
+        self.main_vr_robot = vr_robot
+
+    def import_behavior_robot(self, bvr_robot):
+        """
+        Import registered behavior robot into the simulator.
+        """
+        for part_name, part_obj in bvr_robot.parts.items():
+            self.import_object(part_obj, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+            if bvr_robot.use_ghost_hands and part_name in ['left_hand', 'right_hand']:
+                # Ghost hands don't cast shadows
+                self.import_object(part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+            if part_name == 'eye':
+                # BREye doesn't cast shadows either
+                self.import_object(part_obj.head_visual_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+    
+    def gen_vr_data(self):
+        """
+        Generates a VrData object containing all of the data required to describe the VR system in the current frame.
+        This data is used to power the BehaviorRobot each frame.
+        """
+        if not self.can_access_vr_context:
+            raise RuntimeError('Unable to get VR data for current frame since VR system is not being used!')
+
+        v = dict()
+        for device in VR_DEVICES:
+            is_valid, trans, rot = self.get_data_for_vr_device(device)
+            device_data = [is_valid, trans.tolist(), rot.tolist()]
+            device_data.extend(self.get_device_coordinate_system(device))
+            v[device] = device_data
+            if device in VR_CONTROLLERS:
+                v['{}_button'.format(device)] = self.get_button_data_for_controller(device)
+
+        # Store final rotations of hands, with model rotation applied
+        for hand in ['right', 'left']:
+            # Base rotation quaternion
+            base_rot = self.main_vr_robot.parts['{}_hand'.format(hand)].base_rot
+            # Raw rotation of controller
+            controller_rot = v['{}_controller'.format(hand)][2]
+            # Use dummy translation to calculation final rotation
+            final_rot = p.multiplyTransforms([0,0,0], controller_rot, [0,0,0], base_rot)[1]
+            v['{}_controller'.format(hand)].append(final_rot)
+
+        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(self.vr_settings.torso_tracker_serial)
+        v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
+        v['eye_data'] = self.get_eye_tracking_data()
+        v['event_data'] = self.get_vr_events()
+        reset_actions = []
+        for controller in VR_CONTROLLERS:
+            reset_actions.append(self.query_vr_event(controller, 'reset_agent'))
+        v['reset_actions'] = reset_actions
+        v['vr_positions'] = [self.get_vr_pos().tolist(), list(self.get_vr_offset())]
+
+        return VrData(v)
+
+    def gen_vr_robot_action(self):
+        """
+        Generates an action for the BehaviorRobot to perform based on VrData collected this frame.
+
+        Action space (all non-normalized values that will be clipped if they are too large)
+        * See BehaviorRobot.py for details on the clipping thresholds for 
+        Body:
+        - 6DOF pose delta - relative to world frame
+        Eye:
+        - 6DOF pose delta - relative to body frame (where the body will be after applying this frame's action)
+        Left hand, right hand (in that order):
+        - 6DOF pose delta - relative to body frame (same as above)
+        - Trigger fraction delta
+        - Action reset value
+
+        Total size: 28
+        """
+        # Actions are stored as 1D numpy array
+        action = np.zeros((28,))
+
+        # Get VrData for the current frame
+        v = self.gen_vr_data()
+
+        # Update body action space
+        hmd_is_valid, hmd_pos, hmd_orn, hmd_r = v.query('hmd')[:4]
+        torso_is_valid, torso_pos, torso_orn = v.query('torso_tracker')
+        vr_body = self.main_vr_robot.parts['body']
+        prev_body_pos, prev_body_orn = vr_body.get_position_orientation()
+        inv_prev_body_pos, inv_prev_body_orn = p.invertTransform(prev_body_pos, prev_body_orn)
+
+        if self.vr_settings.using_tracked_body:
+            if torso_is_valid:
+                des_body_pos, des_body_orn = torso_pos, torso_orn
+            else:
+                des_body_pos, des_body_orn = prev_body_pos, prev_body_orn
+        else:
+            if hmd_is_valid:
+                des_body_pos, des_body_orn = hmd_pos, p.getQuaternionFromEuler([0, 0, calc_z_rot_from_right(hmd_r)])
+            else:
+                des_body_pos, des_body_orn = prev_body_pos, prev_body_orn
+
+        body_delta_pos, body_delta_orn = p.multiplyTransforms(inv_prev_body_pos, inv_prev_body_orn, des_body_pos, des_body_orn)
+        action[:3] = np.array(body_delta_pos)
+        action[3:6] = np.array(p.getEulerFromQuaternion(body_delta_orn))
+
+        # Get new body position so we can calculate correct relative transforms for other VR objects
+        clipped_body_delta_pos, clipped_body_delta_orn = vr_body.clip_delta_pos_orn(action[:3], action[3:6])
+        clipped_body_delta_orn = p.getQuaternionFromEuler(clipped_body_delta_orn)
+        new_body_pos, new_body_orn = p.multiplyTransforms(prev_body_pos, prev_body_orn, clipped_body_delta_pos, clipped_body_delta_orn)
+        # Also calculate its inverse for further local transform calculations
+        inv_new_body_pos, inv_new_body_orn = p.invertTransform(new_body_pos, new_body_orn)
+
+        # Update action space for other VR objects
+        body_relative_parts = ['right', 'left', 'eye']
+        for part_name in body_relative_parts:
+            vr_part = self.main_vr_robot.parts[part_name] if part_name == 'eye' else self.main_vr_robot.parts['{}_hand'.format(part_name)]
+
+            # Process local transform adjustments
+            prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
+            prev_local_pos, prev_local_orn = vr_part.local_pos, vr_part.local_orn
+            inv_prev_local_pos, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
+            if part_name == 'eye':
+                valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
+            else:
+                valid, world_pos, _ = v.query('{}_controller'.format(part_name))[:3]
+                # Need rotation of the model so it will appear aligned with the physical controller in VR
+                world_orn = v.query('{}_controller'.format(part_name))[6]
+
+            # Keep in same world position as last frame if controller/tracker data is not valid
+            if not valid:
+                world_pos, world_orn = prev_world_pos, prev_world_orn
+
+            # Get desired local position and orientation transforms
+            des_local_pos, des_local_orn = p.multiplyTransforms(inv_new_body_pos, inv_new_body_orn, world_pos, world_orn)
+
+            delta_local_pos, delta_local_orn = p.multiplyTransforms(inv_prev_local_pos, inv_prev_local_orn, des_local_pos, des_local_orn)
+            delta_local_orn = p.getEulerFromQuaternion(delta_local_orn)
+
+            if part_name == 'eye':
+                action[6:9] = np.array(delta_local_pos)
+                action[9:12] = np.array(delta_local_orn)
+            elif part_name == 'left':
+                action[12:15] = np.array(delta_local_pos)
+                action[15:18] = np.array(delta_local_orn)
+            else:
+                action[20:23] = np.array(delta_local_pos)
+                action[23:26] = np.array(delta_local_orn)
+
+            # Process trigger fraction and reset for controllers
+            if part_name in ['right', 'left']:
+                prev_trig_frac = vr_part.trig_frac
+                if valid:
+                    trig_frac = v.query('{}_controller_button'.format(part_name))[0]
+                    delta_trig_frac = trig_frac - prev_trig_frac
+                else:
+                    delta_trig_frac = 0.0
+                if part_name == 'left':
+                    action[18] = delta_trig_frac
+                else:
+                    action[26] = delta_trig_frac
+                # If we reset, action is 1, otherwise 0
+                reset_action = v.query('reset_actions')[0] if part_name == 'left' else v.query('reset_actions')[1]
+                reset_action_val = 1.0 if reset_action else 0.0
+                if part_name == 'left':
+                    action[19] = reset_action_val
+                else:
+                    action[27] = reset_action_val
+
+        return action
 
     def sync_vr_compositor(self):
         """
@@ -1121,7 +1301,7 @@ class Simulator:
         avg_category_spec = get_ig_avg_category_specs()
         for k, v in avg_category_spec.items():
             if v['enable_ag']:
-                self.assist_grasp_category_allow_list.append(k)
+                self.assist_grasp_category_allow_list.add(k)
 
     def can_assisted_grasp(self, body_id, c_link):
         """
@@ -1130,7 +1310,7 @@ class Simulator:
         """
         if not hasattr(self.scene, 'objects_by_id') or body_id not in self.scene.objects_by_id or not hasattr(self.scene.objects_by_id[body_id], 'category') or self.scene.objects_by_id[body_id].category == 'object':
             mass = p.getDynamicsInfo(body_id, c_link)[0]
-            return mass <= self.vr_settings.assist_grasp_mass_thresh
+            return mass <= self.assist_grasp_mass_thresh
         else:
             return self.scene.objects_by_id[body_id].category in self.assist_grasp_category_allow_list
 
@@ -1209,6 +1389,9 @@ class Simulator:
         # Use fourth variable in list to get actual hmd position in space
         is_valid, translation, rotation, _ = self.renderer.vrsys.getDataForVRDevice(
             device_name)
+        if not is_valid:
+            translation = np.array([0, 0, 0])
+            rotation = np.array([0, 0, 0, 1])
         return [is_valid, translation, rotation]
 
     def get_data_for_vr_tracker(self, tracker_serial_number):
@@ -1228,7 +1411,7 @@ class Simulator:
             tracker_serial_number)
         # Set is_valid to false, and assume the user will check for invalid data
         if not tracker_data:
-            return [False, [0, 0, 0], [0, 0, 0, 0]]
+            return [False, np.array([0, 0, 0]), np.array([0, 0, 0, 1])]
 
         is_valid, translation, rotation = tracker_data
         return [is_valid, translation, rotation]
@@ -1257,8 +1440,12 @@ class Simulator:
             raise RuntimeError(
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
-        trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(
-            controller_name)
+        # Test for validity when acquiring button data
+        if self.get_data_for_vr_device(controller_name)[0]:
+            trigger_fraction, touch_x, touch_y = self.renderer.vrsys.getButtonDataForController(
+                controller_name)
+        else:
+            trigger_fraction, touch_x, touch_y = 0.0, 0.0, 0.0
         return [trigger_fraction, touch_x, touch_y]
 
     def get_scroll_input(self):
@@ -1287,10 +1474,12 @@ class Simulator:
         left pupil diameter, right pupil diameter (both in millimeters)
         Call after getDataForVRDevice, to guarantee that latest HMD transform has been acquired
         """
-        if self.eye_tracking_data is None:
-            return [0, [0, 0, 0], [0, 0, 0], 0, 0]
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.eye_tracking_data
-        return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
+        # Set other values to 0 to avoid very small/large floating point numbers
+        if not is_valid:
+            return [False, [0, 0, 0], [0, 0, 0], 0, 0]
+        else:
+            return [is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter]
 
     def set_vr_start_pos(self, start_pos=None, vr_height_offset=None):
         """
@@ -1312,17 +1501,22 @@ class Simulator:
         # specified instead of overwriting the VR system height output.
         self.vr_height_offset = vr_height_offset
 
-    def set_vr_pos(self, pos=None):
+    def set_vr_pos(self, pos=None, keep_height=False):
         """
         Sets the world position of the VR system in iGibson space
         :param pos: position to set VR system to
+        :param keep_height: whether the current VR height should be kept
         """
         if not self.can_access_vr_context:
             raise RuntimeError(
                 'ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!')
 
         offset_to_pos = np.array(pos) - self.get_hmd_world_pos()
-        self.set_vr_offset(offset_to_pos)
+        if keep_height:
+            curr_offset_z = self.get_vr_offset()[2]
+            self.set_vr_offset([offset_to_pos[0], offset_to_pos[1], curr_offset_z])
+        else:
+            self.set_vr_offset(offset_to_pos)
 
     def get_vr_pos(self):
         """
@@ -1384,39 +1578,6 @@ class Simulator:
 
         self.renderer.vrsys.triggerHapticPulseForDevice(
             device, int(self.max_haptic_duration * strength))
-
-    def gen_vr_data(self):
-        """
-        Generates a VrData object containing all of the data required to describe the VR system in the current frame.
-        This is used in MUVR and to power the VrAgent.
-        """
-        if not self.can_access_vr_context:
-            return VrData()
-
-        v = dict()
-        for device in VR_DEVICES:
-            is_valid, trans, rot = self.get_data_for_vr_device(device)
-            device_data = [[is_valid, trans.tolist(), rot.tolist()]]
-            device_data.extend(self.get_device_coordinate_system(device))
-            if device in VR_CONTROLLERS:
-                device_data.extend(self.get_button_data_for_controller(device))
-            v[device] = device_data
-
-        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(self.vr_settings.torso_tracker_serial)
-        v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
-        v['eye_data'] = self.get_eye_tracking_data()
-        v['event_data'] = self.get_vr_events()
-        v['vr_pos'] = self.get_vr_pos().tolist()
-        v['vr_offset'] = list(self.get_vr_offset())
-        v['vr_settings'] = [
-            self.vr_settings.eye_tracking,
-            self.vr_settings.touchpad_movement,
-            self.vr_settings.movement_controller,
-            self.vr_settings.relative_movement_device,
-            self.vr_settings.movement_speed
-        ]
-
-        return VrData(v)
 
     def set_hidden_state(self, obj, hide=True):
         """

@@ -251,15 +251,29 @@ class ToyEnvInt(object):
             online_sampling=True,
         )
         self.state_id = p.saveState()
+        self.num_body_ids = p.getNumBodies()
+        self.num_particle_systems = len(self.task.simulator.particle_systems)
 
     def step(self, a):
         pass
+
+    def restore_scene(self):
+        for sim_obj in self.task.newly_added_objects:
+            self.task.scene.remove_object(sim_obj)
+
+        self.task.simulator.particle_systems = \
+            self.task.simulator.particle_systems[:self.num_particle_systems]
+
+        for body_id in range(self.num_body_ids, p.getNumBodies()):
+            p.removeBody(body_id)
+
+        p.restoreState(self.state_id)
 
     def sample(self, pddl):
         try:
             self.task.update_problem(
                 "tester", "tester", predefined_problem=pddl)
-            self.task.object_scope['agent.n.01_1'] = self.task.agent.vr_dict['body']
+            self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
@@ -303,29 +317,15 @@ class ToyEnvInt(object):
                 return accept_scene, feedback
 
         if not accept_scene:
-            # self.last_active_time = time.time()
-            for sim_obj in self.task.newly_added_objects:
-                self.task.scene.remove_object(sim_obj)
-                for id in sim_obj.body_ids:
-                    p.removeBody(id)
-            p.restoreState(self.state_id)
+            self.restore_scene()
             return accept_scene, feedback
 
         accept_scene, feedback = self.task.sample(kinematic_only=True)
         if not accept_scene:
-            # self.last_active_time = time.time()
-            for sim_obj in self.task.newly_added_objects:
-                self.task.scene.remove_object(sim_obj)
-                for id in sim_obj.body_ids:
-                    p.removeBody(id)
-            p.restoreState(self.state_id)
+            self.restore_scene()
             return accept_scene, feedback
 
-        for sim_obj in self.task.newly_added_objects:
-            self.task.scene.remove_object(sim_obj)
-            for id in sim_obj.body_ids:
-                p.removeBody(id)
-        p.restoreState(self.state_id)
+        self.restore_scene()
 
         # self.last_active_time = time.time()
         return accept_scene, feedback

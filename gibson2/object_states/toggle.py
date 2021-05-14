@@ -3,6 +3,8 @@ from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.visual_marker import VisualMarker
 import numpy as np
+import pybullet as p
+from gibson2.utils.constants import PyBulletSleepState
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
@@ -48,7 +50,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
         vr_hands = []
         for object in simulator.scene.get_objects():
-            if object.__class__.__name__ == "VrHand":
+            if object.__class__.__name__ == "BRHand":
                vr_hands.append(object)
 
         hand_in_marker = False
@@ -56,8 +58,16 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         for hand in vr_hands:
             if (np.linalg.norm(np.array(hand.get_position()) - np.array(button_position_on_object))
                     < _TOGGLE_DISTANCE_THRESHOLD):
-                # hand in marker
                 hand_in_marker = True
+                break
+            for finger in hand.finger_tip_link_idxs:
+                finger_link_state = p.getLinkState(hand.body_id, finger)
+                link_pos = finger_link_state[0]
+                if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
+                        < _TOGGLE_DISTANCE_THRESHOLD):
+                    hand_in_marker = True
+                    break
+            if hand_in_marker:
                 break
 
         if hand_in_marker:
@@ -79,9 +89,17 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         show_marker = self.visual_marker_on if self.get_value() else self.visual_marker_off
         hidden_marker = self.visual_marker_off if self.get_value() else self.visual_marker_on
 
-        # Place them where they belong. If HUD is off, put both away.
-        show_marker.set_position(button_position_on_object)
-        hidden_marker.set_position(button_position_on_object)
+        # update toggle button position depending if parent is awake
+        dynamics_info = p.getDynamicsInfo(self.body_id, self.link_id)
+
+        if len(dynamics_info) == 13:
+            activation_state = dynamics_info[12]
+        else:
+            activation_state = PyBulletSleepState.AWAKE
+
+        if activation_state == PyBulletSleepState.AWAKE:
+            show_marker.set_position(button_position_on_object)
+            hidden_marker.set_position(button_position_on_object)
 
         if hud_overlay_show_state:
             for instance in show_marker.renderer_instances:

@@ -173,8 +173,14 @@ py::list VRRendererContext::getEyeTrackingData() {
 	dir.append(gibDir.x);
 	dir.append(gibDir.y);
 	dir.append(gibDir.z);
-
-	eyeData.append(eyeTrackingData.isValid);
+	
+	// Set validity to false if eye tracking is not being used
+	if (this->useEyeTracking) {
+		eyeData.append(eyeTrackingData.isValid);
+	}
+	else {
+		eyeData.append(false);
+	}
 	eyeData.append(origin);
 	eyeData.append(dir);
 	eyeData.append(eyeTrackingData.leftPupilDiameter);
@@ -235,8 +241,8 @@ void VRRendererContext::initVR(bool useEyeTracking) {
 	// Set eye tracking boolean
 	this->useEyeTracking = useEyeTracking;
 	if (useEyeTracking) {
-		initAnipal();
 		shouldShutDownEyeTracking = false;
+		initAnipal();
 	}
 }
 
@@ -818,6 +824,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 		"load object into VAO and VBO");
 	pymodule.def("loadTexture", &VRRendererContext::loadTexture, "load texture function");
 	pymodule.def("allocateTexture", &VRRendererContext::allocateTexture, "load texture function");
+	pymodule.def("updateTextureIdArrays", &VRRendererContext::updateTextureIdArrays);
 
 	// class Instance
 	pymodule.def("render_softbody_instance", &VRRendererContext::render_softbody_instance,

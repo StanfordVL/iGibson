@@ -6,7 +6,7 @@ import random
 import math
 import uuid
 from gibson2.object_states.factory import TEXTURE_CHANGE_PRIORITY
-
+import gibson2
 
 class Material(object):
     """
@@ -127,11 +127,14 @@ class ProceduralMaterial(Material):
         self.states.append(state)
 
     def save_transformed_texture(self):
+        save_path = os.path.join(gibson2.ig_dataset_path, 'tmp')
+        os.makedirs(save_path, exist_ok=True)
+
         for state in self.states:
             diffuse_tex_filename = os.path.join(
                 self.material_folder, "DIFFUSE.png")
             diffuse_tex_filename_transformed = os.path.join(
-                '/tmp', str(uuid.uuid4()) + '.png')
+                save_path, str(uuid.uuid4()) + '.png')
             state.create_transformed_texture(diffuse_tex_filename=diffuse_tex_filename,
                                              diffuse_tex_filename_transformed=diffuse_tex_filename_transformed)
             self.texture_filenames[state] = diffuse_tex_filename_transformed

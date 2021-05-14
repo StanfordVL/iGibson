@@ -29,7 +29,7 @@ class IGLogWriter(object):
     end_log_session
     """
 
-    def __init__(self, sim, frames_before_write, log_filepath, task=None, store_vr=False, vr_agent=None, filter_objects=True, profiling_mode=False, log_status=True):
+    def __init__(self, sim, frames_before_write, log_filepath, task=None, store_vr=False, vr_robot=None, filter_objects=True, profiling_mode=False, log_status=True):
         """
         Initializes IGLogWriter
         :param sim: Simulator object
@@ -37,7 +37,7 @@ class IGLogWriter(object):
         :param log_filepath: filepath to save to
         :param task: iGATUS task - will not store task-relevant features if None
         :param store_vr: boolean indicating whether to store VR data
-        :param vr_agent: VrAgent object
+        :param vr_robot: BehaviorRobot object
         :param filter_objects: whether to filter objects
         :param profiling_mode: whether to print out how much time each log-write takes
         :param log_status: whether to log status updates to the console
@@ -54,14 +54,20 @@ class IGLogWriter(object):
         # Reuse online checking calls
         self.task = task
         self.store_vr = store_vr
-        self.vr_agent = vr_agent
+        self.vr_robot = vr_robot
         self.data_map = None
         if self.task:
-            self.obj_body_id_to_name = {obj.body_id[0] if type(obj.body_id) != int else obj.body_id: obj_name for obj_name, obj in self.task.object_scope.items()}
+            self.obj_body_id_to_name = {}
+            for obj_name, obj in self.task.object_scope.items():
+                if hasattr(obj, "body_id"):
+                    self.obj_body_id_to_name[obj.get_body_id()] = obj_name
             self.obj_body_id_to_name_str = dump_config(self.obj_body_id_to_name)
 
         if self.task and self.filter_objects:
-            self.tracked_objects = {obj.body_id[0] if type(obj.body_id) != int else obj.body_id: obj for obj_name, obj in self.task.object_scope.items()}
+            self.tracked_objects = {}
+            for obj_name, obj in self.task.object_scope.items():
+                if hasattr(obj, "body_id"):
+                    self.tracked_objects[obj.get_body_id()] = obj
         else:
             self.tracked_objects = [p.getBodyUniqueId(i)  for i in range(p.getNumBodies())]
 
@@ -113,7 +119,12 @@ class IGLogWriter(object):
                 ['vr', 'vr_button_data', 'right_controller'],
                 ['vr', 'vr_eye_tracking_data'],
                 ['vr', 'vr_event_data', 'left_controller'],
-                ['vr', 'vr_event_data', 'right_controller']
+                ['vr', 'vr_event_data', 'right_controller'],
+                ['vr', 'vr_event_data', 'reset_actions']
+            ])
+        if self.vr_robot:
+            self.name_path_data.extend([
+                ['agent_actions', 'vr_robot']
             ])
 
     def create_data_map(self):
@@ -153,9 +164,9 @@ class IGLogWriter(object):
                 },
                 'vr_device_data': {
                     'hmd': np.full((self.frames_before_write, 17), self.default_fill_sentinel, dtype=self.np_dtype),
-                    'left_controller': np.full((self.frames_before_write, 23 if self.vr_agent else 17), self.default_fill_sentinel, dtype=self.np_dtype),
-                    'right_controller': np.full((self.frames_before_write, 23 if self.vr_agent else 17), self.default_fill_sentinel, dtype=self.np_dtype),
-                    'vr_position_data': np.full((self.frames_before_write, 12 if self.vr_agent else 6), self.default_fill_sentinel, dtype=self.np_dtype),
+                    'left_controller': np.full((self.frames_before_write, 27 if self.vr_robot else 21), self.default_fill_sentinel, dtype=self.np_dtype),
+                    'right_controller': np.full((self.frames_before_write, 27 if self.vr_robot else 21), self.default_fill_sentinel, dtype=self.np_dtype),
+                    'vr_position_data': np.full((self.frames_before_write, 12 if self.vr_robot else 6), self.default_fill_sentinel, dtype=self.np_dtype),
                     'torso_tracker': np.full((self.frames_before_write, 8), self.default_fill_sentinel, dtype=self.np_dtype)
                 },
                 'vr_button_data': {
@@ -165,8 +176,14 @@ class IGLogWriter(object):
                 'vr_eye_tracking_data': np.full((self.frames_before_write, 9), self.default_fill_sentinel, dtype=self.np_dtype),
                 'vr_event_data': {
                     'left_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype),
-                    'right_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype)
+                    'right_controller': np.full((self.frames_before_write, VR_BUTTON_COMBO_NUM), self.default_fill_sentinel, dtype=self.np_dtype),
+                    'reset_actions': np.full((self.frames_before_write, 2), self.default_fill_sentinel, dtype=self.np_dtype)
                 }
+            }
+        
+        if self.vr_robot:
+            self.data_map['agent_actions'] = {
+                'vr_robot': np.full((self.frames_before_write, 28), self.default_fill_sentinel, dtype=self.np_dtype)
             }
 
     def register_action(self, action_path, action_shape):
@@ -288,22 +305,37 @@ class IGLogWriter(object):
         self.data_map['vr']['vr_camera']['right_eye_proj'][self.frame_counter, ...] = self.sim.renderer.P
         self.data_map['vr']['vr_camera']['right_camera_pos'][self.frame_counter, ...] = self.sim.renderer.camera
 
-        if self.vr_agent:
+        if self.vr_robot:
             forces = {
-                'left_controller': p.getConstraintState(self.vr_agent.vr_dict['left_hand'].movement_cid),
-                'right_controller': p.getConstraintState(self.vr_agent.vr_dict['right_hand'].movement_cid),
+                'left_controller': p.getConstraintState(self.vr_robot.parts['left_hand'].movement_cid),
+                'right_controller': p.getConstraintState(self.vr_robot.parts['right_hand'].movement_cid),
             }
         for device in ['hmd', 'left_controller', 'right_controller']:
             is_valid, trans, rot = self.sim.get_data_for_vr_device(device)
             right, up, forward = self.sim.get_device_coordinate_system(device)
             if is_valid is not None:
                 data_list = [is_valid]
-                data_list.extend(trans)
-                data_list.extend(rot)
+                data_list.extend(list(trans))
+                data_list.extend(list(rot))
                 data_list.extend(list(right))
                 data_list.extend(list(up))
                 data_list.extend(list(forward))
-                if self.vr_agent and device in forces:
+                # Add final model rotation for controllers
+                if device == 'left_controller' or device == 'right_controller':
+                    if not self.vr_robot:
+                        # Store identity quaternion if no agent used
+                        data_list.extend([0,0,0,1])
+                    else:
+                        # Calculate model rotation and store
+                        if device == 'left_controller':
+                            base_rot = self.vr_robot.parts['left_hand'].base_rot
+                        else:
+                            base_rot = self.vr_robot.parts['right_hand'].base_rot
+                        controller_rot = rot
+                        # Use dummy translation to calculation final rotation
+                        final_rot = p.multiplyTransforms([0,0,0], controller_rot, [0,0,0], base_rot)[1]   
+                        data_list.extend(final_rot)
+                if self.vr_robot and device in forces:
                     data_list.extend(list(forces[device]))
                 self.data_map['vr']['vr_device_data'][device][self.frame_counter, ...] = np.array(data_list)
 
@@ -322,13 +354,13 @@ class IGLogWriter(object):
         vr_pos_data = []
         vr_pos_data.extend(list(self.sim.get_vr_pos()))
         vr_pos_data.extend(list(self.sim.get_vr_offset()))
-        if self.vr_agent:
-            vr_pos_data.extend(p.getConstraintState(self.vr_agent.vr_dict['body'].movement_cid))
+        if self.vr_robot:
+            vr_pos_data.extend(p.getConstraintState(self.vr_robot.parts['body'].movement_cid))
         self.data_map['vr']['vr_device_data']['vr_position_data'][self.frame_counter, ...] = np.array(
             vr_pos_data)
 
         is_valid, origin, dir, left_pupil_diameter, right_pupil_diameter = self.sim.get_eye_tracking_data()
-        if is_valid is not None:
+        if is_valid:
             eye_data_list = [is_valid]
             eye_data_list.extend(origin)
             eye_data_list.extend(dir)
@@ -347,6 +379,11 @@ class IGLogWriter(object):
         for controller in controller_events.keys():
             bin_button_data = convert_button_data_to_binary(controller_events[controller])
             self.data_map['vr']['vr_event_data'][controller][self.frame_counter, ...] = np.array(bin_button_data)
+
+        reset_actions = []
+        for controller in controller_events.keys():
+            reset_actions.append(self.sim.query_vr_event(controller, 'reset_agent'))
+        self.data_map['vr']['vr_event_data']['reset_actions'][self.frame_counter, ...] = np.array(reset_actions)
 
     def write_pybullet_data_to_map(self):
         """Write all pybullet data to the class' internal map."""
@@ -397,6 +434,9 @@ class IGLogWriter(object):
         self.data_map['goal_status']['unsatisfied'][self.frame_counter] = self.one_hot_encoding(unsatisfied, self.total_goals)
         self.data_map['goal_status']['satisfied'][self.frame_counter] = self.one_hot_encoding(satisfied, self.total_goals)
 
+    def write_agent_data_to_map(self):
+        self.data_map['agent_actions']['vr_robot'][self.frame_counter] = self.vr_robot.dump_action()
+
     # TIMELINE: Call this at the end of each frame (eg. at end of while loop)
     def process_frame(self):
         """Asks the VRLogger to process frame data. This includes:
@@ -409,6 +449,8 @@ class IGLogWriter(object):
         self.write_pybullet_data_to_map()
         if self.task:
             self.write_predicate_data_to_map()
+        if self.vr_robot:
+            self.write_agent_data_to_map()
         self.frame_counter += 1
         self.persistent_frame_count += 1
         if (self.frame_counter >= self.frames_before_write):
@@ -519,12 +561,21 @@ class IGLogReader(object):
     def get_vr_data(self):
         """
         Returns VR for the current frame as a VrData object. This can be indexed
-        into to analyze individual values, or can be passed into the VrAgent to drive
+        into to analyze individual values, or can be passed into the BehaviorRobot to drive
         its actions for a single frame.
         """
         # Update VrData with new HF data
         self.vr_data.refresh_action_replay_data(self.hf, self.frame_counter)
         return self.vr_data
+
+    def get_agent_action(self, agent_name):
+        """
+        Gets action for agent with a specific name.
+        """
+        agent_action_path = 'agent_actions/{}'.format(agent_name)
+        if agent_action_path not in self.hf:
+            raise RuntimeError('Unable to find agent action path: {} in saved HDF5 file'.format(agent_action_path))
+        return self.hf[agent_action_path][self.frame_counter]
 
     def read_value(self, value_path):
         """Reads any saved value at value_path for the current frame.

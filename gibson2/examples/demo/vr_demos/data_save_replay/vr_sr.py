@@ -25,9 +25,8 @@ from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.objects.visual_marker import VisualMarker
-from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2.utils.ig_logging import IGLogWriter, IGLogReader
 from gibson2 import assets_path
@@ -70,12 +69,10 @@ def run_action_sr(mode):
     # VR system settings - loaded from HDF5 file
     if not is_save:
         vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(VR_LOG_PATH, '/metadata/vr_settings'))
-        vr_settings.turn_off_vr_mode()
+        vr_settings.turn_on_companion_window()
     else:
-        vr_settings = VrSettings()
+        vr_settings = VrSettings(use_vr=True)
 
-    # Comment this out to use torso tracker for HTC Vive
-    vr_settings.use_untracked_body()
     s = Simulator(mode='vr', 
                 rendering_settings=vr_rendering_settings, 
                 vr_settings=vr_settings)
@@ -83,13 +80,19 @@ def run_action_sr(mode):
     s.import_ig_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    # Create a VrAgent and it will handle all initialization and importing under-the-hood
+    # Note: uncomment these lines during replay to see the scene from an external perspective
+    #camera_pose = np.array([0, 0, 1])
+    #view_direction = np.array([0, -1, 0])
+    #s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+    #s.renderer.set_fov(90)
+
+    # Create a BehaviorRobot and it will handle all initialization and importing under-the-hood
     # Data replay uses constraints during both save and replay modes
-    vr_agent = VrAgent(s)
-    
-    if is_save:
-        # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
-        s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
+    # Note: set show_visual_head to True upon replay to see the VR head
+    bvr_robot = BehaviorRobot(s, show_visual_head=False)
+    s.import_behavior_robot(bvr_robot)
+    s.register_main_vr_robot(bvr_robot)
+    bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
     # Objects to interact with
     objects = [
@@ -126,11 +129,6 @@ def run_action_sr(mode):
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    for i in range(3):
-        obj = YCBObject('003_cracker_box')
-        s.import_object(obj)
-        obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
-
     obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
         'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                             scale=2)
@@ -141,7 +139,7 @@ def run_action_sr(mode):
 
     if mode == 'save':
         # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
-        log_writer = IGLogWriter(s, frames_before_write=200, store_vr=True, log_filepath=VR_LOG_PATH, log_status=False)
+        log_writer = IGLogWriter(s, frames_before_write=200, store_vr=True, log_filepath=VR_LOG_PATH, vr_robot=bvr_robot, log_status=False)
 
         # Save a single button press as a mock action that demonstrates action-saving capabilities.
         log_writer.register_action(mock_vr_action_path, (1,))
@@ -156,13 +154,13 @@ def run_action_sr(mode):
     if is_save:
         # Main simulation loop - run for as long as the user specified
         for i in range(FRAMES_TO_SAVE):
-            s.step(print_stats=False)
+            s.step()
 
             # Example of storing a simple mock action
             log_writer.save_action(mock_vr_action_path, np.array([1]))
 
             # Update VR objects
-            vr_agent.update()
+            bvr_robot.update(s.gen_vr_robot_action())
 
             # Print debugging information
             if PRINT_PB:
@@ -180,13 +178,18 @@ def run_action_sr(mode):
             s.step()
 
             # Set camera to be where VR headset was looking
+            # Note: uncomment this (and comment in camera setting lines above) to see the scene from an external, non-VR perspective
             log_reader.set_replay_camera(s)
 
             # Read our mock action (but don't do anything with it for now)
             mock_action = int(log_reader.read_action(mock_vr_action_path)[0])
 
+            # VrData that could be used for various purposes
+            curr_frame_vr_data = log_reader.get_vr_data()
+
             # Get relevant VR action data and update VR agent
-            vr_agent.update(vr_data=log_reader.get_vr_data())
+            bvr_robot.update(log_reader.get_agent_action('vr_robot'))
+            #vr_agent.parts['eye'].show_eye()
 
             # Print debugging information
             if PRINT_PB:

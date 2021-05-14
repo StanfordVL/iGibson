@@ -128,10 +128,14 @@ class VrConditionSwitcher(object):
         self.condition_text.set_attribs(color=new_color)
         # 3) Un-highlight previous objects, then highlight new objects
         for prev_obj in self.prev_obj_list:
-            prev_obj.unhighlight()
+            # TODO: certain objects (floor) do not yet have the ability to be unhighlighted
+            if hasattr(prev_obj, "unhighlight"):
+                prev_obj.unhighlight()
         if self.is_showing:
             for new_obj in new_obj_list:
-                new_obj.highlight()
+                # TODO: certain objects (floor) do not yet have the ability to be highlighted
+                if hasattr(new_obj, "highlight"):
+                    new_obj.highlight()
         self.prev_obj_list = new_obj_list
 
     def toggle_show_state(self):
@@ -153,13 +157,13 @@ class VrSettings(object):
     Class containing VR settings pertaining to both the VR renderer
     and VR functionality in the simulator/of VR objects
     """
-    def __init__(self, config_str=None):
+    def __init__(self, use_vr=False, config_str=None):
         """
         Initializes VR settings.
         """
         self.config_str = config_str
-        # VR is enabled by default - can be set off on a case-by-case basis
-        self.use_vr = True
+        # VR is disabled by default
+        self.use_vr = use_vr
         # Simulation is reset at start by default
         self.reset_sim = True
         # No frame save path by default
@@ -186,15 +190,15 @@ class VrSettings(object):
         self.relative_movement_device = shared_settings['relative_movement_device']
         assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
         self.movement_speed = shared_settings['movement_speed']
-        self.assist_percent = shared_settings['assist_percent']
-        self.assist_grasp_mass_thresh = shared_settings['assist_grasp_mass_thresh']
-        self.release_window = shared_settings['release_window']
         self.hud_width = shared_settings['hud_width']
         self.hud_pos = shared_settings['hud_pos']
         self.height_bounds = shared_settings['height_bounds']
         self.use_companion_window = shared_settings['use_companion_window']
         self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
+        self.use_tracked_body = shared_settings['use_tracked_body']
         self.torso_tracker_serial = shared_settings['torso_tracker_serial']
+        # Both body-related values need to be set in order to use the torso-tracked body
+        self.using_tracked_body = self.use_tracked_body and self.torso_tracker_serial
         if self.torso_tracker_serial == '': self.torso_tracker_serial = None
 
         device_settings = self.vr_config['device_settings']
@@ -226,20 +230,11 @@ class VrSettings(object):
         for k, v in self.action_button_map.items():
             self.button_action_map[tuple(v)] = k
 
-    def turn_off_vr_mode(self):
+    def turn_on_companion_window(self):
         """
-        Turns off VR mode so the MeshRendererVR can be debugged.
+        Turns on companion window for VR mode.
         """
-        self.use_vr = False
-        # Enable rendering of companion window
         self.use_companion_window = True
-
-    def use_untracked_body(self):
-        """
-        Force VR system to use VR body without the tracker, even if a tracker serial number
-        is provided.
-        """
-        self.torso_tracker_serial = None
 
     def set_frame_save_path(self, frame_save_path):
         """

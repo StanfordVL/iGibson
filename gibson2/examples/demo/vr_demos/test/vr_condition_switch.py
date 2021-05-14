@@ -12,7 +12,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings, VrConditio
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.object_base import Object
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
@@ -50,9 +50,9 @@ def main():
     scene = InteractiveIndoorScene('Rs_int')
     s.import_ig_scene(scene)
 
-    # Create a VrAgent and it will handle all initialization and importing under-the-hood
-    # Change USE_GRIPPER to switch between the VrHand and the VrGripper (see objects/vr_objects.py for more details)
-    vr_agent = VrAgent(s)
+    # Create a BehaviorRobot and it will handle all initialization and importing under-the-hood
+    # Change USE_GRIPPER to switch between the BRHand and the BRGripper (see robots/behavior_robot.py for more details)
+    vr_agent = BehaviorRobot(s)
     # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the z coordinate of start_pos
     s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
     # Create condition switcher to manage condition switching
