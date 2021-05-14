@@ -16,7 +16,7 @@ class AABB(CachingEnabledObjectState):
                  for link in all_links]
         aabb_low, aabb_hi = aabb_union(aabbs)
 
-        if self.obj.category != 'floors' or self.obj.room_floor is None:
+        if not hasattr(self.obj, 'category') or self.obj.category != 'floors' or self.obj.room_floor is None:
             return np.array(aabb_low), np.array(aabb_hi)
 
         # room_floor will be set to the correct RoomFloor beforehand
