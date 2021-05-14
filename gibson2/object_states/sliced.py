@@ -9,8 +9,6 @@ _DEFAULT_SLICE_FORCE = 10
 _SLICED_PROPAGATION_STATE_SET = frozenset([
     Temperature,
     MaxTemperature,
-    Dusty,
-    Stained,
     Soaked,
     ToggledOn,
 ])
@@ -49,7 +47,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
         self.obj.multiplexer.set_position_orientation(pos, orn)
         self.obj.multiplexer.states[Sliced].set_value(self.value)
 
-        # propagate non-kinematic states (e.g. temperature, dusty) from whole object to object parts
+        # propagate non-kinematic states (e.g. temperature, soaked) from whole object to object parts
         for state in _SLICED_PROPAGATION_STATE_SET:
             if state in self.obj.states:
                 self.obj.multiplexer.states[state].set_value(
@@ -57,9 +55,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         return True
 
-    # TODO (Eric): We need to do something here!
+    # For this state, we simply store its value. The ObjectMultiplexer will be
+    # loaded separately.
     def _dump(self):
-        return None
+        return self.value
 
     def _load(self, data):
-        return
+        self.value = data
