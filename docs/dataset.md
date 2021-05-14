@@ -17,18 +17,18 @@ The fifteen fully interactive models are visualized below.
 ![placeholder.jpg](images/ig_scene.png)
 
 #### Download Instruction
-To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
+To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/igibson/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/igibson/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
 
 ```bash
-python -m gibson2.utils.assets_utils --download_ig_dataset
+python -m igibson.utils.assets_utils --download_ig_dataset
 ```
 
-If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/gibson2/data/ig_dataset`.
+If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/igibson/data/ig_dataset`.
 #### Dataset Format
-The new dataset format can be found [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils). 
+The new dataset format can be found [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils). 
 
 #### Cubicasa / 3D Front Dataset
-We provide support for Cubicasa and 3D Front Dataset, to import them into iGibson, follow the guide [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils/ext_scene). 
+We provide support for Cubicasa and 3D Front Dataset, to import them into iGibson, follow the guide [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene). 
 
 Download Gibson Scenes
 ------------------------
@@ -46,17 +46,17 @@ Files included in this distribution:
 3. Demo scene `Rs`
 
 To download 1 and 2, you need to fill in the agreement and get the download link `URL`, after which you can
- manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and
-  recommended: `dataset: your_installation_path/gibson2/data/g_dataset`). You can run a single command to download the dataset
+ manually download and store them in the path set in `your_installation_path/igibson/global_config.yaml` (default and
+  recommended: `dataset: your_installation_path/igibson/data/g_dataset`). You can run a single command to download the dataset
   , this script automatically download, decompress, and put the dataset to correct place.
 ```bash
-python -m gibson2.utils.assets_utils --download_dataset URL
+python -m igibson.utils.assets_utils --download_dataset URL
 ```
 
 To download 3, you can run:
 
 ```bash
-python -m gibson2.utils.assets_utils --download_demo_data
+python -m igibson.utils.assets_utils --download_demo_data
 ```
 
 
