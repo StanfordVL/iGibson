@@ -4,7 +4,7 @@ Rs_int PBR scene.
 Important - VR functionality and where to find it:
 
 1) Most VR functions can be found in the gibson2/simulator.py
-2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
+2) The BehaviorRobot and its associated parts can be found in gibson2/robots/behavior_robot.py
 3) VR utility functions are found in gibson2/utils/vr_utils.py
 4) The VR renderer can be found in gibson2/render/mesh_renderer.py
 5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
@@ -16,7 +16,7 @@ import pdb
 import tasknet
 
 import gibson2
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.simulator import Simulator
@@ -72,12 +72,12 @@ if not vr_settings.use_vr:
     s.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
     s.renderer.set_fov(90)
 
-# Create a VrAgent and it will handle all initialization and importing under-the-hood
+# Create a BehaviorRobot and it will handle all initialization and importing under-the-hood
 
 
 if vr_settings.use_vr:
     # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the third entry of the start pos
-    vr_agent = VrAgent(s)
+    vr_agent = BehaviorRobot(s)
     s.set_vr_start_pos(kitchen_middle, vr_height_offset=-0.1)
 
 

@@ -17,6 +17,8 @@ from gibson2.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import time
+import shutil
+
 Image.MAX_IMAGE_PIXELS = None
 
 
@@ -1077,6 +1079,9 @@ class MeshRenderer(object):
         self.instances = []
         self.vertex_data = []
         self.shapes = []
+        save_path = os.path.join(gibson2.ig_dataset_path, 'tmp')
+        if os.path.exists(save_path):
+            shutil.rmtree(save_path)
 
     def transform_vector(self, vec):
         vec = np.array(vec)
@@ -1559,9 +1564,9 @@ class MeshRenderer(object):
         """
         for instance in instances:
             buf_idxs = instance.or_buffer_indices
-            if not buf_idxs:
-                print(
-                    'ERROR: trying to set hidden state of an instance that has no visual objects!')
+            #if not buf_idxs:
+            #    print(
+            #        'ERROR: trying to set hidden state of an instance that has no visual objects!')
             # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
             vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
             vec4_buf_idxs_highlight = [idx * 4+1 for idx in buf_idxs]

@@ -21,12 +21,6 @@ shared_settings:
   relative_movement_device: "hmd"
   # Speed of touchpad/joystick movement
   movement_speed: 0.01
-  # Assisted grasping percentage (0 if fully physics-based, 100 is magic grasping)
-  assist_percent: 100
-  # Mass threshold for assisted grasping - this is only used for non-URDF objects
-  assist_grasp_mass_thresh: 10.0
-  # Time to wait (in steps) until re-enabling collision with grasped object
-  release_window: 12
   # Width of HUD display in meters
   hud_width: 0.7
   # Position of HUD display relative to the HMD. X (left), Y (up), Z (away from HMD, into the scene)
@@ -37,6 +31,8 @@ shared_settings:
   use_companion_window: False
   # Whether to only store the first event per button, per frame (avoids multiple unwanted button presses)
   store_only_first_event_per_button: True
+  # Whether to use the torso tracker for the vr body - set to True and make sure a serial is entered below to use a torso tracker
+  use_tracked_body: True
   # Serial number of VR torso tracker - this can be found by connecting/pairing the tracker,
   # then going into Steam VR settings -> controllers -> manage vive trackers
   # Note: replace this with your own tracker serial number or leave blank to not use one

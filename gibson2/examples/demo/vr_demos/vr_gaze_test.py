@@ -1,11 +1,8 @@
-""" This demo can be used to benchmark how speedily the VR hand 
-can be used. The aim is to put all the objects into the box on the left
-side of the table.
-
-You can use the left and right controllers to start/stop/reset the timer,
-as well as show/hide its display. The "overlay toggle" action and its
-corresponding button index mapping can be found in the vr_config.yaml file in the gibson2 folder.
+""" VR demo to test that eye tracking is working by visualizing a gaze marker where
+the user is looking.
 """
+
+import numpy as np
 import os
 import pybullet as p
 import pybullet_data
@@ -16,19 +13,10 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
-from gibson2.objects.ycb_object import YCBObject
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.simulator import Simulator
-from gibson2.utils.vr_utils import VrTimer
 from gibson2 import assets_path
 
-# Set to true to use viewer manipulation instead of VR
-# Set to false by default so this benchmark task can be performed in VR
-VIEWER_MANIP = False
-# Set to true to print out render, physics and overall frame FPS
-PRINT_STATS = False
-# Set to true to use gripper instead of VR hands
-USE_GRIPPER = False
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
     gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
@@ -52,26 +40,13 @@ def main():
                                                 enable_pbr=True,
                                                 msaa=True,
                                                 light_dimming_factor=1.0)
-    vr_settings = VrSettings()
-
-    if VIEWER_MANIP:
-        s = Simulator(mode='iggui', 
-                    image_width=512,
-                    image_height=512,
-                    rendering_settings=vr_rendering_settings, 
-                    )
-        vr_settings.turn_off_vr_mode()
     s = Simulator(mode='vr', 
                 rendering_settings=vr_rendering_settings, 
-                vr_settings=vr_settings)
+                vr_settings=VrSettings(use_vr=True))
 
-    scene = InteractiveIndoorScene('Rs_int')
-    scene._set_first_n_objects(2)
+    scene = InteractiveIndoorScene('Rs_int', load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
     s.import_ig_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
-
-    if not VIEWER_MANIP:
-        vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
 
     objects = [
         ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
@@ -107,51 +82,39 @@ def main():
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    for i in range(3):
-        obj = YCBObject('003_cracker_box')
-        s.import_object(obj)
-        obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
-
     obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
         'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                             scale=2)
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
-    # Time how long demo takes
-    time_text = s.add_vr_overlay_text(text_data='Current time: NOT STARTED', font_size=100, font_style='Bold', 
-                            color=[0,0,0], pos=[100, 100])
-    timer = VrTimer()
+    bvr_robot = BehaviorRobot(s)
+    s.import_behavior_robot(bvr_robot)
+    s.register_main_vr_robot(bvr_robot)
+    bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
+
+    # Represents gaze
+    eye_marker = ArticulatedObject("sphere_small.urdf", scale=2)
+    s.import_object(eye_marker, use_pbr=False, use_pbr_mapping=False)
+    gaze_max_dist = 1.5
 
     # Main simulation loop
     while True:
-        s.step(print_stats=PRINT_STATS)
+        # Make sure eye marker never goes to sleep so it is always ready to track gaze
+        eye_marker.force_wakeup()
+        s.step()
 
-        if not VIEWER_MANIP:
-            # Events that manage timer functionality
-            r_toggle = s.query_vr_event('right_controller', 'overlay_toggle')
-            l_toggle = s.query_vr_event('left_controller', 'overlay_toggle')
-            # Overlay toggle action on right controller is used to start/stop timer
-            if r_toggle and not l_toggle:
-                if timer.is_timer_running():
-                    timer.stop_timer()
-                else:
-                    timer.start_timer()
-            # Overlay toggle action on left controller is used to show/hide timer
-            elif l_toggle and not r_toggle:
-                time_text.set_show_state(not time_text.get_show_state())
-            # Reset timer if both toggle buttons are pressed at once
-            elif r_toggle and l_toggle:
-                timer.refresh_timer()
+        # Update VR agent using action data from simulator
+        bvr_robot.update(s.gen_vr_robot_action())
 
-            # Update timer value
-            time_text.set_text('Current time: {}'.format(round(timer.get_timer_val(), 1)))
-
-            # Update VR agent
-            vr_agent.update()
+        # Update gaze marker
+        is_valid, origin, dir, _, _ = s.get_eye_tracking_data()
+        print('Data validity: {}'.format(is_valid))
+        if is_valid:
+            new_pos = list(np.array(origin) + np.array(dir) * gaze_max_dist)
+            eye_marker.set_position(new_pos)
 
     s.disconnect()
-
 
 if __name__ == '__main__':
     main()

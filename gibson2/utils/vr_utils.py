@@ -27,7 +27,7 @@ class VrData(object):
 
     The class contains a dictionary with the following key/value pairs:
     Key: hmd, left_controller, right_controller
-    Values: is_valid, trans, rot, right, up, forward
+    Values: is_valid, trans, rot, right, up, forward, left/right model rotation quaternion
 
     Key: torso_tracker
     Values: is_valid, trans, rot
@@ -37,6 +37,9 @@ class VrData(object):
 
     Key: eye_data
     Values: is_valid, origin, direction, left_pupil_diameter, right_pupil_diameter
+
+    Key: reset_actions
+    Values: left_reset bool, right_reset bool
 
     Key: event_data
     Values: list of lists, where each sublist is a device, (button, status) pair
@@ -76,8 +79,12 @@ class VrData(object):
         """
         for device in VR_DEVICES:
             device_data = ar_data['vr/vr_device_data/{}'.format(device)][frame_num].tolist()
-            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:17]]
+            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:17], device_data[17:21]]
+            # TODO: Remove!!!
             if device in VR_CONTROLLERS:
+                # Check if we have stored model rotations for an agent
+                if len(device_data) > 18:
+                    self.vr_data_dict['{}_model_rotation'.format(device)] = device_data[17:21]
                 self.vr_data_dict['{}_button'.format(device)] = ar_data['vr/vr_button_data/{}'.format(device)][frame_num].tolist()
 
         torso_tracker_data = ar_data['vr/vr_device_data/torso_tracker'][frame_num].tolist()
@@ -91,6 +98,7 @@ class VrData(object):
             for button_press_data in convert_binary_to_button_data(ar_data['vr/vr_event_data/{}'.format(controller)][frame_num]):
                 events.append((controller, button_press_data))
         self.vr_data_dict['event_data'] = events
+        self.vr_data_dict['reset_actions'] = [bool(x) for x in list(ar_data['vr/vr_event_data/reset_actions'][frame_num])]
 
         pos_data = ar_data['vr/vr_device_data/vr_position_data'][frame_num].tolist()
         self.vr_data_dict['vr_positions'] = [pos_data[:3], pos_data[3:]]

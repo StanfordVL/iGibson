@@ -9,7 +9,7 @@ from gibson2.external.pybullet_tools import utils
 from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
-from gibson2.utils.constants import SemanticClass
+from gibson2.utils.constants import SemanticClass, PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -74,11 +74,13 @@ class Particle(Object):
 
         if self.visual_only:
             body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                        baseVisualShapeIndex=visualShapeId)
+                                        baseVisualShapeIndex=visualShapeId,
+                                        flags=p.URDF_ENABLE_SLEEPING)
         else:
             body_id = p.createMultiBody(baseMass=self.mass,
                                         baseCollisionShapeIndex=colBoxId,
-                                        baseVisualShapeIndex=visualShapeId)
+                                        baseVisualShapeIndex=visualShapeId,
+                                        flags=p.URDF_ENABLE_SLEEPING)
 
         p.resetBasePositionAndOrientation(
             body_id, np.array(self.base_pos), base_orientation)
@@ -91,12 +93,11 @@ class Particle(Object):
         if body_id is None:
             body_id = self.body_id
 
-        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + \
-            p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
+        activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
-        activationState = p.ACTIVATION_STATE_ENABLE_SLEEPING + p.ACTIVATION_STATE_WAKE_UP
+        activationState = p.ACTIVATION_STATE_WAKE_UP
         p.changeDynamics(self.body_id, -1, activationState=activationState)
 
 
@@ -164,11 +165,23 @@ class ParticleSystem(object):
         self._stashed_particles.append(particle)
 
         particle.set_position(_STASH_POSITION)
-        particle.force_sleep()
+        if particle.visual_only:
+            # Stain and Dust need to be woken up before stashing because if
+            # they are asleep, their poses will not be updated in the renderer
+            particle.force_wakeup()
+        else:
+            # Water (awake when stash_particle is called) needs to be
+            # put to sleep because they would collide in _STASH_POSITION
+            # It's okay to call force_sleep() because the sleep state will only
+            # be reflected after p.stepSimulation() is called. Thus, the
+            # renderer should still update its pose in the curren timestep
+            particle.force_sleep()
 
     def _load_particle(self, particle):
-        body_id = self._simulator.import_object(particle, **self._import_params)
-        particle.set_position(_STASH_POSITION)  # Put loaded particles at the stash position initially.
+        body_id = self._simulator.import_object(
+            particle, **self._import_params)
+        # Put loaded particles at the stash position initially.
+        particle.set_position(_STASH_POSITION)
         return body_id
 
     def unstash_particle(self, position, orientation, particle=None):
@@ -258,6 +271,18 @@ class AttachedParticleSystem(ParticleSystem):
             link_id, (pos_offset,
                       orn_offset) = self._attachment_offsets[particle]
 
+            dynamics_info = p.getDynamicsInfo(
+                self.parent_obj.get_body_id(), link_id)
+
+            if len(dynamics_info) == 13:
+                activation_state = dynamics_info[12]
+            else:
+                activation_state = PyBulletSleepState.AWAKE
+
+            if activation_state != PyBulletSleepState.AWAKE:
+                # If parent object is in sleep, don't update particle poses
+                continue
+
             if link_id == -1:
                 attachment_source_pos = self.parent_obj.get_position()
                 attachment_source_orn = self.parent_obj.get_orientation()
@@ -270,6 +295,7 @@ class AttachedParticleSystem(ParticleSystem):
             position, orientation = p.multiplyTransforms(
                 attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
             particle.set_position_orientation(position, orientation)
+            particle.force_wakeup()
 
     def dump(self):
         data = []
@@ -329,7 +355,7 @@ class WaterStream(ParticleSystem):
             size=self.sizes,
             color=self.colors,
             visual_only=False,
-            mass=0.1,
+            mass=0.00005,  # each drop is around 0.05 grams
             use_pbr=True,  # PBR needs to be on for the shiny water particles.
             **kwargs
         )

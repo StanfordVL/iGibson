@@ -11,7 +11,6 @@ from gibson2.utils.assets_utils import get_ig_model_path
 from gibson2.object_states.factory import prepare_object_states
 
 
-
 def main():
     s = Simulator(mode='iggui', image_width=1280,
                   image_height=720)
@@ -19,7 +18,8 @@ def main():
     scene = EmptyScene()
     s.import_scene(scene)
 
-    model_path = os.path.join(get_ig_model_path('sink', 'sink_1'), 'sink_1.urdf')
+    model_path = os.path.join(get_ig_model_path(
+        'sink', 'sink_1'), 'sink_1.urdf')
 
     sink = URDFObject(filename=model_path,
                       category='sink',
@@ -33,13 +33,15 @@ def main():
     sink.states[object_states.ToggledOn].set_value(True)
 
     block = YCBObject(name='036_wood_block')
-    block.abilities = ["soakable", "cleaning_tool"]
-    prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
+    block.abilities = ["soakable", "cleaningTool"]
+    prepare_object_states(
+        block, abilities={"soakable": {}, "cleaningTool": {}})
     s.import_object(block)
     block.set_position([1, 1, 1.8])
     # assume block can soak water
 
-    model_path = os.path.join(get_ig_model_path('breakfast_table', '19203'), '19203.urdf')
+    model_path = os.path.join(get_ig_model_path(
+        'breakfast_table', '19203'), '19203.urdf')
     desk = URDFObject(filename=model_path,
                       category='table',
                       name='19898',
