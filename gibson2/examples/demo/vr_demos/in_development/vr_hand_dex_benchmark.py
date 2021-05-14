@@ -14,7 +14,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
@@ -71,8 +71,8 @@ def main():
     s.import_ig_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
-    # Move VR agent to the middlvr_agent = VrAgent(s, use_gripper=USE_GRIPPER)e of the kitchen
+    vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
+    # Move VR agent to the middlvr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)e of the kitchen
     s.set_vr_start_pos(start_pos=[0,2.1,0], vr_height_offset=-0.02)
 
     # Mass values to use for each object type - len(masses) objects will be created of each type
@@ -263,7 +263,7 @@ def main():
         vr_agent.update()
 
         if show_overlay:
-            ag_candidate_data = vr_agent.vr_dict['right_hand'].candidate_data
+            ag_candidate_data = vr_agent.parts['right_hand'].candidate_data
             if ag_candidate_data:
                 t = ''
                 for bid, link, dist in ag_candidate_data:

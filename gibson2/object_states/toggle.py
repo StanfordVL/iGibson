@@ -50,8 +50,8 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
         vr_hands = []
         for object in simulator.scene.get_objects():
-            if object.__class__.__name__ == "VrHand":
-                vr_hands.append(object)
+            if object.__class__.__name__ == "BRHand":
+               vr_hands.append(object)
 
         hand_in_marker = False
         # detect marker and hand interaction

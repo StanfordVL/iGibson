@@ -135,7 +135,7 @@ def main():
         # for init_id in range(num_initializations):
         #     for _ in range(num_trials):
         #         igtn_task.update_problem(task, task_id)
-        #         igtn_task.object_scope['agent.n.01_1'] = igtn_task.agent.vr_dict['body']
+        #         igtn_task.object_scope['agent.n.01_1'] = igtn_task.agent.parts['body']
         #         accept_scene, feedback = igtn_task.check_scene()
         #         if not accept_scene:
         #             remove_newly_added_objects(igtn_task, state_id)
