@@ -18,13 +18,16 @@ def main():
     # Set everything that can go dirty.
     stateful_objects = set(
         scene.get_objects_with_state(object_states.Dusty) + scene.get_objects_with_state(object_states.Stained) +
-        scene.get_objects_with_state(object_states.WaterSource))
+        scene.get_objects_with_state(object_states.WaterSource) + scene.get_objects_with_state(object_states.Open))
     for obj in stateful_objects:
         if object_states.Dusty in obj.states:
             obj.states[object_states.Dusty].set_value(True)
 
         if object_states.Stained in obj.states:
             obj.states[object_states.Stained].set_value(True)
+
+        if object_states.Open in obj.states:
+            obj.states[object_states.Open].set_value(True)
 
         if object_states.WaterSource in obj.states:
             obj.states[object_states.ToggledOn].set_value(True)

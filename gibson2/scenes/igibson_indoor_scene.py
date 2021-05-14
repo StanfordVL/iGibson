@@ -6,6 +6,11 @@ import json
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
+from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+import random
+import json
+from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from gibson2.external.pybullet_tools.utils import euler_from_quat, get_joints, get_joint_names, get_joint_positions
 from PIL import Image
 from xml.dom import minidom
 from IPython import embed
@@ -264,6 +269,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 else:
                     flags = p.URDF_ENABLE_SLEEPING
 
+                joint_positions = (json.loads(link.attrib["joint_positions"])
+                                   if "joint_positions" in link.keys() else None)
                 obj = URDFObject(
                     filename,
                     name=object_name,
@@ -278,6 +285,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     overwrite_inertial=True,
                     scene_instance_folder=self.scene_instance_folder,
                     tasknet_object_scope=tasknet_object_scope,
+                    joint_positions=joint_positions,
                     flags=flags
                 )
 
@@ -1023,20 +1031,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             xyz = ' '.join([str(p) for p in bbox_pos])
             rpy = ' '.join([str(e) for e in euler])
 
-            # Get the object states
-            state_cache = None
-            if hasattr(obj, "states"):
-                state_cache = {}
-                for state_class, state_obj in obj.states.items():
-                    if isinstance(state_obj, AbsoluteObjectState):
-                        state_cache[get_state_name(
-                            state_class)] = state_obj.dump()
-
             # The object is already in the scene URDF
             if link is not None:
-                if state_cache is not None:
-                    link.attrib["states"] = json.dumps(state_cache)
-
                 if obj.category == 'floors':
                     floor_names = \
                         [obj_name for obj_name in additional_attribs_by_name
@@ -1062,53 +1058,70 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         origin = joint.find('origin')
                         origin.attrib['rpy'] = rpy
                         origin.attrib['xyz'] = xyz
+            else:
+                # We need to add the object to the scene URDF
+                category = obj.category
+                room = self.get_room_instance_by_point(
+                    np.array(obj.get_position())[:2])
 
-                    # If some scene objects are used as task-relevant objects
-                    if name in additional_attribs_by_name:
-                        # Add tasknet_scope
-                        for key in additional_attribs_by_name[name]:
-                            link.attrib[key] = additional_attribs_by_name[name][key]
-                continue
+                link = ET.SubElement(tree_root, 'link')
+                link.attrib = {
+                    'category': category,
+                    'name': name,
+                    'rpy': rpy,
+                    'xyz': xyz,
+                }
 
-            category = obj.category
-            room = self.get_room_instance_by_point(
-                np.array(obj.get_position())[:2])
+                if hasattr(obj, "bounding_box"):
+                    bounding_box = ' '.join([str(b) for b in obj.bounding_box])
+                    link.attrib['bounding_box'] = bounding_box
 
-            new_link = ET.SubElement(tree_root, 'link')
-            new_link.attrib = {
-                'category': category,
-                'name': name,
-                'rpy': rpy,
-                'xyz': xyz,
-            }
+                if hasattr(obj, "model_path"):
+                    model = os.path.basename(obj.model_path)
+                    link.attrib['model'] = model
 
-            if state_cache is not None:
-                new_link.attrib['states'] = json.dumps(state_cache)
+                if room is not None:
+                    link.attrib['room'] = room
 
-            if hasattr(obj, "bounding_box"):
-                bounding_box = ' '.join([str(b) for b in obj.bounding_box])
-                new_link.attrib['bounding_box'] = bounding_box
+                new_joint = ET.SubElement(tree_root, 'joint')
+                new_joint.attrib = {
+                    'name': 'j_{}'.format(name), 'type': 'floating'}
+                new_origin = ET.SubElement(new_joint, 'origin')
+                new_origin.attrib = {'rpy': rpy, 'xyz': xyz}
+                new_child = ET.SubElement(new_joint, 'child')
+                new_child.attrib['link'] = name
+                new_parent = ET.SubElement(new_joint, 'parent')
+                new_parent.attrib['link'] = 'world'
 
-            if hasattr(obj, "model_path"):
-                model = os.path.basename(obj.model_path)
-                new_link.attrib['model'] = model
+            # Common logic for objects that are both in the scene & otherwise.
+            # Add joints
+            body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
+            joint_data = []
+            for body_idx, bid in enumerate(body_ids):
+                this_joint_data = {}
+                joints = get_joints(bid)
+                if joints:
+                    joint_names = get_joint_names(bid, joints)
+                    joint_positions = get_joint_positions(bid, joints)
+                    this_joint_data = {
+                        str(name, encoding="utf-8"): position
+                        for name, position in zip(joint_names, joint_positions)}
+                joint_data.append(this_joint_data)
+            link.attrib["joint_positions"] = json.dumps(joint_data)
 
-            if room is not None:
-                new_link.attrib['room'] = room
+            # Add states
+            if hasattr(obj, "states"):
+                state_cache = {}
+                for state_class, state_obj in obj.states.items():
+                    if isinstance(state_obj, AbsoluteObjectState):
+                        state_cache[get_state_name(state_class)] = state_obj.dump()
+                link.attrib["states"] = json.dumps(state_cache)
 
+            # Add additional attributes.
             if name in additional_attribs_by_name:
                 for key in additional_attribs_by_name[name]:
-                    new_link.attrib[key] = additional_attribs_by_name[name][key]
+                    link.attrib[key] = additional_attribs_by_name[name][key]
 
-            new_joint = ET.SubElement(tree_root, 'joint')
-            new_joint.attrib = {
-                'name': 'j_{}'.format(name), 'type': 'floating'}
-            new_origin = ET.SubElement(new_joint, 'origin')
-            new_origin.attrib = {'rpy': rpy, 'xyz': xyz}
-            new_child = ET.SubElement(new_joint, 'child')
-            new_child.attrib['link'] = name
-            new_parent = ET.SubElement(new_joint, 'parent')
-            new_parent.attrib['link'] = 'world'
 
         path_to_urdf = os.path.join(self.scene_dir, 'urdf', urdf_name+'.urdf')
         xmlstr = minidom.parseString(
