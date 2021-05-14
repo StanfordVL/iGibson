@@ -16,6 +16,7 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
+import cv2
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
@@ -36,13 +37,15 @@ def main():
                                                 env_texture_filename2=hdr_texture2,
                                                 env_texture_filename3=background_texture,
                                                 light_modulation_map_filename=light_modulation_map_filename,
-                                                enable_shadow=True, 
+                                                enable_shadow=True,
                                                 enable_pbr=True,
                                                 msaa=True,
                                                 light_dimming_factor=1.0)
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings(use_vr=True))
+    s = Simulator(mode='iggui',
+                 rendering_settings=vr_rendering_settings,
+                 vr_settings=VrSettings(use_vr=True),
+                 image_width=1024,
+                 image_height=1024)
 
     scene = InteractiveIndoorScene('Rs_int', load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
     s.import_ig_scene(scene)
@@ -82,23 +85,119 @@ def main():
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
+    obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects',
         'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                             scale=2)
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
-    bvr_robot = BehaviorRobot(s)
+    bvr_robot = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True, use_ghost_hands=False)
     s.import_behavior_robot(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
-    bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
+    bvr_robot.set_position_orientation([0, 0, 0.2], [0, 0, 0, 1])
+    max_num_steps = 100
+
+    # bvr_robot.parts['body'].set_position_orientation(
+    #     [0, 0, 1.5], [0, 0, 0, 1]
+    # )
+    # bvr_robot.parts['left_hand'].set_position_orientation(
+    #     [0, 0.2, 1.0], [0.5, 0.5, -0.5, 0.5],
+    # )
+    # bvr_robot.parts['right_hand'].set_position_orientation(
+    #     [0, -0.2, 1.0], [-0.5, 0.5, 0.5, 0.5]
+    # )
+    # bvr_robot.parts['eye'].set_position_orientation(
+    #     [0, 0, 1.5], [0, 0, 0, 1]
+    # )
+
+    step = 0
+    move_dist = 0.3
+    rotate_angle = 0.3
+
+    action = np.zeros((28,))
+    action[19] = 1
+    action[27] = 1
+    for _ in range(10):
+        bvr_robot.update(action)
+        s.step()
 
     # Main simulation loop
     while True:
-        s.step()
+        user_input = s.step()
+        action = np.zeros((28,))
+
+
+        if user_input == ord('i'):
+            action[0] = 0.01
+            action[19] = 1
+            action[27] = 1
+            original_pos = bvr_robot.parts['body'].get_position()
+            for _ in range(max_num_steps):
+                bvr_robot.update(action)
+                s.step()
+                if np.linalg.norm(np.array(bvr_robot.parts['body'].get_position()) - np.array(original_pos)) > move_dist:
+                    break
+
+        elif user_input == ord('k'):
+            action[0] = -0.01
+            action[19] = 1
+            action[27] = 1
+            original_pos = bvr_robot.parts['body'].get_position()
+            for _ in range(max_num_steps):
+                bvr_robot.update(action)
+                s.step()
+                if np.linalg.norm(np.array(bvr_robot.parts['body'].get_position()) - np.array(original_pos)) > move_dist:
+                    break
+
+        elif user_input == ord('j'):
+            action[5] = 0.01
+            action[19] = 1
+            action[27] = 1
+            orn = p.getEulerFromQuaternion(bvr_robot.parts['body'].get_orientation())
+            for _ in range(max_num_steps):
+                bvr_robot.update(action)
+                s.step()
+                d = np.abs(orn[2] - p.getEulerFromQuaternion(bvr_robot.parts['body'].get_orientation())[2])
+                if d > np.pi / 2:
+                    d = np.pi - d
+                if  d > rotate_angle:
+                    break
+
+
+        elif user_input == ord('l'):
+            action[5] = -0.01
+            action[19] = 1
+            action[27] = 1
+            orn = p.getEulerFromQuaternion(bvr_robot.parts['body'].get_orientation())
+            for _ in range(max_num_steps):
+                bvr_robot.update(action)
+                s.step()
+                d = np.abs(orn[2] - p.getEulerFromQuaternion(bvr_robot.parts['body'].get_orientation())[2])
+                if d > np.pi / 2:
+                    d = np.pi - d
+                if d > rotate_angle:
+                    break
+
+        # elif user_input == ord('o'):
+        #     hit_pos = get_push_point(bvr_robot)
+        #     if hit_pos is not None:
+        #         push_vector = np.array(hit_pos) - np.array(bvr_robot.parts['right_hand'].get_position())
+        #         action[20:23] = push_vector / 100
+
+        elif user_input == ord('y'):
+            action[10] = 0.001
+        elif user_input == ord('u'):
+            action[10] = -0.001
+
+        rgb = bvr_robot.render_camera_image()[0]
+        rgb = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        cv2.imshow('robot', rgb)
+
+        action = np.zeros((28,))
+        bvr_robot.update(action)
 
         # Update VR agent using action data from simulator
-        bvr_robot.update(s.gen_vr_robot_action())
+        #bvr_robot.update(s.gen_vr_robot_action())
 
     s.disconnect()
 

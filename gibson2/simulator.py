@@ -1024,21 +1024,24 @@ class Simulator:
             p.stepSimulation()
 
         self._non_physics_step()
-        self.sync()
+        user_input = self.sync()
         self.frame_count += 1
+        return user_input
 
     def sync(self):
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
+        user_input = None
         self.body_links_awake = 0
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.body_links_awake += self.update_position(instance)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and self.viewer is not None:
-            self.viewer.update()
+            user_input = self.viewer.update()
         if self.first_sync:
             self.first_sync = False
+        return user_input
 
     def vr_system_update(self):
         """

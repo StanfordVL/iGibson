@@ -748,6 +748,7 @@ class Viewer:
                     frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow('RobotView', frame)
 
+        return q
 
 if __name__ == '__main__':
     viewer = Viewer()
