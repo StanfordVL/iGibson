@@ -208,6 +208,8 @@ class BRBody(ArticulatedObject):
         self.model = self.name
         self.movement_cid = None
         self.activated = False
+        self.new_pos = None
+        self.new_orn = None
 
         # Load in body from correct urdf, depending on user settings
         body_path = 'normal_color' if self.normal_color else 'alternative_color'
@@ -334,6 +336,8 @@ class BRHandBase(ArticulatedObject):
         self.hand = hand
         self.other_hand = None
         self.body = None
+        self.new_pos = None
+        self.new_orn = None
         # This base rotation is applied before any actual rotation is applied to the hand. This adjusts
         # for the hand model's rotation to make it appear in the right place.
         self.base_rot = base_rot
@@ -949,6 +953,8 @@ class BREye(ArticulatedObject):
         self.body = None
         self.name = "BREye_{}".format(self.robot_num)
         self.category = "agent"
+        self.new_pos = None
+        self.new_orn = None
 
         color_folder = 'normal_color' if self.normal_color else 'alternative_color'
         self.head_visual_path = os.path.join(assets_path, 'models', 'vr_agent', 'vr_eye', color_folder, 'vr_head.obj')
