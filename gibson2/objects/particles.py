@@ -115,6 +115,7 @@ class ParticleSystem(object):
         self._all_particles = []
         self._active_particles = []
         self._stashed_particles = deque()
+        self._particles_activated_at_any_time = set()
 
         self._simulator = None
         self._import_params = {
@@ -199,8 +200,16 @@ class ParticleSystem(object):
         particle.force_wakeup()
 
         self._active_particles.append(particle)
+        self._particles_activated_at_any_time.add(particle)
 
         return particle
+
+    def get_num_particles_activated_at_any_time(self):
+        """Get the number of unique particles that were active at some point in history."""
+        return len(self._particles_activated_at_any_time)
+
+    def reset_particles_activated_at_any_time(self):
+        self._particles_activated_at_any_time = set()
 
 
 class AttachedParticleSystem(ParticleSystem):
@@ -469,6 +478,9 @@ class _Dirt(AttachedParticleSystem):
             self._SAMPLING_BIMODAL_MEAN_FRACTION, self._SAMPLING_BIMODAL_STDEV_FRACTION,
             self._SAMPLING_AXIS_PROBABILITIES, undo_padding=True, aabb_offset=self._SAMPLING_AABB_OFFSET,
             refuse_downwards=True)
+
+        # Reset the activated particle history
+        self.reset_particles_activated_at_any_time()
 
         # Use the sampled points to set the dirt positions.
         for i, particle in enumerate(self.get_stashed_particles()):
