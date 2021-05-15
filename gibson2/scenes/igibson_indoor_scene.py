@@ -341,7 +341,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             grouped_obj_parts = ObjectGrouper(
                 list(zip(object_parts, pose_offsets)))
             obj = ObjectMultiplexer(
-                [whole_object, grouped_obj_parts], current_index)
+                multiplexer, [whole_object, grouped_obj_parts], current_index)
             self.add_object(obj)
 
     def get_objects(self):
@@ -860,10 +860,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for id in new_ids:
                 self.objects_by_id[id] = obj
             body_ids += new_ids
-            if isinstance(obj, ObjectMultiplexer):
-                visual_mesh_to_material += obj.get_visual_mesh_to_material()
-            else:
-                visual_mesh_to_material += obj.visual_mesh_to_material
+            visual_mesh_to_material += obj.visual_mesh_to_material
             fixed_body_ids += [body_id for body_id, is_fixed
                                in zip(obj.body_ids, obj.is_fixed)
                                if is_fixed]
@@ -1026,40 +1023,61 @@ class InteractiveIndoorScene(StaticIndoorScene):
         return ids
 
     def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
-        if isinstance(obj, ObjectMultiplexer):
-            multiplexer_link = ET.SubElement(tree_root, 'link')
-            multiplexer_link.attrib = {
-                'category': 'multiplexer',
-                'name': obj.name,
-                'current_index': str(obj.current_index)
-            }
-            for sub_obj in obj._multiplexed_objects:
-                if isinstance(sub_obj, ObjectGrouper):
-                    grouper_link = ET.SubElement(tree_root, 'link')
-                    grouper_link.attrib = {
-                        'category': 'grouper',
-                        'name': obj.name + '_grouper',
-                        'pose_offsets': json.dumps(
-                            [(list(pos), list(orn))
-                             for pos, orn in sub_obj.pose_offsets]),
-                        'multiplexer': obj.name,
-                    }
-                    for group_sub_obj in sub_obj.objects:
-                        if group_sub_obj.name not in additional_attribs_by_name:
-                            additional_attribs_by_name[group_sub_obj.name] = {}
-                        additional_attribs_by_name[group_sub_obj.name]['grouper'] = obj.name + '_grouper'
-                        self.save_obj(group_sub_obj,
-                                      tree_root,
-                                      additional_attribs_by_name)
-                else:
-                    if sub_obj.name not in additional_attribs_by_name:
-                        additional_attribs_by_name[sub_obj.name] = {}
-                    additional_attribs_by_name[sub_obj.name]['multiplexer'] = obj.name
-                    self.save_obj(sub_obj,
+        if not isinstance(obj, ObjectMultiplexer):
+            self.save_obj(obj, tree_root, additional_attribs_by_name)
+            return
+
+        multiplexer_link = ET.SubElement(tree_root, 'link')
+
+        # Store current index
+        multiplexer_link.attrib = {
+            'category': 'multiplexer',
+            'name': obj.name,
+            'current_index': str(obj.current_index)
+        }
+
+        for i, sub_obj in enumerate(obj._multiplexed_objects):
+            if isinstance(sub_obj, ObjectGrouper):
+                grouper_link = ET.SubElement(tree_root, 'link')
+
+                # Store pose offset
+                grouper_link.attrib = {
+                    'category': 'grouper',
+                    'name': obj.name + '_grouper',
+                    'pose_offsets': json.dumps(
+                        [(list(pos), list(orn))
+                            for pos, orn in sub_obj.pose_offsets]),
+                    'multiplexer': obj.name,
+                }
+                for group_sub_obj in sub_obj.objects:
+                    # Store reference to grouper
+                    if group_sub_obj.name not in additional_attribs_by_name:
+                        additional_attribs_by_name[group_sub_obj.name] = {}
+                    additional_attribs_by_name[group_sub_obj.name]['grouper'] = obj.name + '_grouper'
+
+                    if i == obj.current_index:
+                        # Assign object_scope to each object of in the grouper
+                        if obj.name in additional_attribs_by_name:
+                            for key in additional_attribs_by_name[obj.name]:
+                                additional_attribs_by_name[group_sub_obj.name][key] = \
+                                    additional_attribs_by_name[obj.name][key]
+                    self.save_obj(group_sub_obj,
                                   tree_root,
                                   additional_attribs_by_name)
-        else:
-            self.save_obj(obj, tree_root, additional_attribs_by_name)
+            else:
+                # Store reference to multiplexer
+                if sub_obj.name not in additional_attribs_by_name:
+                    additional_attribs_by_name[sub_obj.name] = {}
+                additional_attribs_by_name[sub_obj.name]['multiplexer'] = obj.name
+                if i == obj.current_index:
+                    # Assign object_scope to the whole object
+                    if obj.name in additional_attribs_by_name:
+                        for key in additional_attribs_by_name[obj.name]:
+                            additional_attribs_by_name[sub_obj.name][key] = \
+                                additional_attribs_by_name[obj.name][key]
+                self.save_obj(sub_obj,
+                              tree_root,
+                              additional_attribs_by_name)
 
     def save_obj(self, obj, tree_root, additional_attribs_by_name):
         name = obj.name
