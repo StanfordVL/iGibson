@@ -905,6 +905,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         z = self.floor_heights[floor]
         return floor, np.array([x, y, z])
 
+    # TODO: remove after split floors
     def get_aabb_by_room_instance(self, room_instance):
         """
         Get AABB of the floor by room instance
