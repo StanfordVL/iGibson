@@ -301,6 +301,14 @@ class ToyEnvInt(object):
                     "init_feedback": "",
                     "goal_feedback": "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time)."
                 } 
+            else:
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during problem update.",
+                    "goal_feedback": ""
+                }
             return accept_scene, feedback
 
         try:
@@ -314,7 +322,15 @@ class ToyEnvInt(object):
                     "init_feedback": f"We do not currently support {str(message).split(' ')[1]}. Please try a different object!",
                     "goal_feedback": ""
                 }
-                return accept_scene, feedback
+            else:
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during scene checking.",
+                    "goal_feedback": ""
+                }
+            return accept_scene, feedback
 
         if not accept_scene:
             self.restore_scene()
