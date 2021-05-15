@@ -92,6 +92,7 @@ def main():
             objdirfull = os.path.join(cd, objdir)
 
             obj = get_obj(objdirfull, fit_avg_dim_volume=True, avg_obj_dims=avg, flags=p.URDF_ENABLE_SLEEPING)
+            # obj = get_obj(objdirfull, bounding_box=max_bbox, flags=p.URDF_ENABLE_SLEEPING)
             s.import_object(obj)
             obj_pos = np.array([current_x, 0., 0.5])
             obj.set_position(obj_pos)
@@ -100,7 +101,7 @@ def main():
 
     try:
         while True:
-            s.step()
+            pass #s.step()
     finally:
         s.disconnect()
 
