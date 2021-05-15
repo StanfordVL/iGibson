@@ -1,14 +1,23 @@
-from gibson2.object_states.factory import get_all_states
 from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.object_base import Object
 from gibson2.objects.stateful_object import StatefulObject
 from gibson2.object_states.object_state_base import AbsoluteObjectState
-from IPython import embed
 import pybullet as p
+import itertools
 
 
 class ObjectGrouper(StatefulObject):
     """A multi-object wrapper that groups multiple objects and applies operations to all of them in parallel."""
+
+    class ProceduralMaterialAggregator(object):
+        """A fake procedural material that updates the procedural material of all ObjectGrouper objects."""
+
+        def __init__(self, object_grouper):
+            self.object_grouper = object_grouper
+
+        def update(self):
+            for obj in self.object_grouper.objects:
+                obj.procedural_material.update()
 
     class BaseStateAggregator(object):
         """A fake state that aggregates state between ObjectGrouper objects and propagates updates."""
@@ -52,7 +61,16 @@ class ObjectGrouper(StatefulObject):
         pose_offsets = [trans for _, trans in objects_with_pose_offsets]
         assert objects and all(isinstance(obj, Object) for obj in objects)
         self.objects = objects
+
+        # Pose offsets are the transformation of the object parts to the whole
+        # object in base link frame
         self.pose_offsets = pose_offsets
+
+        state_types = [obj.states.keys() for obj in self.objects]
+        if state_types.count(state_types[0]) != len(state_types):
+            raise ValueError(
+                "Grouped objects have different states.")
+        state_types = state_types[0]
 
         self.states = {
             state_type:
@@ -60,7 +78,12 @@ class ObjectGrouper(StatefulObject):
             if issubclass(state_type, AbsoluteObjectState)
             else
             ObjectGrouper.RelativeStateAggregator(state_type, self)
-            for state_type in get_all_states()}
+            for state_type in state_types}
+
+        self.procedural_material = (
+            ObjectGrouper.ProceduralMaterialAggregator(self)
+            if self.objects[0].procedural_material is not None else None
+        )
 
     def __getattr__(self, item):
         # Check if the attr is the same for everything
@@ -80,6 +103,11 @@ class ObjectGrouper(StatefulObject):
 
             return grouped_function
 
+        # These attributes are used during object import and should return
+        # the concatenation results of all objects in self.objects
+        if item in ['visual_mesh_to_material', 'body_ids', 'is_fixed']:
+            return list(itertools.chain.from_iterable(attrs))
+
         # Otherwise, check that it's the same for everyone and then just return the value.
         if attrs.count(attrs[0]) != len(attrs):
             raise ValueError(
@@ -92,12 +120,6 @@ class ObjectGrouper(StatefulObject):
         for obj in self.objects:
             body_ids += obj._load()
         return body_ids
-
-    def get_visual_mesh_to_material(self):
-        visual_mesh_to_material = []
-        for obj in self.objects:
-            visual_mesh_to_material += obj.visual_mesh_to_material
-        return visual_mesh_to_material
 
     def get_position(self):
         raise ValueError("Cannot get_position on ObjectGrouper")
@@ -117,14 +139,14 @@ class ObjectGrouper(StatefulObject):
             "Cannot set_orientation on ObjectGrouper")
 
     def set_position_orientation(self, pos, orn):
+        raise ValueError(
+            "Cannot set_position_orientation on ObjectGrouper")
+
+    def set_base_link_position_orientation(self, pos, orn):
         for obj, (part_pos, part_orn) in zip(self.objects, self.pose_offsets):
             new_pos, new_orn = p.multiplyTransforms(
                 pos, orn, part_pos, part_orn)
-            obj.set_position_orientation(new_pos, new_orn)
-
-    def set_base_link_position_orientation(self, pos, orn):
-        raise ValueError(
-            "Cannot set_base_link_position_orientation on ObjectGrouper")
+            obj.set_base_link_position_orientation(new_pos, new_orn)
 
     def rotate_by(self, x=0, y=0, z=0):
         raise ValueError("Cannot rotate_by on ObjectGrouper")
@@ -133,7 +155,7 @@ class ObjectGrouper(StatefulObject):
 class ObjectMultiplexer(StatefulObject):
     """A multi-object wrapper that acts as a proxy for the selected one between the set of objects it contains."""
 
-    def __init__(self, multiplexed_objects, current_index):
+    def __init__(self, name, multiplexed_objects, current_index):
         super(StatefulObject, self).__init__()
 
         assert multiplexed_objects and all(isinstance(
@@ -145,6 +167,7 @@ class ObjectMultiplexer(StatefulObject):
 
         self._multiplexed_objects = multiplexed_objects
         self.current_index = current_index
+        self.name = name
 
         # This will help route obj.states to one of the multiplexed_objects
         del self.states
@@ -157,16 +180,13 @@ class ObjectMultiplexer(StatefulObject):
         return self._multiplexed_objects[self.current_index]
 
     def __getattr__(self, item):
-        return getattr(self.current_selection(), item)
+        # This attribute is used during object import and should return
+        # the concatenation results of all objects in self._multiplexed_objects
+        if item in ['visual_mesh_to_material']:
+            attrs = [getattr(obj, item) for obj in self._multiplexed_objects]
+            return list(itertools.chain.from_iterable(attrs))
 
-    def get_visual_mesh_to_material(self):
-        visual_mesh_to_material = []
-        for obj in self._multiplexed_objects:
-            if isinstance(obj, ObjectGrouper):
-                visual_mesh_to_material += obj.get_visual_mesh_to_material()
-            else:
-                visual_mesh_to_material += obj.visual_mesh_to_material
-        return visual_mesh_to_material
+        return getattr(self.current_selection(), item)
 
     def _load(self):
         body_ids = []

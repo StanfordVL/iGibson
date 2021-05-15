@@ -304,10 +304,9 @@ class iGTNTask(TaskNetTask):
                         simulator_obj_part = URDFObject(
                             filename,
                             name=obj_name,
-                            category=whole_object.category,
+                            category=category,
                             model_path=model_path,
-                            avg_obj_dims=avg_category_spec.get(
-                                whole_object.category),
+                            avg_obj_dims=avg_category_spec.get(category),
                             fit_avg_dim_volume=False,
                             scale=whole_object.scale,
                             texture_randomization=False,
@@ -320,7 +319,9 @@ class iGTNTask(TaskNetTask):
                     assert len(object_parts) > 0
                     grouped_obj_parts = ObjectGrouper(object_parts)
                     simulator_obj = ObjectMultiplexer(
-                        [whole_object, grouped_obj_parts], 0)
+                        whole_object.name + '_multiplexer',
+                        [whole_object, grouped_obj_parts],
+                        0)
 
                 if not self.scene.loaded:
                     self.scene.add_object(simulator_obj)
@@ -803,7 +804,25 @@ class iGTNTask(TaskNetTask):
             # Pop non-sampleable objects
             self.sampling_orders.pop(0)
             for cur_batch in self.sampling_orders:
+                # First sample non-sliced conditions
                 for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME == 'sliced':
+                        continue
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        success = condition.sample(binary_state=positive)
+                        if not success:
+                            error_msg = 'Sampleable object conditions failed: {}'.format(
+                                condition.body)
+                            logging.warning(error_msg)
+                            feedback['init_success'] = 'no'
+                            feedback['init_feedback'] = error_msg
+                            return False, feedback
+
+                # Then sample non-sliced conditions
+                for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME != 'sliced':
+                        continue
                     # Sample conditions that involve the current batch of objects
                     if condition.body[0] in cur_batch:
                         success = condition.sample(binary_state=positive)
