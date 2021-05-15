@@ -1021,9 +1021,12 @@ class URDFObject(StatefulObject):
         :return: position in xyz
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
-            pos, _ = p.getLinkState(body_id, 0)[0:2]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+                raise ValueError(
+                    'Cannot call get_position when the object is fixed and the fixed links are merged.')
+            else:
+                pos, _ = p.getLinkState(body_id, 0)[0:2]
         else:
             pos, _ = p.getBasePositionAndOrientation(body_id)
         return pos
@@ -1035,9 +1038,12 @@ class URDFObject(StatefulObject):
         :return: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
-            _, orn = p.getLinkState(body_id, 0)[0:2]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+                raise ValueError(
+                    'Cannot call get_orientation when the object is fixed and the fixed links are merged.')
+            else:
+                _, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             _, orn = p.getBasePositionAndOrientation(body_id)
         return orn
@@ -1050,9 +1056,12 @@ class URDFObject(StatefulObject):
         :return: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
-            pos, orn = p.getLinkState(body_id, 0)[0:2]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+                raise ValueError(
+                    'Cannot call get_position_orientation when the object is fixed and the fixed links are merged.')
+            else:
+                pos, orn = p.getLinkState(body_id, 0)[0:2]
         else:
             pos, orn = p.getBasePositionAndOrientation(body_id)
         return pos, orn
@@ -1066,9 +1075,12 @@ class URDFObject(StatefulObject):
         """
         # TODO: not used anywhere yet, but probably should be put in ObjectBase
         body_id = self.get_body_id()
-        if (not (self.flags & p.URDF_MERGE_FIXED_LINKS)
-                and (self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world')):
-            pos, orn = p.getLinkState(body_id, 0)[4:6]
+        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+                raise ValueError(
+                    'Cannot call get_base_link_position_orientation when the object is fixed and the fixed links are merged.')
+            else:
+                pos, orn = p.getLinkState(body_id, 0)[4:6]
         else:
             pos, orn = p.getBasePositionAndOrientation(body_id)
             dynamics_info = p.getDynamicsInfo(body_id, -1)
@@ -1147,3 +1159,8 @@ class URDFObject(StatefulObject):
         """
         for meta_link_name, link_info in meta_links.items():
             add_fixed_link(self.object_tree, meta_link_name, link_info)
+
+    # TODO: remove after split floors
+    def set_room_floor(self, room_floor):
+        assert self.category == 'floors'
+        self.room_floor = room_floor

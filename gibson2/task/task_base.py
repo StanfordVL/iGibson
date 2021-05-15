@@ -166,17 +166,22 @@ class iGTNTask(TaskNetTask):
                         self.object_taxonomy.get_subtree_igibson_categories(
                             'burner.n.01')
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
-                    room_objs = self.scene.objects_by_room[room_inst]
                     if obj_cat == FLOOR_SYNSET:
+                        # TODO: remove after split floors
                         # Create a RoomFloor for each room instance
                         # This object is NOT imported by the simulator
-                        scene_objs = [
-                            RoomFloor(category='room_floor',
-                                      name='room_floor_{}'.format(room_inst),
-                                      scene=self.scene,
-                                      room_instance=room_inst)
-                        ]
+                        room_floor = RoomFloor(
+                            category='room_floor',
+                            name='room_floor_{}'.format(
+                                room_inst),
+                            scene=self.scene,
+                            room_instance=room_inst,
+                            floor_obj=self.scene.objects_by_name['floors'])
+                        scene_objs = [room_floor]
                     else:
+                        room_objs = []
+                        if room_inst in self.scene.objects_by_room:
+                            room_objs = self.scene.objects_by_room[room_inst]
                         scene_objs = [obj for obj in room_objs
                                       if obj.category in categories]
                     if len(scene_objs) != 0:
@@ -299,10 +304,9 @@ class iGTNTask(TaskNetTask):
                         simulator_obj_part = URDFObject(
                             filename,
                             name=obj_name,
-                            category=whole_object.category,
+                            category=category,
                             model_path=model_path,
-                            avg_obj_dims=avg_category_spec.get(
-                                whole_object.category),
+                            avg_obj_dims=avg_category_spec.get(category),
                             fit_avg_dim_volume=False,
                             scale=whole_object.scale,
                             texture_randomization=False,
@@ -315,7 +319,9 @@ class iGTNTask(TaskNetTask):
                     assert len(object_parts) > 0
                     grouped_obj_parts = ObjectGrouper(object_parts)
                     simulator_obj = ObjectMultiplexer(
-                        [whole_object, grouped_obj_parts], 0)
+                        whole_object.name + '_multiplexer',
+                        [whole_object, grouped_obj_parts],
+                        0)
 
                 if not self.scene.loaded:
                     self.scene.add_object(simulator_obj)
@@ -357,8 +363,8 @@ class iGTNTask(TaskNetTask):
         self.object_scope['agent.n.01_1'] = agent.parts['body']
         if not self.online_sampling and self.scene.agent != {}:
             agent.parts['body'].set_base_link_position_orientation(
-                self.scene.agent['VrBody_1']['xyz'], quat_from_euler(
-                    self.scene.agent['VrBody_1']['rpy'])
+                self.scene.agent['BRBody_1']['xyz'], quat_from_euler(
+                    self.scene.agent['BRBody_1']['rpy'])
             )
             agent.parts['left_hand'].set_base_link_position_orientation(
                 self.scene.agent['left_hand_1']['xyz'], quat_from_euler(
@@ -377,8 +383,8 @@ class iGTNTask(TaskNetTask):
                     self.scene.agent['right_hand_1']['rpy'])
             )
             agent.parts['eye'].set_base_link_position_orientation(
-                self.scene.agent['VrEye_1']['xyz'], quat_from_euler(
-                    self.scene.agent['VrEye_1']['rpy'])
+                self.scene.agent['BREye_1']['xyz'], quat_from_euler(
+                    self.scene.agent['BREye_1']['rpy'])
             )
 
     def move_agent(self):
@@ -411,6 +417,7 @@ class iGTNTask(TaskNetTask):
             for obj_inst in self.object_scope:
                 matched_sim_obj = None
 
+                # TODO: remove after split floors
                 if 'floor.n.01' in obj_inst:
                     for _, sim_obj in self.scene.objects_by_name.items():
                         if sim_obj.tasknet_object_scope is not None and \
@@ -424,12 +431,13 @@ class iGTNTask(TaskNetTask):
                             assert obj_inst in tasknet_object_scope
                             room_inst = tasknet_object_scope[obj_inst].replace(
                                 'room_floor_', '')
-
                             matched_sim_obj = \
-                                RoomFloor(category='room_floor',
-                                          name=tasknet_object_scope[obj_inst],
-                                          scene=self.scene,
-                                          room_instance=room_inst)
+                                RoomFloor(
+                                    category='room_floor',
+                                    name=tasknet_object_scope[obj_inst],
+                                    scene=self.scene,
+                                    room_instance=room_inst,
+                                    floor_obj=self.scene.objects_by_name['floors'])
                 elif obj_inst == "agent.n.01_1":
                     # Skip adding agent to object scope, handled later by import_agent()
                     continue
@@ -796,7 +804,25 @@ class iGTNTask(TaskNetTask):
             # Pop non-sampleable objects
             self.sampling_orders.pop(0)
             for cur_batch in self.sampling_orders:
+                # First sample non-sliced conditions
                 for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME == 'sliced':
+                        continue
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        success = condition.sample(binary_state=positive)
+                        if not success:
+                            error_msg = 'Sampleable object conditions failed: {}'.format(
+                                condition.body)
+                            logging.warning(error_msg)
+                            feedback['init_success'] = 'no'
+                            feedback['init_feedback'] = error_msg
+                            return False, feedback
+
+                # Then sample non-sliced conditions
+                for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME != 'sliced':
+                        continue
                     # Sample conditions that involve the current batch of objects
                     if condition.body[0] in cur_batch:
                         success = condition.sample(binary_state=positive)
