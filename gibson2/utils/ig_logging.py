@@ -12,7 +12,8 @@ import copy
 
 from gibson2.utils.utils import parse_str_config, dump_config
 from gibson2.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
-from gibson2.object_states import AABB, Pose
+from gibson2.utils.git_utils import project_git_info
+from gibson2.object_states import Pose
 
 
 class IGLogWriter(object):
@@ -240,6 +241,7 @@ class IGLogWriter(object):
         self.hf.attrs['/metadata/start_time'] = str(datetime.datetime.now())
         self.hf.attrs['/metadata/physics_timestep'] = self.sim.physics_timestep
         self.hf.attrs['/metadata/render_timestep'] = self.sim.render_timestep
+        self.hf.attrs['/metadata/git_info'] = dump_config(project_git_info())
 
         if self.task:
             self.hf.attrs['/metadata/task_name'] =  self.task.atus_activity

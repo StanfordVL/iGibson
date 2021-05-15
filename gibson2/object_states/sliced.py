@@ -2,18 +2,18 @@ from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from gibson2.object_states import *
 import gibson2
-from IPython import embed
+import pybullet as p
 
 _DEFAULT_SLICE_FORCE = 10
 
 _SLICED_PROPAGATION_STATE_SET = frozenset([
     Temperature,
     MaxTemperature,
-    Dusty,
-    Stained,
     Soaked,
     ToggledOn,
 ])
+
+# TODO: propagate dusty/stained to object parts
 
 
 class Sliced(AbsoluteObjectState, BooleanState):
@@ -41,15 +41,27 @@ class Sliced(AbsoluteObjectState, BooleanState):
         if not hasattr(self.obj, 'multiplexer'):
             return
 
+        # Object parts offset annotation are w.r.t the base link of the whole object
         pos, orn = self.obj.get_position_orientation()
+        dynamics_info = p.getDynamicsInfo(self.obj.get_body_id(), -1)
+        inertial_pos = dynamics_info[3]
+        inertial_orn = dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn =\
+            p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.multiplyTransforms(
+            pos, orn, inv_inertial_pos, inv_inertial_orn)
         self.obj.set_position(self.obj.initial_pos)
+
         # force_wakeup is needed to properly update the self.obj pose in the renderer
         self.obj.force_wakeup()
         self.obj.multiplexer.set_selection(1)
-        self.obj.multiplexer.set_position_orientation(pos, orn)
+
+        # set the object parts to the base link pose of the whole object
+        # ObjectGrouper internally manages the pose offsets of each part
+        self.obj.multiplexer.set_base_link_position_orientation(pos, orn)
         self.obj.multiplexer.states[Sliced].set_value(self.value)
 
-        # propagate non-kinematic states (e.g. temperature, dusty) from whole object to object parts
+        # propagate non-kinematic states (e.g. temperature, soaked) from whole object to object parts
         for state in _SLICED_PROPAGATION_STATE_SET:
             if state in self.obj.states:
                 self.obj.multiplexer.states[state].set_value(
@@ -57,9 +69,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         return True
 
-    # TODO (Eric): We need to do something here!
+    # For this state, we simply store its value. The ObjectMultiplexer will be
+    # loaded separately.
     def _dump(self):
-        return None
+        return self.value
 
     def _load(self, data):
-        return
+        self.value = data
