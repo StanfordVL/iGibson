@@ -6,14 +6,16 @@ import argparse
 import os
 import datetime
 import h5py
+import pprint
 
 import gibson2
-from gibson2.objects.vr_objects import VrAgent
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
+from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
 from gibson2.utils.ig_logging import IGLogReader, IGLogWriter
+from gibson2.utils.git_utils import project_git_info
+from gibson2.utils.utils import parse_str_config
 import tasknet
 
 import numpy as np
@@ -21,36 +23,6 @@ import pybullet as p
 
 
 def parse_args():
-    scene_choices = [
-        "Beechwood_0_int",
-        "Beechwood_1_int",
-        "Benevolence_0_int",
-        "Benevolence_1_int",
-        "Benevolence_2_int",
-        "Ihlen_0_int",
-        "Ihlen_1_int",
-        "Merom_0_int",
-        "Merom_1_int",
-        "Pomaria_0_int",
-        "Pomaria_1_int",
-        "Pomaria_2_int",
-        "Rs_int",
-        "Wainscott_0_int",
-        "Wainscott_1_int",
-    ]
-
-    task_choices = [
-        "packing_lunches_filtered",
-        "assembling_gift_baskets_filtered",
-        "organizing_school_stuff_filtered",
-        "re-shelving_library_books_filtered",
-        "serving_hors_d_oeuvres_filtered",
-        "putting_away_toys_filtered",
-        "putting_away_Christmas_decorations_filtered",
-        "putting_dishes_away_after_cleaning_filtered",
-        "cleaning_out_drawers_filtered",
-    ]
-    task_id_choices = [0, 1]
     parser = argparse.ArgumentParser(
         description='Run and collect an ATUS demo')
     parser.add_argument('--vr_log_path', type=str,
@@ -72,6 +44,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    pp = pprint.PrettyPrinter(indent=4)
     tasknet.set_backend("iGibson")
 
     # HDR files for PBR rendering
@@ -100,9 +73,7 @@ def main():
 
     # Initialize settings to save action replay frames
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/vr_settings'))
-    vr_settings.turn_off_vr_mode()
     vr_settings.set_frame_save_path(args.frame_save_path)
-    vr_settings.use_companion_window = False
 
     task = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_name')
     task_id = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_instance')
@@ -114,6 +85,18 @@ def main():
         filter_objects = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/filter_objects')
     else:
         filter_objects = True
+
+    if IGLogReader.has_metadata_attr(args.vr_log_path, '/metadata/git_info'):
+        logged_git_info = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/git_info')
+        logged_git_info = parse_str_config(logged_git_info)
+        git_info = project_git_info()
+        for key in logged_git_info:
+            if logged_git_info[key] != git_info[key]:
+                print("Warning, difference in git commits for repo: {}. This may impact deterministic replay".format(key))
+                print("Logged git info:\n")
+                pp.pprint(logged_git_info[key])
+                print("Current git info:\n")
+                pp.pprint(git_info[key])
 
     # Get dictionary mapping object body id to name, also check it is a dictionary
     obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(args.vr_log_path)
@@ -160,8 +143,10 @@ def main():
         log_writer = IGLogWriter(
             s,
             frames_before_write=200,
-            log_filepath=replay_path, task=igtn_task,
-            store_vr=False, vr_agent=vr_agent,
+            log_filepath=replay_path,
+            task=igtn_task,
+            store_vr=False,
+            vr_robot=vr_agent,
             profiling_mode=args.profile,
             filter_objects=filter_objects
         )
@@ -174,12 +159,13 @@ def main():
     satisfied_predicates_cached = {}
     while log_reader.get_data_left_to_read():
         if args.highlight_gaze:
-            if vr_agent.vr_dict['gaze_marker'].eye_data_valid:
+            eye_data = log_reader.get_vr_data().query('eye_data')
+            if eye_data[0]:
                 if target_obj in s.scene.objects_by_id:
                     s.scene.objects_by_id[target_obj].unhighlight()
 
-                origin = vr_agent.vr_dict['gaze_marker'].position_vector
-                direction = vr_agent.vr_dict['gaze_marker'].orientation_vector
+                origin = eye_data[1]
+                direction = eye_data[2]
                 intersection = p.rayTest(origin, np.array(
                     origin) + (np.array(direction) * gaze_max_distance))
                 target_obj = intersection[0][0]
@@ -196,7 +182,7 @@ def main():
         log_reader.set_replay_camera(s)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_vr_data())
+        vr_agent.update(log_reader.get_agent_action('vr_robot'))
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates

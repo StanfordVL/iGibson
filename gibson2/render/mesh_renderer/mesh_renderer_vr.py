@@ -157,13 +157,13 @@ class VrSettings(object):
     Class containing VR settings pertaining to both the VR renderer
     and VR functionality in the simulator/of VR objects
     """
-    def __init__(self, config_str=None):
+    def __init__(self, use_vr=False, config_str=None):
         """
         Initializes VR settings.
         """
         self.config_str = config_str
-        # VR is enabled by default - can be set off on a case-by-case basis
-        self.use_vr = True
+        # VR is disabled by default
+        self.use_vr = use_vr
         # Simulation is reset at start by default
         self.reset_sim = True
         # No frame save path by default
@@ -230,12 +230,10 @@ class VrSettings(object):
         for k, v in self.action_button_map.items():
             self.button_action_map[tuple(v)] = k
 
-    def turn_off_vr_mode(self):
+    def turn_on_companion_window(self):
         """
-        Turns off VR mode so the MeshRendererVR can be debugged.
+        Turns on companion window for VR mode.
         """
-        self.use_vr = False
-        # Enable rendering of companion window
         self.use_companion_window = True
 
     def set_frame_save_path(self, frame_save_path):

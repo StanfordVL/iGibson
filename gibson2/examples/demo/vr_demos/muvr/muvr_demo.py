@@ -15,7 +15,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2 import assets_path
@@ -84,8 +84,8 @@ def run_muvr(mode='server', host='localhost', port='8885'):
         s.renderer.set_fov(90)
 
     # Spawn two agents - one for client and one for the server
-    client_agent = VrAgent(s, agent_num=1)
-    server_agent = VrAgent(s, agent_num=2)
+    client_agent = BehaviorRobot(s, agent_num=1)
+    server_agent = BehaviorRobot(s, agent_num=2)
 
     # Objects to interact with
     mass_list = [5, 10, 20, 30]

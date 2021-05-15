@@ -16,7 +16,7 @@ from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
 from gibson2.utils.vr_utils import VrTimer
@@ -71,7 +71,7 @@ def main():
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     if not VIEWER_MANIP:
-        vr_agent = VrAgent(s, use_gripper=USE_GRIPPER)
+        vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
 
     objects = [
         ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,

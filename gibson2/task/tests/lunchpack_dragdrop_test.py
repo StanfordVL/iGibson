@@ -4,7 +4,7 @@ Rs_int PBR scene.
 Important - VR functionality and where to find it:
 ​
 1) Most VR functions can be found in the gibson2/simulator.py
-2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
+2) The BehaviorRobot and its associated parts can be found in gibson2/robots/behavior_robot.py
 3) VR utility functions are found in gibson2/utils/vr_utils.py
 4) The VR renderer can be found in gibson2/render/mesh_renderer.py
 5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
