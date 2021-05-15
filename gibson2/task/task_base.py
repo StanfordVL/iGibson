@@ -314,7 +314,9 @@ class iGTNTask(TaskNetTask):
                     assert len(object_parts) > 0
                     grouped_obj_parts = ObjectGrouper(object_parts)
                     simulator_obj = ObjectMultiplexer(
-                        [whole_object, grouped_obj_parts], 0)
+                        whole_object.name + '_multiplexer',
+                        [whole_object, grouped_obj_parts],
+                        0)
 
                 if not self.scene.loaded:
                     self.scene.add_object(simulator_obj)
