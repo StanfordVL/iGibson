@@ -2,7 +2,6 @@ from gibson2.object_states.max_temperature import MaxTemperature
 from gibson2.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from gibson2.object_states import *
 import gibson2
-from IPython import embed
 import pybullet as p
 
 _DEFAULT_SLICE_FORCE = 10
@@ -13,6 +12,8 @@ _SLICED_PROPAGATION_STATE_SET = frozenset([
     Soaked,
     ToggledOn,
 ])
+
+# TODO: propagate dusty/stained to object parts
 
 
 class Sliced(AbsoluteObjectState, BooleanState):
@@ -54,6 +55,9 @@ class Sliced(AbsoluteObjectState, BooleanState):
         # force_wakeup is needed to properly update the self.obj pose in the renderer
         self.obj.force_wakeup()
         self.obj.multiplexer.set_selection(1)
+
+        # set the object parts to the base link pose of the whole object
+        # ObjectGrouper internally manages the pose offsets of each part
         self.obj.multiplexer.set_base_link_position_orientation(pos, orn)
         self.obj.multiplexer.states[Sliced].set_value(self.value)
 

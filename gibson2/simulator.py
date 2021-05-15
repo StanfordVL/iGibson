@@ -701,6 +701,7 @@ class Simulator:
                 pos = list(pos)
                 min_distance_to_existing_object = None
                 for existing_object in existing_objects:
+                    # If a sliced obj is an existing_object, get_position will not work
                     if isinstance(existing_object, ObjectMultiplexer) and \
                             isinstance(existing_object.current_selection(), ObjectGrouper):
                         obj_pos = np.array(

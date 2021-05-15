@@ -331,6 +331,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 logging.error(
                     "iGSDF should only contain links that represent embedded URDF objects")
 
+        # Assemble the object multiplexers
         for multiplexer in self.object_multiplexers:
             current_index = int(
                 self.object_multiplexers[multiplexer]['current_index'])
