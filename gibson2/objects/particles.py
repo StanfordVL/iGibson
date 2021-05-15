@@ -461,8 +461,7 @@ class _Dirt(AttachedParticleSystem):
         self._clip_into_object = clip_into_object
 
     def randomize(self):
-        if self.get_num_stashed() == 0:
-            return
+        assert self.get_num_stashed() == self.get_num(), "All particles should be stashed before sampling."
 
         bbox_sizes = [
             particle.bounding_box for particle in self.get_stashed_particles()]
