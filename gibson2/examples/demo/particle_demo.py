@@ -63,6 +63,7 @@ def main():
     try:
         while True:
             s.step()
+            print("Dirty: ", desk.states[object_states.Dusty].get_value())
     finally:
         s.disconnect()
 
