@@ -273,7 +273,7 @@ class ToyEnvInt(object):
         try:
             self.task.update_problem(
                 "tester", "tester", predefined_problem=pddl)
-            self.task.object_scope['agent.n.01_1'] = self.task.agent.vr_dict['body']
+            self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {

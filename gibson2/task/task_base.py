@@ -12,7 +12,7 @@ from gibson2.object_states.on_floor import RoomFloor
 from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -166,17 +166,22 @@ class iGTNTask(TaskNetTask):
                         self.object_taxonomy.get_subtree_igibson_categories(
                             'burner.n.01')
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
-                    room_objs = self.scene.objects_by_room[room_inst]
                     if obj_cat == FLOOR_SYNSET:
+                        # TODO: remove after split floors
                         # Create a RoomFloor for each room instance
                         # This object is NOT imported by the simulator
-                        scene_objs = [
-                            RoomFloor(category='room_floor',
-                                      name='room_floor_{}'.format(room_inst),
-                                      scene=self.scene,
-                                      room_instance=room_inst)
-                        ]
+                        room_floor = RoomFloor(
+                            category='room_floor',
+                            name='room_floor_{}'.format(
+                                room_inst),
+                            scene=self.scene,
+                            room_instance=room_inst,
+                            floor_obj=self.scene.objects_by_name['floors'])
+                        scene_objs = [room_floor]
                     else:
+                        room_objs = []
+                        if room_inst in self.scene.objects_by_room:
+                            room_objs = self.scene.objects_by_room[room_inst]
                         scene_objs = [obj for obj in room_objs
                                       if obj.category in categories]
                     if len(scene_objs) != 0:
@@ -328,79 +333,79 @@ class iGTNTask(TaskNetTask):
         return True, feedback
 
     def import_agent(self):
-        # TODO: replace this with self.simulator.import_robot(VrAgent(self.simulator)) once VrAgent supports
+        # TODO: replace this with self.simulator.import_robot(BehaviorRobot(self.simulator)) once BehaviorRobot supports
         # baserobot api
-        agent = VrAgent(self.simulator)
-        self.simulator.import_vr_agent(agent)
-        self.simulator.register_main_agent(agent)
+        agent = BehaviorRobot(self.simulator)
+        self.simulator.import_behavior_robot(agent)
+        self.simulator.register_main_vr_robot(agent)
         self.agent = agent
         self.simulator.robots.append(agent)
         assert(len(self.simulator.robots) ==
                1), "Error, multiple agents is not currently supported"
-        agent.vr_dict['body'].set_base_link_position_orientation(
+        agent.parts['body'].set_base_link_position_orientation(
             [300, 300, 300], [0, 0, 0, 1]
         )
-        agent.vr_dict['left_hand'].set_base_link_position_orientation(
+        agent.parts['left_hand'].set_base_link_position_orientation(
             [300, 300, -300], [0, 0, 0, 1]
         )
-        agent.vr_dict['right_hand'].set_base_link_position_orientation(
+        agent.parts['right_hand'].set_base_link_position_orientation(
             [300, -300, 300], [0, 0, 0, 1]
         )
-        agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+        agent.parts['left_hand'].ghost_hand.set_base_link_position_orientation(
             [300, 300, -300], [0, 0, 0, 1]
         )
-        agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+        agent.parts['right_hand'].ghost_hand.set_base_link_position_orientation(
             [300, -300, 300], [0, 0, 0, 1]
         )
-        agent.vr_dict['eye'].set_base_link_position_orientation(
+        agent.parts['eye'].set_base_link_position_orientation(
             [300, -300, -300], [0, 0, 0, 1]
         )
-        self.object_scope['agent.n.01_1'] = agent.vr_dict['body']
+        self.object_scope['agent.n.01_1'] = agent.parts['body']
         if not self.online_sampling and self.scene.agent != {}:
-            agent.vr_dict['body'].set_base_link_position_orientation(
-                self.scene.agent['VrBody_1']['xyz'], quat_from_euler(
-                    self.scene.agent['VrBody_1']['rpy'])
+            agent.parts['body'].set_base_link_position_orientation(
+                self.scene.agent['BRBody_1']['xyz'], quat_from_euler(
+                    self.scene.agent['BRBody_1']['rpy'])
             )
-            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+            agent.parts['left_hand'].set_base_link_position_orientation(
                 self.scene.agent['left_hand_1']['xyz'], quat_from_euler(
                     self.scene.agent['left_hand_1']['rpy'])
             )
-            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+            agent.parts['right_hand'].set_base_link_position_orientation(
                 self.scene.agent['right_hand_1']['xyz'], quat_from_euler(
                     self.scene.agent['right_hand_1']['rpy'])
             )
-            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+            agent.parts['left_hand'].ghost_hand.set_base_link_position_orientation(
                 self.scene.agent['left_hand_1']['xyz'], quat_from_euler(
                     self.scene.agent['left_hand_1']['rpy'])
             )
-            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+            agent.parts['right_hand'].ghost_hand.set_base_link_position_orientation(
                 self.scene.agent['right_hand_1']['xyz'], quat_from_euler(
                     self.scene.agent['right_hand_1']['rpy'])
             )
-            agent.vr_dict['eye'].set_base_link_position_orientation(
-                self.scene.agent['VrEye_1']['xyz'], quat_from_euler(
-                    self.scene.agent['VrEye_1']['rpy'])
+            agent.parts['eye'].set_base_link_position_orientation(
+                self.scene.agent['BREye_1']['xyz'], quat_from_euler(
+                    self.scene.agent['BREye_1']['rpy'])
             )
 
     def move_agent(self):
         agent = self.agent
         if not self.online_sampling and self.scene.agent == {}:
-            agent.vr_dict['body'].set_base_link_position_orientation(
+            agent.parts['body'].set_base_link_position_orientation(
                 [0, 0, 0.5], [0, 0, 0, 1]
             )
-            agent.vr_dict['left_hand'].set_base_link_position_orientation(
+            agent.parts['left_hand'].set_base_link_position_orientation(
                 [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5],
             )
-            agent.vr_dict['right_hand'].set_base_link_position_orientation(
+            agent.parts['right_hand'].set_base_link_position_orientation(
                 [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
             )
-            agent.vr_dict['left_hand'].ghost_hand.set_base_link_position_orientation(
+            agent.parts['left_hand'].ghost_hand.set_base_link_position_orientation(
                 [0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5]
             )
-            agent.vr_dict['right_hand'].ghost_hand.set_base_link_position_orientation(
+            agent.parts['right_hand'].ghost_hand.set_base_link_position_orientation(
                 [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
             )
-            agent.vr_dict['eye'].set_base_link_position_orientation(
+            agent.parts['eye'].set_base_link_position_orientation(
                 [0, 0, 1.5], [0, 0, 0, 1]
             )
 
@@ -412,6 +417,7 @@ class iGTNTask(TaskNetTask):
             for obj_inst in self.object_scope:
                 matched_sim_obj = None
 
+                # TODO: remove after split floors
                 if 'floor.n.01' in obj_inst:
                     for _, sim_obj in self.scene.objects_by_name.items():
                         if sim_obj.tasknet_object_scope is not None and \
@@ -425,12 +431,13 @@ class iGTNTask(TaskNetTask):
                             assert obj_inst in tasknet_object_scope
                             room_inst = tasknet_object_scope[obj_inst].replace(
                                 'room_floor_', '')
-
                             matched_sim_obj = \
-                                RoomFloor(category='room_floor',
-                                          name=tasknet_object_scope[obj_inst],
-                                          scene=self.scene,
-                                          room_instance=room_inst)
+                                RoomFloor(
+                                    category='room_floor',
+                                    name=tasknet_object_scope[obj_inst],
+                                    scene=self.scene,
+                                    room_instance=room_inst,
+                                    floor_obj=self.scene.objects_by_name['floors'])
                 elif obj_inst == "agent.n.01_1":
                     # Skip adding agent to object scope, handled later by import_agent()
                     continue

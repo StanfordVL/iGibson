@@ -7,7 +7,7 @@ import pybullet as p
 import gibson2
 from gibson2 import object_states
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.simulator import Simulator
 from gibson2.objects.ycb_object import YCBObject
@@ -62,7 +62,7 @@ scene = InteractiveIndoorScene(
 s.import_ig_scene(scene)
 
 if not VIEWER_MANIP:
-    vr_agent = VrAgent(s, use_gripper=USE_GRIPPER, normal_color=False)
+    vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER, normal_color=False)
 
 block = YCBObject(name='036_wood_block')
 s.import_object(block)

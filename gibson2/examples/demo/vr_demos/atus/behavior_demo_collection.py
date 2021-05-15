@@ -1,4 +1,4 @@
-""" 
+"""
 Main BEHAVIOR demo collection entrypoint
 """
 
@@ -7,9 +7,9 @@ import os
 import datetime
 
 import gibson2
-from gibson2.objects.vr_objects import VrAgent
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher
+from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
 from gibson2.utils.ig_logging import IGLogWriter
@@ -84,7 +84,7 @@ def main():
     )
 
     # VR system settings
-    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings, physics_timestep=1 / 300.0, render_timestep = 1 / 30.0)
+    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True), physics_timestep=1 / 300.0, render_timestep = 1 / 30.0)
     igtn_task = iGTNTask(args.task, args.task_id)
 
     scene_kwargs = None
@@ -115,7 +115,16 @@ def main():
         if args.vr_log_path == None:
             args.vr_log_path = "{}_{}_{}_{}.hdf5".format(
                 args.task, args.task_id, args.scene, timestamp)
-        log_writer = IGLogWriter(s, frames_before_write=200, log_filepath=args.vr_log_path, task=igtn_task, store_vr=True, vr_agent=vr_agent, profiling_mode=args.profile)
+        log_writer = IGLogWriter(
+            s,
+            frames_before_write=200,
+            log_filepath=args.vr_log_path,
+            task=igtn_task,
+            store_vr=True,
+            vr_robot=vr_agent,
+            profiling_mode=args.profile,
+            filter_objects=True
+        )
         log_writer.set_up_data_storage()
 
     satisfied_predicates_cached = {}
@@ -125,7 +134,7 @@ def main():
         igtn_task.simulator.step(print_stats=args.profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
-        vr_agent.update(igtn_task.simulator.gen_vr_data())
+        vr_agent.update(igtn_task.simulator.gen_vr_robot_action())
 
         if satisfied_predicates != satisfied_predicates_cached:
             vr_cs.refresh_condition(switch=False)
@@ -144,7 +153,7 @@ def main():
             post_task_steps -= 1
             if post_task_steps == 0:
                 break
-    
+
     if log_writer and not args.disable_save:
         log_writer.end_log_session()
 
