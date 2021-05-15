@@ -356,6 +356,8 @@ def add_fixed_link(tree, link_name, link_info):
             visual_box = ET.SubElement(visual_geometry, 'box')
             visual_box.attrib = {
                 'size': "%.4f %.4f %.4f" % tuple([0., 0., 0.])}
+            # Uncomment the below to see the actual visual mesh.
+            #    'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
             collision_box = ET.SubElement(collision_geometry, 'box')
             collision_box.attrib = {
                 'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
