@@ -19,6 +19,7 @@ from gibson2.objects.object_base import Object
 from gibson2.objects.particles import ParticleSystem, Particle
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d, multQuatLists
 from gibson2.utils.assets_utils import get_ig_avg_category_specs
+from gibson2.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
 from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset, calc_z_rot_from_right
 
 import pybullet as p
@@ -285,8 +286,18 @@ class Simulator:
         # Load the states of all the objects in the scene.
         for obj in scene.get_objects():
             if isinstance(obj, StatefulObject):
-                for state in obj.states.values():
-                    state.initialize(self)
+                if isinstance(obj, ObjectMultiplexer):
+                    for sub_obj in obj._multiplexed_objects:
+                        if isinstance(sub_obj, ObjectGrouper):
+                            for group_sub_obj in sub_obj.objects:
+                                for state in group_sub_obj.states.values():
+                                    state.initialize(self)
+                        else:
+                            for state in sub_obj.states.values():
+                                state.initialize(self)
+                else:
+                    for state in obj.states.values():
+                        state.initialize(self)
 
         return new_object_pb_ids
 
@@ -330,8 +341,18 @@ class Simulator:
         # Load the states of all the objects in the scene.
         for obj in scene.get_objects():
             if isinstance(obj, StatefulObject):
-                for state in obj.states.values():
-                    state.initialize(self)
+                if isinstance(obj, ObjectMultiplexer):
+                    for sub_obj in obj._multiplexed_objects:
+                        if isinstance(sub_obj, ObjectGrouper):
+                            for group_sub_obj in sub_obj.objects:
+                                for state in group_sub_obj.states.values():
+                                    state.initialize(self)
+                        else:
+                            for state in sub_obj.states.values():
+                                state.initialize(self)
+                else:
+                    for state in obj.states.values():
+                        state.initialize(self)
 
         return new_object_ids
 
@@ -414,8 +435,18 @@ class Simulator:
 
         # Finally, initialize the object's states
         if isinstance(obj, StatefulObject):
-            for state in obj.states.values():
-                state.initialize(self)
+            if isinstance(obj, ObjectMultiplexer):
+                for sub_obj in obj._multiplexed_objects:
+                    if isinstance(sub_obj, ObjectGrouper):
+                        for group_sub_obj in sub_obj.objects:
+                            for state in group_sub_obj.states.values():
+                                state.initialize(self)
+                    else:
+                        for state in sub_obj.states.values():
+                            state.initialize(self)
+            else:
+                for state in obj.states.values():
+                    state.initialize(self)
 
         return new_object_pb_id_or_ids
 
@@ -670,9 +701,15 @@ class Simulator:
                 pos = list(pos)
                 min_distance_to_existing_object = None
                 for existing_object in existing_objects:
+                    # If a sliced obj is an existing_object, get_position will not work
+                    if isinstance(existing_object, ObjectMultiplexer) and \
+                            isinstance(existing_object.current_selection(), ObjectGrouper):
+                        obj_pos = np.array(
+                            [obj.get_position() for obj in existing_object.objects]).mean(axis=0)
+                    else:
+                        obj_pos = existing_object.get_position()
                     distance = np.linalg.norm(
-                        np.array(pos) -
-                        np.array(existing_object.get_position()))
+                        np.array(pos) - np.array(obj_pos))
                     if min_distance_to_existing_object is None or \
                        min_distance_to_existing_object > distance:
                         min_distance_to_existing_object = distance
@@ -1047,11 +1084,14 @@ class Simulator:
         """
         # Update VR offset using appropriate controller
         if self.vr_settings.touchpad_movement:
-            vr_offset_device = '{}_controller'.format(self.vr_settings.movement_controller)
+            vr_offset_device = '{}_controller'.format(
+                self.vr_settings.movement_controller)
             is_valid, _, _ = self.get_data_for_vr_device(vr_offset_device)
             if is_valid:
-                _, touch_x, touch_y = self.get_button_data_for_controller(vr_offset_device)
-                new_offset = calc_offset(self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
+                _, touch_x, touch_y = self.get_button_data_for_controller(
+                    vr_offset_device)
+                new_offset = calc_offset(
+                    self, touch_x, touch_y, self.vr_settings.movement_speed, self.vr_settings.relative_movement_device)
                 self.set_vr_offset(new_offset)
 
         # Adjust user height based on y-axis (vertical direction) touchpad input
@@ -1060,27 +1100,32 @@ class Simulator:
         if is_height_valid:
             curr_offset = self.get_vr_offset()
             hmd_height = self.get_hmd_world_pos()[2]
-            _, _, height_y = self.get_button_data_for_controller(vr_height_device)
+            _, _, height_y = self.get_button_data_for_controller(
+                vr_height_device)
             if height_y < -0.7:
                 vr_z_offset = -0.01
                 if hmd_height + curr_offset[2] + vr_z_offset >= self.vr_settings.height_bounds[0]:
-                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
+                    self.set_vr_offset(
+                        [curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
             elif height_y > 0.7:
                 vr_z_offset = 0.01
                 if hmd_height + curr_offset[2] + vr_z_offset <= self.vr_settings.height_bounds[1]:
-                    self.set_vr_offset([curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])                
+                    self.set_vr_offset(
+                        [curr_offset[0], curr_offset[1], curr_offset[2] + vr_z_offset])
 
         # Update haptics for body and hands
         if self.main_vr_robot:
             vr_body_id = self.main_vr_robot.parts['body'].body_id
-            vr_hands = [('left_controller', self.main_vr_robot.parts['left_hand']), ('right_controller', self.main_vr_robot.parts['right_hand'])]
+            vr_hands = [('left_controller', self.main_vr_robot.parts['left_hand']),
+                        ('right_controller', self.main_vr_robot.parts['right_hand'])]
 
             # Check for body haptics
             wall_ids = self.get_category_ids('walls')
             for c_info in p.getContactPoints(vr_body_id):
                 if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
                     for controller in ['left_controller', 'right_controller']:
-                        is_valid, _, _ = self.get_data_for_vr_device(controller)
+                        is_valid, _, _ = self.get_data_for_vr_device(
+                            controller)
                         if is_valid:
                             # Use 90% strength for body to warn user of collision with wall
                             self.trigger_haptic_pulse(controller, 0.9)
@@ -1104,21 +1149,25 @@ class Simulator:
         Import registered behavior robot into the simulator.
         """
         for part_name, part_obj in bvr_robot.parts.items():
-            self.import_object(part_obj, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+            self.import_object(part_obj, use_pbr=False,
+                               use_pbr_mapping=False, shadow_caster=True)
             if bvr_robot.use_ghost_hands and part_name in ['left_hand', 'right_hand']:
                 # Ghost hands don't cast shadows
-                self.import_object(part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+                self.import_object(
+                    part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
             if part_name == 'eye':
                 # BREye doesn't cast shadows either
-                self.import_object(part_obj.head_visual_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
-    
+                self.import_object(part_obj.head_visual_marker, use_pbr=False,
+                                   use_pbr_mapping=False, shadow_caster=False)
+
     def gen_vr_data(self):
         """
         Generates a VrData object containing all of the data required to describe the VR system in the current frame.
         This data is used to power the BehaviorRobot each frame.
         """
         if not self.can_access_vr_context:
-            raise RuntimeError('Unable to get VR data for current frame since VR system is not being used!')
+            raise RuntimeError(
+                'Unable to get VR data for current frame since VR system is not being used!')
 
         v = dict()
         for device in VR_DEVICES:
@@ -1127,25 +1176,30 @@ class Simulator:
             device_data.extend(self.get_device_coordinate_system(device))
             v[device] = device_data
             if device in VR_CONTROLLERS:
-                v['{}_button'.format(device)] = self.get_button_data_for_controller(device)
+                v['{}_button'.format(
+                    device)] = self.get_button_data_for_controller(device)
 
         # Store final rotations of hands, with model rotation applied
         for hand in ['right', 'left']:
             # Base rotation quaternion
-            base_rot = self.main_vr_robot.parts['{}_hand'.format(hand)].base_rot
+            base_rot = self.main_vr_robot.parts['{}_hand'.format(
+                hand)].base_rot
             # Raw rotation of controller
             controller_rot = v['{}_controller'.format(hand)][2]
             # Use dummy translation to calculation final rotation
-            final_rot = p.multiplyTransforms([0,0,0], controller_rot, [0,0,0], base_rot)[1]
+            final_rot = p.multiplyTransforms(
+                [0, 0, 0], controller_rot, [0, 0, 0], base_rot)[1]
             v['{}_controller'.format(hand)].append(final_rot)
 
-        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(self.vr_settings.torso_tracker_serial)
+        is_valid, torso_trans, torso_rot = self.get_data_for_vr_tracker(
+            self.vr_settings.torso_tracker_serial)
         v['torso_tracker'] = [is_valid, torso_trans, torso_rot]
         v['eye_data'] = self.get_eye_tracking_data()
         v['event_data'] = self.get_vr_events()
         reset_actions = []
         for controller in VR_CONTROLLERS:
-            reset_actions.append(self.query_vr_event(controller, 'reset_agent'))
+            reset_actions.append(
+                self.query_vr_event(controller, 'reset_agent'))
         v['reset_actions'] = reset_actions
         v['vr_positions'] = [self.get_vr_pos().tolist(), list(self.get_vr_offset())]
 
@@ -1179,7 +1233,8 @@ class Simulator:
         torso_is_valid, torso_pos, torso_orn = v.query('torso_tracker')
         vr_body = self.main_vr_robot.parts['body']
         prev_body_pos, prev_body_orn = vr_body.get_position_orientation()
-        inv_prev_body_pos, inv_prev_body_orn = p.invertTransform(prev_body_pos, prev_body_orn)
+        inv_prev_body_pos, inv_prev_body_orn = p.invertTransform(
+            prev_body_pos, prev_body_orn)
 
         if self.vr_settings.using_tracked_body:
             if torso_is_valid:
@@ -1188,34 +1243,43 @@ class Simulator:
                 des_body_pos, des_body_orn = prev_body_pos, prev_body_orn
         else:
             if hmd_is_valid:
-                des_body_pos, des_body_orn = hmd_pos, p.getQuaternionFromEuler([0, 0, calc_z_rot_from_right(hmd_r)])
+                des_body_pos, des_body_orn = hmd_pos, p.getQuaternionFromEuler(
+                    [0, 0, calc_z_rot_from_right(hmd_r)])
             else:
                 des_body_pos, des_body_orn = prev_body_pos, prev_body_orn
 
-        body_delta_pos, body_delta_orn = p.multiplyTransforms(inv_prev_body_pos, inv_prev_body_orn, des_body_pos, des_body_orn)
+        body_delta_pos, body_delta_orn = p.multiplyTransforms(
+            inv_prev_body_pos, inv_prev_body_orn, des_body_pos, des_body_orn)
         action[:3] = np.array(body_delta_pos)
         action[3:6] = np.array(p.getEulerFromQuaternion(body_delta_orn))
 
         # Get new body position so we can calculate correct relative transforms for other VR objects
-        clipped_body_delta_pos, clipped_body_delta_orn = vr_body.clip_delta_pos_orn(action[:3], action[3:6])
-        clipped_body_delta_orn = p.getQuaternionFromEuler(clipped_body_delta_orn)
-        new_body_pos, new_body_orn = p.multiplyTransforms(prev_body_pos, prev_body_orn, clipped_body_delta_pos, clipped_body_delta_orn)
+        clipped_body_delta_pos, clipped_body_delta_orn = vr_body.clip_delta_pos_orn(
+            action[:3], action[3:6])
+        clipped_body_delta_orn = p.getQuaternionFromEuler(
+            clipped_body_delta_orn)
+        new_body_pos, new_body_orn = p.multiplyTransforms(
+            prev_body_pos, prev_body_orn, clipped_body_delta_pos, clipped_body_delta_orn)
         # Also calculate its inverse for further local transform calculations
-        inv_new_body_pos, inv_new_body_orn = p.invertTransform(new_body_pos, new_body_orn)
+        inv_new_body_pos, inv_new_body_orn = p.invertTransform(
+            new_body_pos, new_body_orn)
 
         # Update action space for other VR objects
         body_relative_parts = ['right', 'left', 'eye']
         for part_name in body_relative_parts:
-            vr_part = self.main_vr_robot.parts[part_name] if part_name == 'eye' else self.main_vr_robot.parts['{}_hand'.format(part_name)]
+            vr_part = self.main_vr_robot.parts[part_name] if part_name == 'eye' else self.main_vr_robot.parts['{}_hand'.format(
+                part_name)]
 
             # Process local transform adjustments
             prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
             prev_local_pos, prev_local_orn = vr_part.local_pos, vr_part.local_orn
-            inv_prev_local_pos, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
+            inv_prev_local_pos, inv_prev_local_orn = p.invertTransform(
+                prev_local_pos, prev_local_orn)
             if part_name == 'eye':
                 valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
             else:
-                valid, world_pos, _ = v.query('{}_controller'.format(part_name))[:3]
+                valid, world_pos, _ = v.query(
+                    '{}_controller'.format(part_name))[:3]
                 # Need rotation of the model so it will appear aligned with the physical controller in VR
                 world_orn = v.query('{}_controller'.format(part_name))[6]
 
@@ -1224,9 +1288,11 @@ class Simulator:
                 world_pos, world_orn = prev_world_pos, prev_world_orn
 
             # Get desired local position and orientation transforms
-            des_local_pos, des_local_orn = p.multiplyTransforms(inv_new_body_pos, inv_new_body_orn, world_pos, world_orn)
+            des_local_pos, des_local_orn = p.multiplyTransforms(
+                inv_new_body_pos, inv_new_body_orn, world_pos, world_orn)
 
-            delta_local_pos, delta_local_orn = p.multiplyTransforms(inv_prev_local_pos, inv_prev_local_orn, des_local_pos, des_local_orn)
+            delta_local_pos, delta_local_orn = p.multiplyTransforms(
+                inv_prev_local_pos, inv_prev_local_orn, des_local_pos, des_local_orn)
             delta_local_orn = p.getEulerFromQuaternion(delta_local_orn)
 
             if part_name == 'eye':
@@ -1243,7 +1309,8 @@ class Simulator:
             if part_name in ['right', 'left']:
                 prev_trig_frac = vr_part.trig_frac
                 if valid:
-                    trig_frac = v.query('{}_controller_button'.format(part_name))[0]
+                    trig_frac = v.query(
+                        '{}_controller_button'.format(part_name))[0]
                     delta_trig_frac = trig_frac - prev_trig_frac
                 else:
                     delta_trig_frac = 0.0
@@ -1252,7 +1319,8 @@ class Simulator:
                 else:
                     action[26] = delta_trig_frac
                 # If we reset, action is 1, otherwise 0
-                reset_action = v.query('reset_actions')[0] if part_name == 'left' else v.query('reset_actions')[1]
+                reset_action = v.query('reset_actions')[
+                    0] if part_name == 'left' else v.query('reset_actions')[1]
                 reset_action_val = 1.0 if reset_action else 0.0
                 if part_name == 'left':
                     action[19] = reset_action_val
@@ -1514,7 +1582,8 @@ class Simulator:
         offset_to_pos = np.array(pos) - self.get_hmd_world_pos()
         if keep_height:
             curr_offset_z = self.get_vr_offset()[2]
-            self.set_vr_offset([offset_to_pos[0], offset_to_pos[1], curr_offset_z])
+            self.set_vr_offset(
+                [offset_to_pos[0], offset_to_pos[1], curr_offset_z])
         else:
             self.set_vr_offset(offset_to_pos)
 
