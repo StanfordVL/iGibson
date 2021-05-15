@@ -7,6 +7,8 @@ from IPython import embed
 from collections import namedtuple
 import pybullet as p
 
+# TODO: remove after split floors
+
 
 class RoomFloor(object):
     def __init__(self,

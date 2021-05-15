@@ -167,6 +167,7 @@ class iGTNTask(TaskNetTask):
                             'burner.n.01')
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     if obj_cat == FLOOR_SYNSET:
+                        # TODO: remove after split floors
                         # Create a RoomFloor for each room instance
                         # This object is NOT imported by the simulator
                         room_floor = RoomFloor(
@@ -415,6 +416,7 @@ class iGTNTask(TaskNetTask):
             for obj_inst in self.object_scope:
                 matched_sim_obj = None
 
+                # TODO: remove after split floors
                 if 'floor.n.01' in obj_inst:
                     for _, sim_obj in self.scene.objects_by_name.items():
                         if sim_obj.tasknet_object_scope is not None and \
