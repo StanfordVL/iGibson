@@ -26,11 +26,11 @@ class Sliced(AbsoluteObjectState, BooleanState):
         return self.value
 
     def _set_value(self, new_value):
-        if not new_value:
-            raise ValueError('Cannot set sliced to be False')
-
-        if self.value:
+        if self.value == new_value:
             return
+
+        if not new_value:
+            raise ValueError('Cannot set sliced from True to False')
 
         self.value = new_value
 
