@@ -804,6 +804,7 @@ class iGTNTask(TaskNetTask):
             # Pop non-sampleable objects
             self.sampling_orders.pop(0)
             for cur_batch in self.sampling_orders:
+                # First sample non-sliced conditions
                 for condition, positive in sampleable_obj_conditions:
                     if condition.STATE_NAME == 'sliced':
                         continue
@@ -818,6 +819,7 @@ class iGTNTask(TaskNetTask):
                             feedback['init_feedback'] = error_msg
                             return False, feedback
 
+                # Then sample non-sliced conditions
                 for condition, positive in sampleable_obj_conditions:
                     if condition.STATE_NAME != 'sliced':
                         continue
