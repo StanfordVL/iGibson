@@ -7,8 +7,26 @@ from IPython import embed
 from collections import namedtuple
 import pybullet as p
 
-RoomFloor = namedtuple(
-    'RoomFloor', ['category', 'name', 'scene', 'room_instance'])
+# TODO: remove after split floors
+
+
+class RoomFloor(object):
+    def __init__(self,
+                 category,
+                 name,
+                 scene,
+                 room_instance,
+                 floor_obj):
+        self.category = category
+        self.name = name
+        self.scene = scene
+        self.room_instance = room_instance
+        self.floor_obj = floor_obj
+
+    def __getattr__(self, item):
+        if item == 'states':
+            self.floor_obj.set_room_floor(self)
+        return getattr(self.floor_obj, item)
 
 
 class OnFloor(KinematicsMixin, RelativeObjectState, BooleanState):
