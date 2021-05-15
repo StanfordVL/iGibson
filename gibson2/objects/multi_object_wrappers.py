@@ -2,7 +2,6 @@ from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.object_base import Object
 from gibson2.objects.stateful_object import StatefulObject
 from gibson2.object_states.object_state_base import AbsoluteObjectState
-from IPython import embed
 import pybullet as p
 import itertools
 
@@ -11,6 +10,8 @@ class ObjectGrouper(StatefulObject):
     """A multi-object wrapper that groups multiple objects and applies operations to all of them in parallel."""
 
     class ProceduralMaterialAggregator(object):
+        """A fake procedural material that updates the procedural material of all ObjectGrouper objects."""
+
         def __init__(self, object_grouper):
             self.object_grouper = object_grouper
 
@@ -60,6 +61,9 @@ class ObjectGrouper(StatefulObject):
         pose_offsets = [trans for _, trans in objects_with_pose_offsets]
         assert objects and all(isinstance(obj, Object) for obj in objects)
         self.objects = objects
+
+        # Pose offsets are the transformation of the object parts to the whole
+        # object in base link frame
         self.pose_offsets = pose_offsets
 
         state_types = [obj.states.keys() for obj in self.objects]
@@ -99,6 +103,8 @@ class ObjectGrouper(StatefulObject):
 
             return grouped_function
 
+        # These attributes are used during object import and should return
+        # the concatenation results of all objects in self.objects
         if item in ['visual_mesh_to_material', 'body_ids', 'is_fixed']:
             return list(itertools.chain.from_iterable(attrs))
 
@@ -174,6 +180,8 @@ class ObjectMultiplexer(StatefulObject):
         return self._multiplexed_objects[self.current_index]
 
     def __getattr__(self, item):
+        # This attribute is used during object import and should return
+        # the concatenation results of all objects in self._multiplexed_objects
         if item in ['visual_mesh_to_material']:
             attrs = [getattr(obj, item) for obj in self._multiplexed_objects]
             return list(itertools.chain.from_iterable(attrs))
