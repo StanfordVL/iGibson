@@ -701,9 +701,14 @@ class Simulator:
                 pos = list(pos)
                 min_distance_to_existing_object = None
                 for existing_object in existing_objects:
+                    if isinstance(existing_object, ObjectMultiplexer) and \
+                            isinstance(existing_object.current_selection(), ObjectGrouper):
+                        obj_pos = np.array(
+                            [obj.get_position() for obj in existing_object.objects]).mean(axis=0)
+                    else:
+                        obj_pos = existing_object.get_position()
                     distance = np.linalg.norm(
-                        np.array(pos) -
-                        np.array(existing_object.get_position()))
+                        np.array(pos) - np.array(obj_pos))
                     if min_distance_to_existing_object is None or \
                        min_distance_to_existing_object > distance:
                         min_distance_to_existing_object = distance
