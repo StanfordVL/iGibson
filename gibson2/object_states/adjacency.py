@@ -98,6 +98,7 @@ def compute_adjacencies(obj, axes):
             ray_endpoints,
             reportHitNumber=i,
             fractionEpsilon=1,
+            numThreads=0,
         )
 
         # Get the object IDs per axis and filter out self-hit cases.
