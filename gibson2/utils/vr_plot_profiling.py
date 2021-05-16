@@ -38,6 +38,7 @@ def main():
     metrics = {
         'Out of Step': 'Total out-of-step',
         'Physics': 'Total physics',
+        'Non-Physics': 'Total non-physics',
         'Render': 'Total render',
         'Sleep': 'Total sleep',
         'VR system': 'Total VR system',
