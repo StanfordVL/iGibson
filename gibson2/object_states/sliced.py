@@ -27,7 +27,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
     def _set_value(self, new_value):
         if self.value == new_value:
-            return
+            return True
 
         if not new_value:
             raise ValueError('Cannot set sliced from True to False')
@@ -39,7 +39,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
         # when we propagate sliced=True from the whole object to all the
         # object parts
         if not hasattr(self.obj, 'multiplexer'):
-            return
+            return True
 
         # Object parts offset annotation are w.r.t the base link of the whole object
         pos, orn = self.obj.get_position_orientation()
