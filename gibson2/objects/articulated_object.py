@@ -449,15 +449,18 @@ class URDFObject(StatefulObject):
         indices = list(range(len(self.orientations)))
         orientations = [np.array(o['rotation']) for o in self.orientations]
         probabilities = [o['prob'] for o in self.orientations]
-        variation = [o['variation'] for o in self.orientations]
         probabilities = np.array(probabilities) / np.sum(probabilities)
         chosen_orientation_idx = np.random.choice(indices, p=probabilities)
         chosen_orientation = orientations[chosen_orientation_idx]
-        min_rotation = 0.05
-        rotation_variance = max(
-            variation[chosen_orientation_idx], min_rotation)
+        # Randomize yaw based on the variation annotation
+        # variation = [o['variation'] for o in self.orientations]
+        # min_rotation = 0.05
+        # rotation_variance = max(
+        #     variation[chosen_orientation_idx], min_rotation)
+        # rot_num = np.random.random() * rotation_variance
 
-        rot_num = np.random.random() * rotation_variance
+        # Randomize yaw from -pi to pi
+        rot_num = np.random.uniform(-1, 1)
         rot_matrix = np.array([
             [math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
             [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
