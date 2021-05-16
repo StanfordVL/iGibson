@@ -1252,8 +1252,8 @@ class Simulator:
             else:
                 des_body_pos, des_body_orn = prev_body_pos, prev_body_orn
 
-        body_delta_pos = (np.array(des_body_pos) - np.array(prev_body_pos)).tolist()
-        body_delta_orn = p.multiplyTransforms([0,0,0], inv_prev_body_orn, [0,0,0], des_body_orn)[1]
+        body_delta_pos, body_delta_orn = p.multiplyTransforms(
+            inv_prev_body_pos, inv_prev_body_orn, des_body_pos, des_body_orn)
         action[:3] = np.array(body_delta_pos)
         action[3:6] = np.array(p.getEulerFromQuaternion(body_delta_orn))
 
@@ -1262,8 +1262,8 @@ class Simulator:
             action[:3], action[3:6])
         clipped_body_delta_orn = p.getQuaternionFromEuler(
             clipped_body_delta_orn)
-        new_body_pos = (np.array(prev_body_pos) + np.array(clipped_body_delta_pos)).tolist()
-        new_body_orn = p.multiplyTransforms([0,0,0], prev_body_orn, [0,0,0], clipped_body_delta_orn)[1]
+        new_body_pos, new_body_orn = p.multiplyTransforms(
+            prev_body_pos, prev_body_orn, clipped_body_delta_pos, clipped_body_delta_orn)
         # Also calculate its inverse for further local transform calculations
         inv_new_body_pos, inv_new_body_orn = p.invertTransform(
             new_body_pos, new_body_orn)

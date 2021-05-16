@@ -63,7 +63,17 @@ class BehaviorRobot(object):
         self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
-        self.action = None
+        self.action = np.zeros((28,))
+
+        # Local transforms for hands and eye
+        if self.use_tracked_body:
+            self.left_hand_loc_pose = ([0.1,0.12,0.05], (0.7, 0.7, 0.0, 0.15))
+            self.right_hand_loc_pose = ([0.1,-0.12,0.05], (-0.7, 0.7, 0.0, 0.15))
+            self.eye_loc_pose = ([0.05,0,0.4], [0,0,0,1])
+        else:
+            self.left_hand_loc_pose = ([0.1,0.12,-0.4], (0.7, 0.7, 0.0, 0.15))
+            self.right_hand_loc_pose = ([0.1,-0.12,-0.4], (-0.7, 0.7, 0.0, 0.15))
+            self.eye_loc_pose = ([0.05,0,0], [0,0,0,1])
 
         # Action parameters
         # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
@@ -84,6 +94,7 @@ class BehaviorRobot(object):
 
         # Activation parameters
         self.activated = False
+        self.first_frame = True
         self.constraints_active = {
                 'left_hand': False,
                 'right_hand': False,
@@ -119,9 +130,12 @@ class BehaviorRobot(object):
 
     def set_position_orientation(self, pos, orn):
         self.parts['body'].set_position_orientation_unwrapped(pos, orn)
-        self.parts['left_hand'].set_position_orientation((pos[0], pos[1] + 0.2, 1.0), orn)
-        self.parts['right_hand'].set_position_orientation((pos[0], pos[1] - 0.2, 1.0), orn)
-        self.parts['eye'].set_position_orientation((pos[0], pos[1], 1.5), orn)
+        left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
+        self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
+        right_hand_pos, right_hand_orn = p.multiplyTransforms(pos, orn, self.right_hand_loc_pose[0], self.right_hand_loc_pose[1])
+        self.parts['right_hand'].set_position_orientation(right_hand_pos, right_hand_orn)
+        eye_pos, eye_orn = p.multiplyTransforms(pos, orn, self.eye_loc_pose[0], self.eye_loc_pose[1])
+        self.parts['eye'].set_position_orientation(eye_pos, eye_orn)
 
         for constraint, activated in self.constraints_active.items():
             if not activated and constraint != 'body':
@@ -145,28 +159,36 @@ class BehaviorRobot(object):
         Updates BehaviorRobot - transforms of all objects managed by this class.
         :param action: numpy array of actions.
         """
-        # Store action internally
-        self.action = action
+        # Robot will only activate if the reset actions on each controller are triggered simultaneously
+        should_activate = action[19] > 0 and action[27] > 0
+        if should_activate and not self.activated:
+            self.activated = True
 
-        if not self.activated:
+        if self.activated:
+            self.action = action
+        else:
+            self.action = np.zeros((28,))
+
+        if self.first_frame:
             self.set_colliders(enabled=False)
-            body_position = self.parts['body'].get_position()
-            self.parts['left_hand'].set_position((body_position[0], body_position[1] + 0.2, 1.0))
-            self.parts['right_hand'].set_position((body_position[0], body_position[1] - 0.2, 1.0))
-            self.parts['eye'].set_position((body_position[0], body_position[1], 1.5))
-            if self.sim.can_access_vr_context:
-                self.sim.set_vr_pos(pos=(body_position[0], body_position[1], 0), keep_height=True)
+            body_pos, body_orn = self.parts['body'].get_position_orientation()
+            left_hand_pos, left_hand_orn = p.multiplyTransforms(body_pos, body_orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
+            self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
+            right_hand_pos, right_hand_orn = p.multiplyTransforms(body_pos, body_orn, self.right_hand_loc_pose[0], self.right_hand_loc_pose[1])
+            self.parts['right_hand'].set_position_orientation(right_hand_pos, right_hand_orn)
+            eye_pos, eye_orn = p.multiplyTransforms(body_pos, body_orn, self.eye_loc_pose[0], self.eye_loc_pose[1])
+            self.parts['eye'].set_position_orientation(eye_pos, eye_orn)
             for constraint, activated in self.constraints_active.items():
                 if not activated and constraint != ['body']:
                     self.parts[constraint].activate_constraints()
-            self.activated = True
+            self.first_frame = False
 
         # Must update body first before other Vr objects, since they
         # rely on its transform to calculate their own transforms,
         # as an action only contains local transforms relative to the body
-        self.parts['body'].update(action)
+        self.parts['body'].update(self.action)
         for vr_obj_name in ['left_hand', 'right_hand', 'eye']:
-            self.parts[vr_obj_name].update(action)
+            self.parts[vr_obj_name].update(self.action)
 
     def render_camera_image(self, modes=('rgb')):
         # render frames from current eye position
