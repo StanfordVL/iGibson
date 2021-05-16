@@ -1212,7 +1212,7 @@ class Simulator:
         Action space (all non-normalized values that will be clipped if they are too large)
         * See BehaviorRobot.py for details on the clipping thresholds for 
         Body:
-        - 6DOF pose delta - relative to world frame
+        - 6DOF pose delta - relative to body frame from previous frame
         Eye:
         - 6DOF pose delta - relative to body frame (where the body will be after applying this frame's action)
         Left hand, right hand (in that order):
