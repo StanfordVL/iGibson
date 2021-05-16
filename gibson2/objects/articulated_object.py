@@ -964,10 +964,11 @@ class URDFObject(StatefulObject):
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
 
-                if self.joint_positions:
-                    joint_name = str(info.jointName, encoding="utf-8")
-                    joint_position = self.joint_positions[idx][joint_name]
-                    set_joint_position(body_id, j, joint_position)
+                    # Only need to restore revolute and prismatic joints
+                    if self.joint_positions:
+                        joint_name = str(info.jointName, encoding="utf-8")
+                        joint_position = self.joint_positions[idx][joint_name]
+                        set_joint_position(body_id, j, joint_position)
 
             self.body_ids.append(body_id)
 
@@ -1023,8 +1024,7 @@ class URDFObject(StatefulObject):
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             if self.flags & p.URDF_MERGE_FIXED_LINKS:
-                raise ValueError(
-                    'Cannot call get_position when the object is fixed and the fixed links are merged.')
+                pos = np.array([0, 0, 0])
             else:
                 pos, _ = p.getLinkState(body_id, 0)[0:2]
         else:
@@ -1040,8 +1040,7 @@ class URDFObject(StatefulObject):
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             if self.flags & p.URDF_MERGE_FIXED_LINKS:
-                raise ValueError(
-                    'Cannot call get_orientation when the object is fixed and the fixed links are merged.')
+                orn = np.array([0, 0, 0, 1])
             else:
                 _, orn = p.getLinkState(body_id, 0)[0:2]
         else:
@@ -1058,8 +1057,8 @@ class URDFObject(StatefulObject):
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             if self.flags & p.URDF_MERGE_FIXED_LINKS:
-                raise ValueError(
-                    'Cannot call get_position_orientation when the object is fixed and the fixed links are merged.')
+                pos = np.array([0, 0, 0])
+                orn = np.array([0, 0, 0, 1])
             else:
                 pos, orn = p.getLinkState(body_id, 0)[0:2]
         else:
@@ -1077,8 +1076,8 @@ class URDFObject(StatefulObject):
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             if self.flags & p.URDF_MERGE_FIXED_LINKS:
-                raise ValueError(
-                    'Cannot call get_base_link_position_orientation when the object is fixed and the fixed links are merged.')
+                pos = np.array([0, 0, 0])
+                orn = np.array([0, 0, 0, 1])
             else:
                 pos, orn = p.getLinkState(body_id, 0)[4:6]
         else:
