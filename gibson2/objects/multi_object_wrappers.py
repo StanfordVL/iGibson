@@ -43,9 +43,8 @@ class ObjectGrouper(StatefulObject):
                 obj.states[self.state_type].set_value(new_value)
 
         def _dump(self):
-            dumps = [obj.states[self.state_type].dump()
-                     for obj in self.object_grouper.objects]
-            return dumps
+            return [obj.states[self.state_type].dump()
+                    for obj in self.object_grouper.objects]
 
         def load(self, data):
             for obj, dump in zip(self.object_grouper.objects, data):
@@ -226,3 +225,16 @@ class ObjectMultiplexer(StatefulObject):
 
     def rotate_by(self, x=0, y=0, z=0):
         return self.current_selection().rotate_by(x, y, z)
+
+    def dump_state(self):
+        return {
+            "current_index": self.current_index,
+            "sub_states": [obj.dump_state() for obj in self._multiplexed_objects]
+        }
+
+    def load_state(self, dump):
+        self.current_index = dump["current_index"]
+
+        assert len(dump) == len(self._multiplexed_objects)
+        for obj, obj_dump in zip(self._multiplexed_objects, dump["sub_states"]):
+            obj.load_state(obj_dump)

@@ -59,7 +59,7 @@ def main():
 
     # Dump the initial state.
     state_dump = p.saveState()
-    dump = desk.states[object_states.Dusty].dump()
+    dump = desk.dump_state()
     print(dump)
 
     # Main simulation loop.
@@ -74,8 +74,8 @@ def main():
         # Reset to the initial state
         p.restoreState(state_dump)
         p.removeState(state_dump)
-        desk.states[object_states.Dusty].load(dump)
-        s.sync()
+        desk.load_state(dump)
+        desk.force_wakeup()
 
         # Continue simulation
         while True:
