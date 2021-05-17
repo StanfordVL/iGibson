@@ -55,18 +55,19 @@ class Sliced(AbsoluteObjectState, BooleanState):
         # force_wakeup is needed to properly update the self.obj pose in the renderer
         self.obj.force_wakeup()
 
+        # Dump the current object's states, for setting on the new object. Note that this might not make sense for
+        # things like stains etc. where the halves are supposed to split the state rather than each get an exact copy.
+        state_dump = self.obj.dump_state()
+
         self.obj.multiplexer.set_selection(int(self.value))
 
         # set the object parts to the base link pose of the whole object
         # ObjectGrouper internally manages the pose offsets of each part
         self.obj.multiplexer.set_base_link_position_orientation(pos, orn)
-        self.obj.multiplexer.states[Sliced].set_value(self.value)
 
-        # propagate non-kinematic states (e.g. temperature, soaked) from whole object to object parts
-        for state in _SLICED_PROPAGATION_STATE_SET:
-            if state in self.obj.states:
-                self.obj.multiplexer.states[state].set_value(
-                    self.obj.states[state].get_value())
+        # Propagate the original object's states to the halves (the ObjectGrouper takes care of propagating this call
+        # to both of its objects).
+        self.obj.multiplexer.current_selection().load_state(state_dump)
 
         return True
 
@@ -77,9 +78,3 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
     def load(self, data):
         self.value = data
-
-# TODO:
-# base object dump and load (also dump and load all states)
-# multiplxer dump/load current selection
-# multiplxer dump/load states for all subobjects
-# Sliced state propagation: dump->load instead of get->set
