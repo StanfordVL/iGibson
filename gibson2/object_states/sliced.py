@@ -74,5 +74,9 @@ class Sliced(AbsoluteObjectState, BooleanState):
     def _dump(self):
         return self.value
 
-    def _load(self, data):
-        self.value = data
+    def load(self, data):
+        if not self._initialized:
+            self.value = data
+        else:
+            # TODO(ChengshuLi): What do we do here? How does the above line even work?
+            return
