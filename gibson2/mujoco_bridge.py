@@ -1,3 +1,4 @@
+from numba.core.serialize import FastNumbaPickler
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, Material
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
@@ -32,7 +33,7 @@ class iGibsonMujocoBridge:
                  mode='gui',
                  device_idx=0,
                  render_to_tensor=False,
-                 camera_name="front_view",
+                 camera_name="agentview",
                  image_width=1280,
                  image_height=720,
                  vertical_fov=45,
@@ -53,7 +54,7 @@ class iGibsonMujocoBridge:
         self.render_collision_mesh = 0
         self.render_visual_mesh = 0
         # print("self.render_visual_mesh", self.render_visual_mesh)
-        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.0)
+        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=True, light_dimming_factor=1.0)
         self.mrs_no_tensor = self.mrs_tensor # MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.5)
         self.settings = self.mrs_tensor if render_to_tensor else self.mrs_no_tensor
         print("##"*80)
@@ -382,11 +383,14 @@ class iGibsonMujocoBridge:
             camera = MujocoCamera(parent_body_name, 
                                   properties['pos'],
                                   camera_quat,
-                                  active=False, 
+                                #   modes='seg',
+                                  active=False, #True if self.camera_name == camm.get("name") else False, 
                                   mujoco_env = self.env, 
                                   camera_name = camm.get("name"),
                                   )
-            mujoco_robot.cameras.append(camera)     
+            mujoco_robot.cameras.append(camera)  
+
+            # import pdb; pdb.set_trace();   
 
         self.renderer.add_robot([],
                                 [],
@@ -399,7 +403,7 @@ class iGibsonMujocoBridge:
 
 
         #Iterate over all geometries
-        for geom in xml_root.iter('geom'):
+        for instance_id, geom in enumerate(xml_root.iter('geom')):
             # import pdb; pdb.set_trace();
             if verbose: print('-----------------------------------------------------')
             #If the geometry is visual
@@ -501,7 +505,7 @@ class iGibsonMujocoBridge:
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
-                                               class_id=0,
+                                               class_id=instance_id,
                                                dynamic=True,
                                                parent_body=parent_body_name,
                                                )
@@ -535,7 +539,7 @@ class iGibsonMujocoBridge:
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
-                                               class_id=0,
+                                               class_id=instance_id,
                                                dynamic=True,
                                                parent_body=parent_body_name)
 
@@ -554,7 +558,7 @@ class iGibsonMujocoBridge:
                                               )
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
-                                               class_id=0,
+                                               class_id=instance_id,
                                                dynamic=True,
                                                parent_body=parent_body_name)
                     
@@ -598,25 +602,32 @@ class iGibsonMujocoBridge:
                     #                     texture_type='cube')
 
                     # geom_material = None
-                    
+                    load_texture = True
+                    if geom.get('name') in ['VisualBread_g0', 'VisualCan_g0', 'VisualCereal_g0', 'VisualMilk_g0']:
+                    #     import pdb ; pdb.set_trace()
+                        load_texture = False
                     print(filename)
                     print(geom_material)
                     self.renderer.load_object(filename,
                                             scale=scale,
                                             transform_orn=geom_orn,
                                             transform_pos=geom_pos,
-                                            input_kd=properties['rgba'][:3],
-                                            load_texture = True,
+                                            input_kd=properties['rgba'],
+                                            load_texture = load_texture,
                                             input_material = None,  
                                             geom_type=geom_type                                          
                                             )
                     self.visual_objects[filename] = len(self.renderer.visual_objects) - 1
                     self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
                                                pybullet_uuid=0,
-                                               class_id=0,
+                                               class_id=instance_id,
                                                dynamic=True,
                                                parent_body=parent_body_name)
                 else:
+                    # import pdb; pdb.set_trace();
+                    if 'collision' in geom.get('name'):
+                        continue
+                    print(geom.get('name'))
                     print("Other type: " + geom_type)
                     print("This model needs to import a different type of geom. Need more code")
                     exit(-1)
@@ -673,8 +684,8 @@ class iGibsonMujocoBridge:
                                           geom_type=geom_type
                                             ) #Forcing plane to be 1 cm width (this param is the tile size in Mujoco anyway)
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                                           pybullet_uuid=0,
-                                           class_id=0,
+                                           pybullet_uuid=4,
+                                           class_id=instance_id,
                                            dynamic=True,
                                            parent_body="world")
 

@@ -1098,7 +1098,7 @@ class MeshRenderer(object):
                         #render different modalities
                         for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
                             
-                            frames.append(item)                
+                            frames.append(item)       
                 # camera_pos = instance.robot.eyes.get_position()
                 # orn = instance.robot.eyes.get_orientation()
                 # mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
@@ -1110,6 +1110,8 @@ class MeshRenderer(object):
                 #     hidden_instances.append(instance)
                 # for item in self.render(modes=modes, hidden=hidden_instances):
                 #     frames.append(item)
+        # if frames != []:
+            # import pdb; pdb.set_trace();
         return frames
 
     def get_names_active_cameras(self):
@@ -1418,6 +1420,8 @@ class MeshRenderer(object):
                     continue
                 self.trans_data[buf_idxs] = np.array(instance.pose_trans)
                 self.rot_data[buf_idxs] = np.array(instance.pose_rot)
+                # self.trans_data = np.array(instance.pose_trans)
+                # self.rot_data = np.array(instance.pose_rot)
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 buf_idxs = instance.or_buffer_indices
                 # Continue if instance has no visual objects

@@ -6,10 +6,12 @@ import logging
 
 import cv2
 import numpy as np
+from numpy.lib import unique
 import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_2d
 import time
+import random
 
 
 class Viewer:
@@ -531,9 +533,35 @@ class Viewer:
 
         if self.renderer is not None:
             # start = time.time()
+            # import pdb; pdb.set_trace()
             frame = cv2.cvtColor(
                 np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
                 cv2.COLOR_RGB2BGR)
+            # map3d = frame[:, 1280:, [0,0,0]]
+            # max_c = map3d.max(axis=(0,1))
+            # min_c = map3d.min(axis=(0,1))
+            # map3d = (map3d - min_c) / (max_c - min_c)
+            # frame[:, 1280:] = map3d
+
+
+            # semantic_map = (frame[:, 1280:, 2] * 255).astype(int)
+            # unique_vals = np.unique(semantic_map)
+            # if not hasattr(self, 'cmap'):
+            #     self.cmap = np.array([[random.uniform(0, 1) for _ in range(3)] for u in range(max(unique_vals)+1)])
+            # # print(self.cmap.shape)
+            # # print(semantic_map.shape)
+            # semantic_map = self.cmap[semantic_map]
+            # frame[:, 1280:] = semantic_map
+
+
+            # print(semantic_map.shape)
+            # print(frame.shape)
+            # print('printing frame unique values for frame[:, 1280:, 0]')
+            # print('Channel 0:   ', np.unique(frame[:, 1280:, 0]))
+            # print('Channel 1:   ', np.unique(frame[:, 1280:, 1]))
+            # print('Channel 2:   ', np.unique(frame[:, 1280:, 2]))
+            # print('#'*40)
+            # import pdb; pdb.set_trace()
             # elapsed = time.time() - start
             # print("{} fps".format(1/elapsed))
             # print(frame.shape)
