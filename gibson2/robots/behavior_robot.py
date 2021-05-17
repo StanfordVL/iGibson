@@ -179,8 +179,8 @@ class BehaviorRobot(object):
             self.set_colliders(enabled=False)
             # Move user close to the body to start with
             if self.sim.can_access_vr_context:
-                    body_pos = self.parts['body'].get_position()
-                    self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
+                body_pos = self.parts['body'].get_position()
+                self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
             # Body constraint is the last one we need to activate
             self.parts['body'].activate_constraints()
             self.first_frame = False
