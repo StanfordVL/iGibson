@@ -42,13 +42,29 @@ class ObjectGrouper(StatefulObject):
             for obj in self.object_grouper.objects:
                 obj.states[self.state_type].set_value(new_value)
 
-        def _dump(self):
-            return [obj.states[self.state_type].dump()
-                    for obj in self.object_grouper.objects]
+        # We declare a list subtype here so that we can identify dumps produced through ObjectGrouper's
+        # dump function vs. dumps produced otherwise, so that we can identify one-to-many loads vs.
+        # many-to-many loads.
+        class GroupedStateDump(list):
+            pass
+
+        # Since we don't inherit from ObjectStateBase, we don't implement _dump()
+        # but dump() directly.
+        def dump(self):
+            return ObjectGrouper.AbsoluteStateAggregator.GroupedStateDump(
+                obj.states[self.state_type].dump() for obj in self.object_grouper.objects)
 
         def load(self, data):
-            for obj, dump in zip(self.object_grouper.objects, data):
-                obj.states[self.state_type].load(dump)
+            if isinstance(data, ObjectGrouper.AbsoluteStateAggregator.GroupedStateDump):
+                # We're loading a many-to-many data dump.
+                assert len(data) == len(self.object_grouper.objects)
+
+                for obj, dump in zip(self.object_grouper.objects, data):
+                    obj.states[self.state_type].load(dump)
+            else:
+                # We're loading a one-to-many data dump.
+                for obj in self.object_grouper.objects:
+                    obj.states[self.state_type].load(data)
 
     class RelativeStateAggregator(BaseStateAggregator):
         def get_value(self, other):

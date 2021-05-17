@@ -74,11 +74,9 @@ def main():
     for _ in range(100):
         s.step()
 
-    embed()
-
     # Dump the initial state.
     state_dump = p.saveState()
-    dump = apple.states[object_states.Sliced].dump()
+    dump = apple.dump_state()
     print(dump)
 
     # Slice the apple and set the object parts away
@@ -90,7 +88,10 @@ def main():
     p.restoreState(state_dump)
     p.removeState(state_dump)
     # The apple should become whole again
-    apple.states[object_states.Sliced].load(dump)
+    apple.load_state(dump)
+
+    while True:
+        s.step()
 
 
 if __name__ == '__main__':
