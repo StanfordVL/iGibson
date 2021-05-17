@@ -1,7 +1,6 @@
 import subprocess
 import os
 import tasknet
-from IPython import embed
 
 
 def main():
@@ -12,6 +11,8 @@ def main():
         if os.path.isdir(task_dir):
             for task_id_file in sorted(os.listdir(task_dir)):
                 task_id = task_id_file.replace('problem', '')[0]
+                if task_id != '0':
+                    continue
                 print('TASK:', task, 'TASK_ID:', task_id)
                 subprocess.call('python sampling_saver.py --task {} --task_id {} --max_trials {}'.format(
                     task,
