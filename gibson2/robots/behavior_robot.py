@@ -158,16 +158,21 @@ class BehaviorRobot(object):
         """
         Updates BehaviorRobot - transforms of all objects managed by this class.
         :param action: numpy array of actions.
-        """
-        # Robot will only activate if the reset actions on each controller are triggered simultaneously
-        should_activate = action[19] > 0 and action[27] > 0
-        if should_activate and not self.activated:
-            self.activated = True
 
-        if self.activated:
-            self.action = action
-        else:
+        Steps to activate:
+        1) Trigger reset action for left/right controller to activate (and teleport user to robot in VR)
+        2) Trigger reset actions for each hand to trigger colliders for that hand (in VR red ghost hands will disappear into hand when this is done correctly)
+        """
+        if not self.activated:
             self.action = np.zeros((28,))
+            # Either trigger press will activate robot, and teleport the user to the robot if they are using VR
+            if action[19] > 0 or action[27] > 0:
+                self.activated = True
+                if self.sim.can_access_vr_context:
+                    body_pos = self.parts['body'].get_position()
+                    self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
+        else:
+            self.action = action
 
         if self.first_frame:
             self.set_colliders(enabled=False)
