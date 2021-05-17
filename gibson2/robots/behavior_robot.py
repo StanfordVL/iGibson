@@ -163,8 +163,10 @@ class BehaviorRobot(object):
         1) Trigger reset action for left/right controller to activate (and teleport user to robot in VR)
         2) Trigger reset actions for each hand to trigger colliders for that hand (in VR red ghost hands will disappear into hand when this is done correctly)
         """
+        # Store input action, which is what will be saved
+        self.action = action
         if not self.activated:
-            self.action = np.zeros((28,))
+            frame_action = np.zeros((28,))
             # Either trigger press will activate robot, and teleport the user to the robot if they are using VR
             if action[19] > 0 or action[27] > 0:
                 self.activated = True
@@ -172,7 +174,7 @@ class BehaviorRobot(object):
                     body_pos = self.parts['body'].get_position()
                     self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
         else:
-            self.action = action
+            frame_action = action
 
         if self.first_frame:
             # Disable colliders
@@ -188,9 +190,9 @@ class BehaviorRobot(object):
         # Must update body first before other Vr objects, since they
         # rely on its transform to calculate their own transforms,
         # as an action only contains local transforms relative to the body
-        self.parts['body'].update(self.action)
+        self.parts['body'].update(frame_action)
         for vr_obj_name in ['left_hand', 'right_hand', 'eye']:
-            self.parts[vr_obj_name].update(self.action)
+            self.parts[vr_obj_name].update(frame_action)
 
     def render_camera_image(self, modes=('rgb')):
         # render frames from current eye position
