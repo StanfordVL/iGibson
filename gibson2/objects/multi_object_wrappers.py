@@ -42,6 +42,15 @@ class ObjectGrouper(StatefulObject):
             for obj in self.object_grouper.objects:
                 obj.states[self.state_type].set_value(new_value)
 
+        def _dump(self):
+            dumps = [obj.states[self.state_type].dump()
+                     for obj in self.object_grouper.objects]
+            return dumps
+
+        def load(self, data):
+            for obj, dump in zip(self.object_grouper.objects, data):
+                obj.states[self.state_type].load(dump)
+
     class RelativeStateAggregator(BaseStateAggregator):
         def get_value(self, other):
             if not issubclass(self.state_type, BooleanState):

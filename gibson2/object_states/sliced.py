@@ -34,10 +34,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         self.value = new_value
 
-        # We want to return early if set_value(True) is called on a
-        # URDFObject that does not have multiplexer registered. This is used
-        # when we propagate sliced=True from the whole object to all the
-        # object parts
+        # We want to return early if set_value(True)is called on a URDFObject
+        # (an object part) that does not have multiplexer registered. This is
+        # used when we propagate sliced=True from the whole object to all the
+        # object parts.
         if not hasattr(self.obj, 'multiplexer'):
             return True
 
@@ -54,7 +54,8 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         # force_wakeup is needed to properly update the self.obj pose in the renderer
         self.obj.force_wakeup()
-        self.obj.multiplexer.set_selection(1)
+
+        self.obj.multiplexer.set_selection(int(self.value))
 
         # set the object parts to the base link pose of the whole object
         # ObjectGrouper internally manages the pose offsets of each part
@@ -75,8 +76,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
         return self.value
 
     def load(self, data):
-        if not self._initialized:
-            self.value = data
-        else:
-            # TODO(ChengshuLi): What do we do here? How does the above line even work?
-            return
+        self.value = data
+
+# TODO:
+# base object dump and load (also dump and load all states)
+# multiplxer dump/load current selection
+# multiplxer dump/load states for all subobjects
+# Sliced state propagation: dump->load instead of get->set
