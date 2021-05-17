@@ -175,21 +175,14 @@ class BehaviorRobot(object):
             self.action = action
 
         if self.first_frame:
+            # Disable collidere
             self.set_colliders(enabled=False)
-            body_pos, body_orn = self.parts['body'].get_position_orientation()
-            left_hand_pos, left_hand_orn = p.multiplyTransforms(body_pos, body_orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
-            self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
-            right_hand_pos, right_hand_orn = p.multiplyTransforms(body_pos, body_orn, self.right_hand_loc_pose[0], self.right_hand_loc_pose[1])
-            self.parts['right_hand'].set_position_orientation(right_hand_pos, right_hand_orn)
-            eye_pos, eye_orn = p.multiplyTransforms(body_pos, body_orn, self.eye_loc_pose[0], self.eye_loc_pose[1])
-            self.parts['eye'].set_position_orientation(eye_pos, eye_orn)
             # Move user close to the body to start with
             if self.sim.can_access_vr_context:
                     body_pos = self.parts['body'].get_position()
                     self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
-            for constraint, activated in self.constraints_active.items():
-                if not activated and constraint != ['body']:
-                    self.parts[constraint].activate_constraints()
+            # Body constraint is the last one we need to activate
+            self.parts['body'].activate_constraints()
             self.first_frame = False
 
         # Must update body first before other Vr objects, since they
