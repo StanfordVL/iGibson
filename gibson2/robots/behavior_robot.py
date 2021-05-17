@@ -443,6 +443,10 @@ class BRHandBase(ArticulatedObject):
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
+        # Update pos and orientation of ghost hands as well
+        if self.use_ghost_hands:
+            self.ghost_hand.set_position(self.new_pos)
+            self.ghost_hand.set_orientation(self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
