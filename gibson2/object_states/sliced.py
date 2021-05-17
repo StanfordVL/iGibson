@@ -4,16 +4,8 @@ from gibson2.object_states import *
 import gibson2
 import pybullet as p
 
-_DEFAULT_SLICE_FORCE = 10
-
-_SLICED_PROPAGATION_STATE_SET = frozenset([
-    Temperature,
-    MaxTemperature,
-    Soaked,
-    ToggledOn,
-])
-
 # TODO: propagate dusty/stained to object parts
+_DEFAULT_SLICE_FORCE = 10
 
 
 class Sliced(AbsoluteObjectState, BooleanState):
