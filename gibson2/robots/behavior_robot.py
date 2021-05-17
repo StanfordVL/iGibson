@@ -7,7 +7,7 @@ Takes in a numpy action space each frame to update its positions.
 Action space (all non-normalized values that will be clipped if they are too large)
 * See init function for various clipping thresholds for velocity, angular velocity and local position
 Body:
-- 6DOF pose delta - relative to world frame
+- 6DOF pose delta - relative to body frame from previous frame
 Eye:
 - 6DOF pose delta - relative to body frame (where the body will be after applying this frame's action)
 Left hand, right hand (in that order):
@@ -66,6 +66,8 @@ class BehaviorRobot(object):
         self.action = None
 
         # Action parameters
+        # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
+        self.thresh_epsilon = 0.001
         # Body
         self.body_lin_vel = 0.3 # linear velocity thresholds in meters/frame
         self.body_ang_vel = 1 # angular velocity thresholds in radians/frame
@@ -300,6 +302,9 @@ class BRBody(ArticulatedObject):
         # Calculate new body transform
         old_pos, old_orn = self.get_position_orientation()
         self.new_pos, self.new_orn = p.multiplyTransforms(old_pos, old_orn, clipped_delta_pos, clipped_delta_orn)
+        self.new_pos = np.round(self.new_pos, 5).tolist()
+        self.new_orn = np.round(self.new_orn, 5).tolist()
+
         # Reset agent activates the body and its collision filters
         reset_agent = (action[19] > 0 or action[27] > 0)
         if reset_agent:
@@ -397,7 +402,10 @@ class BRHandBase(ArticulatedObject):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BRHandBase, self).set_position_orientation(pos, orn)
-        inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
+        if not self.body.new_pos:
+            inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
+        else:
+            inv_body_pos, inv_body_orn = p.invertTransform(self.body.new_pos, self.body.new_orn)
         new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos,
                                                             orn)
         self.local_pos = new_local_pos
@@ -432,7 +440,7 @@ class BRHandBase(ArticulatedObject):
         desired_local_pos, desired_local_orn = p.multiplyTransforms(self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn)
         shoulder_to_hand = np.array(desired_local_pos) - shoulder_point
         dist_to_shoulder = np.linalg.norm(shoulder_to_hand)
-        if dist_to_shoulder > self.hand_thresh:
+        if dist_to_shoulder > (self.hand_thresh + self.parent.thresh_epsilon):
             # Project onto sphere around shoulder
             shrink_factor = self.hand_thresh / dist_to_shoulder
             # Reduce shoulder to hand vector size
@@ -469,6 +477,9 @@ class BRHandBase(ArticulatedObject):
 
         # Calculate new world position based on local transform and new body pose
         self.new_pos, self.new_orn = p.multiplyTransforms(self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
+        # Round to avoid numerical inaccuracies
+        self.new_pos = np.round(self.new_pos, 5).tolist()
+        self.new_orn = np.round(self.new_orn, 5).tolist()
 
         # Reset agent activates the body and its collision filters
         if self.hand == 'left':
@@ -975,7 +986,10 @@ class BREye(ArticulatedObject):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BREye, self).set_position_orientation(pos, orn)
-        inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
+        if not self.body.new_pos:
+            inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
+        else:
+            inv_body_pos, inv_body_orn = p.invertTransform(self.body.new_pos, self.body.new_orn)
         new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos,
                                                             orn)
         self.local_pos = new_local_pos
@@ -1004,8 +1018,8 @@ class BREye(ArticulatedObject):
         desired_local_pos, desired_local_orn = p.multiplyTransforms(self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn)
         neck_to_head = np.array(desired_local_pos) - neck_base_point
         dist_to_neck = np.linalg.norm(neck_to_head)
-        if dist_to_neck > self.head_thresh:
-            # Project onto sphere around shoulder
+        if dist_to_neck > (self.head_thresh + self.parent.thresh_epsilon):
+            # Project onto sphere around neck base
             shrink_factor = self.head_thresh / dist_to_neck
             reduced_neck_to_head = neck_to_head * shrink_factor
             reduced_local_pos = neck_base_point + reduced_neck_to_head
@@ -1038,6 +1052,7 @@ class BREye(ArticulatedObject):
 
         # Calculate new world position based on local transform and new body pose
         self.new_pos, self.new_orn = p.multiplyTransforms(self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
+        self.new_pos = np.round(self.new_pos, 5).tolist()
+        self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-        # Move head marker regardless of hiding settings
         self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
