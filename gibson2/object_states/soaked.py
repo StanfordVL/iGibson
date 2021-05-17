@@ -33,7 +33,7 @@ class Soaked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
     def _dump(self):
         return self.value
 
-    def _load(self, data):
+    def load(self, data):
         self.value = data
 
     @staticmethod

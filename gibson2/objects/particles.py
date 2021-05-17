@@ -135,6 +135,22 @@ class ParticleSystem(object):
             self._all_particles.append(particle)
             self._stashed_particles.append(particle)
 
+    def dump(self):
+        return [
+            particle.get_position_orientation() if particle in self.get_active_particles() else None
+            for particle in self.get_particles()]
+
+    def reset_to_dump(self, dump):
+        # First, stash all particles
+        self.reset_stash()
+
+        for i, particle_pose in enumerate(dump):
+            # particle_data will be None for stashed particles
+            if particle_pose is not None:
+                particle = self.get_particles()[i]
+                self.unstash_particle(
+                    particle_pose[0], particle_pose[1], particle)
+
     def initialize(self, simulator):
         # Keep a handle to the simulator for lazy loads later.
         self._simulator = simulator
@@ -204,6 +220,14 @@ class ParticleSystem(object):
 
         return particle
 
+    def reset_stash(self):
+        """Stash all particles and re-order the stash in the all_particles order for determinism."""
+        for particle in self.get_active_particles():
+            self.stash_particle(particle)
+
+        self._stashed_particles.clear()
+        self._stashed_particles.extend(self._all_particles)
+
     def get_num_particles_activated_at_any_time(self):
         """Get the number of unique particles that were active at some point in history."""
         return len(self._particles_activated_at_any_time)
@@ -213,38 +237,46 @@ class ParticleSystem(object):
 
 
 class AttachedParticleSystem(ParticleSystem):
-    def __init__(self, parent_obj, from_dump=None, **kwargs):
+    def __init__(self, parent_obj, initial_dump=None, **kwargs):
         super(AttachedParticleSystem, self).__init__(**kwargs)
 
         self.parent_obj = parent_obj
         self._attachment_offsets = {}  # in the format of {particle: offset}
-        self.from_dump = from_dump
+        self.initial_dump = initial_dump
+
+    def reset_to_dump(self, dump):
+        # Assert that the dump is compatible
+        assert len(dump) == self.get_num()
+
+        # First, stash all particles
+        self.reset_stash()
+
+        for i, particle_data in enumerate(dump):
+            # particle_data will be None for stashed particles
+            if particle_data is not None:
+                particle_attached_link_name, particle_pos, particle_orn = particle_data
+                # If particle_attached_link_id cannot be found, it’s because it has been merged
+                # (p.URDF_MERGE_FIXED_LINKS). Since it’s a fixed link anyways and the absolute pose (not link-relative
+                # pose) of the particle is dumped, we can safely assign this particle to the base link.
+                particle_attached_link_id = -1
+                if particle_attached_link_name is not None:
+                    try:
+                        particle_attached_link_id = link_from_name(
+                            self.parent_obj.get_body_id(), particle_attached_link_name)
+                    except ValueError:
+                        pass
+
+                particle = self.get_particles()[i]
+                self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
+                                      particle=particle)
 
     def initialize(self, simulator):
         super(AttachedParticleSystem, self).initialize(simulator)
 
         # Unstash particles in dump.
-        if self.from_dump:
-            for i, particle_data in enumerate(self.from_dump):
-                # particle_data will be None for stashed particles
-                if particle_data is not None:
-                    particle_attached_link_name, particle_pos, particle_orn = particle_data
-                    # If particle_attached_link_id cannot be found, it’s because it has been merged (p.URDF_MERGE_FIXED_LINKS).
-                    # Since it’s a fixed link anyways and the absolute pose (not link-relative pose) of the particle is dumped,
-                    # we can safely assign this particle to the base link.
-                    particle_attached_link_id = -1
-                    if particle_attached_link_name is not None:
-                        try:
-                            particle_attached_link_id = link_from_name(
-                                self.parent_obj.get_body_id(), particle_attached_link_name)
-                        except ValueError:
-                            pass
-
-                    particle = self.get_particles()[i]
-                    self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
-                                          particle=particle)
-
-            del self.from_dump
+        if self.initial_dump:
+            self.reset_to_dump(self.initial_dump)
+            del self.initial_dump
 
     def unstash_particle(self, position, orientation, link_id=-1, **kwargs):
         particle = super(AttachedParticleSystem, self).unstash_particle(
@@ -346,10 +378,10 @@ class WaterStream(ParticleSystem):
         (0.5, 0.77, 0.87, 1)
     ])
 
-    def __init__(self, water_source_pos, num, from_dump=None, **kwargs):
-        if from_dump is not None:
-            self.sizes = np.array(from_dump["sizes"])
-            self.colors = np.array(from_dump["colors"])
+    def __init__(self, water_source_pos, num, initial_dump=None, **kwargs):
+        if initial_dump is not None:
+            self.sizes = np.array(initial_dump["sizes"])
+            self.colors = np.array(initial_dump["colors"])
         else:
             size_idxs = np.random.choice(
                 len(self._SIZE_OPTIONS), num, replace=True)
@@ -369,11 +401,20 @@ class WaterStream(ParticleSystem):
             **kwargs
         )
 
-        self.steps_since_last_drop_step = float(
-            'inf') if from_dump is None else from_dump["steps_since_last_drop_step"]
+        self.steps_since_last_drop_step = float('inf')
         self.water_source_pos = water_source_pos
         self.on = False
-        self.particle_poses_from_dump = from_dump["particle_poses"] if from_dump else None
+        self.initial_dump = initial_dump
+
+    def reset_to_dump(self, dump):
+        # Assert that the dump is compatible with the particle system state.
+        assert np.all(self.sizes == np.array(dump["sizes"])), "Incompatible WaterStream dump."
+        assert np.all(self.colors == np.array(dump["colors"])), "Incompatible WaterStream dump."
+
+        self.steps_since_last_drop_step = dump["steps_since_last_drop_step"]
+
+        # Use the ParticleSystem dump reset for the particle positions.
+        super(WaterStream, self).reset_to_dump(dump["particle_poses"])
 
     def initialize(self, simulator):
         super(WaterStream, self).initialize(simulator)
@@ -384,15 +425,9 @@ class WaterStream(ParticleSystem):
             self._load_particle(particle)
 
         # Unstash particles in dump.
-        if self.particle_poses_from_dump:
-            for i, particle_pose in enumerate(self.particle_poses_from_dump):
-                # particle_data will be None for stashed particles
-                if particle_pose is not None:
-                    particle = self.get_particles()[i]
-                    self.unstash_particle(
-                        particle_pose[0], particle_pose[1], particle)
-
-            del self.particle_poses_from_dump
+        if self.initial_dump:
+            self.reset_to_dump(self.initial_dump)
+            del self.initial_dump
 
     def _load_particle(self, particle):
         # First load the particle normally.
@@ -433,12 +468,8 @@ class WaterStream(ParticleSystem):
             "sizes": [tuple(size) for size in self.sizes],
             "colors": [tuple(color) for color in self.colors],
             "steps_since_last_drop_step": self.steps_since_last_drop_step,
-            "particle_poses": []
+            "particle_poses": super(WaterStream, self).dump()
         }
-
-        for particle in self.get_particles():
-            data["particle_poses"].append(particle.get_position_orientation()
-                                          if particle in self.get_active_particles() else None)
 
         return data
 
@@ -520,9 +551,9 @@ class Stain(_Dirt):
         gibson2.assets_path, "models/stain/stain.obj")
     _MESH_BOUNDING_BOX = np.array([0.0368579992, 0.03716399827, 0.004])
 
-    def __init__(self, parent_obj, from_dump=None, **kwargs):
-        if from_dump:
-            self.random_bbox_dims = np.array(from_dump["random_bbox_dims"])
+    def __init__(self, parent_obj, initial_dump=None, **kwargs):
+        if initial_dump:
+            self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
             # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
             random_bbox_base_size = np.random.uniform(
@@ -540,9 +571,16 @@ class Stain(_Dirt):
             mesh_filename=self._MESH_FILENAME,
             mesh_bounding_box=self._MESH_BOUNDING_BOX,
             visual_only=True,
-            from_dump=from_dump["dirt_dump"] if from_dump else None,
+            initial_dump=initial_dump["dirt_dump"] if initial_dump else None,
             **kwargs
         )
+
+    def reset_to_dump(self, dump):
+        # Assert that the dump is compatible.
+        assert np.all(np.array(dump["random_bbox_dims"]) == self.random_bbox_dims)
+
+        # Call the dump resetter of the parent.
+        super(Stain, self).reset_to_dump(dump["dirt_dump"])
 
     def dump(self):
         return {
