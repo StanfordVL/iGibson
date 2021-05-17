@@ -175,7 +175,7 @@ class BehaviorRobot(object):
             self.action = action
 
         if self.first_frame:
-            # Disable collidere
+            # Disable colliders
             self.set_colliders(enabled=False)
             # Move user close to the body to start with
             if self.sim.can_access_vr_context:
