@@ -63,6 +63,10 @@ class ObjectGrouper(StatefulObject):
                     obj.states[self.state_type].load(dump)
             else:
                 # We're loading a one-to-many data dump.
+                # An example of when this happens is when an object goes from non-sliced to
+                # sliced. In the Sliceable setter, we dump the state of the non-sliced object
+                # (which will be a single object) and we then attempt to load it into the
+                # ObjectGrouper representing the halves.
                 for obj in self.object_grouper.objects:
                     obj.states[self.state_type].load(data)
 
