@@ -201,7 +201,7 @@ def sample_cuboid_on_object(obj,
                 start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.)
 
             # Time to cast the rays.
-            cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations)
+            cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations, numThreads=0)
 
             # Check that all rays hit the object.
             if not check_rays_hit_object(cast_results, body_id, refusal_reasons):

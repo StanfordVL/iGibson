@@ -991,8 +991,11 @@ class Simulator:
         physics_start_time = time.perf_counter()
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
-        self._non_physics_step()
         physics_dur = time.perf_counter() - physics_start_time
+
+        non_physics_start_time = time.perf_counter()
+        self._non_physics_step()
+        non_physics_dur = time.perf_counter() - non_physics_start_time
 
         # Sync PyBullet bodies to renderer and then render to Viewer
         render_start_time = time.perf_counter()
@@ -1036,6 +1039,7 @@ class Simulator:
             print('Frame number {} statistics (ms)'.format(self.frame_count))
             print('Total out-of-step duration: {}'.format(outside_step_dur * 1000))
             print('Total physics duration: {}'.format(physics_dur * 1000))
+            print('Total non-physics duration: {}'.format(non_physics_dur * 1000))
             print('Total render duration: {}'.format(render_dur * 1000))
             print('Total sleep duration: {}'.format(sleep_dur * 1000))
             print('Total VR system duration: {}'.format(vr_system_dur * 1000))
@@ -1212,7 +1216,7 @@ class Simulator:
         Action space (all non-normalized values that will be clipped if they are too large)
         * See BehaviorRobot.py for details on the clipping thresholds for 
         Body:
-        - 6DOF pose delta - relative to world frame
+        - 6DOF pose delta - relative to body frame from previous frame
         Eye:
         - 6DOF pose delta - relative to body frame (where the body will be after applying this frame's action)
         Left hand, right hand (in that order):

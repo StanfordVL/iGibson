@@ -7,7 +7,7 @@ Takes in a numpy action space each frame to update its positions.
 Action space (all non-normalized values that will be clipped if they are too large)
 * See init function for various clipping thresholds for velocity, angular velocity and local position
 Body:
-- 6DOF pose delta - relative to world frame
+- 6DOF pose delta - relative to body frame from previous frame
 Eye:
 - 6DOF pose delta - relative to body frame (where the body will be after applying this frame's action)
 Left hand, right hand (in that order):
@@ -301,9 +301,7 @@ class BRBody(ArticulatedObject):
 
         # Calculate new body transform
         old_pos, old_orn = self.get_position_orientation()
-        # Modify body in world space using deltas
-        self.new_pos = (np.array(old_pos) + np.array(clipped_delta_pos)).tolist()
-        self.new_orn = p.multiplyTransforms([0,0,0], old_orn, [0,0,0], clipped_delta_orn)[1]
+        self.new_pos, self.new_orn = p.multiplyTransforms(old_pos, old_orn, clipped_delta_pos, clipped_delta_orn)
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
 
