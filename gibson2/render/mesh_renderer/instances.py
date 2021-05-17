@@ -105,6 +105,8 @@ class InstanceGroup(object):
                 self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                        float(
                                                            self.class_id) / 255.0,
+                                                       float(
+                                                           self.id) / 255.0,
                                                        current_material.kd,
                                                        float(
                                                            current_material.is_texture()),
@@ -359,6 +361,8 @@ class Instance(object):
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                    float(
                                                        self.class_id) / 255.0,
+                                                   float(
+                                                       self.id) / 255.0,
                                                    current_material.kd,
                                                    float(
                                                        current_material.is_texture()),
