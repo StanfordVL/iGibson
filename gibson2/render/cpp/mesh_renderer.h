@@ -128,7 +128,8 @@ public:
 
     void render_softbody_instance(int vao, int vbo, py::array_t<float> vertexData);
 
-    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
+    void init_material_instance(int shaderProgram, float semantic_seg_color, float instance_seg_color,
+                                py::array_t<float> diffuse_color,
                                 float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
                                 float roughness, py::array_t<float> transform_param);
 

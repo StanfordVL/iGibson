@@ -97,7 +97,7 @@ NamedRenderingPresets = {
 }
 
 AVAILABLE_MODALITIES = ('rgb', 'normal', '3d', 'seg',
-                        'optical_flow', 'scene_flow')
+                        'optical_flow', 'scene_flow', 'ins_seg')
 # Encodings
 RAW_ENCODING = 0
 COPY_RECTANGLE_ENCODING = 1
