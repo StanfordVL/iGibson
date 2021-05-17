@@ -487,8 +487,11 @@ class _Dirt(AttachedParticleSystem):
     _SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
     _SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
 
-    def __init__(self, parent_obj, clip_into_object, **kwargs):
+    def __init__(self, parent_obj, clip_into_object, sampling_kwargs=None, **kwargs):
         super(_Dirt, self).__init__(parent_obj, **kwargs)
+        if sampling_kwargs is None:
+            sampling_kwargs = {}
+        self._sampling_kwargs = sampling_kwargs
         self._clip_into_object = clip_into_object
 
     def randomize(self):
@@ -507,7 +510,7 @@ class _Dirt(AttachedParticleSystem):
             ), [list(x) for x in bbox_sizes],
             self._SAMPLING_BIMODAL_MEAN_FRACTION, self._SAMPLING_BIMODAL_STDEV_FRACTION,
             self._SAMPLING_AXIS_PROBABILITIES, undo_padding=True, aabb_offset=self._SAMPLING_AABB_OFFSET,
-            refuse_downwards=True)
+            refuse_downwards=True, **self._sampling_kwargs)
 
         # Reset the activated particle history
         self.reset_particles_activated_at_any_time()
@@ -534,6 +537,11 @@ class Dust(_Dirt):
         super(Dust, self).__init__(
             parent_obj,
             clip_into_object=True,
+            sampling_kwargs={
+                # We have a very high tolerance for normals' angle for dust particles since they are
+                # spherical. This should reflect that.
+                "parallel_ray_normal_angle_tolerance": 0.8,  # Around 45 degrees.
+            },
             num=20,
             size=[0.015] * 3,
             visual_only=True,
