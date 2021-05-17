@@ -32,7 +32,7 @@ from gibson2.utils.ig_logging import IGLogWriter, IGLogReader
 from gibson2 import assets_path
 
 # Number of frames to save
-FRAMES_TO_SAVE = 2000
+FRAMES_TO_SAVE = 600
 # Set to true to print PyBullet data - can be used to check whether replay was identical to saving
 PRINT_PB = True
 # Modify this path to save to different files
