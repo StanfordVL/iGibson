@@ -1052,11 +1052,14 @@ class Simulator:
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
 
-    def step(self, print_stats=False):
+    def step(self, print_stats=False, request_force_sync=False):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
         # Call separate step function for VR
+        if request_force_sync:
+            self.request_force_sync()
+
         if self.can_access_vr_context:
             self.step_vr(print_stats=print_stats)
             return
@@ -1080,6 +1083,9 @@ class Simulator:
             self.viewer.update()
         if self.first_sync:
             self.first_sync = False
+
+    def request_force_sync(self):
+        self.first_sync = True
 
     def vr_system_update(self):
         """
