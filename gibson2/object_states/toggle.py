@@ -32,16 +32,18 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
     def _initialize(self, simulator):
         super(ToggledOn, self)._initialize(simulator)
         self.initialize_link_mixin()
-        self.visual_marker_on = VisualMarker(
-            rgba_color=[0, 1, 0, 0.5],
-            radius=_TOGGLE_BUTTON_RADIUS,
-            initial_offset=[0, 0, 0])
-        self.visual_marker_off = VisualMarker(
-            rgba_color=[1, 0, 0, 0.5],
-            radius=_TOGGLE_BUTTON_RADIUS,
-            initial_offset=[0, 0, 0])
-        simulator.import_object(self.visual_marker_on)
-        simulator.import_object(self.visual_marker_off)
+
+        if self.link_id is not None:
+            self.visual_marker_on = VisualMarker(
+                rgba_color=[0, 1, 0, 0.5],
+                radius=_TOGGLE_BUTTON_RADIUS,
+                initial_offset=_TOGGLE_MARKER_OFF_POSITION)
+            self.visual_marker_off = VisualMarker(
+                rgba_color=[1, 0, 0, 0.5],
+                radius=_TOGGLE_BUTTON_RADIUS,
+                initial_offset=_TOGGLE_MARKER_OFF_POSITION)
+            simulator.import_object(self.visual_marker_on)
+            simulator.import_object(self.visual_marker_off)
 
     def _update(self, simulator):
         button_position_on_object = self.get_link_position()
