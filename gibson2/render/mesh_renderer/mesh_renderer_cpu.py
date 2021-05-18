@@ -1608,21 +1608,22 @@ class MeshRenderer(object):
         :param need_flow_info: whether flow information is required
         """
         for instance in self.instances:
-            # if instance.dynamic:
-            if isinstance(instance, Instance):
-                buf_idxs = instance.or_buffer_indices
-                # Continue if instance has no visual objects
-                if not buf_idxs:
-                    continue
-                self.trans_data[buf_idxs] = np.array(instance.pose_trans)
-                self.rot_data[buf_idxs] = np.array(instance.pose_rot)
-            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                buf_idxs = instance.or_buffer_indices
-                # Continue if instance has no visual objects
-                if not buf_idxs:
-                    continue
-                self.trans_data[buf_idxs] = np.array(instance.poses_trans)
-                self.rot_data[buf_idxs] = np.array(instance.poses_rot)
+            if instance.request_update:
+                if isinstance(instance, Instance):
+                    buf_idxs = instance.or_buffer_indices
+                    # Continue if instance has no visual objects
+                    if not buf_idxs:
+                        continue
+                    self.trans_data[buf_idxs] = np.array(instance.pose_trans)
+                    self.rot_data[buf_idxs] = np.array(instance.pose_rot)
+                elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
+                    buf_idxs = instance.or_buffer_indices
+                    # Continue if instance has no visual objects
+                    if not buf_idxs:
+                        continue
+                    self.trans_data[buf_idxs] = np.array(instance.poses_trans)
+                    self.rot_data[buf_idxs] = np.array(instance.poses_rot)
+                instance.request_update = False
 
         if need_flow_info:
             # this part could be expensive

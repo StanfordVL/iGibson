@@ -67,6 +67,7 @@ class InstanceGroup(object):
         self.or_buffer_indices = None
         self.last_trans = [np.copy(item) for item in poses_trans]
         self.last_rot = [np.copy(item) for item in poses_rot]
+        self.request_update = False
 
     def set_highlight(self, highlight):
         self.highlight = highlight
@@ -154,32 +155,13 @@ class InstanceGroup(object):
         self.renderer.r.cglUseProgram(0)
 
     def get_pose_in_camera(self):
-        """
-        Get instance group pose in camera reference frame
-        """
-        mat = self.renderer.V.dot(self.pose_trans.T).dot(self.pose_rot).T
-        pose = np.concatenate([mat2xyz(mat), safemat2quat(mat[:3, :3].T)])
-        return pose
+        raise NotImplementedError
 
     def set_position(self, pos):
-        """
-        Set positions for each part of this InstanceGroup
-
-        :param pos: positions
-        """
-
-        self.last_trans = [np.copy(item) for item in self.poses_trans]
-        self.poses_trans = pos
+        raise NotImplementedError
 
     def set_rotation(self, rot):
-        """
-        Set rotations for each part of this InstanceGroup
-
-        :param rot: rotation matrix
-        """
-
-        self.last_rot = [np.copy(item) for item in self.poses_rot]
-        self.poses_rot = rot
+        raise NotImplementedError
 
     def set_position_for_part(self, pos, j):
         """
@@ -191,6 +173,7 @@ class InstanceGroup(object):
 
         self.last_trans[j] = np.copy(self.poses_trans[j])
         self.poses_trans[j] = pos
+        self.request_update = True
 
     def set_rotation_for_part(self, rot, j):
         """
@@ -202,6 +185,7 @@ class InstanceGroup(object):
 
         self.last_rot[j] = np.copy(self.poses_rot[j])
         self.poses_rot[j] = rot
+        self.request_update = True
 
     def dump(self):
         """
@@ -292,6 +276,7 @@ class Instance(object):
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
         self.highlight = False
+        self.request_update = False
 
     def set_highlight(self, highlight):
         self.highlight = highlight
@@ -425,6 +410,7 @@ class Instance(object):
         """
         self.last_trans = np.copy(self.pose_trans)
         self.pose_trans = np.ascontiguousarray(xyz2mat(pos))
+        self.request_update = True
 
     def set_rotation(self, rot):
         """
@@ -434,6 +420,7 @@ class Instance(object):
         """
         self.last_rot = np.copy(self.pose_rot)
         self.pose_rot = rot
+        self.request_update = True
 
     def dump(self):
         """
