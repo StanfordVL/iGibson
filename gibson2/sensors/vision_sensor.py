@@ -5,6 +5,7 @@ import numpy as np
 import os
 import gibson2
 from collections import OrderedDict
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 
 class VisionSensor(BaseSensor):
@@ -141,8 +142,12 @@ class VisionSensor(BaseSensor):
 
         :return: vision sensor reading
         """
-        raw_vision_obs = env.simulator.renderer.render_robot_cameras(
-            modes=self.raw_modalities)
+        if isinstance(env.robots[0], BehaviorRobot):
+            raw_vision_obs = env.robots[0].render_camera_image(modes=self.raw_modalities)
+        else:
+            raw_vision_obs = env.simulator.renderer.render_robot_cameras(
+                modes=self.raw_modalities)
+
 
         raw_vision_obs = {
             mode: value
