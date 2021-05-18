@@ -2,7 +2,7 @@ import pybullet as p
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
 import numpy as np
-
+from gibson2.utils.constants import MAX_INSTANCE_COUNT, MAX_INSTANCE_COUNT
 
 class InstanceGroup(object):
     """
@@ -104,9 +104,9 @@ class InstanceGroup(object):
                     self.renderer.mesh_materials[object_idx]]
                 self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                        float(
-                                                           self.class_id) / 255.0,
+                                                           self.class_id) / MAX_CLASS_COUNT,
                                                        float(
-                                                           self.id) / 255.0,
+                                                           self.id) / MAX_INSTANCE_COUNT,
                                                        current_material.kd,
                                                        float(
                                                            current_material.is_texture()),
@@ -360,9 +360,9 @@ class Instance(object):
                 self.renderer.mesh_materials[object_idx]]
             self.renderer.r.init_material_instance(self.renderer.shaderProgram,
                                                    float(
-                                                       self.class_id) / 255.0,
+                                                       self.class_id) / MAX_CLASS_COUNT,
                                                    float(
-                                                       self.id) / 255.0,
+                                                       self.id) / MAX_INSTANCE_COUNT,
                                                    current_material.kd,
                                                    float(
                                                        current_material.is_texture()),
