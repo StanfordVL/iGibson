@@ -40,6 +40,7 @@ class iGTNTask(TaskNetTask):
                          scene_path=os.path.join(
                              gibson2.ig_dataset_path, 'scenes'),
                          predefined_problem=predefined_problem)
+        self.state_history = {}
 
     def initialize_simulator(self,
                              simulator=None,
@@ -67,11 +68,41 @@ class iGTNTask(TaskNetTask):
         self.should_debug_sampling = should_debug_sampling
         if online_sampling:
             scene_kwargs['merge_fixed_links'] = False
-        return self.initialize(InteractiveIndoorScene,
+        result = self.initialize(InteractiveIndoorScene,
                                scene_id=scene_id,
                                scene_kwargs=scene_kwargs,
                                online_sampling=online_sampling,
                                )
+        self.initial_state = self.save_scene()
+        return result
+
+    def save_scene(self):
+        snapshot_id = p.saveState()
+        self.state_history[snapshot_id] = {
+            "snapshot_id": snapshot_id,
+            "states_by_id": {}
+        }
+        states_by_id = {}
+        for obj_id, obj in self.scene.objects_by_id.items():
+            states_by_id[obj_id] = {}
+            for state_type, state in obj.states.items():
+                # TODO: We should ensure all states need to dump their state do (they don't)
+                try:
+                    states_by_id[obj_id][state_type] = state._dump()
+                except:
+                    pass
+        return snapshot_id
+
+    def reset_scene(self, snapshot_id):
+        p.restoreState(snapshot_id)
+        for obj_id, obj in self.scene.objects_by_id.items():
+            for state_type, state in obj.states.items():
+                # TODO: We should ensure all states need to load their state do (they don't)
+                try:
+                    prev_state = self.state_history[snapshot_id]["states_by_id"][obj_id][state_type]
+                    state._load(prev_state)
+                except:
+                    pass
 
     def check_scene(self):
         feedback = {
