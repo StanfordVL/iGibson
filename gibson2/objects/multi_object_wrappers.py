@@ -42,6 +42,34 @@ class ObjectGrouper(StatefulObject):
             for obj in self.object_grouper.objects:
                 obj.states[self.state_type].set_value(new_value)
 
+        # We declare a list subtype here so that we can identify dumps produced through ObjectGrouper's
+        # dump function vs. dumps produced otherwise, so that we can identify one-to-many loads vs.
+        # many-to-many loads.
+        class GroupedStateDump(list):
+            pass
+
+        # Since we don't inherit from ObjectStateBase, we don't implement _dump()
+        # but dump() directly.
+        def dump(self):
+            return ObjectGrouper.AbsoluteStateAggregator.GroupedStateDump(
+                obj.states[self.state_type].dump() for obj in self.object_grouper.objects)
+
+        def load(self, data):
+            if isinstance(data, ObjectGrouper.AbsoluteStateAggregator.GroupedStateDump):
+                # We're loading a many-to-many data dump.
+                assert len(data) == len(self.object_grouper.objects)
+
+                for obj, dump in zip(self.object_grouper.objects, data):
+                    obj.states[self.state_type].load(dump)
+            else:
+                # We're loading a one-to-many data dump.
+                # An example of when this happens is when an object goes from non-sliced to
+                # sliced. In the Sliceable setter, we dump the state of the non-sliced object
+                # (which will be a single object) and we then attempt to load it into the
+                # ObjectGrouper representing the halves.
+                for obj in self.object_grouper.objects:
+                    obj.states[self.state_type].load(data)
+
     class RelativeStateAggregator(BaseStateAggregator):
         def get_value(self, other):
             if not issubclass(self.state_type, BooleanState):
@@ -217,3 +245,16 @@ class ObjectMultiplexer(StatefulObject):
 
     def rotate_by(self, x=0, y=0, z=0):
         return self.current_selection().rotate_by(x, y, z)
+
+    def dump_state(self):
+        return {
+            "current_index": self.current_index,
+            "sub_states": [obj.dump_state() for obj in self._multiplexed_objects]
+        }
+
+    def load_state(self, dump):
+        self.current_index = dump["current_index"]
+
+        assert len(dump) == len(self._multiplexed_objects)
+        for obj, obj_dump in zip(self._multiplexed_objects, dump["sub_states"]):
+            obj.load_state(obj_dump)

@@ -6,6 +6,7 @@ from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.sensors.velodyne_sensor import VelodyneSensor
 import numpy as np
 import os
+from gibson2.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
 
 
 def test_vision_sensor():
@@ -33,7 +34,7 @@ def test_vision_sensor():
         (env.image_height * env.image_width) < 0.05
 
     assert vision_obs['seg'].shape == (env.image_height, env.image_width, 1)
-    assert np.all(0 <= vision_obs['seg']) and np.all(vision_obs['seg'] <= 1.0)
+    assert np.all(0 <= vision_obs['seg']) and np.all(vision_obs['seg'] <= MAX_CLASS_COUNT)
 
 
 def test_scan_sensor():

@@ -6,7 +6,7 @@ import os
 import gibson2
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
-
+from gibson2.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 
 class VisionSensor(BaseSensor):
     """
@@ -57,6 +57,8 @@ class VisionSensor(BaseSensor):
             raw_modalities.append('3d')
         if 'seg' in modalities:
             raw_modalities.append('seg')
+        if 'ins_seg' in modalities:
+            raw_modalities.append('ins_seg')
         if 'normal' in modalities:
             raw_modalities.append('normal')
         if 'optical_flow' in modalities:
@@ -124,7 +126,14 @@ class VisionSensor(BaseSensor):
         """
         :return: semantic segmentation mask, normalized to [0.0, 1.0]
         """
-        seg = raw_vision_obs['seg'][:, :, 0:1]
+        seg = (raw_vision_obs['seg'][:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int32)
+        return seg
+
+    def get_ins_seg(self, raw_vision_obs):
+        """
+        :return: semantic segmentation mask, normalized to [0.0, 1.0]
+        """
+        seg = (raw_vision_obs['ins_seg'][:, :, 0:1] * MAX_INSTANCE_COUNT).astype(np.int32)
         return seg
 
     def get_obs(self, env):
@@ -162,4 +171,6 @@ class VisionSensor(BaseSensor):
             vision_obs['normal'] = self.get_normal(raw_vision_obs)
         if 'seg' in self.modalities:
             vision_obs['seg'] = self.get_seg(raw_vision_obs)
+        if 'ins_seg' in self.modalities:
+            vision_obs['ins_seg'] = self.get_ins_seg(raw_vision_obs)
         return vision_obs

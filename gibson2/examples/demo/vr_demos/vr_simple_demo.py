@@ -97,8 +97,11 @@ def main():
     while True:
         s.step()
 
-        # Update VR agent using action data from simulator
         bvr_robot.update(s.gen_vr_robot_action())
+
+        # End demo by pressing overlay toggle
+        if s.query_vr_event('left_controller', 'overlay_toggle'):
+                break
 
     s.disconnect()
 
