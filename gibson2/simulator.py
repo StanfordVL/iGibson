@@ -1003,7 +1003,7 @@ class Simulator:
         render_dur = time.perf_counter() - render_start_time
 
         # Sleep until last possible Vsync
-        pre_sleep_dur = outside_step_dur + physics_dur + render_dur
+        pre_sleep_dur = outside_step_dur + physics_dur + non_physics_dur + render_dur
         sleep_start_time = time.perf_counter()
         if pre_sleep_dur < self.non_block_frame_time:
             sleep(self.non_block_frame_time - pre_sleep_dur)
