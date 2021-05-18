@@ -1013,7 +1013,8 @@ int MeshRendererContext::allocateTexture(int w, int h) {
 
 void MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
     glBindFramebuffer(GL_FRAMEBUFFER, fb2);
-    glReadBuffer(GL_COLOR_ATTACHMENT3);
+    // read buffer from 3d component
+    glReadBuffer(GL_COLOR_ATTACHMENT4);
 	glCopyTextureSubImage2D(texture_id, 0, 0, 0, 0, 0, width, height);
 }
 
