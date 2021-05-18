@@ -28,7 +28,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         self.water_stream = None
 
         # Keep dump data for when we initialize our water stream.
-        self.from_dump = None
+        self.initial_dump = None
 
     @staticmethod
     def get_state_link_name():
@@ -43,9 +43,9 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         water_source_position = list(
             np.array(water_source_position) + _OFFSET_FROM_LINK)
-        self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, from_dump=self.from_dump)
+        self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump)
         simulator.import_particle_system(self.water_stream)
-        del self.from_dump
+        del self.initial_dump
 
     def _update(self, simulator):
         water_source_position = self.get_link_position()
@@ -79,8 +79,11 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
     def _dump(self):
         return self.water_stream.dump()
 
-    def _load(self, data):
-        self.from_dump = data
+    def load(self, data):
+        if not self._initialized:
+            self.initial_dump = data
+        else:
+            self.water_stream.reset_to_dump(data)
 
     @staticmethod
     def get_optional_dependencies():

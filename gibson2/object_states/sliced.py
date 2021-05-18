@@ -4,16 +4,8 @@ from gibson2.object_states import *
 import gibson2
 import pybullet as p
 
-_DEFAULT_SLICE_FORCE = 10
-
-_SLICED_PROPAGATION_STATE_SET = frozenset([
-    Temperature,
-    MaxTemperature,
-    Soaked,
-    ToggledOn,
-])
-
 # TODO: propagate dusty/stained to object parts
+_DEFAULT_SLICE_FORCE = 10
 
 
 class Sliced(AbsoluteObjectState, BooleanState):
@@ -34,10 +26,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         self.value = new_value
 
-        # We want to return early if set_value(True) is called on a
-        # URDFObject that does not have multiplexer registered. This is used
-        # when we propagate sliced=True from the whole object to all the
-        # object parts
+        # We want to return early if set_value(True)is called on a URDFObject
+        # (an object part) that does not have multiplexer registered. This is
+        # used when we propagate sliced=True from the whole object to all the
+        # object parts.
         if not hasattr(self.obj, 'multiplexer'):
             return True
 
@@ -54,18 +46,20 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         # force_wakeup is needed to properly update the self.obj pose in the renderer
         self.obj.force_wakeup()
-        self.obj.multiplexer.set_selection(1)
+
+        # Dump the current object's states, for setting on the new object. Note that this might not make sense for
+        # things like stains etc. where the halves are supposed to split the state rather than each get an exact copy.
+        state_dump = self.obj.dump_state()
+
+        self.obj.multiplexer.set_selection(int(self.value))
 
         # set the object parts to the base link pose of the whole object
         # ObjectGrouper internally manages the pose offsets of each part
         self.obj.multiplexer.set_base_link_position_orientation(pos, orn)
-        self.obj.multiplexer.states[Sliced].set_value(self.value)
 
-        # propagate non-kinematic states (e.g. temperature, soaked) from whole object to object parts
-        for state in _SLICED_PROPAGATION_STATE_SET:
-            if state in self.obj.states:
-                self.obj.multiplexer.states[state].set_value(
-                    self.obj.states[state].get_value())
+        # Propagate the original object's states to the halves (the ObjectGrouper takes care of propagating this call
+        # to both of its objects).
+        self.obj.multiplexer.current_selection().load_state(state_dump)
 
         return True
 
@@ -74,5 +68,5 @@ class Sliced(AbsoluteObjectState, BooleanState):
     def _dump(self):
         return self.value
 
-    def _load(self, data):
+    def load(self, data):
         self.value = data

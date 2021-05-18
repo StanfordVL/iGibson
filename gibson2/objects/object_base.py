@@ -103,3 +103,10 @@ class Object(object):
         self.set_orientation(p.getQuaternionFromEuler(
             [e_x + x, e_y + y, e_z + z]))
 
+    def dump_state(self):
+        """Dumps the state of the object other than what's not included in pybullet state."""
+        return None
+
+    def load_state(self, dump):
+        """Loads the state of the object other than what's not included in pybullet state."""
+        pass
