@@ -300,6 +300,7 @@ class Simulator:
                     shadow_caster = False
                 class_id = self.class_name_to_class_id.get(
                     scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
+                print("body_id", body_id, "class_id", class_id)
                 self.load_articulated_object_in_renderer(
                     body_id,
                     class_id=class_id,
@@ -322,7 +323,7 @@ class Simulator:
                     scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
                 self.load_articulated_object_in_renderer(
                     body_id,
-                    class_id=body_id,
+                    class_id=class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster,

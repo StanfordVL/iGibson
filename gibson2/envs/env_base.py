@@ -62,7 +62,7 @@ class BaseEnv(gym.Env):
                                         enable_pbr=enable_pbr,
                                         msaa=False,
                                         texture_scale=texture_scale,
-                                        optimized=True)
+                                        optimized=False)
 
         self.simulator = Simulator(mode=mode,
                                    physics_timestep=physics_timestep,

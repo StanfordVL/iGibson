@@ -19,6 +19,7 @@ def main():
                     logging.info(
                         "Episode finished after {} timesteps".format(i + 1))
                     break
+                print(state['bump'])
     env.close()
 
 

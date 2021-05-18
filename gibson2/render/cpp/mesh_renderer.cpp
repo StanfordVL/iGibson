@@ -477,6 +477,7 @@ MeshRendererContext::init_material_instance(int shaderProgram, float instance_co
     float *diffuse_ptr = (float *) diffuse_color.request().ptr;
     float *transform_param_ptr = (float *) transform_param.request().ptr;
 
+    //glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), float(int(instance_color * 312523 / 255) % 255) / 255, float(int(instance_color * 312523) % 255) / 255, 0);
     glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
     glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "uv_transform_param"), transform_param_ptr[0],

@@ -40,7 +40,7 @@ class ViewerSimple:
 
     def update(self):
         if not self.renderer is None:
-            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
+            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb', 'seg')), axis=1),
                                  cv2.COLOR_RGB2BGR)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
@@ -588,7 +588,7 @@ class Viewer:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             else:
                 frame = cv2.cvtColor(
-                   np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
+                   np.concatenate(self.renderer.render(modes=('rgb', 'seg')), axis=1),
                    cv2.COLOR_RGB2BGR)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
@@ -705,7 +705,7 @@ class Viewer:
             self.frame_idx += 1
 
         if self.renderer is not None:
-            frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            frames = self.renderer.render_robot_cameras(modes=('rgb', 'seg'))
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(
                     frames, axis=1), cv2.COLOR_RGB2BGR)
