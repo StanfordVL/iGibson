@@ -2,10 +2,11 @@ import numpy as np
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.adjacency import HorizontalAdjacency, flatten_planes
 from gibson2.object_states.kinematics import KinematicsMixin
+from gibson2.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 
 
-class NextTo(KinematicsMixin, RelativeObjectState, BooleanState):
+class NextTo(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
         return KinematicsMixin.get_dependencies() + [HorizontalAdjacency]

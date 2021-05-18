@@ -2,11 +2,12 @@ import gibson2
 import pybullet as p
 from IPython import embed
 from gibson2.object_states.adjacency import VerticalAdjacency
+from gibson2.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 
 
-class Under(RelativeObjectState, BooleanState):
+class Under(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
         return RelativeObjectState.get_dependencies() + [VerticalAdjacency]
