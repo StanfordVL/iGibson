@@ -42,7 +42,7 @@ class MeshRenderer(object):
         self.windowShaderProgram = None
         self.fbo = None
         self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d = None, None, None, None
-        self.color_tex_scene_flow, self.color_tex_optical_flow = None, None
+        self.color_tex_scene_flow, self.color_tex_optical_flow, self.color_tex_ins_seg = None, None, None
         self.depth_tex = None
         self.VAOs = []
         self.VBOs = []
@@ -268,13 +268,25 @@ class MeshRenderer(object):
         """
         Set up framebuffers for the renderer
         """
-        [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-         self.color_tex_scene_flow, self.color_tex_optical_flow,
+        [self.fbo,
+         self.color_tex_rgb,
+         self.color_tex_normal,
+         self.color_tex_semantics,
+         self.color_tex_ins_seg,
+         self.color_tex_3d,
+         self.color_tex_scene_flow,
+         self.color_tex_optical_flow,
          self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
-            [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms,
-             self.color_tex_3d_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms,
+            [self.fbo_ms,
+             self.color_tex_rgb_ms,
+             self.color_tex_normal_ms,
+             self.color_tex_semantics_ms,
+             self.color_tex_ins_seg_ms,
+             self.color_tex_3d_ms,
+             self.color_tex_scene_flow_ms,
+             self.color_tex_optical_flow_ms,
              self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
         self.depth_tex_shadow = self.r.allocateTexture(self.width, self.height)
@@ -1042,13 +1054,13 @@ class MeshRenderer(object):
         """
         clean_list = [
             self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow, self.text_manager.render_tex
-        ] + [i for i in self.text_manager.tex_ids]
+            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow, self.color_tex_ins_seg,
+            self.text_manager.render_tex] + [i for i in self.text_manager.tex_ids]
         fbo_list = [self.fbo, self.text_manager.FBO]
         if self.msaa:
             clean_list += [
                 self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
-                self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms
+                self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms, self.color_tex_ins_seg_ms
             ]
             fbo_list += [self.fbo_ms]
 
@@ -1068,6 +1080,7 @@ class MeshRenderer(object):
         self.color_tex_3d = None
         self.color_tex_scene_flow = None
         self.color_tex_optical_flow = None
+        self.color_tex_ins_seg = None
         self.depth_tex = None
         self.fbo = None
         self.VAOs = []
@@ -1174,6 +1187,7 @@ class MeshRenderer(object):
         # Some of these may share visual data, but have unique transforms
         duplicate_vao_ids = []
         class_id_array = []
+        instance_id_array = []
         # Stores use_pbr, use_pbr_mapping and shadow caster, with 1.0 for padding of fourth element
         pbr_data_array = []
         # Stores whether object is hidden or not - we store as a vec4, since this is the smallest
@@ -1192,6 +1206,8 @@ class MeshRenderer(object):
                     np.arange(or_buffer_idx_start, or_buffer_idx_end))
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
+                instance_id_array.extend(
+                    [float(instance.id) / 255.0] * len(ids))
                 pbr_data_array.extend(
                     [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
                 hidden_array.extend(
@@ -1212,6 +1228,8 @@ class MeshRenderer(object):
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
+                instance_id_array.extend(
+                    [float(instance.id) / 255.0] * id_sum)
                 pbr_data_array.extend(
                     [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
                 hidden_array.extend(
@@ -1313,7 +1331,7 @@ class MeshRenderer(object):
 
         for i in range(len(duplicate_vao_ids)):
             data_list = [float(tex_num_array[i]), float(
-                tex_layer_array[i]), class_id_array[i], 0.0]
+                tex_layer_array[i]), class_id_array[i], instance_id_array[i]]
             frag_shader_data.append(
                 np.ascontiguousarray(data_list, dtype=np.float32))
             pbr_data.append(
@@ -1390,6 +1408,7 @@ class MeshRenderer(object):
         # Some of these may share visual data, but have unique transforms
         duplicate_vao_ids = []
         class_id_array = []
+        instance_id_array = []
         # Stores use_pbr, use_pbr_mapping and shadow caster, with 1.0 for padding of fourth element
         pbr_data_array = []
         # Stores whether object is hidden or not - we store as a vec4, since this is the smallest
@@ -1408,6 +1427,8 @@ class MeshRenderer(object):
                     np.arange(or_buffer_idx_start, or_buffer_idx_end))
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * len(ids))
+                instance_id_array.extend(
+                    [float(instance.id) / 255.0] * len(ids))
                 pbr_data_array.extend(
                     [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
                 hidden_array.extend(
@@ -1428,6 +1449,8 @@ class MeshRenderer(object):
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
+                instance_id_array.extend(
+                    [float(instance.id) / 255.0] * id_sum)
                 pbr_data_array.extend(
                     [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
                 hidden_array.extend(
@@ -1509,7 +1532,7 @@ class MeshRenderer(object):
 
         for i in range(len(duplicate_vao_ids)):
             data_list = [float(tex_num_array[i]), float(
-                tex_layer_array[i]), class_id_array[i], 0.0]
+                tex_layer_array[i]), class_id_array[i], instance_id_array[i]]
             frag_shader_data.append(
                 np.ascontiguousarray(data_list, dtype=np.float32))
             pbr_data.append(

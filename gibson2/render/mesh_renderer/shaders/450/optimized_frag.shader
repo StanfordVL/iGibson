@@ -45,7 +45,7 @@ in vec2 theCoords;
 in vec3 Normal_world;
 in vec3 Normal_cam;
 in vec3 FragPos;
-in vec3 Instance_color;
+in vec3 Semantic_seg_color;
 in vec3 Pos_cam;
 in vec3 Pos_cam_prev;
 in vec3 Pos_cam_projected;
@@ -60,10 +60,11 @@ const float Epsilon = 0.00001;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
-layout (location = 2) out vec4 InstanceColour;
-layout (location = 3) out vec4 PCColour;
-layout (location = 4) out vec4 SceneFlowColour;
-layout (location = 5) out vec4 OpticalFlowColour;
+layout (location = 2) out vec4 SemanticSegColour;
+layout (location = 3) out vec4 InstanceSegColour;
+layout (location = 4) out vec4 PCColour;
+layout (location = 5) out vec4 SceneFlowColour;
+layout (location = 6) out vec4 OpticalFlowColour;
 
 uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
@@ -105,7 +106,8 @@ void main() {
     vec4 curr_tex_data = tex_data[Draw_id];
     int tex_num = int(curr_tex_data.x);
     int tex_layer = int(curr_tex_data.y);
-    float instance_color = curr_tex_data.z;
+    float semantic_seg_color = curr_tex_data.z;
+    float instance_seg_color = curr_tex_data.w;
     vec4 curr_pbr_data = pbr_data[Draw_id];
     int use_pbr = int(curr_pbr_data.x);
     vec2 texelSize = 1.0 / textureSize(depthMap, 0);
@@ -217,7 +219,8 @@ void main() {
         }
     }
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
-    InstanceColour = vec4(Instance_color,1);
+    SemanticSegColour = vec4(semantic_seg_color, 0, 0, 1);
+    InstanceSegColour = vec4(instance_seg_color, 0, 0, 1);
     if (shadow_pass == 1) {
         PCColour = vec4(Pos_cam_projected, 1);
     } else {

@@ -54,7 +54,7 @@ def main():
     else:
         model_path = os.path.join(get_scene_path('Rs_int'), 'mesh_z_up.obj')
     settings = MeshRendererSettings(msaa=True, enable_shadow=True)
-    renderer = MeshRenderer(width=1024, height=1024,  vertical_fov=70, rendering_settings=settings)
+    renderer = MeshRenderer(width=512, height=512,  vertical_fov=70, rendering_settings=settings)
     renderer.set_light_position_direction([0,0,10], [0,0,0])
 
     i = 0
@@ -113,7 +113,7 @@ def main():
 
     while True:
         with Profiler('Render'):
-            frame = renderer.render(modes=('rgb', 'normal'))
+            frame = renderer.render(modes=('rgb', 'normal', 'seg', 'ins_seg'))
         cv2.imshow('test', cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
 
         q = cv2.waitKey(1)

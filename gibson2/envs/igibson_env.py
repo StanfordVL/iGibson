@@ -11,7 +11,7 @@ from gibson2.sensors.vision_sensor import VisionSensor
 from gibson2.robots.robot_base import BaseRobot
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.sensors.bump_sensor import BumpSensor
-
+from gibson2.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
@@ -158,8 +158,13 @@ class iGibsonEnv(BaseEnv):
         if 'seg' in self.output:
             observation_space['seg'] = self.build_obs_space(
                 shape=(self.image_height, self.image_width, 1),
-                low=0.0, high=1.0)
+                low=0.0, high=MAX_CLASS_COUNT)
             vision_modalities.append('seg')
+        if 'ins_seg' in self.output:
+            observation_space['ins_seg'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 1),
+                low=0.0, high=MAX_INSTANCE_COUNT)
+            vision_modalities.append('ins_seg')
         if 'rgb_filled' in self.output:  # use filler
             observation_space['rgb_filled'] = self.build_obs_space(
                 shape=(self.image_height, self.image_width, 3),

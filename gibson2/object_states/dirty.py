@@ -18,14 +18,13 @@ class _Dirty(AbsoluteObjectState, BooleanState):
 
     def __init__(self, obj):
         super(_Dirty, self).__init__(obj)
-        self.value = False
         self.dirt = None
 
         # Keep dump data for when we initialize our dirt.
-        self.from_dump = None
+        self.initial_dump = None
 
     def _initialize(self, simulator):
-        self.dirt = self.DIRT_CLASS(self.obj, from_dump=self.from_dump)
+        self.dirt = self.DIRT_CLASS(self.obj, initial_dump=self.initial_dump)
         simulator.import_particle_system(self.dirt)
 
     def _get_value(self):
@@ -34,8 +33,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         return self.dirt.get_num_active() > max_particles_for_clean
 
     def _set_value(self, new_value):
-        self.value = new_value
-        if not self.value:
+        if not new_value:
             for particle in self.dirt.get_active_particles():
                 self.dirt.stash_particle(particle)
         else:
@@ -51,14 +49,20 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         return True
 
     def _dump(self):
+        # Note that while we could just return self.dirt.dump() here, a previous version used a dictionary
+        # here and to maintain backwards compatibility we're using the same format.
         return {
-            "value": self.value,
             "particles": self.dirt.dump(),
         }
 
-    def _load(self, data):
-        self.value = data["value"]
-        self.from_dump = data["particles"]
+    def load(self, data):
+        if not self._initialized:
+            # If not initialized, store the dump for initialization later.
+            self.initial_dump = data["particles"]
+        else:
+            # Otherwise, let the particle system know it needs to reset.
+            self.dirt.reset_to_dump(data["particles"])
+
 
 
 class Dusty(_Dirty):
