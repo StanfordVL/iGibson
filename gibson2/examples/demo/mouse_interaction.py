@@ -46,7 +46,7 @@ def test_import_igsdf(scene_name, scene_source):
                                     env_texture_filename3=background_texture,
                                     light_modulation_map_filename=light_modulation_map_filename,
                                     enable_shadow=True, msaa=True,
-                                    light_dimming_factor=1.0)
+                                    light_dimming_factor=1.0, optimized=True)
     s = Simulator(mode='iggui', image_width=960,
                   image_height=720, device_idx=0, rendering_settings=settings)
 

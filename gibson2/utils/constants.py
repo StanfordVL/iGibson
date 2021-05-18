@@ -97,7 +97,10 @@ NamedRenderingPresets = {
 }
 
 AVAILABLE_MODALITIES = ('rgb', 'normal', '3d', 'seg',
-                        'optical_flow', 'scene_flow')
+                        'optical_flow', 'scene_flow', 'ins_seg')
+MAX_INSTANCE_COUNT = 1024
+MAX_CLASS_COUNT = 255
+
 # Encodings
 RAW_ENCODING = 0
 COPY_RECTANGLE_ENCODING = 1
