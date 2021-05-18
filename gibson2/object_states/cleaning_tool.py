@@ -32,6 +32,10 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
             if particle_type is not Dust and particle_type is not Stain:
                 continue
 
+            # Check if the surface has any particles.
+            if not particle_system.get_num_active():
+                continue
+
             # We need to be soaked to clean stains.
             if isinstance(particle_system, Stain):
                 if Soaked not in self.obj.states or not self.obj.states[Soaked].get_value():
