@@ -46,6 +46,8 @@ class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
 
         # First check that the inner object's position is inside the outer's AABB.
         # Since we usually check for a small set of outer objects, this is cheap.
+        # Also note that this produces garbage values for fixed objects - but we are
+        # assuming none of our inside-checking objects are fixed.
         inner_object_pos, _ = self.obj.states[Pose].get_value()
         outer_object_AABB = other.states[AABB].get_value()
 

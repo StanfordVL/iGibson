@@ -16,11 +16,11 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
         self._validation_caches = {}
 
     @abstractmethod
-    def get_validation_caches(self, *args, **kwargs):
+    def get_validation_cache(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def validate_validation_caches(self, keys, *args, **kwargs):
+    def validate_validation_cache(self, cache, *args, **kwargs):
         pass
 
     def get_value(self, *args, **kwargs):
@@ -29,11 +29,11 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
 
         # If we have a valid memoized result, return it directly.
         if key in self._memo:
-            if self.validate_validation_caches(self._validation_caches[key], *args, **kwargs):
+            if self.validate_validation_cache(self._validation_caches[key], *args, **kwargs):
                 return self._memo[key]
 
         # Otherwise, recompute the result & memoize.
-        validation_cache = self.get_validation_caches(*args, **kwargs)
+        validation_cache = self.get_validation_cache(*args, **kwargs)
         result = super(MemoizedObjectStateMixin, self).get_value(*args, **kwargs)
         self._validation_caches[key] = validation_cache
         self._memo[key] = result
@@ -43,13 +43,13 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
 
 
 class PositionalValidationMemoizedObjectStateMixin(MemoizedObjectStateMixin):
-    def get_validation_caches(self, *args, **kwargs):
-        # Assume that *args contains objects (e.g. for absolute & relative states).
+    def get_validation_cache(self, *args, **kwargs):
+        # Assume that args contains objects for relative states (and is empty for others).
         return tuple(obj.states[Pose].get_value()[0] for obj in itertools.chain((self.obj,), args))
 
-    def validate_validation_caches(self, keys, *args, **kwargs):
-        # Assume that *args contains objects (e.g. for absolute & relative states).
-        for obj, old_pos in zip(itertools.chain((self.obj,), args), keys):
+    def validate_validation_cache(self, cache, *args, **kwargs):
+        # Assume that args contains objects for relative states (and is empty for others).
+        for obj, old_pos in zip(itertools.chain((self.obj,), args), cache):
             new_pos, _ = obj.states[Pose].get_value()
             dist = l2_distance(new_pos, old_pos)
             if dist > POSITIONAL_VALIDATION_EPSILON:

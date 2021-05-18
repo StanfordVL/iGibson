@@ -50,6 +50,8 @@ class Temperature(AbsoluteObjectState):
                 # If not, we check whether we are inside it or not.
                 if heat_source_position is not None:
                     # Load our Pose. Note that this is cached already by the state.
+                    # Also note that this produces garbage values for fixed objects - but we are
+                    # assuming none of our temperature-enabled objects are fixed.
                     position, _ = self.obj.states[Pose].get_value()
 
                     # Compute distance to heat source from our position.
