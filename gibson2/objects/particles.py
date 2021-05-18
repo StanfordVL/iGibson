@@ -571,7 +571,7 @@ class Stain(_Dirt):
             mesh_filename=self._MESH_FILENAME,
             mesh_bounding_box=self._MESH_BOUNDING_BOX,
             visual_only=True,
-            initial_dump=initial_dump["dirt_dump"] if initial_dump else None,
+            initial_dump=initial_dump
             **kwargs
         )
 
