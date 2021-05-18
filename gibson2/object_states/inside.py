@@ -1,18 +1,20 @@
-import gibson2
 import pybullet as p
 from IPython import embed
-from gibson2.external.pybullet_tools.utils import get_aabb_center, get_aabb_extent, aabb_contains_point, get_aabb_volume
+
+import gibson2
+from gibson2.external.pybullet_tools.utils import aabb_contains_point
 from gibson2.object_states.aabb import AABB
 from gibson2.object_states.adjacency import VerticalAdjacency, HorizontalAdjacency, flatten_planes
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
+from gibson2.object_states.pose import Pose
 from gibson2.object_states.utils import sample_kinematics, clear_cached_states
 
 
 class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return KinematicsMixin.get_dependencies() + [AABB, HorizontalAdjacency, VerticalAdjacency]
+        return KinematicsMixin.get_dependencies() + [AABB, Pose, HorizontalAdjacency, VerticalAdjacency]
 
     def _set_value(self, other, new_value, use_ray_casting_method=False):
         state_id = p.saveState()
@@ -41,17 +43,10 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
     def _get_value(self, other, use_ray_casting_method=False):
         del use_ray_casting_method
 
-        objA_states = self.obj.states
-        objB_states = other.states
+        inner_object_pos, _ = self.obj.states[Pose].get_value()
+        outer_object_AABB = other.states[AABB].get_value()
 
-        assert AABB in objA_states
-        assert AABB in objB_states
-
-        aabbA = objA_states[AABB].get_value()
-        aabbB = objB_states[AABB].get_value()
-
-        center_inside = aabb_contains_point(get_aabb_center(aabbA), aabbB)
-        if not center_inside:
+        if not aabb_contains_point(inner_object_pos, outer_object_AABB):
             return False
 
         # Our definition of inside: an object A is inside an object B if there
