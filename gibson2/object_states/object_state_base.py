@@ -82,17 +82,13 @@ class AbsoluteObjectState(BaseObjectState):
     def _dump(self):
         raise NotImplementedError()
 
-    @abstractmethod
-    def _load(self, data):
-        raise NotImplementedError()
-
     def dump(self):
         assert self._initialized
         return self._dump()
 
+    @abstractmethod
     def load(self, data):
-        assert not self._initialized
-        return self._load(data)
+        raise NotImplementedError()
 
 
 class CachingEnabledObjectState(AbsoluteObjectState):

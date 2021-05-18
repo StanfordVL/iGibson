@@ -118,6 +118,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             "hand_in_marker_steps": self.hand_in_marker_steps
         }
 
-    def _load(self, data):
+    def load(self, data):
+        # Nothing special to do here when initialized vs. uninitialized
         self.value = data["value"]
         self.hand_in_marker_steps = data["hand_in_marker_steps"]

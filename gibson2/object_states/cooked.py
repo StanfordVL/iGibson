@@ -41,7 +41,7 @@ class Cooked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
     def _dump(self):
         return None
 
-    def _load(self, data):
+    def load(self, data):
         return
 
     def _update(self, simulator):

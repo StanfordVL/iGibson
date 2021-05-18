@@ -16,5 +16,5 @@ class Pose(CachingEnabledObjectState):
     def _dump(self):
         return None
 
-    def _load(self, data):
+    def load(self, data):
         return
