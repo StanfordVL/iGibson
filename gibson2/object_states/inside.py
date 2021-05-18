@@ -43,6 +43,8 @@ class Inside(KinematicsMixin, RelativeObjectState, BooleanState):
     def _get_value(self, other, use_ray_casting_method=False):
         del use_ray_casting_method
 
+        # First check that the inner object's position is inside the outer's AABB.
+        # Since we usually check for a small set of outer objects, this is cheap.
         inner_object_pos, _ = self.obj.states[Pose].get_value()
         outer_object_AABB = other.states[AABB].get_value()
 
