@@ -585,7 +585,7 @@ class Stain(_Dirt):
             clip_into_object=False,
             sampling_kwargs={
                 # Since this is a small & flat object we have low tolerance against nonplanar surfaces.
-                "hit_to_plane_threshold": 0.2,
+                "hit_to_plane_threshold": 0.02,
             },
             num=self._PARTICLE_COUNT,
             size=self.random_bbox_dims,
