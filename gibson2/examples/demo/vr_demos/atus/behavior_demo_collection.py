@@ -3,17 +3,18 @@ Main BEHAVIOR demo collection entrypoint
 """
 
 import argparse
-import os
 import datetime
+import os
+
+import numpy as np
+import tasknet
 
 import gibson2
-from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from gibson2.simulator import Simulator
 from gibson2.task.task_base import iGTNTask
 from gibson2.utils.ig_logging import IGLogWriter
-import tasknet
 
 
 def parse_args():
@@ -129,12 +130,17 @@ def main():
 
     satisfied_predicates_cached = {}
     post_task_steps = 200
+    physics_warming_steps = 200
 
+    steps = 0
     while True:
         igtn_task.simulator.step(print_stats=args.profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
-        vr_agent.update(igtn_task.simulator.gen_vr_robot_action())
+        action = igtn_task.simulator.gen_vr_robot_action()
+        if steps < physics_warming_steps:
+            action = np.zeros_like(action)
+        vr_agent.update(action)
 
         if satisfied_predicates != satisfied_predicates_cached:
             vr_cs.refresh_condition(switch=False)
@@ -153,6 +159,8 @@ def main():
             post_task_steps -= 1
             if post_task_steps == 0:
                 break
+
+        steps += 1
 
     if log_writer and not args.disable_save:
         log_writer.end_log_session()
