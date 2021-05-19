@@ -554,6 +554,7 @@ class Dust(_Dirt):
 class Stain(_Dirt):
     _PARTICLE_COUNT = 20
     _BOUNDING_BOX_LOWER_LIMIT = 0.02
+    _BOUNDING_BOX_UPPER_LIMIT_MAX_FRACTION_OF_AABB = 0.2
     _BOUNDING_BOX_UPPER_LIMIT = 0.1
     _MESH_FILENAME = os.path.join(
         gibson2.assets_path, "models/stain/stain.obj")
@@ -563,9 +564,13 @@ class Stain(_Dirt):
         if initial_dump:
             self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
+            aabb_max_dim = max(get_aabb_extent(parent_obj.states[AABB].get_value()))
+            bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_MAX_FRACTION_OF_AABB * aabb_max_dim
+            bounding_box_upper_limit = np.clip(
+                bounding_box_upper_limit_from_aabb, self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT)
             # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
             random_bbox_base_size = np.random.uniform(
-                self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT, self._PARTICLE_COUNT)
+                self._BOUNDING_BOX_LOWER_LIMIT, bounding_box_upper_limit, self._PARTICLE_COUNT)
             self.random_bbox_dims = np.stack(
                 [random_bbox_base_size, random_bbox_base_size,
                  np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2])], axis=-1)
