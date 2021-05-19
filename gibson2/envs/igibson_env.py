@@ -352,15 +352,15 @@ class iGibsonEnv(BaseEnv):
         :param orn: orientation
         :param offset: z offset
         """
-        if isinstance(obj, BehaviorRobot):
-            obj.set_position_orientation([pos[0], pos[1], pos[2]], quatToXYZW(euler2quat(*orn), 'wxyz'))
-            return
-
         if orn is None:
             orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
 
         if offset is None:
             offset = self.initial_pos_z_offset
+
+        if isinstance(obj, BehaviorRobot):
+            obj.set_position_orientation([pos[0], pos[1], pos[2]+offset], quatToXYZW(euler2quat(*orn), 'wxyz'))
+            return
 
         is_robot = isinstance(obj, BaseRobot)
         body_id = obj.robot_ids[0] if is_robot else obj.body_id

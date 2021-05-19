@@ -129,7 +129,6 @@ class BehaviorRobot(object):
         self.parts['body'].set_colliders(enabled)
 
     def set_position_orientation(self, pos, orn):
-
         self.parts['body'].set_position_orientation_unwrapped(pos, orn)
         self.parts['body'].new_pos, self.parts['body'].new_orn = pos, orn
         left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
