@@ -569,7 +569,7 @@ class Stain(_Dirt):
             aabb_max_dim = (
                 max(parent_obj.bounding_box)
                 if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
-                max(parent_obj.states[AABB].get_value()))
+                max(get_aabb_extent(parent_obj.states[AABB].get_value())))
             bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_MAX_FRACTION_OF_AABB * aabb_max_dim
             bounding_box_upper_limit = np.clip(
                 bounding_box_upper_limit_from_aabb, self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT)
