@@ -149,13 +149,13 @@ class ObjectGrouper(StatefulObject):
             body_ids += obj._load()
         return body_ids
 
-    def get_position(self):
+    def get_position(self, **kwargs):
         raise ValueError("Cannot get_position on ObjectGrouper")
 
-    def get_orientation(self):
+    def get_orientation(self, **kwargs):
         raise ValueError("Cannot get_orientation on ObjectGrouper")
 
-    def get_position_orientation(self):
+    def get_position_orientation(self, **kwargs):
         raise ValueError("Cannot get_position_orientation on ObjectGrouper")
 
     def set_position(self, pos):
@@ -222,14 +222,14 @@ class ObjectMultiplexer(StatefulObject):
             body_ids += obj._load()
         return body_ids
 
-    def get_position(self):
-        return self.current_selection().get_position()
+    def get_position(self, **kwargs):
+        return self.current_selection().get_position(**kwargs)
 
-    def get_orientation(self):
-        return self.current_selection().get_orientation()
+    def get_orientation(self, **kwargs):
+        return self.current_selection().get_orientation(**kwargs)
 
-    def get_position_orientation(self):
-        return self.current_selection().get_position_orientation()
+    def get_position_orientation(self, **kwargs):
+        return self.current_selection().get_position_orientation(**kwargs)
 
     def set_position(self, pos):
         return self.current_selection().set_position(pos)
