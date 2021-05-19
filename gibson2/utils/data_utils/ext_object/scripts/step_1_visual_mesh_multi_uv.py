@@ -11,6 +11,7 @@ sys.path.append(utils_dir)
 from utils import import_obj_folder, export_ig_object, bake_model, clean_unused
 
 
+
 """
 to run it:
 blender -b --python step_1_visual_mesh_multi_uv.py -- --bake --up Z --forward X --source_blend_file {PATH_TO_YOUR_OBJECT} --dest_dir {PATH_TO_IGIBSON_ASSET}/objects/{OBJECT_CATEGORY}/{OBJECT_NAME}
@@ -41,6 +42,11 @@ if import_axis_forward not in axis:
     raise ValueError(
         'Axis forward not supported: {} (should be among X,Y,Z,-X,-Y,-Z)'
         .format(import_axis_forward))
+
+# Whether to merge all the visual meshes into a single mesh
+merge_obj = get_arg(sys.argv, '--merge_obj', default='1')
+merge_obj = int(merge_obj)
+assert merge_obj in [0, 1]
 
 source_blend_file = get_arg(sys.argv, '--source_blend_file')
 source_dir = get_arg(sys.argv, '--source_dir')
@@ -124,7 +130,8 @@ if should_bake:
             obj.select_set(True)
         bpy.ops.object.mode_set(mode='EDIT')
         bpy.ops.mesh.select_all(action="SELECT")
-        bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.002, area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
+        bpy.ops.uv.smart_project(angle_limit=1.15192, island_margin=0.002,
+                                 area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
         bpy.context.tool_settings.mesh_select_mode = (False, False, True)
         bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -144,6 +151,15 @@ for i in range(len(bpy.data.materials)):
             principled_bsdf.inputs['Transmission'].default_value = 1.0
             principled_bsdf.inputs['Metallic'].default_value = 0.0
 
+
+#############################################
+# Export the un-merged model
+#############################################
+if not merge_obj:
+    # Keep the original import_axis up and forward. Otherwise, the original
+    # URDF won't work (e.g joint axes will be incorrect)
+    export_ig_object(dest_dir, save_material=not should_bake,
+                     up=import_axis_up, forward=import_axis_forward)
 
 #############################################
 # Optional Texture Baking
@@ -183,9 +199,10 @@ if should_bake:
 
 
 #############################################
-# Export the model
+# Export the merged model
 #############################################
-export_ig_object(dest_dir, save_material=not should_bake)
+if merge_obj:
+    export_ig_object(dest_dir, save_material=not should_bake)
 
 # # optionally save blend file
 # if source_blend_file is not None:
