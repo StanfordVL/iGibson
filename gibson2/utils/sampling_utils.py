@@ -20,25 +20,18 @@ _DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE = 0.1
 
 def fit_plane(points):
     """
+    Fits a plane to the given 3D points.
     Copied from https://stackoverflow.com/a/18968498
 
-    p, n = planeFit(points)
-
-    Given an array, points, of shape (k, d)
-    representing points in d-dimensional space,
-    fit an d-dimensional plane to the points.
-    Return a point, p, on the plane (the point-cloud centroid),
-    and the normal, n.
+    :param points: np.array of shape (k, 3)
+    :return Tuple[np.array, np.array] where first element is the points' centroid and the second is
     """
-    import numpy as np
-    from numpy.linalg import svd
-    points = points.T
-    points = np.reshape(points, (np.shape(points)[0], -1)) # Collapse trialing dimensions
-    assert points.shape[0] <= points.shape[1], "There are only {} points in {} dimensions.".format(points.shape[1], points.shape[0])
-    ctr = points.mean(axis=1)
-    x = points - ctr[:, np.newaxis]
-    M = np.dot(x, x.T) # Could also use np.cov(x) here.
-    return ctr, svd(M)[0][:, -1]
+    assert points.shape[1] <= points.shape[0], "Cannot fit plane with only {} points in {} dimensions.".format(
+        points.shape[0], points.shape[1])
+    ctr = points.mean(axis=0)
+    x = points - ctr[np.newaxis, :]
+    M = np.dot(x.T, x)
+    return ctr, np.linalg.svd(M)[0][:, -1]
 
 
 def get_distance_to_plane(points, plane_centroid, plane_normal):

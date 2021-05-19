@@ -154,6 +154,7 @@ class URDFObject(StatefulObject):
         self.tasknet_object_scope = tasknet_object_scope
         self.joint_positions = joint_positions
         self.flags = flags
+        self.room_floor = None
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
