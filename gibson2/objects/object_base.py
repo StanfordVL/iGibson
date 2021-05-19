@@ -35,7 +35,7 @@ class Object(object):
         self.loaded = True
         return self.body_id
 
-    def get_position(self):
+    def get_position(self, **kwargs):
         """
         Get object position
 
@@ -44,7 +44,7 @@ class Object(object):
         pos, _ = p.getBasePositionAndOrientation(self.body_id)
         return pos
 
-    def get_orientation(self):
+    def get_orientation(self, **kwargs):
         """
         Get object orientation
 
@@ -53,7 +53,7 @@ class Object(object):
         _, orn = p.getBasePositionAndOrientation(self.body_id)
         return orn
 
-    def get_position_orientation(self):
+    def get_position_orientation(self, **kwargs):
         """
         Get object position and orientation
 
