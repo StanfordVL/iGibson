@@ -415,6 +415,10 @@ def export_obj_folder(save_dir, skip_empty=True, save_material=False,
     with redirect_output():
         for on in bpy.context.scene.objects.keys():
             obj = bpy.context.scene.objects[on]
+            obj.select_set(False)
+
+        for on in bpy.context.scene.objects.keys():
+            obj = bpy.context.scene.objects[on]
             if obj.type != 'MESH':
                 continue
             if obj.hide_get():
@@ -439,11 +443,13 @@ def export_obj_folder(save_dir, skip_empty=True, save_material=False,
 def export_ig_object(model_root,
                      save_dir='shape/visual',
                      skip_empty=False,
-                     save_material=False):
+                     save_material=False,
+                     up='Z',
+                     forward='X'):
     obj_dir = os.path.join(model_root, save_dir)
     os.makedirs(obj_dir, exist_ok=True)
     export_obj_folder(obj_dir, skip_empty=skip_empty,
-                      save_material=save_material)
+                      save_material=save_material, up=up, forward=forward)
 
 
 def get_ig_scene_texture_paths(scene_root, element_name):
