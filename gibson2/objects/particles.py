@@ -538,11 +538,6 @@ class Dust(_Dirt):
         super(Dust, self).__init__(
             parent_obj,
             clip_into_object=True,
-            sampling_kwargs={
-                # Since this particle is spherical we don't necessarily care about whether the surface is
-                # planar.
-                "hit_to_plane_threshold": 0.2,
-            },
             num=20,
             size=[0.015] * 3,
             visual_only=True,
@@ -583,10 +578,6 @@ class Stain(_Dirt):
         super(Stain, self).__init__(
             parent_obj,
             clip_into_object=False,
-            sampling_kwargs={
-                # Since this is a small & flat object we have low tolerance against nonplanar surfaces.
-                "hit_to_plane_threshold": 0.02,
-            },
             num=self._PARTICLE_COUNT,
             size=self.random_bbox_dims,
             base_shape="mesh",
