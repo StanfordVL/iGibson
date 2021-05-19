@@ -6,7 +6,8 @@ import numpy as np
 import pybullet as p
 
 from gibson2.external.pybullet_tools import utils
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name
+from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
+from gibson2.object_states import AABB
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -538,9 +539,7 @@ class Dust(_Dirt):
             parent_obj,
             clip_into_object=True,
             sampling_kwargs={
-                # We have a very high tolerance for normals' angle for dust particles since they are
-                # spherical. This should reflect that.
-                "parallel_ray_normal_angle_tolerance": 0.8,  # Around 45 degrees.
+                # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
             },
             num=20,
             size=[0.015] * 3,
@@ -578,6 +577,9 @@ class Stain(_Dirt):
         super(Stain, self).__init__(
             parent_obj,
             clip_into_object=False,
+            sampling_kwargs={
+                # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
+            },
             num=self._PARTICLE_COUNT,
             size=self.random_bbox_dims,
             base_shape="mesh",
