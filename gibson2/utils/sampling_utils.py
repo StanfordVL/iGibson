@@ -9,11 +9,11 @@ from scipy.stats import truncnorm
 import gibson2
 
 _DEFAULT_AABB_OFFSET = 0.1
+_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.8  # Around 45 degrees
 _DEFAULT_HIT_TO_PLANE_THRESHOLD = 0.05
 _DEFAULT_MAX_ANGLE_WITH_Z_AXIS = 3 * np.pi / 4
 _DEFAULT_MAX_SAMPLING_ATTEMPTS = 10
 _DEFAULT_CUBOID_BOTTOM_PADDING = 0.01
-
 # We will cast an additional parallel ray for each additional this much distance.
 _DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE = 0.1
 
@@ -246,6 +246,10 @@ def sample_cuboid_on_object(obj,
                 if not check_hit_max_angle_from_z_axis(center_hit_normal, max_angle_with_z_axis, refusal_reasons):
                     continue
 
+            # Check that none of the parallel rays' hit normal differs from center ray by more than threshold.
+            if not check_hit_normal_similarity(center_hit_normal, hit_normals, refusal_reasons):
+                continue
+
             # Fit a plane to the points and check the maximum distance
             plane_centroid, plane_normal = fit_plane(hit_positions)
             distances = get_distance_to_plane(hit_positions, plane_centroid, plane_normal)
@@ -315,6 +319,22 @@ def compute_rotation_from_grid_sample(two_d_grid, hit_positions, cuboid_centroid
 
     rotation, _ = Rotation.align_vectors(sampled_grid_relative_vectors, grid_in_object_coordinates)
     return rotation
+
+
+def check_hit_normal_similarity(center_hit_normal, hit_normals, refusal_reasons):
+    parallel_hit_main_hit_dot_products = np.clip(np.dot(hit_normals, center_hit_normal), -1.0, 1.0)
+    parallel_hit_normal_angles_to_hit_normal = np.arccos(parallel_hit_main_hit_dot_products)
+    all_rays_hit_with_similar_normal = np.all(
+        parallel_hit_normal_angles_to_hit_normal < _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE)
+    if not all_rays_hit_with_similar_normal:
+        if gibson2.debug_sampling:
+            refusal_reasons["parallel_hit_angle_off"].append(
+                "normal %r, hit normals %r, hit angles %r" % (
+                    center_hit_normal, hit_normals, parallel_hit_normal_angles_to_hit_normal))
+
+        return False
+
+    return True
 
 
 def check_rays_hit_object(cast_results, body_id, refusal_reasons):
