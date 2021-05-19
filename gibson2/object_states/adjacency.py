@@ -4,7 +4,7 @@ import numpy as np
 import pybullet as p
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
 from gibson2.object_states.aabb import AABB
-from gibson2.object_states.utils import get_center_extent
+from gibson2.external.pybullet_tools.utils import get_aabb_center
 
 _MAX_ITERATIONS = 10
 _MAX_DISTANCE = 5.0
@@ -75,7 +75,9 @@ def compute_adjacencies(obj, axes):
     bodies_by_direction = [[] for _ in directions]
 
     # Prepare this object's info for ray casting.
-    object_position, _ = get_center_extent(obj.states)
+    # Use AABB center instead of position because we cannot get valid position
+    # for fixed objects if fixed links are merged.
+    object_position = get_aabb_center(obj.states[AABB].get_value())
     body_id = obj.get_body_id()
 
     # Cast rays repeatedly until the max number of casting is reached
