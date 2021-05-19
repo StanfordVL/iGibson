@@ -39,13 +39,21 @@ def parse_args():
                         help='Whether to highlight the object at gaze location.')
     parser.add_argument('--profile', action='store_true',
                         help='Whether to print profiling data.')
+    parser.add_argument('--no_vr', action='store_true',
+                        help='Whether to disable replay through VR and use iggui instead.')
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    pp = pprint.PrettyPrinter(indent=4)
     tasknet.set_backend("iGibson")
+    replay_demo(args.vr_log_path, args.vr_replay_log_path, args.frame_save_path, args.highlight_gaze, args.no_vr,
+                args.disable_save, args.disable_scene_cache, args.profile)
+
+
+def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, highlight_gaze=False, no_vr=False,
+                disable_save=False, disable_scene_cache=False, profile=False):
+    pp = pprint.PrettyPrinter(indent=4)
 
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
@@ -72,22 +80,22 @@ def main():
     )
 
     # Initialize settings to save action replay frames
-    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/vr_settings'))
-    vr_settings.set_frame_save_path(args.frame_save_path)
+    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(vr_log_path, '/metadata/vr_settings'))
+    vr_settings.set_frame_save_path(frame_save_path)
 
-    task = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_name')
-    task_id = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/task_instance')
-    scene = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/scene_id')
-    physics_timestep = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/physics_timestep')
-    render_timestep = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/render_timestep')
+    task = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/task_name')
+    task_id = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/task_instance')
+    scene = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/scene_id')
+    physics_timestep = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/physics_timestep')
+    render_timestep = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/render_timestep')
 
-    if IGLogReader.has_metadata_attr(args.vr_log_path, '/metadata/filter_objects'):
-        filter_objects = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/filter_objects')
+    if IGLogReader.has_metadata_attr(vr_log_path, '/metadata/filter_objects'):
+        filter_objects = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/filter_objects')
     else:
         filter_objects = True
 
-    if IGLogReader.has_metadata_attr(args.vr_log_path, '/metadata/git_info'):
-        logged_git_info = IGLogReader.read_metadata_attr(args.vr_log_path, '/metadata/git_info')
+    if IGLogReader.has_metadata_attr(vr_log_path, '/metadata/git_info'):
+        logged_git_info = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/git_info')
         logged_git_info = parse_str_config(logged_git_info)
         git_info = project_git_info()
         for key in logged_git_info:
@@ -99,12 +107,12 @@ def main():
                 pp.pprint(git_info[key])
 
     # Get dictionary mapping object body id to name, also check it is a dictionary
-    obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(args.vr_log_path)
+    obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(vr_log_path)
     assert type(obj_body_id_to_name) == dict
 
     # VR system settings
     s = Simulator(
-          mode='vr',
+          mode='iggui' if no_vr else 'vr',
           physics_timestep = physics_timestep,
           render_timestep = render_timestep,
           rendering_settings=vr_rendering_settings,
@@ -117,7 +125,7 @@ def main():
 
     online_sampling = True
 
-    if not args.disable_scene_cache:
+    if not disable_scene_cache:
         scene_kwargs = {
             'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
         }
@@ -129,17 +137,17 @@ def main():
                                    load_clutter=True,
                                    online_sampling=online_sampling)
     vr_agent = igtn_task.simulator.robots[0]
-    if not args.vr_log_path:
+    if not vr_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
-    log_reader = IGLogReader(args.vr_log_path, log_status=False)
+    log_reader = IGLogReader(vr_log_path, log_status=False)
 
-    if not args.disable_save:
+    if not disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        if args.vr_replay_log_path == None:
-            args.vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
+        if vr_replay_log_path == None:
+            vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
                 task, task_id, scene, timestamp)
 
-        replay_path = args.vr_log_path[:-5] + "_replay.hdf5"
+        replay_path = vr_log_path[:-5] + "_replay.hdf5"
         log_writer = IGLogWriter(
             s,
             frames_before_write=200,
@@ -147,7 +155,7 @@ def main():
             task=igtn_task,
             store_vr=False,
             vr_robot=vr_agent,
-            profiling_mode=args.profile,
+            profiling_mode=profile,
             filter_objects=filter_objects
         )
         log_writer.set_up_data_storage()
@@ -158,7 +166,7 @@ def main():
     task_done = False
     satisfied_predicates_cached = {}
     while log_reader.get_data_left_to_read():
-        if args.highlight_gaze:
+        if highlight_gaze:
             eye_data = log_reader.get_vr_data().query('eye_data')
             if eye_data[0]:
                 if target_obj in s.scene.objects_by_id:
@@ -175,11 +183,12 @@ def main():
                     if obj.category not in disallowed_categories:
                         obj.highlight()
 
-        igtn_task.simulator.step(print_stats=args.profile)
+        igtn_task.simulator.step(print_stats=profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
         # Set camera each frame
-        log_reader.set_replay_camera(s)
+        if not no_vr:
+            log_reader.set_replay_camera(s)
 
         # Get relevant VR action data and update VR agent
         vr_agent.update(log_reader.get_agent_action('vr_robot'))
@@ -187,14 +196,15 @@ def main():
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
 
-        if not args.disable_save:
+        if not disable_save:
             log_writer.process_frame()
 
     print("Demo was succesfully completed: ", task_done)
 
-    if not args.disable_save:
+    is_deterministic = False
+    if not disable_save:
         log_writer.end_log_session()
-        original_file = h5py.File(args.vr_log_path)
+        original_file = h5py.File(vr_log_path)
         new_file = h5py.File(replay_path)
         is_deterministic = True
         for obj in original_file['physics_data']:
@@ -203,9 +213,12 @@ def main():
                 is_deterministic = is_deterministic and is_close
                 if not is_close:
                     print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
+                    return False
             
         print("Demo was deterministic: ", is_deterministic)
     s.disconnect()
+
+    return is_deterministic
 
 
 if __name__ == "__main__":
