@@ -104,7 +104,7 @@ class iGibsonMujocoBridge:
         # mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
         # mrs_no_tensor = MeshRendererSettings(msaa=True, enable_pbr=False, enable_shadow=True, optimized=False)
 
-
+        # import pdb; pdb.set_trace();
         if self.render_to_tensor:
             self.renderer = MeshRendererG2G(width=self.image_width,
                                             height=self.image_height,
@@ -684,7 +684,7 @@ class iGibsonMujocoBridge:
                                           geom_type=geom_type
                                             ) #Forcing plane to be 1 cm width (this param is the tile size in Mujoco anyway)
                 self.renderer.add_instance(len(self.renderer.visual_objects) - 1,
-                                           pybullet_uuid=4,
+                                           pybullet_uuid=0,
                                            class_id=instance_id,
                                            dynamic=True,
                                            parent_body="world")

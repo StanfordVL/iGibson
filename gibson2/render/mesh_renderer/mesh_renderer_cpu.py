@@ -409,7 +409,10 @@ class MeshRenderer(object):
                                         roughness_texture_id=texture_roughness,
                                         normal_texture_id=texture_normal)
                 else:
-                    material = Material('color', kd=item.diffuse)
+                    if len(input_kd) == 4 and input_kd[3] != 1:
+                        material = Material('color', kd=[1,0,1,1])
+                    else:
+                        material = Material('color', kd=item.diffuse)
                 self.materials_mapping[i + material_count] = material
 
             num_added_materials = len(materials) 
@@ -839,7 +842,7 @@ class MeshRenderer(object):
         :param render_shadow_pass: whether to render shadow
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-
+        # import pdb; pdb.set_trace();
         # run optimization process the first time render is called
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
