@@ -13,7 +13,6 @@ import copy
 from gibson2.utils.utils import parse_str_config, dump_config
 from gibson2.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
 from gibson2.utils.git_utils import project_git_info
-from gibson2.object_states import Pose
 
 
 class IGLogWriter(object):
@@ -392,7 +391,7 @@ class IGLogWriter(object):
         if self.task and self.filter_objects:
             for obj_bid, obj in self.tracked_objects.items():
                 obj_name = str(obj_bid)
-                pos, orn = obj.states[Pose].get_value()
+                pos, orn = obj.get_position_orientation(accept_trivial_result_if_merged=True)
                 handle = self.data_map['physics_data'][obj_name]
                 handle['position'][self.frame_counter] = pos
                 handle['orientation'][self.frame_counter] = orn
@@ -413,7 +412,7 @@ class IGLogWriter(object):
         print("----- PyBullet data at the end of frame {} -----".format(self.persistent_frame_count))
         if self.task and self.filter_objects:
             for obj_bid, obj in self.tracked_objects.items():
-                pos, orn = obj.states[Pose].get_value()
+                pos, orn = obj.get_position_orientation(accept_trivial_result_if_merged=True)
                 print("{} - pos: {} and orn: {}".format(obj_bid, pos, orn))
         else:
             for bid in self.tracked_objects:
