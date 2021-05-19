@@ -13,6 +13,7 @@ import pybullet as p
 import trimesh
 import math
 
+from gibson2.object_states.utils import clear_cached_states
 from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
@@ -154,6 +155,7 @@ class URDFObject(StatefulObject):
         self.tasknet_object_scope = tasknet_object_scope
         self.joint_positions = joint_positions
         self.merge_fixed_links = merge_fixed_links
+        self.room_floor = None
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -313,7 +315,6 @@ class URDFObject(StatefulObject):
                 if issubclass(state, LinkBasedStateMixin):
                     self.merge_fixed_links = False
                     break
-
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
@@ -1125,6 +1126,7 @@ class URDFObject(StatefulObject):
 
         _, old_orn = p.getBasePositionAndOrientation(body_id)
         p.resetBasePositionAndOrientation(body_id, pos, old_orn)
+        clear_cached_states(self)
 
     def set_orientation(self, orn):
         """
@@ -1139,6 +1141,7 @@ class URDFObject(StatefulObject):
 
         old_pos, _ = p.getBasePositionAndOrientation(body_id)
         p.resetBasePositionAndOrientation(body_id, old_pos, orn)
+        clear_cached_states(self)
 
     def set_position_orientation(self, pos, orn):
         """
@@ -1153,6 +1156,7 @@ class URDFObject(StatefulObject):
             return
 
         p.resetBasePositionAndOrientation(body_id, pos, orn)
+        clear_cached_states(self)
 
     def set_base_link_position_orientation(self, pos, orn):
         body_id = self.get_body_id()
@@ -1164,6 +1168,7 @@ class URDFObject(StatefulObject):
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
+        clear_cached_states(self)
 
     def get_body_id(self):
         return self.body_ids[self.main_body]
