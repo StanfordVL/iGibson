@@ -2,6 +2,10 @@ from gibson2.envs.igibson_env import iGibsonEnv
 from gibson2.task.task_base import iGTNTask
 from gibson2.scenes.empty_scene import EmptyScene
 
+# for debugging
+from gibson2.tasks.point_nav_random_task import PointNavRandomTask
+from gibson2.tasks.reaching_random_task import ReachingRandomTask
+
 import argparse
 import numpy as np
 import time
@@ -114,16 +118,26 @@ class BehaviorEnv(iGibsonEnv):
         scene = EmptyScene()
         scene.objects_by_id = {}
         self.simulator.import_scene(scene, render_floor_plane=True)
-        agent = BehaviorRobot(self.simulator)
+        agent = BehaviorRobot(self.simulator, use_tracked_body_override=True, show_visual_head=True,
+                              use_ghost_hands=False)
         self.simulator.import_behavior_robot(agent)
         self.simulator.register_main_vr_robot(agent)
+        self.initial_pos_z_offset = 0.7
+
         self.robots = [agent]
         self.agent = agent
         self.simulator.robots.append(agent)
-        self.task = types.SimpleNamespace()
-        self.task.initial_state = p.saveState()
-        self.task.reset_scene = lambda snapshot_id: p.restoreState(snapshot_id)
-        self.task.check_success = lambda: (False, [])
+        self.scene = scene
+        # task
+        if self.config['task'] == 'point_nav_random':
+            self.task = PointNavRandomTask(self)
+        elif self.config['task'] == 'reaching_random':
+            self.task = ReachingRandomTask(self)
+        else:
+            self.task = types.SimpleNamespace()
+            self.task.initial_state = p.saveState()
+            self.task.reset_scene = lambda snapshot_id: p.restoreState(snapshot_id)
+            self.task.check_success = lambda: (False, [])
 
     def load(self):
         """
@@ -154,11 +168,17 @@ class BehaviorEnv(iGibsonEnv):
 
         state = self.get_state()
         info = {}
-        done, satisfied_predicates = self.task.check_success()
-        reward, info = self.get_reward(satisfied_predicates)
+        if isinstance(self.task, PointNavRandomTask):
+            reward, info = self.task.get_reward(self)
+            done, done_info = self.task.get_termination(self)
+            info.update(done_info)
+            self.task.step(self)
+        else:
+            done, satisfied_predicates = self.task.check_success()
+            reward, info = self.get_reward(satisfied_predicates)
+            info = {"satisfied_predicates": satisfied_predicates}
+
         self.simulator.step(self)
-        info = { "satisfied_predicates": satisfied_predicates }
-        
         self.populate_info(info)
 
         if done and self.automatic_reset:
@@ -197,7 +217,13 @@ class BehaviorEnv(iGibsonEnv):
         """
         Reset episode
         """
-        self.task.reset_scene(snapshot_id=self.task.initial_state)
+        self.robots[0].robot_specific_reset()
+
+        if isinstance(self.task, PointNavRandomTask):
+            self.task.reset_scene(self)
+            self.task.reset_agent(self)
+        else:
+            self.task.reset_scene(snapshot_id=self.task.initial_state)
         self.simulator.sync()
         state = self.get_state()
         self.reset_variables()
@@ -233,7 +259,11 @@ if __name__ == '__main__':
         start = time.time()
         env.reset()
         for i in range(1000):  # 10 seconds
-            action = env.action_space.sample()
+            action = np.zeros((28,))
+            if i == 0:
+                action[19] = 1
+                action[27] = 1
+            action[:2] = np.random.uniform(-0.02, 0.02, size=(2,))
             state, reward, done, _ = env.step(action)
             print('reward', reward)
             if done:

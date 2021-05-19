@@ -129,6 +129,7 @@ class BehaviorRobot(object):
         self.parts['body'].set_colliders(enabled)
 
     def set_position_orientation(self, pos, orn):
+
         self.parts['body'].set_position_orientation_unwrapped(pos, orn)
         left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
         self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
@@ -147,6 +148,9 @@ class BehaviorRobot(object):
 
         self.parts['left_hand'].move(left_pos, left_orn)
         self.parts['right_hand'].move(right_pos, right_orn)
+
+    def get_position(self):
+        return self.parts['body'].get_position()
 
     def dump_action(self):
         """
@@ -217,6 +221,8 @@ class BehaviorRobot(object):
             print('{} at position {}'.format(k, v.get_position()))
         print('-------------------------------')
 
+    def robot_specific_reset(self):
+        pass
 
 class BRBody(ArticulatedObject):
     """
@@ -284,8 +290,14 @@ class BRBody(ArticulatedObject):
         """
         Initializes BRBody to start in a specific location.
         """
+        if self.movement_cid is not None:
+            raise ValueError
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
                                                 [0, 0, 0], [0, 0, 0], self.get_position())
+
+    def remove_constraint(self):
+        p.removeConstraint(self.movement_cid)
+        self.activated = False
 
     def set_body_collision_filters(self):
         """
@@ -542,6 +554,10 @@ class BRHandBase(ArticulatedObject):
     def move(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=300)
 
+    def remove_constraint(self):
+        p.removeConstraint(self.movement_cid)
+        self.activated = False
+
     def set_close_fraction(self, close_frac):
         """
         Sets the close fraction of the hand - this must be implemented by each subclass.
@@ -632,6 +648,8 @@ class BRHand(BRHandBase):
                                     targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
+        if self.movement_cid is not None:
+            raise ValueError
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
         super(BRHand, self).activate_constraints()
 
@@ -945,6 +963,8 @@ class BRGripper(BRHandBase):
             p.resetJointState(self.body_id, joint_idx, self.joint_positions[joint_idx])
             p.setJointMotorControl2(self.body_id, joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
 
+        if self.movement_cid is not None:
+            raise ValueError
         # Movement constraint
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position())
         # Gripper gear constraint
@@ -1026,6 +1046,7 @@ class BREye(ArticulatedObject):
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
+        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -1085,4 +1106,3 @@ class BREye(ArticulatedObject):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)

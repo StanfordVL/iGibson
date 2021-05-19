@@ -12,6 +12,7 @@ from gibson2.robots.robot_base import BaseRobot
 from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
 from gibson2.sensors.bump_sensor import BumpSensor
 from gibson2.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
+from gibson2.robots.behavior_robot import BehaviorRobot
 from transforms3d.euler import euler2quat
 from collections import OrderedDict
 import argparse
@@ -351,6 +352,10 @@ class iGibsonEnv(BaseEnv):
         :param orn: orientation
         :param offset: z offset
         """
+        if isinstance(obj, BehaviorRobot):
+            obj.set_position_orientation([pos[0], pos[1], pos[2]], quatToXYZW(euler2quat(*orn), 'wxyz'))
+            return
+
         if orn is None:
             orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
 
@@ -376,6 +381,10 @@ class iGibsonEnv(BaseEnv):
         :param orn: orientation
         :return: validity
         """
+
+        if isinstance(obj, BehaviorRobot):
+            return False
+
         is_robot = isinstance(obj, BaseRobot)
 
         self.set_pos_orn_with_z_offset(obj, pos, orn)
@@ -396,6 +405,10 @@ class iGibsonEnv(BaseEnv):
         :param pos: position
         :param orn: orientation
         """
+        if isinstance(obj, BehaviorRobot):
+            self.set_pos_orn_with_z_offset(obj, pos, orn)
+            return
+
         is_robot = isinstance(obj, BaseRobot)
 
         self.set_pos_orn_with_z_offset(obj, pos, orn)
