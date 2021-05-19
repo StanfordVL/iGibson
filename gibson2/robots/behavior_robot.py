@@ -130,6 +130,7 @@ class BehaviorRobot(object):
 
     def set_position_orientation(self, pos, orn):
         self.parts['body'].set_position_orientation_unwrapped(pos, orn)
+        self.parts['body'].new_pos, self.parts['body'].new_orn = pos, orn
         left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
         self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
         right_hand_pos, right_hand_orn = p.multiplyTransforms(pos, orn, self.right_hand_loc_pose[0], self.right_hand_loc_pose[1])
@@ -1026,6 +1027,7 @@ class BREye(ArticulatedObject):
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
+        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -1085,4 +1087,3 @@ class BREye(ArticulatedObject):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
