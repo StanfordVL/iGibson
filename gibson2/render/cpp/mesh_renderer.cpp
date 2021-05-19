@@ -1558,13 +1558,10 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	}
 
-	// Updates positions and rotations in vertex shader
-	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
-	py::array_t<float> pose_rot_array, py::array_t<float> last_trans_array,
-	py::array_t<float> last_rot_array, py::array_t<float> V, py::array_t<float> last_V, py::array_t<float> P,
-	py::array_t<float> lightV,
-	py::array_t<float> lightP, int shadow_pass,
-		py::array_t<float> eye_pos) {
+	// Updates poses in vertex shader
+	void MeshRendererContext::updatePoseData(int shaderProgram, py::array_t<float> pose_trans_array,
+		py::array_t<float> pose_rot_array, py::array_t<float> last_trans_array,
+		py::array_t<float> last_rot_array) {
 		glUseProgram(shaderProgram);
 
 		float* transPtr = (float*)pose_trans_array.request().ptr;
@@ -1572,8 +1569,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		int transDataSize = pose_trans_array.size();
 		int rotDataSize = pose_rot_array.size();
 
-        if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
-        if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
+		if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
+		if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataTrans);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, transDataSize * sizeof(float), transPtr);
@@ -1582,13 +1579,13 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, rotDataSize * sizeof(float), rotPtr);
 
 
-        float* lastTransPtr = (float*)last_trans_array.request().ptr;
+		float* lastTransPtr = (float*)last_trans_array.request().ptr;
 		float* lastRotPtr = (float*)last_rot_array.request().ptr;
 		transDataSize = last_trans_array.size();
 		rotDataSize = last_rot_array.size();
 
-        if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
-        if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
+		if (transDataSize > MAX_ARRAY_SIZE * 16) transDataSize = MAX_ARRAY_SIZE * 16;
+		if (rotDataSize > MAX_ARRAY_SIZE * 16) rotDataSize = MAX_ARRAY_SIZE * 16;
 
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTransformDataLastTrans);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, transDataSize * sizeof(float), lastTransPtr);
@@ -1597,6 +1594,13 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, rotDataSize * sizeof(float), lastRotPtr);
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	}
+
+	// Updates dynamic non-pose data
+	void MeshRendererContext::updateDynamicData(int shaderProgram, py::array_t<float> V, 
+		py::array_t<float> last_V, py::array_t<float> P, py::array_t<float> lightV,
+		py::array_t<float> lightP, int shadow_pass, py::array_t<float> eye_pos) {
+		glUseProgram(shaderProgram);
 
 		float* Vptr = (float*)V.request().ptr;
         float *last_Vptr = (float *) last_V.request().ptr;

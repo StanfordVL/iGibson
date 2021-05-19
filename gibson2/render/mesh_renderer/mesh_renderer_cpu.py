@@ -863,7 +863,7 @@ class MeshRenderer(object):
         if request_update:
             self.update_optimized_texture_internal()
 
-    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True):
+    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True, update_poses=True):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -882,6 +882,8 @@ class MeshRenderer(object):
         render_shadow_pass = render_shadow_pass and 'rgb' in modes
         need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
         self.update_dynamic_positions(need_flow_info=need_flow_info)
+        if update_poses:
+            self.r.updatePoseData(self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array, self.last_rot_array)
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
@@ -901,8 +903,7 @@ class MeshRenderer(object):
                     instance.hidden = True
                 self.update_hidden_highlight_state(shadow_hidden_instances)
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array, self.V, self.last_V, self.P,
+                    self.shaderProgram, self.V, self.last_V, self.P,
                     self.lightV, self.lightP, ShadowPass.HAS_SHADOW_RENDER_SHADOW, self.camera)
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
@@ -941,13 +942,11 @@ class MeshRenderer(object):
         if self.optimized:
             if self.enable_shadow:
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array, self.V, self.last_V, self.P,
+                    self.shaderProgram, self.V, self.last_V, self.P,
                     self.lightV, self.lightP, ShadowPass.HAS_SHADOW_RENDER_SCENE, self.camera)
             else:
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array, self.V, self.last_V, self.P,
+                    self.shaderProgram, self.V, self.last_V, self.P,
                     self.lightV, self.lightP, ShadowPass.NO_SHADOW, self.camera)
             self.r.renderOptimized(self.optimized_VAO)
         else:

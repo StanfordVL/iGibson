@@ -219,12 +219,13 @@ public:
 
 	void updateUVData(int shaderProgram, py::array_t<float> uv_data);
 
-    void updateDynamicData(int shaderProgram, py::array_t<float> pose_trans_array,
-        py::array_t<float> pose_rot_array, py::array_t<float> last_trans_array,
-        py::array_t<float> last_rot_array, py::array_t<float> V, py::array_t<float> last_V, py::array_t<float> P,
-        py::array_t<float> lightV,
-        py::array_t<float> lightP, int shadow_pass,
-		py::array_t<float> eye_pos);
+	void updatePoseData(int shaderProgram, py::array_t<float> pose_trans_array,
+		py::array_t<float> pose_rot_array, py::array_t<float> last_trans_array,
+		py::array_t<float> last_rot_array);
+
+    void updateDynamicData(int shaderProgram, py::array_t<float> V, 
+		py::array_t<float> last_V, py::array_t<float> P, py::array_t<float> lightV,
+        py::array_t<float> lightP, int shadow_pass, py::array_t<float> eye_pos);
 
 	void renderOptimized(GLuint VAO);
 

@@ -320,7 +320,7 @@ class MeshRendererVR(MeshRenderer):
             # Set camera once for both VR eyes - use the right eye since this is what we save in data save and replay
             self.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0])
             
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True, render_text_pass=True, update_poses=True)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
             # Render and submit right eye
             self.V = right_view
@@ -329,7 +329,7 @@ class MeshRendererVR(MeshRenderer):
             
             # We don't need to render the shadow pass a second time for the second eye
             # We also don't need to render the text pass a second time
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False, render_text_pass=False)
+            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False, render_text_pass=False, update_poses=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
             # Update HUD so it renders in the HMD

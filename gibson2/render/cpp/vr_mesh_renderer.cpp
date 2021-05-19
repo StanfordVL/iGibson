@@ -848,6 +848,7 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("renderSetup", &VRRendererContext::renderSetup, "TBA");
 	pymodule.def("updateHiddenData", &VRRendererContext::updateHiddenData, "TBA");
 	pymodule.def("updateUVData", &VRRendererContext::updateUVData, "TBA");
+	pymodule.def("updatePoseData", &VRRendererContext::updatePoseData, "TBA");
 	pymodule.def("updateDynamicData", &VRRendererContext::updateDynamicData, "TBA");
 	pymodule.def("renderOptimized", &VRRendererContext::renderOptimized, "TBA");
 	pymodule.def("clean_meshrenderer_optimized", &VRRendererContext::clean_meshrenderer_optimized, "TBA");
