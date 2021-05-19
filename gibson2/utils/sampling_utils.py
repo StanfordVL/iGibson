@@ -354,7 +354,7 @@ def compute_rotation_from_grid_sample(two_d_grid, hit_positions, cuboid_centroid
 
 
 def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
-    parallel_hit_main_hit_dot_products = np.abs(np.clip(np.dot(hit_normals, center_hit_normal), -1.0, 1.0))
+    parallel_hit_main_hit_dot_products = np.clip(np.dot(hit_normals, center_hit_normal), -1.0, 1.0)
     parallel_hit_normal_angles_to_hit_normal = np.arccos(parallel_hit_main_hit_dot_products)
     all_rays_hit_with_similar_normal = np.all(
         parallel_hit_normal_angles_to_hit_normal < _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE)

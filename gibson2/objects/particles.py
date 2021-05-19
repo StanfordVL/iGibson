@@ -7,7 +7,6 @@ import pybullet as p
 
 from gibson2.external.pybullet_tools import utils
 from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
-from gibson2.object_states import AABB
 from gibson2.objects.object_base import Object
 from gibson2.utils import sampling_utils
 from gibson2.utils.constants import SemanticClass, PyBulletSleepState
@@ -561,6 +560,7 @@ class Stain(_Dirt):
             self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
             # Particle size range changes based on parent object size.
+            from gibson2.object_states import AABB
             aabb_max_dim = (
                 max(parent_obj.bounding_box)
                 if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
