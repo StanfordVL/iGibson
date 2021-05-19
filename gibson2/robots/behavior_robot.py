@@ -1026,6 +1026,7 @@ class BREye(ArticulatedObject):
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
+        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -1085,4 +1086,3 @@ class BREye(ArticulatedObject):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
