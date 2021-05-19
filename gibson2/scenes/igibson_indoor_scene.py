@@ -283,11 +283,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      == object_name][0]
 
                 tasknet_object_scope = link.attrib.get('object_scope', None)
-                if self.merge_fixed_links:
-                    flags = p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING
-                else:
-                    flags = p.URDF_ENABLE_SLEEPING
-
                 joint_positions = (json.loads(link.attrib["joint_positions"])
                                    if "joint_positions" in link.keys() else None)
                 obj = URDFObject(
@@ -305,15 +300,16 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     scene_instance_folder=self.scene_instance_folder,
                     tasknet_object_scope=tasknet_object_scope,
                     joint_positions=joint_positions,
-                    flags=flags
+                    merge_fixed_links=self.merge_fixed_links,
                 )
 
                 # Load object states.
                 if "states" in link.keys():
                     state_cache = json.loads(link.attrib["states"])
                     for state_name, state_dump in state_cache.items():
-                        obj.states[get_state_from_name(
-                            state_name)].load(state_dump)
+                        state_class = get_state_from_name(state_name)
+                        if state_class in obj.states:
+                            obj.states[state_class].load(state_dump)
 
                 if 'multiplexer' in link.keys():
                     self.object_multiplexers[link.attrib['multiplexer']]['whole_object'] = \

@@ -36,41 +36,38 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         if self.link_id is not None:
             self.visual_marker_on = VisualMarker(
                 rgba_color=[0, 1, 0, 0.5],
-                radius=_TOGGLE_BUTTON_RADIUS,
-                initial_offset=_TOGGLE_MARKER_OFF_POSITION)
+                radius=_TOGGLE_BUTTON_RADIUS)
             self.visual_marker_off = VisualMarker(
                 rgba_color=[1, 0, 0, 0.5],
-                radius=_TOGGLE_BUTTON_RADIUS,
-                initial_offset=_TOGGLE_MARKER_OFF_POSITION)
+                radius=_TOGGLE_BUTTON_RADIUS)
             simulator.import_object(self.visual_marker_on)
+            self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
             simulator.import_object(self.visual_marker_off)
+            self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
 
     def _update(self, simulator):
         button_position_on_object = self.get_link_position()
         if button_position_on_object is None:
             return
 
-        vr_hands = []
-        for object in simulator.scene.get_objects():
-            if object.__class__.__name__ == "BRHand":
-               vr_hands.append(object)
-
         hand_in_marker = False
         # detect marker and hand interaction
-        for hand in vr_hands:
-            if (np.linalg.norm(np.array(hand.get_position()) - np.array(button_position_on_object))
-                    < _TOGGLE_DISTANCE_THRESHOLD):
-                hand_in_marker = True
-                break
-            for finger in hand.finger_tip_link_idxs:
-                finger_link_state = p.getLinkState(hand.body_id, finger)
-                link_pos = finger_link_state[0]
-                if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
-                        < _TOGGLE_DISTANCE_THRESHOLD):
-                    hand_in_marker = True
-                    break
-            if hand_in_marker:
-                break
+        for robot in simulator.robots:
+            for part_name, part in robot.parts.items():
+                if part_name in ["left_hand", "right_hand"]:
+                    if (np.linalg.norm(np.array(part.get_position()) - np.array(button_position_on_object))
+                            < _TOGGLE_DISTANCE_THRESHOLD):
+                        hand_in_marker = True
+                        break
+                    for finger in part.finger_tip_link_idxs:
+                        finger_link_state = p.getLinkState(part.body_id, finger)
+                        link_pos = finger_link_state[0]
+                        if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
+                                < _TOGGLE_DISTANCE_THRESHOLD):
+                            hand_in_marker = True
+                            break
+                    if hand_in_marker:
+                        break
 
         if hand_in_marker:
             self.hand_in_marker_steps += 1
