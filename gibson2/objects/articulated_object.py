@@ -313,6 +313,8 @@ class URDFObject(StatefulObject):
                     self.flags -= p.URDF_MERGE_FIXED_LINKS
                     break
 
+        self.merge_fixed_links = self.flags & p.URDF_MERGE_FIXED_LINKS
+
     def compute_object_pose(self):
         if self.connecting_joint is not None:
             joint_type = self.connecting_joint.attrib['type']
@@ -383,7 +385,7 @@ class URDFObject(StatefulObject):
         # merged into the world. These links will become inaccessible after the merge, e.g.
         # link_from_name will raise an error and we won't have any correspounding link id to
         # invoke get_link_state later.
-        if self.flags & p.URDF_MERGE_FIXED_LINKS:
+        if self.merge_fixed_links:
             return
 
         heights_file = os.path.join(
@@ -1018,7 +1020,7 @@ class URDFObject(StatefulObject):
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
 
-    def get_position(self):
+    def get_position(self, accept_trivial_result_if_merged=False):
         """
         Get object position
 
@@ -1026,7 +1028,10 @@ class URDFObject(StatefulObject):
         """
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+            if self.merge_fixed_links:
+                if not accept_trivial_result_if_merged:
+                    raise ValueError(
+                        'Cannot call get_position when the object is fixed and the fixed links are merged.')
                 pos = np.array([0, 0, 0])
             else:
                 pos, _ = p.getLinkState(body_id, 0)[0:2]
@@ -1034,7 +1039,7 @@ class URDFObject(StatefulObject):
             pos, _ = p.getBasePositionAndOrientation(body_id)
         return pos
 
-    def get_orientation(self):
+    def get_orientation(self, accept_trivial_result_if_merged=False):
         """
         Get object orientation
 
@@ -1042,7 +1047,10 @@ class URDFObject(StatefulObject):
         """
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+            if self.merge_fixed_links:
+                if not accept_trivial_result_if_merged:
+                    raise ValueError(
+                        'Cannot call get_orientation when the object is fixed and the fixed links are merged.')
                 orn = np.array([0, 0, 0, 1])
             else:
                 _, orn = p.getLinkState(body_id, 0)[0:2]
@@ -1050,7 +1058,7 @@ class URDFObject(StatefulObject):
             _, orn = p.getBasePositionAndOrientation(body_id)
         return orn
 
-    def get_position_orientation(self):
+    def get_position_orientation(self, accept_trivial_result_if_merged=False):
         """
         Get object position and orientation
 
@@ -1059,7 +1067,10 @@ class URDFObject(StatefulObject):
         """
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+            if self.merge_fixed_links:
+                if not accept_trivial_result_if_merged:
+                    raise ValueError(
+                        'Cannot call get_position_orientation when the object is fixed and the fixed links are merged.')
                 pos = np.array([0, 0, 0])
                 orn = np.array([0, 0, 0, 1])
             else:
@@ -1068,7 +1079,7 @@ class URDFObject(StatefulObject):
             pos, orn = p.getBasePositionAndOrientation(body_id)
         return pos, orn
 
-    def get_base_link_position_orientation(self):
+    def get_base_link_position_orientation(self, accept_trivial_result_if_merged=False):
         """
         Get object base link position and orientation
 
@@ -1078,7 +1089,10 @@ class URDFObject(StatefulObject):
         # TODO: not used anywhere yet, but probably should be put in ObjectBase
         body_id = self.get_body_id()
         if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.flags & p.URDF_MERGE_FIXED_LINKS:
+            if self.merge_fixed_links:
+                if not accept_trivial_result_if_merged:
+                    raise ValueError(
+                        'Cannot call get_position_orientation when the object is fixed and the fixed links are merged.')
                 pos = np.array([0, 0, 0])
                 orn = np.array([0, 0, 0, 1])
             else:

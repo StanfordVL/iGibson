@@ -4,6 +4,7 @@ from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust, Stain
 
 CLEAN_THRESHOLD = 0.5
+FLOOR_CLEAN_THRESHOLD = 0.25
 MIN_PARTICLES_FOR_SAMPLING_SUCCESS = 5
 
 
@@ -28,8 +29,10 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         simulator.import_particle_system(self.dirt)
 
     def _get_value(self):
+        clean_threshold = FLOOR_CLEAN_THRESHOLD if \
+            self.obj.category == 'floors' else CLEAN_THRESHOLD
         max_particles_for_clean = (
-                self.dirt.get_num_particles_activated_at_any_time() * CLEAN_THRESHOLD)
+                self.dirt.get_num_particles_activated_at_any_time() * clean_threshold)
         return self.dirt.get_num_active() > max_particles_for_clean
 
     def _set_value(self, new_value):
