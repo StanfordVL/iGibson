@@ -8,8 +8,7 @@ class AABB(CachingEnabledObjectState):
     def _compute_value(self):
         body_id = self.obj.get_body_id()
         all_links = get_all_links(body_id)
-        merged_links = hasattr(self.obj, "flags") and (
-            self.obj.flags & p.URDF_MERGE_FIXED_LINKS)
+        merged_links = hasattr(self.obj, "merge_fixed_links") and self.obj.merge_fixed_links
         if not merged_links and p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
             all_links.remove(-1)
         aabbs = [get_aabb(body_id, link=link)
