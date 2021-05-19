@@ -539,7 +539,9 @@ class Dust(_Dirt):
             parent_obj,
             clip_into_object=True,
             sampling_kwargs={
-                # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
+                # Since this particle is spherical we don't necessarily care about whether the surface is
+                # planar.
+                "hit_to_plane_threshold": 0.2,
             },
             num=20,
             size=[0.015] * 3,
@@ -563,7 +565,11 @@ class Stain(_Dirt):
         if initial_dump:
             self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
-            aabb_max_dim = max(get_aabb_extent(parent_obj.states[AABB].get_value()))
+            # Particle size range changes based on parent object size.
+            aabb_max_dim = (
+                max(parent_obj.bounding_box)
+                if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
+                max(parent_obj.states[AABB].get_value()))
             bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_MAX_FRACTION_OF_AABB * aabb_max_dim
             bounding_box_upper_limit = np.clip(
                 bounding_box_upper_limit_from_aabb, self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT)
@@ -578,7 +584,8 @@ class Stain(_Dirt):
             parent_obj,
             clip_into_object=False,
             sampling_kwargs={
-                # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
+                # Since this is a small & flat object we have low tolerance against nonplanar surfaces.
+                "hit_to_plane_threshold": 0.2,
             },
             num=self._PARTICLE_COUNT,
             size=self.random_bbox_dims,
