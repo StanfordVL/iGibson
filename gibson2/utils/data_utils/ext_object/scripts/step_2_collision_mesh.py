@@ -3,6 +3,9 @@ import sys
 import subprocess
 import argparse
 import threading
+import xml.etree.ElementTree as ET
+import shutil
+
 
 NUM_THREADS = 32
 parser = argparse.ArgumentParser('gen all vhacd')
@@ -11,8 +14,24 @@ parser.add_argument('--input_dir', dest='input_dir')
 parser.add_argument('--output_dir', dest='output_dir')
 parser.add_argument('--split_loose', dest='split_merge',
                     action='store_true')
+parser.add_argument('--urdf', dest='urdf')
+
 
 args = parser.parse_args()
+
+
+def parse_urdf(urdf):
+    tree = ET.parse(urdf)
+    link_to_vms = dict()
+    for link in tree.findall('link'):
+        vms = link.findall('visual')q
+        if len(vms) == 0:
+            continue
+        link_to_vms[link.attrib['name']] = [
+            os.path.basename(
+                vm.find('geometry/mesh').attrib['filename']) for vm in vms]
+    return link_to_vms
+
 
 if not os.path.isdir(args.input_dir):
     raise ValueError('Input directory not found: {}'.format(args.input_dir))
@@ -38,8 +57,40 @@ else:
 
 tmp_dir = os.path.join(args.output_dir, 'tmp', 'vhacd')
 os.makedirs(tmp_dir, exist_ok=True)
-objs = [o for o in os.listdir(input_dir) if os.path.splitext(o)[1] == '.obj']
-print('Inititating V-HACD for {} meshes...'.format(len(objs)))
+
+in_fs = []
+out_fs = []
+if args.urdf is not None:
+    # Generate a collision mesh per link for visual meshes in that link
+    assert os.path.isfile(args.urdf)
+    link_to_vms = parse_urdf(args.urdf)
+    for link_name in link_to_vms:
+        tmp_link_dir = os.path.join(tmp_dir, link_name)
+        os.makedirs(tmp_link_dir, exist_ok=True)
+        # Copy visual meshes within the same link to a separate directory: <tmp_dir>/<link_name>
+        for vm in link_to_vms[link_name]:
+            shutil.copyfile(os.path.join(input_dir, vm),
+                            os.path.join(tmp_link_dir, vm))
+        # Merge visual meshes within the same link and save it as <tmp_dir>/<link_name>_vm_cm.obj
+        cmd = 'cd {} && blender -b --python step_2_merge.py -- {} {} {}'.format(
+            script_dir, link_name + '_vm', tmp_link_dir, tmp_dir)
+        subprocess.call(cmd, shell=True,
+                        stdout=subprocess.DEVNULL)
+        # Input files are in <tmp_dir>
+        in_fs.append(os.path.join(tmp_dir, link_name + '_vm_cm.obj'))
+        # Output files should be put directly in <args.output_dir>
+        out_fs.append(os.path.join(args.output_dir, link_name + '_cm.obj'))
+else:
+    # Generate a single collision mesh for all the visual meshes
+    objs = [o for o in os.listdir(
+        input_dir) if os.path.splitext(o)[1] == '.obj']
+    for o in objs:
+        # Input files are in <input_dir>
+        in_fs.append(os.path.join(input_dir, o))
+        # Output files should be put in <tmp_dir>, will be merged later
+        out_fs.append(os.path.join(tmp_dir, o))
+
+print('Inititating V-HACD for {} meshes...'.format(len(in_fs)))
 
 
 def vhacd(cmd):
@@ -53,9 +104,8 @@ def vhacd_windows(name_in, name_out):
 
 
 threads = []
-for o in objs:
-    in_f = os.path.join(input_dir, o)
-    out_f = os.path.join(tmp_dir, o)
+for in_f, out_f in zip(in_fs, out_fs):
+    print(in_f, out_f)
     if sys.platform.startswith('win32'):
         thread = threading.Thread(target=vhacd_windows, args=(in_f, out_f))
     elif sys.platform.startswith('linux'):
@@ -71,15 +121,23 @@ print('Waiting for finishing...')
 for thread in threads:
     thread.join()
 
-print('Merging V-HACD...')
-###########################
-# Merge all V-HACD to one #
-###########################
-cmd = 'cd {} && blender -b --python step_2_merge.py -- {} {} {}'.format(
-    script_dir, args.object_name, tmp_dir, args.output_dir)
-subprocess.call(cmd, shell=True,
-                stdout=subprocess.DEVNULL)
+if args.urdf is not None:
+    # A collision mesh for each link was already generated. No need to merge.
+    pass
+else:
+    print('Merging V-HACD...')
+    ###########################
+    # Merge all V-HACD to one #
+    ###########################
 
+    cmd = 'cd {} && blender -b --python step_2_merge.py -- {} {} {}'.format(
+        script_dir, args.object_name, tmp_dir, args.output_dir)
+    subprocess.call(cmd, shell=True,
+                    stdout=subprocess.DEVNULL)
+
+###########################
+# Remove tmp folders      #
+###########################
 tmp_dir = os.path.join(args.output_dir, 'tmp')
 cmd = 'rm -r {}'.format(tmp_dir)
 subprocess.call(cmd, shell=True)
