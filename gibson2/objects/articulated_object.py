@@ -42,21 +42,22 @@ class ArticulatedObject(StatefulObject):
     They are passive (no motors).
     """
 
-    def __init__(self, filename, scale=1, flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING):
+    def __init__(self, filename, scale=1, merge_fixed_links=True):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
-        self.flags = flags
+        self.merge_fixed_links = merge_fixed_links
 
     def _load(self):
         """
         Load the object into pybullet
         """
-        body_id = p.loadURDF(self.filename, globalScaling=self.scale,
-                             flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL + self.flags)
-        # Enable sleeping for all objects that are loaded in
-        p.changeDynamics(
-            body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
+        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
+        if self.merge_fixed_links:
+            flags |= p.URDF_MERGE_FIXED_LINKS
+        body_id = p.loadURDF(self.filename,
+                             globalScaling=self.scale,
+                             flags=flags)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
         self.body_id = body_id
         return body_id
@@ -115,7 +116,7 @@ class URDFObject(StatefulObject):
                  tasknet_object_scope=None,
                  visualize_primitives=False,
                  joint_positions=None,
-                 flags=p.URDF_MERGE_FIXED_LINKS+p.URDF_ENABLE_SLEEPING,
+                 merge_fixed_links=True,
                  ):
         """
         :param filename: urdf file path of that object model
@@ -152,7 +153,7 @@ class URDFObject(StatefulObject):
         self.scene_instance_folder = scene_instance_folder
         self.tasknet_object_scope = tasknet_object_scope
         self.joint_positions = joint_positions
-        self.flags = flags
+        self.merge_fixed_links = merge_fixed_links
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -307,13 +308,12 @@ class URDFObject(StatefulObject):
 
         # Currently a subset of states require access fixed links that will be merged into
         # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
-        if (self.flags & p.URDF_MERGE_FIXED_LINKS):
+        if self.merge_fixed_links:
             for state in self.states:
                 if issubclass(state, LinkBasedStateMixin):
-                    self.flags -= p.URDF_MERGE_FIXED_LINKS
+                    self.merge_fixed_links = False
                     break
 
-        self.merge_fixed_links = self.flags & p.URDF_MERGE_FIXED_LINKS
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
@@ -943,9 +943,12 @@ class URDFObject(StatefulObject):
         """
         Load the object into pybullet and set it to the correct pose
         """
+        flags = p.URDF_ENABLE_SLEEPING
+        if self.merge_fixed_links:
+            flags |= p.URDF_MERGE_FIXED_LINKS
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
-            body_id = p.loadURDF(self.urdf_paths[idx], flags=self.flags)
+            body_id = p.loadURDF(self.urdf_paths[idx], flags=flags)
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
