@@ -11,16 +11,21 @@ SCENES = [
         "Rs_int",
         "Benevolence_1_int"
     ]
-ACTIVITY_NAME = "cleaning_microwave_oven"
+ACTIVITY_NAME = "bottling_fruit"
 OBJECT_LIST = """(:objects
- 	microwave.n.02_1 - microwave.n.02
-	rag.n.01_1 - rag.n.01
+ 	strawberry.n.01_1 - strawberry.n.01
+	electric_refrigerator.n.01_1 - electric_refrigerator.n.01
+	peach.n.03_1 - peach.n.03
+	countertop.n.01_1 - countertop.n.01
+	lid.n.02_1 lid.n.02_2 - lid.n.02
+	jar.n.01_1 jar.n.01_2 - jar.n.01
 	cabinet.n.01_1 - cabinet.n.01
-	sink.n.01_1 - sink.n.01
+	floor.n.01_1 - floor.n.01
+	agent.n.01_1 - agent.n.01
 )
 """
-INITIAL_CONDITIONS = "(:init (dusty microwave.n.02_1) (inside rag.n.01_1 cabinet.n.01_1) (inroom microwave.n.02_1 kitchen) (inroom sink.n.01_1 kitchen) (inroom cabinet.n.01_1 kitchen))"
-GOAL_CONDITIONS = "(:goal (and (not (dusty ?microwave.n.02_1)) (inside ?rag.n.01_1 ?sink.n.01_1) (not (inside ?rag.n.01_1 ?cabinet.n.01_1))))"
+INITIAL_CONDITIONS = "(:init (inside strawberry.n.01_1 electric_refrigerator.n.01_1) (inside peach.n.03_1 electric_refrigerator.n.01_1) (not (sliced strawberry.n.01_1)) (not (sliced peach.n.03_1)) (ontop lid.n.02_1 countertop.n.01_1) (ontop lid.n.02_2 countertop.n.01_1) (ontop jar.n.01_1 countertop.n.01_1) (ontop jar.n.01_2 countertop.n.01_1) (inroom countertop.n.01_1 kitchen) (inroom cabinet.n.01_1 kitchen) (inroom electric_refrigerator.n.01_1 kitchen) (inroom floor.n.01_1 kitchen) (onfloor agent.n.01_1 floor.n.01_1))"
+GOAL_CONDITIONS = "(:goal (and (exists (?jar.n.01 - jar.n.01) (and (inside ?strawberry.n.01_1 ?jar.n.01) (not (inside ?peach.n.03_1 ?jar.n.01)))) (exists (?jar.n.01 - jar.n.01) (and (inside ?peach.n.03_1 ?jar.n.01) (not (inside ?strawberry.n.01_1 ?jar.n.01)))) (forpairs (?jar.n.01 - jar.n.01) (?lid.n.02 - lid.n.02) (ontop ?lid.n.02 ?jar.n.01)) (sliced strawberry.n.01_1) (sliced peach.n.03_1)))"
 
 
 def run_setup(scenes=None):
