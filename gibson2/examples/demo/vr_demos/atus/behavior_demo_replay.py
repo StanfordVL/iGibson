@@ -98,7 +98,9 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
         logged_git_info = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/git_info')
         logged_git_info = parse_str_config(logged_git_info)
         git_info = project_git_info()
-        for key in logged_git_info:
+        for key in logged_git_info.keys():
+            logged_git_info[key].pop('directory', None)
+            git_info[key].pop('directory', None)
             if logged_git_info[key] != git_info[key]:
                 print("Warning, difference in git commits for repo: {}. This may impact deterministic replay".format(key))
                 print("Logged git info:\n")
