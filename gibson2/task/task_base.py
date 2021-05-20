@@ -625,7 +625,7 @@ class iGTNTask(TaskNetTask):
         np.random.shuffle(self.ground_goal_state_options)
         print('number of ground_goal_state_options',
               len(self.ground_goal_state_options))
-        num_goal_condition_set_to_test = 2 # 10
+        num_goal_condition_set_to_test = 10
 
         goal_sampling_error_msgs = []
         # Next, try to fulfill different set of ground goal conditions (maximum num_goal_condition_set_to_test)
