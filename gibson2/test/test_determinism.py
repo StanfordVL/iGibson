@@ -48,5 +48,3 @@ def test_determinism_with_new_demo():
 #
 #     # Assert for the completion state.
 #     assert replay_determinism, "Replay was not deterministic."
-if __name__ == "__main__":
-    test_determinism_with_new_demo()
