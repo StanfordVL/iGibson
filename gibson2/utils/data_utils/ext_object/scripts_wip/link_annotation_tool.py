@@ -18,6 +18,13 @@ from gibson2.utils.assets_utils import download_assets
 download_assets()
 
 ABILITY_NAME = "cleaningTool"
+SYNSETS = [
+    "alarm.n.02",
+    "printer.n.03",
+    "facsimile.n.02",
+    "scanner.n.02",
+    "modem.n.01",
+]
 CATEGORIES = [
     "broom",
     "carpet_sweeper",
@@ -26,10 +33,10 @@ CATEGORIES = [
     "toothbrush",
     "vacuum",
 ]
-USE_ABILITY_TO_FETCH_CATEGORIES = False
+MODE = "synset"  # "ability, "category"
 
-LINK_NAME = "cleaning_tool_area"
-IS_CUBOID = True
+LINK_NAME = "toggle_button"
+IS_CUBOID = False
 SKIP_EXISTING = False
 
 OBJECT_TAXONOMY = ObjectTaxonomy()
@@ -63,7 +70,7 @@ def get_corner_positions(base, rotation, size):
 def main():
     # Collect the relevant categories.
     categories = CATEGORIES
-    if USE_ABILITY_TO_FETCH_CATEGORIES:
+    if MODE == "ability":
         categories = []
         for cat in get_categories():
             # Check that the category has this label.
@@ -75,6 +82,11 @@ def main():
                 continue
 
             categories.append(cat)
+    elif MODE == "synset":
+        categories = []
+        for synset in SYNSETS:
+            categories.extend(OBJECT_TAXONOMY.get_igibson_categories(synset))
+        categories = set(categories) & set(get_categories())
 
     print("%d categories: %s" % (len(categories), ", ".join(categories)))
 
@@ -106,7 +118,7 @@ def main():
 
             existing = False
             if "links" in meta and LINK_NAME in meta["links"]:
-                print("%s already has the requested link." % objdirfull)
+                print("%s/%s already has the requested link." % (cat, objdir))
 
                 if SKIP_EXISTING:
                     continue
@@ -260,8 +272,10 @@ def main():
                 }
             else:
                 meta['links'][LINK_NAME] = {
-                    "geometry": "box",
+                    "geometry": None,
+                    "size": None,
                     "xyz": list(rel_position),
+                    "rpy": None
                 }
 
             with open(mfn, "w") as mf:
