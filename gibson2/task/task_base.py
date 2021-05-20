@@ -69,10 +69,10 @@ class iGTNTask(TaskNetTask):
         if online_sampling:
             scene_kwargs['merge_fixed_links'] = False
         result = self.initialize(InteractiveIndoorScene,
-                               scene_id=scene_id,
-                               scene_kwargs=scene_kwargs,
-                               online_sampling=online_sampling,
-                               )
+                                 scene_id=scene_id,
+                                 scene_kwargs=scene_kwargs,
+                                 online_sampling=online_sampling,
+                                 )
         self.initial_state = self.save_scene()
         return result
 
@@ -295,7 +295,23 @@ class iGTNTask(TaskNetTask):
                 # if 'cantaloup' in categories:
                 #     category = 'cantaloup'
                 category_path = get_ig_category_path(category)
-                model = np.random.choice(os.listdir(category_path))
+                model_choices = os.listdir(category_path)
+
+                # Filter object models if the object category is openable
+                synset = self.object_taxonomy.get_class_name_from_igibson_category(
+                    category)
+                if self.object_taxonomy.has_ability(synset, 'openable'):
+                    model_choices = [
+                        m for m in model_choices if 'articulated_' in m]
+                    if len(model_choices) == 0:
+                        error_msg = '{} is Openable, but does not have articulated models.'.format(
+                            category)
+                        logging.warning(error_msg)
+                        feedback['init_success'] = 'no'
+                        feedback['init_feedback'] = error_msg
+                        return False, feedback
+
+                model = np.random.choice(model_choices)
                 # we can ONLY put stuff into this specific bag model
                 if category == 'bag':
                     model = 'bag_001'
