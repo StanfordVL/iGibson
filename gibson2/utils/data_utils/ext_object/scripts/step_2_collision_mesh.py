@@ -24,7 +24,7 @@ def parse_urdf(urdf):
     tree = ET.parse(urdf)
     link_to_vms = dict()
     for link in tree.findall('link'):
-        vms = link.findall('visual')q
+        vms = link.findall('visual')
         if len(vms) == 0:
             continue
         link_to_vms[link.attrib['name']] = [
