@@ -122,7 +122,7 @@ class ProcessPyEnvironment(object):
         else:
             return promise
 
-    def sample(self, pddl, blocking=True):
+    def sample(self, atus_activity, pddl, blocking=True):
         """Run a sampling in the environment
 
         :param pddl (str): the pddl being sampled in the environment
@@ -130,7 +130,7 @@ class ProcessPyEnvironment(object):
         :return (bool, dict): (success, feedback) from the sampling process
         """
         self.last_active_time = time.time()
-        promise = self.call("sample", pddl)
+        promise = self.call("sample", atus_activity, pddl)
         self.last_active_time = time.time()
         if blocking:
             return promise()
@@ -269,10 +269,10 @@ class ToyEnvInt(object):
 
         p.restoreState(self.state_id)
 
-    def sample(self, pddl):
+    def sample(self, atus_activity, pddl):
         try:
             self.task.update_problem(
-                "tester", "tester", predefined_problem=pddl)
+                atus_activity, "tester", predefined_problem=pddl)
             self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
         except UncontrolledCategoryError:
             accept_scene = False
@@ -319,7 +319,7 @@ class ToyEnvInt(object):
                 feedback = {
                     "init_success": "no",
                     "goal_success": "no",
-                    "init_feedback": f"We do not currently support {str(message).split(' ')[1]}. Please try a different object!",
+                    "init_feedback": f"We do not currently support {str(message).split(' ')[3]}. Please try a different object!",
                     "goal_feedback": ""
                 }
             else:
@@ -470,7 +470,7 @@ def check_sampling():
                 f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
         else:
             new_unique_id = unique_id
-        success, feedback = app.envs[new_unique_id].sample(pddl)
+        success, feedback = app.envs[new_unique_id].sample(atus_activity, pddl)
         if success:
             num_successful_scenes += 1
             '''
@@ -514,12 +514,12 @@ def periodic_cleanup():
     app.periodic_cleanup()
 
 
-scheduler.add_job(
-    id=PERIODIC_CLEANUP_TASK_ID,
-    func=periodic_cleanup,
-    seconds=5,
-    trigger="interval"
-)
+# scheduler.add_job(
+#     id=PERIODIC_CLEANUP_TASK_ID,
+#     func=periodic_cleanup,
+#     seconds=5,
+#     trigger="interval"
+# )
 
 
 if __name__ == '__main__':
