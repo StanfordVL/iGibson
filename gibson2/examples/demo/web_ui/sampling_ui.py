@@ -514,12 +514,12 @@ def periodic_cleanup():
     app.periodic_cleanup()
 
 
-# scheduler.add_job(
-#     id=PERIODIC_CLEANUP_TASK_ID,
-#     func=periodic_cleanup,
-#     seconds=5,
-#     trigger="interval"
-# )
+scheduler.add_job(
+    id=PERIODIC_CLEANUP_TASK_ID,
+    func=periodic_cleanup,
+    seconds=5,
+    trigger="interval"
+)
 
 
 if __name__ == '__main__':
