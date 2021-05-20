@@ -566,12 +566,13 @@ class BRHandBase(ArticulatedObject):
         should_hide = dist_to_real_controller <= self.ghost_hand_appear_thresh
 
         # Only toggle hidden state if we are transition from hidden to unhidden, or the other way around
-        if not self.prev_ghost_hand_hidden_state and should_hide:
-            self.sim.set_hidden_state(self.ghost_hand, hide=True)
-            self.prev_ghost_hand_hidden_state = True
-        elif self.prev_ghost_hand_hidden_state and not should_hide:
-            self.sim.set_hidden_state(self.ghost_hand, hide=False)
-            self.prev_ghost_hand_hidden_state = False
+        if self.sim.mode != "headless":
+            if not self.prev_ghost_hand_hidden_state and should_hide:
+                self.sim.set_hidden_state(self.ghost_hand, hide=True)
+                self.prev_ghost_hand_hidden_state = True
+            elif self.prev_ghost_hand_hidden_state and not should_hide:
+                self.sim.set_hidden_state(self.ghost_hand, hide=False)
+                self.prev_ghost_hand_hidden_state = False
 
 
 class BRHand(BRHandBase):
@@ -1065,7 +1066,7 @@ class BREye(ArticulatedObject):
         Updates BREye to be where HMD is.
         :param action: numpy array of actions.
         """
-        if not self.show_visual_head and self.should_hide:
+        if not self.show_visual_head and self.should_hide and self.sim.mode != "headless":
             self.sim.set_hidden_state(self.head_visual_marker, hide=True)
             self.should_hide = False
 
