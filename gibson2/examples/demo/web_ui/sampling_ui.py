@@ -122,7 +122,7 @@ class ProcessPyEnvironment(object):
         else:
             return promise
 
-    def sample(self, pddl, blocking=True):
+    def sample(self, atus_activity, pddl, blocking=True):
         """Run a sampling in the environment
 
         :param pddl (str): the pddl being sampled in the environment
@@ -130,7 +130,7 @@ class ProcessPyEnvironment(object):
         :return (bool, dict): (success, feedback) from the sampling process
         """
         self.last_active_time = time.time()
-        promise = self.call("sample", pddl)
+        promise = self.call("sample", atus_activity, pddl)
         self.last_active_time = time.time()
         if blocking:
             return promise()
@@ -269,15 +269,15 @@ class ToyEnvInt(object):
 
         p.restoreState(self.state_id)
 
-    def sample(self, pddl):
+    def sample(self, atus_activity, pddl):
         try:
             self.task.update_problem(
-                "tester", "tester", predefined_problem=pddl)
+                atus_activity, "tester", predefined_problem=pddl)
             self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
-                'init_success': 'untested',
+                'init_success': 'no',
                 'goal_success': 'no',
                 'init_feedback': 'Cannot check until goal state is fixed.',
                 'goal_feedback': 'Goal state has uncontrolled categories.'
@@ -286,14 +286,52 @@ class ToyEnvInt(object):
         except UnsupportedSentenceError as e:
             accept_scene = False
             feedback = {
-                "init_success": "untested",
-                "goal_success": "untested",
+                "init_success": "no",
+                "goal_success": "no",
                 "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
                 "goal_feedback": ""
             }
             return accept_scene, feedback
+        except AssertionError as message:
+            if message == "No ground goal options":
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": "",
+                    "goal_feedback": "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time)."
+                } 
+            else:
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during problem update.",
+                    "goal_feedback": ""
+                }
+            return accept_scene, feedback
 
-        accept_scene, feedback = self.task.check_scene()
+        try:
+            accept_scene, feedback = self.task.check_scene()
+        except AssertionError as message:
+            if "Invalid" in str(message):
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": f"We do not currently support {str(message).split(' ')[3]}. Please try a different object!",
+                    "goal_feedback": ""
+                }
+            else:
+                accept_scene = False
+                feedback = {
+                    "init_success": "no",
+                    "goal_success": "no",
+                    "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during scene checking.",
+                    "goal_feedback": ""
+                }
+            return accept_scene, feedback
+
         if not accept_scene:
             self.restore_scene()
             return accept_scene, feedback
@@ -432,7 +470,7 @@ def check_sampling():
                 f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
         else:
             new_unique_id = unique_id
-        success, feedback = app.envs[new_unique_id].sample(pddl)
+        success, feedback = app.envs[new_unique_id].sample(atus_activity, pddl)
         if success:
             num_successful_scenes += 1
             '''
