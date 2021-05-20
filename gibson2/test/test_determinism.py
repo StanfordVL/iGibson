@@ -12,7 +12,7 @@ def test_determinism_with_new_demo():
     with tempfile.NamedTemporaryFile() as demo_file:
         print("Saving demo.")
         behavior_demo_collection.collect_demo(
-            "cleaning_out_drawers", 0, "Benevolence_1_int", vr_log_path=demo_file.name, no_vr=True)
+            "cleaning_out_drawers", 0, "Benevolence_1_int", vr_log_path=demo_file.name, no_vr=True, max_steps=400)
 
         # Then replay the random demo.
         print("Replaying demo.")
@@ -25,7 +25,7 @@ def test_determinism_with_new_demo():
 
 
 # To be enabled once we have a canonical test demo.
-# def test_determinism_with_existing_demo():
+# def test_determinism_with_existing_headless_demo():
 #     DEMO_FILE = ""  # TODO: Put a demo file somewhere, put its path here.
 #
 #     # Replay the random demo.
@@ -36,5 +36,15 @@ def test_determinism_with_new_demo():
 #     # Assert for the completion state.
 #     assert replay_determinism, "Replay was not deterministic."
 
-if __name__ == "__main__":
-    test_determinism_with_new_demo()
+
+# To be enabled once we have a canonical test demo.
+# def test_determinism_with_existing_vr_demo():
+#     DEMO_FILE = ""  # TODO: Put a demo file somewhere, put its path here.
+#
+#     # Replay the random demo.
+#     with tempfile.NamedTemporaryFile() as replay_file:
+#         replay_determinism = behavior_demo_replay.replay_demo(
+#             DEMO_FILE, vr_replay_log_path=replay_file.name, no_vr=True)
+#
+#     # Assert for the completion state.
+#     assert replay_determinism, "Replay was not deterministic."
