@@ -510,7 +510,7 @@ class IGLogReader(object):
         self.hf = h5py.File(self.log_filepath, 'r')
         self.pb_ids = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
         # Get total frame num (dataset row length) from an arbitary dataset
-        self.total_frame_num = self.hf['vr/vr_device_data/hmd'].shape[0]
+        self.total_frame_num = self.hf['frame_data'].shape[0]
         # Placeholder VrData object, which will be filled every frame if we are performing action replay
         self.vr_data = VrData()
         if self.log_status:
