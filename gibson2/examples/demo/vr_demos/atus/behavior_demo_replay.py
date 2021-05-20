@@ -112,7 +112,7 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
     # VR system settings
     s = Simulator(
-          mode='iggui' if no_vr else 'vr',
+          mode='headless' if no_vr else 'vr',
           physics_timestep = physics_timestep,
           render_timestep = render_timestep,
           rendering_settings=vr_rendering_settings,
