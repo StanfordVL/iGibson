@@ -52,7 +52,7 @@ def main():
 
 
 def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, highlight_gaze=False, no_vr=False,
-                disable_save=False, disable_scene_cache=False, profile=False):
+                disable_save=False, disable_scene_cache=False, profile=False, step_callback=None):
     pp = pprint.PrettyPrinter(indent=4)
 
     # HDR files for PBR rendering
@@ -187,6 +187,9 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
         igtn_task.simulator.step(print_stats=profile)
         task_done, satisfied_predicates = igtn_task.check_success()
+
+        if step_callback is not None:
+            step_callback(igtn_task)
 
         # Set camera each frame
         if not no_vr:
