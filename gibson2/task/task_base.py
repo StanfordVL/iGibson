@@ -315,6 +315,9 @@ class iGTNTask(TaskNetTask):
                 # we can ONLY put stuff into this specific bag model
                 if category == 'bag':
                     model = 'bag_001'
+                # for "collecting aluminum cans", we need pop cans (not bottles) 
+                if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
+                    model = np.random.choice([str(i) for i in range(40, 46)])
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
