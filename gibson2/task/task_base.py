@@ -512,8 +512,8 @@ class iGTNTask(TaskNetTask):
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
             if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
-                print(
-                    "Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                logging.warning((
+                    "Skipping over sampling of predicate that is not a negation or an atomic predicate"))
                 continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
@@ -565,7 +565,7 @@ class iGTNTask(TaskNetTask):
                                                 condition.STATE_NAME,
                                                 str(condition.body),
                                                 str(success)])
-                            print(log_msg)
+                            logging.warning((log_msg))
                             init_sampling_log.append(log_msg)
 
                             if not success:
@@ -632,7 +632,7 @@ class iGTNTask(TaskNetTask):
                     obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
                 top_nodes = []
                 log_msg = 'MBM for room instance [{}]'.format(room_inst)
-                print(log_msg)
+                logging.warning((log_msg))
                 init_mbm_log.append(log_msg)
                 for obj_inst in obj_inst_to_obj_per_room_inst:
                     for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
@@ -640,7 +640,7 @@ class iGTNTask(TaskNetTask):
                         graph.add_edge(obj_inst, obj)
                         log_msg = 'Adding edge: {} <-> {}'.format(
                             obj_inst, obj.name)
-                        print(log_msg)
+                        logging.warning((log_msg))
                         init_mbm_log.append(log_msg)
                         top_nodes.append(obj_inst)
                 # Need to provide top_nodes that contain all nodes in one bipartite node set
@@ -648,11 +648,11 @@ class iGTNTask(TaskNetTask):
                 matches = nx.bipartite.maximum_matching(
                     graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
-                    print('Object scope finalized:')
+                    logging.warning(('Object scope finalized:'))
                     for obj_inst, obj in matches.items():
                         if obj_inst in obj_inst_to_obj_per_room_inst:
                             self.object_scope[obj_inst] = obj
-                            print(obj_inst, obj.name)
+                            logging.warning((obj_inst, obj.name))
                     success = True
                     break
             if not success:
@@ -667,8 +667,8 @@ class iGTNTask(TaskNetTask):
                 return False, feedback
 
         np.random.shuffle(self.ground_goal_state_options)
-        print('number of ground_goal_state_options',
-              len(self.ground_goal_state_options))
+        logging.warning(('number of ground_goal_state_options',
+              len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
 
         goal_sampling_error_msgs = []
@@ -709,7 +709,7 @@ class iGTNTask(TaskNetTask):
                                                     goal_condition.STATE_NAME,
                                                     str(goal_condition.body),
                                                     str(success)])
-                                print(log_msg)
+                                logging.warning((log_msg))
                                 goal_sampling_log.append(log_msg)
                                 if not success:
                                     break
@@ -776,7 +776,7 @@ class iGTNTask(TaskNetTask):
                         obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered_goal_cond[room_type][obj_inst][room_inst]
                     top_nodes = []
                     log_msg = 'MBM for room instance [{}]'.format(room_inst)
-                    print(log_msg)
+                    logging.warning((log_msg))
                     goal_mbm_log.append(log_msg)
                     for obj_inst in obj_inst_to_obj_per_room_inst:
                         for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
@@ -784,7 +784,7 @@ class iGTNTask(TaskNetTask):
                             graph.add_edge(obj_inst, obj)
                             log_msg = 'Adding edge: {} <-> {}'.format(
                                 obj_inst, obj.name)
-                            print(log_msg)
+                            logging.warning((log_msg))
                             goal_mbm_log.append(log_msg)
                             top_nodes.append(obj_inst)
                     # Need to provide top_nodes that contain all nodes in one bipartite node set
@@ -792,11 +792,11 @@ class iGTNTask(TaskNetTask):
                     matches = nx.bipartite.maximum_matching(
                         graph, top_nodes=top_nodes)
                     if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
-                        print('Object scope finalized:')
+                        logging.warning(('Object scope finalized:'))
                         for obj_inst, obj in matches.items():
                             if obj_inst in obj_inst_to_obj_per_room_inst:
                                 self.object_scope[obj_inst] = obj
-                                print(obj_inst, obj.name)
+                                logging.warning((obj_inst, obj.name))
                         success = True
                         break
                 if not success:
