@@ -1585,6 +1585,10 @@ class MeshRenderer(object):
         Updates the hidden state of a list of instances
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
         """
+
+        if not self.optimization_process_executed:
+            logging.warning("Trying to set hidden state before vertices are merged, converted to no-op")
+            return
         for instance in instances:
             buf_idxs = instance.or_buffer_indices
             #if not buf_idxs:
