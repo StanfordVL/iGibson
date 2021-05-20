@@ -53,13 +53,22 @@ def parse_args():
                         help='Whether to disable using pre-initialized scene caches.')
     parser.add_argument('--profile', action='store_true',
                         help='Whether to print profiling data.')
+    parser.add_argument('--no_vr', action='store_true',
+                        help='Whether to turn off VR recording and save random actions.')
+    parser.add_argument('--max_steps', type=int, default=-1,
+                        help="Maximum number of steps to record before stopping.")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     tasknet.set_backend("iGibson")
+    collect_demo(args.task, args.task_id, args.scene, args.vr_log_path, args.disable_save, args.max_steps, args.no_vr,
+                 args.disable_scene_cache, args.profile)
 
+
+def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max_steps=-1, no_vr=False,
+                 disable_scene_cache=False, profile=False):
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
         gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
@@ -85,45 +94,48 @@ def main():
     )
 
     # VR system settings
-    s = Simulator(mode='vr', rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True), physics_timestep=1 / 300.0, render_timestep = 1 / 30.0)
-    igtn_task = iGTNTask(args.task, args.task_id)
+    mode = 'headless' if no_vr else 'vr'
+    s = Simulator(mode=mode, rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True),
+                  physics_timestep=1 / 300.0, render_timestep=1 / 30.0)
+    igtn_task = iGTNTask(task, task_id)
 
     scene_kwargs = None
     online_sampling = True
 
-    if not args.disable_scene_cache:
+    if not disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(args.scene, args.task, args.task_id),
+            'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
         }
         online_sampling = False
 
     igtn_task.initialize_simulator(simulator=s,
-                                   scene_id=args.scene,
+                                   scene_id=scene,
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
                                    online_sampling=online_sampling)
     vr_agent = igtn_task.simulator.robots[0]
 
-    vr_cs = VrConditionSwitcher(
-        igtn_task.simulator,
-        igtn_task.show_instruction,
-        igtn_task.iterate_instruction
-    )
+    if not no_vr:
+        vr_cs = VrConditionSwitcher(
+            igtn_task.simulator,
+            igtn_task.show_instruction,
+            igtn_task.iterate_instruction
+        )
 
     log_writer = None
-    if not args.disable_save:
+    if not disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        if args.vr_log_path == None:
-            args.vr_log_path = "{}_{}_{}_{}.hdf5".format(
-                args.task, args.task_id, args.scene, timestamp)
+        if vr_log_path is None:
+            vr_log_path = "{}_{}_{}_{}.hdf5".format(
+                task, task_id, scene, timestamp)
         log_writer = IGLogWriter(
             s,
             frames_before_write=200,
-            log_filepath=args.vr_log_path,
+            log_filepath=vr_log_path,
             task=igtn_task,
-            store_vr=True,
+            store_vr=False if no_vr else True,
             vr_robot=vr_agent,
-            profiling_mode=args.profile,
+            profiling_mode=profile,
             filter_objects=True
         )
         log_writer.set_up_data_storage()
@@ -133,26 +145,36 @@ def main():
     physics_warming_steps = 200
 
     steps = 0
-    while True:
-        igtn_task.simulator.step(print_stats=args.profile)
+    while max_steps < 0 or steps < max_steps:
+        igtn_task.simulator.step(print_stats=profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
-        action = igtn_task.simulator.gen_vr_robot_action()
-        if steps < physics_warming_steps:
-            action = np.zeros_like(action)
+        if no_vr:
+            if steps < 2:
+                action = np.zeros((28,))
+                action[19] = 1
+                action[27] = 1
+            else:
+                action = np.random.uniform(-0.01, 0.01, size=(28,))
+        else:
+            action = igtn_task.simulator.gen_vr_robot_action()
+            if steps < physics_warming_steps:
+                action = np.zeros_like(action)
+
         vr_agent.update(action)
 
-        if satisfied_predicates != satisfied_predicates_cached:
-            vr_cs.refresh_condition(switch=False)
-            satisfied_predicates_cached = satisfied_predicates
+        if not no_vr:
+            if satisfied_predicates != satisfied_predicates_cached:
+                vr_cs.refresh_condition(switch=False)
+                satisfied_predicates_cached = satisfied_predicates
 
-        if igtn_task.simulator.query_vr_event('right_controller', 'overlay_toggle'):
-            vr_cs.refresh_condition()
+            if igtn_task.simulator.query_vr_event('right_controller', 'overlay_toggle'):
+                vr_cs.refresh_condition()
 
-        if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
-            vr_cs.toggle_show_state()
+            if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
+                vr_cs.toggle_show_state()
 
-        if log_writer and not args.disable_save:
+        if log_writer and not disable_save:
             log_writer.process_frame()
 
         if task_done:
@@ -162,7 +184,7 @@ def main():
 
         steps += 1
 
-    if log_writer and not args.disable_save:
+    if log_writer and not disable_save:
         log_writer.end_log_session()
 
     s.disconnect()
