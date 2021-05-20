@@ -1017,7 +1017,7 @@ class BREye(ArticulatedObject):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BREye, self).set_position_orientation(pos, orn)
-        if not self.body.new_pos:
+        if self.body.new_pos is None:
             inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
         else:
             inv_body_pos, inv_body_orn = p.invertTransform(self.body.new_pos, self.body.new_orn)
