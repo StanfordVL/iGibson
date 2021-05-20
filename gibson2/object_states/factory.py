@@ -12,6 +12,9 @@ _ALL_STATES = frozenset([
     Frozen,
     HeatSourceOrSink,
     HorizontalAdjacency,
+    InHandOfRobot,
+    InReachOfRobot,
+    InSameRoomAsRobot,
     Inside,
     MaxTemperature,
     NextTo,
@@ -49,6 +52,9 @@ _ABILITY_TO_STATE_MAPPING = {
 }
 
 _DEFAULT_STATE_SET = frozenset([
+    InHandOfRobot,
+    InReachOfRobot,
+    InSameRoomAsRobot,
     Inside,
     NextTo,
     OnFloor,

@@ -13,6 +13,7 @@ from gibson2.object_states.next_to import NextTo
 from gibson2.object_states.on_top import OnTop
 from gibson2.object_states.open import Open
 from gibson2.object_states.pose import Pose
+from gibson2.object_states.robot_related_states import InHandOfRobot, InReachOfRobot, InSameRoomAsRobot
 from gibson2.object_states.soaked import Soaked
 from gibson2.object_states.temperature import Temperature
 from gibson2.object_states.toggle import ToggledOn
