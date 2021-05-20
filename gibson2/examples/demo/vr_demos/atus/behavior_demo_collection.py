@@ -94,7 +94,7 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
     )
 
     # VR system settings
-    mode = 'iggui' if no_vr else 'vr'
+    mode = 'headless' if no_vr else 'vr'
     s = Simulator(mode=mode, rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True),
                   physics_timestep=1 / 300.0, render_timestep=1 / 30.0)
     igtn_task = iGTNTask(task, task_id)
