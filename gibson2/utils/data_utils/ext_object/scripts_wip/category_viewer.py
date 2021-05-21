@@ -1,6 +1,7 @@
 import itertools
 import json
 import os
+import pdb
 
 from tasknet.object_taxonomy import ObjectTaxonomy
 
@@ -10,7 +11,6 @@ import numpy as np
 import pybullet as p
 
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.objects.visual_marker import VisualMarker
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
 from gibson2.utils.assets_utils import download_assets
@@ -19,12 +19,7 @@ download_assets()
 
 ABILITY_NAME = "cleaningTool"
 CATEGORIES = [
-    "broom",
-    "carpet_sweeper",
-    "scraper",
-    "scrub_brush",
-    "toothbrush",
-    "vacuum",
+    "briefcase"
 ]
 USE_ABILITY_TO_FETCH_CATEGORIES = False
 
@@ -91,7 +86,7 @@ def main():
         for objdir in os.listdir(cd):
             objdirfull = os.path.join(cd, objdir)
 
-            obj = get_obj(objdirfull, fit_avg_dim_volume=True, avg_obj_dims=avg, flags=p.URDF_ENABLE_SLEEPING)
+            obj = get_obj(objdirfull, fit_avg_dim_volume=True, avg_obj_dims=avg, category=cat)
             # obj = get_obj(objdirfull, bounding_box=max_bbox, flags=p.URDF_ENABLE_SLEEPING)
             s.import_object(obj)
             obj_pos = np.array([current_x, 0., 0.5])
@@ -101,7 +96,8 @@ def main():
 
     try:
         while True:
-            pass #s.step()
+            pdb.set_trace()
+            s.step()
     finally:
         s.disconnect()
 
