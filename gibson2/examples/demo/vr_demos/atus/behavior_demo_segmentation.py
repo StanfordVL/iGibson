@@ -1,12 +1,17 @@
 import argparse
+import itertools
+from collections import namedtuple
 from enum import Enum
 
 import tasknet
 
+from gibson2 import object_states
 from gibson2.examples.demo.vr_demos.atus import behavior_demo_replay
 from gibson2.object_states import factory
 from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
 
+StateRecord = namedtuple("StateRecord", ["state_name", "objects", "value"])
+DiffEntry = namedtuple("DiffEntry", ["frame_count", "state_records"])
 
 class SegmentationObjectSelection(Enum):
     ALL_OBJECTS = 1
@@ -18,18 +23,29 @@ def process_states(objects, state_classes):
 
     for obj in objects:
         for state_type in state_classes:
-            assert issubclass(state, BooleanState)
+            if state_type not in obj.states:
+                continue
+
+            assert issubclass(state_type, BooleanState)
             state_name = state_type.__name__
             state = obj.states[state_type]
             if isinstance(state, AbsoluteObjectState):
                 # Add only one instance of absolute state
-                value = state.get_value()
-                predicate_states.add((state_name, (obj, ), value))
+                try:
+                    value = state.get_value()
+                    record = StateRecord(state_name, (obj, ), value)
+                    predicate_states.add(record)
+                except ValueError:
+                    pass
             elif isinstance(state, RelativeObjectState):
                 # Add one instance per state pair
                 for other in objects:
-                    value = state.get_value(other)
-                    predicate_states.add((state_name, (obj, other), value))
+                    try:
+                        value = state.get_value(other)
+                        record = StateRecord(state_name, (obj, other), value)
+                        predicate_states.add(record)
+                    except ValueError:
+                        pass
             else:
                 raise ValueError("Unusable state for segmentation.")
 
@@ -43,13 +59,15 @@ class DemoSegmentationProcessor(object):
         if state_classes is None:
             state_classes = [
                 state for state in factory.get_all_states()
-                if (isinstance(state, BooleanState)
-                    and (isinstance(state, AbsoluteObjectState) or isinstance(state, RelativeObjectState)))]
+                if (issubclass(state, BooleanState)
+                    and (issubclass(state, AbsoluteObjectState) or issubclass(state, RelativeObjectState)))]
         self.state_classes = state_classes
 
         self.object_selection = object_selection
 
         self.diffs = []
+
+        self.filter_msg = None
 
     def step_callback(self, igtn_task):
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
@@ -64,18 +82,52 @@ class DemoSegmentationProcessor(object):
         if self.last_state is not None:
             diff = processed_state - self.last_state
             if diff:
-                self.diffs.append((igtn_task.simulator.frame_count, diff))
+                self.diffs.append(DiffEntry(igtn_task.simulator.frame_count, diff))
 
         self.last_state = processed_state
+
+    def filter_diffs(self, objs, filter_msg=""):
+        """Filter the diffs so that only objects in the given list are monitored."""
+        new_diffs = []
+        for diff_entry in self.diffs:
+            new_records = set()
+
+            # Go through the records in the diff.
+            for state_record in diff_entry.state_records:
+                # Check if any object in the record is on our list.
+                in_objs = False
+                for obj in state_record.objects:
+                    if obj in objs:
+                        in_objs = True
+                        break
+
+                # If an object in our list is part of the record, keep the record.
+                if in_objs:
+                    new_records.add(state_record)
+
+            # If we have kept any of this diff's records, add a diff entry containing them.
+            if new_records:
+                new_diff_entry = DiffEntry(diff_entry.frame_count, new_records)
+                new_diffs.append(new_diff_entry)
+
+        self.diffs = new_diffs
+        self.filter_msg = filter_msg
 
     def print(self):
         print("---------------------------------------------------")
         print("Segmentation of %s" % self.object_selection.name)
         print("Considered states: %s" % ", ".join(x.__name__ for x in self.state_classes))
+        if self.filter_msg is not None:
+            print("Filtered. Filter message: %s" % self.filter_msg)
         print("---------------------------------------------------")
-        for step, entries in self.diffs:
-            entry_strs = ["%s%r = %r" % entry for entry in entries]
-            print("%d: %s" % (step, ", ".join(entry_strs)))
+        for diff_entry in self.diffs:
+            stringified_entries = [
+                (state_record.state_name,
+                 ", ".join(obj.category for obj in state_record.objects),
+                 state_record.value)
+                for state_record in diff_entry.state_records]
+            entry_strs = ["%s(%r) = %r" % entry for entry in stringified_entries]
+            print("%d: %s" % (diff_entry.frame_count, ", ".join(entry_strs)))
         print("---------------------------------------------------")
         print("\n")
 
@@ -102,13 +154,49 @@ def main():
     args = parse_args()
     tasknet.set_backend("iGibson")
 
-    # Currently we create a single segmentation that segments TROs by any state.
+    HIGH_LEVEL_STATES = {
+        object_states.Burnt,
+        object_states.Cooked,
+        object_states.Dusty,
+        object_states.Frozen,
+        object_states.Sliced,
+        object_states.Soaked,
+        object_states.Stained,
+        object_states.ToggledOn,
+    }
+    MID_LEVEL_STATES = {
+        object_states.Open,
+        object_states.Inside,
+        object_states.NextTo,
+        object_states.OnTop,
+        object_states.Under,
+    }
+    LOW_LEVEL_STATES = {
+        object_states.InReachOfRobot,
+        object_states.InHandOfRobot,
+        object_states.InSameRoomAsRobot,
+    }
+
+    high_level_segmentation = DemoSegmentationProcessor(HIGH_LEVEL_STATES, SegmentationObjectSelection.ALL_OBJECTS)
+    mid_level_segmentation = DemoSegmentationProcessor(MID_LEVEL_STATES, SegmentationObjectSelection.ALL_OBJECTS)
+    low_level_segmentation = DemoSegmentationProcessor(LOW_LEVEL_STATES, SegmentationObjectSelection.ALL_OBJECTS)
     segmentation_processors = [
-        DemoSegmentationProcessor(None, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS)
+        high_level_segmentation,
+        mid_level_segmentation,
+        low_level_segmentation,
     ]
 
     # Run the segmentations.
     run_segmentation(args.log_path, segmentation_processors, no_vr=args.no_vr)
+
+    # Filter the low-level segmentation to only include objects seen in the high/mid-level segmentation.
+    objs_in_segmentations = set()
+    for diff_entry in itertools.chain(high_level_segmentation.diffs, mid_level_segmentation.diffs):
+        for state_record in diff_entry.state_records:
+            objs_in_segmentations.update(state_record.objects)
+    low_level_segmentation.filter_diffs(
+        objs_in_segmentations,
+        "Filtered to only include objects in high/mid level segmentations.")
 
     # Print the segmentations.
     for segmentation_processor in segmentation_processors:
