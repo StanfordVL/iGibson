@@ -353,22 +353,19 @@ class URDFObject(StatefulObject):
             self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
-        # if the joint is floating, we save the transformation of the floating joint to be used when we load the
+        # We save the transformation of the joint to be used when we load the
         # embedded urdf
-        if joint_type == "floating":
-            joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
+        joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
         # if the joint is not floating (fixed), we add the joint and a link to the embedded urdf
-        else:
+        if joint_type == "fixed":
             assert joint_parent == 'world'
-            assert joint_type == 'fixed'
-
             new_joint = ET.SubElement(
                 self.object_tree.getroot(), "joint",
                 dict([("name", joint_name), ("type", joint_type)]))
             ET.SubElement(
                 new_joint, "origin",
-                dict([("rpy", "{0:f} {1:f} {2:f}".format(*joint_rpy)),
-                      ("xyz", "{0:f} {1:f} {2:f}".format(*joint_xyz))]))
+                dict([("rpy", "0 0 0"),
+                      ("xyz", "0 0 0")]))
             ET.SubElement(new_joint, "parent",
                           dict([("link", joint_parent)]))
             ET.SubElement(new_joint, "child",
@@ -1024,66 +1021,44 @@ class URDFObject(StatefulObject):
                         body_id, j, p.VELOCITY_CONTROL,
                         targetVelocity=0.0, force=self.joint_friction)
 
-    def get_position(self, accept_trivial_result_if_merged=False):
+    def get_position(self):
         """
         Get object position
 
         :return: position in xyz
         """
+        # Note: for fixed objects, this returns the result of the base link,
+        # not the inertial frame (CoM)
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.merge_fixed_links:
-                if not accept_trivial_result_if_merged:
-                    raise ValueError(
-                        'Cannot call get_position when the object is fixed and the fixed links are merged.')
-                pos = np.array([0, 0, 0])
-            else:
-                pos, _ = p.getLinkState(body_id, 0)[0:2]
-        else:
-            pos, _ = p.getBasePositionAndOrientation(body_id)
+        pos, _ = p.getBasePositionAndOrientation(body_id)
         return pos
 
-    def get_orientation(self, accept_trivial_result_if_merged=False):
+    def get_orientation(self):
         """
         Get object orientation
 
         :return: quaternion in xyzw
         """
+        # Note: for fixed objects, this returns the result of the base link,
+        # not the inertial frame (CoM)
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.merge_fixed_links:
-                if not accept_trivial_result_if_merged:
-                    raise ValueError(
-                        'Cannot call get_orientation when the object is fixed and the fixed links are merged.')
-                orn = np.array([0, 0, 0, 1])
-            else:
-                _, orn = p.getLinkState(body_id, 0)[0:2]
-        else:
-            _, orn = p.getBasePositionAndOrientation(body_id)
+        _, orn = p.getBasePositionAndOrientation(body_id)
         return orn
 
-    def get_position_orientation(self, accept_trivial_result_if_merged=False):
+    def get_position_orientation(self):
         """
         Get object position and orientation
 
         :return: position in xyz
         :return: quaternion in xyzw
         """
+        # Note: for fixed objects, this returns the result of the base link,
+        # not the inertial frame (CoM)
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.merge_fixed_links:
-                if not accept_trivial_result_if_merged:
-                    raise ValueError(
-                        'Cannot call get_position_orientation when the object is fixed and the fixed links are merged.')
-                pos = np.array([0, 0, 0])
-                orn = np.array([0, 0, 0, 1])
-            else:
-                pos, orn = p.getLinkState(body_id, 0)[0:2]
-        else:
-            pos, orn = p.getBasePositionAndOrientation(body_id)
+        pos, orn = p.getBasePositionAndOrientation(body_id)
         return pos, orn
 
-    def get_base_link_position_orientation(self, accept_trivial_result_if_merged=False):
+    def get_base_link_position_orientation(self):
         """
         Get object base link position and orientation
 
@@ -1092,25 +1067,14 @@ class URDFObject(StatefulObject):
         """
         # TODO: not used anywhere yet, but probably should be put in ObjectBase
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
-            if self.merge_fixed_links:
-                if not accept_trivial_result_if_merged:
-                    raise ValueError(
-                        'Cannot call get_position_orientation when the object is fixed and the fixed links are merged.')
-                pos = np.array([0, 0, 0])
-                orn = np.array([0, 0, 0, 1])
-            else:
-                pos, orn = p.getLinkState(body_id, 0)[4:6]
-        else:
-            pos, orn = p.getBasePositionAndOrientation(body_id)
-            dynamics_info = p.getDynamicsInfo(body_id, -1)
-            inertial_pos = dynamics_info[3]
-            inertial_orn = dynamics_info[4]
-            inv_inertial_pos, inv_inertial_orn =\
-                p.invertTransform(inertial_pos, inertial_orn)
-            pos, orn = p.multiplyTransforms(
-                pos, orn, inv_inertial_pos, inv_inertial_orn)
-
+        pos, orn = p.getBasePositionAndOrientation(body_id)
+        dynamics_info = p.getDynamicsInfo(body_id, -1)
+        inertial_pos = dynamics_info[3]
+        inertial_orn = dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn =\
+            p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.multiplyTransforms(
+            pos, orn, inv_inertial_pos, inv_inertial_orn)
         return pos, orn
 
     def set_position(self, pos):
