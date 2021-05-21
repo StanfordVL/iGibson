@@ -391,7 +391,7 @@ class IGLogWriter(object):
         if self.task and self.filter_objects:
             for obj_bid, obj in self.tracked_objects.items():
                 obj_name = str(obj_bid)
-                pos, orn = obj.get_position_orientation(accept_trivial_result_if_merged=True)
+                pos, orn = obj.get_position_orientation()
                 handle = self.data_map['physics_data'][obj_name]
                 handle['position'][self.frame_counter] = pos
                 handle['orientation'][self.frame_counter] = orn
@@ -412,7 +412,7 @@ class IGLogWriter(object):
         print("----- PyBullet data at the end of frame {} -----".format(self.persistent_frame_count))
         if self.task and self.filter_objects:
             for obj_bid, obj in self.tracked_objects.items():
-                pos, orn = obj.get_position_orientation(accept_trivial_result_if_merged=True)
+                pos, orn = obj.get_position_orientation()
                 print("{} - pos: {} and orn: {}".format(obj_bid, pos, orn))
         else:
             for bid in self.tracked_objects:
