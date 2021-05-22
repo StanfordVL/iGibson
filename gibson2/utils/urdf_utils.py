@@ -192,26 +192,11 @@ def transform_element_xyzrpy(element, transformation):
         *transform_rpy)
 
 
-def get_main_link_name(tree):
-    is_fixed = tree.find("link[@name='world']") is not None
-    joints = tree.findall('joint')
-    if is_fixed:
-        # Find the link that connects to the world link
-        main_link_name = [
-            joint.find('child').attrib['link']
-            for joint in joints
-            if joint.find('parent').attrib['link'] == 'world'][0]
-    else:
-        # Find the base link
-        main_link_name = get_base_link_name(tree)
-    return main_link_name
 
-
-def save_urdfs_without_floating_joints(tree, file_prefix):
+def save_urdfs_without_floating_joints(tree, main_body_is_fixed, file_prefix):
     """
     Split one URDF into multiple URDFs if there are floating joints and save them
     """
-
     # Pybullet doesn't read floating joints
     # Find them and separate into different objects
     (parent_map, child_map, joint_map, single_floating_links) = parse_urdf(tree)
@@ -221,7 +206,6 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
                              joint_map, single_floating_links)
 
     extended_splitted_dict = {}
-    world_idx = 0
     for (count, split) in enumerate(splitted_maps):
         all_links = []
         for parent in split[0]:
@@ -235,11 +219,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
                 all_links.append(link)
         extended_splitted_dict[count] = (
             (split[0], split[1], split[2], all_links, np.eye(4)))
-        if "world" in all_links:
-            world_idx = count
-            logging.debug("World idx: ", world_idx)
 
-    # Find the transformations, starting from "world" link
     for (joint_name, joint_tuple) in joint_map.items():
         logging.debug("Joint: " + joint_name)
         if joint_tuple[2] == "floating":
@@ -247,7 +227,6 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
             parent_name = joint_tuple[0]
             transformation = joint_tuple[3]
 
-            # != "world": #When the parent_name link is not child of any other joint, we stop
             while parent_name in parent_map.keys():
                 # Find the joint where the link with name "parent_name" is child
                 joint_up = [joint for joint in tree.findall("joint") if joint.find(
@@ -264,7 +243,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
     logging.info("Number of splits: " + str(len(extended_splitted_dict)))
     logging.info("Instantiating scene into the following urdfs:")
 
-    main_link_name = get_main_link_name(tree)
+    main_link_name = get_base_link_name(tree)
 
     urdfs_no_floating = {}
     for esd_key in extended_splitted_dict:
@@ -290,9 +269,8 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
         urdf_file_name = file_prefix + "_" + str(esd_key) + ".urdf"
         # Change 0 by the pose of this branch
 
-        # check if this object is fixed: look for "world" link
-        is_fixed = xml_tree_parent.find("link[@name='world']") is not None
-        is_main_body = main_link_name == get_main_link_name(xml_tree_parent)
+        is_main_body = main_link_name == get_base_link_name(xml_tree_parent)
+        is_fixed = main_body_is_fixed if is_main_body else False
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (
             urdf_file_name, transformation, is_fixed, is_main_body)

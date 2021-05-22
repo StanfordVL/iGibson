@@ -28,7 +28,7 @@ class ObjectGrouper(StatefulObject):
 
         def update(self, simulator):
             for obj in self.object_grouper.objects:
-                obj.states[self.state_type].update(simulator)
+                obj.states[self.state_type].update()
 
     class AbsoluteStateAggregator(BaseStateAggregator):
         def get_value(self):
@@ -149,13 +149,13 @@ class ObjectGrouper(StatefulObject):
             body_ids += obj._load()
         return body_ids
 
-    def get_position(self, **kwargs):
+    def get_position(self):
         raise ValueError("Cannot get_position on ObjectGrouper")
 
-    def get_orientation(self, **kwargs):
+    def get_orientation(self):
         raise ValueError("Cannot get_orientation on ObjectGrouper")
 
-    def get_position_orientation(self, **kwargs):
+    def get_position_orientation(self):
         raise ValueError("Cannot get_position_orientation on ObjectGrouper")
 
     def set_position(self, pos):
@@ -222,14 +222,14 @@ class ObjectMultiplexer(StatefulObject):
             body_ids += obj._load()
         return body_ids
 
-    def get_position(self, **kwargs):
-        return self.current_selection().get_position(**kwargs)
+    def get_position(self):
+        return self.current_selection().get_position()
 
-    def get_orientation(self, **kwargs):
-        return self.current_selection().get_orientation(**kwargs)
+    def get_orientation(self):
+        return self.current_selection().get_orientation()
 
-    def get_position_orientation(self, **kwargs):
-        return self.current_selection().get_position_orientation(**kwargs)
+    def get_position_orientation(self):
+        return self.current_selection().get_position_orientation()
 
     def set_position(self, pos):
         return self.current_selection().set_position(pos)
