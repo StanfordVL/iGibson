@@ -357,8 +357,10 @@ class URDFObject(StatefulObject):
         # This is for backwards compatibility with earlier code that used to format these into
         # strings and reload them as an URDF.
         if joint_type == 'fixed':
-            joint_xyz = np.around(joint_xyz, 6)
-            joint_rpy = np.around(joint_rpy, 6)
+            joint_xyz_strings = ["{0:f}".format(x) for x in joint_xyz]
+            joint_rpy_strings = ["{0:f}".format(x) for x in joint_rpy]
+            joint_xyz = np.array([float(x) for x in joint_xyz_strings])
+            joint_rpy = np.array([float(x) for x in joint_rpy_strings])
 
         # We save the transformation of the joint to be used when we load the
         # embedded urdf
