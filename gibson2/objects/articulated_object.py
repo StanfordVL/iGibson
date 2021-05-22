@@ -353,9 +353,17 @@ class URDFObject(StatefulObject):
             self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
+        # If the joint type is fixed, we round down the joint xyz and rpy to 6 decimal digits.
+        # This is for backwards compatibility with earlier code that used to format these into
+        # strings and reload them as an URDF.
+        if joint_type == 'fixed':
+            joint_xyz = np.around(joint_xyz, 6)
+            joint_rpy = np.around(joint_rpy, 6)
+
         # We save the transformation of the joint to be used when we load the
         # embedded urdf
-        joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
+        self.joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
+
         # if the joint is not floating (fixed), we add the joint and a link to the embedded urdf
         if joint_type == "fixed":
             assert joint_parent == 'world'
@@ -372,9 +380,6 @@ class URDFObject(StatefulObject):
                           dict([("link", self.name)]))
             ET.SubElement(self.object_tree.getroot(), "link",
                           dict([("name", joint_parent)]))
-
-        # Save the transformation internally to be used when loading
-        self.joint_frame = joint_frame
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
