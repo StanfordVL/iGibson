@@ -965,7 +965,7 @@ class Simulator:
         # Step the object states in global topological order.
         for state_type in self.object_state_types:
             for obj in self.scene.get_objects_with_state(state_type):
-                obj.states[state_type].update(self)
+                obj.states[state_type].update()
 
         # Step the object procedural materials based on the updated object states
         for obj in self.scene.get_objects():
