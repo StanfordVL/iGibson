@@ -326,9 +326,6 @@ class URDFObject(StatefulObject):
                     [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")])
             else:
                 joint_rpy = np.array([0., 0., 0.])
-            joint_name = self.connecting_joint.attrib['name']
-            joint_parent = self.connecting_joint.find("parent").attrib["link"]
-            assert joint_parent == 'world'
         else:
             joint_type = 'floating'
             if self.initial_pos is not None:
@@ -339,11 +336,6 @@ class URDFObject(StatefulObject):
                 joint_rpy = self.initial_orn
             else:
                 joint_rpy = np.array([0., 0., 0.])
-            joint_name = None
-            joint_parent = None
-
-        # Deal with the joint connecting the embedded urdf to the world link
-        joint_frame = np.eye(4)
 
         # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
@@ -357,22 +349,7 @@ class URDFObject(StatefulObject):
         # embedded urdf
         self.joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
 
-        # if the joint is not floating (fixed), we add the joint and a link to the embedded urdf
-        if joint_type == "fixed":
-            assert joint_parent == 'world'
-            new_joint = ET.SubElement(
-                self.object_tree.getroot(), "joint",
-                dict([("name", joint_name), ("type", joint_type)]))
-            ET.SubElement(
-                new_joint, "origin",
-                dict([("rpy", "0 0 0"),
-                      ("xyz", "0 0 0")]))
-            ET.SubElement(new_joint, "parent",
-                          dict([("link", joint_parent)]))
-            ET.SubElement(new_joint, "child",
-                          dict([("link", self.name)]))
-            ET.SubElement(self.object_tree.getroot(), "link",
-                          dict([("name", joint_parent)]))
+        self.main_body_is_fixed = joint_type == "fixed"
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
@@ -619,7 +596,7 @@ class URDFObject(StatefulObject):
                 all_links_trimesh.append(trimesh_obj)
                 volume = trimesh_obj.volume
                 # a hack to artificially increase the density of the lamp base
-                if link.attrib['name'] == base_link_name and base_link_name != 'world':
+                if link.attrib['name'] == base_link_name:
                     if self.category in ['lamp']:
                         volume *= 10.0
                 total_volume += volume
@@ -682,7 +659,7 @@ class URDFObject(StatefulObject):
 
                 if link_trimesh is not None:
                     # a hack to artificially increase the density of the lamp base
-                    if link.attrib['name'] == base_link_name and base_link_name != 'world':
+                    if link.attrib['name'] == base_link_name:
                         if self.category in ['lamp']:
                             link_trimesh.density *= 10.0
 
@@ -765,6 +742,7 @@ class URDFObject(StatefulObject):
         file_prefix = os.path.join(folder, self.name)
         urdfs_no_floating = \
             save_urdfs_without_floating_joints(self.object_tree,
+                                               self.main_body_is_fixed,
                                                file_prefix)
 
         # append a new tuple of file name of the instantiated embedded urdf
@@ -944,7 +922,10 @@ class URDFObject(StatefulObject):
             flags |= p.URDF_MERGE_FIXED_LINKS
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
-            body_id = p.loadURDF(self.urdf_paths[idx], flags=flags)
+            is_fixed = self.is_fixed[idx]
+            body_id = p.loadURDF(self.urdf_paths[idx],
+                                 flags=flags,
+                                 useFixedBase=is_fixed)
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
@@ -1025,8 +1006,6 @@ class URDFObject(StatefulObject):
 
         :return: position in xyz
         """
-        # Note: for fixed objects, this returns the result of the base link,
-        # not the inertial frame (CoM)
         body_id = self.get_body_id()
         pos, _ = p.getBasePositionAndOrientation(body_id)
         return pos
@@ -1037,8 +1016,6 @@ class URDFObject(StatefulObject):
 
         :return: quaternion in xyzw
         """
-        # Note: for fixed objects, this returns the result of the base link,
-        # not the inertial frame (CoM)
         body_id = self.get_body_id()
         _, orn = p.getBasePositionAndOrientation(body_id)
         return orn
@@ -1050,8 +1027,6 @@ class URDFObject(StatefulObject):
         :return: position in xyz
         :return: quaternion in xyzw
         """
-        # Note: for fixed objects, this returns the result of the base link,
-        # not the inertial frame (CoM)
         body_id = self.get_body_id()
         pos, orn = p.getBasePositionAndOrientation(body_id)
         return pos, orn
@@ -1082,7 +1057,7 @@ class URDFObject(StatefulObject):
         :param pos: position in xyz
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if self.main_body_is_fixed:
             logging.warning('cannot set_position for fixed objects')
             return
 
@@ -1097,7 +1072,7 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if self.main_body_is_fixed:
             logging.warning('cannot set_orientation for fixed objects')
             return
 
@@ -1112,7 +1087,7 @@ class URDFObject(StatefulObject):
         :param orn: quaternion in xyzw
         """
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if self.main_body_is_fixed:
             logging.warning(
                 'cannot set_position_orientation for fixed objects')
             return
@@ -1122,7 +1097,7 @@ class URDFObject(StatefulObject):
 
     def set_base_link_position_orientation(self, pos, orn):
         body_id = self.get_body_id()
-        if self.is_fixed[self.main_body] or p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+        if self.main_body_is_fixed:
             logging.warning(
                 'cannot set_base_link_position_orientation for fixed objects')
             return
