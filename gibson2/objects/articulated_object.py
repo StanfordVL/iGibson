@@ -353,15 +353,6 @@ class URDFObject(StatefulObject):
             self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
-        # If the joint type is fixed, we round down the joint xyz and rpy to 6 decimal digits.
-        # This is for backwards compatibility with earlier code that used to format these into
-        # strings and reload them as an URDF.
-        if joint_type == 'fixed':
-            joint_xyz_strings = ["{0:f}".format(x) for x in joint_xyz]
-            joint_rpy_strings = ["{0:f}".format(x) for x in joint_rpy]
-            joint_xyz = np.array([float(x) for x in joint_xyz_strings])
-            joint_rpy = np.array([float(x) for x in joint_rpy_strings])
-
         # We save the transformation of the joint to be used when we load the
         # embedded urdf
         self.joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
