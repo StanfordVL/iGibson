@@ -274,19 +274,8 @@ class iGTNTask(TaskNetTask):
                     obj_cat)
             if is_sliceable:
                 categories = [cat for cat in categories if 'half_' not in cat]
-            existing_scene_objs = []
-            for category in categories:
-                existing_scene_objs += self.scene.objects_by_category.get(
-                    category, [])
-            for obj_inst in self.objects[obj_cat]:
-                # This obj category already exists in the scene
-                # Priortize using those objects first before importing new ones
-                if len(existing_scene_objs) > 0:
-                    simulator_obj = np.random.choice(existing_scene_objs)
-                    self.object_scope[obj_inst] = simulator_obj
-                    existing_scene_objs.remove(simulator_obj)
-                    continue
 
+            for obj_inst in self.objects[obj_cat]:
                 category = np.random.choice(categories)
                 # we always select pop, not pop_case
                 if 'pop' in categories:
