@@ -24,9 +24,9 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         # Keep dump data for when we initialize our dirt.
         self.initial_dump = None
 
-    def _initialize(self):
+    def _initialize(self, simulator):
         self.dirt = self.DIRT_CLASS(self.obj, initial_dump=self.initial_dump)
-        self.simulator.import_particle_system(self.dirt)
+        simulator.import_particle_system(self.dirt)
 
     def _get_value(self):
         clean_threshold = FLOOR_CLEAN_THRESHOLD if \
