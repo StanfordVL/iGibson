@@ -48,5 +48,5 @@ class Frozen(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
     def load(self, data):
         return
 
-    def _update(self):
+    def _update(self, simulator):
         self.update_texture()
