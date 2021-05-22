@@ -51,7 +51,12 @@ class PositionalValidationMemoizedObjectStateMixin(MemoizedObjectStateMixin):
     def validate_validation_cache(self, cache, *args, **kwargs):
         # Assume that args contains objects for relative states (and is empty for others).
         for obj, old_pos in zip(itertools.chain((self.obj,), args), cache):
-            new_pos = obj.get_position(accept_trivial_result_if_merged=True)
+            new_pos = obj.states[Pose].get_value()
+
+            # Don't do expensive vector work if the positions are already equal.
+            if new_pos == old_pos:
+                continue
+
             dist = l2_distance(new_pos, old_pos)
             if dist > POSITIONAL_VALIDATION_EPSILON:
                 return False
