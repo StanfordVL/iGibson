@@ -44,6 +44,7 @@ class BehaviorEnv(iGibsonEnv):
         :param render_to_tensor: whether to render directly to pytorch tensors
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
+        self.action_filter = 'navigation'
         super(BehaviorEnv, self).__init__(config_file=config_file,
                                          scene_id=scene_id,
                                          mode=mode,
@@ -58,10 +59,16 @@ class BehaviorEnv(iGibsonEnv):
         """
         Load action space
         """
-        self.action_space = gym.spaces.Box(shape=(28,),
-                                           low=-1.0,
-                                           high=1.0,
-                                           dtype=np.float32)
+        if self.action_filter == 'navigation':
+            self.action_space = gym.spaces.Box(shape=(3,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
+        else:
+            self.action_space = gym.spaces.Box(shape=(28,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
 
     def load_task_setup(self):
         """
@@ -163,8 +170,20 @@ class BehaviorEnv(iGibsonEnv):
         :return: done: whether the episode is terminated
         :return: info: info dictionary with any useful information
         """
+        if self.action_filter == 'navigation':
+            action = action * 0.05
+            new_action = np.zeros((28,))
+            new_action[:2] = action[:2]
+            new_action[5] = action[2]
+        else:
+            new_action = action
+
+        if self.current_step < 2:
+            new_action[19] = 1
+            new_action[27] = 1
+
         self.current_step += 1
-        self.robots[0].update(action)
+        self.robots[0].update(new_action)
 
         state = self.get_state()
         info = {}
@@ -184,7 +203,6 @@ class BehaviorEnv(iGibsonEnv):
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
-
         return state, reward, done, info
 
     @staticmethod
@@ -248,7 +266,6 @@ if __name__ == '__main__':
                      mode=args.mode,
                      action_timestep=1.0 / 10.0,
                      physics_timestep=1.0 / 40.0)
-
     env.simulator.viewer.px = -1.1
     env.simulator.viewer.py = 1.0
     env.simulator.viewer.pz = 5.4
@@ -259,13 +276,9 @@ if __name__ == '__main__':
         start = time.time()
         env.reset()
         for i in range(1000):  # 10 seconds
-            action = np.zeros((28,))
-            if i == 0:
-                action[19] = 1
-                action[27] = 1
-            action[:2] = np.random.uniform(-0.02, 0.02, size=(2,))
+            action = env.action_space.sample()
             state, reward, done, _ = env.step(action)
-            print('reward', reward)
+            print(state['task_obs'], reward)
             if done:
                 break
         print('Episode finished after {} timesteps, took {} seconds.'.format(

@@ -152,6 +152,23 @@ class BehaviorRobot(object):
     def get_position(self):
         return self.parts['body'].get_position()
 
+    def get_rpy(self):
+        return p.getEulerFromQuaternion(self.get_orientation())
+
+    def get_orientation(self):
+        return self.parts['body'].get_orientation()
+
+    def get_linear_velocity(self):
+        (vx, vy, vz), _ = p.getBaseVelocity(self.parts['body'].body_id)
+        return np.array([vx, vy, vz])
+
+    def get_angular_velocity(self):
+        _, (vr, vp, vyaw)  = p.getBaseVelocity(self.parts['body'].body_id)
+        return np.array([vr, vp, vyaw])
+
+    def get_prioception(self):
+        pass
+
     def dump_action(self):
         """
         Returns action used on the current frame.
@@ -1106,3 +1123,4 @@ class BREye(ArticulatedObject):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
+
