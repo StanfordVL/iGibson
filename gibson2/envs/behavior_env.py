@@ -32,7 +32,8 @@ class BehaviorEnv(iGibsonEnv):
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
-        seed = 0,
+        seed=0,
+        action_filter='navigation'
     ):
         """
         :param config_file: config_file path
@@ -44,7 +45,7 @@ class BehaviorEnv(iGibsonEnv):
         :param render_to_tensor: whether to render directly to pytorch tensors
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
-        self.action_filter = 'navigation'
+        self.action_filter = action_filter
         super(BehaviorEnv, self).__init__(config_file=config_file,
                                          scene_id=scene_id,
                                          mode=mode,
@@ -61,6 +62,11 @@ class BehaviorEnv(iGibsonEnv):
         """
         if self.action_filter == 'navigation':
             self.action_space = gym.spaces.Box(shape=(3,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
+        elif self.action_filter == 'mobile_manipulation':
+            self.action_space = gym.spaces.Box(shape=(17,),
                                                low=-1.0,
                                                high=1.0,
                                                dtype=np.float32)
@@ -175,6 +181,17 @@ class BehaviorEnv(iGibsonEnv):
             new_action = np.zeros((28,))
             new_action[:2] = action[:2]
             new_action[5] = action[2]
+        elif self.action_filter == 'mobile_manipulation':
+            self.robots[0].hand_thresh = 0.8
+            action = action * 0.05
+            new_action = np.zeros((28,))
+            # body x,y,yaw
+            new_action[:2] = action[:2]
+            new_action[5] = action[2]
+            # left hand 7d
+            new_action[12:19] = action[3:10]
+            # right hand 7d
+            new_action[20:27] = action[10:17]
         else:
             new_action = action
 
@@ -263,13 +280,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     env = BehaviorEnv(config_file=args.config,
-                     mode=args.mode,
-                     action_timestep=1.0 / 10.0,
-                     physics_timestep=1.0 / 40.0)
-    #env.simulator.viewer.px = -1.1
-    #env.simulator.viewer.py = 1.0
-    #env.simulator.viewer.pz = 5.4
-    #env.simulator.viewer.view_direction = np.array([0.2, -0.2, -0.2])
+                      mode=args.mode,
+                      action_timestep=1.0 / 10.0,
+                      physics_timestep=1.0 / 40.0,
+                      action_filter='mobile_manipulation')
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))
