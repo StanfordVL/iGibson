@@ -15,10 +15,10 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _SLICER_LINK_NAME
 
-    def _initialize(self, simulator):
+    def _initialize(self):
         self.initialize_link_mixin()
 
-    def _update(self, simulator):
+    def _update(self):
         slicer_position = self.get_link_position()
         if slicer_position is None:
             return
@@ -26,7 +26,7 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
         for item in contact_points:
             if item.linkIndexA != self.link_id:
                 continue
-            contact_obj = simulator.scene.objects_by_id[item.bodyUniqueIdB]
+            contact_obj = self.simulator.scene.objects_by_id[item.bodyUniqueIdB]
             if Sliced in contact_obj.states:
                 if not contact_obj.states[Sliced].get_value() and \
                         item.normalForce > contact_obj.states[Sliced].slice_force:
