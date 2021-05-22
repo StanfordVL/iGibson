@@ -266,10 +266,10 @@ if __name__ == '__main__':
                      mode=args.mode,
                      action_timestep=1.0 / 10.0,
                      physics_timestep=1.0 / 40.0)
-    env.simulator.viewer.px = -1.1
-    env.simulator.viewer.py = 1.0
-    env.simulator.viewer.pz = 5.4
-    env.simulator.viewer.view_direction = np.array([0.2, -0.2, -0.2])
+    #env.simulator.viewer.px = -1.1
+    #env.simulator.viewer.py = 1.0
+    #env.simulator.viewer.pz = 5.4
+    #env.simulator.viewer.view_direction = np.array([0.2, -0.2, -0.2])
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))
