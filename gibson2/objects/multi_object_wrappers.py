@@ -28,7 +28,7 @@ class ObjectGrouper(StatefulObject):
 
         def update(self, simulator):
             for obj in self.object_grouper.objects:
-                obj.states[self.state_type].update(simulator)
+                obj.states[self.state_type].update()
 
     class AbsoluteStateAggregator(BaseStateAggregator):
         def get_value(self):
