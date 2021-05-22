@@ -117,16 +117,16 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         # Return True and the heating element position (or None if not required).
         return True, (heating_element_position if not self.requires_inside else None)
 
-    def _initialize(self):
-        super(HeatSourceOrSink, self)._initialize()
+    def _initialize(self, simulator):
+        super(HeatSourceOrSink, self)._initialize(simulator)
         self.initialize_link_mixin()
         self.marker = VisualShape(
             _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
-        self.simulator.import_object(
+        simulator.import_object(
             self.marker, use_pbr=False, use_pbr_mapping=False)
         self.marker.set_position([0, 0, -100])
 
-    def _update(self):
+    def _update(self, simulator):
         self.status, self.position = self._compute_state_and_position()
 
         # Move the marker.
