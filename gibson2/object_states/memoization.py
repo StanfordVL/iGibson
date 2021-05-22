@@ -1,6 +1,7 @@
 import itertools
 from abc import ABCMeta, abstractmethod
 
+import numpy as np
 from six import with_metaclass
 
 from gibson2.object_states.pose import Pose
@@ -45,13 +46,18 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
 class PositionalValidationMemoizedObjectStateMixin(MemoizedObjectStateMixin):
     def get_validation_cache(self, *args, **kwargs):
         # Assume that args contains objects for relative states (and is empty for others).
-        return tuple(obj.get_position()
+        return tuple(obj.states[Pose].get_value()[0]
                      for obj in itertools.chain((self.obj,), args))
 
     def validate_validation_cache(self, cache, *args, **kwargs):
         # Assume that args contains objects for relative states (and is empty for others).
         for obj, old_pos in zip(itertools.chain((self.obj,), args), cache):
-            new_pos = obj.get_position()
+            new_pos, _ = obj.states[Pose].get_value()
+
+            # Don't do expensive vector work if the positions are already equal.
+            if np.all(np.asarray(new_pos) == np.asarray(old_pos)):
+                continue
+
             dist = l2_distance(new_pos, old_pos)
             if dist > POSITIONAL_VALIDATION_EPSILON:
                 return False
