@@ -3,8 +3,7 @@ from collections import namedtuple
 import numpy as np
 import pybullet as p
 from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from gibson2.object_states.aabb import AABB
-from gibson2.external.pybullet_tools.utils import get_aabb_center
+from gibson2.object_states.pose import Pose
 
 _MAX_ITERATIONS = 10
 _MAX_DISTANCE = 5.0
@@ -77,7 +76,7 @@ def compute_adjacencies(obj, axes):
     # Prepare this object's info for ray casting.
     # Use AABB center instead of position because we cannot get valid position
     # for fixed objects if fixed links are merged.
-    object_position = get_aabb_center(obj.states[AABB].get_value())
+    object_position, _ = obj.states[Pose].get_value()
     body_id = obj.get_body_id()
 
     # Cast rays repeatedly until the max number of casting is reached
@@ -141,7 +140,7 @@ class VerticalAdjacency(CachingEnabledObjectState):
 
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [AABB]
+        return CachingEnabledObjectState.get_dependencies() + [Pose]
 
     # Nothing needs to be done to save/load adjacency since it will happen due to pose caching.
     def _dump(self):
@@ -189,7 +188,7 @@ class HorizontalAdjacency(CachingEnabledObjectState):
 
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [AABB]
+        return CachingEnabledObjectState.get_dependencies() + [Pose]
 
     # Nothing needs to be done to save/load adjacency since it will happen due to pose caching.
     def _dump(self):
