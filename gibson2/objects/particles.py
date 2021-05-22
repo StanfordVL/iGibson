@@ -284,8 +284,8 @@ class AttachedParticleSystem(ParticleSystem):
 
         # Compute the offset for this particle.
         if link_id == -1:
-            attachment_source_pos = self.parent_obj.get_position(accept_trivial_result_if_merged=True)
-            attachment_source_orn = self.parent_obj.get_orientation(accept_trivial_result_if_merged=True)
+            attachment_source_pos = self.parent_obj.get_position()
+            attachment_source_orn = self.parent_obj.get_orientation()
         else:
             link_state = utils.get_link_state(
                 self.parent_obj.get_body_id(), link_id)
@@ -325,8 +325,8 @@ class AttachedParticleSystem(ParticleSystem):
                 continue
 
             if link_id == -1:
-                attachment_source_pos = self.parent_obj.get_position(accept_trivial_result_if_merged=True)
-                attachment_source_orn = self.parent_obj.get_orientation(accept_trivial_result_if_merged=True)
+                attachment_source_pos = self.parent_obj.get_position()
+                attachment_source_orn = self.parent_obj.get_orientation()
             else:
                 link_state = utils.get_link_state(
                     self.parent_obj.get_body_id(), link_id)
