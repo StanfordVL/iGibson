@@ -37,7 +37,7 @@ class Burnt(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
     def _get_value(self):
         return self.obj.states[MaxTemperature].get_value() >= self.burn_temperature
 
-    def _update(self, simulator):
+    def _update(self):
         self.update_texture()
 
     # Nothing needs to be done to save/load Burnt since it will happen due to

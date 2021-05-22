@@ -29,8 +29,8 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
     def get_state_link_name():
         return _TOGGLE_LINK_NAME
 
-    def _initialize(self, simulator):
-        super(ToggledOn, self)._initialize(simulator)
+    def _initialize(self):
+        super(ToggledOn, self)._initialize()
         self.initialize_link_mixin()
 
         if self.link_id is not None:
@@ -40,19 +40,19 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             self.visual_marker_off = VisualMarker(
                 rgba_color=[1, 0, 0, 0.5],
                 radius=_TOGGLE_BUTTON_RADIUS)
-            simulator.import_object(self.visual_marker_on)
+            self.simulator.import_object(self.visual_marker_on)
             self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
-            simulator.import_object(self.visual_marker_off)
+            self.simulator.import_object(self.visual_marker_off)
             self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
 
-    def _update(self, simulator):
+    def _update(self):
         button_position_on_object = self.get_link_position()
         if button_position_on_object is None:
             return
 
         hand_in_marker = False
         # detect marker and hand interaction
-        for robot in simulator.robots:
+        for robot in self.simulator.robots:
             for part_name, part in robot.parts.items():
                 if part_name in ["left_hand", "right_hand"]:
                     if (np.linalg.norm(np.array(part.get_position()) - np.array(button_position_on_object))
@@ -79,8 +79,8 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
         # swap two types of markers when toggled
         # when hud overlay is on, we show the toggle buttons, otherwise the buttons are hidden
-        if simulator.can_access_vr_context:
-            hud_overlay_show_state = simulator.get_hud_show_state()
+        if self.simulator.can_access_vr_context:
+            hud_overlay_show_state = self.simulator.get_hud_show_state()
         else:
             hud_overlay_show_state = False
 

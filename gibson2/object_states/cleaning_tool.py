@@ -20,12 +20,12 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _LINK_NAME
 
-    def _initialize(self, simulator):
+    def _initialize(self):
         self.initialize_link_mixin()
 
-    def _update(self, simulator):
+    def _update(self):
         # Check if this tool interacts with any dirt particles.
-        for particle_system in simulator.particle_systems:
+        for particle_system in self.simulator.particle_systems:
             # We don't check for inheritance, just the leaf types.
             # Faster and doesn't need access to the private type _Dirt.
             particle_type = type(particle_system)
