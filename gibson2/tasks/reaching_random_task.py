@@ -23,7 +23,7 @@ class ReachingRandomTask(PointNavRandomTask):
         self.termination_conditions[-1] = ReachingGoal(self.config)
         assert isinstance(self.reward_functions[-1], PointGoalReward)
         self.reward_functions[-1] = ReachingGoalReward(self.config)
-
+        self.task_obs_dim = 8
     def get_l2_potential(self, env):
         """
         L2 distance to the goal
@@ -52,7 +52,7 @@ class ReachingRandomTask(PointNavRandomTask):
         """
         initial_pos, initial_orn, target_pos = \
             super(ReachingRandomTask, self).sample_initial_pose_and_target_pos(env)
-        target_pos += np.random.uniform(self.target_height_range[0],
+        target_pos[2] += np.random.uniform(self.target_height_range[0],
                                         self.target_height_range[1])
         return initial_pos, initial_orn, target_pos
 

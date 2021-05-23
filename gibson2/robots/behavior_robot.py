@@ -85,7 +85,7 @@ class BehaviorRobot(object):
         # Hands
         self.hand_lin_vel = 0.3 
         self.hand_ang_vel = 1
-        self.hand_thresh = 1.2 # distance threshold in meters
+        self.hand_thresh = 0.6 # distance threshold in meters
 
         # Eye
         self.head_lin_vel = 0.3
@@ -165,6 +165,9 @@ class BehaviorRobot(object):
     def get_angular_velocity(self):
         _, (vr, vp, vyaw)  = p.getBaseVelocity(self.parts['body'].body_id)
         return np.array([vr, vp, vyaw])
+
+    def get_end_effector_position(self):
+        return self.parts['right_hand'].get_position()
 
     def get_prioception(self):
         pass
@@ -287,8 +290,8 @@ class BRBody(ArticulatedObject):
         self.body_ids = [body_id]
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
-        self.mass = p.getDynamicsInfo(body_id, -1)[0]
-
+        self.mass = 15#p.getDynamicsInfo(body_id, -1)[0]
+        p.changeDynamics(body_id, -1, mass=self.mass)
         return body_id
 
     def set_position_orientation_unwrapped(self, pos, orn):
@@ -331,7 +334,7 @@ class BRBody(ArticulatedObject):
                     p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
     
     def move(self, pos, orn):
-        p.changeConstraint(self.movement_cid, pos, orn, maxForce=50)
+        p.changeConstraint(self.movement_cid, pos, orn, maxForce=7500)
 
     def clip_delta_pos_orn(self, delta_pos, delta_orn):
         """

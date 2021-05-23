@@ -14,7 +14,7 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: point_nav_random
+task: reaching_random
 task_id: 1
 online_sampling: True
 target_dist_min: 1.0
@@ -41,7 +41,7 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [rgb, depth, task_obs]
+output: [task_obs]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
