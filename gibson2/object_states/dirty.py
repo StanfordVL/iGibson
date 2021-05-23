@@ -4,7 +4,7 @@ from gibson2.object_states.object_state_base import BooleanState
 from gibson2.objects.particles import Dust, Stain
 
 CLEAN_THRESHOLD = 0.5
-FLOOR_CLEAN_THRESHOLD = 0.25
+FLOOR_CLEAN_THRESHOLD = 0.75
 MIN_PARTICLES_FOR_SAMPLING_SUCCESS = 5
 
 
