@@ -6,6 +6,7 @@ import pybullet as p
 
 # TODO: propagate dusty/stained to object parts
 _DEFAULT_SLICE_FORCE = 10
+_STASH_POSITION = [-100, -100, -100]
 
 
 class Sliced(AbsoluteObjectState, BooleanState):
@@ -42,7 +43,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
             p.invertTransform(inertial_pos, inertial_orn)
         pos, orn = p.multiplyTransforms(
             pos, orn, inv_inertial_pos, inv_inertial_orn)
-        self.obj.set_position(self.obj.initial_pos)
+        self.obj.set_position(_STASH_POSITION)
 
         # force_wakeup is needed to properly update the self.obj pose in the renderer
         self.obj.force_wakeup()
