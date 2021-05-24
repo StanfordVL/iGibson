@@ -267,9 +267,18 @@ def sample_cuboid_on_object(obj,
             # Fit a plane to the points.
             plane_centroid, plane_normal = fit_plane(hit_positions)
 
-            # Make sure the plane normal faces the opposite direction as our cast ray.
-            facing_multiplier = np.sign(plane_normal[axis])  # The multiplier needed to make this face "up" in our axis
-            facing_multiplier *= 1 if is_top else -1  # We need it to face "down" (the opposite direction), if !is_top
+            # The fit_plane normal can be facing either direction on the normal axis, but we want it to face away from
+            # the object for purposes of normal checking and padding. To do this:
+            # First, we get the multiplier we'd need to multiply by to get this normal to face in the positive
+            # direction of our axis. This is simply the sign of our vector's component in our axis.
+            facing_multiplier = np.sign(plane_normal[axis])
+
+            # Then we invert the multiplier based on whether we want it to face in the positive or negative direction
+            # of the axis. This is determined by whether or not is_top is True, e.g. the sampler intended this as a
+            # positive-facing or negative-facing sample.
+            facing_multiplier *= 1 if is_top else -1
+
+            # Finally, we multiply the entire normal vector by the multiplier to make it face the correct direction.
             plane_normal *= facing_multiplier
 
             # Check that the plane normal is similar to the hit normal
