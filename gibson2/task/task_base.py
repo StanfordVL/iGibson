@@ -315,7 +315,7 @@ class iGTNTask(TaskNetTask):
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
                     category,
-                    len(self.scene.objects_by_category.get(category, [])))
+                    len(self.scene.objects_by_name))
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
