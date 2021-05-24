@@ -1,10 +1,12 @@
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
+from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from gibson2.objects.visual_marker import VisualMarker
 import numpy as np
 import pybullet as p
 from gibson2.utils.constants import PyBulletSleepState
+from gibson2.utils.utils import brighten_texture
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
@@ -12,7 +14,7 @@ _TOGGLE_BUTTON_RADIUS = 0.05
 _TOGGLE_MARKER_OFF_POSITION = [0, 0, -100]
 
 
-class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
+class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureChangeStateMixin):
     def __init__(self, obj):
         super(ToggledOn, self).__init__(obj)
         self.value = False
@@ -109,6 +111,14 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
         for instance in hidden_marker.renderer_instances:
             instance.hidden = True
+
+        self.update_texture()
+
+    @staticmethod
+    def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
+        # make the texture 1.5x brighter
+        brighten_texture(diffuse_tex_filename,
+                          diffuse_tex_filename_transformed, brightness=1.5)
 
     # For this state, we simply store its value and the hand-in-marker steps.
     def _dump(self):
