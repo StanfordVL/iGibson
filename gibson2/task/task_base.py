@@ -272,28 +272,22 @@ class iGTNTask(TaskNetTask):
             categories = \
                 self.object_taxonomy.get_subtree_igibson_categories(
                     obj_cat)
+
+            # TODO: temporary hack
+            remove_categories = [
+                'pop_case',  # too large
+                'jewel',  # too small
+                'ring',  # too small
+            ]
+            for remove_category in remove_categories:
+                if remove_category in categories:
+                    categories.remove(remove_category)
+
             if is_sliceable:
                 categories = [cat for cat in categories if 'half_' not in cat]
-            existing_scene_objs = []
-            for category in categories:
-                existing_scene_objs += self.scene.objects_by_category.get(
-                    category, [])
-            for obj_inst in self.objects[obj_cat]:
-                # This obj category already exists in the scene
-                # Priortize using those objects first before importing new ones
-                if len(existing_scene_objs) > 0:
-                    simulator_obj = np.random.choice(existing_scene_objs)
-                    self.object_scope[obj_inst] = simulator_obj
-                    existing_scene_objs.remove(simulator_obj)
-                    continue
 
+            for obj_inst in self.objects[obj_cat]:
                 category = np.random.choice(categories)
-                # we always select pop, not pop_case
-                if 'pop' in categories:
-                    category = 'pop'
-                # # cantaloup is a suitable category for melon.n.01
-                # if 'cantaloup' in categories:
-                #     category = 'cantaloup'
                 category_path = get_ig_category_path(category)
                 model_choices = os.listdir(category_path)
 
@@ -312,17 +306,16 @@ class iGTNTask(TaskNetTask):
                         return False, feedback
 
                 model = np.random.choice(model_choices)
-                # we can ONLY put stuff into this specific bag model
-                if category == 'bag':
-                    model = 'bag_001'
+
                 # for "collecting aluminum cans", we need pop cans (not bottles) 
                 if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
                     model = np.random.choice([str(i) for i in range(40, 46)])
+
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
                     category,
-                    len(self.scene.objects_by_category.get(category, [])))
+                    len(self.scene.objects_by_name))
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
