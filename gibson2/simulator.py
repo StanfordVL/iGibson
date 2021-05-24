@@ -585,6 +585,7 @@ class Simulator:
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
+                filename = filename.replace('//', '/') # TODO: find a better way to sanitize path
                 overwrite_material = None
                 if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
                     overwrite_material = visual_mesh_to_material[filename]
