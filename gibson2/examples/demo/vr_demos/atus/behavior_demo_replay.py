@@ -5,6 +5,8 @@ Main BEHAVIOR demo replay entrypoint
 import argparse
 import os
 import datetime
+import pdb
+
 import h5py
 import pprint
 
@@ -114,7 +116,9 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
     # VR system settings
     s = Simulator(
-          mode='headless' if no_vr else 'vr',
+          mode='gui' if no_vr else 'vr',
+          image_width=1920,
+          image_height=720,
           physics_timestep = physics_timestep,
           render_timestep = render_timestep,
           rendering_settings=vr_rendering_settings,
@@ -167,7 +171,8 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     gaze_max_distance = 100.0
     task_done = False
     satisfied_predicates_cached = {}
-    while log_reader.get_data_left_to_read():
+    i = 0
+    while i < 1000 and log_reader.get_data_left_to_read():
         if highlight_gaze:
             eye_data = log_reader.get_vr_data().query('eye_data')
             if eye_data[0]:
@@ -203,6 +208,8 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
         if not disable_save:
             log_writer.process_frame()
+
+        i += 1
 
     print("Demo was succesfully completed: ", task_done)
 
