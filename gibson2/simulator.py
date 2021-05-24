@@ -22,6 +22,7 @@ from gibson2.utils.assets_utils import get_ig_avg_category_specs
 from gibson2.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
 from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset, calc_z_rot_from_right
 
+import ctypes
 import pybullet as p
 import gibson2
 import json
@@ -89,6 +90,10 @@ class Simulator:
             self.mode = 'iggui'  # for mac os disable pybullet rendering
             logging.warn('Rendering both iggui and pbgui is not supported on mac, choose either pbgui or '
                          'iggui. Default to iggui.')
+        if plt == 'Windows' and self.mode in ['vr']:
+            # By default, windows does not provide ms level timing accuracy
+            winmm = ctypes.WinDLL('winmm')
+            winmm.timeBeginPeriod(1)
 
         self.use_pb_renderer = False
         self.use_ig_renderer = False
