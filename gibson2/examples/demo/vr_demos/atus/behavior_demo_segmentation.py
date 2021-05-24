@@ -3,6 +3,7 @@ import itertools
 from collections import namedtuple
 from enum import Enum
 
+import pyinstrument
 import tasknet
 
 from gibson2 import object_states
@@ -13,9 +14,12 @@ from gibson2.object_states.object_state_base import BooleanState, AbsoluteObject
 StateRecord = namedtuple("StateRecord", ["state_name", "objects", "value"])
 DiffEntry = namedtuple("DiffEntry", ["frame_count", "state_records"])
 
+
 class SegmentationObjectSelection(Enum):
     ALL_OBJECTS = 1
     TASK_RELEVANT_OBJECTS = 2
+
+prof = pyinstrument.Profiler()
 
 
 def process_states(objects, state_classes):
@@ -70,6 +74,9 @@ class DemoSegmentationProcessor(object):
         self.filter_msg = None
 
     def step_callback(self, igtn_task):
+        print("Step %d" % igtn_task.simulator.frame_count)
+        prof.start()
+
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
             objects = list(igtn_task.object_scope.values())
         elif self.object_selection == SegmentationObjectSelection.ALL_OBJECTS:
@@ -85,6 +92,7 @@ class DemoSegmentationProcessor(object):
                 self.diffs.append(DiffEntry(igtn_task.simulator.frame_count, diff))
 
         self.last_state = processed_state
+        prof.stop()
 
     def filter_diffs(self, objs, filter_msg=""):
         """Filter the diffs so that only objects in the given list are monitored."""
@@ -202,6 +210,9 @@ def main():
     for segmentation_processor in segmentation_processors:
         segmentation_processor.print()
 
+    html = prof.output_html()
+    with open('segmentation_profile.html', 'w') as f:
+        f.write(html)
 
 if __name__ == "__main__":
     main()
