@@ -573,13 +573,11 @@ class Stain(_Dirt):
                 if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
                 get_aabb_extent(parent_obj.states[AABB].get_value()))
 
-            # For the lower limit, we use the size of the shortest side of the AABB.
             bounding_box_lower_limit_from_aabb = self._BOUNDING_BOX_LOWER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
             bounding_box_lower_limit = np.clip(
                 bounding_box_lower_limit_from_aabb,
                 self._BOUNDING_BOX_LOWER_LIMIT_MIN, self._BOUNDING_BOX_LOWER_LIMIT_MAX)
 
-            # For the upper limit, we check the size of the longest side of the AABB.
             bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
             bounding_box_upper_limit = np.clip(
                 bounding_box_upper_limit_from_aabb,
