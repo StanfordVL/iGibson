@@ -1006,7 +1006,10 @@ class Simulator:
         pre_sleep_dur = outside_step_dur + physics_dur + non_physics_dur + render_dur
         sleep_start_time = time.perf_counter()
         if pre_sleep_dur < self.non_block_frame_time:
-            sleep(self.non_block_frame_time - pre_sleep_dur)
+            if self.renderer.platform == 'Windows':
+                self.renderer.r.sleep_for((self.non_block_frame_time - pre_sleep_dur) * 1e6)
+            else:
+                sleep(self.non_block_frame_time - pre_sleep_dur)
         sleep_dur = time.perf_counter() - sleep_start_time
 
         # Update VR compositor and VR data
