@@ -234,6 +234,9 @@ PYBIND11_MODULE(EGLRendererContext, m) {
         pymodule.def("map_tensor_float", &EGLRendererContext::map_tensor_float);
 #endif
     // class MeshRenderer
+#ifdef WIN32
+		pymodule.def("sleep_for", &EGLRendererContext::sleep_for, "Sleep for specified microsecond duration");
+#endif
     pymodule.def("render_meshrenderer_pre", &EGLRendererContext::render_meshrenderer_pre,
                  "pre-executed functions in MeshRenderer.render");
     pymodule.def("render_meshrenderer_post", &EGLRendererContext::render_meshrenderer_post,

@@ -102,6 +102,8 @@ public:
     void map_tensor_float(GLuint tid, int width, int height, std::size_t data);
 #endif
 
+	void sleep_for(unsigned int usec);
+
     void render_meshrenderer_pre(bool msaa, GLuint fb1, GLuint fb2);
 
     void render_meshrenderer_post();

@@ -801,6 +801,9 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("render_companion_window_from_buffer", &VRRendererContext::render_companion_window_from_buffer);
 
 	// class MeshRenderer
+#ifdef WIN32
+	pymodule.def("sleep_for", &VRRendererContext::sleep_for, "Sleep for specified microsecond duration");
+#endif
 	pymodule.def("render_meshrenderer_pre", &VRRendererContext::render_meshrenderer_pre,
 		"pre-executed functions in MeshRenderer.render");
 	pymodule.def("render_meshrenderer_post", &VRRendererContext::render_meshrenderer_post,

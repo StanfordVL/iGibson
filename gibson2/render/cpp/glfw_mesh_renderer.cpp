@@ -113,6 +113,9 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
 	pymodule.def("render_companion_window_from_buffer", &GLFWRendererContext::render_companion_window_from_buffer);
 
     // class MeshRenderer
+#ifdef WIN32
+	pymodule.def("sleep_for", &GLFWRendererContext::sleep_for, "Sleep for specified microsecond duration");
+#endif
     pymodule.def("render_meshrenderer_pre", &GLFWRendererContext::render_meshrenderer_pre,
                  "pre-executed functions in MeshRenderer.render");
     pymodule.def("render_meshrenderer_post", &GLFWRendererContext::render_meshrenderer_post,

@@ -8,6 +8,10 @@
 #endif
 #include <fstream>
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #ifdef USE_GLAD
 
 #include  <glad/egl.h>
@@ -185,6 +189,19 @@ void MeshRendererContext::map_tensor_float(GLuint tid, int width, int height, st
    {
      std::cout << "WARN: cudaGraphicsUnmapResources failed: " << err << std::endl;
    }
+}
+#endif
+
+#ifdef WIN32
+void MeshRendererContext::sleep_for(unsigned int usec) {
+	HANDLE timer;
+	LARGE_INTEGER ft;
+
+	ft.QuadPart = -(10 * (__int64)usec);
+	timer = CreateWaitableTimer(NULL, TRUE, NULL);
+	SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+	WaitForSingleObject(timer, INFINITE);
+	CloseHandle(timer);
 }
 #endif
 
