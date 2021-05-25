@@ -197,6 +197,15 @@ class BehaviorEnv(iGibsonEnv):
         self.load_action_space()
         self.load_miscellaneous_variables()
 
+    def load_observation_space(self):
+        super(BehaviorEnv, self).load_observation_space()
+        if 'proprioception' in self.output:
+            proprioception_dim = self.robots[0].get_proprioception_dim()
+            self.observation_space.spaces['proprioception'] = gym.spaces.Box(low=-100.0,
+                                                       high=100.0,
+                                                       shape=(proprioception_dim,))
+            self.observation_space = gym.spaces.Dict(self.observation_space.spaces)
+
     def step(self, action):
         """
         Apply robot's action.
@@ -279,6 +288,10 @@ class BehaviorEnv(iGibsonEnv):
                 state[modality] = scan_obs[modality]
         if 'bump' in self.sensors:
             state['bump'] = self.sensors['bump'].get_obs(self)
+
+        if 'proprioception' in self.output:
+            state['proprioception'] = self.robots[0].get_proprioception()
+
 
         return state
     def reset(self, resample_objects=False):

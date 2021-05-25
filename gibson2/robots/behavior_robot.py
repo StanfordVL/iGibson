@@ -27,7 +27,7 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_shape import VisualShape
 from gibson2.external.pybullet_tools.utils import set_all_collisions
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz
-
+from collections import OrderedDict
 
 class BehaviorRobot(object):
     """
@@ -243,6 +243,43 @@ class BehaviorRobot(object):
 
     def robot_specific_reset(self):
         pass
+
+    def get_proprioception_dim(self):
+        return 14 * 3 + 2
+
+    def get_proprioception(self):
+        state = OrderedDict()
+        state['body_position'] = self.parts['body'].get_position()
+        state['body_orientation'] = p.getEulerFromQuaternion(self.parts['body'].get_orientation())
+        state['left_hand_position'] = self.parts['left_hand'].get_position()
+        state['left_hand_orientation'] = p.getEulerFromQuaternion(self.parts['left_hand'].get_orientation())
+        state['right_hand_position'] = self.parts['right_hand'].get_position()
+        state['right_hand_orientation'] = p.getEulerFromQuaternion(self.parts['right_hand'].get_orientation())
+        state['eye_position'] = self.parts['eye'].get_position()
+        state['eye_orientation'] = p.getEulerFromQuaternion(self.parts['eye'].get_orientation())
+        state['left_hand_position_local'] = self.parts['left_hand'].local_pos
+        state['left_hand_orientation_local'] = p.getEulerFromQuaternion(self.parts['left_hand'].local_orn)
+        state['right_hand_position_local'] = self.parts['right_hand'].local_pos
+        state['right_hand_orientation_local'] = p.getEulerFromQuaternion(self.parts['right_hand'].local_orn)
+        state['eye_position_local'] = self.parts['eye'].local_pos
+        state['eye_orientation_local'] = p.getEulerFromQuaternion(self.parts['eye'].local_orn)
+        state['left_hand_trig_frac'] = self.parts['left_hand'].trig_frac
+        state['right_hand_trig_frac'] = self.parts['right_hand'].trig_frac
+
+        state_list = []
+        for k,v in state.items():
+            if isinstance(v, list):
+                state_list.extend(v)
+            elif isinstance(v, tuple):
+                state_list.extend(list(v))
+            elif isinstance(v, np.ndarray):
+                state_list.extend(list(v))
+            elif isinstance(v, (float,int)):
+                state_list.append(v)
+            else:
+                raise ValueError('cannot serialize some proprioception states')
+
+        return state_list
 
 class BRBody(ArticulatedObject):
     """
@@ -611,8 +648,7 @@ class BRHandBase(ArticulatedObject):
             self.prev_ghost_hand_hidden_state = False
 
     def reset(self):
-        pass
-
+        raise NotImplementedError
 
 class BRHand(BRHandBase):
     """
@@ -679,7 +715,7 @@ class BRHand(BRHandBase):
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
         super(BRHand, self).activate_constraints()
         
-    def reset_hand(self):
+    def reset(self):
         """
         Resets joint positions of the hand and releases assisted grasping.
         """
