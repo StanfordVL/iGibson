@@ -208,8 +208,8 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
         log_writer.end_log_session()
         with h5py.File(vr_log_path) as original_file, h5py.File(replay_path) as new_file:
             is_deterministic = True
-            for obj in original_file['physics_data']:
-                for attribute in original_file['physics_data'][obj]:
+            for obj in new_file['physics_data']:
+                for attribute in new_file['physics_data'][obj]:
                     is_close = np.isclose(original_file['physics_data'][obj][attribute], new_file['physics_data'][obj][attribute]).all()
                     is_deterministic = is_deterministic and is_close
                     if not is_close:
