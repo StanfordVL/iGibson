@@ -26,7 +26,7 @@ class ObjectGrouper(StatefulObject):
             self.state_type = state_type
             self.object_grouper = object_grouper
 
-        def update(self, simulator):
+        def update(self):
             for obj in self.object_grouper.objects:
                 obj.states[self.state_type].update()
 
