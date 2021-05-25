@@ -652,6 +652,7 @@ class BRHand(BRHandBase):
         self.finger_tip_link_idxs = [1, 2, 3, 4, 5]
         self.thumb_link_idx = 4
         self.non_thumb_fingers = [1, 2, 3, 5]
+        self.force_release = False
 
         # Local transforms of AG raycast start/endpoints
         # Need to flip y offsets for left hand, since it has -1 scale along the y axis
@@ -677,6 +678,17 @@ class BRHand(BRHandBase):
             raise ValueError
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
         super(BRHand, self).activate_constraints()
+        
+    def reset_hand(self):
+        """
+        Resets joint positions of the hand and releases assisted grasping.
+        """
+        for joint_index in range(p.getNumJoints(self.body_id)):
+            p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
+            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=0,
+                                    targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
+            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
+        self.force_release = True
 
     def set_hand_coll_filter(self, target_id, enable):
         """
@@ -894,7 +906,10 @@ class BRHand(BRHandBase):
                 self.gen_freeze_vals()
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac <= self.trig_frac_thresh or constraint_violation > self.violation_threshold:
+            if (self.force_release or
+                (new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac <= self.trig_frac_thresh)
+                or constraint_violation > self.violation_threshold):
+                self.force_release = False
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
                 self.should_execute_release = True
