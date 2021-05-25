@@ -9,19 +9,21 @@ tasknet.set_backend("iGibson")
 
 def test_determinism_with_new_demo():
     # First record a random demo.
-    with tempfile.NamedTemporaryFile() as demo_file:
+    with tempfile.TemporaryDirectory() as directory:
+        demo_file = os.path.join(directory, "demo.hdf5")
         print("Saving demo.")
         behavior_demo_collection.collect_demo(
-            "cleaning_out_drawers", 0, "Benevolence_1_int", vr_log_path=demo_file.name, no_vr=True, max_steps=400)
+            "cleaning_out_drawers", 0, "Benevolence_1_int", vr_log_path=demo_file, no_vr=True, max_steps=400)
 
         # Then replay the random demo.
         print("Replaying demo.")
-        with tempfile.NamedTemporaryFile() as replay_file:
-            replay_determinism = behavior_demo_replay.replay_demo(
-                demo_file.name, vr_replay_log_path=replay_file.name, no_vr=True)
+        replay_file = os.path.join(directory, "replay.hdf5")
+        replay_determinism = behavior_demo_replay.replay_demo(
+            demo_file, vr_replay_log_path=replay_file, no_vr=True)
 
-    # Assert for the completion state.
-    assert replay_determinism, "Replay was not deterministic."
+        # Assert for the completion state.
+        assert replay_determinism, "Replay was not deterministic."
+
 
 def test_determinism_with_existing_vr_demo():
     DEMO_FILE = os.path.join(gibson2.ig_dataset_path, 'tests',
