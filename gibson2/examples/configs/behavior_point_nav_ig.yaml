@@ -1,6 +1,6 @@
 # scene
-scene: empty
-scene_id: Beechwood_1_int #Can also be random
+scene: igibson
+scene_id: Rs_int #Can also be random
 clutter: false
 build_graph: true
 load_texture: true
@@ -15,7 +15,7 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: reaching_random
+task: point_nav_random
 task_id: 1
 online_sampling: True
 target_dist_min: 1.0
@@ -47,8 +47,8 @@ output: [task_obs, proprioception]
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 32
-image_height: 32
+image_width: 128
+image_height: 128
 vertical_fov: 90
 # depth
 depth_low: 0.35

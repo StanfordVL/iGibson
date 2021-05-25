@@ -1,6 +1,6 @@
 # scene
-scene: empty
-scene_id: Beechwood_1_int #Can also be random
+scene: igibson
+scene_id: Rs_int #Can also be random
 clutter: false
 build_graph: true
 load_texture: true
