@@ -234,7 +234,6 @@ class Simulator:
         if self.vr_settings.reset_sim:
             p.resetSimulation()
             p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-        if self.mode == 'vr':
             p.setPhysicsEngineParameter(numSolverIterations=100)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
