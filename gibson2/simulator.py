@@ -210,16 +210,19 @@ class Simulator:
                                             height=self.image_height,
                                             vertical_fov=self.vertical_fov,
                                             device_idx=self.device_idx,
-                                            rendering_settings=self.rendering_settings)
+                                            rendering_settings=self.rendering_settings,
+                                            simulator=self)
         elif self.use_vr_renderer:
             self.renderer = MeshRendererVR(
-                rendering_settings=self.rendering_settings, vr_settings=self.vr_settings)
+                rendering_settings=self.rendering_settings, vr_settings=self.vr_settings,
+                simulator=self)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
-                                         rendering_settings=self.rendering_settings)
+                                         rendering_settings=self.rendering_settings,
+                                         simulator=self)
 
         # print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
