@@ -27,7 +27,7 @@ def test_determinism_with_new_demo():
 
 def test_determinism_with_existing_vr_demo():
     DEMO_FILE = os.path.join(gibson2.ig_dataset_path, 'tests',
-                             'clearing_the_table_after_dinner_0_Beechwood_0_int_2021-05-19_23-26-26.hdf5')
+                             'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
     # Replay the canonical demo.
     with tempfile.NamedTemporaryFile() as replay_file:
         replay_determinism = behavior_demo_replay.replay_demo(
