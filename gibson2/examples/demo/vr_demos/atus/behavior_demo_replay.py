@@ -206,17 +206,15 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     is_deterministic = False
     if not disable_save:
         log_writer.end_log_session()
-        original_file = h5py.File(vr_log_path)
-        new_file = h5py.File(replay_path)
-        is_deterministic = True
-        for obj in original_file['physics_data']:
-            for attribute in original_file['physics_data'][obj]:
-                is_close = np.isclose(original_file['physics_data'][obj][attribute], new_file['physics_data'][obj][attribute]).all()
-                is_deterministic = is_deterministic and is_close
-                if not is_close:
-                    print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
-                    return False
-            
+        with h5py.File(vr_log_path) as original_file, h5py.File(replay_path) as new_file:
+            is_deterministic = True
+            for obj in original_file['physics_data']:
+                for attribute in original_file['physics_data'][obj]:
+                    is_close = np.isclose(original_file['physics_data'][obj][attribute], new_file['physics_data'][obj][attribute]).all()
+                    is_deterministic = is_deterministic and is_close
+                    if not is_close:
+                        print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
+
         print("Demo was deterministic: ", is_deterministic)
     s.disconnect()
 
