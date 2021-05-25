@@ -4,6 +4,7 @@ from gibson2.render.mesh_renderer import tinyobjloader
 import gibson2
 import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
 from gibson2.utils.constants import AVAILABLE_MODALITIES, ShadowPass
@@ -29,14 +30,17 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
 
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, rendering_settings=MeshRendererSettings()):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0,
+                 rendering_settings=MeshRendererSettings(), simulator=None):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
         :param render_settings: rendering settings
+        :param simulator: Simulator object.
         """
+        self.simulator = simulator
         self.rendering_settings = rendering_settings
         self.shaderProgram = None
         self.windowShaderProgram = None
@@ -1154,6 +1158,13 @@ class MeshRenderer(object):
                     hidden_instances.append(instance)
                 for item in self.render(modes=modes, hidden=hidden_instances):
                     frames.append(item)
+
+        # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface, it is not
+        # added using import_robot and needs to be found & handled separately.
+        behavior_robots = (robot for robot in self.simulator.robots if isinstance(robot, BehaviorRobot))
+        for robot in behavior_robots:
+            frames.extend(robot.render_camera_image(modes=modes))
+
         return frames
 
     def optimize_vertex_and_texture(self):

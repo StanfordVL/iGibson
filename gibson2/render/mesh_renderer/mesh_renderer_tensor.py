@@ -19,12 +19,14 @@ try:
                      height=512,
                      vertical_fov=90,
                      device_idx=0,
-                     rendering_settings=MeshRendererSettings()):
+                     rendering_settings=MeshRendererSettings(),
+                     simulator=None):
             super(MeshRendererG2G, self).__init__(width,
                                                   height,
                                                   vertical_fov,
                                                   device_idx,
-                                                  rendering_settings)
+                                                  rendering_settings,
+                                                  simulator)
             self.cuda_idx = get_cuda_device(self.device_minor)
             logging.info(
                 "Using cuda device {} for pytorch".format(self.cuda_idx))
