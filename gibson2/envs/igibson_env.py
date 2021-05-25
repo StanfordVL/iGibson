@@ -382,10 +382,9 @@ class iGibsonEnv(BaseEnv):
         :return: validity
         """
 
-        if isinstance(obj, BehaviorRobot):
-            return False
 
         is_robot = isinstance(obj, BaseRobot)
+        is_behavior_robot = isinstance(obj, BehaviorRobot)
 
         self.set_pos_orn_with_z_offset(obj, pos, orn)
 
@@ -393,8 +392,21 @@ class iGibsonEnv(BaseEnv):
             obj.robot_specific_reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if is_robot else obj.body_id
-        has_collision = self.check_collision(body_id)
+        has_collision = False
+
+        if is_robot:
+            body_id = obj.robot_ids[0]
+            has_collision = self.check_collision(body_id)
+        elif is_behavior_robot:
+            parts = ['body', 'left_hand', 'right_hand']
+            for part in parts:
+                if self.check_collision(obj.parts[part].body_id):
+                    has_collision = True
+                    break
+        else:
+            body_id = obj.body_id
+            has_collision = self.check_collision(body_id)
+
         return has_collision
 
     def land(self, obj, pos, orn):

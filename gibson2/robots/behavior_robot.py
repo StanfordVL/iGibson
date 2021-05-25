@@ -374,6 +374,8 @@ class BRBody(ArticulatedObject):
 
         self.move(self.new_pos, self.new_orn)
 
+    def reset(self):
+        pass
 
 class BRHandBase(ArticulatedObject):
     """
@@ -607,6 +609,9 @@ class BRHandBase(ArticulatedObject):
         elif self.prev_ghost_hand_hidden_state and not should_hide:
             self.sim.set_hidden_state(self.ghost_hand, hide=False)
             self.prev_ghost_hand_hidden_state = False
+
+    def reset(self):
+        pass
 
 
 class BRHand(BRHandBase):
@@ -1127,3 +1132,6 @@ class BREye(ArticulatedObject):
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
 
+
+    def reset(self):
+        pass

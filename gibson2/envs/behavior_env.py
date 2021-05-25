@@ -1,7 +1,7 @@
 from gibson2.envs.igibson_env import iGibsonEnv
 from gibson2.task.task_base import iGTNTask
 from gibson2.scenes.empty_scene import EmptyScene
-
+from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 # for debugging
 from gibson2.tasks.point_nav_random_task import PointNavRandomTask
 from gibson2.tasks.reaching_random_task import ReachingRandomTask
@@ -76,7 +76,7 @@ class BehaviorEnv(iGibsonEnv):
                                                high=1.0,
                                                dtype=np.float32)
 
-    def load_task_setup(self):
+    def load_behavior_task_setup(self):
         """
         Load task setup
         """
@@ -127,10 +127,40 @@ class BehaviorEnv(iGibsonEnv):
 
         self.robots = [self.task.agent]
 
-    def load_empty_scene(self):
-        scene = EmptyScene()
-        scene.objects_by_id = {}
-        self.simulator.import_scene(scene, render_floor_plane=True)
+    def load_ig_task_setup(self):
+        #scene = EmptyScene()
+        #scene.objects_by_id = {}
+        #self.simulator.import_scene(scene, render_floor_plane=True)
+        if self.config['scene'] == 'empty':
+            scene = EmptyScene()
+            self.simulator.import_scene(
+                scene, load_texture=self.config.get('load_texture', True))
+        elif self.config['scene'] == 'igibson':
+            scene = InteractiveIndoorScene(
+                self.config['scene_id'],
+                waypoint_resolution=self.config.get(
+                    'waypoint_resolution', 0.2),
+                num_waypoints=self.config.get('num_waypoints', 10),
+                build_graph=self.config.get('build_graph', False),
+                trav_map_resolution=self.config.get(
+                    'trav_map_resolution', 0.1),
+                trav_map_erosion=self.config.get('trav_map_erosion', 2),
+                trav_map_type=self.config.get('trav_map_type', 'with_obj'),
+                pybullet_load_texture=self.config.get(
+                    'pybullet_load_texture', False),
+                texture_randomization=self.texture_randomization_freq is not None,
+                object_randomization=self.object_randomization_freq is not None,
+                object_randomization_idx=self.object_randomization_idx,
+                should_open_all_doors=self.config.get(
+                    'should_open_all_doors', False),
+                load_object_categories=self.config.get(
+                    'load_object_categories', None),
+                load_room_types=self.config.get('load_room_types', None),
+                load_room_instances=self.config.get(
+                    'load_room_instances', None),
+            )
+            self.simulator.import_ig_scene(scene)
+
         agent = BehaviorRobot(self.simulator, use_tracked_body_override=True, show_visual_head=True,
                               use_ghost_hands=False)
         self.simulator.import_behavior_robot(agent)
@@ -152,14 +182,17 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene = lambda snapshot_id: p.restoreState(snapshot_id)
             self.task.check_success = lambda: (False, [])
 
+    def load_task_setup(self):
+        pass
+
     def load(self):
         """
         Load environment
         """
         if not self.config.get('debug', False):
-            self.load_task_setup()
+            self.load_behavior_task_setup()
         else:
-            self.load_empty_scene()
+            self.load_ig_task_setup()
         self.load_observation_space()
         self.load_action_space()
         self.load_miscellaneous_variables()
