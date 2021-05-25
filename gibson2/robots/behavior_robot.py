@@ -169,9 +169,6 @@ class BehaviorRobot(object):
     def get_end_effector_position(self):
         return self.parts['right_hand'].get_position()
 
-    def get_prioception(self):
-        pass
-
     def dump_action(self):
         """
         Returns action used on the current frame.

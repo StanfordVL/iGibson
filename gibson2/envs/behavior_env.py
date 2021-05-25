@@ -128,13 +128,10 @@ class BehaviorEnv(iGibsonEnv):
         self.robots = [self.task.agent]
 
     def load_ig_task_setup(self):
-        #scene = EmptyScene()
-        #scene.objects_by_id = {}
-        #self.simulator.import_scene(scene, render_floor_plane=True)
         if self.config['scene'] == 'empty':
             scene = EmptyScene()
-            self.simulator.import_scene(
-                scene, load_texture=self.config.get('load_texture', True))
+            scene.objects_by_id = {}
+            self.simulator.import_scene(scene, render_floor_plane=True)
         elif self.config['scene'] == 'igibson':
             scene = InteractiveIndoorScene(
                 self.config['scene_id'],
@@ -320,7 +317,7 @@ if __name__ == '__main__':
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',
-                        choices=['headless', 'gui', 'iggui'],
+                        choices=['headless', 'gui', 'iggui', 'pbgui'],
                         default='gui',
                         help='which mode for simulation (default: headless)')
     args = parser.parse_args()
@@ -338,7 +335,7 @@ if __name__ == '__main__':
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()
             state, reward, done, _ = env.step(action)
-            print(state['task_obs'], reward)
+            print(state['task_obs'], state['proprioception'], reward)
             if done:
                 break
         print('Episode finished after {} timesteps, took {} seconds.'.format(
