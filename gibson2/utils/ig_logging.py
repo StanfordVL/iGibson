@@ -391,7 +391,12 @@ class IGLogWriter(object):
         if self.task and self.filter_objects:
             for obj_bid, obj in self.tracked_objects.items():
                 obj_name = str(obj_bid)
-                pos, orn = obj.get_position_orientation()
+                # TODO: currently we must hack around storing object pose for multiplexed objects
+                try:
+                    pos, orn = obj.get_position_orientation()
+                except ValueError as e:
+                    pos, orn = obj.objects[0].get_position_orientation()
+
                 handle = self.data_map['physics_data'][obj_name]
                 handle['position'][self.frame_counter] = pos
                 handle['orientation'][self.frame_counter] = orn
