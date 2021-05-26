@@ -17,13 +17,13 @@ _ALL_STATES = frozenset([
     InReachOfRobot,
     InSameRoomAsRobot,
     Inside,
+    InsideRoomTypes,
     MaxTemperature,
     NextTo,
     OnFloor,
     OnTop,
     Open,
     Pose,
-    RobotRoom,
     Sliced,
     Slicer,
     Soaked,
@@ -34,7 +34,7 @@ _ALL_STATES = frozenset([
     Under,
     VerticalAdjacency,
     WaterSource,
-] + ROBOT_ROOM_STATES)
+] + ROOM_STATES)
 
 _ABILITY_TO_STATE_MAPPING = {
     "burnable": [Burnt],
@@ -45,7 +45,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "freezable": [Frozen],
     "heatSource": [HeatSourceOrSink],
     "openable": [Open],
-    "robot": ROBOT_ROOM_STATES,
+    "robot": ROOM_STATES,
     "sliceable": [Sliced],
     "slicer": [Slicer],
     "soakable": [Soaked],
