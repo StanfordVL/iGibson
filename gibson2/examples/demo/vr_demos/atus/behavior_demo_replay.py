@@ -172,7 +172,7 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     task_done = False
     satisfied_predicates_cached = {}
     i = 0
-    while i < 1000 and log_reader.get_data_left_to_read():
+    while log_reader.get_data_left_to_read():
         if highlight_gaze:
             eye_data = log_reader.get_vr_data().query('eye_data')
             if eye_data[0]:
