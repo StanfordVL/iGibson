@@ -34,8 +34,8 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
     def get_state_link_name():
         return _WATER_SOURCE_LINK_NAME
 
-    def _initialize(self, simulator):
-        super(WaterSource, self)._initialize(simulator)
+    def _initialize(self):
+        super(WaterSource, self)._initialize()
         self.initialize_link_mixin()
         water_source_position = self.get_link_position()
         if water_source_position is None:
@@ -44,10 +44,10 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         water_source_position = list(
             np.array(water_source_position) + _OFFSET_FROM_LINK)
         self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump)
-        simulator.import_particle_system(self.water_stream)
+        self.simulator.import_particle_system(self.water_stream)
         del self.initial_dump
 
-    def _update(self, simulator):
+    def _update(self):
         water_source_position = self.get_link_position()
         if water_source_position is None:
             return

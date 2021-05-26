@@ -51,14 +51,26 @@ def main():
                       category='table',
                       name='19898',
                       scale=np.array([0.8, 0.8, 0.8]),
-                      abilities={'dustyable': {}}
+                      abilities={'dustyable': {}, 'stainable': {}}
                       )
 
     print(desk.states.keys())
     s.import_object(desk)
     desk.set_position([1, -2, 0.4])
-    desk.states[object_states.Dusty].set_value(True)
+    assert desk.states[object_states.Dusty].set_value(True)
+    assert desk.states[object_states.Stained].set_value(True)
 
+    model_path = os.path.join(get_ig_model_path(
+        'bowl', '68_0'), '68_0.urdf')
+    bowl = URDFObject(filename=model_path,
+                      category='bowl',
+                      name='bowl',
+                      abilities={'dustyable': {}, 'stainable': {}}
+                      )
+    s.import_object(bowl)
+    assert bowl.states[object_states.OnTop].set_value(desk, True, use_ray_casting_method=True)
+    assert bowl.states[object_states.Dusty].set_value(True)
+    assert bowl.states[object_states.Stained].set_value(True)
     # Main simulation loop
     try:
         while True:

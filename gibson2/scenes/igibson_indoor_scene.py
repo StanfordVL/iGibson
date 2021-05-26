@@ -683,6 +683,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # restore state to the initial state before testing collision
         p.restoreState(state_id)
+        p.removeState(state_id)
 
         self.quality_check = quality_check
 

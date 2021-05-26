@@ -335,7 +335,7 @@ if __name__ == '__main__':
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()
             state, reward, done, _ = env.step(action)
-            print(state['task_obs'], state['proprioception'], reward)
+            print(state)
             if done:
                 break
         print('Episode finished after {} timesteps, took {} seconds.'.format(

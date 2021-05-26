@@ -69,10 +69,10 @@ class iGTNTask(TaskNetTask):
         if online_sampling:
             scene_kwargs['merge_fixed_links'] = False
         result = self.initialize(InteractiveIndoorScene,
-                               scene_id=scene_id,
-                               scene_kwargs=scene_kwargs,
-                               online_sampling=online_sampling,
-                               )
+                                 scene_id=scene_id,
+                                 scene_kwargs=scene_kwargs,
+                                 online_sampling=online_sampling,
+                                 )
         self.initial_state = self.save_scene()
         return result
 
@@ -272,38 +272,50 @@ class iGTNTask(TaskNetTask):
             categories = \
                 self.object_taxonomy.get_subtree_igibson_categories(
                     obj_cat)
+
+            # TODO: temporary hack
+            remove_categories = [
+                'pop_case',  # too large
+                'jewel',  # too small
+                'ring',  # too small
+            ]
+            for remove_category in remove_categories:
+                if remove_category in categories:
+                    categories.remove(remove_category)
+
             if is_sliceable:
                 categories = [cat for cat in categories if 'half_' not in cat]
-            existing_scene_objs = []
-            for category in categories:
-                existing_scene_objs += self.scene.objects_by_category.get(
-                    category, [])
-            for obj_inst in self.objects[obj_cat]:
-                # This obj category already exists in the scene
-                # Priortize using those objects first before importing new ones
-                if len(existing_scene_objs) > 0:
-                    simulator_obj = np.random.choice(existing_scene_objs)
-                    self.object_scope[obj_inst] = simulator_obj
-                    existing_scene_objs.remove(simulator_obj)
-                    continue
 
+            for obj_inst in self.objects[obj_cat]:
                 category = np.random.choice(categories)
-                # we always select pop, not pop_case
-                if 'pop' in categories:
-                    category = 'pop'
-                # # cantaloup is a suitable category for melon.n.01
-                # if 'cantaloup' in categories:
-                #     category = 'cantaloup'
                 category_path = get_ig_category_path(category)
-                model = np.random.choice(os.listdir(category_path))
-                # we can ONLY put stuff into this specific bag model
-                if category == 'bag':
-                    model = 'bag_001'
+                model_choices = os.listdir(category_path)
+
+                # Filter object models if the object category is openable
+                synset = self.object_taxonomy.get_class_name_from_igibson_category(
+                    category)
+                if self.object_taxonomy.has_ability(synset, 'openable'):
+                    model_choices = [
+                        m for m in model_choices if 'articulated_' in m]
+                    if len(model_choices) == 0:
+                        error_msg = '{} is Openable, but does not have articulated models.'.format(
+                            category)
+                        logging.warning(error_msg)
+                        feedback['init_success'] = 'no'
+                        feedback['init_feedback'] = error_msg
+                        return False, feedback
+
+                model = np.random.choice(model_choices)
+
+                # for "collecting aluminum cans", we need pop cans (not bottles) 
+                if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
+                    model = np.random.choice([str(i) for i in range(40, 46)])
+
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
                     category,
-                    len(self.scene.objects_by_category.get(category, [])))
+                    len(self.scene.objects_by_name))
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
@@ -496,8 +508,8 @@ class iGTNTask(TaskNetTask):
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
             if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
-                print(
-                    "Skipping over sampling of predicate that is not a negation or an atomic predicate")
+                logging.warning((
+                    "Skipping over sampling of predicate that is not a negation or an atomic predicate"))
                 continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
@@ -549,7 +561,7 @@ class iGTNTask(TaskNetTask):
                                                 condition.STATE_NAME,
                                                 str(condition.body),
                                                 str(success)])
-                            print(log_msg)
+                            logging.warning((log_msg))
                             init_sampling_log.append(log_msg)
 
                             if not success:
@@ -616,7 +628,7 @@ class iGTNTask(TaskNetTask):
                     obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered[room_type][obj_inst][room_inst]
                 top_nodes = []
                 log_msg = 'MBM for room instance [{}]'.format(room_inst)
-                print(log_msg)
+                logging.warning((log_msg))
                 init_mbm_log.append(log_msg)
                 for obj_inst in obj_inst_to_obj_per_room_inst:
                     for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
@@ -624,7 +636,7 @@ class iGTNTask(TaskNetTask):
                         graph.add_edge(obj_inst, obj)
                         log_msg = 'Adding edge: {} <-> {}'.format(
                             obj_inst, obj.name)
-                        print(log_msg)
+                        logging.warning((log_msg))
                         init_mbm_log.append(log_msg)
                         top_nodes.append(obj_inst)
                 # Need to provide top_nodes that contain all nodes in one bipartite node set
@@ -632,11 +644,11 @@ class iGTNTask(TaskNetTask):
                 matches = nx.bipartite.maximum_matching(
                     graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
-                    print('Object scope finalized:')
+                    logging.warning(('Object scope finalized:'))
                     for obj_inst, obj in matches.items():
                         if obj_inst in obj_inst_to_obj_per_room_inst:
                             self.object_scope[obj_inst] = obj
-                            print(obj_inst, obj.name)
+                            logging.warning((obj_inst, obj.name))
                     success = True
                     break
             if not success:
@@ -651,8 +663,8 @@ class iGTNTask(TaskNetTask):
                 return False, feedback
 
         np.random.shuffle(self.ground_goal_state_options)
-        print('number of ground_goal_state_options',
-              len(self.ground_goal_state_options))
+        logging.warning(('number of ground_goal_state_options',
+              len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
 
         goal_sampling_error_msgs = []
@@ -693,7 +705,7 @@ class iGTNTask(TaskNetTask):
                                                     goal_condition.STATE_NAME,
                                                     str(goal_condition.body),
                                                     str(success)])
-                                print(log_msg)
+                                logging.warning((log_msg))
                                 goal_sampling_log.append(log_msg)
                                 if not success:
                                     break
@@ -760,7 +772,7 @@ class iGTNTask(TaskNetTask):
                         obj_inst_to_obj_per_room_inst[obj_inst] = scene_object_scope_filtered_goal_cond[room_type][obj_inst][room_inst]
                     top_nodes = []
                     log_msg = 'MBM for room instance [{}]'.format(room_inst)
-                    print(log_msg)
+                    logging.warning((log_msg))
                     goal_mbm_log.append(log_msg)
                     for obj_inst in obj_inst_to_obj_per_room_inst:
                         for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
@@ -768,7 +780,7 @@ class iGTNTask(TaskNetTask):
                             graph.add_edge(obj_inst, obj)
                             log_msg = 'Adding edge: {} <-> {}'.format(
                                 obj_inst, obj.name)
-                            print(log_msg)
+                            logging.warning((log_msg))
                             goal_mbm_log.append(log_msg)
                             top_nodes.append(obj_inst)
                     # Need to provide top_nodes that contain all nodes in one bipartite node set
@@ -776,11 +788,11 @@ class iGTNTask(TaskNetTask):
                     matches = nx.bipartite.maximum_matching(
                         graph, top_nodes=top_nodes)
                     if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
-                        print('Object scope finalized:')
+                        logging.warning(('Object scope finalized:'))
                         for obj_inst, obj in matches.items():
                             if obj_inst in obj_inst_to_obj_per_room_inst:
                                 self.object_scope[obj_inst] = obj
-                                print(obj_inst, obj.name)
+                                logging.warning((obj_inst, obj.name))
                         success = True
                         break
                 if not success:

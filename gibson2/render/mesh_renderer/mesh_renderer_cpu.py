@@ -879,6 +879,11 @@ class MeshRenderer(object):
         if self.optimized:
             self.update_optimized_texture()
 
+        if 'seg' in modes and self.rendering_settings.msaa:
+            logging.warning(
+                "Rendering segmentation masks with MSAA on may generate interpolation artifacts. "
+                "It is recommended to turn MSAA off when rendering segmentation.")
+
         render_shadow_pass = render_shadow_pass and 'rgb' in modes
         need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
         self.update_dynamic_positions(need_flow_info=need_flow_info)
@@ -1585,6 +1590,10 @@ class MeshRenderer(object):
         Updates the hidden state of a list of instances
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
         """
+
+        if not self.optimization_process_executed:
+            logging.warning("Trying to set hidden state before vertices are merged, converted to no-op")
+            return
         for instance in instances:
             buf_idxs = instance.or_buffer_indices
             #if not buf_idxs:

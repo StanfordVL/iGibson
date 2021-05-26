@@ -10,7 +10,7 @@ from gibson2.utils import sampling_utils
 from scipy.spatial.transform import Rotation as R
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
-    'parallel_ray_normal_angle_tolerance': 0.52,
+    # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
     'max_angle_with_z_axis': 0.17,
     'bimodal_stdev_fraction': 1e-6,
     'bimodal_mean_fraction': 1.0,
@@ -19,7 +19,7 @@ _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
 }
 
 _INSIDE_RAY_CASTING_SAMPLING_PARAMS = {
-    'parallel_ray_normal_angle_tolerance': 0.52,
+    # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
     'max_angle_with_z_axis': 0.17,
     'bimodal_stdev_fraction': 0.4,
     'bimodal_mean_fraction': 0.5,
