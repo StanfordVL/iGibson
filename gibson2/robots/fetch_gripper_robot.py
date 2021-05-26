@@ -765,7 +765,7 @@ class FetchGripper(LocomotorRobot):
             self._last_gripper_pos = np.array(self.joint_position[-2:])
             self._last_gripper_vel = np.array(self.joint_velocity[-2:])
             # Update grasping
-            current_state = (0.002 < np.mean(np.abs(self.joint_position[-2:])) < 0.025)
+            current_state = (0.002 < np.mean(np.abs(self.joint_position[-2:])) < 0.04)
             if current_state != self._grasped:
                 # Decrease cooldown
                 self._grasp_filter_cooldown -= 1
