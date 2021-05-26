@@ -23,6 +23,7 @@ import os
 import pybullet as p
 
 from gibson2 import assets_path
+from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_shape import VisualShape
 from gibson2.external.pybullet_tools.utils import set_all_collisions
@@ -255,6 +256,8 @@ class BRBody(ArticulatedObject):
             self.left_shoulder_rel_pos = [-0.15, 0.15, 0.3]
             self.right_shoulder_rel_pos = [-0.15, -0.15, 0.3]
             self.neck_base_rel_pos = [-0.15, 0, 0.3]
+
+        prepare_object_states(self, {"robot": {}})
 
     def _load(self):
         """
