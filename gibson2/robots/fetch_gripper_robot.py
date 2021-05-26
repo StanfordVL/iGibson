@@ -740,6 +740,17 @@ class FetchGripper(LocomotorRobot):
 
         return obs_dict
 
+    @property
+    def grasped(self):
+        """
+        Utility property to determine whether gripper is grasping something or not
+
+        Returns:
+            bool: True if grasping an object stably, else False
+        """
+        return (0.002 < np.mean(np.abs(self.joint_position[-2:])) < 0.025) and \
+               (np.mean(np.abs(self.joint_velocity[-2:])) < 0.01)
+
     def sync_state(self):
         """
         Helper function to synchronize internal state variables with actual sim state. This might be necessary
