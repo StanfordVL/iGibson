@@ -1,25 +1,92 @@
 import argparse
 import itertools
-from collections import namedtuple
+import os
+import queue
+from collections import namedtuple, deque
 from enum import Enum
 
+import cv2
+import numpy as np
+
+import gibson2
 import pyinstrument
 import tasknet
 
 from gibson2 import object_states
 from gibson2.examples.demo.vr_demos.atus import behavior_demo_replay
-from gibson2.object_states import factory
+from gibson2.object_states import factory, ROOM_STATES
 from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
+from gibson2.robots.behavior_robot import BehaviorRobot, BRBody
+from gibson2.task.task_base import iGTNTask
+from gibson2.task.tasknet_backend import ObjectStateUnaryPredicate, ObjectStateBinaryPredicate
 
-StateRecord = namedtuple("StateRecord", ["state_name", "objects", "value"])
+StateRecord = namedtuple("StateRecord", ["state_type", "objects", "value"])
+StateEntry = namedtuple("StateEntry", ["frame_count", "state_records"])
 DiffEntry = namedtuple("DiffEntry", ["frame_count", "state_records"])
-
 
 class SegmentationObjectSelection(Enum):
     ALL_OBJECTS = 1
     TASK_RELEVANT_OBJECTS = 2
+    ROBOTS = 3
 
-prof = pyinstrument.Profiler()
+class SegmentationStateSelection(Enum):
+    ALL_STATES = 1
+    GOAL_CONDITION_RELEVANT_STATES = 2
+
+class SegmentationStateDirection(Enum):
+    BOTH_DIRECTIONS = 1
+    FALSE_TO_TRUE = 2
+    TRUE_TO_FALSE = 3
+
+STATE_DIRECTIONS = {
+    # Note that some of these states already only go False-to-True so they are left as BOTH_DIRECTIONS
+    # so as not to add filtering work.
+    object_states.Burnt: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Cooked: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Dusty: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Frozen: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.InFOVOfRobot: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.InHandOfRobot: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.InReachOfRobot: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.InSameRoomAsRobot: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.Inside: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.NextTo: SegmentationStateDirection.FALSE_TO_TRUE,
+    # OnFloor: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.OnTop: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.Open: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Sliced: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Soaked: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Stained: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.ToggledOn: SegmentationStateDirection.BOTH_DIRECTIONS,
+    # Touching: SegmentationStateDirection.BOTH_DIRECTIONS,
+    object_states.Under: SegmentationStateDirection.FALSE_TO_TRUE,
+}
+STATE_DIRECTIONS.update({state: SegmentationStateDirection.TRUE_TO_FALSE for state in ROOM_STATES})
+
+
+ALLOWED_SUB_SEGMENTS_BY_STATE = {
+    object_states.Burnt: {object_states.OnTop, object_states.ToggledOn, object_states.Open, object_states.Inside},
+    object_states.Cooked: {object_states.OnTop, object_states.ToggledOn, object_states.Open, object_states.Inside},
+    object_states.Dusty: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Cooked: {object_states.InReachOfRobot, object_states.OnTop, object_states.ToggledOn, object_states.Open, object_states.Inside},
+    object_states.InFOVOfRobot: {},
+    object_states.InHandOfRobot: {},
+    object_states.InReachOfRobot: {},
+    object_states.InSameRoomAsRobot: {},
+    object_states.Inside: {object_states.Open, object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.NextTo: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    # OnFloor: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.OnTop: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Open: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Sliced: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Soaked: {object_states.ToggledOn, object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Stained: {object_states.Soaked, object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.ToggledOn: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot},
+    # Touching: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Under: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+}
+
+PROFILER = pyinstrument.Profiler()
 
 
 def process_states(objects, state_classes):
@@ -31,13 +98,12 @@ def process_states(objects, state_classes):
                 continue
 
             assert issubclass(state_type, BooleanState)
-            state_name = state_type.__name__
             state = obj.states[state_type]
             if isinstance(state, AbsoluteObjectState):
                 # Add only one instance of absolute state
                 try:
                     value = state.get_value()
-                    record = StateRecord(state_name, (obj, ), value)
+                    record = StateRecord(state_type, (obj, ), value)
                     predicate_states.add(record)
                 except ValueError:
                     pass
@@ -46,7 +112,7 @@ def process_states(objects, state_classes):
                 for other in objects:
                     try:
                         value = state.get_value(other)
-                        record = StateRecord(state_name, (obj, other), value)
+                        record = StateRecord(state_type, (obj, other), value)
                         predicate_states.add(record)
                     except ValueError:
                         pass
@@ -56,29 +122,58 @@ def process_states(objects, state_classes):
     return predicate_states
 
 
+def _get_goal_condition_states(igtn_task: iGTNTask):
+    state_types = set()
+
+    q = deque()
+    q.extend(igtn_task.goal_conditions)
+
+    while q:
+        pred = q.popleft()
+        if isinstance(pred, ObjectStateUnaryPredicate) or isinstance(pred, ObjectStateBinaryPredicate):
+            state_types.add(pred.STATE_CLASS)
+
+        q.extend(pred.children)
+
+    return state_types
+
 class DemoSegmentationProcessor(object):
-    def __init__(self, state_classes=None, object_selection=SegmentationObjectSelection.TASK_RELEVANT_OBJECTS):
+    def __init__(self, state_classes=None, object_selection=SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
+                 hierarchical=True):
+        self.initialized = False
+        self.state_history = []
         self.last_state = None
 
-        if state_classes is None:
-            state_classes = [
+        self.state_classes_option = state_classes
+        self.state_classes = None  # To be populated in initialize().
+        self.object_selection = object_selection
+
+    def initialize(self, igtn_task):
+        if isinstance(self.state_classes_option, list) or isinstance(self.state_classes_option, set):
+            self.state_classes = self.state_classes_option
+        elif self.state_classes_option == SegmentationStateSelection.ALL_STATES:
+            self.state_classes = [
                 state for state in factory.get_all_states()
                 if (issubclass(state, BooleanState)
                     and (issubclass(state, AbsoluteObjectState) or issubclass(state, RelativeObjectState)))]
-        self.state_classes = state_classes
+        elif self.state_classes_option == SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES:
+            self.state_classes = _get_goal_condition_states(igtn_task)
+        else:
+            raise ValueError("Unknown segmentation state selection.")
 
-        self.object_selection = object_selection
-
-        self.diffs = []
-
-        self.filter_msg = None
+        self.initialized = True
 
     def step_callback(self, igtn_task):
+        if not self.initialized:
+            self.initialize(igtn_task)
+
         print("Step %d" % igtn_task.simulator.frame_count)
-        prof.start()
+        PROFILER.start()
 
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
-            objects = list(igtn_task.object_scope.values())
+            objects = [obj for obj in igtn_task.object_scope.values() if not isinstance(obj, BRBody)]
+        elif self.object_selection == SegmentationObjectSelection.ROBOTS:
+            objects = [obj for obj in igtn_task.object_scope.values() if isinstance(obj, BRBody)]
         elif self.object_selection == SegmentationObjectSelection.ALL_OBJECTS:
             objects = igtn_task.simulator.scene.get_objects()
         else:
@@ -86,51 +181,65 @@ class DemoSegmentationProcessor(object):
 
         # Get the processed state.
         processed_state = process_states(objects, self.state_classes)
-        if self.last_state is not None:
-            diff = processed_state - self.last_state
-            if diff:
-                self.diffs.append(DiffEntry(igtn_task.simulator.frame_count, diff))
+        if self.last_state is None or (processed_state - self.last_state):
+            self.state_history.append(StateEntry(igtn_task.simulator.frame_count, processed_state))
+
+            frames = igtn_task.simulator.renderer.render_robot_cameras(modes=('rgb'))
+            if len(frames) > 0:
+                frame = cv2.cvtColor(np.concatenate(
+                    frames, axis=1), cv2.COLOR_RGB2BGR)
+                cv2.imwrite('%d.png' % igtn_task.simulator.frame_count, frame)
 
         self.last_state = processed_state
-        prof.stop()
+        PROFILER.stop()
 
-    def filter_diffs(self, objs, filter_msg=""):
-        """Filter the diffs so that only objects in the given list are monitored."""
-        new_diffs = []
-        for diff_entry in self.diffs:
-            new_records = set()
+    @staticmethod
+    def _hierarchical_diff(state_entries, state_types):
+        pass
 
-            # Go through the records in the diff.
-            for state_record in diff_entry.state_records:
-                # Check if any object in the record is on our list.
-                in_objs = False
-                for obj in state_record.objects:
-                    if obj in objs:
-                        in_objs = True
-                        break
+    def flat_diff(self):
+        # If not hierarchical, we can just output a series of diffs
+        diffs = []
+        for before, after in zip(self.state_history, self.state_history[1:]):
+            diff = self.filter_directions(after.state_records - before.state_records, STATE_DIRECTIONS)
+            if diff is not None:
+                diffs.append(DiffEntry(after.frame_count, diff))
+        return diffs
 
-                # If an object in our list is part of the record, keep the record.
-                if in_objs:
-                    new_records.add(state_record)
+    @staticmethod
+    def filter_directions(state_records, state_directions):
+        """Filter the diffs so that only objects in the given state directions are monitored."""
+        new_records = set()
 
-            # If we have kept any of this diff's records, add a diff entry containing them.
-            if new_records:
-                new_diff_entry = DiffEntry(diff_entry.frame_count, new_records)
-                new_diffs.append(new_diff_entry)
+        # Go through the records in the diff.
+        for state_record in state_records:
+            # Check if any object in the record is on our list.
+            mode = state_directions[state_record.state_type]
+            accept = True
+            if mode == SegmentationStateDirection.FALSE_TO_TRUE:
+                accept = state_record.value
+            elif mode == SegmentationStateDirection.TRUE_TO_FALSE:
+                accept = not state_record.value
 
-        self.diffs = new_diffs
-        self.filter_msg = filter_msg
+            # If an object in our list is part of the record, keep the record.
+            if accept:
+                new_records.add(state_record)
 
-    def print(self):
+        # If we have kept any of this diff's records, add a diff entry containing them.
+        if not new_records:
+            return None
+
+        return new_records
+
+
+    def print_flat(self):
         print("---------------------------------------------------")
         print("Segmentation of %s" % self.object_selection.name)
         print("Considered states: %s" % ", ".join(x.__name__ for x in self.state_classes))
-        if self.filter_msg is not None:
-            print("Filtered. Filter message: %s" % self.filter_msg)
         print("---------------------------------------------------")
-        for diff_entry in self.diffs:
+        for diff_entry in self.flat_diff():
             stringified_entries = [
-                (state_record.state_name,
+                (state_record.state_type.__name__,
                  ", ".join(obj.category for obj in state_record.objects),
                  state_record.value)
                 for state_record in diff_entry.state_records]
@@ -159,58 +268,42 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
+    # args = parse_args()
     tasknet.set_backend("iGibson")
 
-    HIGH_LEVEL_STATES = {
-        object_states.Burnt,
-        object_states.Cooked,
-        object_states.Dusty,
-        object_states.Frozen,
-        object_states.Sliced,
-        object_states.Soaked,
-        object_states.Stained,
-        object_states.ToggledOn,
-    }
-    MID_LEVEL_STATES = {
-        object_states.Open,
-        object_states.Inside,
-        object_states.NextTo,
-        object_states.OnTop,
-        object_states.Under,
-    }
-    LOW_LEVEL_STATES = {
-        object_states.InReachOfRobot,
-        object_states.InHandOfRobot,
-        object_states.InSameRoomAsRobot,
-    }
+    FLAT_STATES = set(STATE_DIRECTIONS.keys())
+    flat_segmentation = DemoSegmentationProcessor(FLAT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS)
 
-    high_level_segmentation = DemoSegmentationProcessor(HIGH_LEVEL_STATES, SegmentationObjectSelection.ALL_OBJECTS)
-    mid_level_segmentation = DemoSegmentationProcessor(MID_LEVEL_STATES, SegmentationObjectSelection.ALL_OBJECTS)
-    low_level_segmentation = DemoSegmentationProcessor(LOW_LEVEL_STATES, SegmentationObjectSelection.ALL_OBJECTS)
+    goal_segmentation = DemoSegmentationProcessor(
+        SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS)
+    room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS)
+
+
     segmentation_processors = [
-        high_level_segmentation,
-        mid_level_segmentation,
-        low_level_segmentation,
+        # flat_segmentation,
+        # goal_segmentation,
+        room_presence_segmentation,
     ]
 
     # Run the segmentations.
-    run_segmentation(args.log_path, segmentation_processors, no_vr=args.no_vr)
+    DEMO_FILE = os.path.join(gibson2.ig_dataset_path, 'tests',
+                             'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
+    run_segmentation(DEMO_FILE, segmentation_processors, no_vr=True)
 
     # Filter the low-level segmentation to only include objects seen in the high/mid-level segmentation.
-    objs_in_segmentations = set()
-    for diff_entry in itertools.chain(high_level_segmentation.diffs, mid_level_segmentation.diffs):
-        for state_record in diff_entry.state_records:
-            objs_in_segmentations.update(state_record.objects)
-    low_level_segmentation.filter_diffs(
-        objs_in_segmentations,
-        "Filtered to only include objects in high/mid level segmentations.")
+    # objs_in_segmentations = set()
+    # for diff_entry in itertools.chain(high_level_segmentation.diffs, mid_level_segmentation.diffs):
+    #     for state_record in diff_entry.state_records:
+    #         objs_in_segmentations.update(state_record.objects)
+    # low_level_segmentation.filter_objects(
+    #     objs_in_segmentations,
+    #     "Filtered to only include objects in high/mid level segmentations.")
 
     # Print the segmentations.
     for segmentation_processor in segmentation_processors:
-        segmentation_processor.print()
+        segmentation_processor.print_flat()
 
-    html = prof.output_html()
+    html = PROFILER.output_html()
     with open('segmentation_profile.html', 'w') as f:
         f.write(html)
 
