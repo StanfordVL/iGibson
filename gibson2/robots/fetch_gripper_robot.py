@@ -735,6 +735,7 @@ class FetchGripper(LocomotorRobot):
             "eef_pos": self.get_relative_eef_position(),
             "eef_quat": self.get_relative_eef_orientation(),
             "tucked": np.array([1.0 if self.tucked else -1.0]),
+            "grasped": np.array([1.0 if self.grasped else -1.0]),
         }
 
         return obs_dict

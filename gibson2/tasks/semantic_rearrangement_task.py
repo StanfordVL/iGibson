@@ -513,7 +513,7 @@ class SemanticRearrangementTask(BaseTask):
                 touching_right_finger = True
             elif item[4] == self.robot_gripper_joint_ids[1]:
                 touching_left_finger = True
-        grasping_target_object = touching_left_finger and touching_right_finger
+        grasping_target_object = touching_left_finger and touching_right_finger and self.env.robots[0].grasped
         # Lift condition -- target object is touching both gripper fingers and lifted by small margin
         lifting_target_object = self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05 and grasping_target_object
         if self.success_condition == "lift":
