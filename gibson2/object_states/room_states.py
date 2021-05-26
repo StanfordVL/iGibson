@@ -34,7 +34,7 @@ class IsInRoomTemplate(AbsoluteObjectState, BooleanState):
 
     def _get_value(self):
         assert self.ROOM_TYPE, "IsInRoomTemplate should only be used through subclasses."
-        return self.obj.states[InsideRoomTypes].get_value() == self.ROOM_TYPE
+        return self.ROOM_TYPE in self.obj.states[InsideRoomTypes].get_value()
 
     def _set_value(self, new_value):
         raise NotImplementedError("IsInRoom states currently does not support setting.")
