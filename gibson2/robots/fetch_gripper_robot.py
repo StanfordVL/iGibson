@@ -90,8 +90,8 @@ class FetchGripper(LocomotorRobot):
         # Gripper info
         self._grasped = False                           # Current filtered grasping state
         self._grasp_filter_cooldown = 5                 # How many steps before a grasp is triggered
-        self._last_gripper_pos = None
-        self._last_gripper_vel = None
+        self._last_gripper_pos = np.zeros(2)
+        self._last_gripper_vel = np.zeros(2)
 
         # Action limits
         self.action_high = None
