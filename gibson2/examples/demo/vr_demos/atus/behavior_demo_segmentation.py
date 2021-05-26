@@ -1,42 +1,43 @@
 import argparse
-import itertools
+import json
 import os
-import queue
 from collections import namedtuple, deque
 from enum import Enum
 
-import cv2
-import numpy as np
-
-import gibson2
+import printree
 import pyinstrument
 import tasknet
 
+import gibson2
 from gibson2 import object_states
 from gibson2.examples.demo.vr_demos.atus import behavior_demo_replay
 from gibson2.object_states import factory, ROOM_STATES
 from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
-from gibson2.robots.behavior_robot import BehaviorRobot, BRBody
+from gibson2.robots.behavior_robot import BRBody
 from gibson2.task.task_base import iGTNTask
 from gibson2.task.tasknet_backend import ObjectStateUnaryPredicate, ObjectStateBinaryPredicate
 
 StateRecord = namedtuple("StateRecord", ["state_type", "objects", "value"])
 StateEntry = namedtuple("StateEntry", ["frame_count", "state_records"])
-DiffEntry = namedtuple("DiffEntry", ["frame_count", "state_records"])
+Segment = namedtuple("DiffEntry", ["start", "duration", "end", "state_records", "sub_segments"])
+
 
 class SegmentationObjectSelection(Enum):
     ALL_OBJECTS = 1
     TASK_RELEVANT_OBJECTS = 2
     ROBOTS = 3
 
+
 class SegmentationStateSelection(Enum):
     ALL_STATES = 1
     GOAL_CONDITION_RELEVANT_STATES = 2
+
 
 class SegmentationStateDirection(Enum):
     BOTH_DIRECTIONS = 1
     FALSE_TO_TRUE = 2
     TRUE_TO_FALSE = 3
+
 
 STATE_DIRECTIONS = {
     # Note that some of these states already only go False-to-True so they are left as BOTH_DIRECTIONS
@@ -61,26 +62,29 @@ STATE_DIRECTIONS = {
     # Touching: SegmentationStateDirection.BOTH_DIRECTIONS,
     object_states.Under: SegmentationStateDirection.FALSE_TO_TRUE,
 }
-STATE_DIRECTIONS.update({state: SegmentationStateDirection.TRUE_TO_FALSE for state in ROOM_STATES})
-
+STATE_DIRECTIONS.update({state: SegmentationStateDirection.FALSE_TO_TRUE for state in ROOM_STATES})
 
 ALLOWED_SUB_SEGMENTS_BY_STATE = {
     object_states.Burnt: {object_states.OnTop, object_states.ToggledOn, object_states.Open, object_states.Inside},
     object_states.Cooked: {object_states.OnTop, object_states.ToggledOn, object_states.Open, object_states.Inside},
     object_states.Dusty: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
-    object_states.Cooked: {object_states.InReachOfRobot, object_states.OnTop, object_states.ToggledOn, object_states.Open, object_states.Inside},
+    object_states.Frozen: {object_states.InReachOfRobot, object_states.OnTop, object_states.ToggledOn,
+                           object_states.Open, object_states.Inside},
     object_states.InFOVOfRobot: {},
     object_states.InHandOfRobot: {},
     object_states.InReachOfRobot: {},
     object_states.InSameRoomAsRobot: {},
-    object_states.Inside: {object_states.Open, object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Inside: {object_states.Open, object_states.InSameRoomAsRobot, object_states.InReachOfRobot,
+                           object_states.InHandOfRobot},
     object_states.NextTo: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     # OnFloor: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.OnTop: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.Open: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.Sliced: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
-    object_states.Soaked: {object_states.ToggledOn, object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
-    object_states.Stained: {object_states.Soaked, object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.Soaked: {object_states.ToggledOn, object_states.InSameRoomAsRobot, object_states.InReachOfRobot,
+                           object_states.InHandOfRobot},
+    object_states.Stained: {object_states.Soaked, object_states.InSameRoomAsRobot, object_states.InReachOfRobot,
+                            object_states.InHandOfRobot},
     object_states.ToggledOn: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot},
     # Touching: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.Under: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
@@ -89,11 +93,11 @@ ALLOWED_SUB_SEGMENTS_BY_STATE = {
 PROFILER = pyinstrument.Profiler()
 
 
-def process_states(objects, state_classes):
+def process_states(objects, state_types):
     predicate_states = set()
 
     for obj in objects:
-        for state_type in state_classes:
+        for state_type in state_types:
             if state_type not in obj.states:
                 continue
 
@@ -102,8 +106,8 @@ def process_states(objects, state_classes):
             if isinstance(state, AbsoluteObjectState):
                 # Add only one instance of absolute state
                 try:
-                    value = state.get_value()
-                    record = StateRecord(state_type, (obj, ), value)
+                    value = bool(state.get_value())
+                    record = StateRecord(state_type, (obj,), value)
                     predicate_states.add(record)
                 except ValueError:
                     pass
@@ -137,27 +141,34 @@ def _get_goal_condition_states(igtn_task: iGTNTask):
 
     return state_types
 
+
 class DemoSegmentationProcessor(object):
-    def __init__(self, state_classes=None, object_selection=SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
-                 hierarchical=True):
+    def __init__(self, state_types=None, object_selection=SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
+                 label_by_instance=False, hierarchical=False):
         self.initialized = False
         self.state_history = []
         self.last_state = None
 
-        self.state_classes_option = state_classes
-        self.state_classes = None  # To be populated in initialize().
+        self.state_types_option = state_types
+        self.state_types = None  # To be populated in initialize().
         self.object_selection = object_selection
+        self.label_by_instance = label_by_instance
+
+        self.hierarchical = hierarchical
+        self.all_state_types = None
 
     def initialize(self, igtn_task):
-        if isinstance(self.state_classes_option, list) or isinstance(self.state_classes_option, set):
-            self.state_classes = self.state_classes_option
-        elif self.state_classes_option == SegmentationStateSelection.ALL_STATES:
-            self.state_classes = [
-                state for state in factory.get_all_states()
-                if (issubclass(state, BooleanState)
-                    and (issubclass(state, AbsoluteObjectState) or issubclass(state, RelativeObjectState)))]
-        elif self.state_classes_option == SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES:
-            self.state_classes = _get_goal_condition_states(igtn_task)
+        self.all_state_types = [
+            state for state in factory.get_all_states()
+            if (issubclass(state, BooleanState)
+                and (issubclass(state, AbsoluteObjectState) or issubclass(state, RelativeObjectState)))]
+
+        if isinstance(self.state_types_option, list) or isinstance(self.state_types_option, set):
+            self.state_types = self.state_types_option
+        elif self.state_types_option == SegmentationStateSelection.ALL_STATES:
+            self.state_types = self.all_state_types
+        elif self.state_types_option == SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES:
+            self.state_types = _get_goal_condition_states(igtn_task)
         else:
             raise ValueError("Unknown segmentation state selection.")
 
@@ -180,41 +191,70 @@ class DemoSegmentationProcessor(object):
             raise ValueError("Incorrect SegmentationObjectSelection %r" % self.object_selection)
 
         # Get the processed state.
-        processed_state = process_states(objects, self.state_classes)
+        state_types_to_use = self.state_types if not self.hierarchical else self.all_state_types
+        processed_state = process_states(objects, state_types_to_use)
         if self.last_state is None or (processed_state - self.last_state):
             self.state_history.append(StateEntry(igtn_task.simulator.frame_count, processed_state))
-
-            frames = igtn_task.simulator.renderer.render_robot_cameras(modes=('rgb'))
-            if len(frames) > 0:
-                frame = cv2.cvtColor(np.concatenate(
-                    frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imwrite('%d.png' % igtn_task.simulator.frame_count, frame)
 
         self.last_state = processed_state
         PROFILER.stop()
 
-    @staticmethod
-    def _hierarchical_diff(state_entries, state_types):
-        pass
+    def obj2str(self, obj):
+        return obj.name if self.label_by_instance else obj.category
 
-    def flat_diff(self):
-        # If not hierarchical, we can just output a series of diffs
-        diffs = []
-        for before, after in zip(self.state_history, self.state_history[1:]):
-            diff = self.filter_directions(after.state_records - before.state_records, STATE_DIRECTIONS)
-            if diff is not None:
-                diffs.append(DiffEntry(after.frame_count, diff))
-        return diffs
+    def _hierarchical_segments(self, state_entries, state_types):
+        if not state_types:
+            return []
+
+        segments = []
+        before_idx = 0
+        after_idx = 1
+
+        # Keep iterating until we reach the end of our state entries.
+        while after_idx < len(state_entries):
+            # Get the state entries at these keys.
+            before = state_entries[before_idx]
+            after = state_entries[after_idx]
+
+            # Check if there is a valid diff at this range.
+            diffs = self.filter_diffs(after.state_records - before.state_records, state_types)
+            if diffs is not None:
+                # If there is a diff, prepare to do sub-segmentation on the segment.
+                sub_segment_states = set()
+                if self.hierarchical:
+                    for state_record in diffs:
+                        corresponding_sub_states = ALLOWED_SUB_SEGMENTS_BY_STATE[state_record.state_type]
+                        sub_segment_states.update(corresponding_sub_states)
+
+                sub_segments = self._hierarchical_segments(state_entries[before_idx:after_idx + 1], sub_segment_states)
+                segments.append(Segment(before.frame_count, after.frame_count - before.frame_count, after.frame_count,
+                                        diffs, sub_segments))
+
+                # Continue segmentation by moving the before_idx to start here.
+                before_idx = after_idx
+
+            # Increase the range of elements we're looking at by one.
+            after_idx += 1
+
+        return segments
+
+    def get_segments(self):
+        segments = self._hierarchical_segments(self.state_history, self.state_types)
+        return Segment(segments[0].start, segments[-1].end - segments[0].start, segments[-1].end, [], segments)
 
     @staticmethod
-    def filter_directions(state_records, state_directions):
-        """Filter the diffs so that only objects in the given state directions are monitored."""
+    def filter_diffs(state_records, state_types):
+        """Filter the segments so that only objects in the given state directions are monitored."""
         new_records = set()
 
-        # Go through the records in the diff.
+        # Go through the records in the segment.
         for state_record in state_records:
+            # Check if the state type is on our list
+            if state_record.state_type not in state_types:
+                continue
+
             # Check if any object in the record is on our list.
-            mode = state_directions[state_record.state_type]
+            mode = STATE_DIRECTIONS[state_record.state_type]
             accept = True
             if mode == SegmentationStateDirection.FALSE_TO_TRUE:
                 accept = state_record.value
@@ -225,26 +265,55 @@ class DemoSegmentationProcessor(object):
             if accept:
                 new_records.add(state_record)
 
-        # If we have kept any of this diff's records, add a diff entry containing them.
+        # If we haven't kept any of this segment's records, drop the segment.
         if not new_records:
             return None
 
         return new_records
 
+    def _serialize_segment(self, segment):
+        stringified_entries = [
+            {
+                "name": state_record.state_type.__name__,
+                "objects": [self.obj2str(obj) for obj in state_record.objects],
+                "value": state_record.value
+            }
+            for state_record in segment.state_records]
 
-    def print_flat(self):
+        return {
+            "start": segment.start,
+            "end": segment.end,
+            "duration": segment.duration,
+            "state_records": stringified_entries,
+            "sub_segments": [self._serialize_segment(sub_segment) for sub_segment in segment.sub_segments]
+        }
+
+    def _segment_to_dict_tree(self, segment, output_dict):
+        stringified_entries = [
+            (state_record.state_type.__name__,
+             ", ".join(obj.category for obj in state_record.objects),
+             state_record.value)
+            for state_record in segment.state_records]
+
+        entry_strs = ["%s(%r) = %r" % entry for entry in stringified_entries]
+        key = "%d-%d: %s" % (segment.start, segment.end, ", ".join(entry_strs))
+        sub_segments = {}
+        for sub in segment.sub_segments:
+            self._segment_to_dict_tree(sub, sub_segments)
+        output_dict[key] = sub_segments
+
+    def save(self, filename):
+        with open(filename, "w") as f:
+            json.dump(self._serialize_segment(self.get_segments()), f)
+
+    def print(self):
         print("---------------------------------------------------")
         print("Segmentation of %s" % self.object_selection.name)
-        print("Considered states: %s" % ", ".join(x.__name__ for x in self.state_classes))
+        print("Considered states: %s" % ", ".join(x.__name__ for x in self.state_types))
         print("---------------------------------------------------")
-        for diff_entry in self.flat_diff():
-            stringified_entries = [
-                (state_record.state_type.__name__,
-                 ", ".join(obj.category for obj in state_record.objects),
-                 state_record.value)
-                for state_record in diff_entry.state_records]
-            entry_strs = ["%s(%r) = %r" % entry for entry in stringified_entries]
-            print("%d: %s" % (diff_entry.frame_count, ", ".join(entry_strs)))
+        output = {}
+        self._segment_to_dict_tree(self.get_segments(), output)
+        printree.ptree(output)
         print("---------------------------------------------------")
         print("\n")
 
@@ -271,41 +340,37 @@ def main():
     # args = parse_args()
     tasknet.set_backend("iGibson")
 
-    FLAT_STATES = set(STATE_DIRECTIONS.keys())
-    flat_segmentation = DemoSegmentationProcessor(FLAT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS)
+    flat_states = set(STATE_DIRECTIONS.keys())
+    flat_object_segmentation = DemoSegmentationProcessor(flat_states, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
+                                                         label_by_instance=True)
 
     goal_segmentation = DemoSegmentationProcessor(
-        SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS)
+        SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
+        hierarchical=True)
     room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS)
 
-
     segmentation_processors = [
-        # flat_segmentation,
-        # goal_segmentation,
+        goal_segmentation,
+        flat_object_segmentation,
         room_presence_segmentation,
     ]
 
     # Run the segmentations.
-    DEMO_FILE = os.path.join(gibson2.ig_dataset_path, 'tests',
+    demo_file = os.path.join(gibson2.ig_dataset_path, 'tests',
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
-    run_segmentation(DEMO_FILE, segmentation_processors, no_vr=True)
+    run_segmentation(demo_file, segmentation_processors, no_vr=True)
 
-    # Filter the low-level segmentation to only include objects seen in the high/mid-level segmentation.
-    # objs_in_segmentations = set()
-    # for diff_entry in itertools.chain(high_level_segmentation.diffs, mid_level_segmentation.diffs):
-    #     for state_record in diff_entry.state_records:
-    #         objs_in_segmentations.update(state_record.objects)
-    # low_level_segmentation.filter_objects(
-    #     objs_in_segmentations,
-    #     "Filtered to only include objects in high/mid level segmentations.")
+    for i, segmentation_processor in enumerate(segmentation_processors):
+        segmentation_processor.save("%d.json" % i)
 
     # Print the segmentations.
     for segmentation_processor in segmentation_processors:
-        segmentation_processor.print_flat()
+        segmentation_processor.print()
 
     html = PROFILER.output_html()
     with open('segmentation_profile.html', 'w') as f:
         f.write(html)
+
 
 if __name__ == "__main__":
     main()
