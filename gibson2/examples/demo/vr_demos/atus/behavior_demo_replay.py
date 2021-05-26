@@ -114,11 +114,13 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
     # VR system settings
     s = Simulator(
-          mode='headless' if no_vr else 'vr',
+          mode='simple' if no_vr else 'vr',
           physics_timestep = physics_timestep,
           render_timestep = render_timestep,
           rendering_settings=vr_rendering_settings,
           vr_settings=vr_settings,
+          image_width=1280,
+          image_height=720,
         )
 
     igtn_task = iGTNTask(task, task_id)
@@ -200,6 +202,20 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
         if not disable_save:
             log_writer.process_frame()
+
+        # Per-step determinism check. Activate if necessary.
+        # things_to_compare = [thing for thing in log_writer.name_path_data if thing[0] == "physics_data"]
+        # for thing in things_to_compare:
+        #     thing_path = "/".join(thing)
+        #     fc = log_reader.frame_counter % log_writer.frames_before_write
+        #     if fc == log_writer.frames_before_write - 1:
+        #         continue
+        #     replayed = log_writer.get_data_for_name_path(thing)[fc]
+        #     original = log_reader.read_value(thing_path)
+        #     if not np.all(replayed == original):
+        #         print("%s not equal in %d" % (thing_path, log_reader.frame_counter))
+        #     if not np.isclose(replayed, original).all():
+        #         print("%s not close in %d" % (thing_path, log_reader.frame_counter))
 
     print("Demo was succesfully completed: ", task_done)
 
