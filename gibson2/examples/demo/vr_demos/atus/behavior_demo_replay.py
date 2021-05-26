@@ -227,7 +227,6 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
     print("Demo was succesfully completed: ", task_done)
 
-    is_deterministic = False
     if not disable_save:
         log_writer.end_log_session()
         with h5py.File(vr_log_path) as original_file, h5py.File(replay_path) as new_file:
@@ -240,9 +239,9 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
                         print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
 
         print("Demo was deterministic: ", is_deterministic)
-    s.disconnect()
+        assert is_deterministic, "Demo was not deterministic"
 
-    return is_deterministic
+    s.disconnect()
 
 
 if __name__ == "__main__":
