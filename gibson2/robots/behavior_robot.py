@@ -242,18 +242,18 @@ class BehaviorRobot(object):
         pass
 
     def get_proprioception_dim(self):
-        return 14 * 3 + 2
+        return 6 * 3 + 2
 
     def get_proprioception(self):
         state = OrderedDict()
-        state['body_position'] = self.parts['body'].get_position()
-        state['body_orientation'] = p.getEulerFromQuaternion(self.parts['body'].get_orientation())
-        state['left_hand_position'] = self.parts['left_hand'].get_position()
-        state['left_hand_orientation'] = p.getEulerFromQuaternion(self.parts['left_hand'].get_orientation())
-        state['right_hand_position'] = self.parts['right_hand'].get_position()
-        state['right_hand_orientation'] = p.getEulerFromQuaternion(self.parts['right_hand'].get_orientation())
-        state['eye_position'] = self.parts['eye'].get_position()
-        state['eye_orientation'] = p.getEulerFromQuaternion(self.parts['eye'].get_orientation())
+        # state['body_position'] = self.parts['body'].get_position()
+        # state['body_orientation'] = p.getEulerFromQuaternion(self.parts['body'].get_orientation())
+        # state['left_hand_position'] = self.parts['left_hand'].get_position()
+        # state['left_hand_orientation'] = p.getEulerFromQuaternion(self.parts['left_hand'].get_orientation())
+        # state['right_hand_position'] = self.parts['right_hand'].get_position()
+        # state['right_hand_orientation'] = p.getEulerFromQuaternion(self.parts['right_hand'].get_orientation())
+        # state['eye_position'] = self.parts['eye'].get_position()
+        # state['eye_orientation'] = p.getEulerFromQuaternion(self.parts['eye'].get_orientation())
         state['left_hand_position_local'] = self.parts['left_hand'].local_pos
         state['left_hand_orientation_local'] = p.getEulerFromQuaternion(self.parts['left_hand'].local_orn)
         state['right_hand_position_local'] = self.parts['right_hand'].local_pos
