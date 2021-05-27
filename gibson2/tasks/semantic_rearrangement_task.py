@@ -513,11 +513,12 @@ class SemanticRearrangementTask(BaseTask):
                 touching_right_finger = True
             elif item[4] == self.robot_gripper_joint_ids[1]:
                 touching_left_finger = True
-        grasping_target_object = touching_left_finger and touching_right_finger
-        # Lift success condition
+        grasping_target_object = touching_left_finger and touching_right_finger and self.env.robots[0].grasped
+        # Lift condition -- target object is touching both gripper fingers and lifted by small margin
+        lifting_target_object = self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05 and grasping_target_object
         if self.success_condition == "lift":
-            # Task is considered success if target object is touching both gripper fingers and lifted by small margin
-            if self.target_object.get_position()[2] - self.target_object_init_pos[2] > 0.05 and grasping_target_object:
+            # Task is considered success if object is lifted
+            if lifting_target_object:
                 task_success = True
         elif self.success_condition == "pick_place":
             # See if height condition is met
@@ -583,6 +584,8 @@ class SemanticRearrangementTask(BaseTask):
 
         # Store whether we grasped object or not
         success_dict["grasp_object"] = self.current_subtask_id > 0
+
+        success_dict["lift_object"] = lifting_target_object
 
         # Store the current subtask id in the success dict
         success_dict["current_subtask_id"] = self.current_subtask_id

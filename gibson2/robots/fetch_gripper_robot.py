@@ -87,6 +87,12 @@ class FetchGripper(LocomotorRobot):
         self.use_tuck_action = self.config.get('use_tuck_action', True)     # Whether to include tuck action as first dim in action array or not
         self.disabled_tucking_collisions = None
 
+        # Gripper info
+        self._grasped = False                           # Current filtered grasping state
+        self._grasp_filter_cooldown = 5                 # How many steps before a grasp is triggered
+        self._last_gripper_pos = np.zeros(2)
+        self._last_gripper_vel = np.zeros(2)
+
         # Action limits
         self.action_high = None
         self.action_low = None
@@ -302,6 +308,10 @@ class FetchGripper(LocomotorRobot):
 
         # Reset internal vars
         self.tucked = self.start_tucked
+        self._grasped = False
+        self._grasp_filter_cooldown = 5
+        self._last_gripper_pos = np.zeros(2)
+        self._last_gripper_vel = np.zeros(2)
         self.head_error_planning = []
         self.target_head_qpos = np.array(self.untucked_default_joints[self.head_joint_action_idx])
 
@@ -735,9 +745,40 @@ class FetchGripper(LocomotorRobot):
             "eef_pos": self.get_relative_eef_position(),
             "eef_quat": self.get_relative_eef_orientation(),
             "tucked": np.array([1.0 if self.tucked else -1.0]),
+            "grasped": np.array([1.0 if self.grasped else -1.0]),
         }
 
         return obs_dict
+
+    @property
+    def grasped(self):
+        """
+        Utility property to determine whether gripper is grasping something or not
+
+        Returns:
+            bool: True if grasping an object stably, else False
+        """
+        # We don't want this to update internal values if there's nothing new -- so we check if our gripper vals are new or not
+        if np.linalg.norm(self._last_gripper_pos - np.array(self.joint_position[-2:])) > 0 or \
+            np.linalg.norm(self._last_gripper_vel - np.array(self.joint_velocity[-2:])) > 0:
+            # Update values
+            self._last_gripper_pos = np.array(self.joint_position[-2:])
+            self._last_gripper_vel = np.array(self.joint_velocity[-2:])
+            # Update grasping
+            current_state = (0.002 < np.mean(np.abs(self.joint_position[-2:])) < 0.04)
+            if current_state != self._grasped:
+                # Decrease cooldown
+                self._grasp_filter_cooldown -= 1
+            # Otherwise we reset
+            else:
+                self._grasp_filter_cooldown = 5
+            # If our cooldown is at zero, actually switch the current state and reset cooldown
+            if self._grasp_filter_cooldown == 0:
+                self._grasped = current_state
+                self._grasp_filter_cooldown = 5
+
+        # Return filtered state
+        return self._grasped
 
     def sync_state(self):
         """
