@@ -600,8 +600,10 @@ class BRHandBase(ArticulatedObject):
             delta_trig_frac = action[26]
 
         new_trig_frac = self.trig_frac + delta_trig_frac
-        self.set_close_fraction(new_trig_frac)
-        self.trig_frac = new_trig_frac
+        # Clip close fraction to make sure it stays within [0, 1] range
+        clipped_trig_frac = np.clip([new_trig_frac], 0, 1)[0]
+        self.set_close_fraction(clipped_trig_frac)
+        self.trig_frac = clipped_trig_frac
 
         # Update ghost hands
         if self.use_ghost_hands:
@@ -998,8 +1000,6 @@ class BRHand(BRHandBase):
         if self.should_freeze_joints:
             return
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
 
         for joint_index in range(p.getNumJoints(self.body_id)):
             jf = p.getJointInfo(self.body_id, joint_index)
@@ -1009,7 +1009,7 @@ class BRHand(BRHandBase):
                 close_pos = self.thumb_close_pos
             else:
                 close_pos = self.finger_close_pos
-            interp_frac = (close_pos - self.open_pos) * clipped_close_frac
+            interp_frac = (close_pos - self.open_pos) * close_frac
             target_pos = self.open_pos + interp_frac
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
 

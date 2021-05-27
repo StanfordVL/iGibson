@@ -70,6 +70,11 @@ class BehaviorEnv(iGibsonEnv):
                                                low=-1.0,
                                                high=1.0,
                                                dtype=np.float32)
+        elif self.action_filter == 'tabletop_manipulation':
+            self.action_space = gym.spaces.Box(shape=(7,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
         else:
             self.action_space = gym.spaces.Box(shape=(28,),
                                                low=-1.0,
@@ -231,6 +236,11 @@ class BehaviorEnv(iGibsonEnv):
             new_action[12:19] = action[3:10]
             # right hand 7d
             new_action[20:27] = action[10:17]
+        elif self.action_filter == 'tabletop_manipulation':
+            self.robots[0].hand_thresh = 0.8
+            action = action * 0.05
+            new_action = np.zeros((28,))
+            new_action[20:27] = action[:7]
         else:
             new_action = action
 
@@ -335,7 +345,6 @@ if __name__ == '__main__':
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()
             state, reward, done, _ = env.step(action)
-            print(state)
             if done:
                 break
         print('Episode finished after {} timesteps, took {} seconds.'.format(
