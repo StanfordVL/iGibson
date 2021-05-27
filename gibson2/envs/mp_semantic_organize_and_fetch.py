@@ -16,6 +16,7 @@ from gibson2.external.pybullet_tools.utils import joints_from_names
 from gibson2.utils.utils import quat_pos_to_mat
 from gibson2.utils.utils import l2_distance, quatToXYZW
 from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
+from gibson2.sensors.scan_sensor import ScanSensor
 import collections
 import numpy as np
 import pybullet as p
@@ -53,7 +54,10 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
-    ):
+        base_mp_algo='birrt',
+        arm_mp_algo='birrt',
+        optimize_iter=0,
+        ):
         # Run super init
         super().__init__(
             config_file=config_file,
@@ -66,7 +70,7 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             automatic_reset=automatic_reset,
         )
         self.rotate_occ_grid = rotate_occ_grid
-        self.fine_motion_plan = self.config.get('fine_motion_plan', True)
+        self.fine_motion_plan = self.config.get('fine_motion_plan', False)
         self.arm_subgoal_threshold = 0.05
         self.failed_subgoal_penalty = -0.0
         self.arm_interaction_length = 0.25
@@ -82,7 +86,7 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         #self.prepare_scene()
         #self.prepare_mp_obstacles()
         #self.prepare_logging()
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+        #p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
         self.metric_keys = [
             'episode_return',
             'episode_length',
@@ -117,6 +121,14 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             key: 0.0 for key in self.metric_keys
         }
         self.episode_return = 0
+        self.scanner = ScanSensor(self, ['scan', 'occupancy_grid'])
+        self.base_mp_algo = base_mp_algo
+        self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
+        self.arm_mp_algo = arm_mp_algo
+        self.optimize_iter = optimize_iter
+        #self.reset()
+        self.initial_height = self.robots[0].get_position()[2]
+        self.path_length = 0
 
     def prepare_motion_planner(self):
         self.robot_id = self.robots[0].robot_ids[0]
@@ -131,43 +143,8 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             robot_footprint_radius / self.occupancy_range *
             self.grid_resolution)
 
-        if self.config['robot'] == 'FetchGripper':
-            self.arm_default_joint_positions = (0.30322468280792236,
-                                                -1.414019864768982,
-                                                1.5178184935241699,
-                                                0.8189625336474915,
-                                                2.200358942909668,
-                                                2.9631312579803466,
-                                                -1.2862852996643066,
-                                                0.0008453550418615341)
-            self.arm_joint_ids = joints_from_names(self.robot_id,
-                                                   [
-                                                       'torso_lift_joint',
-                                                       'shoulder_pan_joint',
-                                                       'shoulder_lift_joint',
-                                                       'upperarm_roll_joint',
-                                                       'elbow_flex_joint',
-                                                       'forearm_roll_joint',
-                                                       'wrist_flex_joint',
-                                                       'wrist_roll_joint'
-                                                   ])
-        elif self.config['robot'] == 'Movo':
-            self.arm_default_joint_positions = (0.205, -1.50058731470836, -1.3002625076695704, 0.5204845864369407, \
-               -2.6923805472917626, -0.02678584326934146, 0.5065742552588746, \
-               -1.562883631882778)
-            self.arm_joint_ids = joints_from_names(self.robot_id,
-                                                   ["linear_joint",
-                                                   "right_shoulder_pan_joint",
-                                                    "right_shoulder_lift_joint",
-                                                    "right_arm_half_joint",
-                                                    "right_elbow_joint",
-                                                    "right_wrist_spherical_1_joint",
-                                                    "right_wrist_spherical_2_joint",
-                                                    "right_wrist_3_joint",
-                                                       ])
-            self.arm_joint_ids_all = get_moving_links(self.robot_id, self.arm_joint_ids)
-            self.arm_joint_ids_all = [item for item in self.arm_joint_ids_all if item != self.robots[0].end_effector_part_index()]
-
+        self.arm_joint_ids = self.robots[0].arm_joint_ids
+        self.arm_default_joint_positions = self.robots[0].tucked_arm_joint_positions
 
     def update_action_space(self):
         if self.action_map:
@@ -290,7 +267,7 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         elif 'scan' in self.output:
             grid = self.get_local_occupancy_grid(self.state)
         else:
-            grid = self.get_local_occupancy_grid()
+            grid = self.scanner.get_obs(self)['occupancy_grid']
 
         yaw = self.robots[0].get_rpy()[2]
         half_occupancy_range = self.occupancy_range / 2.0
@@ -347,7 +324,7 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         #     self.logger.info('button_state: ' + str(p.getJointState(
         #         self.buttons[self.door_idx].body_id,
         #         self.button_axis_link_id)[0]))
-
+        '''
         self.current_step += 1
         #self.clear_base_arm_marker()
         if self.action_map:
@@ -418,29 +395,41 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             action = new_action
 
         use_base = action[0] > 0.0
+        '''
+        orn = self.robots[0].get_rpy()[2]
+        robot_pos = self.robots[0].get_position()
+        base_subgoal_pos = action[1][0]
+        base_subgoal_orn = action[1][1]
+        if np.linalg.norm(base_subgoal_pos - robot_pos) > 0.05 or\
+           abs(orn - base_subgoal_orn) > 0.05:
+            #print(str(robot_pos) + '-' +str(base_subgoal_pos))
+            #print(str(orn) + '-' + str(base_subgoal_orn))
+            self.base_subgoal_success = self.reach_base_subgoal(
+                base_subgoal_pos, base_subgoal_orn)
+            #print(self.base_subgoal_success)
 
-        self.base_subgoal_success = False
-        self.arm_subgoal_success = False
-        if use_base:
-            subgoal_success = self.move_base(action)
-            self.base_subgoal_success = subgoal_success
-        else:
-            subgoal_success = self.move_arm(action)
-            self.arm_subgoal_success = subgoal_success
+        arm_subgoal = action[0]
+        #print(str(self.robots[0].get_eef_position()) + '-' + str(arm_subgoal))
+        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+        #arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
+        #print(get_joint_positions(self.robot_id, self.arm_joint_ids))
+        #print(arm_joint_positions)
+        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+        self.arm_subgoal_success = self.reach_arm_subgoal(arm_subgoal)
+        #print(str(self.robots[0].get_eef_position()))
+        #print(self.arm_subgoal_success)
 
         state, reward, done, info = self.compute_next_step(
-            action, use_base, subgoal_success)
+            action, False, True)
 
         if self.mode == 'gui':
             self.step_visualization()
         return state, reward, done, info
 
     def compute_next_step(self, action, use_base, subgoal_success):
-        if not use_base:
-            set_joint_positions(self.robot_id, self.arm_joint_ids,
-                                self.arm_default_joint_positions)
-            if self.config['robot'] == 'Movo':
-                self.robots[0].tuck()
+        #if not use_base:
+        #    set_joint_positions(self.robot_id, self.arm_joint_ids,
+        #                        self.arm_default_joint_positions)
 
         self.simulator.sync()
         self.current_step += 1
@@ -475,48 +464,6 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
 
         return state, reward, done, info
 
-
-    def load(self):
-        """
-        Load environment
-        """
-        # Make sure "task" in config isn't filled in, since we write directly to it here
-        assert "task" not in self.config, "Task type is already pre-determined for this env," \
-                                          "please remove key from config file!"
-        self.config["task"] = "semantic_rearrangement"
-
-        # Run super call
-        super().load()
-
-    def load_task_setup(self):
-        """
-        Extends super call to make sure that self.task is the appropriate task for this env
-        """
-        super().load_task_setup()
-
-        # Load task
-        self.task = SemanticRearrangementTask(
-            env=self,
-            goal_pos=[0, 0, 0],
-            randomize_initial_robot_pos=(self.task_mode == "fetch"),
-        )
-
-    def reset(self):
-        """
-        Reset the environment
-
-        Returns:
-            OrderedDict: state after reset
-        """
-        # Run super method
-        state = super().reset()
-
-        # Re-gather task obs since they may have changed
-        if 'task_obs' in self.output:
-            state['task_obs'] = self.task.get_task_obs(self)
-
-        # Return state
-        return state
 
     def get_state(self, collision_links=[]):
         state = super(MPSemanticOrganizeAndFetch,
@@ -607,25 +554,6 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         # cv2.imshow('scan', state['scan'])
         return state
 
-    def set_task_conditions(self, task_conditions):
-        """
-        Method to override task conditions (e.g.: target object), useful in cases such as playing back
-            from demonstrations
-
-        Args:
-            task_conditions (dict): Keyword-mapped arguments to pass to task instance to set internally
-        """
-        self.task.set_conditions(task_conditions)
-
-    def check_success(self):
-        """
-        Checks various success states and returns the keyword-mapped values
-
-        Returns:
-            dict: Success criteria mapped to bools
-        """
-        return self.task.check_success()
-
     def set_subgoal(self, ideal_next_state):
         self.arm_marker.set_position(ideal_next_state)
         self.base_marker.set_position(
@@ -637,54 +565,6 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             self.arm_marker.set_color([0, 0, 0, 0.0])
         else:
             self.arm_marker.set_color([0, 0, 0, 0.8])
-
-    def move_arm(self, action):
-        """
-        Execute action for arm_subgoal and push_vector
-        :param action: policy output
-        :return: whether arm_subgoal is achieved
-        """
-        # print('arm')
-        # start = time.time()
-        arm_subgoal = self.get_arm_subgoal(action)
-        # self.times['get_arm_subgoal'].append(time.time() - start)
-        # print('get_arm_subgoal', time.time() - start)
-
-        # start = time.time()
-        # print(p.getNumBodies())
-        # state_id = p.saveState()
-        # print('saveState', time.time() - start)
-
-        # start = time.time()
-        # self.times['stash_object_states'].append(time.time() - start)
-
-        # start = time.time()
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
-        arm_joint_positions = self.get_arm_joint_positions(arm_subgoal)
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        # self.times['get_arm_joint_positions'].append(time.time() - start)
-
-        # start = time.time()
-        subgoal_success = self.reach_arm_subgoal(arm_joint_positions)
-        # self.times['reach_arm_subgoal'].append(time.time() - start)
-
-        # start = time.time()
-        # p.restoreState(stateId=state_id)
-        # print('restoreState', time.time() - start)
-
-        # start = time.time()
-        #self.reset_object_states()
-        # self.times['reset_object_states'].append(time.time() - start)
-
-        # print('reset_object_velocities', time.time() - start)
-
-        if subgoal_success:
-            # start = time.time()
-            self.interact(action, arm_subgoal)
-            # self.times['interact'].append(time.time() - start)
-            # print('interact', time.time() - start)
-
-        return subgoal_success
 
     def move_base(self, action):
         """
@@ -765,6 +645,7 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         arm_subgoal = transform_mat.dot(
             np.array([-point[2], -point[0], point[1], 1]))[:3]
         self.arm_subgoal = arm_subgoal
+        arm_subgoal = self.robots[0].get_end_effector_position() + np.random.random(3)*0.05
 
         push_vector_local = np.array(
             [action[6], action[7]]) * self.arm_interaction_length
@@ -825,10 +706,10 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
 
+        joint_positions = get_joint_positions(self.robot_id, self.arm_joint_ids)
+
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
-            if self.config['robot'] == 'Movo':
-                self.robots[0].tuck()
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
@@ -838,22 +719,21 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
                 lowerLimits=min_limits,
                 upperLimits=max_limits,
                 jointRanges=joint_range,
-                restPoses=rest_position,
-                jointDamping=joint_damping,
+                restPoses=joint_positions,
+                #jointDamping=joint_damping,
                 solver=p.IK_DLS,
-                maxNumIterations=100)
+                maxNumIterations=100,
+                residualThreshold=0.02)
 
-            if self.config['robot'] == 'FetchGripper':
-                arm_joint_positions = arm_joint_positions[2:10]
-            elif self.config['robot'] == 'Movo':
-                arm_joint_positions = arm_joint_positions[:8]
-
+            #print(len(self.arm_joint_ids))
+            #print(len(arm_joint_positions))
+            arm_joint_positions = [arm_joint_positions[i] for i in self.robots[0].arm_joint_action_idx]
             set_joint_positions(
                 self.robot_id, self.arm_joint_ids, arm_joint_positions)
 
             dist = l2_distance(
                 self.robots[0].get_end_effector_position(), arm_subgoal)
-            # print('dist', dist)
+
             if dist > self.arm_subgoal_threshold:
                 n_attempt += 1
                 continue
@@ -864,18 +744,12 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             # simulator_step will slightly move the robot base and the objects
             set_base_values_with_z(
                 self.robot_id, base_pose, z=self.initial_height)
-            self.reset_object_states()
+            #self.reset_object_states()
 
             # arm should not have any collision
-            if self.config['robot'] == 'Movo':
-                collision_free = self.is_collision_free(
-                body_a=self.robot_id,
-                link_a_list=self.arm_joint_ids_all)
-                # ignore linear link
-            else:
-                collision_free = self.is_collision_free(
-                body_a=self.robot_id,
-                link_a_list=self.arm_joint_ids)
+            collision_free = self.is_collision_free(
+            body_a=self.robot_id,
+            link_a_list=self.arm_joint_ids)
 
             if not collision_free:
                 n_attempt += 1
@@ -888,28 +762,17 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
                 link_a_list=[
                     self.robots[0].end_effector_part_index()],
                 body_b=self.robot_id)
+            set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+            return arm_joint_positions
 
     def get_ik_parameters(self):
-        if self.config['robot'] == 'FetchGripper':
-            max_limits = [0., 0.] + \
-                get_max_limits(self.robot_id, self.arm_joint_ids)
-            min_limits = [0., 0.] + \
-                get_min_limits(self.robot_id, self.arm_joint_ids)
-            # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
-            min_limits[2] += 0.02
-            rest_position = [0., 0.] + \
-                list(get_joint_positions(self.robot_id, self.arm_joint_ids))
-            joint_range = list(np.array(max_limits) - np.array(min_limits))
-            joint_range = [item + 1 for item in joint_range]
-            joint_damping = [0.1 for _ in joint_range]
-
-        elif self.config['robot'] == 'Movo':
-            max_limits = get_max_limits(self.robot_id, self.robots[0].all_joints)
-            min_limits = get_min_limits(self.robot_id, self.robots[0].all_joints)
-            rest_position = list(get_joint_positions(self.robot_id, self.robots[0].all_joints))
-            joint_range = list(np.array(max_limits) - np.array(min_limits))
-            joint_range = [item + 1 for item in joint_range]
-            joint_damping = [0.1 for _ in joint_range]
+        idxs = self.robots[0].arm_joint_action_idx
+        max_limits = [self.robots[0].upper_joint_limits[i] for i in idxs]
+        min_limits = [self.robots[0].lower_joint_limits[i] for i in idxs]
+        rest_position = [self.robots[0].rest_joints[i] for i in idxs]
+        joint_range = [self.robots[0].joint_range[i] for i in idxs]
+        #joint_range = [item + 1 for item in joint_range]
+        joint_damping = [0,0]+[self.robots[0].joint_damping[i] for i in idxs]
 
         return (
             max_limits, min_limits, rest_position,
@@ -923,63 +786,24 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         :param arm_joint_positions
         :return: whether arm_joint_positions is achieved
         """
-        if self.config['robot'] == 'Movo':
-            self.robots[0].tuck()
-
-        set_joint_positions(self.robot_id, self.arm_joint_ids,
-                            self.arm_default_joint_positions)
+        #set_joint_positions(self.robot_id, self.arm_joint_ids,
+        #                    self.arm_default_joint_positions)
 
         if arm_joint_positions is None:
             self.episode_metrics['arm_ik_failure'] += 1
             return False
 
-        if self.config['robot'] == 'Fetch':
-            disabled_collisions = {
-                (link_from_name(self.robot_id, 'torso_lift_link'),
-                 link_from_name(self.robot_id, 'torso_fixed_link')),
-                (link_from_name(self.robot_id, 'torso_lift_link'),
-                 link_from_name(self.robot_id, 'shoulder_lift_link')),
-                (link_from_name(self.robot_id, 'torso_lift_link'),
-                 link_from_name(self.robot_id, 'upperarm_roll_link')),
-                (link_from_name(self.robot_id, 'torso_lift_link'),
-                 link_from_name(self.robot_id, 'forearm_roll_link')),
-                (link_from_name(self.robot_id, 'torso_lift_link'),
-                 link_from_name(self.robot_id, 'elbow_flex_link'))}
-        elif self.config['robot'] == 'Movo':
-            disabled_collisions = {
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_shoulder_link')),
-                (link_from_name(self.robot_id, 'right_base_link'),
-                link_from_name(self.robot_id,'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_arm_half_1_link')),
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_arm_half_2_link')),
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_forearm_link')),
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_wrist_spherical_1_link')),
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_wrist_spherical_2_link')),
-                (link_from_name(self.robot_id, 'linear_actuator_link'),
-                link_from_name(self.robot_id, 'right_wrist_3_link')),
-                (link_from_name(self.robot_id, 'right_wrist_spherical_2_link'),
-                link_from_name(self.robot_id, 'right_robotiq_coupler_link')),
-                (link_from_name(self.robot_id, 'right_shoulder_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'left_base_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'left_shoulder_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'left_arm_half_2_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'right_arm_half_2_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'right_arm_half_1_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                (link_from_name(self.robot_id, 'left_arm_half_1_link'),
-                link_from_name(self.robot_id, 'linear_actuator_fixed_link')),
-                }
+        disabled_collisions = {
+            (link_from_name(self.robot_id, 'torso_lift_link'),
+             link_from_name(self.robot_id, 'torso_fixed_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'),
+             link_from_name(self.robot_id, 'shoulder_lift_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'),
+             link_from_name(self.robot_id, 'upperarm_roll_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'),
+             link_from_name(self.robot_id, 'forearm_roll_link')),
+            (link_from_name(self.robot_id, 'torso_lift_link'),
+             link_from_name(self.robot_id, 'elbow_flex_link'))}
 
         if self.fine_motion_plan:
             self_collisions = True
@@ -991,10 +815,7 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
         plan_arm_start = time.time()
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
 
-        if self.config['robot'] == 'Fetch':
-            allow_collision_links = [19]
-        elif self.config['robot'] == 'Movo':
-            allow_collision_links = [23,24]
+        allow_collision_links = [19]
 
         arm_path = plan_joint_motion(
             self.robot_id,
@@ -1017,8 +838,8 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
                         self.robot_id, self.arm_joint_ids, joint_way_point)
                     #self.simulator.step()
 
-                    #set_base_values_with_z(
-                    #    self.robot_id, base_pose, z=self.initial_height)
+                    set_base_values_with_z(
+                        self.robot_id, base_pose, z=self.initial_height)
                     #time.sleep(0.02)  # animation
             else:
                 set_joint_positions(
@@ -1033,10 +854,8 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
             return True
         else:
             # print('arm mp fails')
-            if self.config['robot'] == 'Movo':
-                self.robots[0].tuck()
-            set_joint_positions(self.robot_id, self.arm_joint_ids,
-                                self.arm_default_joint_positions)
+            #set_joint_positions(self.robot_id, self.arm_joint_ids,
+            #                    self.arm_default_joint_positions)
             self.episode_metrics['arm_mp_failure'] += 1
             return False
 
@@ -1095,3 +914,35 @@ class MPSemanticOrganizeAndFetch(SemanticOrganizeAndFetch):
                            self).get_termination(collision_links, action, info)
 
         return done, info
+
+    def is_collision_free(self, body_a, link_a_list,
+                          body_b=None, link_b_list=None):
+        """
+        :param body_a: body id of body A
+        :param link_a_list: link ids of body A that that of interest
+        :param body_b: body id of body B (optional)
+        :param link_b_list: link ids of body B that are of interest (optional)
+        :return: whether the bodies and links of interest are collision-free
+        """
+        if body_b is None:
+            for link_a in link_a_list:
+                contact_pts = p.getContactPoints(
+                    bodyA=body_a, linkIndexA=link_a)
+                if len(contact_pts) > 0:
+                    return False
+        elif link_b_list is None:
+            for link_a in link_a_list:
+                contact_pts = p.getContactPoints(
+                    bodyA=body_a, bodyB=body_b, linkIndexA=link_a)
+                if len(contact_pts) > 0:
+                    return False
+        else:
+            for link_a in link_a_list:
+                for link_b in link_b_list:
+                    contact_pts = p.getContactPoints(
+                        bodyA=body_a, bodyB=body_b,
+                        linkIndexA=link_a, linkIndexB=link_b)
+                    if len(contact_pts) > 0:
+                        return False
+        return True
+

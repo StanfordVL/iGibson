@@ -33,12 +33,10 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
-        motion_planning=False,
     ):
         # Store other internal variables
         self.task = None
         self.task_mode = task_mode
-        self.motion_planning = motion_planning
 
         # Run super init
         super().__init__(
@@ -51,9 +49,6 @@ class SemanticOrganizeAndFetch(iGibsonEnv):
             render_to_tensor=render_to_tensor,
             automatic_reset=automatic_reset,
         )
-
-        if motion_planning:
-            self.motion_planner = MotionPlanningWrapper(self)
 
     def load(self):
         """
