@@ -7,13 +7,14 @@ from scipy.spatial.transform import Rotation
 from scipy.stats import truncnorm
 
 import gibson2
+from gibson2.objects.visual_marker import VisualMarker
 
 _DEFAULT_AABB_OFFSET = 0.1
-_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 0.52  # Around 30 degrees
+_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 1.  # Around 60 degrees
 _DEFAULT_HIT_TO_PLANE_THRESHOLD = 0.05
 _DEFAULT_MAX_ANGLE_WITH_Z_AXIS = 3 * np.pi / 4
 _DEFAULT_MAX_SAMPLING_ATTEMPTS = 10
-_DEFAULT_CUBOID_BOTTOM_PADDING = 0.01
+_DEFAULT_CUBOID_BOTTOM_PADDING = 0.005
 # We will cast an additional parallel ray for each additional this much distance.
 _DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE = 0.1
 
@@ -42,6 +43,19 @@ def get_distance_to_plane(points, plane_centroid, plane_normal):
 def get_projection_onto_plane(points, plane_centroid, plane_normal):
     distances_to_plane = get_distance_to_plane(points, plane_centroid, plane_normal)
     return points - np.outer(distances_to_plane, plane_normal)
+
+
+def draw_debug_markers(hit_positions):
+    color = np.concatenate([np.random.rand(3), [1]])
+    for vec in hit_positions:
+        m = VisualMarker(
+            rgba_color=color,
+            radius=0.001,
+            initial_offset=vec
+        )
+        # This is normally very illegal - the simulator should do it.
+        # But since this is debug mode only I think we'll be fine.
+        m.load()
 
 
 def get_parallel_rays(source, destination, offset,
@@ -206,8 +220,6 @@ def sample_cuboid_on_object(obj,
     results = [(None, None, None, None, defaultdict(list)) for _ in range(num_samples)]
 
     for i in range(num_samples):
-        debug_markers = []
-
         # Sample the starting positions in advance.
         samples = sample_origin_positions(sampling_aabb_min, sampling_aabb_max, max_sampling_attempts,
                                           bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities)
@@ -255,6 +267,20 @@ def sample_cuboid_on_object(obj,
             # Fit a plane to the points.
             plane_centroid, plane_normal = fit_plane(hit_positions)
 
+            # The fit_plane normal can be facing either direction on the normal axis, but we want it to face away from
+            # the object for purposes of normal checking and padding. To do this:
+            # First, we get the multiplier we'd need to multiply by to get this normal to face in the positive
+            # direction of our axis. This is simply the sign of our vector's component in our axis.
+            facing_multiplier = np.sign(plane_normal[axis])
+
+            # Then we invert the multiplier based on whether we want it to face in the positive or negative direction
+            # of the axis. This is determined by whether or not is_top is True, e.g. the sampler intended this as a
+            # positive-facing or negative-facing sample.
+            facing_multiplier *= 1 if is_top else -1
+
+            # Finally, we multiply the entire normal vector by the multiplier to make it face the correct direction.
+            plane_normal *= facing_multiplier
+
             # Check that the plane normal is similar to the hit normal
             if not check_normal_similarity(
                     center_hit_normal, plane_normal[None, :], refusal_reasons["plane_normal_similarity"]):
@@ -290,29 +316,6 @@ def sample_cuboid_on_object(obj,
 
             if undo_padding:
                 cuboid_centroid -= padding
-
-            # Debug markers
-            # TODO (Cem): Either make this possible to toggle on/off or delete it.
-            # Kept for now for debugging cases that seem to spring up often.
-            # from gibson2 import simulator
-            # color = [1, 0, 0, 1]
-            # for vec in hit_positions:
-            #     m = VisualMarker(
-            #         rgba_color=color,
-            #         radius=0.005,
-            #         initial_offset=vec
-            #     )
-            #     simulator.SIM.import_object(m)
-            #     debug_markers.append(m)
-            # color = [0, 1, 0, 1]
-            # for vec in corner_positions:
-            #     m = VisualMarker(
-            #         rgba_color=color,
-            #         radius=0.005,
-            #         initial_offset=vec
-            #     )
-            #     simulator.SIM.import_object(m)
-            #     debug_markers.append(m)
 
             # We've found a nice attachment point. Continue onto next point to sample.
             results[i] = (cuboid_centroid, plane_normal, rotation.as_quat(), hit_link, refusal_reasons)
@@ -364,8 +367,7 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
     if not all_rays_hit_with_similar_normal:
         if gibson2.debug_sampling:
             refusal_log.append(
-                "center normal %r, normals %r, angles %r" % (
-                    center_hit_normal, hit_normals, parallel_hit_normal_angles_to_hit_normal))
+                "angles %r" % (np.rad2deg(parallel_hit_normal_angles_to_hit_normal), ))
 
         return False
 
