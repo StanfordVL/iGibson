@@ -237,6 +237,7 @@ class BehaviorEnv(iGibsonEnv):
             # right hand 7d
             new_action[20:27] = action[10:17]
         elif self.action_filter == 'tabletop_manipulation':
+            # Note: only using right hand
             self.robots[0].hand_thresh = 0.8
             action = action * 0.05
             new_action = np.zeros((28,))
