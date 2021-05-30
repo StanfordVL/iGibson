@@ -8,13 +8,16 @@ import gibson2
 import os
 from gibson2.robots.behavior_robot import BehaviorRobot
 import numpy as np
-from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, get_base_distance_fn, circular_difference, set_base_values, pairwise_collision, get_base_values, direct_path, birrt, PI
+from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, \
+    get_base_distance_fn, circular_difference, set_base_values, pairwise_collision, get_base_values, direct_path, birrt, \
+    PI
 import pybullet as p
 import time
 
+
 def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[], direct=False,
-                     weights=1*np.ones(3), resolutions=0.05*np.ones(3),
-                     max_distance=MAX_DISTANCE, **kwargs):
+                        weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
+                        max_distance=MAX_DISTANCE, **kwargs):
     def sample_fn():
         x, y = np.random.uniform(*base_limits)
         theta = np.random.uniform(*CIRCULAR_LIMITS)
@@ -28,7 +31,7 @@ def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[
         body_ids.append(robot.parts[part].body_id)
 
     def extend_fn(q1, q2):
-        target_theta = np.arctan2(q2[1]-q1[1], q2[0]-q1[0])
+        target_theta = np.arctan2(q2[1] - q1[1], q2[0] - q1[0])
 
         n1 = int(np.abs(circular_difference(
             target_theta, q1[2]) / resolutions[2])) + 1
@@ -46,32 +49,32 @@ def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[
 
         for i in range(n2):
             q = (i / (n2)) * np.array(difference_fn((q2[0], q2[1], target_theta),
-                                                    (q1[0], q1[1], target_theta))) + np.array((q1[0], q1[1], target_theta))
+                                                    (q1[0], q1[1], target_theta))) + np.array(
+                (q1[0], q1[1], target_theta))
             q = tuple(q)
             yield q
 
         for i in range(n3):
             q = (i / (n3)) * np.array(difference_fn(q2,
-                                                    (q2[0], q2[1], target_theta))) + np.array((q2[0], q2[1], target_theta))
+                                                    (q2[0], q2[1], target_theta))) + np.array(
+                (q2[0], q2[1], target_theta))
             q = tuple(q)
             yield q
 
-
-
     def collision_fn(q):
         # TODO: update this function
-        #set_base_values(body, q)
-        robot.set_position_orientation([q[0], q[1], robot.initial_z_offset], p.getQuaternionFromEuler([0,0,q[2]]))
+        # set_base_values(body, q)
+        robot.set_position_orientation([q[0], q[1], robot.initial_z_offset], p.getQuaternionFromEuler([0, 0, q[2]]))
         return any(pairwise_collision(body_ids, obs, max_distance=max_distance) for obs in obstacles)
 
     pos = robot.get_position()
     yaw = p.getEulerFromQuaternion(robot.get_orientation())[2]
     start_conf = [pos[0], pos[1], yaw]
     if collision_fn(start_conf):
-        #print("Warning: initial configuration is in collision")
+        # print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        #print("Warning: end configuration is in collision")
+        # print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
@@ -86,29 +89,30 @@ def get_hand_difference_fn():
         dpitch = circular_difference(q2[4], q1[4])
         dyaw = circular_difference(q2[5], q1[5])
         return (dx, dy, dz, droll, dpitch, dyaw)
+
     return fn
 
 
-def get_hand_distance_fn(weights=1*np.ones(3)):
+def get_hand_distance_fn(weights=1 * np.ones(3)):
     difference_fn = get_base_difference_fn()
 
     def fn(q1, q2):
         difference = np.array(difference_fn(q2, q1))
         return np.sqrt(np.dot(weights, difference * difference))
+
     return fn
 
 
 def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[], direct=False,
-                     weights=1*np.ones(6), resolutions=0.05*np.ones(6),
-                     max_distance=MAX_DISTANCE, **kwargs):
+                        weights=1 * np.ones(6), resolutions=0.05 * np.ones(6),
+                        max_distance=MAX_DISTANCE, **kwargs):
     def sample_fn():
-        x,y,z = np.random.uniform(*hand_limits)
-        r,p,yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
+        x, y, z = np.random.uniform(*hand_limits)
+        r, p, yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
         return (x, y, z, r, p, yaw)
 
     difference_fn = get_hand_difference_fn()
     distance_fn = get_hand_distance_fn(weights=weights)
-
 
     def extend_fn(q1, q2):
         steps = np.abs(np.divide(difference_fn(q2, q1), resolutions))
@@ -121,19 +125,20 @@ def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[
 
     def collision_fn(q):
         # TODO: update this function
-        #set_base_values(body, q)
+        # set_base_values(body, q)
         robot.parts['right_hand'].set_position_orientation([q[0], q[1], q[2]],
-                                                           p.getQuaternionFromEuler([q[3],q[4],q[5]]))
-        return any(pairwise_collision(robot.parts['right_hand'].body_id, obs, max_distance=max_distance) for obs in obstacles)
+                                                           p.getQuaternionFromEuler([q[3], q[4], q[5]]))
+        return any(
+            pairwise_collision(robot.parts['right_hand'].body_id, obs, max_distance=max_distance) for obs in obstacles)
 
     pos = robot.parts['right_hand'].get_position()
     rpy = p.getEulerFromQuaternion(robot.parts['right_hand'].get_orientation())
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
     if collision_fn(start_conf):
-        #print("Warning: initial configuration is in collision")
+        # print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        #print("Warning: end configuration is in collision")
+        # print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
@@ -141,37 +146,37 @@ def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[
                  sample_fn, extend_fn, collision_fn, **kwargs)
 
 
+if __name__ == "__main__":
+    config = parse_config(os.path.join(gibson2.example_config_path, 'behavior.yaml'))
+    settings = MeshRendererSettings(enable_shadow=False, msaa=False)
+    s = Simulator(mode='gui', image_width=256,
+                  image_height=256, rendering_settings=settings)
 
-config = parse_config(os.path.join(gibson2.example_config_path, 'behavior.yaml'))
-settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-s = Simulator(mode='gui', image_width=256,
-              image_height=256, rendering_settings=settings)
+    scene = EmptyScene()
+    scene.objects_by_id = {}
+    s.import_scene(scene, render_floor_plane=True)
 
-scene = EmptyScene()
-scene.objects_by_id = {}
-s.import_scene(scene, render_floor_plane=True)
+    agent = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True,
+                          use_ghost_hands=False)
+    s.import_behavior_robot(agent)
+    s.register_main_vr_robot(agent)
+    initial_pos_z_offset = 0.7
 
-agent = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True,
-                      use_ghost_hands=False)
-s.import_behavior_robot(agent)
-s.register_main_vr_robot(agent)
-initial_pos_z_offset = 0.7
+    s.robots.append(agent)
+    agent.initial_z_offset = initial_pos_z_offset
+    agent.set_position_orientation([0, 0, initial_pos_z_offset], [0, 0, 0, 1])
+    # plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])
+    plan = plan_hand_motion_br(agent, [3, 3, 3, 0, 0, 0], ((-5, -5, -5), (5, 5, 5)))
+    print(plan)
+    for q in plan:
+        agent.parts['right_hand'].set_position_orientation([q[0], q[1], q[2]],
+                                                           p.getQuaternionFromEuler([q[3], q[4], q[5]]))
+        time.sleep(0.05)
 
-s.robots.append(agent)
-agent.initial_z_offset = initial_pos_z_offset
-agent.set_position_orientation([0,0,initial_pos_z_offset], [0,0,0,1])
-#plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])
-plan = plan_hand_motion_br(agent, [3,3,3,0,0,0], ((-5,-5,-5), (5,5,5)))
-print(plan)
-for q in plan:
-    agent.parts['right_hand'].set_position_orientation([q[0], q[1], q[2]],
-                                                       p.getQuaternionFromEuler([q[3], q[4], q[5]]))
-    time.sleep(0.05)
-
-for i in range(10000):
-    action = np.zeros((28,))
-    if i < 2:
-        action[19] = 1
-        action[27] = 1
-    agent.update(action)
-    s.step()
+    for i in range(10000):
+        action = np.zeros((28,))
+        if i < 2:
+            action[19] = 1
+            action[27] = 1
+        agent.update(action)
+        s.step()
