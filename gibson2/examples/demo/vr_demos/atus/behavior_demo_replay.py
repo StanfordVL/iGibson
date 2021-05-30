@@ -148,14 +148,13 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     if not disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         if vr_replay_log_path == None:
-            vr_replay_log_path = "{}_{}_{}_{}.hdf5".format(
+            vr_replay_log_path = "{}_{}_{}_{}_replay.hdf5".format(
                 task, task_id, scene, timestamp)
 
-        replay_path = vr_log_path[:-5] + "_replay.hdf5"
         log_writer = IGLogWriter(
             s,
             frames_before_write=200,
-            log_filepath=replay_path,
+            log_filepath=vr_replay_log_path,
             task=igtn_task,
             store_vr=False,
             vr_robot=vr_agent,
@@ -222,7 +221,7 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     is_deterministic = False
     if not disable_save:
         log_writer.end_log_session()
-        with h5py.File(vr_log_path) as original_file, h5py.File(replay_path) as new_file:
+        with h5py.File(vr_log_path) as original_file, h5py.File(vr_replay_log_path) as new_file:
             is_deterministic = True
             for obj in original_file['physics_data']:
                 for attribute in original_file['physics_data'][obj]:

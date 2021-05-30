@@ -21,17 +21,20 @@ def test_determinism_with_new_demo():
         replay_determinism = behavior_demo_replay.replay_demo(
             demo_file, vr_replay_log_path=replay_file, no_vr=True)
 
-        # Assert for the completion state.
-        assert replay_determinism, "Replay was not deterministic."
+    # Assert for the completion state.
+    assert replay_determinism, "Replay was not deterministic."
 
 
 def test_determinism_with_existing_vr_demo():
     DEMO_FILE = os.path.join(gibson2.ig_dataset_path, 'tests',
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
-    # Replay the canonical demo.
-    with tempfile.NamedTemporaryFile() as replay_file:
+
+    with tempfile.TemporaryDirectory() as directory:
+        replay_file = os.path.join(directory, "replay.hdf5")
+
+        # Replay the canonical demo.
         replay_determinism = behavior_demo_replay.replay_demo(
-            DEMO_FILE, vr_replay_log_path=replay_file.name, no_vr=True)
+            DEMO_FILE, vr_replay_log_path=replay_file, no_vr=True)
 
     # Assert for the completion state.
     assert replay_determinism, "Replay was not deterministic."
