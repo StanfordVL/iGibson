@@ -55,6 +55,9 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     """
     Replay a BEHAVIOR demo.
 
+    Note that this returns, but does not check for determinism. Use safe_replay_demo to assert for determinism
+    when using in scenarios where determinism is important.
+
     @param in_log_path: the path of the BEHAVIOR demo log to replay.
     @param out_log_path: the path of the new BEHAVIOR demo log to save from the replay.
     @param frame_save_path: the path to save frame images to. None to disable frame image saving.
@@ -68,7 +71,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         take a single argument, an iGTNTask.
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
         argument, an iGTNTask.
-    @raise AssertionError if replay was not deterministic (only computable if disable_save is False).
+    @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     pp = pprint.PrettyPrinter(indent=4)
 
@@ -254,7 +257,15 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
                         print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
 
         print("Demo was deterministic: ", is_deterministic)
-        assert is_deterministic, "Demo replay was not deterministic."
+        return is_deterministic
+
+    return None
+
+
+def safe_replay_demo(*args, **kwargs):
+    """Replays a demo, asserting that it was deterministic."""
+    replay_determinism = replay_demo(*args, **kwargs)
+    assert replay_determinism, "Replay was not deterministic (or was executed with disable_save=True)."
 
 
 if __name__ == "__main__":

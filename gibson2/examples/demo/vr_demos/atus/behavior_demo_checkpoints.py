@@ -4,7 +4,7 @@ import os
 import tasknet
 
 import gibson2
-from gibson2.examples.demo.vr_demos.atus.behavior_demo_replay import replay_demo
+from gibson2.examples.demo.vr_demos.atus.behavior_demo_replay import safe_replay_demo
 from gibson2.utils.checkpoint_utils import save_checkpoint
 
 tasknet.set_backend("iGibson")
@@ -16,7 +16,7 @@ def create_checkpoints(demo_file, checkpoint_directory, checkpoint_every_n_steps
         if igtn_task.simulator.frame_count % checkpoint_every_n_steps == 0:
             save_checkpoint(igtn_task.simulator, checkpoint_directory)
 
-    replay_demo(demo_file, no_vr=True, step_callback=step_callback)
+    safe_replay_demo(demo_file, no_vr=True, step_callback=step_callback)
 
 
 def main():
