@@ -18,11 +18,7 @@ def test_determinism_with_new_demo():
         # Then replay the random demo.
         print("Replaying demo.")
         replay_file = os.path.join(directory, "replay.hdf5")
-        replay_determinism = behavior_demo_replay.replay_demo(
-            demo_file, vr_replay_log_path=replay_file, no_vr=True)
-
-    # Assert for the completion state.
-    assert replay_determinism, "Replay was not deterministic."
+        behavior_demo_replay.replay_demo(demo_file, out_log_path=replay_file, no_vr=True)
 
 
 def test_determinism_with_existing_vr_demo():
@@ -33,8 +29,4 @@ def test_determinism_with_existing_vr_demo():
         replay_file = os.path.join(directory, "replay.hdf5")
 
         # Replay the canonical demo.
-        replay_determinism = behavior_demo_replay.replay_demo(
-            DEMO_FILE, vr_replay_log_path=replay_file, no_vr=True)
-
-    # Assert for the completion state.
-    assert replay_determinism, "Replay was not deterministic."
+        behavior_demo_replay.replay_demo(DEMO_FILE, out_log_path=replay_file, no_vr=True)

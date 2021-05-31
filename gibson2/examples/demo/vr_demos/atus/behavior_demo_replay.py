@@ -31,10 +31,9 @@ def parse_args():
                         help='Path (and filename) of file to save replay to (for debugging)')
     parser.add_argument('--frame_save_path', type=str,
                         help='Path to save frames (frame number added automatically, as well as .jpg extension)')
-    parser.add_argument('--disable_scene_cache', action='store_true',
-                        help='Whether to disable using pre-initialized scene caches.')
     parser.add_argument('--disable_save',
-                        action='store_true', help='Whether to disable saving log of replayed trajectory, used for validation.')
+                        action='store_true',
+                        help='Whether to disable saving log of replayed trajectory, used for validation.')
     parser.add_argument('--highlight_gaze', action='store_true',
                         help='Whether to highlight the object at gaze location.')
     parser.add_argument('--profile', action='store_true',
@@ -47,12 +46,30 @@ def parse_args():
 def main():
     args = parse_args()
     tasknet.set_backend("iGibson")
-    replay_demo(args.vr_log_path, args.vr_replay_log_path, args.frame_save_path, args.highlight_gaze, args.no_vr,
-                args.disable_save, args.disable_scene_cache, args.profile)
+    replay_demo(args.vr_log_path, args.vr_replay_log_path, args.disable_save, args.frame_save_path, args.highlight_gaze,
+                args.no_vr, profile=args.profile)
 
 
-def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, highlight_gaze=False, no_vr=False,
-                disable_save=False, disable_scene_cache=False, profile=False):
+def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_path=None, highlight_gaze=False,
+                no_vr=False, start_callback=None, step_callback=None, end_callback=None, profile=False):
+    """
+    Replay a BEHAVIOR demo.
+
+    @param in_log_path: the path of the BEHAVIOR demo log to replay.
+    @param out_log_path: the path of the new BEHAVIOR demo log to save from the replay.
+    @param frame_save_path: the path to save frame images to. None to disable frame image saving.
+    @param highlight_gaze: whether the user's gaze should be highlighted.
+    @param no_vr: Whether VR mode should be turned off, in which case the demo will be replayed with simple robot view.
+    @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
+    @param profile: Whether the replay should be profiled, with profiler output to stdout.
+    @param start_callback: A callback function that will be called immediately before starting to replay steps. Should
+        take a single argument, an iGTNTask.
+    @param step_callback: A callback function that will be called immediately following each replayed step. Should
+        take a single argument, an iGTNTask.
+    @param end_callback: A callback function that will be called when replay has finished. Should take a single
+        argument, an iGTNTask.
+    @raise AssertionError if replay was not deterministic (only computable if disable_save is False).
+    """
     pp = pprint.PrettyPrinter(indent=4)
 
     # HDR files for PBR rendering
@@ -80,81 +97,74 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     )
 
     # Initialize settings to save action replay frames
-    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(vr_log_path, '/metadata/vr_settings'))
+    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, '/metadata/vr_settings'))
     vr_settings.set_frame_save_path(frame_save_path)
 
-    task = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/task_name')
-    task_id = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/task_instance')
-    scene = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/scene_id')
-    physics_timestep = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/physics_timestep')
-    render_timestep = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/render_timestep')
+    task = IGLogReader.read_metadata_attr(in_log_path, '/metadata/task_name')
+    task_id = IGLogReader.read_metadata_attr(in_log_path, '/metadata/task_instance')
+    scene = IGLogReader.read_metadata_attr(in_log_path, '/metadata/scene_id')
+    physics_timestep = IGLogReader.read_metadata_attr(in_log_path, '/metadata/physics_timestep')
+    render_timestep = IGLogReader.read_metadata_attr(in_log_path, '/metadata/render_timestep')
 
-    if IGLogReader.has_metadata_attr(vr_log_path, '/metadata/filter_objects'):
-        filter_objects = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/filter_objects')
+    if IGLogReader.has_metadata_attr(in_log_path, '/metadata/filter_objects'):
+        filter_objects = IGLogReader.read_metadata_attr(in_log_path, '/metadata/filter_objects')
     else:
         filter_objects = True
 
-    if IGLogReader.has_metadata_attr(vr_log_path, '/metadata/git_info'):
-        logged_git_info = IGLogReader.read_metadata_attr(vr_log_path, '/metadata/git_info')
+    if IGLogReader.has_metadata_attr(in_log_path, '/metadata/git_info'):
+        logged_git_info = IGLogReader.read_metadata_attr(in_log_path, '/metadata/git_info')
         logged_git_info = parse_str_config(logged_git_info)
         git_info = project_git_info()
         for key in logged_git_info.keys():
             logged_git_info[key].pop('directory', None)
             git_info[key].pop('directory', None)
             if logged_git_info[key] != git_info[key]:
-                print("Warning, difference in git commits for repo: {}. This may impact deterministic replay".format(key))
+                print(
+                    "Warning, difference in git commits for repo: {}. This may impact deterministic replay".format(key))
                 print("Logged git info:\n")
                 pp.pprint(logged_git_info[key])
                 print("Current git info:\n")
                 pp.pprint(git_info[key])
 
     # Get dictionary mapping object body id to name, also check it is a dictionary
-    obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(vr_log_path)
+    obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(in_log_path)
     assert type(obj_body_id_to_name) == dict
 
     # VR system settings
     s = Simulator(
-          mode='simple' if no_vr else 'vr',
-          physics_timestep = physics_timestep,
-          render_timestep = render_timestep,
-          rendering_settings=vr_rendering_settings,
-          vr_settings=vr_settings,
-          image_width=1280,
-          image_height=720,
-        )
+        mode='simple' if no_vr else 'vr',
+        physics_timestep=physics_timestep,
+        render_timestep=render_timestep,
+        rendering_settings=vr_rendering_settings,
+        vr_settings=vr_settings,
+        image_width=1280,
+        image_height=720,
+    )
 
     igtn_task = iGTNTask(task, task_id)
-
-    scene_kwargs = None
-
-    online_sampling = True
-
-    if not disable_scene_cache:
-        scene_kwargs = {
-            'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
-        }
-        online_sampling = False
-
     igtn_task.initialize_simulator(simulator=s,
                                    scene_id=scene,
-                                   scene_kwargs=scene_kwargs,
+                                   scene_kwargs={
+                                       'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task,
+                                                                                                     task_id),
+                                   },
                                    load_clutter=True,
-                                   online_sampling=online_sampling)
+                                   online_sampling=False)
     vr_agent = igtn_task.simulator.robots[0]
-    if not vr_log_path:
+    if not in_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
-    log_reader = IGLogReader(vr_log_path, log_status=False)
+    log_reader = IGLogReader(in_log_path, log_status=False)
 
     if not disable_save:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        if vr_replay_log_path == None:
-            vr_replay_log_path = "{}_{}_{}_{}_replay.hdf5".format(
+        if out_log_path == None:
+            out_log_path = "{}_{}_{}_{}_replay.hdf5".format(
                 task, task_id, scene, timestamp)
 
         log_writer = IGLogWriter(
             s,
             frames_before_write=200,
-            log_filepath=vr_replay_log_path,
+            log_filepath=out_log_path,
             task=igtn_task,
             store_vr=False,
             vr_robot=vr_agent,
@@ -162,6 +172,9 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
             filter_objects=filter_objects
         )
         log_writer.set_up_data_storage()
+
+    if start_callback is not None:
+        start_callback(igtn_task)
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
     target_obj = -1
@@ -193,6 +206,9 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
         if not no_vr:
             log_reader.set_replay_camera(s)
 
+        if step_callback is not None:
+            step_callback(igtn_task)
+
         # Get relevant VR action data and update VR agent
         vr_agent.update(log_reader.get_agent_action('vr_robot'))
 
@@ -218,22 +234,27 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
 
     print("Demo was succesfully completed: ", task_done)
 
-    is_deterministic = False
+    if end_callback is not None:
+        end_callback(igtn_task)
+
+    s.disconnect()
+
     if not disable_save:
         log_writer.end_log_session()
-        with h5py.File(vr_log_path) as original_file, h5py.File(vr_replay_log_path) as new_file:
-            is_deterministic = True
+
+        # Compute replay determinism
+        is_deterministic = True
+        with h5py.File(in_log_path) as original_file, h5py.File(out_log_path) as new_file:
             for obj in original_file['physics_data']:
                 for attribute in original_file['physics_data'][obj]:
-                    is_close = np.isclose(original_file['physics_data'][obj][attribute], new_file['physics_data'][obj][attribute]).all()
+                    is_close = np.isclose(original_file['physics_data'][obj][attribute],
+                                          new_file['physics_data'][obj][attribute]).all()
                     is_deterministic = is_deterministic and is_close
                     if not is_close:
                         print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
 
         print("Demo was deterministic: ", is_deterministic)
-    s.disconnect()
-
-    return is_deterministic
+        assert is_deterministic, "Demo replay was not deterministic."
 
 
 if __name__ == "__main__":
