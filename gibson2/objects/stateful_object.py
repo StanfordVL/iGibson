@@ -1,7 +1,7 @@
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.utils import clear_cached_states
 from gibson2.objects.object_base import Object
-from gibson2.object_states.factory import prepare_object_states
+from gibson2.object_states.factory import prepare_object_states, get_state_name, get_state_from_name
 
 
 class StatefulObject(Object):
@@ -16,15 +16,16 @@ class StatefulObject(Object):
 
     def dump_state(self):
         return {
-            state_type: state_instance.dump()
+            get_state_name(state_type): state_instance.dump()
             for state_type, state_instance in self.states.items()
             if issubclass(state_type, AbsoluteObjectState)
         }
 
     def load_state(self, dump):
-        for state_type, state_instance in self.states.items():
+        for state_name, state_instance in self.states.items():
+            state_type = get_state_from_name(state_name)
             if issubclass(state_type, AbsoluteObjectState):
-                state_instance.load(dump[state_type])
+                state_instance.load(dump[state_name])
 
     def set_position(self, pos):
         super(StatefulObject, self).set_position(pos)
