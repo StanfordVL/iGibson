@@ -17,6 +17,12 @@ from gibson2.render.mesh_renderer.materials import RandomizedMaterial
 import gibson2.utils.transform_utils as T
 
 
+# Define mapping from axis name to index
+AXIS2IDX = {
+    "x": 0,
+    "y": 1,
+    "z": 2,
+}
 
 class ArticulatedObject(Object):
     """
@@ -96,6 +102,12 @@ class URDFObject(Object):
         self.in_rooms = in_rooms
         self.init_pos = np.array(init_pos)
         self.init_ori = np.array(init_ori)
+
+        # Randomization info for this object
+        self.randomize_pose = False
+        self.randomize_pos_range = None
+        self.randomize_rot_range = None
+        self.randomize_rot_axis = None
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -686,6 +698,14 @@ class URDFObject(Object):
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+
+            # Add noise if requested
+            if self.randomize_pose:
+                # Sample values
+                pos_noise, quat_noise = self.sample_pose_perturbation()
+                pos += pos_noise
+                orn = T.quat_multiply(quat_noise, orn)
+
             logging.info("Resetting URDF to (pos,ori): " +
                          np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
@@ -757,7 +777,7 @@ class URDFObject(Object):
                 continue
             elif obj_radius * 2 > surface["size"][0] or obj_radius * 2 > surface["size"][1]:
                 # Object is too wide, try next surface
-                print(f"obj too wide for sampled surface {surface_name}")
+                print(f"obj too wide for sampled surface {surface_name}; obj radius: {obj_radius}, surface_size: {surface['size']}")
                 continue
             else:
                 # Sample location
@@ -824,3 +844,45 @@ class URDFObject(Object):
             link_name += f"_{link_name_raw}"
         # Get link ID
         return PBU.link_from_name(body=self.body_ids[0], name=link_name)
+
+    def register_randomization(self, pos_range, rot_range, rot_axis):
+        """
+        Registers randomization for this object for stochastic sampling upon resets.
+
+        Args:
+            pos_range (2-array of 3-array): ((x_min, y_min, z_min), (x_max, y_max, z_max)) range from which
+                to uniformly sample to perturb this object's position
+            rot_range (2-array): (r_min, r_max) radian rotation range from which to uniformly sample to perturb
+                this object's rotation
+            rot_axis (str): One of {x, y, z} -- which axis to rotate the object when sampling rotation perturbation
+        """
+        # Add these ranges
+        self.randomize_pos_range = pos_range
+        self.randomize_rot_range = rot_range
+        self.randomize_rot_axis = rot_axis
+
+        # Set randomize to be true
+        self.randomize_pose = True
+
+    def sample_pose_perturbation(self):
+        """
+        Samples a random pos and rotation noise value with which to perturb this object's pose by
+
+        NOTE: Assumes self.randomize_pos_range, self.randomize_rot_range, and self.randomize_rot_axis is not None!
+
+        Returns:
+            2-tuple:
+                3-array: (dx, dy, dz) sampled pos perturbation value
+                4-array: (dx, dy, dz, dw) sampled quaternion rotation value
+        """
+        # Sample pos
+        sampled_pos = np.random.uniform(self.randomize_pos_range[0], self.randomize_pos_range[1])
+
+        # Sample ori and convert to quaternion
+        sampled_rot = np.random.uniform(self.randomize_rot_range[0], self.randomize_rot_range[1])
+        sampled_ori = np.zeros(3)
+        sampled_ori[AXIS2IDX[self.randomize_rot_axis]] = sampled_rot
+        sampled_ori = T.mat2quat(T.euler2mat(sampled_ori))
+
+        # Return values
+        return sampled_pos, sampled_ori

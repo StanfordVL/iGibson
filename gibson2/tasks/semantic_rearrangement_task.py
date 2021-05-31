@@ -91,8 +91,7 @@ class SemanticRearrangementTask(BaseTask):
         self.trash = None
         self.trash_bin = None
         self.trash_sampling_args = None
-        if self.include_trash:
-            self.trash = self._create_trash(env=env)
+        self.trash = self._create_trash(env=env)
 
         # Store env
         self.env = env
@@ -162,10 +161,19 @@ class SemanticRearrangementTask(BaseTask):
             "surfaces": ["top"],
         }
 
-        # Compose dummy sampling dict, since we don't know a priori what target object will be sampled
-        sample_at = {
-            "__DUMMY__": self.trash_sampling_args
-        }
+        # Set sampling args, based on whether we're using trash or not
+        if self.include_trash:
+            # Compose dummy sampling dict, since we don't know a priori what target object will be sampled
+            sample_at = {
+                "__DUMMY__": self.trash_sampling_args
+            }
+            # No pos / ori samplers
+            pos_sampler, ori_sampler = None, None
+        else:
+            # No sample_at args, but use hardcoded pos / ori samplers
+            sample_at = None
+            pos_sampler = lambda: np.array([30., 30., 0.5])
+            ori_sampler = lambda: np.array([0., 0., 0., 1.])
 
         # Hardcode number of trash particles for now
         n_trash = 2
@@ -182,8 +190,8 @@ class SemanticRearrangementTask(BaseTask):
                 pos_range=None,
                 rot_range=[-1.57, 1.57],
                 rot_axis="z",
-                pos_sampler=None,
-                ori_sampler=None,
+                pos_sampler=pos_sampler,
+                ori_sampler=ori_sampler,
                 env=env,
                 filename=None,
                 mass=0.5,
@@ -252,18 +260,24 @@ class SemanticRearrangementTask(BaseTask):
         # Store location info
         self.update_location_info()
 
-    def sample_pose_and_place_object(self, obj, check_contact=True):
+    def sample_pose_and_place_object(self, obj, check_contact=True, pos=None, ori=None):
         """
         Method to sample @obj pose and set its pose in the environment
 
         Args:
             obj (CustomWrappedObject): Object to place in environment
             check_contact (bool): If True, will make sure that the object is not in collision when being sampled
+            pos (None or 3-array): If not None, will override sampled pos value
+            ori (None or 4-array): If not None, will override sampled ori (quat) value
         """
         # Sample location, checking for collisions
         success = False if check_contact else True
         for i in range(100):
-            pos, ori = obj.sample_pose()
+            pos_sampled, ori_sampled = obj.sample_pose()
+            if pos is None:
+                pos = pos_sampled
+            if ori is None:
+                ori = ori_sampled
             self.target_object_init_pos = np.array(pos)
             obj.set_position_orientation(pos, ori)
             p.stepSimulation()
@@ -318,13 +332,17 @@ class SemanticRearrangementTask(BaseTask):
         # If we have trash, we also need to update its position
         if self.include_trash:
             # Update trash bin object
-            self.trash_bin = self.env.scene.objects_by_name["trash_can_77"]
+            self.trash_bin = self.env.scene.objects_by_name[self.config["trash_bin"]]
             for tr in self.trash.values():
                 # Update sampling args
                 sample_at = {self.target_object.name: self.trash_sampling_args}
                 tr.update_sample_at(sample_at=sample_at, only_top=True)
                 # Update trash locations in scene
                 self.sample_pose_and_place_object(obj=tr, check_contact=True)
+        # Otherwise, move trash out of scene
+        else:
+            for tr in self.trash.values():
+                self.sample_pose_and_place_object(obj=tr, check_contact=False, pos=[30, 30, 0.5], ori=[0, 0, 0, 1])
 
     def sample_initial_pose(self, env):
         """

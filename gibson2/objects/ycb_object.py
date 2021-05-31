@@ -13,7 +13,7 @@ class YCBObject(Object):
     Reference: https://www.ycbbenchmarks.com/
     """
 
-    def __init__(self, name, scale=1, mass=0.1):
+    def __init__(self, name, scale=1.0, mass=0.1):
         super(YCBObject, self).__init__()
         self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
                                             'textured_simple.obj')
@@ -21,6 +21,7 @@ class YCBObject(Object):
                                                'textured_simple_vhacd.obj')
         self.scale = scale
         self.mass = mass
+        self.scale = [scale] * 3 if isinstance(scale, float) else scale
 
         # Load metadata info
         metadata_fpath = os.path.join(gibson2.assets_path, 'models', 'ycb', name, 'metadata.json')
@@ -111,7 +112,7 @@ class YCBObject(Object):
                 continue
             elif obj_radius * 2 > surface["size"][0] or obj_radius * 2 > surface["size"][1]:
                 # Object is too wide, try next surface
-                print(f"obj too wide for sampled surface {surface_name}")
+                print(f"obj too wide for sampled surface {surface_name}; obj radius: {obj_radius}, surface_size: {surface['size']}")
                 continue
             else:
                 # Sample location

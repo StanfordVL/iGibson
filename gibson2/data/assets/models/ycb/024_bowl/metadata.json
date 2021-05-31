@@ -1,13 +1,13 @@
 {
-  "radius": 1.618,
-  "height": 0.527,
-  "bottom_offset": -0.236,
+  "radius": 0.0809,
+  "height": 0.0527,
+  "bottom_offset": -0.0236,
   "valid_surfaces": [
     {
       "name": "top",
       "link": "root",
-      "offset_from_base": [0.0, 0.0, 0.310],
-      "size": [0.4, 0.4],
+      "offset_from_base": [0.0, 0.0, 0.0310],
+      "size": [0.095, 0.095],
       "max_height": 10000.0,
       "prob": 1.0
     }

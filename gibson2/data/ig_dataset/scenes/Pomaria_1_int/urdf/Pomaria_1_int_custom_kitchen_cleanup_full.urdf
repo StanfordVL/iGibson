@@ -489,14 +489,14 @@
 	<!-- Custom Extra Objects -->
 	<link bounding_box="0.75000 0.75000 0.79000" category="table" model="bc48080ee5498d721fca2012865943e2" name="table_76" room="kitchen_0"/>
 	<joint name="j_table_76" type="fixed">
-		<origin rpy="0 0 0.000000" xyz="-2.05000 -1.1000 0.395"/>
+		<origin rpy="0 0 0.000000" xyz="-2.05000 -0.9000 0.395"/>
 		<child link="table_76"/>
 		<parent link="world"/>
 	</joint>
 
 	<link bounding_box="0.50000 0.50000 0.7000" category="trash_can" model="97e3b7b4688c2a93f155d75bbf62b80" name="trash_can_77" room="kitchen_0"/>
 	<joint name="j_trash_can_77" type="fixed">
-		<origin rpy="0 0 1.570796" xyz="-1.855000 -2.75000 0.400000"/>
+		<origin rpy="0 0 1.570796" xyz="-1.455000 -3.05000 0.400000"/>
 		<child link="trash_can_77"/>
 		<parent link="world"/>
 	</joint>

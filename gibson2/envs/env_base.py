@@ -79,6 +79,11 @@ class BaseEnv(gym.Env):
                                    rendering_settings=settings)
         self.load()
 
+        # Register any scene object randomization
+        randomize_scene_objects = self.config.get("randomize_scene_objects", {})
+        for obj_name, vals in randomize_scene_objects.items():
+            self.scene.objects_by_name[obj_name].register_randomization(**vals)
+
     def reload(self, config_file):
         """
         Reload another config file
