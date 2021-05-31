@@ -80,40 +80,49 @@ class BehaviorMPEnv(BehaviorEnv):
         action_primitive = int(action) // self.num_objects
         obj = self.simulator.scene.get_objects()[obj_list_id]
         print(obj, action_primitive)
+        if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
+            if action_primitive == ActionPrimitives.NAVIGATE_TO:
+                self.navigate_to_obj(obj)
+                print('PRIMITIVE: navigate to {} success'.format(obj.name))
+            elif action_primitive == ActionPrimitives.GRASP:
+                if self.obj_in_hand is None:
+                    if hasattr(obj, 'states') and AABB in obj.states:
+                        lo, hi = obj.states[AABB].get_value()
+                        volume = get_aabb_volume(lo, hi)
+                        if volume < 0.2 * 0.2 * 0.2: # say we can only grasp small objects
+                            self.obj_in_hand = obj
+                            print('PRIMITIVE: grasp {} success'.format(obj.name))
+                        else:
+                            print('PRIMITIVE: grasp {} fail, too big'.format(obj.name))
+            elif action_primitive == ActionPrimitives.PLACE_ONTOP:
+                if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                    result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True)
+                    if result:
+                        print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
+                        self.obj_in_hand = None
+                    else:
+                        print('PRIMITIVE: place {} ontop {} fail'.format(self.obj_in_hand.name, obj.name))
 
-        if action_primitive == ActionPrimitives.NAVIGATE_TO:
-            self.navigate_to_obj(obj)
-        elif action_primitive == ActionPrimitives.GRASP:
-            if self.obj_in_hand is None:
-                if hasattr(obj, 'states') and AABB in obj.states:
-                    lo, hi = obj.states[AABB].get_value()
-                    volume = get_aabb_volume(lo, hi)
-                    if volume < 0.2 * 0.2 * 0.2: # say we can only grasp small objects
-                        self.obj_in_hand = obj
-        elif action_primitive == ActionPrimitives.PLACE_ONTOP:
-            if self.obj_in_hand is not None:
-                result = sample_kinematics('onTop', self.obj_in_hand, obj, True)
-                if result:
-                    self.obj_in_hand = None
-        elif action_primitive == ActionPrimitives.PLACE_INSIDE:
-            if self.obj_in_hand is not None:
-                result = sample_kinematics('inside', self.obj_in_hand, obj, True)
-                if result:
-                    self.obj_in_hand = None
-        elif action_primitive == ActionPrimitives.OPEN:
-            if hasattr(obj, 'states') and Open in obj.states:
-                obj.states[Open].set_value(True)
-        elif action_primitive == ActionPrimitives.CLOSE:
-            if hasattr(obj, 'states') and Open in obj.states:
-                obj.states[Open].set_value(False)
-
+            elif action_primitive == ActionPrimitives.PLACE_INSIDE:
+                if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                    result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True)
+                    if result:
+                        print('PRIMITIVE: place {} inside {} success'.format(self.obj_in_hand.name, obj.name))
+                        self.obj_in_hand = None
+                    else:
+                        print('PRIMITIVE: place {} inside {} fail'.format(self.obj_in_hand.name, obj.name))
+            elif action_primitive == ActionPrimitives.OPEN:
+                if hasattr(obj, 'states') and Open in obj.states:
+                    obj.states[Open].set_value(True)
+            elif action_primitive == ActionPrimitives.CLOSE:
+                if hasattr(obj, 'states') and Open in obj.states:
+                    obj.states[Open].set_value(False)
 
         state, reward, done, info = super(BehaviorMPEnv, self).step(np.zeros(17))
+        print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
         return state, reward, done, info
 
     def navigate_to_obj(self, obj):
-        if isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye):
-            return
 
         state_id = p.saveState()
 
