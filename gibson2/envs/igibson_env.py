@@ -392,22 +392,22 @@ class iGibsonEnv(BaseEnv):
             obj.robot_specific_reset()
             obj.keep_still()
 
-        has_collision = False
+        validity = True
 
         if is_robot:
             body_id = obj.robot_ids[0]
-            has_collision = self.check_collision(body_id)
+            validity = self.check_collision(body_id)
         elif is_behavior_robot:
             parts = ['body', 'left_hand', 'right_hand']
             for part in parts:
-                if self.check_collision(obj.parts[part].body_id):
-                    has_collision = True
+                if not self.check_collision(obj.parts[part].body_id):
+                    validity = False
                     break
         else:
             body_id = obj.body_id
-            has_collision = self.check_collision(body_id)
+            validity = self.check_collision(body_id)
 
-        return has_collision
+        return validity
 
     def land(self, obj, pos, orn):
         """

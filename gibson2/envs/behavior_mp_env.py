@@ -82,35 +82,48 @@ class BehaviorMPEnv(BehaviorEnv):
         print(obj, action_primitive)
         if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
-                self.navigate_to_obj(obj)
-                print('PRIMITIVE: navigate to {} success'.format(obj.name))
+                if self.navigate_to_obj(obj):
+                    print('PRIMITIVE: navigate to {} success'.format(obj.name))
+                else:
+                    print('PRIMITIVE: navigate to {} fail'.format(obj.name))
+
             elif action_primitive == ActionPrimitives.GRASP:
                 if self.obj_in_hand is None:
                     if hasattr(obj, 'states') and AABB in obj.states:
                         lo, hi = obj.states[AABB].get_value()
                         volume = get_aabb_volume(lo, hi)
                         if volume < 0.2 * 0.2 * 0.2: # say we can only grasp small objects
-                            self.obj_in_hand = obj
-                            print('PRIMITIVE: grasp {} success'.format(obj.name))
+                            if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                                self.obj_in_hand = obj
+                                print('PRIMITIVE: grasp {} success'.format(obj.name))
+                            else:
+                                print('PRIMITIVE: grasp {} fail, too far'.format(obj.name))
                         else:
                             print('PRIMITIVE: grasp {} fail, too big'.format(obj.name))
             elif action_primitive == ActionPrimitives.PLACE_ONTOP:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
-                    result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True)
-                    if result:
-                        print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
-                        self.obj_in_hand = None
+                    if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                        result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True)
+                        if result:
+                            print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
+                            self.obj_in_hand = None
+                        else:
+                            print('PRIMITIVE: place {} ontop {} fail, sampling fail'.format(self.obj_in_hand.name, obj.name))
                     else:
-                        print('PRIMITIVE: place {} ontop {} fail'.format(self.obj_in_hand.name, obj.name))
+                        print(
+                            'PRIMITIVE: place {} ontop {} fail, too far'.format(self.obj_in_hand.name, obj.name))
 
             elif action_primitive == ActionPrimitives.PLACE_INSIDE:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
-                    result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True)
-                    if result:
-                        print('PRIMITIVE: place {} inside {} success'.format(self.obj_in_hand.name, obj.name))
-                        self.obj_in_hand = None
+                    if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                        result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True)
+                        if result:
+                            print('PRIMITIVE: place {} inside {} success'.format(self.obj_in_hand.name, obj.name))
+                            self.obj_in_hand = None
+                        else:
+                            print('PRIMITIVE: place {} inside {} fail, sampling fail'.format(self.obj_in_hand.name, obj.name))
                     else:
-                        print('PRIMITIVE: place {} inside {} fail'.format(self.obj_in_hand.name, obj.name))
+                        print('PRIMITIVE: place {} inside {} fail, too far'.format(self.obj_in_hand.name, obj.name))
             elif action_primitive == ActionPrimitives.OPEN:
                 if hasattr(obj, 'states') and Open in obj.states:
                     obj.states[Open].set_value(True)
@@ -119,11 +132,11 @@ class BehaviorMPEnv(BehaviorEnv):
                     obj.states[Open].set_value(False)
 
         state, reward, done, info = super(BehaviorMPEnv, self).step(np.zeros(17))
-        print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
+        # print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
         return state, reward, done, info
 
     def navigate_to_obj(self, obj):
-
+        self.simulator.scene.force_wakeup_scene_objects()
         state_id = p.saveState()
 
         # test agent positions around an obj
@@ -136,8 +149,8 @@ class BehaviorMPEnv(BehaviorEnv):
             for _ in range(20):
                 p.restoreState(state_id)
                 yaw = np.random.uniform(-np.pi, np.pi)
-                pos = [obj_pos[0] + distance * np.sin(yaw), obj_pos[1] + distance * np.cos(yaw), 0.7]
-                orn = [0,0,-yaw]
+                pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
+                orn = [0,0,yaw-np.pi]
                 if self.test_valid_position(self.robots[0], pos, orn):
                     valid_position = (pos, orn)
                     break
@@ -146,9 +159,11 @@ class BehaviorMPEnv(BehaviorEnv):
 
         p.restoreState(state_id)
         p.removeState(state_id)
-        self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
-
-
+        if valid_position is not None:
+            self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
+            return True
+        else:
+            return False
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
