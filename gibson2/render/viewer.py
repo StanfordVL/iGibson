@@ -79,8 +79,8 @@ class ViewerSimple:
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(
                     frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imshow('ExternalView', frame)
-        q = cv2.waitKey(1)
+                cv2.imshow('RobotView', frame)
+        cv2.waitKey(1)
 
 
 class Viewer:
