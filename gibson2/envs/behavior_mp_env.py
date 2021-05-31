@@ -12,6 +12,7 @@ from gibson2.envs.behavior_env import BehaviorEnv
 from enum import IntEnum
 from gibson2.object_states import *
 from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
+from gibson2.object_states.utils import sample_kinematics
 
 NUM_ACTIONS = 6
 class ActionPrimitives(IntEnum):
@@ -21,6 +22,10 @@ class ActionPrimitives(IntEnum):
     PLACE_INSIDE = 3
     OPEN = 4
     CLOSE = 5
+
+def get_aabb_volume(lo, hi):
+    dimension = hi - lo
+    return dimension[0] * dimension[1] * dimension[2]
 
 class BehaviorMPEnv(BehaviorEnv):
     """
@@ -64,6 +69,7 @@ class BehaviorMPEnv(BehaviorEnv):
         super(BehaviorMPEnv, self).reset()
         super(BehaviorMPEnv, self).step(np.zeros(17))
         super(BehaviorMPEnv, self).step(np.zeros(17))
+        self.obj_in_hand = None
 
     def load_action_space(self):
         self.num_objects = self.simulator.scene.get_num_objects()
@@ -78,11 +84,22 @@ class BehaviorMPEnv(BehaviorEnv):
         if action_primitive == ActionPrimitives.NAVIGATE_TO:
             self.navigate_to_obj(obj)
         elif action_primitive == ActionPrimitives.GRASP:
-            print('grasp', obj)
+            if self.obj_in_hand is None:
+                if hasattr(obj, 'states') and AABB in obj.states:
+                    lo, hi = obj.states[AABB].get_value()
+                    volume = get_aabb_volume(lo, hi)
+                    if volume < 0.2 * 0.2 * 0.2: # say we can only grasp small objects
+                        self.obj_in_hand = obj
         elif action_primitive == ActionPrimitives.PLACE_ONTOP:
-            print('place ontop', obj)
+            if self.obj_in_hand is not None:
+                result = sample_kinematics('onTop', self.obj_in_hand, obj, True)
+                if result:
+                    self.obj_in_hand = None
         elif action_primitive == ActionPrimitives.PLACE_INSIDE:
-            print('place inside', obj)
+            if self.obj_in_hand is not None:
+                result = sample_kinematics('inside', self.obj_in_hand, obj, True)
+                if result:
+                    self.obj_in_hand = None
         elif action_primitive == ActionPrimitives.OPEN:
             if hasattr(obj, 'states') and Open in obj.states:
                 obj.states[Open].set_value(True)
