@@ -9,6 +9,18 @@ import pybullet as p
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.envs.behavior_env import BehaviorEnv
+from enum import IntEnum
+from gibson2.object_states import *
+from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
+
+NUM_ACTIONS = 6
+class ActionPrimitives(IntEnum):
+    NAVIGATE_TO = 0
+    GRASP = 1
+    PLACE_ONTOP = 2
+    PLACE_INSIDE = 3
+    OPEN = 4
+    CLOSE = 5
 
 class BehaviorMPEnv(BehaviorEnv):
     """
@@ -54,14 +66,62 @@ class BehaviorMPEnv(BehaviorEnv):
         super(BehaviorMPEnv, self).step(np.zeros(17))
 
     def load_action_space(self):
-        self.action_space = gym.spaces.Discrete(10)
+        self.num_objects = self.simulator.scene.get_num_objects()
+        self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
     def step(self, action):
+        obj_list_id = int(action) % self.num_objects
+        action_primitive = int(action) // self.num_objects
+        obj = self.simulator.scene.get_objects()[obj_list_id]
+        print(obj, action_primitive)
 
-        # Do magic action or MP action here
+        if action_primitive == ActionPrimitives.NAVIGATE_TO:
+            self.navigate_to_obj(obj)
+        elif action_primitive == ActionPrimitives.GRASP:
+            print('grasp', obj)
+        elif action_primitive == ActionPrimitives.PLACE_ONTOP:
+            print('place ontop', obj)
+        elif action_primitive == ActionPrimitives.PLACE_INSIDE:
+            print('place inside', obj)
+        elif action_primitive == ActionPrimitives.OPEN:
+            if hasattr(obj, 'states') and Open in obj.states:
+                obj.states[Open].set_value(True)
+        elif action_primitive == ActionPrimitives.CLOSE:
+            if hasattr(obj, 'states') and Open in obj.states:
+                obj.states[Open].set_value(False)
+
 
         state, reward, done, info = super(BehaviorMPEnv, self).step(np.zeros(17))
         return state, reward, done, info
+
+    def navigate_to_obj(self, obj):
+        if isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye):
+            return
+
+        state_id = p.saveState()
+
+        # test agent positions around an obj
+        # try to place the agent near the object, and rotate it to the object
+        distance_to_try = [0.5, 1, 2, 3]
+        valid_position = None # ((x,y,z),(roll, pitch, yaw))
+
+        obj_pos = obj.get_position()
+        for distance in distance_to_try:
+            for _ in range(20):
+                p.restoreState(state_id)
+                yaw = np.random.uniform(-np.pi, np.pi)
+                pos = [obj_pos[0] + distance * np.sin(yaw), obj_pos[1] + distance * np.cos(yaw), 0.7]
+                orn = [0,0,-yaw]
+                if self.test_valid_position(self.robots[0], pos, orn):
+                    valid_position = (pos, orn)
+                    break
+            if valid_position is not None:
+                break
+
+        p.restoreState(state_id)
+        p.removeState(state_id)
+        self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
