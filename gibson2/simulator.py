@@ -44,6 +44,7 @@ class Simulator:
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
+                 solver_iterations=100,
                  mode='gui',
                  image_width=128,
                  image_height=128,
@@ -56,6 +57,8 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
+        :param solver_iterations: number of solver iterations to feed into pybullet, can be reduced to increase speed.
+            pybullet default value is 50.
         :param use_variable_step_num: whether to use a fixed (1) or variable physics step number
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
@@ -71,6 +74,7 @@ class Simulator:
         self.gravity = gravity
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
+        self.solver_iterations = solver_iterations
         self.physics_timestep_num = self.render_timestep / self.physics_timestep
         assert self.physics_timestep_num.is_integer(
         ), "render_timestep must be a multiple of physics_timestep"
@@ -210,16 +214,19 @@ class Simulator:
                                             height=self.image_height,
                                             vertical_fov=self.vertical_fov,
                                             device_idx=self.device_idx,
-                                            rendering_settings=self.rendering_settings)
+                                            rendering_settings=self.rendering_settings,
+                                            simulator=self)
         elif self.use_vr_renderer:
             self.renderer = MeshRendererVR(
-                rendering_settings=self.rendering_settings, vr_settings=self.vr_settings)
+                rendering_settings=self.rendering_settings, vr_settings=self.vr_settings,
+                simulator=self)
         else:
             self.renderer = MeshRenderer(width=self.image_width,
                                          height=self.image_height,
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
-                                         rendering_settings=self.rendering_settings)
+                                         rendering_settings=self.rendering_settings,
+                                         simulator=self)
 
         # print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
@@ -231,8 +238,7 @@ class Simulator:
         if self.vr_settings.reset_sim:
             p.resetSimulation()
             p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-        if self.mode == 'vr':
-            p.setPhysicsEngineParameter(numSolverIterations=100)
+        p.setPhysicsEngineParameter(numSolverIterations=self.solver_iterations)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
