@@ -427,8 +427,7 @@ class MeshRenderer(object):
         if texuniform and input_material.texture_type == "2d":
             repeat_x = repeat_x * (np.max(vertex_texcoord[:,0]) - np.min(vertex_texcoord[:,0])) * scale[0]
             repeat_y = repeat_y * (np.max(vertex_texcoord[:,1]) - np.min(vertex_texcoord[:,1])) * scale[1]
-
-        vertex_texcoord = vertex_texcoord * np.array([repeat_x, repeat_y])  
+            input_material.transform_param = [repeat_x, repeat_y, 0.] 
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
