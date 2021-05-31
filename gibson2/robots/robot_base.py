@@ -38,7 +38,7 @@ class BaseRobot(object):
         self.model_file = model_file
         self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
         self.scale = scale
-        # self.eyes = None
+        self.eyes = None
         self.cameras = []
         logging.info('Loading robot model file: {}'.format(self.model_file))
         if self.model_file[-4:] == 'urdf':

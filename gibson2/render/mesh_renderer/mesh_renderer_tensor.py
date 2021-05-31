@@ -91,7 +91,6 @@ try:
 
         def render(self, modes=AVAILABLE_MODALITIES, hidden=(),
                    return_buffer=True, render_shadow_pass=True):
-            # print(AVAILABLE_MODALITIES)
             """
             A function to render all the instances in the renderer and read the output from framebuffer into pytorch tensor.
 

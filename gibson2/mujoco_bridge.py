@@ -33,7 +33,7 @@ class iGibsonMujocoBridge:
                  mode='gui',
                  device_idx=0,
                  render_to_tensor=False,
-                 camera_name="agentview",
+                 camera_name="frontview",
                  image_width=1280,
                  image_height=720,
                  vertical_fov=45,
@@ -54,7 +54,7 @@ class iGibsonMujocoBridge:
         self.render_collision_mesh = 0
         self.render_visual_mesh = 0
         # print("self.render_visual_mesh", self.render_visual_mesh)
-        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=True, light_dimming_factor=1.0)
+        self.mrs_tensor = MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.0)
         self.mrs_no_tensor = self.mrs_tensor # MeshRendererSettings(msaa=True, enable_pbr=True, enable_shadow=True, optimized=False, light_dimming_factor=1.5)
         self.settings = self.mrs_tensor if render_to_tensor else self.mrs_no_tensor
         print("##"*80)
@@ -125,11 +125,11 @@ class iGibsonMujocoBridge:
         # camera_rot_mat = self.env.sim.data.get_camera_xmat(self.camera_name)
         # view_direction = -np.array(camera_rot_mat[0:3,2])
 
-        camera_position = np.array([1.6,  0.,   1.45])
+        camera_position = np.array([1,  0.,   1.45])
         view_direction = -np.array([0.9632, 0, 0.2574])
 
 
-        self.renderer.set_camera(camera_position, camera_position + view_direction, [0, 0, 1])
+        # self.renderer.set_camera(camera_position, camera_position + view_direction, [0, 0, 1])
         # posi = [1.2,-0.8,1.1]
         # vd = [-0.8,0.5,-0.1]
         if self.mode == 'gui' and not self.render_to_tensor:
@@ -444,6 +444,9 @@ class iGibsonMujocoBridge:
                         value = [float(pp) for pp in value_str]
                         properties[prop] = value
 
+                # if len(properties['size']) != 3:
+                    # import pdb; pdb.set_trace();
+
                 geom_orn = properties['quat']
                 geom_pos = properties['pos']
 
@@ -528,6 +531,7 @@ class iGibsonMujocoBridge:
                                             texuniform=False)
                         geom_material = cylinder_material
 
+                    # import pdb; pdb.set_trace();
                     geom_orn = [geom_orn[1],geom_orn[2],geom_orn[3],geom_orn[0]]
                     self.renderer.load_object(filename,
                                               transform_orn=geom_orn,
@@ -674,6 +678,8 @@ class iGibsonMujocoBridge:
                 filename = os.path.join(gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
                 # import pdb; pdb.set_trace()
 
+                # import pdb; pdb.set_trace();
+
                 self.renderer.load_object(filename,
                                           transform_orn=props['quat'][0:4],
                                           transform_pos=props['pos'][0:3],
@@ -746,6 +752,7 @@ class iGibsonMujocoBridge:
         # import time
         # start = time.time()
         # for i in range(200):
+        # print('hi')
         for instance in self.renderer.instances:
             if instance.dynamic:
                 self.update_position(instance, self.env)

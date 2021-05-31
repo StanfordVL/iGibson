@@ -247,7 +247,6 @@ class MeshRenderer(object):
         [self.fbo, self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
          self.color_tex_scene_flow, self.color_tex_optical_flow,
          self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
-
         if self.msaa:
             [self.fbo_ms, self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms,
              self.color_tex_3d_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms,
@@ -313,8 +312,7 @@ class MeshRenderer(object):
                     texture_scale=1.0,
                     load_texture=True,
                     overwrite_material=None,
-                    input_material=None,
-                    geom_type=None):
+                    input_material=None):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -333,9 +331,6 @@ class MeshRenderer(object):
                           "objects")
             return
 
-        if 'pedestal' in obj_path:
-            pass
-            # import pdb; pdb.set_trace()
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
@@ -351,7 +346,6 @@ class MeshRenderer(object):
             logging.warning("Warning: {}".format(reader.Warning()))
 
         attrib = reader.GetAttrib()
-        # import pdb; pdb.set_trace()
         logging.debug("Num vertices = {}".format(len(attrib.vertices)))
         logging.debug("Num normals = {}".format(len(attrib.normals)))
         logging.debug("Num texcoords = {}".format(len(attrib.texcoords)))
@@ -371,14 +365,7 @@ class MeshRenderer(object):
         if overwrite_material is not None and len(materials) > 1:
             logging.warning(
                 "passed in one material ends up overwriting multiple materials")
-        
-        # if 'cube.obj' in obj_path:
-        #     n_indices = len(shapes[0].mesh.indices)
-        #     np_indices = np_indices = shapes[0].mesh.numpy_indices().reshape((n_indices, 3))
-        #     shape_normal_index = np_indices[:, 1]
-        #     vertex_normal = np.array(attrib.normals).reshape(
-        #                             (len(attrib.normals) // 3, 3))            
-        #     import pdb; pdb.set_trace();
+
         # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
         # or create plane color Material elements
         num_existing_mats = len(self.materials_mapping)    # Number of current Material elements       
@@ -388,7 +375,6 @@ class MeshRenderer(object):
 
 
         if input_material is None:
-            # import pdb; pdb.set_trace();
             for i, item in enumerate(materials):
                 if overwrite_material is not None:
                     self.load_randomized_material(overwrite_material)
@@ -409,7 +395,7 @@ class MeshRenderer(object):
                                         roughness_texture_id=texture_roughness,
                                         normal_texture_id=texture_normal)
                 else:
-                    if len(input_kd) == 4 and input_kd[3] != 1:
+                    if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
                         material = Material('color', kd=[1,0,1,1])
                     else:
                         material = Material('color', kd=item.diffuse)
@@ -418,25 +404,16 @@ class MeshRenderer(object):
             num_added_materials = len(materials) 
         
         else:
-            print("Using input material")
             repeat_x = input_material.repeat_x
             repeat_y = input_material.repeat_y
             texuniform = input_material.texuniform
             self.materials_mapping[num_existing_mats] = input_material
-            num_added_materials = 1            
-        
-        if geom_type == 'mesh':
-            pass
-            # import pdb; pdb.set_trace();
+            num_added_materials = 1
         
         if input_kd is not None:  # append the default material in the end, in case material loading fails
             self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=input_kd)
-            # self.materials_mapping[len(
-                # materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
         else:
             self.materials_mapping[num_existing_mats + num_added_materials] = Material('color', kd=[0.5, 0.5, 0.5])
-            # self.materials_mapping[len(
-                # materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
 
         VAO_ids = []
 
@@ -479,20 +456,6 @@ class MeshRenderer(object):
                 shape_normal = np.zeros((shape_vertex.shape[0], 3))
             else:
                 shape_normal = vertex_normal[shape_normal_index]
-            
-            if geom_type == 'plane':
-                pass
-                # import pdb; pdb.set_trace()
-                # shape_normal *= -1
-
-            # shape_normal *= -1
-            if geom_type == 'mesh':
-                shape_normal *= 1
-                # import pdb; pdb.set_trace()
-                
-            # if geom_type == 'mesh':
-            #     # import pdb; pdb.set_trace()
-            #     shape_normal *= 10
 
             # Scale the shape before transforming
             # Need to flip normals in axes where we have negative scaling
@@ -516,9 +479,7 @@ class MeshRenderer(object):
                 shape_normal = shape_normal.dot(orn[:3, :3].T)
             if transform_pos is not None:
                 # Translate the shape after they are scaled
-                # print(shape_vertex.shape, transform_pos, shape_normal.shape, transform_orn)
                 shape_vertex += np.array(transform_pos)
-                # shape_normal += np.array(transformnp.array(transform_pos)_pos)
 
             v0 = shape_vertex[0::3, :]
             v1 = shape_vertex[1::3, :]
@@ -556,10 +517,8 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                # self.mesh_materials.append(num_existing_mats + len(materials))
                 self.mesh_materials.append(len(materials) + material_count)
             else:
-                # self.mesh_materials.append(num_existing_mats + material_id)
                 self.mesh_materials.append(material_id + material_count)
 
             logging.debug('mesh_materials: {}'.format(self.mesh_materials))
@@ -842,7 +801,6 @@ class MeshRenderer(object):
         :param render_shadow_pass: whether to render shadow
         :return: a list of float32 numpy arrays of shape (H, W, 4) corresponding to `modes`, where last channel is alpha
         """
-        # import pdb; pdb.set_trace();
         # run optimization process the first time render is called
         if self.optimized and not self.optimization_process_executed:
             self.optimize_vertex_and_texture()
@@ -853,7 +811,6 @@ class MeshRenderer(object):
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
-
             if self.msaa:
                 self.r.render_meshrenderer_pre(1, self.fbo_ms, self.fbo)
             else:
@@ -1078,7 +1035,29 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robot_cameras(self, modes=('rgb'), hide_robot=True):
+    def render_robosuite_cameras(self, modes=('rgb')):
+        """
+        Render robot camera images
+
+        :return: a list of frames (number of modalities x number of robots)
+        """
+        frames = []
+        hide_robot = self.rendering_settings.hide_robot
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        camera_pose = camera.get_pose()
+                        camera_pos = camera_pose[:3]
+                        camera_ori = camera_pose[3:]
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[:3, :3]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1])) #Mujoco camera points in -z
+                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
+                            frames.append(item)
+        return frames
+
+    def render_robot_cameras(self, modes=('rgb')):        
         """
         Render robot camera images
 
@@ -1087,35 +1066,17 @@ class MeshRenderer(object):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
-                for camera in instance.robot.cameras:
-                    # print(camera.is_active(), type(camera))
-                    if camera.is_active():
-                        # import pdb; pdb.set_trace()
-                        camera_pose = camera.get_pose()
-                        camera_pos = camera_pose[:3]
-                        camera_ori = camera_pose[3:]
-                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[:3, :3]
-                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1])) #Mujoco camera points in -z
-                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
-                        #TODO: use camera.modes to decide what to render instead of the argument. In that way, different cameras could 
-                        #render different modalities
-                        for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
-                            
-                            frames.append(item)       
-                # camera_pos = instance.robot.eyes.get_position()
-                # orn = instance.robot.eyes.get_orientation()
-                # mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
-                # view_direction = mat.dot(np.array([1, 0, 0]))
-                # self.set_camera(camera_pos, camera_pos +
-                #                 view_direction, [0, 0, 1], cache=True)
-                # hidden_instances = []
-                # if self.rendering_settings.hide_robot:
-                #     hidden_instances.append(instance)
-                # for item in self.render(modes=modes, hidden=hidden_instances):
-                #     frames.append(item)
-        # if frames != []:
-            # import pdb; pdb.set_trace();
-        return frames
+                camera_pos = instance.robot.eyes.get_position()
+                orn = instance.robot.eyes.get_orientation()
+                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                view_direction = mat.dot(np.array([1, 0, 0]))
+                self.set_camera(camera_pos, camera_pos +
+                                view_direction, [0, 0, 1], cache=True)
+                hidden_instances = []
+                if self.rendering_settings.hide_robot:
+                    hidden_instances.append(instance)
+                for item in self.render(modes=modes, hidden=hidden_instances):
+                    frames.append(item)
 
     def get_names_active_cameras(self):
         names = []
@@ -1157,7 +1118,6 @@ class MeshRenderer(object):
         texture_files = sorted(self.texture_files.items(), key=lambda x: x[1])
         texture_files = [item[0] for item in texture_files]
 
-        # import pdb; pdb.set_trace();
         self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = \
             self.r.generateArrayTextures(texture_files,
                                          cutoff,
@@ -1217,7 +1177,6 @@ class MeshRenderer(object):
                         list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
-                # import pdb; pdb.set_trace();
                 class_id_array.extend(
                     [float(instance.class_id) / 255.0] * id_sum)
                 pbr_data_array.extend(
@@ -1258,7 +1217,6 @@ class MeshRenderer(object):
             # Generate other rendering data, including diffuse color and texture layer
             id_material = self.materials_mapping[self.mesh_materials[id]]
             texture_id = id_material.texture_id
-            # import pdb; pdb.set_trace()
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
                 tex_layer_array.append(-1)
@@ -1423,8 +1381,6 @@ class MeshRenderer(object):
                     continue
                 self.trans_data[buf_idxs] = np.array(instance.pose_trans)
                 self.rot_data[buf_idxs] = np.array(instance.pose_rot)
-                # self.trans_data = np.array(instance.pose_trans)
-                # self.rot_data = np.array(instance.pose_rot)
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 buf_idxs = instance.or_buffer_indices
                 # Continue if instance has no visual objects

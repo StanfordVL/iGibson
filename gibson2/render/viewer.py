@@ -6,12 +6,10 @@ import logging
 
 import cv2
 import numpy as np
-from numpy.lib import unique
 import pybullet as p
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.utils.utils import rotate_vector_2d
 import time
-import random
 
 
 class Viewer:
@@ -21,9 +19,7 @@ class Viewer:
                  initial_up=[0, 0, 1],
                  simulator=None,
                  renderer=None,
-                 min_cam_z=-1e6,
-                 mujoco_env=None,
-                 hide_robot=True                 
+                 min_cam_z=-1e6,                 
                  ):
         """
         iGibson GUI (Viewer) for navigation, manipulation and motion planning / execution
@@ -64,15 +60,18 @@ class Viewer:
         self.pause_recording = False  # Flag to pause/resume recording
         self.video_folder = ""
 
+        # in case of robosuite viewer, we open only one window.
+        # Later use the numpad to activate additional cameras
+        self.is_robosuite = self.renderer.rendering_settings.is_robosuite
+
         cv2.namedWindow('ExternalView')
         cv2.moveWindow("ExternalView", 0, 0)
-        # cv2.namedWindow('RobotView')
+        if not self.is_robosuite:
+            cv2.namedWindow('RobotView')
         cv2.setMouseCallback('ExternalView', self.mouse_callback)
         self.create_visual_object()
         self.planner = None
-        self.block_command = False
-        self.mujoco_env = mujoco_env
-        self.hide_robot = hide_robot        
+        self.block_command = False      
 
     def setup_motion_planner(self, planner=None):
         """
@@ -90,13 +89,15 @@ class Viewer:
             radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1])
-        # if self.simulator is not None:
-        #     self.simulator.import_object(
-        #         self.constraint_marker2, use_pbr=False)
-        #     self.simulator.import_object(self.constraint_marker, use_pbr=False)
 
-        # self.constraint_marker.set_position([0, 0, -1])
-        # self.constraint_marker2.set_position([0, 0, -1])
+        if not self.is_robosuite:                              
+            if self.simulator is not None:
+                self.simulator.import_object(
+                    self.constraint_marker2, use_pbr=False)
+                self.simulator.import_object(self.constraint_marker, use_pbr=False)
+
+            self.constraint_marker.set_position([0, 0, -1])
+            self.constraint_marker2.set_position([0, 0, -1])
 
     def apply_push_force(self, x, y, force):
         """
@@ -532,39 +533,9 @@ class Viewer:
                 camera_pose, camera_pose + self.view_direction, self.up)
 
         if self.renderer is not None:
-            # start = time.time()
-            # import pdb; pdb.set_trace()
             frame = cv2.cvtColor(
                 np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
                 cv2.COLOR_RGB2BGR)
-            # map3d = frame[:, 1280:, [0,0,0]]
-            # max_c = map3d.max(axis=(0,1))
-            # min_c = map3d.min(axis=(0,1))
-            # map3d = (map3d - min_c) / (max_c - min_c)
-            # frame[:, 1280:] = map3d
-
-
-            # semantic_map = (frame[:, 1280:, 2] * 255).astype(int)
-            # unique_vals = np.unique(semantic_map)
-            # if not hasattr(self, 'cmap'):
-            #     self.cmap = np.array([[random.uniform(0, 1) for _ in range(3)] for u in range(max(unique_vals)+1)])
-            # # print(self.cmap.shape)
-            # # print(semantic_map.shape)
-            # semantic_map = self.cmap[semantic_map]
-            # frame[:, 1280:] = semantic_map
-
-
-            # print(semantic_map.shape)
-            # print(frame.shape)
-            # print('printing frame unique values for frame[:, 1280:, 0]')
-            # print('Channel 0:   ', np.unique(frame[:, 1280:, 0]))
-            # print('Channel 1:   ', np.unique(frame[:, 1280:, 1]))
-            # print('Channel 2:   ', np.unique(frame[:, 1280:, 2]))
-            # print('#'*40)
-            # import pdb; pdb.set_trace()
-            # elapsed = time.time() - start
-            # print("{} fps".format(1/elapsed))
-            # print(frame.shape)
         else:
             frame = np.zeros((300, 300, 3)).astype(np.uint8)
 
@@ -664,7 +635,8 @@ class Viewer:
             self.right_down = False
             self.manipulation_mode = (self.manipulation_mode + 1) % 3
 
-        elif q == ord('0') or q == ord('1') or q == ord('2') or q == ord('3') or q == ord('4') or q == ord('5'):
+        elif self.is_robosuite and \
+             q == ord('0') or q == ord('1') or q == ord('2') or q == ord('3') or q == ord('4') or q == ord('5'):
             idxx = int(chr(q)) 
             self.renderer.switch_camera(idxx)
             if not self.renderer.is_camera_active(idxx):
@@ -676,17 +648,21 @@ class Viewer:
             self.frame_idx += 1
 
         if self.renderer is not None:
-            # frames = self.renderer.render_robot_cameras(modes=('rgb'))
-            frames = self.renderer.render_robot_cameras(modes=('rgb'), hide_robot=self.renderer.rendering_settings.hide_robot)
-            names = self.renderer.get_names_active_cameras()
-            assert len(frames) == len(names)
-            if len(frames) > 0:
-                # frame = cv2.cvtColor(np.concatenate(
-                #     frames, axis=1), cv2.COLOR_RGB2BGR)
-                # cv2.imshow('RobotView', frame)
-                for (rgb, cam_name) in zip(frames, names):
-                    frame = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-                    cv2.imshow(cam_name, frame)                   
+            if self.is_robosuite:
+                frames = self.renderer.render_robosuite_cameras(modes=('rgb'))
+                names = self.renderer.get_names_active_cameras()
+                assert len(frames) == len(names)
+                if len(frames) > 0:
+                    for (rgb, cam_name) in zip(frames, names):
+                        frame = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+                        cv2.imshow(cam_name, frame) 
+            else:
+                frames = self.renderer.render_robot_cameras(modes=('rgb'))
+                if len(frames) > 0:
+                    frame = cv2.cvtColor(np.concatenate(
+                        frames, axis=1), cv2.COLOR_RGB2BGR)
+                    cv2.imshow('RobotView', frame)                
+
 
 
 if __name__ == '__main__':
