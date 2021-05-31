@@ -1159,6 +1159,7 @@ class MeshRenderer(object):
                 for item in self.render(modes=modes, hidden=hidden_instances):
                     frames.append(item)
 
+        # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.
         # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface, it is not
         # added using import_robot and needs to be found & handled separately.
         behavior_robots = (robot for robot in self.simulator.robots if isinstance(robot, BehaviorRobot))
