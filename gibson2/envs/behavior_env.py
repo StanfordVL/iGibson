@@ -55,6 +55,7 @@ class BehaviorEnv(iGibsonEnv):
                                          render_to_tensor=render_to_tensor)
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
+        self.reward_potential = 0
 
     def load_action_space(self):
         """
@@ -273,9 +274,11 @@ class BehaviorEnv(iGibsonEnv):
             state = self.reset()
         return state, reward, done, info
 
-    @staticmethod
-    def get_reward(satisfied_predicates):
-        return satisfied_predicates, {}
+    def get_reward(self, satisfied_predicates):
+        new_potential = len(satisfied_predicates['satisfied'])
+        reward = new_potential - self.reward_potential
+        self.reward_potential = new_potential
+        return reward, {}
 
     def get_state(self, collision_links=[]):
         """
@@ -317,6 +320,7 @@ class BehaviorEnv(iGibsonEnv):
         self.simulator.sync()
         state = self.get_state()
         self.reset_variables()
+        self.reward_potential = 0
 
         return state
 
