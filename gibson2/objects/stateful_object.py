@@ -22,10 +22,9 @@ class StatefulObject(Object):
         }
 
     def load_state(self, dump):
-        for state_name, state_instance in self.states.items():
-            state_type = get_state_from_name(state_name)
+        for state_type, state_instance in self.states.items():
             if issubclass(state_type, AbsoluteObjectState):
-                state_instance.load(dump[state_name])
+                state_instance.load(dump[get_state_name(state_type)])
 
     def set_position(self, pos):
         super(StatefulObject, self).set_position(pos)
