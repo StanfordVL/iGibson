@@ -6,7 +6,8 @@ from gibson2.object_states.object_state_base import CachingEnabledObjectState
 from gibson2.object_states.pose import Pose
 
 _MAX_ITERATIONS = 10
-_MAX_DISTANCE = 5.0
+_MAX_DISTANCE_VERTICAL = 5.0
+_MAX_DISTANCE_HORIZONTAL = 1.0
 
 # How many 2-D bases to try during horizontal adjacency check. When 1, only the standard axes will be considered.
 # When 2, standard axes + 45 degree rotated will be considered. The tried axes will be equally spaced. The higher
@@ -53,7 +54,7 @@ def get_equidistant_coordinate_planes(n_planes):
     return np.stack([first_axes[:, None, :], second_axes[:, None, :]], axis=1)
 
 
-def compute_adjacencies(obj, axes):
+def compute_adjacencies(obj, axes, max_distance):
     """
     Given an object and a list of axes, find the adjacent objects in the axes'
     positive and negative directions.
@@ -92,7 +93,7 @@ def compute_adjacencies(obj, axes):
         # Prepare the rays to cast.
         ray_directions = directions[unfinished_directions, :]
         ray_starts = np.tile(object_position, (num_directions_to_cast, 1))
-        ray_endpoints = ray_starts + ray_directions
+        ray_endpoints = ray_starts + (ray_directions * max_distance)
 
         # Cast time.
         ray_results = p.rayTestBatch(
@@ -129,7 +130,7 @@ class VerticalAdjacency(CachingEnabledObjectState):
     """
     def _compute_value(self):
         # Call the adjacency computation with th Z axis.
-        bodies_by_axis = compute_adjacencies(self.obj, np.array([[0, 0, 1]]))
+        bodies_by_axis = compute_adjacencies(self.obj, np.array([[0, 0, 1]]), _MAX_DISTANCE_VERTICAL)
 
         # Return the adjacencies from the only axis we passed in.
         return bodies_by_axis[0]
@@ -174,7 +175,7 @@ class HorizontalAdjacency(CachingEnabledObjectState):
         coordinate_planes = get_equidistant_coordinate_planes(_HORIZONTAL_AXIS_COUNT)
 
         # Flatten the axis dimension and input into compute_adjacencies.
-        bodies_by_axis = compute_adjacencies(self.obj, coordinate_planes.reshape(-1, 3))
+        bodies_by_axis = compute_adjacencies(self.obj, coordinate_planes.reshape(-1, 3), _MAX_DISTANCE_HORIZONTAL)
 
         # Now reshape the bodies_by_axis to group by coordinate planes.
         bodies_by_plane = list(zip(bodies_by_axis[::2], bodies_by_axis[1::2]))

@@ -1,6 +1,6 @@
 import tempfile
 import tasknet
-from gibson2.examples.demo.vr_demos.atus import behavior_demo_collection, behavior_demo_replay
+from gibson2.examples.behavior import behavior_demo_collection, behavior_demo_replay
 import gibson2
 import os
 
@@ -18,7 +18,7 @@ def test_determinism_with_new_demo():
         # Then replay the random demo.
         print("Replaying demo.")
         replay_file = os.path.join(directory, "replay.hdf5")
-        behavior_demo_replay.safe_replay_demo(demo_file, out_log_path=replay_file, no_vr=True)
+        behavior_demo_replay.safe_replay_demo(demo_file, out_log_path=replay_file, mode="headless")
 
 
 def test_determinism_with_existing_vr_demo():
@@ -29,4 +29,4 @@ def test_determinism_with_existing_vr_demo():
         replay_file = os.path.join(directory, "replay.hdf5")
 
         # Replay the canonical demo.
-        behavior_demo_replay.safe_replay_demo(DEMO_FILE, out_log_path=replay_file, no_vr=True)
+        behavior_demo_replay.safe_replay_demo(DEMO_FILE, out_log_path=replay_file, mode="headless")
