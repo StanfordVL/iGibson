@@ -492,7 +492,6 @@ class BRHandBase(ArticulatedObject):
         self.trig_frac = 0
         self.vr_device = '{}_controller'.format(self.hand)
         # Bool indicating whether the hands have been spwaned by pressing the trigger reset
-        self.has_spawned = False
         self.movement_cid = None
         self.activated = False
         self.use_ghost_hands = use_ghost_hands
@@ -648,7 +647,6 @@ class BRHandBase(ArticulatedObject):
                 self.set_colliders(enabled=True)
                 self.activated = True
             self.set_position_orientation(self.new_pos, self.new_orn)
-            self.has_spawned = True
 
         self.move(self.new_pos, self.new_orn)
 
@@ -685,7 +683,7 @@ class BRHandBase(ArticulatedObject):
         """
         Updates ghost hand to track real hand and displays it if the real and virtual hands are too far apart.
         """
-        if not self.has_spawned:
+        if not self.activated:
             return
 
         # Ghost hand tracks real hand whether it is hidden or not

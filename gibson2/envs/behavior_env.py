@@ -17,8 +17,6 @@ import pybullet as p
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
 
-from IPython import embed
-
 
 class BehaviorEnv(iGibsonEnv):
     """
@@ -355,7 +353,6 @@ if __name__ == '__main__':
     for episode in range(100):
         print('Episode: {}'.format(episode))
         start = time.time()
-        embed()
         env.reset()
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()

@@ -24,6 +24,7 @@ from IPython import embed
 
 
 KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
+AGENT_INTERNAL_STATE_NAMES = frozenset({'local_pos', 'local_orn'})
 
 
 class iGTNTask(TaskNetTask):
@@ -78,16 +79,34 @@ class iGTNTask(TaskNetTask):
 
     def save_scene(self):
         snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = {}
+        self.state_history[snapshot_id] = {
+            'object_states': {},
+            'agent_states': {},
+        }
         for obj_name, obj in self.scene.objects_by_name.items():
-            self.state_history[snapshot_id][obj_name] = obj.dump_state()
+            self.state_history[snapshot_id]['object_states'][obj_name] = \
+                obj.dump_state()
+
+        for part_name, part in self.agent.parts.items():
+            self.state_history[snapshot_id]['agent_states'][part_name] = {}
+            for state_name in AGENT_INTERNAL_STATE_NAMES:
+                if hasattr(part, state_name):
+                    self.state_history[snapshot_id]['agent_states'][part_name][state_name] = \
+                        getattr(part, state_name)
 
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
         p.restoreState(snapshot_id)
         for obj_name, obj in self.scene.objects_by_name.items():
-            obj.load_state(self.state_history[snapshot_id][obj_name])
+            obj.load_state(
+                self.state_history[snapshot_id]['object_states'][obj_name])
+
+        for part_name, part in self.agent.parts.items():
+            for state_name in AGENT_INTERNAL_STATE_NAMES:
+                if hasattr(part, state_name):
+                    setattr(
+                        part, state_name, self.state_history[snapshot_id]['agent_states'][part_name][state_name])
 
     def check_scene(self):
         feedback = {
