@@ -198,6 +198,7 @@ class BehaviorRobot(object):
         This is useful for non-VR setting, e.g. BehaviorEnv
         """
         self.first_frame = False
+        self.activated = True
         for part_name in self.constraints_active:
             self.constraints_active[part_name] = True
             self.parts[part_name].activated = True
