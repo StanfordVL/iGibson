@@ -248,7 +248,7 @@ class MeshRendererVR(MeshRenderer):
     a link to the underlying VRRendererContext, on which various functions can be called.
     """
 
-    def __init__(self, rendering_settings=MeshRendererSettings(), vr_settings=VrSettings()):
+    def __init__(self, rendering_settings=MeshRendererSettings(), vr_settings=VrSettings(), simulator=None):
         """
         :param rendering_settings: mesh renderer settings
         :param vr_settings: VR settings - see class definition above
@@ -259,7 +259,8 @@ class MeshRendererVR(MeshRenderer):
         self.vr_rendering_settings.show_glfw_window = self.vr_settings.use_companion_window
         self.width = 1296
         self.height = 1440
-        super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings)
+        super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings,
+                         simulator=simulator)
 
         # Rename self.r to self.vrsys
         self.vrsys = self.r
