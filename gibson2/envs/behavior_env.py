@@ -120,7 +120,6 @@ class BehaviorEnv(iGibsonEnv):
         else:
             scene_kwargs = {
                     'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
-                    'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
