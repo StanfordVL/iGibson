@@ -24,6 +24,7 @@ from IPython import embed
 
 
 KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
+AGENT_INTERNAL_STATE_NAMES = frozenset({'local_pos', 'local_orn'})
 
 
 class iGTNTask(TaskNetTask):
@@ -79,30 +80,33 @@ class iGTNTask(TaskNetTask):
     def save_scene(self):
         snapshot_id = p.saveState()
         self.state_history[snapshot_id] = {
-            "snapshot_id": snapshot_id,
-            "states_by_id": {}
+            'object_states': {},
+            'agent_states': {},
         }
-        states_by_id = {}
-        for obj_id, obj in self.scene.objects_by_id.items():
-            states_by_id[obj_id] = {}
-            for state_type, state in obj.states.items():
-                # TODO: We should ensure all states need to dump their state do (they don't)
-                try:
-                    states_by_id[obj_id][state_type] = state._dump()
-                except:
-                    pass
+        for obj_name, obj in self.scene.objects_by_name.items():
+            self.state_history[snapshot_id]['object_states'][obj_name] = \
+                obj.dump_state()
+
+        for part_name, part in self.agent.parts.items():
+            self.state_history[snapshot_id]['agent_states'][part_name] = {}
+            for state_name in AGENT_INTERNAL_STATE_NAMES:
+                if hasattr(part, state_name):
+                    self.state_history[snapshot_id]['agent_states'][part_name][state_name] = \
+                        getattr(part, state_name)
+
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
         p.restoreState(snapshot_id)
-        for obj_id, obj in self.scene.objects_by_id.items():
-            for state_type, state in obj.states.items():
-                # TODO: We should ensure all states need to load their state do (they don't)
-                try:
-                    prev_state = self.state_history[snapshot_id]["states_by_id"][obj_id][state_type]
-                    state._load(prev_state)
-                except:
-                    pass
+        for obj_name, obj in self.scene.objects_by_name.items():
+            obj.load_state(
+                self.state_history[snapshot_id]['object_states'][obj_name])
+
+        for part_name, part in self.agent.parts.items():
+            for state_name in AGENT_INTERNAL_STATE_NAMES:
+                if hasattr(part, state_name):
+                    setattr(
+                        part, state_name, self.state_history[snapshot_id]['agent_states'][part_name][state_name])
 
     def check_scene(self):
         feedback = {
@@ -307,7 +311,7 @@ class iGTNTask(TaskNetTask):
 
                 model = np.random.choice(model_choices)
 
-                # for "collecting aluminum cans", we need pop cans (not bottles) 
+                # for "collecting aluminum cans", we need pop cans (not bottles)
                 if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
                     model = np.random.choice([str(i) for i in range(40, 46)])
 
@@ -664,7 +668,7 @@ class iGTNTask(TaskNetTask):
 
         np.random.shuffle(self.ground_goal_state_options)
         logging.warning(('number of ground_goal_state_options',
-              len(self.ground_goal_state_options)))
+                         len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
 
         goal_sampling_error_msgs = []
