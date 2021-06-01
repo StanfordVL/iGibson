@@ -29,6 +29,7 @@ from gibson2.external.pybullet_tools.utils import set_all_collisions
 from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz
 from collections import OrderedDict
 
+
 class BehaviorRobot(object):
     """
     A class representing all the VR objects comprising a single agent.
@@ -36,6 +37,7 @@ class BehaviorRobot(object):
     use of this class is recommended for most VR applications, especially if you
     just want to get a VR scene up and running quickly.
     """
+
     def __init__(self, sim, robot_num=1, hands=['left', 'right'], use_body=True, use_gripper=False, use_ghost_hands=True, normal_color=True, show_visual_head=False, use_tracked_body_override=None):
         """
         Initializes BehaviorRobot:
@@ -67,25 +69,29 @@ class BehaviorRobot(object):
 
         # Local transforms for hands and eye
         if self.use_tracked_body:
-            self.left_hand_loc_pose = ([0.1,0.12,0.05], (0.7, 0.7, 0.0, 0.15))
-            self.right_hand_loc_pose = ([0.1,-0.12,0.05], (-0.7, 0.7, 0.0, 0.15))
-            self.eye_loc_pose = ([0.05,0,0.4], [0,0,0,1])
+            self.left_hand_loc_pose = (
+                [0.1, 0.12, 0.05], (0.7, 0.7, 0.0, 0.15))
+            self.right_hand_loc_pose = (
+                [0.1, -0.12, 0.05], (-0.7, 0.7, 0.0, 0.15))
+            self.eye_loc_pose = ([0.05, 0, 0.4], [0, 0, 0, 1])
         else:
-            self.left_hand_loc_pose = ([0.1,0.12,-0.4], (0.7, 0.7, 0.0, 0.15))
-            self.right_hand_loc_pose = ([0.1,-0.12,-0.4], (-0.7, 0.7, 0.0, 0.15))
-            self.eye_loc_pose = ([0.05,0,0], [0,0,0,1])
+            self.left_hand_loc_pose = (
+                [0.1, 0.12, -0.4], (0.7, 0.7, 0.0, 0.15))
+            self.right_hand_loc_pose = (
+                [0.1, -0.12, -0.4], (-0.7, 0.7, 0.0, 0.15))
+            self.eye_loc_pose = ([0.05, 0, 0], [0, 0, 0, 1])
 
         # Action parameters
         # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
         self.thresh_epsilon = 0.001
         # Body
-        self.body_lin_vel = 0.3 # linear velocity thresholds in meters/frame
-        self.body_ang_vel = 1 # angular velocity thresholds in radians/frame
+        self.body_lin_vel = 0.3  # linear velocity thresholds in meters/frame
+        self.body_ang_vel = 1  # angular velocity thresholds in radians/frame
 
         # Hands
-        self.hand_lin_vel = 0.3 
+        self.hand_lin_vel = 0.3
         self.hand_ang_vel = 1
-        self.hand_thresh = 0.6 # distance threshold in meters
+        self.hand_thresh = 0.6  # distance threshold in meters
 
         # Eye
         self.head_lin_vel = 0.3
@@ -96,19 +102,19 @@ class BehaviorRobot(object):
         self.activated = False
         self.first_frame = True
         self.constraints_active = {
-                'left_hand': False,
-                'right_hand': False,
-                'body': False,
-                }
+            'left_hand': False,
+            'right_hand': False,
+            'body': False,
+        }
 
         # Set up body parts
         self.parts = dict()
 
         if 'left' in self.hands:
-            self.parts['left_hand'] = (BRHand(self.sim, self, hand='left', use_ghost_hands=self.use_ghost_hands, normal_color=self.normal_color, robot_num=self.robot_num) if not use_gripper 
-                                        else BRGripper(self.sim, self, hand='left',  use_ghost_hands=self.use_ghost_hands, robot_num=self.robot_num))
+            self.parts['left_hand'] = (BRHand(self.sim, self, hand='left', use_ghost_hands=self.use_ghost_hands, normal_color=self.normal_color, robot_num=self.robot_num) if not use_gripper
+                                       else BRGripper(self.sim, self, hand='left',  use_ghost_hands=self.use_ghost_hands, robot_num=self.robot_num))
         if 'right' in self.hands:
-            self.parts['right_hand'] = (BRHand(self.sim, self, hand='right',  use_ghost_hands=self.use_ghost_hands, normal_color=self.normal_color, robot_num=self.robot_num) if not use_gripper 
+            self.parts['right_hand'] = (BRHand(self.sim, self, hand='right',  use_ghost_hands=self.use_ghost_hands, normal_color=self.normal_color, robot_num=self.robot_num) if not use_gripper
                                         else BRGripper(self.sim, self, hand='right',  use_ghost_hands=self.use_ghost_hands, robot_num=self.robot_num))
 
         # Store reference between hands
@@ -116,11 +122,13 @@ class BehaviorRobot(object):
             self.parts['left_hand'].set_other_hand(self.parts['right_hand'])
             self.parts['right_hand'].set_other_hand(self.parts['left_hand'])
         if self.use_body:
-            self.parts['body'] = BRBody(self.sim, self, use_tracked_body=self.use_tracked_body, normal_color=self.normal_color, robot_num=self.robot_num)
+            self.parts['body'] = BRBody(self.sim, self, use_tracked_body=self.use_tracked_body,
+                                        normal_color=self.normal_color, robot_num=self.robot_num)
             self.parts['left_hand'].set_body(self.parts['body'])
             self.parts['right_hand'].set_body(self.parts['body'])
 
-        self.parts['eye'] = BREye(self.sim, self, normal_color=self.normal_color, robot_num=self.robot_num, show_visual_head=self.show_visual_head)
+        self.parts['eye'] = BREye(self.sim, self, normal_color=self.normal_color,
+                                  robot_num=self.robot_num, show_visual_head=self.show_visual_head)
         self.parts['eye'].set_body(self.parts['body'])
 
     def set_colliders(self, enabled=False):
@@ -133,11 +141,16 @@ class BehaviorRobot(object):
         self.parts['body'].new_pos, self.parts['body'].new_orn = pos, orn
         if self.parts['body'].activated:
             self.parts['body'].move(pos, orn)
-        left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
-        self.parts['left_hand'].set_position_orientation(left_hand_pos, left_hand_orn)
-        right_hand_pos, right_hand_orn = p.multiplyTransforms(pos, orn, self.right_hand_loc_pose[0], self.right_hand_loc_pose[1])
-        self.parts['right_hand'].set_position_orientation(right_hand_pos, right_hand_orn)
-        eye_pos, eye_orn = p.multiplyTransforms(pos, orn, self.eye_loc_pose[0], self.eye_loc_pose[1])
+        left_hand_pos, left_hand_orn = p.multiplyTransforms(
+            pos, orn, self.left_hand_loc_pose[0], self.left_hand_loc_pose[1])
+        self.parts['left_hand'].set_position_orientation(
+            left_hand_pos, left_hand_orn)
+        right_hand_pos, right_hand_orn = p.multiplyTransforms(
+            pos, orn, self.right_hand_loc_pose[0], self.right_hand_loc_pose[1])
+        self.parts['right_hand'].set_position_orientation(
+            right_hand_pos, right_hand_orn)
+        eye_pos, eye_orn = p.multiplyTransforms(
+            pos, orn, self.eye_loc_pose[0], self.eye_loc_pose[1])
         self.parts['eye'].set_position_orientation(eye_pos, eye_orn)
 
         for constraint, activated in self.constraints_active.items():
@@ -146,7 +159,8 @@ class BehaviorRobot(object):
                 self.constraints_active[constraint] = True
 
         left_pos, left_orn = self.parts['left_hand'].get_position_orientation()
-        right_pos, right_orn = self.parts['right_hand'].get_position_orientation()
+        right_pos, right_orn = self.parts['right_hand'].get_position_orientation(
+        )
 
         self.parts['left_hand'].move(left_pos, left_orn)
         self.parts['right_hand'].move(right_pos, right_orn)
@@ -165,7 +179,7 @@ class BehaviorRobot(object):
         return np.array([vx, vy, vz])
 
     def get_angular_velocity(self):
-        _, (vr, vp, vyaw)  = p.getBaseVelocity(self.parts['body'].body_id)
+        _, (vr, vp, vyaw) = p.getBaseVelocity(self.parts['body'].body_id)
         return np.array([vr, vp, vyaw])
 
     def get_end_effector_position(self):
@@ -176,6 +190,19 @@ class BehaviorRobot(object):
         Returns action used on the current frame.
         """
         return self.action
+
+    def activate(self):
+        """
+        Activate BehaviorRobot and all its body parts.
+        This bypasses the activate mechanism used in VR with the trigger press
+        This is useful for non-VR setting, e.g. BehaviorEnv
+        """
+        self.first_frame = False
+        for part_name in self.constraints_active:
+            self.constraints_active[part_name] = True
+            self.parts[part_name].activated = True
+            if self.parts[part_name].movement_cid is None:
+                self.parts[part_name].activate_constraints()
 
     def update(self, action):
         """
@@ -195,7 +222,8 @@ class BehaviorRobot(object):
                 self.activated = True
                 if self.sim.can_access_vr_context:
                     body_pos = self.parts['body'].get_position()
-                    self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
+                    self.sim.set_vr_pos(
+                        pos=(body_pos[0], body_pos[1], 0), keep_height=True)
         else:
             frame_action = action
 
@@ -205,7 +233,8 @@ class BehaviorRobot(object):
             # Move user close to the body to start with
             if self.sim.can_access_vr_context:
                 body_pos = self.parts['body'].get_position()
-                self.sim.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
+                self.sim.set_vr_pos(
+                    pos=(body_pos[0], body_pos[1], 0), keep_height=True)
             # Body constraint is the last one we need to activate
             self.parts['body'].activate_constraints()
             self.first_frame = False
@@ -224,18 +253,19 @@ class BehaviorRobot(object):
         mat = quat2rotmat(xyzw2wxyz(eye_orn))[:3, :3]
         view_direction = mat.dot(np.array([1, 0, 0]))
         renderer.set_camera(eye_pos, eye_pos +
-                        view_direction, [0, 0, 1], cache=True)
+                            view_direction, [0, 0, 1], cache=True)
         frames = []
         for item in renderer.render(modes=modes):
             frames.append(item)
         return frames
-    
+
     def _print_positions(self):
         """
         Prints out all the positions of the BehaviorRobot, including helpful BehaviorRobot information for debugging (hidden API)
         """
         print('Data for BehaviorRobot number {}'.format(self.robot_num))
-        print('Using hands: {}, using body: {}, using gripper: {}'.format(self.hands, self.use_body, self.use_gripper))
+        print('Using hands: {}, using body: {}, using gripper: {}'.format(
+            self.hands, self.use_body, self.use_gripper))
         for k, v in self.parts.items():
             print('{} at position {}'.format(k, v.get_position()))
         print('-------------------------------')
@@ -257,33 +287,38 @@ class BehaviorRobot(object):
         # state['eye_position'] = self.parts['eye'].get_position()
         # state['eye_orientation'] = p.getEulerFromQuaternion(self.parts['eye'].get_orientation())
         state['left_hand_position_local'] = self.parts['left_hand'].local_pos
-        state['left_hand_orientation_local'] = p.getEulerFromQuaternion(self.parts['left_hand'].local_orn)
+        state['left_hand_orientation_local'] = p.getEulerFromQuaternion(
+            self.parts['left_hand'].local_orn)
         state['right_hand_position_local'] = self.parts['right_hand'].local_pos
-        state['right_hand_orientation_local'] = p.getEulerFromQuaternion(self.parts['right_hand'].local_orn)
+        state['right_hand_orientation_local'] = p.getEulerFromQuaternion(
+            self.parts['right_hand'].local_orn)
         state['eye_position_local'] = self.parts['eye'].local_pos
-        state['eye_orientation_local'] = p.getEulerFromQuaternion(self.parts['eye'].local_orn)
+        state['eye_orientation_local'] = p.getEulerFromQuaternion(
+            self.parts['eye'].local_orn)
         state['left_hand_trig_frac'] = self.parts['left_hand'].trig_frac
         state['right_hand_trig_frac'] = self.parts['right_hand'].trig_frac
 
         state_list = []
-        for k,v in state.items():
+        for k, v in state.items():
             if isinstance(v, list):
                 state_list.extend(v)
             elif isinstance(v, tuple):
                 state_list.extend(list(v))
             elif isinstance(v, np.ndarray):
                 state_list.extend(list(v))
-            elif isinstance(v, (float,int)):
+            elif isinstance(v, (float, int)):
                 state_list.append(v)
             else:
                 raise ValueError('cannot serialize some proprioception states')
 
         return state_list
 
+
 class BRBody(ArticulatedObject):
     """
     A simple ellipsoid representing the robot's body.
     """
+
     def __init__(self, s, parent, use_tracked_body=False, normal_color=True, robot_num=1):
         # Set up class
         self.sim = s
@@ -304,7 +339,8 @@ class BRBody(ArticulatedObject):
         # Load in body from correct urdf, depending on user settings
         body_path = 'normal_color' if self.normal_color else 'alternative_color'
         body_path_suffix = 'vr_body.urdf' if not self.use_tracked_body else 'vr_body_tracker.urdf'
-        self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
+        self.vr_body_fpath = os.path.join(
+            assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
         super(BRBody, self).__init__(filename=self.vr_body_fpath, scale=1)
 
         # Relative positions of shoulders and neck to body origin - differs based on whether a torso tracker is being used or not
@@ -326,7 +362,7 @@ class BRBody(ArticulatedObject):
         self.body_ids = [body_id]
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
-        self.mass = 15#p.getDynamicsInfo(body_id, -1)[0]
+        self.mass = 15  # p.getDynamicsInfo(body_id, -1)[0]
         p.changeDynamics(body_id, -1, mass=self.mass)
         return body_id
 
@@ -335,7 +371,7 @@ class BRBody(ArticulatedObject):
 
     def set_position_orientation(self, pos, orn):
         self.parent.set_position_orientation(pos, orn)
-            
+
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
         set_all_collisions(self.body_id, int(enabled))
@@ -347,9 +383,11 @@ class BRBody(ArticulatedObject):
         Initializes BRBody to start in a specific location.
         """
         if self.movement_cid is not None:
-            raise ValueError
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
-                                                [0, 0, 0], [0, 0, 0], self.get_position())
+            raise ValueError(
+                'activate_constraints is called but the constraint has already been already activated: {}'.format(self.movement_cid))
+
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED,
+                                               [0, 0, 0], [0, 0, 0], self.get_position())
 
     def remove_constraint(self):
         p.removeConstraint(self.movement_cid)
@@ -360,15 +398,18 @@ class BRBody(ArticulatedObject):
         Sets BRBody's collision filters.
         """
         # Get body ids of the floor and carpets
-        no_col_ids = self.sim.get_category_ids('floors') + self.sim.get_category_ids('carpet')
-        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
+        no_col_ids = self.sim.get_category_ids(
+            'floors') + self.sim.get_category_ids('carpet')
+        body_link_idxs = [-1] + \
+            [i for i in range(p.getNumJoints(self.body_id))]
 
         for col_id in no_col_ids:
             col_link_idxs = [-1] + [i for i in range(p.getNumJoints(col_id))]
             for body_link_idx in body_link_idxs:
                 for col_link_idx in col_link_idxs:
-                    p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
-    
+                    p.setCollisionFilterPair(
+                        self.body_id, col_id, body_link_idx, col_link_idx, 0)
+
     def move(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=7500)
 
@@ -389,13 +430,15 @@ class BRBody(ArticulatedObject):
         """
         delta_pos = action[:3]
         delta_orn = action[3:6]
-        clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(delta_pos, delta_orn)
+        clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(
+            delta_pos, delta_orn)
         # Convert orientation to a quaternion
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new body transform
         old_pos, old_orn = self.get_position_orientation()
-        self.new_pos, self.new_orn = p.multiplyTransforms(old_pos, old_orn, clipped_delta_pos, clipped_delta_orn)
+        self.new_pos, self.new_orn = p.multiplyTransforms(
+            old_pos, old_orn, clipped_delta_pos, clipped_delta_orn)
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
 
@@ -413,12 +456,14 @@ class BRBody(ArticulatedObject):
     def reset(self):
         pass
 
+
 class BRHandBase(ArticulatedObject):
     """
     The base BRHand class from which other BRHand objects derive. It is intended
     that subclasses override most of the methods to implement their own functionality.
     """
-    def __init__(self, s, parent, fpath, hand='right', base_rot=[0,0,0,1], use_ghost_hands=True, robot_num=1):
+
+    def __init__(self, s, parent, fpath, hand='right', base_rot=[0, 0, 0, 1], use_ghost_hands=True, robot_num=1):
         """
         Initializes BRHandBase.
         s is the simulator, fpath is the filepath of the BRHandBase, hand is either left or right 
@@ -459,11 +504,13 @@ class BRHandBase(ArticulatedObject):
         # Keeps track of previous ghost hand hidden state
         self.prev_ghost_hand_hidden_state = False
         if self.use_ghost_hands:
-            self.ghost_hand = VisualShape(os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', 'ghost_hand_{}.obj'.format(self.hand)), scale=0.001)
+            self.ghost_hand = VisualShape(os.path.join(
+                assets_path, 'models', 'vr_agent', 'vr_hand', 'ghost_hand_{}.obj'.format(self.hand)), scale=0.001)
             self.ghost_hand.category = 'agent'
 
         if self.hand not in ['left', 'right']:
-            raise RuntimeError('ERROR: BRHandBase can only accept left or right as a hand argument!')
+            raise RuntimeError(
+                'ERROR: BRHandBase can only accept left or right as a hand argument!')
         super(BRHandBase, self).__init__(filename=self.fpath, scale=1)
 
     def _load(self):
@@ -499,9 +546,11 @@ class BRHandBase(ArticulatedObject):
         # local transforms, note this function gets around state bound
         super(BRHandBase, self).set_position_orientation(pos, orn)
         if self.body.new_pos is None:
-            inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
+            inv_body_pos, inv_body_orn = p.invertTransform(
+                *self.body.get_position_orientation())
         else:
-            inv_body_pos, inv_body_orn = p.invertTransform(self.body.new_pos, self.body.new_orn)
+            inv_body_pos, inv_body_orn = p.invertTransform(
+                self.body.new_pos, self.body.new_orn)
         new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos,
                                                             orn)
         self.local_pos = new_local_pos
@@ -532,12 +581,14 @@ class BRHandBase(ArticulatedObject):
         clipped_delta_pos = np.clip(delta_pos, -1 * self.lin_vel, self.lin_vel)
         clipped_delta_pos = clipped_delta_pos.tolist()
         clipped_delta_orn = np.clip(delta_orn, -1 * self.ang_vel, self.ang_vel)
-        clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn.tolist())
+        clipped_delta_orn = p.getQuaternionFromEuler(
+            clipped_delta_orn.tolist())
 
         # Constraint position so hand doesn't go further than hand_thresh from corresponding shoulder
         shoulder_point = self.body.left_shoulder_rel_pos if self.hand == 'left' else self.body.right_shoulder_rel_pos
         shoulder_point = np.array(shoulder_point)
-        desired_local_pos, desired_local_orn = p.multiplyTransforms(self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn)
+        desired_local_pos, desired_local_orn = p.multiplyTransforms(
+            self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn)
         shoulder_to_hand = np.array(desired_local_pos) - shoulder_point
         dist_to_shoulder = np.linalg.norm(shoulder_to_hand)
         if dist_to_shoulder > (self.hand_thresh + self.parent.thresh_epsilon):
@@ -548,8 +599,10 @@ class BRHandBase(ArticulatedObject):
             # Add to shoulder position to get final local position
             reduced_local_pos = shoulder_point + reduced_shoulder_to_hand
             # Calculate new delta to get to this point
-            inv_old_local_pos, inv_old_local_orn = p.invertTransform(self.local_pos, self.local_orn)
-            clipped_delta_pos, clipped_delta_orn = p.multiplyTransforms(inv_old_local_pos, inv_old_local_orn, reduced_local_pos.tolist(), desired_local_orn)
+            inv_old_local_pos, inv_old_local_orn = p.invertTransform(
+                self.local_pos, self.local_orn)
+            clipped_delta_pos, clipped_delta_orn = p.multiplyTransforms(
+                inv_old_local_pos, inv_old_local_orn, reduced_local_pos.tolist(), desired_local_orn)
 
         return clipped_delta_pos, p.getEulerFromQuaternion(clipped_delta_orn)
 
@@ -566,17 +619,20 @@ class BRHandBase(ArticulatedObject):
             delta_orn = action[23:26]
 
         # Perform clipping
-        clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(delta_pos, delta_orn)
+        clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(
+            delta_pos, delta_orn)
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new local transform
         old_local_pos, old_local_orn = self.local_pos, self.local_orn
-        new_local_pos, new_local_orn = p.multiplyTransforms(old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn)
+        new_local_pos, new_local_orn = p.multiplyTransforms(
+            old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn)
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
 
         # Calculate new world position based on local transform and new body pose
-        self.new_pos, self.new_orn = p.multiplyTransforms(self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
+        self.new_pos, self.new_orn = p.multiplyTransforms(
+            self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
         # Round to avoid numerical inaccuracies
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
@@ -637,7 +693,8 @@ class BRHandBase(ArticulatedObject):
 
         # If distance between hand and controller is greater than threshold,
         # ghost hand appears
-        dist_to_real_controller = np.linalg.norm(np.array(self.new_pos) - np.array(self.get_position()))
+        dist_to_real_controller = np.linalg.norm(
+            np.array(self.new_pos) - np.array(self.get_position()))
         should_hide = dist_to_real_controller <= self.ghost_hand_appear_thresh
 
         # Only toggle hidden state if we are transition from hidden to unhidden, or the other way around
@@ -651,18 +708,22 @@ class BRHandBase(ArticulatedObject):
     def reset(self):
         raise NotImplementedError
 
+
 class BRHand(BRHandBase):
     """
     Represents the human hand used for VR programs and robotics applications.
     """
+
     def __init__(self, s, parent, hand='right', use_ghost_hands=True, normal_color=True, robot_num=1):
         self.normal_color = normal_color
         hand_path = 'normal_color' if self.normal_color else 'alternative_color'
-        self.vr_hand_folder = os.path.join(assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
+        self.vr_hand_folder = os.path.join(
+            assets_path, 'models', 'vr_agent', 'vr_hand', hand_path)
         final_suffix = '{}_{}.urdf'.format('vr_hand_vhacd', hand)
-        base_rot_handed = p.getQuaternionFromEuler([0, 160, -80 if hand == 'right' else 80])
+        base_rot_handed = p.getQuaternionFromEuler(
+            [0, 160, -80 if hand == 'right' else 80])
         super(BRHand, self).__init__(s, parent, os.path.join(self.vr_hand_folder, final_suffix),
-                                    hand=hand, base_rot=base_rot_handed, use_ghost_hands=use_ghost_hands, robot_num=robot_num)
+                                     hand=hand, base_rot=base_rot_handed, use_ghost_hands=use_ghost_hands, robot_num=robot_num)
         self.open_pos = 0
         self.finger_close_pos = 1.2
         self.thumb_close_pos = 0.6
@@ -674,9 +735,11 @@ class BRHand(BRHandBase):
         self.articulated_assist_percentage = 0.7
         self.min_assist_force = 0
         self.max_assist_force = 500
-        self.assist_force = self.min_assist_force + (self.max_assist_force - self.min_assist_force) * self.assist_percent / 100.0
+        self.assist_force = self.min_assist_force + \
+            (self.max_assist_force - self.min_assist_force) * \
+            self.assist_percent / 100.0
         self.trig_frac_thresh = 0.5
-        self.violation_threshold = 0.1 # constraint violation to break the constraint
+        self.violation_threshold = 0.1  # constraint violation to break the constraint
         self.palm_link_idx = 0
         self.obj_cid = None
         self.should_freeze_joints = False
@@ -701,30 +764,39 @@ class BRHand(BRHandBase):
         self.thumb_2_pos = [0, -0.02 * y_modifier, -0.05]
 
     def activate_constraints(self):
-        p.changeDynamics(self.body_id, -1, mass=1, lateralFriction=self.hand_friction)
+        if self.movement_cid is not None:
+            raise ValueError(
+                'activate_constraints is called but the constraint has already been already activated: {}'.format(self.movement_cid))
+
+        p.changeDynamics(self.body_id, -1, mass=1,
+                         lateralFriction=self.hand_friction)
         for joint_index in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
-            p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=self.hand_friction)
-            p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
+            p.changeDynamics(self.body_id, joint_index, mass=0.1,
+                             lateralFriction=self.hand_friction)
+            p.resetJointState(self.body_id, joint_index,
+                              targetValue=0, targetVelocity=0.0)
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=0,
                                     targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
-            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
+            p.setJointMotorControl2(
+                self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
-        if self.movement_cid is not None:
-            raise ValueError
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [
+                                               0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
         super(BRHand, self).activate_constraints()
-        
+
     def reset(self):
         """
         Resets joint positions of the hand and releases assisted grasping.
         """
         for joint_index in range(p.getNumJoints(self.body_id)):
-            p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
+            p.resetJointState(self.body_id, joint_index,
+                              targetValue=0, targetVelocity=0.0)
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=0,
                                     targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
-            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
+            p.setJointMotorControl2(
+                self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         self.force_release = True
 
     def set_hand_coll_filter(self, target_id, enable):
@@ -734,11 +806,13 @@ class BRHand(BRHandBase):
         :param enable: whether to enable/disable collisions
         """
         target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
-        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
+        body_link_idxs = [-1] + \
+            [i for i in range(p.getNumJoints(self.body_id))]
 
         for body_link_idx in body_link_idxs:
             for target_link_idx in target_link_idxs:
-                p.setCollisionFilterPair(self.body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
+                p.setCollisionFilterPair(
+                    self.body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
 
     def gen_freeze_vals(self):
         """
@@ -754,7 +828,8 @@ class BRHand(BRHandBase):
         Freezes hand joints - used in assisted grasping.
         """
         for joint_index, j_val in self.freeze_vals.items():
-            p.resetJointState(self.body_id, joint_index, targetValue=j_val, targetVelocity=0.0)
+            p.resetJointState(self.body_id, joint_index,
+                              targetValue=j_val, targetVelocity=0.0)
 
     def find_raycast_candidates(self):
         """
@@ -765,23 +840,29 @@ class BRHand(BRHandBase):
         palm_link_state = p.getLinkState(self.body_id, 0)
         palm_pos = palm_link_state[0]
         palm_orn = palm_link_state[1]
-        palm_base_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, self.palm_base_pos, [0, 0, 0, 1])
-        palm_center_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, self.palm_center_pos, [0, 0, 0, 1])
+        palm_base_pos, _ = p.multiplyTransforms(
+            palm_pos, palm_orn, self.palm_base_pos, [0, 0, 0, 1])
+        palm_center_pos, _ = p.multiplyTransforms(
+            palm_pos, palm_orn, self.palm_center_pos, [0, 0, 0, 1])
         thumb_link_state = p.getLinkState(self.body_id, self.thumb_link_idx)
         thumb_pos = thumb_link_state[0]
         thumb_orn = thumb_link_state[1]
-        thumb_1, _ = p.multiplyTransforms(thumb_pos, thumb_orn, self.thumb_2_pos, [0, 0, 0, 1])
-        thumb_2, _ = p.multiplyTransforms(thumb_pos, thumb_orn, self.thumb_1_pos, [0, 0, 0, 1])
+        thumb_1, _ = p.multiplyTransforms(
+            thumb_pos, thumb_orn, self.thumb_2_pos, [0, 0, 0, 1])
+        thumb_2, _ = p.multiplyTransforms(
+            thumb_pos, thumb_orn, self.thumb_1_pos, [0, 0, 0, 1])
         # Repeat for each of 4 fingers
         raypoints.extend([palm_base_pos, palm_center_pos, thumb_1, thumb_2])
-        raycast_startpoints = [palm_base_pos, palm_center_pos, thumb_1, thumb_2] * 4
+        raycast_startpoints = [palm_base_pos,
+                               palm_center_pos, thumb_1, thumb_2] * 4
 
         raycast_endpoints = []
         for lk in self.non_thumb_fingers:
             finger_link_state = p.getLinkState(self.body_id, lk)
             link_pos = finger_link_state[0]
             link_orn = finger_link_state[1]
-            finger_tip_pos, _ = p.multiplyTransforms(link_pos, link_orn, self.finger_tip_pos, [0, 0, 0, 1])
+            finger_tip_pos, _ = p.multiplyTransforms(
+                link_pos, link_orn, self.finger_tip_pos, [0, 0, 0, 1])
             raypoints.append(finger_tip_pos)
             raycast_endpoints.extend([finger_tip_pos] * 4)
 
@@ -832,7 +913,8 @@ class BRHand(BRHandBase):
 
         # Step 2 - find the closest object to the palm center among these "inside" objects
         palm_state = p.getLinkState(self.body_id, 0)
-        palm_center_pos, _ = p.multiplyTransforms(palm_state[0], palm_state[1], self.palm_center_pos, [0, 0, 0, 1])
+        palm_center_pos, _ = p.multiplyTransforms(
+            palm_state[0], palm_state[1], self.palm_center_pos, [0, 0, 0, 1])
 
         self.candidate_data = []
         for bid, link in ray_data:
@@ -840,7 +922,8 @@ class BRHand(BRHandBase):
                 link_pos, _ = p.getBasePositionAndOrientation(bid)
             else:
                 link_pos = p.getLinkState(bid, link)[0]
-            dist = np.linalg.norm(np.array(link_pos) - np.array(palm_center_pos))
+            dist = np.linalg.norm(np.array(link_pos) -
+                                  np.array(palm_center_pos))
             self.candidate_data.append((bid, link, dist))
 
         self.candidate_data = sorted(self.candidate_data, key=lambda x: x[2])
@@ -858,7 +941,7 @@ class BRHand(BRHandBase):
         if (not self.sim.can_assisted_grasp(ag_bid, ag_link) or
             (self.other_hand and self.other_hand.object_in_hand == ag_bid) or
             (self.body and self.body.body_id == ag_bid) or
-            (self.other_hand and self.other_hand.body_id == ag_bid)):
+                (self.other_hand and self.other_hand.body_id == ag_bid)):
             return None
 
         return ag_bid, ag_link
@@ -877,7 +960,8 @@ class BRHand(BRHandBase):
 
         # Execute gradual release of object
         if self.should_execute_release and self.release_start_time:
-            time_since_release = (self.sim.frame_count - self.release_start_time) * self.sim.physics_timestep_num
+            time_since_release = (
+                self.sim.frame_count - self.release_start_time) * self.sim.physics_timestep_num
             if time_since_release >= self.release_window:
                 self.set_hand_coll_filter(self.object_in_hand, True)
                 self.object_in_hand = None
@@ -898,12 +982,14 @@ class BRHand(BRHandBase):
 
                 # Different pos/orn calculations for base/links
                 if ag_link == -1:
-                    body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
+                    body_pos, body_orn = p.getBasePositionAndOrientation(
+                        ag_bid)
                 else:
                     body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
 
                 # Get inverse world transform of body frame
-                inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
+                inv_body_pos, inv_body_orn = p.invertTransform(
+                    body_pos, body_orn)
                 link_state = p.getLinkState(self.body_id, self.palm_link_idx)
                 link_pos = link_state[0]
                 link_orn = link_state[1]
@@ -920,21 +1006,23 @@ class BRHand(BRHandBase):
                     joint_type = p.JOINT_POINT2POINT
 
                 self.obj_cid = p.createConstraint(
-                                        parentBodyUniqueId=self.body_id,
-                                        parentLinkIndex=self.palm_link_idx,
-                                        childBodyUniqueId=ag_bid,
-                                        childLinkIndex=ag_link,
-                                        jointType=joint_type,
-                                        jointAxis=(0, 0, 0),
-                                        parentFramePosition=(0, 0, 0),
-                                        childFramePosition=child_frame_pos,
-                                        childFrameOrientation=child_frame_orn
-                                    )
+                    parentBodyUniqueId=self.body_id,
+                    parentLinkIndex=self.palm_link_idx,
+                    childBodyUniqueId=ag_bid,
+                    childLinkIndex=ag_link,
+                    jointType=joint_type,
+                    jointAxis=(0, 0, 0),
+                    parentFramePosition=(0, 0, 0),
+                    childFramePosition=child_frame_pos,
+                    childFrameOrientation=child_frame_orn
+                )
                 # Modify max force based on user-determined assist parameters
                 if ag_link == -1:
-                    p.changeConstraint(self.obj_cid, maxForce=self.assist_force)
+                    p.changeConstraint(
+                        self.obj_cid, maxForce=self.assist_force)
                 else:
-                    p.changeConstraint(self.obj_cid, maxForce=self.assist_force * self.articulated_assist_percentage)
+                    p.changeConstraint(
+                        self.obj_cid, maxForce=self.assist_force * self.articulated_assist_percentage)
 
                 self.object_in_hand = ag_bid
                 self.should_freeze_joints = True
@@ -944,8 +1032,9 @@ class BRHand(BRHandBase):
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
             if (self.force_release or
-                (new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac <= self.trig_frac_thresh)
-                or constraint_violation > self.violation_threshold):
+                (new_trig_frac >= 0.0 and new_trig_frac <=
+                 1.0 and new_trig_frac <= self.trig_frac_thresh)
+                    or constraint_violation > self.violation_threshold):
                 self.force_release = False
                 p.removeConstraint(self.obj_cid)
                 self.should_freeze_joints = False
@@ -957,14 +1046,18 @@ class BRHand(BRHandBase):
             = p.getConstraintInfo(cid)[:8]
 
         if parent_link == -1:
-            parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
+            parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(
+                parent_body)
         else:
-            parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
+            parent_link_pos, parent_link_orn = p.getLinkState(
+                parent_body, parent_link)[:2]
 
         if child_link == -1:
-            child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
+            child_link_pos, child_link_orn = p.getBasePositionAndOrientation(
+                child_body)
         else:
-            child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
+            child_link_pos, child_link_orn = p.getLinkState(
+                child_body, child_link)[:2]
 
         joint_pos_in_parent_world = p.multiplyTransforms(parent_link_pos,
                                                          parent_link_orn,
@@ -975,7 +1068,8 @@ class BRHand(BRHandBase):
                                                         joint_position_child,
                                                         [0, 0, 0, 1])[0]
 
-        diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
+        diff = np.linalg.norm(
+            np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
         return diff
 
     def update(self, action):
@@ -1002,7 +1096,6 @@ class BRHand(BRHandBase):
         if self.should_freeze_joints:
             return
 
-
         for joint_index in range(p.getNumJoints(self.body_id)):
             jf = p.getJointInfo(self.body_id, joint_index)
             j_name = jf[1]
@@ -1013,19 +1106,22 @@ class BRHand(BRHandBase):
                 close_pos = self.finger_close_pos
             interp_frac = (close_pos - self.open_pos) * close_frac
             target_pos = self.open_pos + interp_frac
-            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=self.hand_close_force)
+            p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL,
+                                    targetPosition=target_pos, force=self.hand_close_force)
 
 
 class BRGripper(BRHandBase):
     """
     Gripper utilizing the pybullet gripper URDF.
     """
+
     def __init__(self, s, parent, hand='right', use_ghost_hands=True, normal_color=True, robot_num=1):
         self.normal_color = normal_color
         gripper_path = 'normal_color' if self.normal_color else 'alternative_color'
-        self.vr_gripper_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_gripper', gripper_path, 'vr_gripper.urdf')
+        self.vr_gripper_fpath = os.path.join(
+            assets_path, 'models', 'vr_agent', 'vr_gripper', gripper_path, 'vr_gripper.urdf')
         super(BRGripper, self).__init__(s, parent, self.vr_gripper_fpath,
-                                    hand=hand, base_rot=p.getQuaternionFromEuler([0, 0, 0]), use_ghost_hands=use_ghost_hands, robot_num=robot_num)
+                                        hand=hand, base_rot=p.getQuaternionFromEuler([0, 0, 0]), use_ghost_hands=use_ghost_hands, robot_num=robot_num)
         # Need large ghost hand threshold for BRGripper
         self.ghost_hand_appear_thresh = 0.25
         self.joint_positions = [0.550569, 0.000000, 0.549657, 0.000000]
@@ -1034,40 +1130,47 @@ class BRGripper(BRHandBase):
         """
         Sets up constraints in addition to superclass hand setup.
         """
-        for joint_idx in range(p.getNumJoints(self.body_id)):
-            p.resetJointState(self.body_id, joint_idx, self.joint_positions[joint_idx])
-            p.setJointMotorControl2(self.body_id, joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
-
         if self.movement_cid is not None:
-            raise ValueError
+            raise ValueError(
+                'activate_constraints is called but the constraint has already been already activated: {}'.format(self.movement_cid))
+
+        for joint_idx in range(p.getNumJoints(self.body_id)):
+            p.resetJointState(self.body_id, joint_idx,
+                              self.joint_positions[joint_idx])
+            p.setJointMotorControl2(
+                self.body_id, joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
+
         # Movement constraint
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position())
+        self.movement_cid = p.createConstraint(
+            self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position())
         # Gripper gear constraint
         self.grip_cid = p.createConstraint(self.body_id,
-                            0,
-                            self.body_id,
-                            2,
-                            jointType=p.JOINT_GEAR,
-                            jointAxis=[0, 1, 0],
-                            parentFramePosition=[0, 0, 0],
-                            childFramePosition=[0, 0, 0])
-        p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
+                                           0,
+                                           self.body_id,
+                                           2,
+                                           jointType=p.JOINT_GEAR,
+                                           jointAxis=[0, 1, 0],
+                                           parentFramePosition=[0, 0, 0],
+                                           childFramePosition=[0, 0, 0])
+        p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5,
+                           relativePositionTarget=0.5, maxForce=3)
         super(BRGripper, self).activate_constraints()
 
     def set_close_fraction(self, close_frac):
         # PyBullet recommmends doing this to keep the gripper centered/symmetric
         b = p.getJointState(self.body_id, 2)[0]
-        p.setJointMotorControl2(self.body_id, 0, p.POSITION_CONTROL, targetPosition=b, force=3)
+        p.setJointMotorControl2(
+            self.body_id, 0, p.POSITION_CONTROL, targetPosition=b, force=3)
 
         # Clip close fraction to make sure it stays within [0, 1] range
         clipped_close_frac = np.clip([close_frac], 0, 1)[0]
 
         # Change gear constraint to reflect trigger close fraction
         p.changeConstraint(self.grip_cid,
-                         gearRatio=1,
-                         erp=1,
-                         relativePositionTarget=1 - clipped_close_frac,
-                         maxForce=3)
+                           gearRatio=1,
+                           erp=1,
+                           relativePositionTarget=1 - clipped_close_frac,
+                           maxForce=3)
 
 
 class BREye(ArticulatedObject):
@@ -1075,6 +1178,7 @@ class BREye(ArticulatedObject):
     Class representing the eye of the robot - robots can use this eye's position
     to move the camera and render the same thing that the VR users see.
     """
+
     def __init__(self, s, parent, normal_color=True, robot_num=1, show_visual_head=True):
         # Set up class
         self.sim = s
@@ -1093,12 +1197,15 @@ class BREye(ArticulatedObject):
         self.new_orn = None
 
         color_folder = 'normal_color' if self.normal_color else 'alternative_color'
-        self.head_visual_path = os.path.join(assets_path, 'models', 'vr_agent', 'vr_eye', color_folder, 'vr_head.obj')
-        self.eye_path = os.path.join(assets_path, 'models', 'vr_agent', 'vr_eye', 'vr_eye.urdf')
+        self.head_visual_path = os.path.join(
+            assets_path, 'models', 'vr_agent', 'vr_eye', color_folder, 'vr_head.obj')
+        self.eye_path = os.path.join(
+            assets_path, 'models', 'vr_agent', 'vr_eye', 'vr_eye.urdf')
         super(BREye, self).__init__(filename=self.eye_path, scale=1)
 
         self.should_hide = True
-        self.head_visual_marker = VisualShape(self.head_visual_path, scale=0.08)
+        self.head_visual_marker = VisualShape(
+            self.head_visual_path, scale=0.08)
 
     def set_body(self, body):
         """
@@ -1112,16 +1219,19 @@ class BREye(ArticulatedObject):
         # local transforms, note this function gets around state bound
         super(BREye, self).set_position_orientation(pos, orn)
         if self.body.new_pos is None:
-            inv_body_pos, inv_body_orn = p.invertTransform(*self.body.get_position_orientation())
+            inv_body_pos, inv_body_orn = p.invertTransform(
+                *self.body.get_position_orientation())
         else:
-            inv_body_pos, inv_body_orn = p.invertTransform(self.body.new_pos, self.body.new_orn)
+            inv_body_pos, inv_body_orn = p.invertTransform(
+                self.body.new_pos, self.body.new_orn)
         new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos,
                                                             orn)
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
-        self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
+        self.head_visual_marker.set_position_orientation(
+            self.new_pos, self.new_orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -1138,10 +1248,12 @@ class BREye(ArticulatedObject):
         clipped_delta_pos = np.clip(delta_pos, -1 * self.lin_vel, self.lin_vel)
         clipped_delta_pos = clipped_delta_pos.tolist()
         clipped_delta_orn = np.clip(delta_orn, -1 * self.ang_vel, self.ang_vel)
-        clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn.tolist())
+        clipped_delta_orn = p.getQuaternionFromEuler(
+            clipped_delta_orn.tolist())
 
         neck_base_point = np.array(self.body.neck_base_rel_pos)
-        desired_local_pos, desired_local_orn = p.multiplyTransforms(self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn)
+        desired_local_pos, desired_local_orn = p.multiplyTransforms(
+            self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn)
         neck_to_head = np.array(desired_local_pos) - neck_base_point
         dist_to_neck = np.linalg.norm(neck_to_head)
         if dist_to_neck > (self.head_thresh + self.parent.thresh_epsilon):
@@ -1149,8 +1261,10 @@ class BREye(ArticulatedObject):
             shrink_factor = self.head_thresh / dist_to_neck
             reduced_neck_to_head = neck_to_head * shrink_factor
             reduced_local_pos = neck_base_point + reduced_neck_to_head
-            inv_old_local_pos, inv_old_local_orn = p.invertTransform(self.local_pos, self.local_orn)
-            clipped_delta_pos, clipped_delta_orn = p.multiplyTransforms(inv_old_local_pos, inv_old_local_orn, reduced_local_pos.tolist(), desired_local_orn)
+            inv_old_local_pos, inv_old_local_orn = p.invertTransform(
+                self.local_pos, self.local_orn)
+            clipped_delta_pos, clipped_delta_orn = p.multiplyTransforms(
+                inv_old_local_pos, inv_old_local_orn, reduced_local_pos.tolist(), desired_local_orn)
 
         return clipped_delta_pos, p.getEulerFromQuaternion(clipped_delta_orn)
 
@@ -1167,21 +1281,23 @@ class BREye(ArticulatedObject):
         delta_orn = action[9:12]
 
         # Perform clipping
-        clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(delta_pos, delta_orn)
+        clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(
+            delta_pos, delta_orn)
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new local transform
         old_local_pos, old_local_orn = self.local_pos, self.local_orn
-        new_local_pos, new_local_orn = p.multiplyTransforms(old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn)
+        new_local_pos, new_local_orn = p.multiplyTransforms(
+            old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn)
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
 
         # Calculate new world position based on local transform and new body pose
-        self.new_pos, self.new_orn = p.multiplyTransforms(self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
+        self.new_pos, self.new_orn = p.multiplyTransforms(
+            self.body.new_pos, self.body.new_orn, new_local_pos, new_local_orn)
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-
 
     def reset(self):
         pass
