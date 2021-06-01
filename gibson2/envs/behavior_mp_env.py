@@ -91,14 +91,14 @@ class BehaviorMPEnv(BehaviorEnv):
                     if hasattr(obj, 'states') and AABB in obj.states:
                         lo, hi = obj.states[AABB].get_value()
                         volume = get_aabb_volume(lo, hi)
-                        if volume < 0.2 * 0.2 * 0.2: # say we can only grasp small objects
+                        if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed: # say we can only grasp small objects
                             if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                                 self.obj_in_hand = obj
                                 print('PRIMITIVE: grasp {} success'.format(obj.name))
                             else:
                                 print('PRIMITIVE: grasp {} fail, too far'.format(obj.name))
                         else:
-                            print('PRIMITIVE: grasp {} fail, too big'.format(obj.name))
+                            print('PRIMITIVE: grasp {} fail, too big or fixed'.format(obj.name))
             elif action_primitive == ActionPrimitives.PLACE_ONTOP:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
