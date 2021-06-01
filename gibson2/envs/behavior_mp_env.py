@@ -180,8 +180,8 @@ if __name__ == '__main__':
 
     env = BehaviorMPEnv(config_file=args.config,
                       mode=args.mode,
-                      action_timestep=1.0 / 10.0,
-                      physics_timestep=1.0 / 40.0)
+                      action_timestep=1.0 / 300.0,
+                      physics_timestep=1.0 / 300.0)
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))

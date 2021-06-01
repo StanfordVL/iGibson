@@ -74,6 +74,7 @@ class iGTNTask(TaskNetTask):
                                  online_sampling=online_sampling,
                                  )
         self.initial_state = self.save_scene()
+        self.task_obs_dim = len(self.object_scope) * 6
         return result
 
     def save_scene(self):
@@ -1128,6 +1129,16 @@ class iGTNTask(TaskNetTask):
 
     def sampleTouching(self, objA, objB):
         pass
+
+    def get_task_obs(self, env):
+        state = np.zeros((self.task_obs_dim))
+        i = 0
+        for k, v in self.object_scope.items():
+            if isinstance(v, URDFObject):
+                state[i * 6: i * 6 + 3] = np.array(v.get_position())
+                state[i * 6 + 3: i * 6 + 6] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
+            i += 1
+        return state
 
 
 def main():
