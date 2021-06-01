@@ -79,7 +79,6 @@ class BehaviorMPEnv(BehaviorEnv):
         obj_list_id = int(action) % self.num_objects
         action_primitive = int(action) // self.num_objects
         obj = self.simulator.scene.get_objects()[obj_list_id]
-        print(obj, action_primitive)
         if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
                 if self.navigate_to_obj(obj):
@@ -132,7 +131,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     obj.states[Open].set_value(False)
 
         state, reward, done, info = super(BehaviorMPEnv, self).step(np.zeros(17))
-        # print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
+        print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
         return state, reward, done, info
 
     def navigate_to_obj(self, obj):
