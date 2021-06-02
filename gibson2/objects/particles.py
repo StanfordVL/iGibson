@@ -486,6 +486,7 @@ class _Dirt(AttachedParticleSystem):
     _SAMPLING_AABB_OFFSET = 0.1
     _SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
     _SAMPLING_BIMODAL_STDEV_FRACTION = 0.2
+    _SAMPLING_MAX_ATTEMPTS = 20
 
     def __init__(self, parent_obj, clip_into_object, sampling_kwargs=None, **kwargs):
         super(_Dirt, self).__init__(parent_obj, **kwargs)
@@ -509,8 +510,8 @@ class _Dirt(AttachedParticleSystem):
             self.parent_obj, self.get_num_stashed(
             ), [list(x) for x in bbox_sizes],
             self._SAMPLING_BIMODAL_MEAN_FRACTION, self._SAMPLING_BIMODAL_STDEV_FRACTION,
-            self._SAMPLING_AXIS_PROBABILITIES, undo_padding=True, aabb_offset=self._SAMPLING_AABB_OFFSET,
-            refuse_downwards=True, **self._sampling_kwargs)
+            self._SAMPLING_AXIS_PROBABILITIES, max_sampling_attempts=self._SAMPLING_MAX_ATTEMPTS, undo_padding=True,
+            aabb_offset=self._SAMPLING_AABB_OFFSET, refuse_downwards=True,  **self._sampling_kwargs)
 
         # Reset the activated particle history
         self.reset_particles_activated_at_any_time()
@@ -548,9 +549,15 @@ class Dust(_Dirt):
 
 class Stain(_Dirt):
     _PARTICLE_COUNT = 20
-    _BOUNDING_BOX_LOWER_LIMIT = 0.02
-    _BOUNDING_BOX_UPPER_LIMIT_MAX_FRACTION_OF_AABB = 0.2
-    _BOUNDING_BOX_UPPER_LIMIT = 0.1
+
+    _BOUNDING_BOX_LOWER_LIMIT_FRACTION_OF_AABB = 0.06
+    _BOUNDING_BOX_LOWER_LIMIT_MIN = 0.01
+    _BOUNDING_BOX_LOWER_LIMIT_MAX = 0.02
+
+    _BOUNDING_BOX_UPPER_LIMIT_FRACTION_OF_AABB = 0.1
+    _BOUNDING_BOX_UPPER_LIMIT_MIN = 0.02
+    _BOUNDING_BOX_UPPER_LIMIT_MAX = 0.1
+
     _MESH_FILENAME = os.path.join(
         gibson2.assets_path, "models/stain/stain.obj")
     _MESH_BOUNDING_BOX = np.array([0.0368579992, 0.03716399827, 0.004])
@@ -561,16 +568,24 @@ class Stain(_Dirt):
         else:
             # Particle size range changes based on parent object size.
             from gibson2.object_states import AABB
-            aabb_max_dim = (
-                max(parent_obj.bounding_box)
+            median_aabb_dim = np.median(
+                parent_obj.bounding_box
                 if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
-                max(get_aabb_extent(parent_obj.states[AABB].get_value())))
-            bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_MAX_FRACTION_OF_AABB * aabb_max_dim
+                get_aabb_extent(parent_obj.states[AABB].get_value()))
+
+            bounding_box_lower_limit_from_aabb = self._BOUNDING_BOX_LOWER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
+            bounding_box_lower_limit = np.clip(
+                bounding_box_lower_limit_from_aabb,
+                self._BOUNDING_BOX_LOWER_LIMIT_MIN, self._BOUNDING_BOX_LOWER_LIMIT_MAX)
+
+            bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
             bounding_box_upper_limit = np.clip(
-                bounding_box_upper_limit_from_aabb, self._BOUNDING_BOX_LOWER_LIMIT, self._BOUNDING_BOX_UPPER_LIMIT)
+                bounding_box_upper_limit_from_aabb,
+                self._BOUNDING_BOX_UPPER_LIMIT_MIN, self._BOUNDING_BOX_UPPER_LIMIT_MAX)
+
             # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
             random_bbox_base_size = np.random.uniform(
-                self._BOUNDING_BOX_LOWER_LIMIT, bounding_box_upper_limit, self._PARTICLE_COUNT)
+                bounding_box_lower_limit, bounding_box_upper_limit, self._PARTICLE_COUNT)
             self.random_bbox_dims = np.stack(
                 [random_bbox_base_size, random_bbox_base_size,
                  np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2])], axis=-1)
