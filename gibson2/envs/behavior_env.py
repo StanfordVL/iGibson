@@ -342,6 +342,7 @@ class BehaviorEnv(iGibsonEnv):
             else:
                 self.task.reset_scene(snapshot_id=self.task.initial_state)
 
+        self.simulator.sync()
         state = self.get_state()
         self.reset_variables()
 
