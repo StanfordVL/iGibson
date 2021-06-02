@@ -4,24 +4,45 @@ import os
 
 import pybullet as p
 
+
 def save_checkpoint(simulator, root_directory):
     bullet_path = os.path.join(root_directory, "%d.bullet" % simulator.frame_count)
     json_path = os.path.join(root_directory, "%d.json" % simulator.frame_count)
 
+    # Save the simulation state.
     p.saveBullet(bullet_path)
-    state_dump = {}
+
+    # Dump the object state.
+    object_dump = {}
     for name, obj in simulator.scene.objects_by_name.items():
-        state_dump[name] = obj.dump_state()
+        object_dump[name] = obj.dump_state()
+
+    # Dump the robot state.
+    robot_dump = []
+    for robot in simulator.robots:
+        robot_dump.append(robot.dump_state())
+
+    # Save the dump in a file.
     with open(json_path, "w") as f:
-        json.dump(state_dump, f)
+        json.dump({"objects": object_dump, "robots": robot_dump}, f)
 
 
 def load_checkpoint(simulator, root_directory, frame):
     bullet_path = os.path.join(root_directory, "%d.bullet" % frame)
     json_path = os.path.join(root_directory, "%d.json" % frame)
 
+    # Restore the simulation state.
     p.restoreState(fileName=bullet_path)
+
     with open(json_path, "r") as f:
-        state_dump = json.load(f)
+        dump = json.load(f)
+
+        # Restore the object state.
+        object_dump = dump["objects"]
         for name, obj in simulator.scene.objects_by_name.items():
-            obj.load_state(state_dump[name])
+            obj.load_state(object_dump[name])
+
+        # Restore the robot state.
+        robot_dumps = dump["robots"]
+        for robot, robot_dump in zip(simulator.robots, robot_dumps):
+            robot.load_state(robot_dump)

@@ -1322,7 +1322,7 @@ class Simulator:
 
             # Process trigger fraction and reset for controllers
             if part_name in ['right', 'left']:
-                prev_trig_frac = vr_part.trig_frac
+                prev_trig_frac = vr_part.trigger_fraction
                 if valid:
                     trig_frac = v.query(
                         '{}_controller_button'.format(part_name))[0]
