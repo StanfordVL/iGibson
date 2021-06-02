@@ -70,8 +70,8 @@ class ViewerSimple:
         self.renderer = renderer
         self.simulator = simulator
 
-        cv2.namedWindow('ExternalView')
-        cv2.moveWindow("ExternalView", 0, 0)
+        cv2.namedWindow('RobotView')
+        cv2.moveWindow("RobotView", 0, 0)
 
     def update(self):
         if not self.renderer is None:
