@@ -13,9 +13,12 @@ import tasknet
 import types
 import gym.spaces
 import pybullet as p
+from IPython import embed
 
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2.utils.checkpoint_utils import load_checkpoint
+
 
 class BehaviorEnv(iGibsonEnv):
     """
@@ -47,12 +50,12 @@ class BehaviorEnv(iGibsonEnv):
         """
         self.action_filter = action_filter
         super(BehaviorEnv, self).__init__(config_file=config_file,
-                                         scene_id=scene_id,
-                                         mode=mode,
-                                         action_timestep=action_timestep,
-                                         physics_timestep=physics_timestep,
-                                         device_idx=device_idx,
-                                         render_to_tensor=render_to_tensor)
+                                          scene_id=scene_id,
+                                          mode=mode,
+                                          action_timestep=action_timestep,
+                                          physics_timestep=physics_timestep,
+                                          device_idx=device_idx,
+                                          render_to_tensor=render_to_tensor)
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
@@ -86,29 +89,6 @@ class BehaviorEnv(iGibsonEnv):
         """
         Load task setup
         """
-        self.initial_pos_z_offset = self.config.get(
-            'initial_pos_z_offset', 0.1)
-        # s = 0.5 * G * (t ** 2)
-        drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
-        assert drop_distance < self.initial_pos_z_offset, \
-            'initial_pos_z_offset is too small for collision checking'
-
-        # ignore the agent's collision with these body ids
-        self.collision_ignore_body_b_ids = set(
-            self.config.get('collision_ignore_body_b_ids', []))
-        # ignore the agent's collision with these link ids of itself
-        self.collision_ignore_link_a_ids = set(
-            self.config.get('collision_ignore_link_a_ids', []))
-
-        # discount factor
-        self.discount_factor = self.config.get('discount_factor', 0.99)
-
-        # domain randomization frequency
-        self.texture_randomization_freq = self.config.get(
-            'texture_randomization_freq', None)
-        self.object_randomization_freq = self.config.get(
-            'object_randomization_freq', None)
-
         # task
         task = self.config['task']
         task_id = self.config['task_id']
@@ -119,24 +99,27 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                    'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
+                'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
         self.task.initialize_simulator(
-                simulator=self.simulator, 
-                scene_id=scene_id, 
-                load_clutter=clutter, 
-                scene_kwargs=scene_kwargs, 
-                online_sampling=online_sampling
+            simulator=self.simulator,
+            scene_id=scene_id,
+            load_clutter=clutter,
+            scene_kwargs=scene_kwargs,
+            online_sampling=online_sampling
         )
-
+        self.scene = self.task.scene
         self.robots = [self.task.agent]
+
+        self.reset_checkpoint_idx = self.config.get('reset_checkpoint_idx', -1)
+        self.reset_checkpoint_dir = self.config.get(
+            'reset_checkpoint_dir', None)
 
     def load_ig_task_setup(self):
         if self.config['scene'] == 'empty':
             scene = EmptyScene()
-            scene.objects_by_id = {}
             self.simulator.import_scene(scene, render_floor_plane=True)
         elif self.config['scene'] == 'igibson':
             scene = InteractiveIndoorScene(
@@ -164,17 +147,18 @@ class BehaviorEnv(iGibsonEnv):
             )
             self.simulator.import_ig_scene(scene)
 
-        agent = BehaviorRobot(self.simulator, use_tracked_body_override=True, show_visual_head=True,
+        agent = BehaviorRobot(self.simulator,
+                              use_tracked_body_override=True,
+                              show_visual_head=True,
                               use_ghost_hands=False)
         self.simulator.import_behavior_robot(agent)
         self.simulator.register_main_vr_robot(agent)
         self.initial_pos_z_offset = 0.7
 
-        self.robots = [agent]
-        self.agent = agent
-        self.simulator.robots.append(agent)
         self.scene = scene
-        # task
+        self.robots = [agent]
+        self.simulator.robots.append(agent)
+
         if self.config['task'] == 'point_nav_random':
             self.task = PointNavRandomTask(self)
         elif self.config['task'] == 'reaching_random':
@@ -182,20 +166,48 @@ class BehaviorEnv(iGibsonEnv):
         else:
             self.task = types.SimpleNamespace()
             self.task.initial_state = p.saveState()
-            self.task.reset_scene = lambda snapshot_id: p.restoreState(snapshot_id)
+            self.task.reset_scene = \
+                lambda snapshot_id: p.restoreState(snapshot_id)
             self.task.check_success = lambda: (False, [])
 
     def load_task_setup(self):
-        pass
+        self.initial_pos_z_offset = self.config.get(
+            'initial_pos_z_offset', 0.1)
+        # s = 0.5 * G * (t ** 2)
+        drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
+        assert drop_distance < self.initial_pos_z_offset, \
+            'initial_pos_z_offset is too small for collision checking'
+
+        # ignore the agent's collision with these body ids
+        self.collision_ignore_body_b_ids = set(
+            self.config.get('collision_ignore_body_b_ids', []))
+        # ignore the agent's collision with these link ids of itself
+        self.collision_ignore_link_a_ids = set(
+            self.config.get('collision_ignore_link_a_ids', []))
+
+        # discount factor
+        self.discount_factor = self.config.get('discount_factor', 0.99)
+
+        # domain randomization frequency
+        self.texture_randomization_freq = self.config.get(
+            'texture_randomization_freq', None)
+        self.object_randomization_freq = self.config.get(
+            'object_randomization_freq', None)
+
+        if not self.config.get('debug', False):
+            self.load_behavior_task_setup()
+        else:
+            self.load_ig_task_setup()
+
+        # Activate the robot constraints so that we don't need to feed in
+        # trigger press action in the first couple frames
+        self.robots[0].activate()
 
     def load(self):
         """
         Load environment
         """
-        if not self.config.get('debug', False):
-            self.load_behavior_task_setup()
-        else:
-            self.load_ig_task_setup()
+        self.load_task_setup()
         self.load_observation_space()
         self.load_action_space()
         self.load_miscellaneous_variables()
@@ -204,10 +216,12 @@ class BehaviorEnv(iGibsonEnv):
         super(BehaviorEnv, self).load_observation_space()
         if 'proprioception' in self.output:
             proprioception_dim = self.robots[0].get_proprioception_dim()
-            self.observation_space.spaces['proprioception'] = gym.spaces.Box(low=-100.0,
-                                                       high=100.0,
-                                                       shape=(proprioception_dim,))
-            self.observation_space = gym.spaces.Dict(self.observation_space.spaces)
+            self.observation_space.spaces['proprioception'] = \
+                gym.spaces.Box(low=-100.0,
+                               high=100.0,
+                               shape=(proprioception_dim,))
+            self.observation_space = gym.spaces.Dict(
+                self.observation_space.spaces)
 
     def step(self, action):
         """
@@ -246,12 +260,15 @@ class BehaviorEnv(iGibsonEnv):
         else:
             new_action = action
 
-        if self.current_step < 2:
-            new_action[19] = 1
-            new_action[27] = 1
-
-        self.current_step += 1
         self.robots[0].update(new_action)
+        self.simulator.step()
+
+        # Compute the initial reward potential here instead of during reset
+        # because if an intermediate checkpoint is loaded, we need step the
+        # simulator before calling task.check_success
+        if self.current_step == 0:
+            self.reward_potential = len(
+                self.task.check_success()[1]['satisfied'])
 
         state = self.get_state()
         info = {}
@@ -262,22 +279,25 @@ class BehaviorEnv(iGibsonEnv):
             self.task.step(self)
         else:
             done, satisfied_predicates = self.task.check_success()
+            if self.current_step >= self.config['max_step']:
+                done = True
             reward, info = self.get_reward(satisfied_predicates)
-            info = {"satisfied_predicates": satisfied_predicates}
 
-        self.simulator.step(self)
         self.populate_info(info)
 
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
+
+        self.current_step += 1
+
         return state, reward, done, info
 
     def get_reward(self, satisfied_predicates):
         new_potential = len(satisfied_predicates['satisfied'])
         reward = new_potential - self.reward_potential
         self.reward_potential = new_potential
-        return reward, {}
+        return reward, {"satisfied_predicates": satisfied_predicates}
 
     def get_state(self, collision_links=[]):
         """
@@ -303,8 +323,8 @@ class BehaviorEnv(iGibsonEnv):
         if 'proprioception' in self.output:
             state['proprioception'] = self.robots[0].get_proprioception()
 
-
         return state
+
     def reset(self, resample_objects=False):
         """
         Reset episode
@@ -315,20 +335,24 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene(self)
             self.task.reset_agent(self)
         else:
-            self.task.reset_scene(snapshot_id=self.task.initial_state)
-        self.simulator.sync()
+            if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
+                load_checkpoint(
+                    self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
+            else:
+                self.task.reset_scene(snapshot_id=self.task.initial_state)
+
         state = self.get_state()
         self.reset_variables()
-        self.reward_potential = 0
 
         return state
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--config',
         '-c',
-        default = 'gibson2/examples/configs/behavior.yaml',
+        default='gibson2/examples/configs/behavior.yaml',
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',
@@ -340,7 +364,7 @@ if __name__ == '__main__':
     env = BehaviorEnv(config_file=args.config,
                       mode=args.mode,
                       action_timestep=1.0 / 10.0,
-                      physics_timestep=1.0 / 40.0,
+                      physics_timestep=1.0 / 240.0,
                       action_filter='mobile_manipulation')
     step_time_list = []
     for episode in range(100):
