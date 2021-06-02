@@ -13,7 +13,7 @@ from enum import IntEnum
 from gibson2.object_states import *
 from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
 from gibson2.object_states.utils import sample_kinematics
-
+from gibson2.objects.articulated_object import URDFObject
 NUM_ACTIONS = 6
 class ActionPrimitives(IntEnum):
     NAVIGATE_TO = 0
@@ -72,13 +72,14 @@ class BehaviorMPEnv(BehaviorEnv):
         self.obj_in_hand = None
 
     def load_action_space(self):
-        self.num_objects = self.simulator.scene.get_num_objects()
+        self.task_relevant_objects = [item for item in self.task.object_scope.values() if isinstance(item, URDFObject)]
+        self.num_objects = len(self.task_relevant_objects)
         self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
     def step(self, action):
         obj_list_id = int(action) % self.num_objects
         action_primitive = int(action) // self.num_objects
-        obj = self.simulator.scene.get_objects()[obj_list_id]
+        obj = self.task_relevant_objects[obj_list_id]
         if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
                 if self.navigate_to_obj(obj):
