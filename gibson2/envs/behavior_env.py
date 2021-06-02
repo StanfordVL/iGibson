@@ -13,9 +13,11 @@ import tasknet
 import types
 import gym.spaces
 import pybullet as p
+from IPython import embed
 
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2.utils.checkpoint_utils import load_checkpoint
 
 
 class BehaviorEnv(iGibsonEnv):
@@ -111,6 +113,10 @@ class BehaviorEnv(iGibsonEnv):
         )
         self.scene = self.task.scene
         self.robots = [self.task.agent]
+
+        self.reset_checkpoint_idx = self.config.get('reset_checkpoint_idx', -1)
+        self.reset_checkpoint_dir = self.config.get(
+            'reset_checkpoint_dir', None)
 
     def load_ig_task_setup(self):
         if self.config['scene'] == 'empty':
@@ -255,8 +261,15 @@ class BehaviorEnv(iGibsonEnv):
         else:
             new_action = action
 
-        self.current_step += 1
         self.robots[0].update(new_action)
+        self.simulator.step()
+
+        # Compute the initial reward potential here instead of during reset
+        # because if an intermediate checkpoint is loaded, we need step the
+        # simulator before calling task.check_success
+        if self.current_step == 0:
+            self.reward_potential = len(
+                self.task.check_success()[1]['satisfied'])
 
         state = self.get_state()
         info = {}
@@ -271,12 +284,14 @@ class BehaviorEnv(iGibsonEnv):
                 done = True
             reward, info = self.get_reward(satisfied_predicates)
 
-        self.simulator.step()
         self.populate_info(info)
 
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
+
+        self.current_step += 1
+
         return state, reward, done, info
 
     def get_reward(self, satisfied_predicates):
@@ -321,11 +336,14 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene(self)
             self.task.reset_agent(self)
         else:
-            self.task.reset_scene(snapshot_id=self.task.initial_state)
-        self.simulator.sync()
+            if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
+                load_checkpoint(
+                    self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
+            else:
+                self.task.reset_scene(snapshot_id=self.task.initial_state)
+
         state = self.get_state()
         self.reset_variables()
-        self.reward_potential = 0
 
         return state
 
