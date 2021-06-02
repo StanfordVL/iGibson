@@ -144,20 +144,24 @@ def _get_goal_condition_states(igtn_task: iGTNTask):
 
 class DemoSegmentationProcessor(object):
     def __init__(self, state_types=None, object_selection=SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
-                 label_by_instance=False, hierarchical=False):
-        self.initialized = False
+                 label_by_instance=False, hierarchical=False, diff_initial=False, state_directions=STATE_DIRECTIONS):
         self.state_history = []
         self.last_state = None
 
         self.state_types_option = state_types
         self.state_types = None  # To be populated in initialize().
+        self.state_directions = state_directions
         self.object_selection = object_selection
         self.label_by_instance = label_by_instance
 
         self.hierarchical = hierarchical
         self.all_state_types = None
 
-    def initialize(self, igtn_task):
+        if diff_initial:
+            self.state_history.append(StateEntry(0, set()))
+            self.last_state = set()
+
+    def start_callback(self, igtn_task):
         self.all_state_types = [
             state for state in factory.get_all_states()
             if (issubclass(state, BooleanState)
@@ -172,12 +176,7 @@ class DemoSegmentationProcessor(object):
         else:
             raise ValueError("Unknown segmentation state selection.")
 
-        self.initialized = True
-
     def step_callback(self, igtn_task):
-        if not self.initialized:
-            self.initialize(igtn_task)
-
         print("Step %d" % igtn_task.simulator.frame_count)
         PROFILER.start()
 
@@ -242,8 +241,7 @@ class DemoSegmentationProcessor(object):
         segments = self._hierarchical_segments(self.state_history, self.state_types)
         return Segment(segments[0].start, segments[-1].end - segments[0].start, segments[-1].end, [], segments)
 
-    @staticmethod
-    def filter_diffs(state_records, state_types):
+    def filter_diffs(self, state_records, state_types):
         """Filter the segments so that only objects in the given state directions are monitored."""
         new_records = set()
 
@@ -254,7 +252,7 @@ class DemoSegmentationProcessor(object):
                 continue
 
             # Check if any object in the record is on our list.
-            mode = STATE_DIRECTIONS[state_record.state_type]
+            mode = self.state_directions[state_record.state_type]
             accept = True
             if mode == SegmentationStateDirection.FALSE_TO_TRUE:
                 accept = state_record.value
@@ -319,12 +317,17 @@ class DemoSegmentationProcessor(object):
 
 
 def run_segmentation(log_path, segmentation_processors, **kwargs):
+    def _multiple_segmentation_processor_start_callback(igtn_task):
+        for segmentation_processor in segmentation_processors:
+            segmentation_processor.start_callback(igtn_task)
+
     def _multiple_segmentation_processor_step_callback(igtn_task):
         for segmentation_processor in segmentation_processors:
             segmentation_processor.step_callback(igtn_task)
 
     behavior_demo_replay.replay_demo(
-        log_path, disable_save=True, step_callback=_multiple_segmentation_processor_step_callback, **kwargs)
+        log_path, start_callback=_multiple_segmentation_processor_start_callback,
+        step_callback=_multiple_segmentation_processor_step_callback, **kwargs)
 
 
 def parse_args():
@@ -340,14 +343,20 @@ def main():
     # args = parse_args()
     tasknet.set_backend("iGibson")
 
-    flat_states = set(STATE_DIRECTIONS.keys())
+    # flat_states = set(STATE_DIRECTIONS.keys())
+    flat_states = [object_states.Open, object_states.OnTop, object_states.Inside, object_states.InHandOfRobot,
+                   object_states.InReachOfRobot]
     flat_object_segmentation = DemoSegmentationProcessor(flat_states, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
                                                          label_by_instance=True)
 
     goal_segmentation = DemoSegmentationProcessor(
         SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
-        hierarchical=True)
-    room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS)
+        hierarchical=True, label_by_instance=True)
+
+    # Here we check for *leaving* rooms so that the segments match to the rooms the robot was in at that time.
+    room_directions = {state: SegmentationStateDirection.TRUE_TO_FALSE for state in ROOM_STATES}
+    room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS,
+                                                           diff_initial=True, state_directions=room_directions)
 
     segmentation_processors = [
         goal_segmentation,
@@ -357,7 +366,7 @@ def main():
 
     # Run the segmentations.
     demo_file = os.path.join(gibson2.ig_dataset_path, 'tests',
-                             'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
+                             'storing_food_0_Rs_int_2021-05-31_11-49-30.hdf5')
     run_segmentation(demo_file, segmentation_processors, no_vr=True)
 
     for i, segmentation_processor in enumerate(segmentation_processors):
