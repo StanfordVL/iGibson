@@ -13,6 +13,7 @@ from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2.utils.checkpoint_utils import save_internal_states, load_internal_states
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -79,34 +80,12 @@ class iGTNTask(TaskNetTask):
 
     def save_scene(self):
         snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = {
-            'object_states': {},
-            'agent_states': {},
-        }
-        for obj_name, obj in self.scene.objects_by_name.items():
-            self.state_history[snapshot_id]['object_states'][obj_name] = \
-                obj.dump_state()
-
-        for part_name, part in self.agent.parts.items():
-            self.state_history[snapshot_id]['agent_states'][part_name] = {}
-            for state_name in AGENT_INTERNAL_STATE_NAMES:
-                if hasattr(part, state_name):
-                    self.state_history[snapshot_id]['agent_states'][part_name][state_name] = \
-                        getattr(part, state_name)
-
+        self.state_history[snapshot_id] = save_internal_states(self.simulator)
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
         p.restoreState(snapshot_id)
-        for obj_name, obj in self.scene.objects_by_name.items():
-            obj.load_state(
-                self.state_history[snapshot_id]['object_states'][obj_name])
-
-        for part_name, part in self.agent.parts.items():
-            for state_name in AGENT_INTERNAL_STATE_NAMES:
-                if hasattr(part, state_name):
-                    setattr(
-                        part, state_name, self.state_history[snapshot_id]['agent_states'][part_name][state_name])
+        load_internal_states(self.simulator, self.state_history[snapshot_id])
 
     def check_scene(self):
         feedback = {

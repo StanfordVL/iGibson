@@ -61,7 +61,7 @@ FINGER_CLOSE_POSITION = 1.2
 THUMB_CLOSE_POSITION = 0.6
 HAND_FRICTION = 2.5
 HAND_CLOSE_FORCE = 3
-RELEASE_WINDOW = 6
+RELEASE_WINDOW = 1 / 30.0  # release window in seconds
 THUMB_2_POS = [0, -0.02, -0.05]
 THUMB_1_POS = [0, -0.015, -0.02]
 PALM_CENTER_POS = [0, -0.04, 0.01]
@@ -333,8 +333,8 @@ class BehaviorRobot(object):
         state['eye_position_local'] = self.parts['eye'].local_pos
         state['eye_orientation_local'] = p.getEulerFromQuaternion(
             self.parts['eye'].local_orn)
-        state['left_hand_trig_frac'] = self.parts['left_hand'].trig_frac
-        state['right_hand_trig_frac'] = self.parts['right_hand'].trig_frac
+        state['left_hand_trigger_fraction'] = self.parts['left_hand'].trigger_fraction
+        state['right_hand_trigger_fraction'] = self.parts['right_hand'].trigger_fraction
 
         state_list = []
         for k, v in state.items():
@@ -418,10 +418,6 @@ class BRBody(ArticulatedObject):
         self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED,
                                                [0, 0, 0], [0, 0, 0], self.get_position())
 
-    def remove_constraint(self):
-        p.removeConstraint(self.movement_cid)
-        self.activated = False
-
     def set_body_collision_filters(self):
         """
         Sets BRBody's collision filters.
@@ -484,9 +480,6 @@ class BRBody(ArticulatedObject):
 
         self.move(self.new_pos, self.new_orn)
 
-    def reset(self):
-        pass
-
     def dump_part_state(self):
         pass
 
@@ -504,7 +497,7 @@ class BRHandBase(ArticulatedObject):
                  ghost_hand_appear_threshold=HAND_GHOST_HAND_APPEAR_THRESHOLD):
         """
         Initializes BRHandBase.
-        s is the simulator, fpath is the filepath of the BRHandBase, hand is either left or right 
+        s is the simulator, fpath is the filepath of the BRHandBase, hand is either left or right
         This is left on by default, and is only turned off in special circumstances, such as in state replay mode.
         The base rotation of the hand base is also supplied. Note that this init function must be followed by
         an import statement to actually load the hand into the simulator.
@@ -701,10 +694,6 @@ class BRHandBase(ArticulatedObject):
     def move(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=300)
 
-    def remove_constraint(self):
-        p.removeConstraint(self.movement_cid)
-        self.activated = False
-
     def set_close_fraction(self, close_frac):
         """
         Sets the close fraction of the hand - this must be implemented by each subclass.
@@ -735,9 +724,6 @@ class BRHandBase(ArticulatedObject):
         elif self.prev_ghost_hand_hidden_state and not should_hide:
             self.parent.simulator.set_hidden_state(self.ghost_hand, hide=False)
             self.prev_ghost_hand_hidden_state = False
-
-    def reset(self):
-        raise NotImplementedError
 
     def dump_part_state(self):
         return {
@@ -771,9 +757,10 @@ class BRHand(BRHandBase):
         # Variables for assisted grasping
         self.object_in_hand = None
         self.obj_cid = None
+        self.obj_cid_params = {}
         self.should_freeze_joints = False
-        self.release_start_time = None
-        self.should_execute_release = False
+        self.release_counter = None
+        self.freeze_vals = {}
 
         # Used to debug AG
         self.candidate_data = None
@@ -798,19 +785,6 @@ class BRHand(BRHandBase):
                                                0, 0, 0], self.get_position(), [0.0, 0.0, 0.0, 1.0], self.get_orientation())
         super(BRHand, self).activate_constraints()
 
-    def reset(self):
-        """
-        Resets joint positions of the hand and releases assisted grasping.
-        """
-        for joint_index in range(p.getNumJoints(self.body_id)):
-            p.resetJointState(self.body_id, joint_index,
-                              targetValue=0, targetVelocity=0.0)
-            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.POSITION_CONTROL, targetPosition=0,
-                                    targetVelocity=0.0, positionGain=0.1, velocityGain=0.1, force=0)
-            p.setJointMotorControl2(
-                self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
-        self.force_release = True
-
     def set_hand_coll_filter(self, target_id, enable):
         """
         Sets collision filters for hand - to enable or disable them
@@ -830,7 +804,6 @@ class BRHand(BRHandBase):
         """
         Generate joint values to freeze joints at.
         """
-        self.freeze_vals = {}
         for joint_index in range(p.getNumJoints(self.body_id)):
             j_val = p.getJointState(self.body_id, joint_index)[0]
             self.freeze_vals[joint_index] = j_val
@@ -983,14 +956,14 @@ class BRHand(BRHandBase):
         new_trig_frac = self.trigger_fraction + delta_trig_frac
 
         # Execute gradual release of object
-        if self.should_execute_release and self.release_start_time:
-            time_since_release = ((self.parent.simulator.frame_count - self.release_start_time) *
-                                  self.parent.simulator.physics_timestep_num)
+        if self.release_counter is not None:
+            self.release_counter += 1
+            time_since_release = self.release_counter * \
+                self.parent.simulator.render_timestep
             if time_since_release >= RELEASE_WINDOW:
                 self.set_hand_coll_filter(self.object_in_hand, True)
                 self.object_in_hand = None
-                self.should_execute_release = False
-                self.release_start_time = None
+                self.release_counter = None
             else:
                 # Can't pick-up object while it is being released
                 return
@@ -1042,11 +1015,17 @@ class BRHand(BRHandBase):
                 )
                 # Modify max force based on user-determined assist parameters
                 if ag_link == -1:
-                    p.changeConstraint(self.obj_cid, maxForce=ASSIST_FORCE)
+                    max_force = ASSIST_FORCE
                 else:
-                    p.changeConstraint(
-                        self.obj_cid, maxForce=ASSIST_FORCE * ARTICULATED_ASSIST_FRACTION)
+                    max_force = ASSIST_FORCE * ARTICULATED_ASSIST_FRACTION
+                p.changeConstraint(self.obj_cid, maxForce=max_force)
 
+                self.obj_cid_params = {
+                    'childBodyUniqueId': ag_bid,
+                    'childLinkIndex': ag_link,
+                    'jointType': joint_type,
+                    'maxForce': max_force,
+                }
                 self.object_in_hand = ag_bid
                 self.should_freeze_joints = True
                 # Disable collisions while picking things up
@@ -1057,9 +1036,10 @@ class BRHand(BRHandBase):
             if (new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac <= TRIGGER_FRACTION_THRESHOLD or
                     constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD):
                 p.removeConstraint(self.obj_cid)
+                self.obj_cid = None
+                self.obj_cid_params = {}
                 self.should_freeze_joints = False
-                self.should_execute_release = True
-                self.release_start_time = self.parent.simulator.frame_count
+                self.release_counter = 0
 
     def get_constraint_violation(self, cid):
         parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
@@ -1132,13 +1112,82 @@ class BRHand(BRHandBase):
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos,
                                     force=HAND_CLOSE_FORCE)
 
+    def dump_part_state(self):
+        dump = super(BRHand, self).dump_part_state()
+
+        # Recompute child frame pose because it could have changed since the
+        # constraint has been created
+        if self.obj_cid is not None:
+            ag_bid = self.obj_cid_params['childBodyUniqueId']
+            ag_link = self.obj_cid_params['childLinkIndex']
+            # Different pos/orn calculations for base/links
+            if ag_link == -1:
+                body_pos, body_orn = p.getBasePositionAndOrientation(
+                    ag_bid)
+            else:
+                body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
+
+            # Get inverse world transform of body frame
+            inv_body_pos, inv_body_orn = p.invertTransform(
+                body_pos, body_orn)
+            link_state = p.getLinkState(self.body_id, PALM_LINK_INDEX)
+            link_pos = link_state[0]
+            link_orn = link_state[1]
+            # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+            child_frame_pos, child_frame_orn = \
+                p.multiplyTransforms(inv_body_pos,
+                                     inv_body_orn,
+                                     link_pos,
+                                     link_orn)
+            self.obj_cid_params.update({
+                'childFramePosition': child_frame_pos,
+                'childFrameOrientation': child_frame_orn,
+            })
+
+        dump.update({
+            "object_in_hand": self.object_in_hand,
+            "release_counter": self.release_counter,
+            "should_freeze_joints": self.should_freeze_joints,
+            "freeze_vals": self.freeze_vals,
+            "obj_cid": self.obj_cid,
+            "obj_cid_params": self.obj_cid_params,
+        })
+
+        return dump
+
     def load_part_state(self, dump):
         super(BRHand, self).load_part_state(dump)
 
-        # Note that this doesn't really load anything - it just resets any AG going on so that it can be recomputed.
-        if self.object_in_hand:
+        # Cancel the previous AG if exists
+        if self.obj_cid is not None:
             p.removeConstraint(self.obj_cid)
-            self.object_in_hand = None
+
+        if self.object_in_hand is not None:
+            self.set_hand_coll_filter(self.object_in_hand, True)
+
+        self.object_in_hand = dump['object_in_hand']
+        self.release_counter = dump['release_counter']
+        self.should_freeze_joints = dump['should_freeze_joints']
+        self.freeze_vals = dump['freeze_vals']
+        self.obj_cid = dump['obj_cid']
+        self.obj_cid_params = dump['obj_cid_params']
+        if self.obj_cid is not None:
+            self.obj_cid = p.createConstraint(
+                parentBodyUniqueId=self.body_id,
+                parentLinkIndex=PALM_LINK_INDEX,
+                childBodyUniqueId=dump['obj_cid_params']['childBodyUniqueId'],
+                childLinkIndex=dump['obj_cid_params']['childLinkIndex'],
+                jointType=dump['obj_cid_params']['jointType'],
+                jointAxis=(0, 0, 0),
+                parentFramePosition=(0, 0, 0),
+                childFramePosition=dump['obj_cid_params']['childFramePosition'],
+                childFrameOrientation=dump['obj_cid_params']['childFrameOrientation'],
+            )
+            p.changeConstraint(
+                self.obj_cid, maxForce=dump['obj_cid_params']['maxForce'])
+
+        if self.object_in_hand is not None:
+            self.set_hand_coll_filter(self.object_in_hand, False)
 
 
 class BRGripper(BRHandBase):
@@ -1322,9 +1371,6 @@ class BREye(ArticulatedObject):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-
-    def reset(self):
-        pass
 
     def dump_part_state(self):
         return {
