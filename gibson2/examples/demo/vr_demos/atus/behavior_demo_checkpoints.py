@@ -13,7 +13,7 @@ tasknet.set_backend("iGibson")
 def create_checkpoints(demo_file, checkpoint_directory, checkpoint_every_n_steps):
     # Create a step callback function to feed replay steps into checkpoints.
     def step_callback(igtn_task):
-        if igtn_task.simulator.frame_count % checkpoint_every_n_steps == 0:
+        if not igtn_task.current_success and igtn_task.simulator.frame_count % checkpoint_every_n_steps == 0:
             save_checkpoint(igtn_task.simulator, checkpoint_directory)
 
     safe_replay_demo(demo_file, no_vr=True, step_callback=step_callback)
