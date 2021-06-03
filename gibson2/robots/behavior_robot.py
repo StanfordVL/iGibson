@@ -60,7 +60,7 @@ FINGER_CLOSE_POSITION = 1.2
 THUMB_CLOSE_POSITION = 0.6
 HAND_FRICTION = 2.5
 HAND_CLOSE_FORCE = 3
-RELEASE_WINDOW = 1 / 30.0  # release window in seconds
+RELEASE_WINDOW = 6
 THUMB_2_POS = [0, -0.02, -0.05]
 THUMB_1_POS = [0, -0.015, -0.02]
 PALM_CENTER_POS = [0, -0.04, 0.01]
@@ -825,7 +825,7 @@ class BRHand(BRHandBase):
         if self.release_counter is not None:
             self.release_counter += 1
             time_since_release = self.release_counter * \
-                self.parent.simulator.render_timestep
+                self.parent.simulator.physics_timestep_num
             if time_since_release >= RELEASE_WINDOW:
                 self.set_hand_coll_filter(self.object_in_hand, True)
                 self.object_in_hand = None
