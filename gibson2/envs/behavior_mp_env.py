@@ -27,6 +27,22 @@ def get_aabb_volume(lo, hi):
     dimension = hi - lo
     return dimension[0] * dimension[1] * dimension[2]
 
+def detect_collision(bodyA):
+    collision = False
+    for body_id in range(p.getNumBodies()):
+        if body_id == bodyA:
+            continue
+        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
+        if len(closest_points) > 0:
+            collision = True
+            break
+    return collision
+
+def detect_robot_collision(robot):
+    return detect_collision(robot.parts['body'].body_id) or \
+           detect_collision(robot.parts['left_hand'].body_id) or \
+           detect_collision(robot.parts['right_hand'].body_id)
+
 class BehaviorMPEnv(BehaviorEnv):
     """
     iGibson Environment (OpenAI Gym interface)
@@ -66,9 +82,6 @@ class BehaviorMPEnv(BehaviorEnv):
                                             seed=seed,
                                             automatic_reset=automatic_reset)
 
-        super(BehaviorMPEnv, self).reset()
-        super(BehaviorMPEnv, self).step(np.zeros(17))
-        super(BehaviorMPEnv, self).step(np.zeros(17))
         self.obj_in_hand = None
 
     def load_action_space(self):
@@ -103,7 +116,8 @@ class BehaviorMPEnv(BehaviorEnv):
             elif action_primitive == ActionPrimitives.PLACE_ONTOP:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                        result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True)
+                        result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True,
+                                                   max_trials=50)
                         if result:
                             print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
                             self.obj_in_hand = None
@@ -116,7 +130,8 @@ class BehaviorMPEnv(BehaviorEnv):
             elif action_primitive == ActionPrimitives.PLACE_INSIDE:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                        result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True)
+                        result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True,
+                                                   max_trials=50)
                         if result:
                             print('PRIMITIVE: place {} inside {} success'.format(self.obj_in_hand.name, obj.name))
                             self.obj_in_hand = None
@@ -136,9 +151,6 @@ class BehaviorMPEnv(BehaviorEnv):
         return state, reward, done, info
 
     def navigate_to_obj(self, obj):
-        self.simulator.scene.force_wakeup_scene_objects()
-        state_id = p.saveState()
-
         # test agent positions around an obj
         # try to place the agent near the object, and rotate it to the object
         distance_to_try = [0.5, 1, 2, 3]
@@ -147,18 +159,17 @@ class BehaviorMPEnv(BehaviorEnv):
         obj_pos = obj.get_position()
         for distance in distance_to_try:
             for _ in range(20):
-                p.restoreState(state_id)
+                # p.restoreState(state_id)
                 yaw = np.random.uniform(-np.pi, np.pi)
                 pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
                 orn = [0,0,yaw-np.pi]
-                if self.test_valid_position(self.robots[0], pos, orn):
+                self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
+                if not detect_robot_collision(self.robots[0]):
                     valid_position = (pos, orn)
                     break
             if valid_position is not None:
                 break
 
-        p.restoreState(state_id)
-        p.removeState(state_id)
         if valid_position is not None:
             self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
             return True

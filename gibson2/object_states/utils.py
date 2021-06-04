@@ -41,7 +41,8 @@ def clear_cached_states(obj):
             obj_state.clear_cached_value()
 
 
-def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_method=False):
+def sample_kinematics(predicate, objA, objB, binary_state,
+                      use_ray_casting_method=False, max_trials=100, z_offset=0.05):
     if not binary_state:
         raise NotImplementedError()
 
@@ -50,8 +51,6 @@ def sample_kinematics(predicate, objA, objB, binary_state, use_ray_casting_metho
     if not use_ray_casting_method and not sample_on_floor and predicate not in objB.supporting_surfaces:
         return False
 
-    max_trials = 100
-    z_offset = 0.05
 
     objA.force_wakeup()
     if not sample_on_floor:
