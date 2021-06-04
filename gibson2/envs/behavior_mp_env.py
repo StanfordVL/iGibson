@@ -115,9 +115,10 @@ class BehaviorMPEnv(BehaviorEnv):
                             print('PRIMITIVE: grasp {} fail, too big or fixed'.format(obj.name))
             elif action_primitive == ActionPrimitives.PLACE_ONTOP:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                    print('PRIMITIVE:attempt to place {} ontop {}'.format(self.obj_in_hand.name, obj.name))
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                         result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True,
-                                                   max_trials=50)
+                                                   max_trials=20)
                         if result:
                             print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
                             self.obj_in_hand = None
@@ -129,9 +130,10 @@ class BehaviorMPEnv(BehaviorEnv):
 
             elif action_primitive == ActionPrimitives.PLACE_INSIDE:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                    print('PRIMITIVE:attempt to place {} inside {}'.format(self.obj_in_hand.name, obj.name))
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                         result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True,
-                                                   max_trials=50)
+                                                   max_trials=20)
                         if result:
                             print('PRIMITIVE: place {} inside {} success'.format(self.obj_in_hand.name, obj.name))
                             self.obj_in_hand = None
