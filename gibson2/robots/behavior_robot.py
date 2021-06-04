@@ -60,7 +60,7 @@ FINGER_CLOSE_POSITION = 1.2
 THUMB_CLOSE_POSITION = 0.6
 HAND_FRICTION = 2.5
 HAND_CLOSE_FORCE = 3
-RELEASE_WINDOW = 6
+RELEASE_WINDOW = 1 / 30.0  # release window in seconds
 THUMB_2_POS = [0, -0.02, -0.05]
 THUMB_1_POS = [0, -0.015, -0.02]
 PALM_CENTER_POS = [0, -0.04, 0.01]
@@ -111,7 +111,7 @@ class BehaviorRobot(object):
         :parm use_gripper: whether the agent should use the pybullet gripper or the iGibson VR hand
         :parm normal_color: whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
         :param show_visual_head: whether to render a head cone where the BREye is
-        :param use_tracked_body_override: sets use_tracked_body no matter what is set in the VR settings. Can be 
+        :param use_tracked_body_override: sets use_tracked_body no matter what is set in the VR settings. Can be
         used to initialize a BehaviorRobot in a robotics environment.
         """
         # Basic parameters
@@ -252,7 +252,7 @@ class BehaviorRobot(object):
         for item in renderer.render(modes=modes):
             frames.append(item)
         return frames
-    
+
     def _print_positions(self):
         """
         Prints out all the positions of the BehaviorRobot, including helpful BehaviorRobot information for debugging (hidden API)
@@ -309,7 +309,7 @@ class BRBody(ArticulatedObject):
 
     def set_position_orientation(self, pos, orn):
         self.parent.set_position_orientation(pos, orn)
-            
+
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
         set_all_collisions(self.body_id, int(enabled))
@@ -320,7 +320,7 @@ class BRBody(ArticulatedObject):
         """
         Initializes BRBody to start in a specific location.
         """
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED, 
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED,
                                                 [0, 0, 0], [0, 0, 0], self.get_position())
 
     def set_body_collision_filters(self):
@@ -336,7 +336,7 @@ class BRBody(ArticulatedObject):
             for body_link_idx in body_link_idxs:
                 for col_link_idx in col_link_idxs:
                     p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
-    
+
     def move(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=50)
 
@@ -394,7 +394,7 @@ class BRHandBase(ArticulatedObject):
                  ghost_hand_appear_threshold=HAND_GHOST_HAND_APPEAR_THRESHOLD):
         """
         Initializes BRHandBase.
-        s is the simulator, fpath is the filepath of the BRHandBase, hand is either left or right 
+        s is the simulator, fpath is the filepath of the BRHandBase, hand is either left or right
         This is left on by default, and is only turned off in special circumstances, such as in state replay mode.
         The base rotation of the hand base is also supplied. Note that this init function must be followed by
         an import statement to actually load the hand into the simulator.
@@ -700,15 +700,15 @@ class BRHand(BRHandBase):
         palm_pos = palm_link_state[0]
         palm_orn = palm_link_state[1]
         palm_base_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, PALM_BASE_POS, [0, 0, 0, 1])
-        palm_center_pos = PALM_CENTER_POS
+        palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == 'right' else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, palm_center_pos, [0, 0, 0, 1])
         thumb_link_state = p.getLinkState(self.body_id, THUMB_LINK_INDEX)
         thumb_pos = thumb_link_state[0]
         thumb_orn = thumb_link_state[1]
-        thumb_1_pos = THUMB_1_POS
+        thumb_1_pos = np.copy(THUMB_1_POS)
         thumb_1_pos[1] *= 1 if self.hand == 'right' else -1
-        thumb_2_pos = THUMB_2_POS
+        thumb_2_pos = np.copy(THUMB_2_POS)
         thumb_2_pos[1] *= 1 if self.hand == 'right' else -1
         thumb_1, _ = p.multiplyTransforms(thumb_pos, thumb_orn, thumb_2_pos, [0, 0, 0, 1])
         thumb_2, _ = p.multiplyTransforms(thumb_pos, thumb_orn, thumb_1_pos, [0, 0, 0, 1])
@@ -722,7 +722,7 @@ class BRHand(BRHandBase):
             link_pos = finger_link_state[0]
             link_orn = finger_link_state[1]
 
-            finger_tip_pos = FINGER_TIP_POS
+            finger_tip_pos = np.copy(FINGER_TIP_POS)
             finger_tip_pos[1] *= 1 if self.hand == 'right' else -1
 
             finger_tip_pos, _ = p.multiplyTransforms(link_pos, link_orn, finger_tip_pos, [0, 0, 0, 1])
@@ -776,7 +776,7 @@ class BRHand(BRHandBase):
 
         # Step 2 - find the closest object to the palm center among these "inside" objects
         palm_state = p.getLinkState(self.body_id, 0)
-        palm_center_pos = PALM_CENTER_POS
+        palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == 'right' else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_state[0], palm_state[1], palm_center_pos, [0, 0, 0, 1])
 
@@ -825,7 +825,7 @@ class BRHand(BRHandBase):
         if self.release_counter is not None:
             self.release_counter += 1
             time_since_release = self.release_counter * \
-                self.parent.simulator.physics_timestep_num
+                self.parent.simulator.render_timestep
             if time_since_release >= RELEASE_WINDOW:
                 self.set_hand_coll_filter(self.object_in_hand, True)
                 self.object_in_hand = None
@@ -1020,7 +1020,7 @@ class BRHand(BRHandBase):
         self.object_in_hand = dump['object_in_hand']
         self.release_counter = dump['release_counter']
         self.should_freeze_joints = dump['should_freeze_joints']
-        self.freeze_vals = dump['freeze_vals']
+        self.freeze_vals = {int(key): val for key, val in dump['freeze_vals'].items()}
         self.obj_cid = dump['obj_cid']
         self.obj_cid_params = dump['obj_cid_params']
         if self.obj_cid is not None:
