@@ -699,15 +699,15 @@ class BRHand(BRHandBase):
         palm_pos = palm_link_state[0]
         palm_orn = palm_link_state[1]
         palm_base_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, PALM_BASE_POS, [0, 0, 0, 1])
-        palm_center_pos = PALM_CENTER_POS
+        palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == 'right' else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, palm_center_pos, [0, 0, 0, 1])
         thumb_link_state = p.getLinkState(self.body_id, THUMB_LINK_INDEX)
         thumb_pos = thumb_link_state[0]
         thumb_orn = thumb_link_state[1]
-        thumb_1_pos = THUMB_1_POS
+        thumb_1_pos = np.copy(THUMB_1_POS)
         thumb_1_pos[1] *= 1 if self.hand == 'right' else -1
-        thumb_2_pos = THUMB_2_POS
+        thumb_2_pos = np.copy(THUMB_2_POS)
         thumb_2_pos[1] *= 1 if self.hand == 'right' else -1
         thumb_1, _ = p.multiplyTransforms(thumb_pos, thumb_orn, thumb_2_pos, [0, 0, 0, 1])
         thumb_2, _ = p.multiplyTransforms(thumb_pos, thumb_orn, thumb_1_pos, [0, 0, 0, 1])
@@ -721,7 +721,7 @@ class BRHand(BRHandBase):
             link_pos = finger_link_state[0]
             link_orn = finger_link_state[1]
 
-            finger_tip_pos = FINGER_TIP_POS
+            finger_tip_pos = np.copy(FINGER_TIP_POS)
             finger_tip_pos[1] *= 1 if self.hand == 'right' else -1
 
             finger_tip_pos, _ = p.multiplyTransforms(link_pos, link_orn, finger_tip_pos, [0, 0, 0, 1])
@@ -775,7 +775,7 @@ class BRHand(BRHandBase):
 
         # Step 2 - find the closest object to the palm center among these "inside" objects
         palm_state = p.getLinkState(self.body_id, 0)
-        palm_center_pos = PALM_CENTER_POS
+        palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == 'right' else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_state[0], palm_state[1], palm_center_pos, [0, 0, 0, 1])
 
