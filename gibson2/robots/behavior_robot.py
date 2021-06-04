@@ -827,16 +827,16 @@ class BRHand(BRHandBase):
         palm_orn = palm_link_state[1]
         palm_base_pos, _ = p.multiplyTransforms(
             palm_pos, palm_orn, PALM_BASE_POS, [0, 0, 0, 1])
-        palm_center_pos = PALM_CENTER_POS
+        palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == 'right' else -1
         palm_center_pos, _ = p.multiplyTransforms(
             palm_pos, palm_orn, palm_center_pos, [0, 0, 0, 1])
         thumb_link_state = p.getLinkState(self.body_id, THUMB_LINK_INDEX)
         thumb_pos = thumb_link_state[0]
         thumb_orn = thumb_link_state[1]
-        thumb_1_pos = THUMB_1_POS
+        thumb_1_pos = np.copy(THUMB_1_POS)
         thumb_1_pos[1] *= 1 if self.hand == 'right' else -1
-        thumb_2_pos = THUMB_2_POS
+        thumb_2_pos = np.copy(THUMB_2_POS)
         thumb_2_pos[1] *= 1 if self.hand == 'right' else -1
         thumb_1, _ = p.multiplyTransforms(
             thumb_pos, thumb_orn, thumb_2_pos, [0, 0, 0, 1])
@@ -853,7 +853,7 @@ class BRHand(BRHandBase):
             link_pos = finger_link_state[0]
             link_orn = finger_link_state[1]
 
-            finger_tip_pos = FINGER_TIP_POS
+            finger_tip_pos = np.copy(FINGER_TIP_POS)
             finger_tip_pos[1] *= 1 if self.hand == 'right' else -1
 
             finger_tip_pos, _ = p.multiplyTransforms(
@@ -908,7 +908,7 @@ class BRHand(BRHandBase):
 
         # Step 2 - find the closest object to the palm center among these "inside" objects
         palm_state = p.getLinkState(self.body_id, 0)
-        palm_center_pos = PALM_CENTER_POS
+        palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == 'right' else -1
         palm_center_pos, _ = p.multiplyTransforms(
             palm_state[0], palm_state[1], palm_center_pos, [0, 0, 0, 1])
@@ -977,24 +977,7 @@ class BRHand(BRHandBase):
                     return
                 ag_bid, ag_link = ag_data
 
-                # Different pos/orn calculations for base/links
-                if ag_link == -1:
-                    body_pos, body_orn = p.getBasePositionAndOrientation(
-                        ag_bid)
-                else:
-                    body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
-
-                # Get inverse world transform of body frame
-                inv_body_pos, inv_body_orn = p.invertTransform(
-                    body_pos, body_orn)
-                link_state = p.getLinkState(self.body_id, PALM_LINK_INDEX)
-                link_pos = link_state[0]
-                link_orn = link_state[1]
-                # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-                child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos,
-                                                                        inv_body_orn,
-                                                                        link_pos,
-                                                                        link_orn)
+                child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
 
                 # If we grab a child link of a URDF, create a p2p joint
                 if ag_link == -1:
@@ -1112,6 +1095,29 @@ class BRHand(BRHandBase):
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos,
                                     force=HAND_CLOSE_FORCE)
 
+    def get_child_frame_pose(self, ag_bid, ag_link):
+        # Different pos/orn calculations for base/links
+        if ag_link == -1:
+            body_pos, body_orn = p.getBasePositionAndOrientation(
+                ag_bid)
+        else:
+            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
+
+        # Get inverse world transform of body frame
+        inv_body_pos, inv_body_orn = p.invertTransform(
+            body_pos, body_orn)
+        link_state = p.getLinkState(self.body_id, PALM_LINK_INDEX)
+        link_pos = link_state[0]
+        link_orn = link_state[1]
+        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+        child_frame_pos, child_frame_orn = \
+            p.multiplyTransforms(inv_body_pos,
+                                    inv_body_orn,
+                                    link_pos,
+                                    link_orn)
+
+        return child_frame_pos, child_frame_orn
+
     def dump_part_state(self):
         dump = super(BRHand, self).dump_part_state()
 
@@ -1120,25 +1126,8 @@ class BRHand(BRHandBase):
         if self.obj_cid is not None:
             ag_bid = self.obj_cid_params['childBodyUniqueId']
             ag_link = self.obj_cid_params['childLinkIndex']
-            # Different pos/orn calculations for base/links
-            if ag_link == -1:
-                body_pos, body_orn = p.getBasePositionAndOrientation(
-                    ag_bid)
-            else:
-                body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
-
-            # Get inverse world transform of body frame
-            inv_body_pos, inv_body_orn = p.invertTransform(
-                body_pos, body_orn)
-            link_state = p.getLinkState(self.body_id, PALM_LINK_INDEX)
-            link_pos = link_state[0]
-            link_orn = link_state[1]
-            # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
             child_frame_pos, child_frame_orn = \
-                p.multiplyTransforms(inv_body_pos,
-                                     inv_body_orn,
-                                     link_pos,
-                                     link_orn)
+                self.get_child_frame_pose(ag_bid, ag_link)
             self.obj_cid_params.update({
                 'childFramePosition': child_frame_pos,
                 'childFrameOrientation': child_frame_orn,
@@ -1168,7 +1157,7 @@ class BRHand(BRHandBase):
         self.object_in_hand = dump['object_in_hand']
         self.release_counter = dump['release_counter']
         self.should_freeze_joints = dump['should_freeze_joints']
-        self.freeze_vals = dump['freeze_vals']
+        self.freeze_vals = {int(key): val for key, val in dump['freeze_vals'].items()}
         self.obj_cid = dump['obj_cid']
         self.obj_cid_params = dump['obj_cid_params']
         if self.obj_cid is not None:
