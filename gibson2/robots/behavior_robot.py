@@ -1020,7 +1020,7 @@ class BRHand(BRHandBase):
         self.object_in_hand = dump['object_in_hand']
         self.release_counter = dump['release_counter']
         self.should_freeze_joints = dump['should_freeze_joints']
-        self.freeze_vals = dump['freeze_vals']
+        self.freeze_vals = {int(key): val for key, val in dump['freeze_vals'].items()}
         self.obj_cid = dump['obj_cid']
         self.obj_cid_params = dump['obj_cid_params']
         if self.obj_cid is not None:
