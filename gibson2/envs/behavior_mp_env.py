@@ -14,7 +14,11 @@ from gibson2.object_states import *
 from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
 from gibson2.object_states.utils import sample_kinematics
 from gibson2.objects.articulated_object import URDFObject
+from gibson2.object_states.on_floor import RoomFloor
+
+
 NUM_ACTIONS = 6
+
 class ActionPrimitives(IntEnum):
     NAVIGATE_TO = 0
     GRASP = 1
@@ -85,7 +89,8 @@ class BehaviorMPEnv(BehaviorEnv):
         self.obj_in_hand = None
 
     def load_action_space(self):
-        self.task_relevant_objects = [item for item in self.task.object_scope.values() if isinstance(item, URDFObject)]
+        self.task_relevant_objects = [item for item in self.task.object_scope.values() if isinstance(item, URDFObject)
+                                      or isinstance(item, RoomFloor)]
         self.num_objects = len(self.task_relevant_objects)
         self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
@@ -102,7 +107,7 @@ class BehaviorMPEnv(BehaviorEnv):
 
             elif action_primitive == ActionPrimitives.GRASP:
                 if self.obj_in_hand is None:
-                    if hasattr(obj, 'states') and AABB in obj.states:
+                    if isinstance(obj, URDFObject) and hasattr(obj, 'states') and AABB in obj.states:
                         lo, hi = obj.states[AABB].get_value()
                         volume = get_aabb_volume(lo, hi)
                         if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed: # say we can only grasp small objects
@@ -116,20 +121,31 @@ class BehaviorMPEnv(BehaviorEnv):
             elif action_primitive == ActionPrimitives.PLACE_ONTOP:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj:
                     print('PRIMITIVE:attempt to place {} ontop {}'.format(self.obj_in_hand.name, obj.name))
-                    if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                        result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True,
+
+                    if isinstance(obj, URDFObject):
+                        if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                            result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True,
+                                                       max_trials=20)
+                            if result:
+                                print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
+                                self.obj_in_hand = None
+                            else:
+                                print('PRIMITIVE: place {} ontop {} fail, sampling fail'.format(self.obj_in_hand.name, obj.name))
+
+                        else:
+                            print('PRIMITIVE: place {} ontop {} fail, too far'.format(self.obj_in_hand.name, obj.name))
+                    else:
+                        result = sample_kinematics('onFloor', self.obj_in_hand, obj, True, use_ray_casting_method=True,
                                                    max_trials=20)
                         if result:
                             print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
                             self.obj_in_hand = None
                         else:
-                            print('PRIMITIVE: place {} ontop {} fail, sampling fail'.format(self.obj_in_hand.name, obj.name))
-                    else:
-                        print(
-                            'PRIMITIVE: place {} ontop {} fail, too far'.format(self.obj_in_hand.name, obj.name))
+                            print('PRIMITIVE: place {} ontop {} fail, sampling fail'.format(self.obj_in_hand.name,
+                                                                                            obj.name))
 
             elif action_primitive == ActionPrimitives.PLACE_INSIDE:
-                if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                if self.obj_in_hand is not None and self.obj_in_hand != obj and isinstance(obj, URDFObject):
                     print('PRIMITIVE:attempt to place {} inside {}'.format(self.obj_in_hand.name, obj.name))
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                         result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True,
@@ -155,28 +171,40 @@ class BehaviorMPEnv(BehaviorEnv):
     def navigate_to_obj(self, obj):
         # test agent positions around an obj
         # try to place the agent near the object, and rotate it to the object
-        distance_to_try = [0.5, 1, 2, 3]
-        valid_position = None # ((x,y,z),(roll, pitch, yaw))
+        valid_position = None  # ((x,y,z),(roll, pitch, yaw))
 
-        obj_pos = obj.get_position()
-        for distance in distance_to_try:
-            for _ in range(20):
-                # p.restoreState(state_id)
+        if isinstance(obj, URDFObject):
+            distance_to_try = [0.5, 1, 2, 3]
+            obj_pos = obj.get_position()
+            for distance in distance_to_try:
+                for _ in range(20):
+                    # p.restoreState(state_id)
+                    yaw = np.random.uniform(-np.pi, np.pi)
+                    pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
+                    orn = [0,0,yaw-np.pi]
+                    self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
+                    if not detect_robot_collision(self.robots[0]):
+                        valid_position = (pos, orn)
+                        break
+                if valid_position is not None:
+                    break
+        else:
+            for _ in range(60):
+                _, pos = obj.scene.get_random_point_by_room_instance(
+                    obj.room_instance)
                 yaw = np.random.uniform(-np.pi, np.pi)
-                pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
-                orn = [0,0,yaw-np.pi]
+                orn = [0,0,yaw]
                 self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
                 if not detect_robot_collision(self.robots[0]):
                     valid_position = (pos, orn)
                     break
-            if valid_position is not None:
-                break
 
         if valid_position is not None:
             self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
             return True
         else:
             return False
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
