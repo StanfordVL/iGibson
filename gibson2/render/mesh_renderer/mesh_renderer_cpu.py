@@ -312,8 +312,7 @@ class MeshRenderer(object):
                     input_kd=None,
                     texture_scale=1.0,
                     load_texture=True,
-                    overwrite_material=None,
-                    input_material=None):
+                    overwrite_material=None):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -369,46 +368,43 @@ class MeshRenderer(object):
 
         # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
         # or create plane color Material elements
-        num_existing_mats = len(self.materials_mapping)    # Number of current Material elements       
-        repeat_x = 1
-        repeat_y = 1
+        num_existing_mats = len(self.materials_mapping)    # Number of current Material elements 
         texuniform = False
+        num_added_materials = 0        
 
 
-        if input_material is None:
-            for i, item in enumerate(materials):
-                if overwrite_material is not None:
-                    self.load_randomized_material(overwrite_material)
-                    material = overwrite_material
-                elif item.diffuse_texname != '' and load_texture:
-                    obj_dir = os.path.dirname(obj_path)
-                    texture = self.load_texture_file(
-                        os.path.join(obj_dir, item.diffuse_texname))
-                    texture_metallic = self.load_texture_file(
-                        os.path.join(obj_dir, item.metallic_texname))
-                    texture_roughness = self.load_texture_file(
-                        os.path.join(obj_dir, item.roughness_texname))
-                    texture_normal = self.load_texture_file(
-                        os.path.join(obj_dir, item.bump_texname))
-                    material = Material('texture',
-                                        texture_id=texture,
-                                        metallic_texture_id=texture_metallic,
-                                        roughness_texture_id=texture_roughness,
-                                        normal_texture_id=texture_normal)
+        for i, item in enumerate(materials):
+            if overwrite_material is not None:
+                self.load_randomized_material(overwrite_material)
+                material = overwrite_material
+            elif item.diffuse_texname != '' and load_texture:
+                obj_dir = os.path.dirname(obj_path)
+                texture = self.load_texture_file(
+                    os.path.join(obj_dir, item.diffuse_texname))
+                texture_metallic = self.load_texture_file(
+                    os.path.join(obj_dir, item.metallic_texname))
+                texture_roughness = self.load_texture_file(
+                    os.path.join(obj_dir, item.roughness_texname))
+                texture_normal = self.load_texture_file(
+                    os.path.join(obj_dir, item.bump_texname))
+                material = Material('texture',
+                                    texture_id=texture,
+                                    metallic_texture_id=texture_metallic,
+                                    roughness_texture_id=texture_roughness,
+                                    normal_texture_id=texture_normal)
+            else:
+                if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
+                    # Pink color for translucent objects.
+                    material = Material('color', kd=[1,0,1,1])
                 else:
-                    if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
-                        material = Material('color', kd=[1,0,1,1])
-                    else:
-                        material = Material('color', kd=item.diffuse)
-                self.materials_mapping[i + material_count] = material
+                    material = Material('color', kd=item.diffuse)
+            self.materials_mapping[i + material_count] = material
+            num_added_materials = len(materials)
 
-            num_added_materials = len(materials) 
-        
-        else:
-            repeat_x = input_material.repeat_x
-            repeat_y = input_material.repeat_y
-            texuniform = input_material.texuniform
-            self.materials_mapping[num_existing_mats] = input_material
+        # Materials without mtl files but overwrite material is specified
+        if len(materials) == 0 and overwrite_material is not None:
+            texuniform = overwrite_material.texuniform
+            self.materials_mapping[num_existing_mats] = overwrite_material
             num_added_materials = 1
         
         if input_kd is not None:  # append the default material in the end, in case material loading fails
@@ -425,14 +421,17 @@ class MeshRenderer(object):
         vertex_texcoord = np.array(attrib.texcoords).reshape(
             (len(attrib.texcoords) // 2, 2))
 
-        if texuniform and input_material.texture_type == "2d":
-            repeat_x = repeat_x * (np.max(vertex_texcoord[:,0]) - np.min(vertex_texcoord[:,0])) * scale[0]
-            repeat_y = repeat_y * (np.max(vertex_texcoord[:,1]) - np.min(vertex_texcoord[:,1])) * scale[1]
-            input_material.transform_param = [repeat_x, repeat_y, 0.] 
+        if texuniform and overwrite_material.texture_type == "2d":
+            # if material is used multiple times transform param gets overridden.
+            # Therefore originalvalue of transform param is stored during initialization
+            # from robosuite.
+            repeat_x = overwrite_material._orig_transform_param[0] * (np.max(vertex_texcoord[:,0]) - np.min(vertex_texcoord[:,0])) * scale[0]
+            repeat_y = overwrite_material._orig_transform_param[1] * (np.max(vertex_texcoord[:,1]) - np.min(vertex_texcoord[:,1])) * scale[1]
+            overwrite_material.transform_param = [repeat_x, repeat_y, 0.] 
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            if input_material is None:
+            if overwrite_material is None:
                 # assume one shape only has one material
                 material_id = shape.mesh.material_ids[0]
             else:
