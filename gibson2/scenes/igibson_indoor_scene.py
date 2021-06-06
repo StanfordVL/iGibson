@@ -37,6 +37,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  object_randomization=False,
                  object_randomization_idx=None,
                  should_open_all_doors=False,
+                 load_objects=True,
                  ):
 
         super().__init__(
@@ -52,6 +53,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
+        self.load_objects = load_objects
         if object_randomization:
             if object_randomization_idx is None:
                 fname = scene_id
@@ -102,6 +104,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     filename = os.path.join(
                         model_path, "urdf", model + "_" + category + ".urdf")
                 else:  # For other objects
+                    if not load_objects:
+                        continue
                     category_path = get_ig_category_path(category)
                     assert len(os.listdir(category_path)) != 0, \
                         "There are no models in category folder {}".format(
@@ -335,6 +339,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # sofas and coffee tables)
         overlapped_body_ids = []
         for obj1_name, obj2_name in self.overlapped_bboxes:
+            if obj1_name not in self.objects_by_name or obj2_name not in self.objects_by_name:
+                # This could happen if only part of the scene is loaded (e.g. only a subset of rooms)
+                continue
             for obj1_body_id in self.objects_by_name[obj1_name].body_ids:
                 for obj2_body_id in self.objects_by_name[obj2_name].body_ids:
                     overlapped_body_ids.append((obj1_body_id, obj2_body_id))
@@ -410,6 +417,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # restore state to the initial state before testing collision
         p.restoreState(state_id)
+        p.removeState(state_id)
 
         self.quality_check = quality_check
 

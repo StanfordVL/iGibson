@@ -455,7 +455,7 @@ class URDFObject(Object):
     def randomize_texture(self):
         for material in self.materials:
             material.randomize()
-        self.update_friction()
+        # self.update_friction()
 
     def update_friction(self):
         if self.material_to_friction is None:
