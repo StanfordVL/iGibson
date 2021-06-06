@@ -19,7 +19,7 @@ class Viewer:
                  initial_up=[0, 0, 1],
                  simulator=None,
                  renderer=None,
-                 min_cam_z=-1e6,                 
+                 min_cam_z=-1e6,
                  ):
         """
         iGibson GUI (Viewer) for navigation, manipulation and motion planning / execution
@@ -71,7 +71,7 @@ class Viewer:
         cv2.setMouseCallback('ExternalView', self.mouse_callback)
         self.create_visual_object()
         self.planner = None
-        self.block_command = False      
+        self.block_command = False
 
     def setup_motion_planner(self, planner=None):
         """
@@ -90,7 +90,8 @@ class Viewer:
         self.constraint_marker2 = VisualMarker(visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3,
                                                initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1])
 
-        if not self.is_robosuite:                              
+        # Simuation is done by MuJoCo when rendering robosuite envs  
+        if not self.is_robosuite:                            
             if self.simulator is not None:
                 self.simulator.import_object(
                     self.constraint_marker2, use_pbr=False)
@@ -638,9 +639,9 @@ class Viewer:
         elif self.is_robosuite and \
              q == ord('0') or q == ord('1') or q == ord('2') or q == ord('3') or q == ord('4') or q == ord('5'):
             idxx = int(chr(q)) 
-            self.renderer.switch_camera(idxx)
-            if not self.renderer.is_camera_active(idxx):
-                cv2.destroyWindow(self.renderer.get_camera_name(idxx))        
+            self.renderer._switch_camera(idxx)
+            if not self.renderer._is_camera_active(idxx):
+                cv2.destroyWindow(self.renderer._get_camera_name(idxx))        
 
         if self.recording and not self.pause_recording:
             cv2.imwrite(os.path.join(self.video_folder, '{:05d}.png'.format(self.frame_idx)),
@@ -650,7 +651,7 @@ class Viewer:
         if self.renderer is not None:
             if self.is_robosuite:
                 frames = self.renderer.render_robosuite_cameras(modes=('rgb'))
-                names = self.renderer.get_names_active_cameras()
+                names = self.renderer._get_names_active_cameras()
                 assert len(frames) == len(names)
                 if len(frames) > 0:
                     for (rgb, cam_name) in zip(frames, names):

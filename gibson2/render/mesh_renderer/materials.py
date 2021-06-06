@@ -30,6 +30,8 @@ class Material(object):
         :param roughness_texture_id: roughness texture id
         :param normal_texture_id: normal texture id
         :param transform_param: x scale, y scale, rotation
+        :param texuniform: texture uniform or not (MuJoCo texture attribute)
+        :param texture_type: type of texture (MuJoCo texture attribute)        
         """
         self.material_type = material_type
         self.kd = kd

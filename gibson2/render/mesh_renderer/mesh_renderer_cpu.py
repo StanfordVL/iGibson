@@ -238,6 +238,7 @@ class MeshRenderer(object):
         """
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
+        # If lightP is already set by an outside entity it will not override it.
         if not hasattr(self, 'lightP'):
             self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
@@ -366,13 +367,12 @@ class MeshRenderer(object):
             logging.warning(
                 "passed in one material ends up overwriting multiple materials")
 
-        # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
-        # or create plane color Material elements
+        # set the default values of variable before being modified later.
         num_existing_mats = len(self.materials_mapping)    # Number of current Material elements 
         texuniform = False
         num_added_materials = 0        
 
-
+        # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
         for i, item in enumerate(materials):
             if overwrite_material is not None:
                 self.load_randomized_material(overwrite_material)
@@ -401,7 +401,7 @@ class MeshRenderer(object):
             self.materials_mapping[i + material_count] = material
             num_added_materials = len(materials)
 
-        # Materials without mtl files but overwrite material is specified
+        # Case when mesh obj is without mtl file but overwrite material is specified.
         if len(materials) == 0 and overwrite_material is not None:
             texuniform = overwrite_material.texuniform
             self.materials_mapping[num_existing_mats] = overwrite_material
@@ -422,9 +422,9 @@ class MeshRenderer(object):
             (len(attrib.texcoords) // 2, 2))
 
         if texuniform and overwrite_material.texture_type == "2d":
-            # if material is used multiple times transform param gets overridden.
-            # Therefore originalvalue of transform param is stored during initialization
-            # from robosuite.
+            # if any material is used multiple times transform param gets overridden.
+            # Therefore original value of transform param is stored during initialization
+            # from robosuite ans is stored in `_orig_transform_param`
             repeat_x = overwrite_material._orig_transform_param[0] * (np.max(vertex_texcoord[:,0]) - np.min(vertex_texcoord[:,0])) * scale[0]
             repeat_y = overwrite_material._orig_transform_param[1] * (np.max(vertex_texcoord[:,1]) - np.min(vertex_texcoord[:,1])) * scale[1]
             overwrite_material.transform_param = [repeat_x, repeat_y, 0.] 
@@ -447,8 +447,6 @@ class MeshRenderer(object):
             shape_normal_index = np_indices[:, 1]
             shape_texcoord_index = np_indices[:, 2]
             shape_vertex = vertex_position[shape_vertex_index]
-            
-
 
             if len(vertex_normal) == 0:
                 # dummy normal if normal is not available
@@ -554,6 +552,7 @@ class MeshRenderer(object):
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
+        :param parent_body: parent body name of current xml element (MuJoCo XML)
         """
         if self.optimization_process_executed and self.optimized:
             logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
@@ -1036,7 +1035,7 @@ class MeshRenderer(object):
 
     def render_robosuite_cameras(self, modes=('rgb')):
         """
-        Render robot camera images
+        Render robot camera images. This is applicable for robosuite integration with iGibson.
 
         :return: a list of frames (number of modalities x number of robots)
         """
@@ -1076,8 +1075,15 @@ class MeshRenderer(object):
                     hidden_instances.append(instance)
                 for item in self.render(modes=modes, hidden=hidden_instances):
                     frames.append(item)
+        return frames
 
-    def get_names_active_cameras(self):
+    def _get_names_active_cameras(self):
+        """
+        Query the list of active cameras. 
+        Applicable for integration with iGibson.
+
+        :return: a list of camera names
+        """
         names = []
         for instance in self.instances:
             if isinstance(instance, Robot):
@@ -1086,20 +1092,29 @@ class MeshRenderer(object):
                         names.append(camera.camera_name)
         return names
 
-    def switch_camera(self, idx):
-        names = []
+    def _switch_camera(self, idx):
+        """
+        Switches the camera to particular index. 
+        Applicable for integration with iGibson.
+        """
         for instance in self.instances:
             if isinstance(instance, Robot):
                 instance.robot.cameras[idx].switch()
 
-    def is_camera_active(self, idx):
-        names = []
+    def _is_camera_active(self, idx):
+        """
+        Checks if camera at given index is active. 
+        Applicable for integration with iGibson.
+        """        
         for instance in self.instances:
             if isinstance(instance, Robot):
                 return instance.robot.cameras[idx].is_active()
 
-    def get_camera_name(self, idx):
-        names = []
+    def _get_camera_name(self, idx):
+        """
+        Checks if camera at given index is active. 
+        Applicable for integration with iGibson.
+        """   
         for instance in self.instances:
             if isinstance(instance, Robot):
                 return instance.robot.cameras[idx].camera_name    

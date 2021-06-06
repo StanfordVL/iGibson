@@ -42,6 +42,7 @@ class MeshRendererSettings(object):
         :param glfw_gl_version: glfw gl version
         :param texture_scale: texture scale
         :param hide_robot: whether to hide robot when rendering
+        :param is_robosuite: whether the environment is of robosuite.
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
