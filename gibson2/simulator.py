@@ -1057,10 +1057,11 @@ class Simulator:
         self.frame_count += 1
         self.frame_end_time = time.perf_counter()
 
-    def step(self, print_stats=False):
+    def step(self, print_stats=False, return_timing=False):
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
+        t1 = time.perf_counter()
         # Call separate step function for VR
         if self.can_access_vr_context:
             self.step_vr(print_stats=print_stats)
@@ -1068,10 +1069,25 @@ class Simulator:
 
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
+            
+        t2 = time.perf_counter()
 
         self._non_physics_step()
+        
+        t3 = time.perf_counter()
+        
         self.sync()
+        
+        t4 = time.perf_counter()
+        
         self.frame_count += 1
+        
+        physics_dur = t2 - t1
+        non_physics_dur = t3 - t2
+        sync_dur = t4 - t3
+        frame_dur = t4 - t1
+        if return_timing:
+            return (physics_dur, non_physics_dur, sync_dur, frame_dur)
 
     def sync(self):
         """
