@@ -46,6 +46,9 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
 
     def _update(self):
+        # Yet another circular import issue.
+        from gibson2.robots import behavior_robot
+
         button_position_on_object = self.get_link_position()
         if button_position_on_object is None:
             return
@@ -59,7 +62,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
                             < _TOGGLE_DISTANCE_THRESHOLD):
                         hand_in_marker = True
                         break
-                    for finger in part.finger_tip_link_idxs:
+                    for finger in behavior_robot.FINGER_TIP_LINK_INDICES:
                         finger_link_state = p.getLinkState(part.body_id, finger)
                         link_pos = finger_link_state[0]
                         if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
