@@ -184,6 +184,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     gaze_max_distance = 100.0
     task_done = False
     satisfied_predicates_cached = {}
+    step_times = []
     while log_reader.get_data_left_to_read():
         if highlight_gaze:
             eye_data = log_reader.get_vr_data().query('eye_data')
@@ -202,7 +203,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
                     if obj.category not in disallowed_categories:
                         obj.highlight()
 
-        igtn_task.simulator.step(print_stats=profile)
+        step_times.append(igtn_task.simulator.step(print_stats=False, return_timing=True))
         task_done, satisfied_predicates = igtn_task.check_success()
 
         # Set camera each frame
@@ -236,6 +237,15 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         #         print("%s not close in %d" % (thing_path, log_reader.frame_counter))
 
     print("Demo was succesfully completed: ", task_done)
+    
+    print('----- Timing Stats ------')
+    av_phys_dur = np.mean([c[0] for c in step_times])
+    av_non_phys_dur = np.mean([c[1] for c in step_times])
+    av_sync_dur = np.mean([c[2] for c in step_times])
+    av_step_dur = np.mean([c[3] for c in step_times])
+    print('Average durations: phys, non phys, sync, overall step:')
+    print(av_phys_dur, av_non_phys_dur, av_sync_dur, av_step_dur)
+    print('-------------------------')
 
     if end_callback is not None:
         end_callback(igtn_task)
