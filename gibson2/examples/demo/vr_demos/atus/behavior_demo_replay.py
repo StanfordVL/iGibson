@@ -196,6 +196,8 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
                 intersection = p.rayTest(origin, np.array(
                     origin) + (np.array(direction) * gaze_max_distance))
                 target_obj = intersection[0][0]
+                
+                print(len(intersection))
 
                 if target_obj in s.scene.objects_by_id:
                     obj = s.scene.objects_by_id[target_obj]
