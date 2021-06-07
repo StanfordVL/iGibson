@@ -8,7 +8,6 @@ import datetime
 import h5py
 import pprint
 import time
-import json
 
 import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -227,11 +226,16 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
     s.disconnect()
     
     replay_dur = time.perf_counter() - start_time
-    # Save profiling data
-    profile_json = {'replay_dur': replay_dur, 'setup_dur': setup_dur, 'step_times': step_times}
-    profile_json_path = '{}_{}_{}_profiling.json'.format(task, task_id, scene)
-    with open(profile_json_path, 'w') as f:
-        json.dump(profile_json_path, f)
+    print('----- Timing Stats ------')
+    print('Replay duration: {}'.format(replay_dur))
+    print('Set-up duration: {}'.format(setup_dur))
+    av_phys_dur = np.mean([c[0] for c in step_times])
+    av_non_phys_dur = np.mean([c[1] for c in step_times])
+    av_sync_dur = np.mean([c[2] for c in step_times])
+    av_step_dur = np.mean([c[3] for c in step_times])
+    print('Average durations: phys, non phys, sync, overall step:')
+    print(av_phys_dur, av_non_phys_dur, av_sync_dur, av_step_dur)
+    print('-------------------------')
 
     return is_deterministic
 
