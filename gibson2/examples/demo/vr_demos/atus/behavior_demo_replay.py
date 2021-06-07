@@ -177,7 +177,7 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
         log_writer.set_up_data_storage()
 
     if highlight_gaze:
-        gaze_marker = GazeVizMarker(s, 0.2)
+        gaze_marker = GazeVizMarker(s, 0.02)
 
     disallowed_categories = ['walls', 'floors', 'ceilings']
     target_obj = -1
