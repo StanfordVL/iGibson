@@ -14,13 +14,15 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: pull_figure_chair_no_clutter
+task: re-shelving_library_books_simplified_no_clutter
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
+reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/pull_figure
+reset_checkpoint_idx: 1440
 
 # reward
 reward_type: l2
@@ -41,13 +43,15 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [rgb, depth, proprioception]
+#output: [rgb, depth, proprioception]
+output: [task_obs, proprioception]
+
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 512
-image_height: 512
+image_width: 128
+image_height: 128
 vertical_fov: 90
 # depth
 depth_low: 0.35
