@@ -1,8 +1,8 @@
 """ Utility classes and functions needed for the multi-user VR experience. """
 
-
 from collections import defaultdict
 import copy
+from networkx.convert import to_dict_of_dicts
 import numpy as np
 import time
 from time import sleep
@@ -15,11 +15,6 @@ from PodSixNet.Connection import connection, ConnectionListener
 from PodSixNet.Server import Server
 
 
-# An FPS cap is needed to ensure that the client and server don't fall too far out of sync
-# 30 is a good cap that matches average VR speed and guarantees that the server frame data queue does not become backlogged
-MUVR_FPS_CAP = 30.0
-
-
 # Classes used in MUVR demos
 
 class IGVRClient(ConnectionListener):
@@ -30,14 +25,12 @@ class IGVRClient(ConnectionListener):
         self.frame_start = 0
         self.vr_offset = [0, 0, 0]
 
-    def register_data(self, sim, client_agent):
+    def register_data(self, sim, client_robot):
         self.s = sim
-        self.renderer = sim.renderer
-        self.client_agent = client_agent
-        self.vr_device = '{}_controller'.format(self.s.vr_settings.movement_controller)
-        self.devices = ['left_controller', 'right_controller', 'hmd']
+        self.client_robot = client_robot
 
     def ingest_frame_data(self):
+        # TODO: Need to edit this to make sure it works!
         self.frame_start = time.time()
         if not self.frame_data:
             return
@@ -67,49 +60,17 @@ class IGVRClient(ConnectionListener):
                 instance.poses_rot = poses_rot
 
     def client_step(self):
-        self.s.viewer.update()
-        if self.s.can_access_vr_context:
-            self.s.poll_vr_events()
-            # Sets the VR starting position if one has been specified by the user
-            self.s.perform_vr_start_pos_move()
+        self.s.step()
 
-            # Update VR offset so updated value can be used in server
-            self.client_agent.update_frame_offset()
-
-    def gen_vr_data(self):
-        if not self.s.can_access_vr_context:
-            self.vr_data = []
+    def send_action(self, vr=True, placeholder=False):
+        if vr:
+            self.curr_action = list(self.s.gen_vr_robot_action())
         else:
-            # Store all data in a dictionary to be sent to the server
-            vr_data_dict = defaultdict(list)
-
-            for device in self.devices:
-                device_data = []
-                is_valid, trans, rot = self.s.get_data_for_vr_device(device)
-                device_data.extend([is_valid, trans.tolist(), rot.tolist()])
-                device_data.extend(self.s.get_device_coordinate_system(device))
-                if device in ['left_controller', 'right_controller']:
-                    device_data.extend(self.s.get_button_data_for_controller(device))
-                vr_data_dict[device] = device_data
-
-            vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
-            # We need to get VR events instead of polling here, otherwise the previously events will be erased
-            vr_data_dict['event_data'] = self.s.get_vr_events()
-            vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-            vr_data_dict['vr_offset'] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
-            vr_data_dict['vr_settings'] = [
-                self.s.vr_settings.eye_tracking,
-                self.s.vr_settings.touchpad_movement,
-                self.s.vr_settings.movement_controller,
-                self.s.vr_settings.relative_movement_device,
-                self.s.vr_settings.movement_speed
-            ]
-
-            self.vr_data = dict(vr_data_dict)
-
-    def send_vr_data(self):
-        if self.vr_data:
-            self.Send({"action": "vr_data", "vr_data": self.vr_data})
+            self.curr_action = list(np.zeros((28,)))
+            if placeholder:
+                # Have client robot spin around z axis
+                self.curr_action[5] = 0.01
+        self.Send({"action": "client_action", "client_action": self.curr_action})
 
     def Network_frame_data(self, data):
         # Store frame data until it is needed during rendering
@@ -121,26 +82,21 @@ class IGVRClient(ConnectionListener):
         self.Pump()
         # Push data out to the network
         connection.Pump()
-        # Keep client at FPS cap if it is running too fast
-        frame_dur = time.time() - self.frame_start
-        time_until_min_dur = (1 / MUVR_FPS_CAP) - frame_dur
-        if time_until_min_dur > 0:
-            sleep(time_until_min_dur)
 
 
 class IGVRChannel(Channel):
     """ Server's representation of the IGVRClient. """
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
-        self.vr_data = {}
+        self.client_action = []
     
     def Close(self):
         print(self, "Client disconnected")
 
-    def Network_vr_data(self, data):
-        # Store vr data until it is needed for physics simulation
+    def Network_client_action(self, data):
+        # Store client action until it is needed for physics simulation
         # This avoids the overhead of updating the physics simulation every time this function is called
-        self.vr_data = data["vr_data"]
+        self.client_action = data["client_action"]
 
     def send_frame_data(self, frame_data):
         self.Send({"action": "frame_data", "frame_data": frame_data})
@@ -153,35 +109,29 @@ class IGVRServer(Server):
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
         self.client = None
-        self.latest_vr_data = None
+        # 1D, (28,) numpy array
+        self.latest_client_action = None
         self.frame_start = 0
 
     def Connected(self, channel, addr):
         #print("Someone connected to the server!")
         self.client = channel
 
-    def register_data(self, sim, client_agent):
+    def register_data(self, sim):
         self.s = sim
         self.renderer = sim.renderer
-        self.client_agent = client_agent
 
     def client_connected(self):
         return self.client is not None
 
-    def ingest_vr_data(self):
-        self.frame_start = time.time()
-        if not self.client:
+    def ingest_client_action(self):
+        if not self.client or not self.client.client_action:
             return
-        
-        if not self.client.vr_data:
-            return
-        if not self.latest_vr_data:
-            self.latest_vr_data = VrData(self.s.vr_settings)
 
-        # Make a copy of channel's most recent VR data, so it doesn't get mutated if new requests arrive
-        self.latest_vr_data.refresh_muvr_data(copy.deepcopy(self.client.vr_data))
+        # Make a copy of channel's most recent actions, so it doesn't get mutated if new requests arrive
+        self.latest_client_action = np.array(self.client.client_action)
 
-    def gen_frame_data(self):
+    def send_frame_data(self):
         # Frame data is stored as a dictionary mapping pybullet uuid to pose/rot data
         self.frame_data = {}
         # It is assumed that the client renderer will have loaded instances in the same order as the server
@@ -201,19 +151,13 @@ class IGVRServer(Server):
                 for rot in instance.poses_rot:
                     rots.append(rot.tolist())
                 self.frame_data[instance.pybullet_uuid] = [poses, rots]
-
-    def send_frame_data(self):
+        
         if self.client:
             self.client.send_frame_data(self.frame_data)
     
     def Refresh(self):
         self.Pump()
 
-        # Keep server at FPS cap if it is running too fast
-        frame_dur = time.time() - self.frame_start
-        time_until_min_dur = (1 / MUVR_FPS_CAP) - frame_dur
-        if time_until_min_dur > 0:
-            sleep(time_until_min_dur)
 
 # Test functions/classes used for debugging network issues
 

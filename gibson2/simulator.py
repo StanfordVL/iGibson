@@ -44,6 +44,7 @@ class Simulator:
                  gravity=9.8,
                  physics_timestep=1 / 120.0,
                  render_timestep=1 / 30.0,
+                 fixed_fps=False,
                  mode='gui',
                  image_width=128,
                  image_height=128,
@@ -56,6 +57,7 @@ class Simulator:
         :param gravity: gravity on z direction.
         :param physics_timestep: timestep of physical simulation, p.stepSimulation()
         :param render_timestep: timestep of rendering, and Simulator.step() function
+        :param fixed_fps: whether to keep the FPS fixed at 1/render_timestep
         :param use_variable_step_num: whether to use a fixed (1) or variable physics step number
         :param mode: choose mode from gui, headless, iggui (only open iGibson UI), or pbgui(only open pybullet UI)
         :param image_width: width of the camera image
@@ -71,6 +73,7 @@ class Simulator:
         self.gravity = gravity
         self.physics_timestep = physics_timestep
         self.render_timestep = render_timestep
+        self.fixed_fps = fixed_fps
         self.physics_timestep_num = self.render_timestep / self.physics_timestep
         assert self.physics_timestep_num.is_integer(
         ), "render_timestep must be a multiple of physics_timestep"
@@ -994,12 +997,14 @@ class Simulator:
             outside_step_dur = time.perf_counter() - self.frame_end_time
         # Simulate Physics in PyBullet
         physics_start_time = time.perf_counter()
-        for _ in range(self.physics_timestep_num):
-            p.stepSimulation()
+        if self.isconnected():
+            for _ in range(self.physics_timestep_num):
+                p.stepSimulation()
         physics_dur = time.perf_counter() - physics_start_time
 
         non_physics_start_time = time.perf_counter()
-        self._non_physics_step()
+        if self.isconnected():
+            self._non_physics_step()
         non_physics_dur = time.perf_counter() - non_physics_start_time
 
         # Sync PyBullet bodies to renderer and then render to Viewer
@@ -1061,17 +1066,21 @@ class Simulator:
         """
         Step the simulation at self.render_timestep and update positions in renderer
         """
+        start_time = time.perf_counter()
         # Call separate step function for VR
         if self.can_access_vr_context:
             self.step_vr(print_stats=print_stats)
             return
 
-        for _ in range(self.physics_timestep_num):
-            p.stepSimulation()
-
-        self._non_physics_step()
+        if self.isconnected():
+            for _ in range(self.physics_timestep_num):
+                p.stepSimulation()
+            self._non_physics_step()
         self.sync()
         self.frame_count += 1
+        frame_dur = time.perf_counter() - start_time
+        if self.fixed_fps and frame_dur < self.render_timestep:
+            sleep(self.render_timestep - frame_dur)
 
     def sync(self):
         """
