@@ -13,6 +13,7 @@ from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2.utils.checkpoint_utils import save_internal_states, load_internal_states
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -78,31 +79,12 @@ class iGTNTask(TaskNetTask):
 
     def save_scene(self):
         snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = {
-            "snapshot_id": snapshot_id,
-            "states_by_id": {}
-        }
-        states_by_id = {}
-        for obj_id, obj in self.scene.objects_by_id.items():
-            states_by_id[obj_id] = {}
-            for state_type, state in obj.states.items():
-                # TODO: We should ensure all states need to dump their state do (they don't)
-                try:
-                    states_by_id[obj_id][state_type] = state._dump()
-                except:
-                    pass
+        self.state_history[snapshot_id] = save_internal_states(self.simulator)
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
         p.restoreState(snapshot_id)
-        for obj_id, obj in self.scene.objects_by_id.items():
-            for state_type, state in obj.states.items():
-                # TODO: We should ensure all states need to load their state do (they don't)
-                try:
-                    prev_state = self.state_history[snapshot_id]["states_by_id"][obj_id][state_type]
-                    state._load(prev_state)
-                except:
-                    pass
+        load_internal_states(self.simulator, self.state_history[snapshot_id])
 
     def check_scene(self):
         feedback = {
@@ -666,7 +648,7 @@ class iGTNTask(TaskNetTask):
 
         np.random.shuffle(self.ground_goal_state_options)
         logging.warning(('number of ground_goal_state_options',
-              len(self.ground_goal_state_options)))
+                         len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
 
         goal_sampling_error_msgs = []

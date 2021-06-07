@@ -168,6 +168,11 @@ class BaseRobot(object):
         """
         raise NotImplementedError
 
+    def dump_state(self):
+        pass
+
+    def load_state(self, dump):
+        pass
 
 class BodyPart:
     """

@@ -70,18 +70,17 @@ class ViewerSimple:
         self.renderer = renderer
         self.simulator = simulator
 
-        cv2.namedWindow('ExternalView')
-        cv2.moveWindow("ExternalView", 0, 0)
+        cv2.namedWindow('RobotView')
+        cv2.moveWindow("RobotView", 0, 0)
 
     def update(self):
         if not self.renderer is None:
-            frame = cv2.cvtColor(np.concatenate(self.renderer.render(modes=('rgb')), axis=1),
-                                 cv2.COLOR_RGB2BGR)
-        else:
-            frame = np.zeros((300, 300, 3)).astype(np.uint8)
-
-        cv2.imshow('Renderer Output', frame)
-        q = cv2.waitKey(1)
+            frames = self.renderer.render_robot_cameras(modes=('rgb'))
+            if len(frames) > 0:
+                frame = cv2.cvtColor(np.concatenate(
+                    frames, axis=1), cv2.COLOR_RGB2BGR)
+                cv2.imshow('RobotView', frame)
+        cv2.waitKey(1)
 
 
 class Viewer:
