@@ -196,15 +196,13 @@ def replay_demo(vr_log_path, vr_replay_log_path=None, frame_save_path=None, high
                 intersection = p.rayTest(origin, np.array(
                     origin) + (np.array(direction) * gaze_max_distance))
                 target_obj = intersection[0][0]
-                
-                print(len(intersection))
 
                 if target_obj in s.scene.objects_by_id:
                     obj = s.scene.objects_by_id[target_obj]
                     if obj.category not in disallowed_categories:
                         obj.highlight()
                         # TODO: Move this??? Move it closer to the camera as a rough heuristic?
-                        gaze_marker.set_pos(intersection[3])
+                        gaze_marker.set_pos(intersection[0][3])
 
         igtn_task.simulator.step(print_stats=profile)
         task_done, satisfied_predicates = igtn_task.check_success()
