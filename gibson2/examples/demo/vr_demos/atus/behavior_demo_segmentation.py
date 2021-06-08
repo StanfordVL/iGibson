@@ -304,16 +304,17 @@ class DemoSegmentationProcessor(object):
         with open(filename, "w") as f:
             json.dump(self._serialize_segment(self.get_segments()), f)
 
-    def print(self):
-        print("---------------------------------------------------")
-        print("Segmentation of %s" % self.object_selection.name)
-        print("Considered states: %s" % ", ".join(x.__name__ for x in self.state_types))
-        print("---------------------------------------------------")
+    def __str__(self):
+        out = ""
+        out += "---------------------------------------------------\n"
+        out += "Segmentation of %s\n" % self.object_selection.name
+        out += "Considered states: %s\n" % ", ".join(x.__name__ for x in self.state_types)
+        out += "---------------------------------------------------\n"
         output = {}
         self._segment_to_dict_tree(self.get_segments(), output)
-        printree.ptree(output)
-        print("---------------------------------------------------")
-        print("\n")
+        out += printree.ftree(output) + "\n"
+        out += "---------------------------------------------------\n"
+        return out
 
 
 def run_segmentation(log_path, segmentation_processors, **kwargs):
@@ -354,9 +355,9 @@ def main():
         hierarchical=True, label_by_instance=True)
 
     # Here we check for *leaving* rooms so that the segments match to the rooms the robot was in at that time.
-    room_directions = {state: SegmentationStateDirection.TRUE_TO_FALSE for state in ROOM_STATES}
+    # room_directions = {state: SegmentationStateDirection.TRUE_TO_FALSE for state in ROOM_STATES}
     room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS,
-                                                           diff_initial=True, state_directions=room_directions)
+                                                           diff_initial=True)
 
     segmentation_processors = [
         goal_segmentation,
@@ -366,15 +367,22 @@ def main():
 
     # Run the segmentations.
     demo_file = os.path.join(gibson2.ig_dataset_path, 'tests',
-                             'storing_food_0_Rs_int_2021-05-31_11-49-30.hdf5')
-    run_segmentation(demo_file, segmentation_processors, no_vr=True)
+                             'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
+    if not os.path.exists("frames"):
+        os.mkdir("frames")
+    run_segmentation(demo_file, segmentation_processors, no_vr=True, frame_save_path="frames")
 
     for i, segmentation_processor in enumerate(segmentation_processors):
         segmentation_processor.save("%d.json" % i)
 
     # Print the segmentations.
+    combined_output = ""
     for segmentation_processor in segmentation_processors:
-        segmentation_processor.print()
+        combined_output += str(segmentation_processor) + "\n"
+
+    print(combined_output)
+    with open('segmentation_result.txt', 'w') as f:
+        f.write(combined_output)
 
     html = PROFILER.output_html()
     with open('segmentation_profile.html', 'w') as f:
