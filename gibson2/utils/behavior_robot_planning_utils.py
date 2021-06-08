@@ -65,7 +65,7 @@ def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[
         # TODO: update this function
         # set_base_values(body, q)
         robot.set_position_orientation([q[0], q[1], robot.initial_z_offset], p.getQuaternionFromEuler([0, 0, q[2]]))
-        return any(pairwise_collision(body_ids, obs, max_distance=max_distance) for obs in obstacles)
+        return any(pairwise_collision(body_id, obs, max_distance=max_distance) for obs in obstacles for body_id in body_ids)
 
     pos = robot.get_position()
     yaw = p.getEulerFromQuaternion(robot.get_orientation())[2]
@@ -81,6 +81,16 @@ def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[
     return birrt(start_conf, end_conf, distance_fn,
                  sample_fn, extend_fn, collision_fn, **kwargs)
 
+def dry_run_base_plan(robot: BehaviorRobot, plan):
+    for (x,y,yaw) in plan:
+        robot.set_position_orientation([x,y,robot.initial_z_offset], p.getQuaternionFromEuler([0,0,yaw]))
+        time.sleep(0.01)
+
+def dry_run_arm_plan(robot: BehaviorRobot, plan):
+    for (x,y,z,roll,pitch,yaw) in plan:
+        robot.parts['right_hand'].set_position_orientation([x,y,z],
+                                                           p.getQuaternionFromEuler([roll, pitch, yaw]))
+        time.sleep(0.01)
 
 def get_hand_difference_fn():
     def fn(q2, q1):
@@ -93,8 +103,8 @@ def get_hand_difference_fn():
     return fn
 
 
-def get_hand_distance_fn(weights=1 * np.ones(3)):
-    difference_fn = get_base_difference_fn()
+def get_hand_distance_fn(weights=1 * np.ones(6)):
+    difference_fn = get_hand_difference_fn()
 
     def fn(q1, q2):
         difference = np.array(difference_fn(q2, q1))
@@ -104,7 +114,7 @@ def get_hand_distance_fn(weights=1 * np.ones(3)):
 
 
 def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[], direct=False,
-                        weights=1 * np.ones(6), resolutions=0.05 * np.ones(6),
+                        weights=(1,1,1,5,5,5), resolutions=0.02 * np.ones(6),
                         max_distance=MAX_DISTANCE, **kwargs):
     def sample_fn():
         x, y, z = np.random.uniform(*hand_limits)

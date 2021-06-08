@@ -540,6 +540,8 @@ class BRHandBase(ArticulatedObject):
         # Start ghost hand where the VR hand starts
         if self.use_ghost_hands:
             self.ghost_hand.set_position(self.get_position())
+            p.changeVisualShape(self.ghost_hand.body_id, -1, rgbaColor=(0,0,0,0))
+            # change it to transparent for visualization
 
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update

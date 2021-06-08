@@ -15,7 +15,8 @@ from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
 from gibson2.object_states.utils import sample_kinematics
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.object_states.on_floor import RoomFloor
-
+from gibson2.utils.behavior_robot_planning_utils import plan_hand_motion_br, plan_base_motion_br, \
+                                                 dry_run_base_plan, dry_run_arm_plan
 
 NUM_ACTIONS = 6
 
@@ -87,6 +88,8 @@ class BehaviorMPEnv(BehaviorEnv):
                                             automatic_reset=automatic_reset)
 
         self.obj_in_hand = None
+        self.use_motion_planning=True
+        self.robots[0].initial_z_offset = 0.7
 
     def load_action_space(self):
         self.task_relevant_objects = [item for item in self.task.object_scope.values() if isinstance(item, URDFObject)
@@ -94,13 +97,20 @@ class BehaviorMPEnv(BehaviorEnv):
         self.num_objects = len(self.task_relevant_objects)
         self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
+    def get_body_ids(self):
+        ids = []
+        for object in self.scene.get_objects():
+            if isinstance(object, URDFObject):
+                ids.extend(object.body_ids)
+        return ids
+
     def step(self, action):
         obj_list_id = int(action) % self.num_objects
         action_primitive = int(action) // self.num_objects
         obj = self.task_relevant_objects[obj_list_id]
         if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
-                if self.navigate_to_obj(obj):
+                if self.navigate_to_obj(obj, use_motion_planning=False):
                     print('PRIMITIVE: navigate to {} success'.format(obj.name))
                 else:
                     print('PRIMITIVE: navigate to {} fail'.format(obj.name))
@@ -112,7 +122,7 @@ class BehaviorMPEnv(BehaviorEnv):
                         volume = get_aabb_volume(lo, hi)
                         if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed: # say we can only grasp small objects
                             if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                                self.obj_in_hand = obj
+                                self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
                                 print('PRIMITIVE: grasp {} success'.format(obj.name))
                             else:
                                 print('PRIMITIVE: grasp {} fail, too far'.format(obj.name))
@@ -168,13 +178,39 @@ class BehaviorMPEnv(BehaviorEnv):
         print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
         return state, reward, done, info
 
-    def navigate_to_obj(self, obj):
+    def grasp_obj(self, obj, use_motion_planning=False):
+        self.obj_in_hand = obj
+        if use_motion_planning:
+            x,y,_ = obj.get_position()
+            z = obj.states[AABB].get_value()[1][2]
+            hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
+
+            minx = min(x, hand_x) - 0.25
+            miny = min(y, hand_y) - 0.25
+            minz = min(z, hand_z) - 0.25
+            maxx = max(x, hand_x) + 0.25
+            maxy = max(y, hand_y) + 0.25
+            maxz = max(z, hand_z) + 0.25
+            plan = plan_hand_motion_br(self.robots[0], [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
+                                       obstacles=self.get_body_ids())
+            if plan is not None:
+                print(plan)
+                dry_run_arm_plan(self.robots[0], plan)
+            else:
+                self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
+                #reset hand
+
+    def navigate_to_obj(self, obj, use_motion_planning=False):
         # test agent positions around an obj
         # try to place the agent near the object, and rotate it to the object
         valid_position = None  # ((x,y,z),(roll, pitch, yaw))
+        original_position = self.robots[0].get_position()
+        original_orientation = self.robots[0].get_orientation()
+
+        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
 
         if isinstance(obj, URDFObject):
-            distance_to_try = [0.5, 1, 2, 3]
+            distance_to_try = [0.6, 1.2, 1.8, 2.4]
             obj_pos = obj.get_position()
             for distance in distance_to_try:
                 for _ in range(20):
@@ -198,11 +234,32 @@ class BehaviorMPEnv(BehaviorEnv):
                 if not detect_robot_collision(self.robots[0]):
                     valid_position = (pos, orn)
                     break
+        #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
 
         if valid_position is not None:
-            self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
-            return True
+            if use_motion_planning:
+                self.robots[0].set_position_orientation(original_position, original_orientation)
+                #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+
+                plan = plan_base_motion_br(robot=self.robots[0],
+                                           end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
+                                           base_limits=[(-5,-5), (5,5)],
+                                           obstacles=self.get_body_ids())
+                #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+
+                if plan is not None:
+                    dry_run_base_plan(robot=self.robots[0],
+                                      plan=plan
+                                      )
+                    return True
+                else:
+                    self.robots[0].set_position_orientation(original_position, original_orientation)
+                    return False
+            else:
+                self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
+                return True
         else:
+            self.robots[0].set_position_orientation(original_position, original_orientation)
             return False
 
 if __name__ == '__main__':
@@ -228,6 +285,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         env.reset()
+        #env.robots[0].set_position_orientation([0,0,0], [0,0,0,1])
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
