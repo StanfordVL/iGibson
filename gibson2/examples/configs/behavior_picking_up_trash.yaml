@@ -1,5 +1,5 @@
 # scene
-scene_id: Rs_int
+scene_id: Beechwood_0_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -14,15 +14,18 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: re-shelving_library_books_simplified_no_clutter
+task: picking_up_trash
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/pull_figure
-reset_checkpoint_idx: 1440
+reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/picking_up_trash_0_Beechwood_0_int_2021-05-31_16-32-14_checkpoints
+reset_checkpoint_idx: 3390
+# reset_checkpoint_idx: 3300
+# reset_checkpoint_idx: 3240
+# reset_checkpoint_idx: 2580
 
 # reward
 reward_type: l2
