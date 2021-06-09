@@ -289,9 +289,11 @@ class iGTNTask(TaskNetTask):
 
                 model = np.random.choice(model_choices)
 
-                # for "collecting aluminum cans", we need pop cans (not bottles)
-                if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
+                # for "collecting aluminum cans", we need pop cans (not bottles) 
+                if category == 'pop' and self.atus_activity in ['collecting_aluminum_cans']:
                     model = np.random.choice([str(i) for i in range(40, 46)])
+                if category == 'spoon' and self.atus_activity in ['polishing_silver']:
+                    model = np.random.choice([str(i) for i in [2, 5, 6]])
 
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
@@ -809,7 +811,6 @@ class iGTNTask(TaskNetTask):
             num_trials = 10
             for _ in range(num_trials):
                 success = condition.sample(binary_state=positive)
-                # This should always succeed because it has succeeded before.
                 if success:
                     break
             if not success:
@@ -835,10 +836,14 @@ class iGTNTask(TaskNetTask):
                         continue
                     # Sample conditions that involve the current batch of objects
                     if condition.body[0] in cur_batch:
-                        success = condition.sample(binary_state=positive)
+                        num_trials = 100
+                        for _ in range(num_trials):
+                            success = condition.sample(binary_state=positive)
+                            if success:
+                                break
                         if not success:
-                            error_msg = 'Sampleable object conditions failed: {}'.format(
-                                condition.body)
+                            error_msg = 'Sampleable object conditions failed: {} {}'.format(
+                                condition.STATE_NAME, condition.body)
                             logging.warning(error_msg)
                             feedback['init_success'] = 'no'
                             feedback['init_feedback'] = error_msg
