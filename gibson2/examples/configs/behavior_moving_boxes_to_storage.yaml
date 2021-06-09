@@ -22,10 +22,10 @@ target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
 reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/moving_boxes_to_storage_0_Merom_0_int_2021-06-02_19-00-26_checkpoints
-reset_checkpoint_idx: 12690
-# reset_checkpoint_idx: 12450
-# reset_checkpoint_idx: 12180
-# reset_checkpoint_idx: 9720
+reset_checkpoint_idx: 12720
+# reset_checkpoint_idx: 12480
+# reset_checkpoint_idx: 12210
+# reset_checkpoint_idx: 9750
 
 # reward
 reward_type: l2
@@ -55,10 +55,10 @@ output: [rgb, depth, proprioception]
 fisheye: false
 image_width: 128
 image_height: 128
-vertical_fov: 90
+vertical_fov: 120
 # depth
 depth_low: 0.0
-depth_high: 3.0
+depth_high: 10.0
 # scan
 # SICK TIM571 scanning range finder
 # https://docs.fetchrobotics.com/robot_hardware.html
