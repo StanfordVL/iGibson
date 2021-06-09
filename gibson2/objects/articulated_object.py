@@ -104,6 +104,8 @@ class URDFObject(Object):
         self.init_ori = np.array(init_ori)
 
         # Randomization info for this object
+        self.default_pos = None
+        self.default_orn = None
         self.randomize_pose = False
         self.randomize_pos_range = None
         self.randomize_rot_range = None
@@ -625,6 +627,9 @@ class URDFObject(Object):
                 body_id, -1,
                 activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
 
+            self.default_pos = np.array(pos)
+            self.default_orn = np.array(orn)
+
             for j in range(p.getNumJoints(body_id)):
                 info = p.getJointInfo(body_id, j)
                 jointType = info[2]
@@ -695,16 +700,24 @@ class URDFObject(Object):
         """
         for idx in range(len(self.body_ids)):
             body_id = self.body_ids[idx]
-            transformation = self.poses[idx]
-            pos = transformation[0:3, 3]
-            orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
 
-            # Add noise if requested
-            if self.randomize_pose:
-                # Sample values
-                pos_noise, quat_noise = self.sample_pose_perturbation()
-                pos += pos_noise
-                orn = T.quat_multiply(quat_noise, orn)
+            # Base root gets handled differently
+            if idx == 0:
+                pos = np.array(self.default_pos)        # Make sure we only grab a copy
+                orn = np.array(self.default_orn)        # Make sure we only grab a copy
+                print(type(pos), type(orn), pos, orn)
+
+                # Add noise if requested
+                if self.randomize_pose:
+                    # Sample values
+                    pos_noise, quat_noise = self.sample_pose_perturbation()
+                    pos += pos_noise
+                    orn = T.quat_multiply(quat_noise, orn)
+
+            else:
+                transformation = self.poses[idx]
+                pos = transformation[0:3, 3]
+                orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
 
             logging.info("Resetting URDF to (pos,ori): " +
                          np.array_str(pos) + ", " + np.array_str(orn))

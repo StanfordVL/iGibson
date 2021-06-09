@@ -272,7 +272,7 @@ class SemanticRearrangementTask(BaseTask):
         """
         # Sample location, checking for collisions
         success = False if check_contact else True
-        for i in range(100):
+        for i in range(1000):
             pos_sampled, ori_sampled = obj.sample_pose()
             if pos is None:
                 pos = pos_sampled
@@ -287,7 +287,7 @@ class SemanticRearrangementTask(BaseTask):
                 break
 
         # If we haven't had a success, raise an error
-        assert success, "Failed to successfully sample valid object locations!"
+        assert success, f"Failed to successfully sample valid object locations, object: {obj.name}!"
 
     def update_location_info(self):
         """
