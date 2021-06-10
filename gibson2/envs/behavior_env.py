@@ -40,7 +40,7 @@ class BehaviorEnv(iGibsonEnv):
         automatic_reset=False,
         seed=0,
         action_filter='navigation',
-        instance_id=0,
+        instance_id=None,
     ):
         """
         :param config_file: config_file path
@@ -64,6 +64,8 @@ class BehaviorEnv(iGibsonEnv):
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
         self.instance_id = 0
+        if instance_id is not None:
+            self.instance_id = instance_id
 
     def load_action_space(self):
         """
