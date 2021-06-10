@@ -53,6 +53,9 @@ class BehaviorEnv(iGibsonEnv):
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
         self.action_filter = action_filter
+        self.instance_id = 0
+        if instance_id is not None:
+            self.instance_id = instance_id
         super(BehaviorEnv, self).__init__(config_file=config_file,
                                           scene_id=scene_id,
                                           mode=mode,
