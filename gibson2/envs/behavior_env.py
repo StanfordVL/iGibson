@@ -39,7 +39,8 @@ class BehaviorEnv(iGibsonEnv):
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter='navigation'
+        action_filter='navigation',
+        instance_id=None,
     ):
         """
         :param config_file: config_file path
@@ -52,6 +53,9 @@ class BehaviorEnv(iGibsonEnv):
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
         self.action_filter = action_filter
+        self.instance_id = 0
+        if instance_id is not None:
+            self.instance_id = instance_id
         super(BehaviorEnv, self).__init__(config_file=config_file,
                                           scene_id=scene_id,
                                           mode=mode,
@@ -107,7 +111,7 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
+                'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
                 # 'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
             }
         tasknet.set_backend("iGibson")
