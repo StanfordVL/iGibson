@@ -289,9 +289,12 @@ class SemanticRearrangementTask(BaseTask):
         # If we haven't had a success, raise an error
         assert success, f"Failed to successfully sample valid object locations, object: {obj.name}!"
 
-    def update_location_info(self):
+    def update_location_info(self, info_only=False):
         """
         Helper function to update location info based on current target object
+
+        Args:
+            info_only (bool): If True, will skip over sampling for trash
         """
         # Store relevant location info
         self.target_locations = {
@@ -333,12 +336,13 @@ class SemanticRearrangementTask(BaseTask):
         if self.include_trash:
             # Update trash bin object
             self.trash_bin = self.env.scene.objects_by_name[self.config["trash_bin"]]
-            for tr in self.trash.values():
-                # Update sampling args
-                sample_at = {self.target_object.name: self.trash_sampling_args}
-                tr.update_sample_at(sample_at=sample_at, only_top=True)
-                # Update trash locations in scene
-                self.sample_pose_and_place_object(obj=tr, check_contact=True)
+            if not info_only:
+                for tr in self.trash.values():
+                    # Update sampling args
+                    sample_at = {self.target_object.name: self.trash_sampling_args}
+                    tr.update_sample_at(sample_at=sample_at, only_top=True)
+                    # Update trash locations in scene
+                    self.sample_pose_and_place_object(obj=tr, check_contact=True)
         # Otherwise, move trash out of scene
         else:
             for tr in self.trash.values():
@@ -502,7 +506,7 @@ class SemanticRearrangementTask(BaseTask):
         self.target_object = self.target_objects[obj_name]
 
         # Update location info as well
-        self.update_location_info()
+        self.update_location_info(info_only=True)
 
     def update_target_object_init_pos(self):
         """
