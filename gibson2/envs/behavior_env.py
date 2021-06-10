@@ -66,9 +66,6 @@ class BehaviorEnv(iGibsonEnv):
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
-        self.instance_id = 0
-        if instance_id is not None:
-            self.instance_id = instance_id
 
     def load_action_space(self):
         """
