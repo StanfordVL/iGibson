@@ -39,7 +39,8 @@ class BehaviorEnv(iGibsonEnv):
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter='navigation'
+        action_filter='navigation',
+        instance_id=0,
     ):
         """
         :param config_file: config_file path
@@ -62,6 +63,7 @@ class BehaviorEnv(iGibsonEnv):
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
+        self.instance_id = 0
 
     def load_action_space(self):
         """
@@ -107,7 +109,7 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
+                'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
                 # 'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
             }
         tasknet.set_backend("iGibson")
