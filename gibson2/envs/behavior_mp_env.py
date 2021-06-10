@@ -32,10 +32,10 @@ def get_aabb_volume(lo, hi):
     dimension = hi - lo
     return dimension[0] * dimension[1] * dimension[2]
 
-def detect_collision(bodyA):
+def detect_collision(bodyA, object_in_hand=None):
     collision = False
     for body_id in range(p.getNumBodies()):
-        if body_id == bodyA:
+        if body_id == bodyA or body_id == object_in_hand:
             continue
         closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
         if len(closest_points) > 0:
@@ -44,9 +44,10 @@ def detect_collision(bodyA):
     return collision
 
 def detect_robot_collision(robot):
-    return detect_collision(robot.parts['body'].body_id) or \
-           detect_collision(robot.parts['left_hand'].body_id) or \
-           detect_collision(robot.parts['right_hand'].body_id)
+    object_in_hand = robot.parts['right_hand'].object_in_hand
+    return detect_collision(robot.parts['body'].body_id, object_in_hand) or \
+           detect_collision(robot.parts['left_hand'].body_id, object_in_hand) or \
+           detect_collision(robot.parts['right_hand'].body_id, object_in_hand)
 
 class BehaviorMPEnv(BehaviorEnv):
     """
@@ -107,6 +108,11 @@ class BehaviorMPEnv(BehaviorEnv):
     def step(self, action):
         obj_list_id = int(action) % self.num_objects
         action_primitive = int(action) // self.num_objects
+        if action_primitive == 3 or action_primitive == 2 or self.obj_in_hand is not None:
+            action_primitive = 3
+            obj_list_id = 2
+
+        # from IPython import embed; embed()
         obj = self.task_relevant_objects[obj_list_id]
         if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
@@ -134,37 +140,49 @@ class BehaviorMPEnv(BehaviorEnv):
 
                     if isinstance(obj, URDFObject):
                         if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                            state = p.saveState()
                             result = sample_kinematics('onTop', self.obj_in_hand, obj, True, use_ray_casting_method=True,
-                                                       max_trials=20)
+                                                        max_trials=20)
                             if result:
                                 print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
-                                self.obj_in_hand = None
+                                pos = self.obj_in_hand.get_position()
+                                orn = self.obj_in_hand.get_orientation()
+                                self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
                             else:
+                                p.removeState(state)
                                 print('PRIMITIVE: place {} ontop {} fail, sampling fail'.format(self.obj_in_hand.name, obj.name))
 
                         else:
                             print('PRIMITIVE: place {} ontop {} fail, too far'.format(self.obj_in_hand.name, obj.name))
                     else:
+                        state = p.saveState()
                         result = sample_kinematics('onFloor', self.obj_in_hand, obj, True, use_ray_casting_method=True,
                                                    max_trials=20)
                         if result:
                             print('PRIMITIVE: place {} ontop {} success'.format(self.obj_in_hand.name, obj.name))
-                            self.obj_in_hand = None
+                            pos = self.obj_in_hand.get_position()
+                            orn = self.obj_in_hand.get_orientation()
+                            self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
                         else:
                             print('PRIMITIVE: place {} ontop {} fail, sampling fail'.format(self.obj_in_hand.name,
                                                                                             obj.name))
+                            p.removeState(state)
 
             elif action_primitive == ActionPrimitives.PLACE_INSIDE:
                 if self.obj_in_hand is not None and self.obj_in_hand != obj and isinstance(obj, URDFObject):
                     print('PRIMITIVE:attempt to place {} inside {}'.format(self.obj_in_hand.name, obj.name))
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                        state = p.saveState()
                         result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True,
                                                    max_trials=20)
                         if result:
                             print('PRIMITIVE: place {} inside {} success'.format(self.obj_in_hand.name, obj.name))
-                            self.obj_in_hand = None
+                            pos = self.obj_in_hand.get_position()
+                            orn = self.obj_in_hand.get_orientation()
+                            self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
                         else:
                             print('PRIMITIVE: place {} inside {} fail, sampling fail'.format(self.obj_in_hand.name, obj.name))
+                            p.removeState(state)
                     else:
                         print('PRIMITIVE: place {} inside {} fail, too far'.format(self.obj_in_hand.name, obj.name))
             elif action_primitive == ActionPrimitives.OPEN:
@@ -179,7 +197,6 @@ class BehaviorMPEnv(BehaviorEnv):
         return state, reward, done, info
 
     def grasp_obj(self, obj, use_motion_planning=False):
-        self.obj_in_hand = obj
         if use_motion_planning:
             x,y,_ = obj.get_position()
             z = obj.states[AABB].get_value()[1][2]
@@ -191,14 +208,97 @@ class BehaviorMPEnv(BehaviorEnv):
             maxx = max(x, hand_x) + 0.25
             maxy = max(y, hand_y) + 0.25
             maxz = max(z, hand_z) + 0.25
+
+            state = p.saveState()
             plan = plan_hand_motion_br(self.robots[0], [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
                                        obstacles=self.get_body_ids())
+            p.restoreState(state)
+            p.removeState(state)
+
             if plan is not None:
                 print(plan)
-                dry_run_arm_plan(self.robots[0], plan)
+                self.execute_grasp_plan(plan, obj)
+                self.obj_in_hand = obj
             else:
                 self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
                 #reset hand
+        else:
+            self.obj_in_hand = obj
+
+    def execute_grasp_plan(self, plan, obj):
+        for x,y,z,roll,pitch,yaw in plan:
+            self.robots[0].parts['right_hand'].move([x,y,z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+            time.sleep(0.02)
+            p.stepSimulation()
+
+        x,y,z,roll,pitch,yaw = plan[-1]
+
+        for i in range(15):
+            self.robots[0].parts['right_hand'].move([x, y, z-i * 0.005], p.getQuaternionFromEuler([roll, pitch, yaw]))
+            time.sleep(0.02)
+            p.stepSimulation()
+
+        for _ in range(5):
+            self.robots[0].parts['right_hand'].set_close_fraction(1)
+            self.robots[0].parts['right_hand'].trig_frac = 1
+            self.robots[0].parts['right_hand'].handle_assisted_grasping(np.zeros(28,),
+                                                                        override_ag_data=(obj.body_id[0], -1))
+            p.stepSimulation()
+
+        for x, y, z, roll, pitch, yaw in plan[::-1]:
+            self.robots[0].parts['right_hand'].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+            time.sleep(0.02)
+            p.stepSimulation()
+
+
+    def place_obj(self, original_state, target_pos, target_orn, use_motion_planning=False):
+        pos = self.obj_in_hand.get_position()
+        p.restoreState(original_state)
+        p.removeState(original_state)
+        if not use_motion_planning:
+            for _ in range(50):
+                self.robots[0].parts['right_hand'].set_close_fraction(0)
+                self.robots[0].parts['right_hand'].trig_frac = 0
+                self.robots[0].parts['right_hand'].force_release_obj()
+                p.stepSimulation()
+
+            self.obj_in_hand.set_position_orientation(target_pos, target_orn)
+            self.obj_in_hand = None
+
+        else:
+            x,y,z = target_pos
+            hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
+
+            minx = min(x, hand_x) - 0.25
+            miny = min(y, hand_y) - 0.25
+            minz = min(z, hand_z) - 0.25
+            maxx = max(x, hand_x) + 0.25
+            maxy = max(y, hand_y) + 0.25
+            maxz = max(z, hand_z) + 0.25
+
+            state = p.saveState()
+            obstacles = self.get_body_ids()
+            obstacles.remove(self.obj_in_hand.body_id[0])
+            plan = plan_hand_motion_br(self.robots[0], [x, y, z + 0.1, 0, np.pi * 5 / 6.0, 0],
+                                       ((minx, miny, minz), (maxx, maxy, maxz)),
+                                       obstacles=obstacles) #
+            p.restoreState(state)
+            p.removeState(state)
+
+            if plan:
+                print(plan)
+                for x, y, z, roll, pitch, yaw in plan:
+                    self.robots[0].parts['right_hand'].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+                    time.sleep(0.02)
+                    p.stepSimulation()
+
+                self.obj_in_hand = None
+                for _ in range(50):
+                    self.robots[0].parts['right_hand'].force_release_obj()
+                    self.robots[0].parts['right_hand'].set_close_fraction(0)
+                    self.robots[0].parts['right_hand'].trig_frac = 0
+                    p.stepSimulation()
+
 
     def navigate_to_obj(self, obj, use_motion_planning=False):
         # test agent positions around an obj

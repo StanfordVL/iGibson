@@ -91,7 +91,7 @@ class BehaviorRobot(object):
         # Hands
         self.hand_lin_vel = 0.3
         self.hand_ang_vel = 1
-        self.hand_thresh = 0.6  # distance threshold in meters
+        self.hand_thresh = 3  # distance threshold in meters
 
         # Eye
         self.head_lin_vel = 0.3
@@ -164,6 +164,12 @@ class BehaviorRobot(object):
 
         self.parts['left_hand'].move(left_pos, left_orn)
         self.parts['right_hand'].move(right_pos, right_orn)
+        #
+        # self.parts['right_hand'].set_close_fraction(0)
+        # self.parts['right_hand'].trig_frac = 0
+        #
+        # self.parts['left_hand'].set_close_fraction(0)
+        # self.parts['left_hand'].trig_frac = 0
 
     def get_position(self):
         return self.parts['body'].get_position()
@@ -947,7 +953,7 @@ class BRHand(BRHandBase):
 
         return ag_bid, ag_link
 
-    def handle_assisted_grasping(self, action):
+    def handle_assisted_grasping(self, action, override_ag_data=None):
         """
         Handles assisted grasping.
         :param action: numpy array of actions.
@@ -975,7 +981,10 @@ class BRHand(BRHandBase):
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
             if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > self.trig_frac_thresh:
-                ag_data = self.calculate_ag_object()
+                if override_ag_data is not None:
+                    ag_data = override_ag_data
+                else:
+                    ag_data = self.calculate_ag_object()
                 # Return early if no AG-valid object can be grasped
                 if not ag_data:
                     return
@@ -1041,6 +1050,16 @@ class BRHand(BRHandBase):
                 self.should_freeze_joints = False
                 self.should_execute_release = True
                 self.release_start_time = self.sim.frame_count
+
+    def force_release_obj(self):
+        #self.set_hand_coll_filter(self.object_in_hand, True)
+        self.object_in_hand = None
+        self.should_execute_release = False
+        self.should_freeze_joints = False
+        self.release_start_time = None
+        if self.obj_cid:
+            p.removeConstraint(self.obj_cid)
+            self.obj_cid = None
 
     def get_constraint_violation(self, cid):
         parent_body, parent_link, child_body, child_link, _, _, joint_position_parent, joint_position_child \
@@ -1109,6 +1128,16 @@ class BRHand(BRHandBase):
             target_pos = self.open_pos + interp_frac
             p.setJointMotorControl2(self.body_id, joint_index, p.POSITION_CONTROL,
                                     targetPosition=target_pos, force=self.hand_close_force)
+
+    def set_position_orientation(self, pos, orn):
+        original_pos, original_orn = self.get_position_orientation()
+        super(BRHand, self).set_position_orientation(pos, orn)
+        if self.object_in_hand is not None:
+            inv_original_pos, inv_original_orn = p.invertTransform(
+                original_pos, original_orn)
+            local_pos, local_orn = p.multiplyTransforms(inv_original_pos, inv_original_orn, *p.getBasePositionAndOrientation(self.object_in_hand))
+            new_pos, new_orn = p.multiplyTransforms(pos, orn, local_pos, local_orn)
+            p.resetBasePositionAndOrientation(self.object_in_hand, new_pos, new_orn)
 
 
 class BRGripper(BRHandBase):
