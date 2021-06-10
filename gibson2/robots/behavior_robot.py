@@ -887,7 +887,7 @@ class BRHand(BRHandBase):
 
         return ray_data
 
-    def find_hand_contacts(self):
+    def find_hand_contacts(self, find_all=False):
         """
         Calculates the body ids and links that have force applied to them by the VR hand.
         """
@@ -900,7 +900,7 @@ class BRHand(BRHandBase):
         for i in range(len(cpts)):
             cpt = cpts[i]
             # Don't attach to links that are not finger tip
-            if cpt[3] not in self.finger_tip_link_idxs:
+            if (not find_all) and (cpt[3] not in self.finger_tip_link_idxs):
                 continue
             c_bid = cpt[2]
             c_link = cpt[4]
@@ -976,18 +976,23 @@ class BRHand(BRHandBase):
                 self.release_start_time = None
             else:
                 # Can't pick-up object while it is being released
-                return
+                return False
 
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
             if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > self.trig_frac_thresh:
                 if override_ag_data is not None:
                     ag_data = override_ag_data
+                    force_data = self.find_hand_contacts(find_all=True)
+                    #print(ag_data, force_data)
+                    #from IPython import embed; embed()
+                    if not force_data or ag_data not in force_data:
+                        return False
                 else:
                     ag_data = self.calculate_ag_object()
                 # Return early if no AG-valid object can be grasped
                 if not ag_data:
-                    return
+                    return False
                 ag_bid, ag_link = ag_data
 
                 # Different pos/orn calculations for base/links
@@ -1039,6 +1044,7 @@ class BRHand(BRHandBase):
                 # Disable collisions while picking things up
                 self.set_hand_coll_filter(ag_bid, False)
                 self.gen_freeze_vals()
+                return True
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
             if (self.force_release or
@@ -1051,9 +1057,12 @@ class BRHand(BRHandBase):
                 self.should_execute_release = True
                 self.release_start_time = self.sim.frame_count
 
+            return False
+
     def force_release_obj(self):
-        #self.set_hand_coll_filter(self.object_in_hand, True)
-        self.object_in_hand = None
+        if self.object_in_hand:
+            self.set_hand_coll_filter(self.object_in_hand, True)
+            self.object_in_hand = None
         self.should_execute_release = False
         self.should_freeze_joints = False
         self.release_start_time = None

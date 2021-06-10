@@ -108,15 +108,12 @@ class BehaviorMPEnv(BehaviorEnv):
     def step(self, action):
         obj_list_id = int(action) % self.num_objects
         action_primitive = int(action) // self.num_objects
-        if action_primitive == 3 or action_primitive == 2 or self.obj_in_hand is not None:
-            action_primitive = 3
-            obj_list_id = 2
 
         # from IPython import embed; embed()
         obj = self.task_relevant_objects[obj_list_id]
         if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
-                if self.navigate_to_obj(obj, use_motion_planning=False):
+                if self.navigate_to_obj(obj, use_motion_planning=self.use_motion_planning):
                     print('PRIMITIVE: navigate to {} success'.format(obj.name))
                 else:
                     print('PRIMITIVE: navigate to {} fail'.format(obj.name))
@@ -216,9 +213,14 @@ class BehaviorMPEnv(BehaviorEnv):
             p.removeState(state)
 
             if plan is not None:
-                print(plan)
-                self.execute_grasp_plan(plan, obj)
-                self.obj_in_hand = obj
+                grasp_success = self.execute_grasp_plan(plan, obj)
+                if grasp_success:
+                    self.obj_in_hand = obj
+                else:
+                    for _ in range(5):
+                        self.robots[0].parts['right_hand'].set_close_fraction(0)
+                        self.robots[0].parts['right_hand'].trig_frac = 0
+                        p.stepSimulation()
             else:
                 self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
                 #reset hand
@@ -228,27 +230,28 @@ class BehaviorMPEnv(BehaviorEnv):
     def execute_grasp_plan(self, plan, obj):
         for x,y,z,roll,pitch,yaw in plan:
             self.robots[0].parts['right_hand'].move([x,y,z], p.getQuaternionFromEuler([roll, pitch, yaw]))
-            time.sleep(0.02)
             p.stepSimulation()
 
         x,y,z,roll,pitch,yaw = plan[-1]
 
-        for i in range(15):
+
+        for i in range(25):
             self.robots[0].parts['right_hand'].move([x, y, z-i * 0.005], p.getQuaternionFromEuler([roll, pitch, yaw]))
-            time.sleep(0.02)
             p.stepSimulation()
 
-        for _ in range(5):
+        for _ in range(10):
             self.robots[0].parts['right_hand'].set_close_fraction(1)
             self.robots[0].parts['right_hand'].trig_frac = 1
-            self.robots[0].parts['right_hand'].handle_assisted_grasping(np.zeros(28,),
-                                                                        override_ag_data=(obj.body_id[0], -1))
             p.stepSimulation()
+
+        grasp_success = self.robots[0].parts['right_hand'].handle_assisted_grasping(np.zeros(28,),
+                                                                    override_ag_data=(obj.body_id[0], -1))
 
         for x, y, z, roll, pitch, yaw in plan[::-1]:
             self.robots[0].parts['right_hand'].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
-            time.sleep(0.02)
             p.stepSimulation()
+
+        return grasp_success
 
 
     def place_obj(self, original_state, target_pos, target_orn, use_motion_planning=False):
@@ -286,10 +289,8 @@ class BehaviorMPEnv(BehaviorEnv):
             p.removeState(state)
 
             if plan:
-                print(plan)
                 for x, y, z, roll, pitch, yaw in plan:
                     self.robots[0].parts['right_hand'].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
-                    time.sleep(0.02)
                     p.stepSimulation()
 
                 self.obj_in_hand = None
@@ -385,7 +386,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         env.reset()
-        #env.robots[0].set_position_orientation([0,0,0], [0,0,0,1])
+        env.robots[0].set_position_orientation([0,0,0.7], [0,0,0,1])
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()
             state, reward, done, info = env.step(action)
