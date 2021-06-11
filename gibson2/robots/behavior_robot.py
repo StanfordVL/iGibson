@@ -415,8 +415,10 @@ class BRBody(ArticulatedObject):
             raise ValueError(
                 'activate_constraints is called but the constraint has already been already activated: {}'.format(self.movement_cid))
 
-        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1, p.JOINT_FIXED,
-                                               [0, 0, 0], [0, 0, 0], self.get_position())
+        self.movement_cid = p.createConstraint(self.body_id, -1, -1, -1,
+                                               p.JOINT_FIXED, [0, 0, 0],
+                                               [0, 0, 0], self.get_position(),
+                                               [0, 0, 0, 1], self.get_orientation())
 
     def set_body_collision_filters(self):
         """
@@ -977,7 +979,8 @@ class BRHand(BRHandBase):
                     return
                 ag_bid, ag_link = ag_data
 
-                child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
+                child_frame_pos, child_frame_orn = self.get_child_frame_pose(
+                    ag_bid, ag_link)
 
                 # If we grab a child link of a URDF, create a p2p joint
                 if ag_link == -1:
@@ -1112,9 +1115,9 @@ class BRHand(BRHandBase):
         # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
         child_frame_pos, child_frame_orn = \
             p.multiplyTransforms(inv_body_pos,
-                                    inv_body_orn,
-                                    link_pos,
-                                    link_orn)
+                                 inv_body_orn,
+                                 link_pos,
+                                 link_orn)
 
         return child_frame_pos, child_frame_orn
 
@@ -1157,7 +1160,8 @@ class BRHand(BRHandBase):
         self.object_in_hand = dump['object_in_hand']
         self.release_counter = dump['release_counter']
         self.should_freeze_joints = dump['should_freeze_joints']
-        self.freeze_vals = {int(key): val for key, val in dump['freeze_vals'].items()}
+        self.freeze_vals = {int(key): val for key,
+                            val in dump['freeze_vals'].items()}
         self.obj_cid = dump['obj_cid']
         self.obj_cid_params = dump['obj_cid_params']
         if self.obj_cid is not None:

@@ -14,6 +14,8 @@ import types
 import gym.spaces
 import pybullet as p
 from IPython import embed
+import logging
+import os
 
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
@@ -21,6 +23,7 @@ from gibson2.utils.checkpoint_utils import load_checkpoint
 from gibson2.utils.utils import l2_distance
 from gibson2.object_states import Touching
 from gibson2.robots.behavior_robot import PALM_LINK_INDEX
+from gibson2.object_states.factory import get_state_from_name
 
 
 class BehaviorEnv(iGibsonEnv):
@@ -66,6 +69,9 @@ class BehaviorEnv(iGibsonEnv):
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
+
+        # Make sure different parallel environments will have different random seeds
+        np.random.seed(os.getpid())
 
     def load_action_space(self):
         """
@@ -137,6 +143,8 @@ class BehaviorEnv(iGibsonEnv):
             'predicate_reward_weight', 1.0)
         self.distance_reward_weight = self.config.get(
             'distance_reward_weight', 1.0)
+
+        self.sample_objs = self.config.get('sample_objs', None)
 
     def load_ig_task_setup(self):
         if self.config['scene'] == 'empty':
@@ -423,6 +431,15 @@ class BehaviorEnv(iGibsonEnv):
 
         return state
 
+    def reset_scene_and_agent(self):
+        if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
+            load_checkpoint(
+                self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
+        else:
+            self.task.reset_scene(snapshot_id=self.task.initial_state)
+        # set the constraints to the current poses
+        self.robots[0].update(np.zeros(28))
+
     def reset(self, resample_objects=False):
         """
         Reset episode
@@ -433,15 +450,30 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene(self)
             self.task.reset_agent(self)
         else:
-            if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
-                load_checkpoint(
-                    self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
-            else:
-                self.task.reset_scene(snapshot_id=self.task.initial_state)
+            self.reset_scene_and_agent()
 
         if self.magic_grasping_cid is not None:
             p.removeConstraint(self.magic_grasping_cid)
             self.magic_grasping_cid = None
+
+        if self.sample_objs is not None:
+            self.sample_objs_poses = []
+            for predicate, objA, objB in self.sample_objs:
+                for _ in range(10):
+                    success = \
+                        self.task.object_scope[objA].states[get_state_from_name(predicate)].set_value(
+                            self.task.object_scope[objB], new_value=True, use_ray_casting_method=True)
+                    if success:
+                        break
+                assert success, 'Sampling failed: {} {} {}'.format(
+                    predicate, objA, objB)
+                self.sample_objs_poses.append(
+                    self.task.object_scope[objA].get_position_orientation())
+
+            self.reset_scene_and_agent()
+
+            for (_, objA, _), pose in zip(self.sample_objs, self.sample_objs_poses):
+                self.task.object_scope[objA].set_position_orientation(*pose)
 
         self.simulator.sync()
         state = self.get_state()
