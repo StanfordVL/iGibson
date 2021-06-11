@@ -336,13 +336,26 @@ class BehaviorMPEnv(BehaviorEnv):
                     break
         #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
 
+
         if valid_position is not None:
+            box_planning_domain = True
+            if box_planning_domain:
+                target_x = valid_position[0][0]
+                target_y = valid_position[0][1]
+                x = original_position[0]
+                y = original_position[1]
+                minx = min(x, target_x) - 1
+                miny = min(y, target_y) - 1
+                maxx = max(x, target_x) + 1
+                maxy = max(y, target_y) + 1
+
+
             if use_motion_planning:
                 self.robots[0].set_position_orientation(original_position, original_orientation)
                 #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
                 plan = plan_base_motion_br(robot=self.robots[0],
                                            end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
-                                           base_limits=[(-5,-5), (5,5)],
+                                           base_limits=[(minx,miny), (maxx,maxy)],
                                            obstacles=self.get_body_ids())
                 #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
 
@@ -361,6 +374,15 @@ class BehaviorMPEnv(BehaviorEnv):
             self.robots[0].set_position_orientation(original_position, original_orientation)
             return False
 
+
+    def reset(self, resample_objects=False):
+        obs = super(BehaviorMPEnv, self).reset(resample_objects=resample_objects)
+        self.obj_in_hand = None
+        self.robots[0].obj_in_hand = None
+        self.robots[0].parts['right_hand'].set_close_fraction(0)
+        self.robots[0].parts['right_hand'].trig_frac = 0
+        self.robots[0].parts['right_hand'].force_release_obj()
+        return obs
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -384,6 +406,7 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         env.reset()
+
         env.robots[0].set_position_orientation([0,0,0.7], [0,0,0,1])
         for i in range(1000):  # 10 seconds
             action = env.action_space.sample()
