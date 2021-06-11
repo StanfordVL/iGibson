@@ -13,6 +13,7 @@ from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2.utils.checkpoint_utils import save_internal_states, load_internal_states
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -75,39 +76,17 @@ class iGTNTask(TaskNetTask):
                                  online_sampling=online_sampling,
                                  )
         self.initial_state = self.save_scene()
-        self.task_obs_dim = len(self.object_scope) * 7
+        self.task_obs_dim = len(self.object_scope) * 8 + 6
         return result
 
     def save_scene(self):
         snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = {
-            'object_states': {},
-            'agent_states': {},
-        }
-        for obj_name, obj in self.scene.objects_by_name.items():
-            self.state_history[snapshot_id]['object_states'][obj_name] = \
-                obj.dump_state()
-
-        for part_name, part in self.agent.parts.items():
-            self.state_history[snapshot_id]['agent_states'][part_name] = {}
-            for state_name in AGENT_INTERNAL_STATE_NAMES:
-                if hasattr(part, state_name):
-                    self.state_history[snapshot_id]['agent_states'][part_name][state_name] = \
-                        getattr(part, state_name)
-
+        self.state_history[snapshot_id] = save_internal_states(self.simulator)
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
         p.restoreState(snapshot_id)
-        for obj_name, obj in self.scene.objects_by_name.items():
-            obj.load_state(
-                self.state_history[snapshot_id]['object_states'][obj_name])
-
-        for part_name, part in self.agent.parts.items():
-            for state_name in AGENT_INTERNAL_STATE_NAMES:
-                if hasattr(part, state_name):
-                    setattr(
-                        part, state_name, self.state_history[snapshot_id]['agent_states'][part_name][state_name])
+        load_internal_states(self.simulator, self.state_history[snapshot_id])
 
     def check_scene(self):
         feedback = {
@@ -312,9 +291,11 @@ class iGTNTask(TaskNetTask):
 
                 model = np.random.choice(model_choices)
 
-                # for "collecting aluminum cans", we need pop cans (not bottles)
-                if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
+                # for "collecting aluminum cans", we need pop cans (not bottles) 
+                if category == 'pop' and self.atus_activity in ['collecting_aluminum_cans']:
                     model = np.random.choice([str(i) for i in range(40, 46)])
+                if category == 'spoon' and self.atus_activity in ['polishing_silver']:
+                    model = np.random.choice([str(i) for i in [2, 5, 6]])
 
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
@@ -832,7 +813,6 @@ class iGTNTask(TaskNetTask):
             num_trials = 10
             for _ in range(num_trials):
                 success = condition.sample(binary_state=positive)
-                # This should always succeed because it has succeeded before.
                 if success:
                     break
             if not success:
@@ -858,10 +838,14 @@ class iGTNTask(TaskNetTask):
                         continue
                     # Sample conditions that involve the current batch of objects
                     if condition.body[0] in cur_batch:
-                        success = condition.sample(binary_state=positive)
+                        num_trials = 100
+                        for _ in range(num_trials):
+                            success = condition.sample(binary_state=positive)
+                            if success:
+                                break
                         if not success:
-                            error_msg = 'Sampleable object conditions failed: {}'.format(
-                                condition.body)
+                            error_msg = 'Sampleable object conditions failed: {} {}'.format(
+                                condition.STATE_NAME, condition.body)
                             logging.warning(error_msg)
                             feedback['init_success'] = 'no'
                             feedback['init_feedback'] = error_msg
@@ -1137,13 +1121,20 @@ class iGTNTask(TaskNetTask):
     def get_task_obs(self, env):
         state = np.zeros((self.task_obs_dim))
         i = 0
+
+        dim_per_obj = 8
         for k, v in self.object_scope.items():
             if isinstance(v, URDFObject):
-                state[i * 7: i * 7 + 3] = np.array(v.get_position())
-                state[i * 7 + 3: i * 7 + 6] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
-                if hasattr(env, "obj_in_hand") and env.obj_in_hand == v:
-                    state[i * 7 + 6] = 1.0
+                state[i * dim_per_obj: i * dim_per_obj + 3] = np.array(v.get_position())
+                state[i * dim_per_obj + 3: i * dim_per_obj + 6] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
+                if env.robots[0].parts['left_hand'].object_in_hand == v.get_body_id():
+                    state[i * dim_per_obj + 6] = 1.0
+                if env.robots[0].parts['right_hand'].object_in_hand == v.get_body_id():
+                    state[i * dim_per_obj + 7] = 1.0
             i += 1
+        state[i * dim_per_obj: i * dim_per_obj + 3] = env.robots[0].get_position()
+        state[i * dim_per_obj + 3: i * dim_per_obj + 6] = np.array(p.getEulerFromQuaternion(env.robots[0].get_orientation()))
+
         return state
 
 
