@@ -13,7 +13,7 @@ from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS,
     PI
 import pybullet as p
 import time
-
+from gibson2.objects.articulated_object import URDFObject
 
 def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[], direct=False,
                         weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
@@ -113,7 +113,7 @@ def get_hand_distance_fn(weights=1 * np.ones(6)):
     return fn
 
 
-def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[], direct=False,
+def plan_hand_motion_br(robot: BehaviorRobot, obj_in_hand: URDFObject, end_conf, hand_limits, obstacles=[], direct=False,
                         weights=(1,1,1,5,5,5), resolutions=0.02 * np.ones(6),
                         max_distance=MAX_DISTANCE, **kwargs):
     def sample_fn():
@@ -123,6 +123,16 @@ def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[
 
     difference_fn = get_hand_difference_fn()
     distance_fn = get_hand_distance_fn(weights=weights)
+
+    pos = robot.parts['right_hand'].get_position()
+    orn = robot.parts['right_hand'].get_orientation()
+    rpy = p.getEulerFromQuaternion(orn)
+    start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
+
+    if obj_in_hand is not None:
+        obj_pos = obj_in_hand.get_position()
+        obj_orn = obj_in_hand.get_orientation()
+        local_pos, local_orn = p.multiplyTransforms(*p.invertTransform(pos, orn), obj_pos, obj_orn)
 
     def extend_fn(q1, q2):
         steps = np.abs(np.divide(difference_fn(q2, q1), resolutions))
@@ -138,12 +148,19 @@ def plan_hand_motion_br(robot: BehaviorRobot, end_conf, hand_limits, obstacles=[
         # set_base_values(body, q)
         robot.parts['right_hand'].set_position_orientation([q[0], q[1], q[2]],
                                                            p.getQuaternionFromEuler([q[3], q[4], q[5]]))
-        return any(
+        if obj_in_hand is not None:
+            obj_in_hand.set_position_orientation(*p.multiplyTransforms([q[0], q[1], q[2]],
+                                                           p.getQuaternionFromEuler([q[3], q[4], q[5]]), local_pos, local_orn))
+
+        collision = any(
             pairwise_collision(robot.parts['right_hand'].body_id, obs, max_distance=max_distance) for obs in obstacles)
 
-    pos = robot.parts['right_hand'].get_position()
-    rpy = p.getEulerFromQuaternion(robot.parts['right_hand'].get_orientation())
-    start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
+        if obj_in_hand is not None:
+            collision = collision or any(
+                pairwise_collision(obj_in_hand.body_id[0], obs, max_distance=max_distance) for obs in obstacles)
+
+        return collision
+
     if collision_fn(start_conf):
         # print("Warning: initial configuration is in collision")
         return None

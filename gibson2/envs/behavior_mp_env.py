@@ -45,8 +45,8 @@ def detect_collision(bodyA, object_in_hand=None):
 
 def detect_robot_collision(robot):
     object_in_hand = robot.parts['right_hand'].object_in_hand
-    return detect_collision(robot.parts['body'].body_id, object_in_hand) or \
-           detect_collision(robot.parts['left_hand'].body_id, object_in_hand) or \
+    return detect_collision(robot.parts['body'].body_id) or \
+           detect_collision(robot.parts['left_hand'].body_id) or \
            detect_collision(robot.parts['right_hand'].body_id, object_in_hand)
 
 class BehaviorMPEnv(BehaviorEnv):
@@ -207,7 +207,7 @@ class BehaviorMPEnv(BehaviorEnv):
             maxz = max(z, hand_z) + 0.25
 
             state = p.saveState()
-            plan = plan_hand_motion_br(self.robots[0], [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
+            plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
                                        obstacles=self.get_body_ids())
             p.restoreState(state)
             p.removeState(state)
@@ -282,7 +282,7 @@ class BehaviorMPEnv(BehaviorEnv):
             state = p.saveState()
             obstacles = self.get_body_ids()
             obstacles.remove(self.obj_in_hand.body_id[0])
-            plan = plan_hand_motion_br(self.robots[0], [x, y, z + 0.1, 0, np.pi * 5 / 6.0, 0],
+            plan = plan_hand_motion_br(self.robots[0], self.obj_in_hand, [x, y, z + 0.1, 0, np.pi * 5 / 6.0, 0],
                                        ((minx, miny, minz), (maxx, maxy, maxz)),
                                        obstacles=obstacles) #
             p.restoreState(state)
@@ -309,7 +309,6 @@ class BehaviorMPEnv(BehaviorEnv):
         original_orientation = self.robots[0].get_orientation()
 
         #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
-
         if isinstance(obj, URDFObject):
             distance_to_try = [0.6, 1.2, 1.8, 2.4]
             obj_pos = obj.get_position()
@@ -341,7 +340,6 @@ class BehaviorMPEnv(BehaviorEnv):
             if use_motion_planning:
                 self.robots[0].set_position_orientation(original_position, original_orientation)
                 #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
-
                 plan = plan_base_motion_br(robot=self.robots[0],
                                            end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
                                            base_limits=[(-5,-5), (5,5)],
