@@ -475,7 +475,7 @@ class BehaviorEnv(iGibsonEnv):
             for (_, objA, _), pose in zip(self.sample_objs, self.sample_objs_poses):
                 self.task.object_scope[objA].set_position_orientation(*pose)
 
-        self.simulator.sync()
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 
