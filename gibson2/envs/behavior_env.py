@@ -134,7 +134,8 @@ class BehaviorEnv(iGibsonEnv):
         self.reset_checkpoint_dir = self.config.get(
             'reset_checkpoint_dir', None)
 
-        self.task_relevant_objs = self.config.get('task_relevant_objs', None)
+        self.reward_shaping_relevant_objs = self.config.get(
+            'reward_shaping_relevant_objs', None)
         self.magic_grasping_cid = None
 
         self.predicate_reward_weight = self.config.get(
@@ -336,14 +337,15 @@ class BehaviorEnv(iGibsonEnv):
             self.predicate_reward_weight
         potential += predicate_potential
 
-        if self.task_relevant_objs is not None:
-            task_relevant_objs = [self.robots[0].parts['right_hand']]
-            for obj_name in self.task_relevant_objs:
-                task_relevant_objs.append(self.task.object_scope[obj_name])
+        if self.reward_shaping_relevant_objs is not None:
+            reward_shaping_relevant_objs = [self.robots[0].parts['right_hand']]
+            for obj_name in self.reward_shaping_relevant_objs:
+                reward_shaping_relevant_objs.append(
+                    self.task.object_scope[obj_name])
             distance = 0.0
-            for i in range(len(task_relevant_objs) - 1):
-                distance += l2_distance(task_relevant_objs[i].get_position(),
-                                        task_relevant_objs[i+1].get_position())
+            for i in range(len(reward_shaping_relevant_objs) - 1):
+                distance += l2_distance(reward_shaping_relevant_objs[i].get_position(),
+                                        reward_shaping_relevant_objs[i+1].get_position())
             distance_potential = -distance * self.distance_reward_weight
             potential += distance_potential
 
@@ -374,11 +376,11 @@ class BehaviorEnv(iGibsonEnv):
         return child_frame_pos, child_frame_orn
 
     def check_magic_grasping(self):
-        if self.task_relevant_objs is None:
+        if self.reward_shaping_relevant_objs is None:
             return
         if self.magic_grasping_cid is not None:
             return
-        target_obj = self.task.object_scope[self.task_relevant_objs[0]]
+        target_obj = self.task.object_scope[self.reward_shaping_relevant_objs[0]]
         if self.robots[0].parts['right_hand'].states[Touching].get_value(target_obj):
             child_frame_pos, child_frame_orn = self.get_child_frame_pose(
                 target_obj.get_body_id(), -1)

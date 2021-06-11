@@ -81,4 +81,4 @@ body_speed: 0.3
 # texture scale
 texture_scale: 0.5
 
-task_relevant_objs: ['notebook.n.01_1']
+reward_shaping_relevant_objs: ['notebook.n.01_1']
