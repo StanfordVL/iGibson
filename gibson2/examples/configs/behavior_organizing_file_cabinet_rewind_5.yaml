@@ -1,5 +1,5 @@
 # scene
-scene_id: Rs_int
+scene_id: Beechwood_0_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -14,13 +14,15 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: pull_figure_chair_no_clutter
+task: organizing_file_cabinet
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
+reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/organizing_file_cabinet_0_Beechwood_0_int_2021-06-02_19-12-38_checkpoints
+reset_checkpoint_idx: 3150
 
 # reward
 reward_type: l2
@@ -33,7 +35,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.36  # body width
-max_step: 200
+max_step: 150
 max_collisions_allowed: 500
 
 # misc config
@@ -42,16 +44,18 @@ collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot lin
 
 # sensor spec
 output: [rgb, depth, proprioception]
+#output: [task_obs, proprioception]
+
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 512
-image_height: 512
-vertical_fov: 90
+image_width: 128
+image_height: 128
+vertical_fov: 120
 # depth
-depth_low: 0.35
-depth_high: 3.0
+depth_low: 0.0
+depth_high: 10.0
 # scan
 # SICK TIM571 scanning range finder
 # https://docs.fetchrobotics.com/robot_hardware.html
@@ -76,3 +80,5 @@ hand_threshold: 0.4
 hand_speed: 0.3
 body_speed: 0.3
 
+# texture scale
+texture_scale: 0.5

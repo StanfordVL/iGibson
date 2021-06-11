@@ -14,10 +14,16 @@ import types
 import gym.spaces
 import pybullet as p
 from IPython import embed
+import logging
+import os
 
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.utils.checkpoint_utils import load_checkpoint
+from gibson2.utils.utils import l2_distance
+from gibson2.object_states import Touching
+from gibson2.robots.behavior_robot import PALM_LINK_INDEX
+from gibson2.object_states.factory import get_state_from_name
 
 
 class BehaviorEnv(iGibsonEnv):
@@ -36,7 +42,8 @@ class BehaviorEnv(iGibsonEnv):
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter='navigation'
+        action_filter='navigation',
+        instance_id=0,
     ):
         """
         :param config_file: config_file path
@@ -49,6 +56,7 @@ class BehaviorEnv(iGibsonEnv):
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
         self.action_filter = action_filter
+        self.instance_id = instance_id
         super(BehaviorEnv, self).__init__(config_file=config_file,
                                           scene_id=scene_id,
                                           mode=mode,
@@ -59,6 +67,9 @@ class BehaviorEnv(iGibsonEnv):
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
+
+        # Make sure different parallel environments will have different random seeds
+        np.random.seed(os.getpid())
 
     def load_action_space(self):
         """
@@ -76,6 +87,11 @@ class BehaviorEnv(iGibsonEnv):
                                                dtype=np.float32)
         elif self.action_filter == 'tabletop_manipulation':
             self.action_space = gym.spaces.Box(shape=(7,),
+                                               low=-1.0,
+                                               high=1.0,
+                                               dtype=np.float32)
+        elif self.action_filter == 'magic_grasping':
+            self.action_space = gym.spaces.Box(shape=(6,),
                                                low=-1.0,
                                                high=1.0,
                                                dtype=np.float32)
@@ -99,7 +115,7 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
+                'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
                 # 'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
             }
         tasknet.set_backend("iGibson")
@@ -117,6 +133,17 @@ class BehaviorEnv(iGibsonEnv):
         self.reset_checkpoint_idx = self.config.get('reset_checkpoint_idx', -1)
         self.reset_checkpoint_dir = self.config.get(
             'reset_checkpoint_dir', None)
+
+        self.reward_shaping_relevant_objs = self.config.get(
+            'reward_shaping_relevant_objs', None)
+        self.magic_grasping_cid = None
+
+        self.predicate_reward_weight = self.config.get(
+            'predicate_reward_weight', 1.0)
+        self.distance_reward_weight = self.config.get(
+            'distance_reward_weight', 1.0)
+
+        self.sample_objs = self.config.get('sample_objs', None)
 
     def load_ig_task_setup(self):
         if self.config['scene'] == 'empty':
@@ -258,18 +285,20 @@ class BehaviorEnv(iGibsonEnv):
             action = action * 0.05
             new_action = np.zeros((28,))
             new_action[20:27] = action[:7]
+        elif self.action_filter == 'magic_grasping':
+            # Note: only using right hand
+            self.robots[0].hand_thresh = 0.8
+            action = action * 0.05
+            new_action = np.zeros((28,))
+            new_action[20:26] = action[:6]
         else:
             new_action = action
 
         self.robots[0].update(new_action)
         self.simulator.step()
 
-        # Compute the initial reward potential here instead of during reset
-        # because if an intermediate checkpoint is loaded, we need step the
-        # simulator before calling task.check_success
-        if self.current_step == 0:
-            self.reward_potential = len(
-                self.task.check_success()[1]['satisfied'])
+        if self.action_filter == 'magic_grasping':
+            self.check_magic_grasping()
 
         state = self.get_state()
         info = {}
@@ -280,6 +309,13 @@ class BehaviorEnv(iGibsonEnv):
             self.task.step(self)
         else:
             done, satisfied_predicates = self.task.check_success()
+            # Compute the initial reward potential here instead of during reset
+            # because if an intermediate checkpoint is loaded, we need step the
+            # simulator before calling task.check_success
+            if self.current_step == 0:
+                self.reward_potential = self.get_potential(
+                    satisfied_predicates)
+
             if self.current_step >= self.config['max_step']:
                 done = True
             reward, info = self.get_reward(satisfied_predicates)
@@ -294,8 +330,77 @@ class BehaviorEnv(iGibsonEnv):
 
         return state, reward, done, info
 
+    def get_potential(self, satisfied_predicates):
+        potential = 0.0
+
+        predicate_potential = len(satisfied_predicates['satisfied']) * \
+            self.predicate_reward_weight
+        potential += predicate_potential
+
+        if self.reward_shaping_relevant_objs is not None:
+            reward_shaping_relevant_objs = [self.robots[0].parts['right_hand']]
+            for obj_name in self.reward_shaping_relevant_objs:
+                reward_shaping_relevant_objs.append(
+                    self.task.object_scope[obj_name])
+            distance = 0.0
+            for i in range(len(reward_shaping_relevant_objs) - 1):
+                distance += l2_distance(reward_shaping_relevant_objs[i].get_position(),
+                                        reward_shaping_relevant_objs[i+1].get_position())
+            distance_potential = -distance * self.distance_reward_weight
+            potential += distance_potential
+
+        return potential
+
+    def get_child_frame_pose(self, ag_bid, ag_link):
+        # Different pos/orn calculations for base/links
+        if ag_link == -1:
+            body_pos, body_orn = p.getBasePositionAndOrientation(
+                ag_bid)
+        else:
+            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
+
+        # Get inverse world transform of body frame
+        inv_body_pos, inv_body_orn = p.invertTransform(
+            body_pos, body_orn)
+        link_state = p.getLinkState(
+            self.robots[0].parts['right_hand'].get_body_id(), PALM_LINK_INDEX)
+        link_pos = link_state[0]
+        link_orn = link_state[1]
+        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+        child_frame_pos, child_frame_orn = \
+            p.multiplyTransforms(inv_body_pos,
+                                 inv_body_orn,
+                                 link_pos,
+                                 link_orn)
+
+        return child_frame_pos, child_frame_orn
+
+    def check_magic_grasping(self):
+        if self.reward_shaping_relevant_objs is None:
+            return
+        if self.magic_grasping_cid is not None:
+            return
+        target_obj = self.task.object_scope[self.reward_shaping_relevant_objs[0]]
+        if self.robots[0].parts['right_hand'].states[Touching].get_value(target_obj):
+            child_frame_pos, child_frame_orn = self.get_child_frame_pose(
+                target_obj.get_body_id(), -1)
+            self.magic_grasping_cid = \
+                p.createConstraint(
+                    parentBodyUniqueId=self.robots[0].parts['right_hand'].get_body_id(
+                    ),
+                    parentLinkIndex=PALM_LINK_INDEX,
+                    childBodyUniqueId=target_obj.get_body_id(),
+                    childLinkIndex=-1,
+                    jointType=p.JOINT_FIXED,
+                    jointAxis=(0, 0, 0),
+                    parentFramePosition=(0, 0, 0),
+                    childFramePosition=child_frame_pos,
+                    childFrameOrientation=child_frame_orn
+                )
+            p.changeConstraint(self.magic_grasping_cid, maxForce=10000)
+
     def get_reward(self, satisfied_predicates):
-        new_potential = len(satisfied_predicates['satisfied'])
+        new_potential = self.get_potential(satisfied_predicates)
         reward = new_potential - self.reward_potential
         self.reward_potential = new_potential
         return reward, {"satisfied_predicates": satisfied_predicates}
@@ -326,6 +431,15 @@ class BehaviorEnv(iGibsonEnv):
 
         return state
 
+    def reset_scene_and_agent(self):
+        if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
+            load_checkpoint(
+                self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
+        else:
+            self.task.reset_scene(snapshot_id=self.task.initial_state)
+        # set the constraints to the current poses
+        self.robots[0].update(np.zeros(28))
+
     def reset(self, resample_objects=False):
         """
         Reset episode
@@ -336,13 +450,32 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene(self)
             self.task.reset_agent(self)
         else:
-            if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
-                load_checkpoint(
-                    self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
-            else:
-                self.task.reset_scene(snapshot_id=self.task.initial_state)
+            self.reset_scene_and_agent()
 
-        self.simulator.sync()
+        if self.magic_grasping_cid is not None:
+            p.removeConstraint(self.magic_grasping_cid)
+            self.magic_grasping_cid = None
+
+        if self.sample_objs is not None:
+            self.sample_objs_poses = []
+            for predicate, objA, objB in self.sample_objs:
+                for _ in range(10):
+                    success = \
+                        self.task.object_scope[objA].states[get_state_from_name(predicate)].set_value(
+                            self.task.object_scope[objB], new_value=True, use_ray_casting_method=True)
+                    if success:
+                        break
+                assert success, 'Sampling failed: {} {} {}'.format(
+                    predicate, objA, objB)
+                self.sample_objs_poses.append(
+                    self.task.object_scope[objA].get_position_orientation())
+
+            self.reset_scene_and_agent()
+
+            for (_, objA, _), pose in zip(self.sample_objs, self.sample_objs_poses):
+                self.task.object_scope[objA].set_position_orientation(*pose)
+
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 
@@ -361,16 +494,24 @@ if __name__ == '__main__':
                         choices=['headless', 'gui', 'iggui', 'pbgui'],
                         default='gui',
                         help='which mode for simulation (default: headless)')
+    parser.add_argument('--action_filter',
+                        '-af',
+                        choices=['navigation', 'tabletop_manipulation',
+                                 'magic_grasping', 'mobile_manipulation',
+                                 'all'],
+                        default='mobile_manipulation',
+                        help='which action filter')
     args = parser.parse_args()
 
     env = BehaviorEnv(config_file=args.config,
                       mode=args.mode,
                       action_timestep=1.0 / 10.0,
                       physics_timestep=1.0 / 240.0,
-                      action_filter='mobile_manipulation')
+                      action_filter=args.action_filter)
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))
+        embed()
         start = time.time()
         env.reset()
         for i in range(1000):  # 10 seconds
