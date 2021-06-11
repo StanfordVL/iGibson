@@ -43,7 +43,7 @@ class BehaviorEnv(iGibsonEnv):
         automatic_reset=False,
         seed=0,
         action_filter='navigation',
-        instance_id=None,
+        instance_id=0,
     ):
         """
         :param config_file: config_file path
@@ -56,9 +56,7 @@ class BehaviorEnv(iGibsonEnv):
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
         self.action_filter = action_filter
-        self.instance_id = 0
-        if instance_id is not None:
-            self.instance_id = instance_id
+        self.instance_id = instance_id
         super(BehaviorEnv, self).__init__(config_file=config_file,
                                           scene_id=scene_id,
                                           mode=mode,
