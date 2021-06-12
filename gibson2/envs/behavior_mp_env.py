@@ -219,7 +219,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 else:
                     for _ in range(5):
                         self.robots[0].parts['right_hand'].set_close_fraction(0)
-                        self.robots[0].parts['right_hand'].trig_frac = 0
+                        self.robots[0].parts['right_hand'].trigger_fraction = 0
                         p.stepSimulation()
             else:
                 self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
@@ -241,7 +241,7 @@ class BehaviorMPEnv(BehaviorEnv):
 
         for _ in range(10):
             self.robots[0].parts['right_hand'].set_close_fraction(1)
-            self.robots[0].parts['right_hand'].trig_frac = 1
+            self.robots[0].parts['right_hand'].trigger_fraction = 1
             p.stepSimulation()
 
         grasp_success = self.robots[0].parts['right_hand'].handle_assisted_grasping(np.zeros(28,),
@@ -261,7 +261,7 @@ class BehaviorMPEnv(BehaviorEnv):
         if not use_motion_planning:
             for _ in range(50):
                 self.robots[0].parts['right_hand'].set_close_fraction(0)
-                self.robots[0].parts['right_hand'].trig_frac = 0
+                self.robots[0].parts['right_hand'].trigger_fraction = 0
                 self.robots[0].parts['right_hand'].force_release_obj()
                 p.stepSimulation()
 
@@ -297,7 +297,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 for _ in range(50):
                     self.robots[0].parts['right_hand'].force_release_obj()
                     self.robots[0].parts['right_hand'].set_close_fraction(0)
-                    self.robots[0].parts['right_hand'].trig_frac = 0
+                    self.robots[0].parts['right_hand'].trigger_fraction = 0
                     p.stepSimulation()
 
 
@@ -380,7 +380,7 @@ class BehaviorMPEnv(BehaviorEnv):
         self.obj_in_hand = None
         self.robots[0].obj_in_hand = None
         self.robots[0].parts['right_hand'].set_close_fraction(0)
-        self.robots[0].parts['right_hand'].trig_frac = 0
+        self.robots[0].parts['right_hand'].trigger_fraction = 0
         self.robots[0].parts['right_hand'].force_release_obj()
         return obs
 if __name__ == '__main__':
