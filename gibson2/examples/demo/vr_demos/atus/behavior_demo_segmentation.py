@@ -177,8 +177,8 @@ class DemoSegmentationProcessor(object):
             raise ValueError("Unknown segmentation state selection.")
 
     def step_callback(self, igtn_task):
-        print("Step %d" % igtn_task.simulator.frame_count)
-        PROFILER.start()
+        # print("Step %d" % igtn_task.simulator.frame_count)
+        # PROFILER.start()
 
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
             objects = [obj for obj in igtn_task.object_scope.values() if not isinstance(obj, BRBody)]
@@ -196,7 +196,7 @@ class DemoSegmentationProcessor(object):
             self.state_history.append(StateEntry(igtn_task.simulator.frame_count, processed_state))
 
         self.last_state = processed_state
-        PROFILER.stop()
+        # PROFILER.stop()
 
     def obj2str(self, obj):
         return obj.name if self.label_by_instance else obj.category
@@ -340,10 +340,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    # args = parse_args()
-    tasknet.set_backend("iGibson")
-
+def run_default_segmentation(demo_file, out_dir, **kwargs):
     # flat_states = set(STATE_DIRECTIONS.keys())
     flat_states = [object_states.Open, object_states.OnTop, object_states.Inside, object_states.InHandOfRobot,
                    object_states.InReachOfRobot]
@@ -359,35 +356,43 @@ def main():
     room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS,
                                                            diff_initial=True)
 
-    segmentation_processors = [
-        goal_segmentation,
-        flat_object_segmentation,
-        room_presence_segmentation,
-    ]
+    segmentation_processors = {
+        # goal_segmentation,
+        # flat_object_segmentation,
+        "room": room_presence_segmentation,
+    }
 
     # Run the segmentations.
+    run_segmentation(demo_file, list(segmentation_processors.values()), no_vr=False, **kwargs)
+
+    demo_basename = os.path.splitext(os.path.basename(demo_file))[0]
+    for segmentation_name, segmentation_processor in segmentation_processors.items():
+        json_file = "%s_%s.json" % (demo_basename, segmentation_name)
+        json_fullpath = os.path.join(out_dir, json_file)
+        segmentation_processor.save(json_fullpath)
+
+    # Print the segmentations.
+    combined_output = ""
+    for segmentation_processor in segmentation_processors.values():
+        combined_output += str(segmentation_processor) + "\n"
+
+    print(combined_output)
+    # with open('segmentation_result.txt', 'w') as f:
+    #     f.write(combined_output)
+
+def main():
+    tasknet.set_backend("iGibson")
+    # args = parse_args()
+
     demo_file = os.path.join(gibson2.ig_dataset_path, 'tests',
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
     if not os.path.exists("frames"):
         os.mkdir("frames")
-    run_segmentation(demo_file, segmentation_processors, no_vr=True, frame_save_path="frames")
-
-    for i, segmentation_processor in enumerate(segmentation_processors):
-        segmentation_processor.save("%d.json" % i)
-
-    # Print the segmentations.
-    combined_output = ""
-    for segmentation_processor in segmentation_processors:
-        combined_output += str(segmentation_processor) + "\n"
-
-    print(combined_output)
-    with open('segmentation_result.txt', 'w') as f:
-        f.write(combined_output)
+    run_default_segmentation(demo_file, frame_save_path="frames")
 
     html = PROFILER.output_html()
     with open('segmentation_profile.html', 'w') as f:
         f.write(html)
-
 
 if __name__ == "__main__":
     main()
