@@ -1,5 +1,6 @@
 from gibson2.task.task_base import iGTNTask
 from IPython import embed
+from gibson2.simulator import Simulator
 
 import tasknet
 tasknet.set_backend("iGibson")
@@ -18,23 +19,24 @@ task_choices = [
 task = 'assembling_gift_baskets'
 task_id = 0
 scene = 'Rs_int'
+num_init = 0
 
 igtn_task = iGTNTask(task, task_instance=task_id)
 scene_kwargs = {
     # 'load_object_categories': ['oven', 'fridge', 'countertop', 'cherry', 'sausage', 'tray'],
     'not_load_object_categories': ['ceilings'],
-    'urdf_file': '{}_task_{}_{}_0'.format(scene, task, task_id),
+    'urdf_file': '{}_neurips_task_{}_{}_{}'.format(scene, task, task_id, num_init),
 }
+simulator = Simulator(mode='headless', image_width=960, image_height=720)
 init_success = igtn_task.initialize_simulator(
     scene_id=scene,
-    mode='gui',
+    simulator=simulator,
     load_clutter=True,
     should_debug_sampling=False,
     scene_kwargs=scene_kwargs,
     online_sampling=False,
 )
-
-print('loading done')
+print('success')
 embed()
 
 while True:
