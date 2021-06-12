@@ -344,8 +344,12 @@ class BehaviorEnv(iGibsonEnv):
                     self.task.object_scope[obj_name])
             distance = 0.0
             for i in range(len(reward_shaping_relevant_objs) - 1):
-                distance += l2_distance(reward_shaping_relevant_objs[i].get_position(),
-                                        reward_shaping_relevant_objs[i+1].get_position())
+                try:
+                    distance += l2_distance(reward_shaping_relevant_objs[i].get_position(),
+                                            reward_shaping_relevant_objs[i+1].get_position())
+                except Exception:
+                    # One of the objects has been sliced, skip distance
+                    continue
             distance_potential = -distance * self.distance_reward_weight
             potential += distance_potential
 
