@@ -654,7 +654,10 @@ class BRHandBase(ArticulatedObject):
         # Calculate new local transform
         old_local_pos, old_local_orn = self.local_pos, self.local_orn
         new_local_pos, new_local_orn = p.multiplyTransforms(
-            old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn)
+            old_local_pos, old_local_orn, [0, 0, 0], clipped_delta_orn)
+        new_local_pos, new_local_orn = p.multiplyTransforms(
+            clipped_delta_pos, [0, 0, 0, 1], new_local_pos, new_local_orn)
+
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
 
@@ -1353,7 +1356,10 @@ class BREye(ArticulatedObject):
         # Calculate new local transform
         old_local_pos, old_local_orn = self.local_pos, self.local_orn
         new_local_pos, new_local_orn = p.multiplyTransforms(
-            old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn)
+            old_local_pos, old_local_orn, [0, 0, 0], clipped_delta_orn)
+        new_local_pos, new_local_orn = p.multiplyTransforms(
+            clipped_delta_pos, [0, 0, 0, 1], new_local_pos, new_local_orn)
+
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
 
