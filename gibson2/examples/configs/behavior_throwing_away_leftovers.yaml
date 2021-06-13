@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/throwing_away_leftovers_0_Ihlen_1_int_2021-06-04_19-52-40_checkpoints
-reset_checkpoint_idx: 840
-# reset_checkpoint_idx: 840
-# reset_checkpoint_idx: 810
-# reset_checkpoint_idx: 660
 
 # reward
 reward_type: l2

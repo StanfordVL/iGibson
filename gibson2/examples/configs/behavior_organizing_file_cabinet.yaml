@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/organizing_file_cabinet_0_Beechwood_0_int_2021-06-02_19-12-38_checkpoints
-reset_checkpoint_idx: 3240
-# reset_checkpoint_idx: 3180
-# reset_checkpoint_idx: 3090
-# reset_checkpoint_idx: 2460
 
 # reward
 reward_type: l2

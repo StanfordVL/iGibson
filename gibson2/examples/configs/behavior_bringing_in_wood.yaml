@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/bringing_in_wood_0_Benevolence_1_int_2021-06-01_14-31-43_checkpoints
-reset_checkpoint_idx: 2280
-# reset_checkpoint_idx: 2250
-# reset_checkpoint_idx: 2190
-# reset_checkpoint_idx: 1740
 
 # reward
 reward_type: l2

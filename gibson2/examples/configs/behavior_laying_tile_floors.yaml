@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/laying_tile_floors_0_Benevolence_2_int_2021-06-02_21-22-21_checkpoints
-reset_checkpoint_idx: 2790
-# reset_checkpoint_idx: 2730
-# reset_checkpoint_idx: 2670
-# reset_checkpoint_idx: 2130
 
 # reward
 reward_type: l2

@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/collect_misplaced_items_0_Wainscott_0_int_2021-06-06_11-54-11_checkpoints
-reset_checkpoint_idx: 11970
-# reset_checkpoint_idx: 11730
-# reset_checkpoint_idx: 11490
-# reset_checkpoint_idx: 9150
 
 # reward
 reward_type: l2

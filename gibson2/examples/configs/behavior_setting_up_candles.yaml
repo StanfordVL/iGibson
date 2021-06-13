@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/setting_up_candles_0_Wainscott_0_int_2021-06-02_17-55-12_checkpoints
-reset_checkpoint_idx: 3330
-# reset_checkpoint_idx: 3240
-# reset_checkpoint_idx: 3180
-# reset_checkpoint_idx: 2550
 
 # reward
 reward_type: l2

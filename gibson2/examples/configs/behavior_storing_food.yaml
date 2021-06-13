@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/storing_food_0_Rs_int_2021-05-31_11-49-30_checkpoints
-reset_checkpoint_idx: 2160
-# reset_checkpoint_idx: 2100
-# reset_checkpoint_idx: 2070
-# reset_checkpoint_idx: 1650
 
 # reward
 reward_type: l2

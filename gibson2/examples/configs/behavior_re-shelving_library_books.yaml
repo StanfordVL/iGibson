@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/re-shelving_library_books_0_Rs_int_2021-05-31_18-15-25_checkpoints
-reset_checkpoint_idx: 5160
-# reset_checkpoint_idx: 5070
-# reset_checkpoint_idx: 4950
-# reset_checkpoint_idx: 3960
 
 # reward
 reward_type: l2
