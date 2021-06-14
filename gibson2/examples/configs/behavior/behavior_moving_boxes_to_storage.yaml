@@ -1,5 +1,5 @@
 # scene
-scene_id: Merom_1_int
+scene_id: Merom_0_int
 clutter: false
 build_graph: true
 load_texture: true
