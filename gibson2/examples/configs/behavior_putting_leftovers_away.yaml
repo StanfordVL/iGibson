@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/putting_leftovers_away_0_Pomaria_1_int_2021-06-03_14-32-54_checkpoints
-reset_checkpoint_idx: 4020
-# reset_checkpoint_idx: 3960
-# reset_checkpoint_idx: 3870
-# reset_checkpoint_idx: 3090
 
 # reward
 reward_type: l2

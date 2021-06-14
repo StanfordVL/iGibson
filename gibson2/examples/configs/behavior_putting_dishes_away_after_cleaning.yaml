@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/putting_dishes_away_after_cleaning_0_Ihlen_1_int_2021-06-03_14-38-18_checkpoints
-reset_checkpoint_idx: 4470
-# reset_checkpoint_idx: 4380
-# reset_checkpoint_idx: 4290
-# reset_checkpoint_idx: 3420
 
 # reward
 reward_type: l2

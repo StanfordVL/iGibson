@@ -21,11 +21,6 @@ target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/moving_boxes_to_storage_0_Merom_0_int_2021-06-02_19-00-26_checkpoints
-reset_checkpoint_idx: 12720
-# reset_checkpoint_idx: 12480
-# reset_checkpoint_idx: 12210
-# reset_checkpoint_idx: 9750
 
 # reward
 reward_type: l2

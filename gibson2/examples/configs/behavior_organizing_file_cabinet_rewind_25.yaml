@@ -14,13 +14,15 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: picking_up_trash
+task: organizing_file_cabinet
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
+reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/organizing_file_cabinet_0_Beechwood_0_int_2021-06-02_19-12-38_checkpoints
+reset_checkpoint_idx: 2550
 
 # reward
 reward_type: l2
@@ -33,7 +35,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.36  # body width
-max_step: 200
+max_step: 750
 max_collisions_allowed: 500
 
 # misc config
