@@ -266,6 +266,8 @@ class BehaviorEnv(iGibsonEnv):
         :return: done: whether the episode is terminated
         :return: info: info dictionary with any useful information
         """
+        self.current_step += 1
+
         if self.action_filter == 'navigation':
             action = action * 0.05
             new_action = np.zeros((28,))
@@ -315,7 +317,7 @@ class BehaviorEnv(iGibsonEnv):
             # Compute the initial reward potential here instead of during reset
             # because if an intermediate checkpoint is loaded, we need step the
             # simulator before calling task.check_success
-            if self.current_step == 0:
+            if self.current_step == 1:
                 self.reward_potential = self.get_potential(
                     satisfied_predicates)
 
@@ -328,8 +330,6 @@ class BehaviorEnv(iGibsonEnv):
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
-
-        self.current_step += 1
 
         return state, reward, done, info
 
