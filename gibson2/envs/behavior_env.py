@@ -24,6 +24,13 @@ from gibson2.utils.utils import l2_distance
 from gibson2.object_states import Touching
 from gibson2.robots.behavior_robot import PALM_LINK_INDEX
 from gibson2.object_states.factory import get_state_from_name
+import collections
+
+Episode = collections.namedtuple('Episode',
+                                 [
+                                     'success',
+                                     'success_score'
+                                 ])
 
 
 class BehaviorEnv(iGibsonEnv):
@@ -67,9 +74,13 @@ class BehaviorEnv(iGibsonEnv):
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
+        self.stored_episodes = []
 
         # Make sure different parallel environments will have different random seeds
         np.random.seed(os.getpid())
+
+    def get_stored_episodes(self):
+        return self.stored_episodes
 
     def load_action_space(self):
         """
@@ -116,7 +127,7 @@ class BehaviorEnv(iGibsonEnv):
         else:
             scene_kwargs = {
                 'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
-                #'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
+                # 'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
@@ -326,6 +337,12 @@ class BehaviorEnv(iGibsonEnv):
             info['last_observation'] = state
             state = self.reset()
 
+        if done:
+            success, satisfied_predicates = self.task.check_success()
+            episode_result = Episode(success=float(success), success_score=float(len(satisfied_predicates['satisfied']))/
+                                     float(len(satisfied_predicates['satisfied']) + len(satisfied_predicates['unsatisfied']))
+                                     )
+            self.stored_episodes.append(episode_result)
         self.current_step += 1
 
         return state, reward, done, info
