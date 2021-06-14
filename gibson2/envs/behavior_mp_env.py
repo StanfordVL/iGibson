@@ -65,7 +65,8 @@ class BehaviorMPEnv(BehaviorEnv):
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter='mobile_manipulation'
+        action_filter='mobile_manipulation',
+        use_motion_planning=False,
     ):
         """
         :param config_file: config_file path
@@ -89,7 +90,7 @@ class BehaviorMPEnv(BehaviorEnv):
                                             automatic_reset=automatic_reset)
 
         self.obj_in_hand = None
-        self.use_motion_planning=True
+        self.use_motion_planning = use_motion_planning
         self.robots[0].initial_z_offset = 0.7
 
     def load_action_space(self):
