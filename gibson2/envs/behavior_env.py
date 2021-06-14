@@ -24,6 +24,7 @@ from gibson2.utils.utils import l2_distance
 from gibson2.object_states import Touching
 from gibson2.robots.behavior_robot import PALM_LINK_INDEX
 from gibson2.object_states.factory import get_state_from_name
+from gibson2.object_states import WaterSource, Stained, HeatSourceOrSink
 
 
 class BehaviorEnv(iGibsonEnv):
@@ -136,6 +137,8 @@ class BehaviorEnv(iGibsonEnv):
 
         self.reward_shaping_relevant_objs = self.config.get(
             'reward_shaping_relevant_objs', None)
+        self.progress_reward_objs = self.config.get(
+            'progress_reward_objs', None)
         self.magic_grasping_cid = None
 
         self.predicate_reward_weight = self.config.get(
@@ -243,7 +246,7 @@ class BehaviorEnv(iGibsonEnv):
     def load_observation_space(self):
         super(BehaviorEnv, self).load_observation_space()
         if 'proprioception' in self.output:
-            proprioception_dim = self.robots[0].get_proprioception_dim()
+            proprioception_dim = self.robots[0].get_proprioception_dim() + 1
             self.observation_space.spaces['proprioception'] = \
                 gym.spaces.Box(low=-100.0,
                                high=100.0,
@@ -345,14 +348,32 @@ class BehaviorEnv(iGibsonEnv):
             distance = 0.0
             for i in range(len(reward_shaping_relevant_objs) - 1):
                 try:
-                    distance += l2_distance(reward_shaping_relevant_objs[i].get_position(),
-                                            reward_shaping_relevant_objs[i+1].get_position())
+                    pos1 = reward_shaping_relevant_objs[i].get_position()
+                    obj2 = reward_shaping_relevant_objs[i+1]
+                    if obj2.category == 'sink':
+                        # approach 0.1m below the water source link
+                        pos2 = obj2.states[WaterSource].get_link_position()
+                        pos2 = pos2 + np.array([0, 0, -0.1])
+                    elif obj2.category == 'stove':
+                        pos2 = obj2.states[HeatSourceOrSink].get_link_position(
+                        )
+                    else:
+                        pos2 = obj2.get_position()
+                    distance += l2_distance(pos1, pos2)
                 except Exception:
                     # One of the objects has been sliced, skip distance
                     continue
             distance_potential = -distance * self.distance_reward_weight
             potential += distance_potential
 
+        if self.progress_reward_objs is not None:
+            for obj_name, state_name, potential_weight in self.progress_reward_objs:
+                obj = self.task.object_scope[obj_name]
+                state = obj.states[get_state_from_name(state_name)]
+                if isinstance(state, Stained):
+                    potential += state.dirt.get_num_active() * potential_weight
+                else:
+                    assert False, 'unknown progress reward'
         return potential
 
     def get_child_frame_pose(self, ag_bid, ag_link):
@@ -431,7 +452,13 @@ class BehaviorEnv(iGibsonEnv):
             state['bump'] = self.sensors['bump'].get_obs(self)
 
         if 'proprioception' in self.output:
-            state['proprioception'] = self.robots[0].get_proprioception()
+            state['proprioception'] = np.array(
+                self.robots[0].get_proprioception())
+
+            # add another dimension: whether the magic grasping is active
+            state['proprioception'] = np.append(
+                state['proprioception'],
+                float(self.magic_grasping_cid is not None))
 
         return state
 
