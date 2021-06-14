@@ -35,7 +35,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.36  # body width
-max_step: 450
+max_step: 45
 max_collisions_allowed: 500
 
 # misc config
