@@ -246,7 +246,9 @@ class BehaviorEnv(iGibsonEnv):
     def load_observation_space(self):
         super(BehaviorEnv, self).load_observation_space()
         if 'proprioception' in self.output:
-            proprioception_dim = self.robots[0].get_proprioception_dim() + 1
+            proprioception_dim = self.robots[0].get_proprioception_dim()
+            if self.action_filter == 'magic_grasping':
+                proprioception_dim += 1
             self.observation_space.spaces['proprioception'] = \
                 gym.spaces.Box(low=-100.0,
                                high=100.0,
@@ -455,10 +457,11 @@ class BehaviorEnv(iGibsonEnv):
             state['proprioception'] = np.array(
                 self.robots[0].get_proprioception())
 
-            # add another dimension: whether the magic grasping is active
-            state['proprioception'] = np.append(
-                state['proprioception'],
-                float(self.magic_grasping_cid is not None))
+            if self.action_filter == 'magic_grasping':
+                # add another dimension: whether the magic grasping is active
+                state['proprioception'] = np.append(
+                    state['proprioception'],
+                    float(self.magic_grasping_cid is not None))
 
         return state
 
