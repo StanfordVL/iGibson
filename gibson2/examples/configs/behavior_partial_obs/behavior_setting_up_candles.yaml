@@ -50,8 +50,8 @@ image_width: 128
 image_height: 128
 vertical_fov: 120
 # depth
-depth_low: 0.35
-depth_high: 3.0
+depth_low: 0.0
+depth_high: 10.0
 # scan
 # SICK TIM571 scanning range finder
 # https://docs.fetchrobotics.com/robot_hardware.html
