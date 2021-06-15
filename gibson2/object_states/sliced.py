@@ -5,7 +5,8 @@ import gibson2
 import pybullet as p
 
 # TODO: propagate dusty/stained to object parts
-_DEFAULT_SLICE_FORCE = 10
+# _DEFAULT_SLICE_FORCE = 10
+_DEFAULT_SLICE_FORCE = 0
 _STASH_POSITION = [-100, -100, -100]
 
 

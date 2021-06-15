@@ -24,8 +24,8 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
             return
         contact_points = self.obj.states[ContactBodies].get_value()
         for item in contact_points:
-            if item.linkIndexA != self.link_id:
-                continue
+            # if item.linkIndexA != self.link_id:
+            #     continue
             contact_obj = self.simulator.scene.objects_by_id[item.bodyUniqueIdB]
             if Sliced in contact_obj.states:
                 if not contact_obj.states[Sliced].get_value() and \
@@ -33,7 +33,8 @@ class Slicer(AbsoluteObjectState, LinkBasedStateMixin):
                     contact_obj.states[Sliced].set_value(True)
 
     def _set_value(self, new_value):
-        raise ValueError("set_value not supported for valueless states like Slicer.")
+        raise ValueError(
+            "set_value not supported for valueless states like Slicer.")
 
     def _get_value(self):
         pass

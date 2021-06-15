@@ -408,7 +408,15 @@ class BehaviorEnv(iGibsonEnv):
         if self.magic_grasping_cid is not None:
             return
         target_obj = self.task.object_scope[self.reward_shaping_relevant_objs[0]]
-        if self.robots[0].parts['right_hand'].states[Touching].get_value(target_obj):
+        if target_obj.category == 'carving_knife':
+            knife_pos = target_obj.get_position()
+            hand_pos = self.robots[0].parts['right_hand'].get_position()
+            should_grasp = l2_distance(hand_pos, knife_pos) < 0.1
+        else:
+            should_grasp = self.robots[0].parts['right_hand'].states[Touching].get_value(
+                target_obj)
+
+        if should_grasp:
             child_frame_pos, child_frame_orn = self.get_child_frame_pose(
                 target_obj.get_body_id(), -1)
             self.magic_grasping_cid = \
