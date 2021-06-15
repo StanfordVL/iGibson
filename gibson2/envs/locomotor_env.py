@@ -639,9 +639,10 @@ class NavigateEnv(BaseEnv):
         #     info['success'] = False
 
         if done:
-        #     info['episode_length'] = self.current_step
+            info['episode_length'] = self.current_step
         #     info['path_length'] = self.path_length
-        #     info['collision_step'] = self.collision_step
+            info['collision_step'] = self.collision_step
+            info['spl'] = float(info['success']) * min(self.geodesic_dist / self.path_length, 1.0)
         #     info['energy_cost'] = self.energy_cost
         #     info['stage'] = self.stage
         #
@@ -657,7 +658,7 @@ class NavigateEnv(BaseEnv):
         #     dynamic_disturbance_a = min_dyn_dist / (min_dyn_dist + self.dynamic_disturbance_a)
         #     dynamic_disturbance_b = self.current_step / float(self.current_step + self.dynamic_disturbance_b)
         #     object_files = [obj.filename for obj in self.interactive_objects]
-            episode = Episode(
+            # episode = Episode(
                 # env=self.scene.model_id,
                 # agent=self.robots[0].model_file,
                 # initial_pos=self.initial_pos,
@@ -667,14 +668,14 @@ class NavigateEnv(BaseEnv):
                 # agent_trajectory=np.array(self.agent_trajectory),
                 # object_files=object_files,
                 # object_trajectory=np.array(self.object_trajectory),
-                success=float(info['success']),
+                # success=float(info['success']),
                 # path_efficiency=min(1.0, geodesic_distance / self.path_length),
                 # kinematic_disturbance=kinematic_disturbance,
                 # dynamic_disturbance_a=dynamic_disturbance_a,
                 # dynamic_disturbance_b=dynamic_disturbance_b,
                 # collision_step=self.collision_step,
-            )
-            self.stored_episodes.append(episode)
+            # )
+            # self.stored_episodes.append(episode)
 
         return done, info
 
