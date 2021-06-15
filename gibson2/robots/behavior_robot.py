@@ -1052,8 +1052,8 @@ class BRHand(BRHandBase):
             self.object_in_hand = None
         self.should_execute_release = False
         self.should_freeze_joints = False
-        self.release_start_time = None
         self.release_counter = None
+        self.freeze_vals = {}
         if self.obj_cid:
             p.removeConstraint(self.obj_cid)
             self.obj_cid = None
