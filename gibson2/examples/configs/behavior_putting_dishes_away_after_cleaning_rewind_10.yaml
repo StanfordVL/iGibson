@@ -1,5 +1,5 @@
 # scene
-scene_id: Rs_int
+scene_id: Ihlen_1_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -14,15 +14,15 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: re-shelving_library_books
+task: putting_dishes_away_after_cleaning
 task_id: 0
 online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
-reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/re-shelving_library_books_0_Rs_int_2021-05-31_18-15-25_checkpoints
-reset_checkpoint_idx: 4530
+reset_checkpoint_dir: /opt/iGibson/gibson2/data/snapshots/putting_dishes_away_after_cleaning_0_Ihlen_1_int_2021-06-03_14-38-18_checkpoints
+reset_checkpoint_idx: 4260
 
 # reward
 reward_type: l2
@@ -35,7 +35,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.36  # body width
-max_step: 75
+max_step: 300
 max_collisions_allowed: 500
 
 # misc config
