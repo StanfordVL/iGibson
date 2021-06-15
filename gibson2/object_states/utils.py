@@ -40,6 +40,16 @@ def clear_cached_states(obj):
         if isinstance(obj_state, CachingEnabledObjectState):
             obj_state.clear_cached_value()
 
+def detect_collision(bodyA):
+    collision = False
+    for body_id in range(p.getNumBodies()):
+        if body_id == bodyA:
+            continue
+        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
+        if len(closest_points) > 0:
+            collision = True
+            break
+    return collision
 
 def sample_kinematics(predicate, objA, objB, binary_state,
                       use_ray_casting_method=False, max_trials=100, z_offset=0.05):
@@ -172,8 +182,8 @@ def sample_kinematics(predicate, objA, objB, binary_state,
         else:
             pos[2] += z_offset
             objA.set_position_orientation(pos, orientation)
-            p.stepSimulation()
-            success = len(p.getContactPoints(objA.get_body_id())) == 0
+            #p.stepSimulation()
+            success = not detect_collision(objA.get_body_id()) #len(p.getContactPoints(objA.get_body_id())) == 0
 
         if gibson2.debug_sampling:
             print('sample_kinematics', success)
@@ -186,13 +196,13 @@ def sample_kinematics(predicate, objA, objB, binary_state,
 
     p.removeState(state_id)
 
-    if success:
-        objA.set_position_orientation(pos, orientation)
-        # Let it fall for 0.2 second
-        physics_timestep = p.getPhysicsEngineParameters()['fixedTimeStep']
-        for _ in range(int(0.2 / physics_timestep)):
-            p.stepSimulation()
-            if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
-                break
+    # if success:
+    #     objA.set_position_orientation(pos, orientation)
+    #     # Let it fall for 0.2 second
+    #     physics_timestep = p.getPhysicsEngineParameters()['fixedTimeStep']
+    #     for _ in range(int(0.2 / physics_timestep)):
+    #         p.stepSimulation()
+    #         if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
+    #             break
 
     return success
