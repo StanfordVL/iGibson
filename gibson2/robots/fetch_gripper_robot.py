@@ -44,6 +44,7 @@ class FetchGripper(LocomotorRobot):
         self.max_velocity = np.array(config.get('max_velocity', np.ones(action_dim)))
         self.wheel_axle_half = 0.18738  # half of the distance between the wheels
         self.wheel_radius = 0.065  # radius of the wheels
+        self.trunk_offset = self.config.get('trunk_offset', 0.0)
         self.default_arm_pose = config.get('default_arm_pose', 'vertical')
         assert self.default_arm_pose in VALID_DEFAULT_ARM_POSES,\
             f"Invalid default arm pose. Valid options are: {VALID_DEFAULT_ARM_POSES}; got: {self.default_arm_pose}"
@@ -141,7 +142,7 @@ class FetchGripper(LocomotorRobot):
         if self.default_arm_pose == "vertical":
             pose = np.array([
                 0.0, 0.0,  # wheels
-                0.3,  # trunk
+                0.3 + self.trunk_offset,  # trunk
                 0.0, 0.45,  # head
                 -0.94121, -0.64134, 1.55186, 1.65672, -0.93218, 1.53416, 2.14474,  # arm
                 0.05, 0.05,  # gripper
@@ -149,7 +150,7 @@ class FetchGripper(LocomotorRobot):
         elif self.default_arm_pose == "diagonal15":
             pose = np.array([
                 0.0, 0.0,  # wheels
-                0.3,  # trunk
+                0.3 + self.trunk_offset,  # trunk
                 0.0, 0.45,  # head
                 -0.95587, -0.34778, 1.46388, 1.47821, -0.93813, 1.4587, 1.9939,  # arm
                 0.05, 0.05,  # gripper
@@ -157,7 +158,7 @@ class FetchGripper(LocomotorRobot):
         elif self.default_arm_pose == "diagonal30":
             pose = np.array([
                 0.0, 0.0,  # wheels
-                0.3,  # trunk
+                0.3 + self.trunk_offset,  # trunk
                 0.0, 0.45,  # head
                 -1.06595, -0.22184, 1.53448, 1.46076, -0.84995, 1.36904, 1.90996,  # arm
                 0.05, 0.05,  # gripper
@@ -165,7 +166,7 @@ class FetchGripper(LocomotorRobot):
         elif self.default_arm_pose == "diagonal45":
             pose = np.array([
                 0.0, 0.0,  # wheels
-                0.3,  # trunk
+                0.3 + self.trunk_offset,  # trunk
                 0.0, 0.45,  # head
                 -1.11479, -0.0685, 1.5696, 1.37304, -0.74273, 1.3983, 1.79618,  # arm
                 0.05, 0.05,  # gripper
@@ -173,7 +174,7 @@ class FetchGripper(LocomotorRobot):
         else:                       # horizontal
             pose = np.array([
                 0.0, 0.0,  # wheels
-                0.3,  # trunk
+                0.3 + self.trunk_offset,  # trunk
                 0.0, 0.45,  # head
                 -1.43016, 0.20965, 1.86816, 1.77576, -0.27289, 1.31715, 2.01226,  # arm
                 0.05, 0.05,  # gripper
@@ -185,7 +186,7 @@ class FetchGripper(LocomotorRobot):
     def rest_joints(self):
         return np.array([
             0.0, 0.0,
-            0.02,
+            0.3 + self.trunk_offset,
             0.0, 0.0,
             0.7853981633974483, -0.6707963267948965, 1.5707963267948966, 1.7707963267948965,
             1.5707963267948966, -1.5707963267948966, 1.1,
