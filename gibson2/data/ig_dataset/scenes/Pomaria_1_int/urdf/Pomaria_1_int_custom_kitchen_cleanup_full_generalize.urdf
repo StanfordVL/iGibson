@@ -183,12 +183,13 @@
 		<child link="top_cabinet_25"/>
 		<parent link="world"/>
 	</joint>
-	<link bounding_box="0.610000 0.570000 0.891000" category="bottom_cabinet" model="49140" name="bottom_cabinet_26" room="kitchen_0"/>
+	<link bounding_box="0.550000 0.590000 0.891000" category="bottom_cabinet" model="49140" name="bottom_cabinet_26" room="kitchen_0"/>
 	<joint name="j_bottom_cabinet_26" type="fixed">
-		<origin rpy="0 0 -4.708644" xyz="-4.405000 -1.185000 0.450000"/>
+		<origin rpy="0 0 -3.141593" xyz="-2.505000 -2.625000 0.450000"/>
 		<child link="bottom_cabinet_26"/>
 		<parent link="world"/>
 	</joint>
+
 	<link bounding_box="0.920000 0.420000 0.990000" category="top_cabinet" model="45747" name="top_cabinet_27" room="kitchen_0"/>
 	<joint name="j_top_cabinet_27" type="fixed">
 		<origin rpy="0 0 0.000000" xyz="-3.465000 0.630000 1.900000"/>
@@ -244,9 +245,9 @@
 		<parent link="world"/>
 	</joint>
 
-	<link bounding_box="0.550000 0.590000 0.891000" category="dishwasher" model="12349_handle" name="dishwasher_36" room="kitchen_0"/>
+	<link bounding_box="0.610000 0.570000 0.891000" category="dishwasher" model="12349_handle" name="dishwasher_36" room="kitchen_0"/>
 	<joint name="j_dishwasher_36" type="fixed">
-		<origin rpy="0 0 -3.141593" xyz="-2.505000 -2.625000 0.450000"/>
+		<origin rpy="0 0 -4.708644" xyz="-4.405000 -1.185000 0.450000"/>
 		<child link="dishwasher_36"/>
 		<parent link="world"/>
 	</joint>
