@@ -293,9 +293,9 @@
 		<child link="top_cabinet_43"/>
 		<parent link="world"/>
 	</joint>
-	<link bounding_box="0.930000 0.490000 0.891000" category="oven" model="oven_0013" name="oven_46" room="kitchen_0"/>
+	<link bounding_box="0.930000 0.490000 0.712800" category="oven" model="oven_0013" name="oven_46" room="kitchen_0"/>
 	<joint name="j_oven_46" type="fixed">
-		<origin rpy="0 0 0" xyz="-3.455000 0.630000 0.450000"/>
+		<origin rpy="0 0 0" xyz="-3.455000 0.550000 0.360000"/>
 		<child link="oven_46"/>
 		<parent link="world"/>
 	</joint>
