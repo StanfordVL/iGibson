@@ -81,7 +81,7 @@ body_speed: 0.3
 # texture scale
 texture_scale: 0.5
 
-reward_shaping_relevant_objs: ['towel.n.01_1']
+reward_shaping_relevant_objs: ['towel.n.01_1', 'shelf.n.01_1']
 progress_reward_objs: [
-    ['shelf.n.01_1', 'Stained', -0.1]
+    ['shelf.n.01_1', 'Stained', -0.5]
 ]

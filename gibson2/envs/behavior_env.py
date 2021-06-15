@@ -359,6 +359,16 @@ class BehaviorEnv(iGibsonEnv):
                     elif obj2.category == 'stove':
                         pos2 = obj2.states[HeatSourceOrSink].get_link_position(
                         )
+                    elif obj2.category == 'shelf':
+                        # distance to the closest dust particle
+                        particles = \
+                            obj2.states[Stained].dirt.get_active_particles()
+                        particle_pos = np.array([
+                            particle.get_position() for particle in particles])
+                        distance_to_particles = np.linalg.norm(
+                            particle_pos - pos1, axis=1)
+                        closest_particle = np.argmin(distance_to_particles)
+                        pos2 = particles[closest_particle].get_position()
                     else:
                         pos2 = obj2.get_position()
                     distance += l2_distance(pos1, pos2)
