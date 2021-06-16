@@ -1,0 +1,85 @@
+-- The C compiler identification is GNU 5.4.0
+-- The CXX compiler identification is GNU 5.4.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found PythonInterp: /cvgl2/u/gdharan/anaconda3/envs/igibson/bin/python3 (found suitable version "3.7.10", minimum required is "3.6") 
+-- Found PythonLibs: /cvgl2/u/gdharan/anaconda3/envs/igibson/lib/libpython3.7m.so (found suitable version "3.7.10", minimum required is "3.6") 
+-- pybind11 v2.6.0 dev
+-- Found PythonInterp: /cvgl2/u/gdharan/anaconda3/envs/igibson/bin/python3 (found version "3.7.10") 
+-- Found PythonLibs: /cvgl2/u/gdharan/anaconda3/envs/igibson/lib/libpython3.7m.so
+-- Performing Test HAS_FLTO
+-- Performing Test HAS_FLTO - Success
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/liblexers.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libembree.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libsimd.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libtasking.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libsys.a
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/build
+Scanning dependencies of target SadieHrtfsObj
+Scanning dependencies of target PffftObj
+[  1%] Building CXX object resonance_audio/CMakeFiles/SadieHrtfsObj.dir/__/third_party/SADIE_hrtf_database/generated/hrtf_assets.cc.o
+[  3%] Building C object resonance_audio/CMakeFiles/PffftObj.dir/__/third_party/pffft/fftpack.c.o
+[  3%] Building C object resonance_audio/CMakeFiles/PffftObj.dir/__/third_party/pffft/pffft.c.o
+[  3%] Built target PffftObj
+[  3%] Built target SadieHrtfsObj
+Scanning dependencies of target GeometricalAcousticsObj
+[  4%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/acoustic_ray.cc.o
+[  5%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/collection_kernel.cc.o
+[  9%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/estimating_rt60.cc.o
+[ 10%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/impulse_response_computer.cc.o
+[ 10%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/path_tracer.cc.o
+[ 10%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/parallel_for.cc.o
+[ 10%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/proxy_room_estimator.cc.o
+[ 12%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/reflection_kernel.cc.o
+Scanning dependencies of target ResonanceAudioObj
+[ 13%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/__/platforms/common/utils.cc.o
+[ 14%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/scene_manager.cc.o
+[ 15%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/sphere.cc.o
+[ 16%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/utils/task_thread_pool.cc.o
+[ 17%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/ambisonic_binaural_decoder.cc.o
+[ 18%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/ambisonic_lookup_table.cc.o
+[ 19%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/associated_legendre_polynomials_generator.cc.o
+[ 20%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/foa_rotator.cc.o
+[ 21%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/hoa_rotator.cc.o
+[ 23%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/stereo_from_soundfield_converter.cc.o
+In file included from /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/Core:277:0,
+                 from /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/Dense:1,
+                 from /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/resonance_audio/base/misc_math.h:32,
+                 from /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/resonance_audio/base/spherical_angle.h:20,
+                 from /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/resonance_audio/ambisonics/foa_rotator.h:21,
+                 from /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/resonance_audio/ambisonics/foa_rotator.cc:21:
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Core/CoreEvaluators.h: In instantiation of ‘Eigen::internal::evaluator_base<ExpressionType>::~evaluator_base() [with ExpressionType = Eigen::CwiseUnaryOp<Eigen::internal::scalar_abs2_op<float>, const Eigen::Block<const Eigen::Matrix<float, 4, 1, 2, 4, 1>, 3, 1, false> >]’:
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Core/CoreEvaluators.h:558:8:   required from ‘typename Eigen::internal::traits<T>::Scalar Eigen::DenseBase<Derived>::redux(const Func&) const [with BinaryOp = Eigen::internal::scalar_sum_op<float, float>; Derived = Eigen::CwiseUnaryOp<Eigen::internal::scalar_abs2_op<float>, const Eigen::Block<const Eigen::Matrix<float, 4, 1, 2, 4, 1>, 3, 1, false> >; typename Eigen::internal::traits<T>::Scalar = float]’
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Core/Redux.h:463:73:   required from ‘typename Eigen::internal::traits<T>::Scalar Eigen::DenseBase<Derived>::sum() const [with Derived = Eigen::CwiseUnaryOp<Eigen::internal::scalar_abs2_op<float>, const Eigen::Block<const Eigen::Matrix<float, 4, 1, 2, 4, 1>, 3, 1, false> >; typename Eigen::internal::traits<T>::Scalar = float]’
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Core/Dot.h:98:22:   required from ‘typename Eigen::NumTraits<typename Eigen::internal::traits<T>::Scalar>::Real Eigen::MatrixBase<Derived>::squaredNorm() const [with Derived = Eigen::Block<const Eigen::Matrix<float, 4, 1, 2, 4, 1>, 3, 1, false>; typename Eigen::NumTraits<typename Eigen::internal::traits<T>::Scalar>::Real = float]’
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Core/Dot.h:110:34:   required from ‘typename Eigen::NumTraits<typename Eigen::internal::traits<T>::Scalar>::Real Eigen::MatrixBase<Derived>::norm() const [with Derived = Eigen::Block<const Eigen::Matrix<float, 4, 1, 2, 4, 1>, 3, 1, false>; typename Eigen::NumTraits<typename Eigen::internal::traits<T>::Scalar>::Real = float]’
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Geometry/AngleAxis.h:174:27:   required from ‘Eigen::AngleAxis<_Scalar>& Eigen::AngleAxis<Scalar>::operator=(const Eigen::QuaternionBase<OtherDerived>&) [with QuatDerived = Eigen::Quaternion<float, 2>; _Scalar = float]’
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Geometry/AngleAxis.h:85:93:   required from ‘Eigen::AngleAxis<Scalar>::AngleAxis(const Eigen::QuaternionBase<OtherDerived>&) [with QuatDerived = Eigen::Quaternion<float, 2>; _Scalar = float]’
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/resonance_audio/base/misc_math.h:71:59:   required from here
+/cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/eigen/Eigen/src/Core/CoreEvaluators.h:122:60: internal compiler error: in populate_clone_array, at cp/optimize.c:256
+   EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE ~evaluator_base() {}
+                                                            ^
+Please submit a full bug report,
+with preprocessed source if appropriate.
+See <file:///usr/share/doc/gcc-5/README.Bugs> for instructions.
+resonance_audio/CMakeFiles/ResonanceAudioObj.dir/build.make:158: recipe for target 'resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/foa_rotator.cc.o' failed
+make[2]: *** [resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/foa_rotator.cc.o] Error 1
+make[2]: *** Waiting for unfinished jobs....
+CMakeFiles/Makefile2:163: recipe for target 'resonance_audio/CMakeFiles/ResonanceAudioObj.dir/all' failed
+make[1]: *** [resonance_audio/CMakeFiles/ResonanceAudioObj.dir/all] Error 2
+make[1]: *** Waiting for unfinished jobs....
+[ 23%] Built target GeometricalAcousticsObj
+Makefile:127: recipe for target 'all' failed
+make: *** [all] Error 2

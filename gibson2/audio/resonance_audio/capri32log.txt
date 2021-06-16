@@ -1,0 +1,133 @@
+-- The C compiler identification is GNU 5.4.0
+-- The CXX compiler identification is GNU 5.4.0
+-- Check for working C compiler: /usr/bin/cc
+-- Check for working C compiler: /usr/bin/cc -- works
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found PythonInterp: /cvgl2/u/gdharan/anaconda3/envs/igibson/bin/python3 (found suitable version "3.7.10", minimum required is "3.6") 
+-- Found PythonLibs: /cvgl2/u/gdharan/anaconda3/envs/igibson/lib/libpython3.7m.so (found suitable version "3.7.10", minimum required is "3.6") 
+-- pybind11 v2.6.0 dev
+-- Found PythonInterp: /cvgl2/u/gdharan/anaconda3/envs/igibson/bin/python3 (found version "3.7.10") 
+-- Found PythonLibs: /cvgl2/u/gdharan/anaconda3/envs/igibson/lib/libpython3.7m.so
+-- Performing Test HAS_FLTO
+-- Performing Test HAS_FLTO - Success
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/liblexers.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libembree.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libsimd.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libtasking.a
+-- Statically linking to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/third_party/embree/build/libsys.a
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /cvgl2/u/gdharan/iGibson/gibson2/audio/resonance_audio/build
+Scanning dependencies of target SadieHrtfsObj
+Scanning dependencies of target PffftObj
+[  3%] Building CXX object resonance_audio/CMakeFiles/SadieHrtfsObj.dir/__/third_party/SADIE_hrtf_database/generated/hrtf_assets.cc.o
+[  3%] Building C object resonance_audio/CMakeFiles/PffftObj.dir/__/third_party/pffft/fftpack.c.o
+[  3%] Building C object resonance_audio/CMakeFiles/PffftObj.dir/__/third_party/pffft/pffft.c.o
+Scanning dependencies of target GeometricalAcousticsObj
+[  4%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/acoustic_ray.cc.o
+[  5%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/collection_kernel.cc.o
+[  7%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/estimating_rt60.cc.o
+[  7%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/impulse_response_computer.cc.o
+[  8%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/parallel_for.cc.o
+Scanning dependencies of target ResonanceAudioObj
+[  8%] Built target PffftObj
+[  9%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/path_tracer.cc.o
+[ 10%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/proxy_room_estimator.cc.o
+[ 12%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/__/platforms/common/utils.cc.o
+[ 12%] Built target SadieHrtfsObj
+[ 13%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/ambisonic_binaural_decoder.cc.o
+[ 14%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/reflection_kernel.cc.o
+[ 15%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/ambisonic_lookup_table.cc.o
+[ 16%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/scene_manager.cc.o
+[ 17%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/geometrical_acoustics/sphere.cc.o
+[ 18%] Building CXX object platforms/iGibson/CMakeFiles/GeometricalAcousticsObj.dir/__/__/resonance_audio/utils/task_thread_pool.cc.o
+[ 19%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/associated_legendre_polynomials_generator.cc.o
+[ 20%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/foa_rotator.cc.o
+[ 21%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/hoa_rotator.cc.o
+[ 23%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/ambisonics/stereo_from_soundfield_converter.cc.o
+[ 24%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/api/binaural_surround_renderer.cc.o
+[ 25%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/api/resonance_audio_api.cc.o
+[ 26%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/base/audio_buffer.cc.o
+[ 27%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/base/channel_view.cc.o
+[ 28%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/base/misc_math.cc.o
+[ 29%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/base/simd_utils.cc.o
+[ 30%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/base/spherical_angle.cc.o
+[ 31%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/config/source_config.cc.o
+[ 32%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/biquad_filter.cc.o
+[ 34%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/channel_converter.cc.o
+[ 35%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/circular_buffer.cc.o
+[ 36%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/delay_filter.cc.o
+[ 37%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/distance_attenuation.cc.o
+[ 38%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/fft_manager.cc.o
+[ 39%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/filter_coefficient_generators.cc.o
+[ 40%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/fir_filter.cc.o
+[ 41%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/gain.cc.o
+[ 42%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/gain_mixer.cc.o
+[ 43%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/gain_processor.cc.o
+[ 45%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/mixer.cc.o
+[ 46%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/mono_pole_filter.cc.o
+[ 47%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/multi_channel_iir.cc.o
+[ 48%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/near_field_processor.cc.o
+[ 49%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/occlusion_calculator.cc.o
+[ 50%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/partitioned_fft_filter.cc.o
+[ 51%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/reflections_processor.cc.o
+[ 52%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/resampler.cc.o
+[ 54%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/reverb_onset_update_processor.cc.o
+[ 54%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/reverb_onset_compensator.cc.o
+[ 56%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/sh_hrir_creator.cc.o
+[ 57%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/shoe_box_room.cc.o
+[ 58%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/spectral_reverb.cc.o
+[ 59%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/stereo_panner.cc.o
+[ 60%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/dsp/utils.cc.o
+[ 60%] Built target GeometricalAcousticsObj
+[ 61%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/ambisonic_binaural_decoder_node.cc.o
+[ 62%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/ambisonic_mixing_encoder_node.cc.o
+[ 63%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/binaural_surround_renderer_impl.cc.o
+[ 64%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/buffered_source_node.cc.o
+[ 65%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/foa_rotator_node.cc.o
+[ 67%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/gain_mixer_node.cc.o
+[ 68%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/gain_node.cc.o
+[ 69%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/graph_manager.cc.o
+[ 70%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/hoa_rotator_node.cc.o
+[ 71%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/mixer_node.cc.o
+[ 72%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/mono_from_soundfield_node.cc.o
+[ 73%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/near_field_effect_node.cc.o
+[ 74%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/occlusion_node.cc.o
+[ 75%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/reflections_node.cc.o
+[ 76%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/resonance_audio_api_impl.cc.o
+[ 78%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/reverb_node.cc.o
+[ 79%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/source_parameters_manager.cc.o
+[ 80%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/graph/stereo_mixing_panner_node.cc.o
+[ 81%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/node/processing_node.cc.o
+[ 82%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/node/sink_node.cc.o
+[ 83%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/node/source_node.cc.o
+[ 84%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/__/platforms/common/room_effects_utils.cc.o
+[ 85%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/buffer_crossfader.cc.o
+[ 86%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/buffer_partitioner.cc.o
+[ 87%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/buffer_unpartitioner.cc.o
+[ 89%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/lockless_task_queue.cc.o
+[ 90%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/planar_interleaved_conversion.cc.o
+[ 91%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/sample_type_conversion.cc.o
+[ 92%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/sum_and_difference_processor.cc.o
+[ 93%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/wav.cc.o
+[ 94%] Building CXX object resonance_audio/CMakeFiles/ResonanceAudioObj.dir/utils/wav_reader.cc.o
+[ 94%] Built target ResonanceAudioObj
+Scanning dependencies of target audio
+[ 96%] Building CXX object platforms/iGibson/CMakeFiles/audio.dir/igibson_nativeaudioplugins.cc.o
+[ 96%] Building CXX object platforms/iGibson/CMakeFiles/audio.dir/igibson_reverb_computer.cc.o
+[ 98%] Building CXX object platforms/iGibson/CMakeFiles/audio.dir/igibson.cc.o
+[ 98%] Building CXX object platforms/iGibson/CMakeFiles/audio.dir/bindings.cc.o
+[100%] Linking CXX shared module audio.cpython-37m-x86_64-linux-gnu.so
+[100%] Built target audio
+Install the project...
+-- Install configuration: ""
+-- Installing: /cvgl2/u/gdharan/iGibson/gibson2/audio/audio.cpython-37m-x86_64-linux-gnu.so

@@ -111,6 +111,34 @@ void AddTestGround(RTCScene scene) {
   rtcUnmapBuffer(scene, mesh_id, RTC_INDEX_BUFFER);
 }
 
+void AddVerticalPlaneAndRegisterOccl(RTCScene scene, float y) {
+  unsigned int mesh_id = rtcNewTriangleMesh(scene, RTC_GEOMETRY_STATIC, 2, 4);
+
+  // Vertices. Each vertex has 4 floats: x, y, z, and a padding float whose
+  // value we do not care.
+  float ground_vertices[] = {
+      -0.5f, y, -0.5f, 0.0f,  // Vertex_0.
+      -0.5f, y, 0.5f, 0.0f,  // Vertex_1.
+      0.5f, y, -0.5f, 0.0f,  // Vertex_2.
+      0.5f, y, 0.5f, 0.0f,  // Vertex_3.
+  };
+
+  // Triangles. Somehow Embree is a left-handed system.
+  int ground_indices[] = {
+      0, 1, 2,  // Triangle_0.
+      1, 3, 2,  // Triangle_1.
+  };
+  float* const embree_vertices =
+      static_cast<float*>(rtcMapBuffer(scene, mesh_id, RTC_VERTEX_BUFFER));
+  std::copy(ground_vertices, ground_vertices + 16, embree_vertices);
+  rtcUnmapBuffer(scene, mesh_id, RTC_VERTEX_BUFFER);
+  int* const embree_indices =
+      static_cast<int*>(rtcMapBuffer(scene, mesh_id, RTC_INDEX_BUFFER));
+  std::copy(ground_indices, ground_indices + 6, embree_indices);
+  rtcSetOcclusionFilterFunction(scene,mesh_id,occlusionFilter);
+  rtcUnmapBuffer(scene, mesh_id, RTC_INDEX_BUFFER);
+}
+
 void BuildTestBoxScene(
     const Vertex& min_corner, const Vertex& max_corner,
     std::vector<Vertex>* box_vertices, std::vector<Triangle>* box_triangles,

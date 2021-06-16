@@ -8,32 +8,25 @@ from gibson2.utils.assets_utils import get_ig_scene_path
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.stadium_scene import StadiumScene
+from gibson2.objects import cube
 import pyaudio
 import audio
 import wave
+import pybullet as p
+import time
 from scipy.io.wavfile import read, write
 
-def main():
 
-    if len(sys.argv) > 1:
-        model_path = sys.argv[1]
-    else:
-        model_path = os.path.join(get_ig_scene_path('Rs_int'))
+SR = 44100
 
-    s = Simulator(mode='headless', image_width=512, image_height=512, device_idx=0)
-    scene = StadiumScene()#InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)
-    s.import_scene(scene)#import_ig_scene(scene)
 
-    #vert, face = renderer.dump()
 
-    #printf("Vertices Shape: "+ str(vert.shape))
-    #printf("Faces Shape: "+ str(face.shape))
+def getSceneSkeleton(scene_name):
+    static_scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=False, load_object_categories=["walls", "floors", "ceilings", "door", "window"])
+    static_s = Simulator(mode='headless', device_idx=0)
+    static_s.import_ig_scene(static_scene)
 
-    #renderer.add_instance(0)
-    #print(renderer.visual_objects, renderer.instances)
-    #print(renderer.materials_mapping, renderer.mesh_materials)
-
-    vert, face = s.renderer.dump()
+    vert, face = static_s.renderer.dump()
     print("Vertices Shape: "+ str(vert.shape))
     print("Faces Shape: "+ str(face.shape))
 
@@ -49,101 +42,178 @@ def main():
 
     material_indices = np.ones(face.shape[0]) * 22
 
+    assert(vert_flattened.size / 3 == vert.shape[0])
+    assert(face_flattened.size / 3 == face.shape[0])
+
+    static_s.disconnect()
+
+    return vert_flattened, face_flattened, material_indices
+
+
+obj_id = -1
+timestep = 0
+def main():
+    global obj_id
+    global alwaysCountCollisionIDs
+
+    #if len(sys.argv) > 1:
+    #    model_path = sys.argv[1]
+    #else:
+    #    model_path = os.path.join(get_ig_scene_path('Rs_int'))
+    wf = wave.open("440Hz_44100Hz.wav", 'rb')
+    print(wf.getparams())
+
+    verts, faces, materials = getSceneSkeleton('Rs_int')
+
+    s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
+    scene = InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)#StadiumScene()
+    s.import_ig_scene(scene)#s.import_scene(scene)#
+    alwaysCountCollisionIDs = set()
+    for category in ["walls", "floors", "ceilings"]:
+        for obj in scene.objects_by_category[category]:
+            alwaysCountCollisionIDs.add(obj)
+    
+    
+
+    _,source_location = scene.get_random_point_by_room_type("living_room")
+    source_location[2] = 1.7
+    obj = cube.Cube(pos=source_location, dim=[0.2, 0.2, 0.2], visual_only=False, mass=0.5, color=[255, 0, 0, 1])
+    obj_id = s.import_object(obj)
+
+
     #_, head_pos = scene.get_random_point_by_room_type("kitchen")
     #_, source_location = scene.get_random_point_by_room_type("living_room")
 
-    head_pos = np.array([1, 1, 1])#scene.get_random_point_by_room_type("kitchen")
-    source_location = np.array([0, 0, 1])#scene.get_random_point_by_room_type("living_room")
+    #head_pos = np.array([1, 1, 1])#scene.get_random_point_by_room_type("kitchen")
+    #source_location = np.array([0, 0, 1])#scene.get_random_point_by_room_type("living_room")
 
-    print(vert_flattened[:10])
-    print(face_flattened[:10])
+    #head_positions = [scene.get_random_point_by_room_type("living_room")[1], scene.get_random_point_by_room_type("bedroom")[1]]
 
     #out_arr = audio.InitializeFromMeshAndTest(vert.shape[0], face.shape[0],
     #vert_flattened, face_flattened,
     #material_indices,
     #0.9, "ClapSound.wav", source_location, head_pos)
 
-    framesPerBuf = 480
-    audio.InitializeSystem(framesPerBuf, 44100)
-    audio.LoadMesh(vert.shape[0], face.shape[0], vert_flattened, face_flattened, material_indices, 0.9, source_location)
+    framesPerBuf =  int(SR / (1 / s.render_timestep)) #DEAL WITH THIS LATER
+    audio.InitializeSystem(framesPerBuf, SR)
+    audio.LoadMesh(int(verts.size / 3), int(faces.size / 3), verts, faces, materials, 0.9, source_location)
     source_id = audio.InitializeSource(source_location, 0.1, 10)
-    audio.SetListenerPosition(head_pos)
+    #audio.SetSourceListenerDirectivity(source_id, 0.3, 1.1)
+    #audio.SetListenerPosition(head_pos)
     
 
     sr, wav_in = read("440Hz_44100Hz.wav")
     print(sr)
-    #wav_out = wave.open("ClapOut.wav", mode='wb')
-    #print(wav.getparams())
-    #wav_out.setnchannels(2)
-    #wav_out.setframerate(48000)
-    #wav_out.setsampwidth(2)
-
     print(wav_in.size)
 
     num_pad = wav_in.size % framesPerBuf
     wav_in_padded = np.pad(wav_in, (0, num_pad), 'constant')
     audio_to_write =  np.array([])
 
-    print(wav_in_padded.size)
 
-    head_pos_int = np.ones((3,500))
-    head_pos_int[0,:] = np.linspace(100,-100, num=500)
-    head_pos_int[1,:] = np.linspace(100,-100, num=500)
+    #print(head_positions)
 
-    idx = 0
-    for pos_idx in range(head_pos_int.shape[1]):
-        if idx >= wav_in_padded.size:
-           idx=0
-        audio.SetListenerPosition(head_pos_int[:,pos_idx])
-        out_audio = audio.ProcessSourceAndListener(source_id, framesPerBuf, wav_in_padded[idx:idx+framesPerBuf])
-        idx += framesPerBuf
-        audio_to_write = np.append(audio_to_write, out_audio)#audio_to_write[idx*2: idx*2 + 64] = out_audio
+    #head_pos_int = np.ones((3,500))
+    #head_pos_int[0,:] = np.linspace(head_positions[0][0],head_positions[1][0], num=500)
+    #head_pos_int[1,:] = np.linspace(head_positions[0][1],head_positions[1][1], num=500)
+
+    #idx = 0
+    #for pos_idx in range(head_pos_int.shape[1]):
+    #    if idx >= wav_in_padded.size:
+    #       idx=0
+    #    audio.SetListenerPosition(head_pos_int[:,pos_idx])
+    #    out_audio = audio.ProcessSourceAndListener(source_id, framesPerBuf, wav_in_padded[idx:idx+framesPerBuf])
+    #    idx += framesPerBuf
+    #    audio_to_write = np.append(audio_to_write, out_audio)#audio_to_write[idx*2: idx*2 + 64] = out_audio
         
-    deinterleaved_audio = np.array([audio_to_write[::2], audio_to_write[1::2]], dtype=np.int16).T
+    #deinterleaved_audio = np.array([audio_to_write[::2], audio_to_write[1::2]], dtype=np.int16).T
     #deinterleaved_audio[:, 0] = audio_to_write[::2]
     #deinterleaved_audio[:, 1] = audio_to_write[1::2]
-    write("440Hz_44100Hz_Out.wav", 44100, deinterleaved_audio)
+    #write("440Hz_44100Hz_Out.wav", SR, deinterleaved_audio)
 
-
-
-#    p = pyaudio.PyAudio()
-#    idx = 0
-#    pos_idx = 0
-##    def callback(in_data, frame_count, time_info, status):
-##        if idx >= wav_in_padded.size:
-#           idx=0
-#        if pos_idx == 2000:
-##            pos_idx = 0
-#        audio.SetListenerPosition(head_pos[:,pos_idx])
-#        out_audio = audio.ProcessSourceAndListener(source_id, frame_count, wav_in_padded[idx:idx+frame_count])
-#        idx += frame_count
-#        pos_idx+=1
-#        return (out_audio.tobytes(), pyaudio.paContinue)
-
-
-#    stream = p.open(rate=48000, format=pyaudio.paInt16, channels=2, output=True,stream_callback=callback)
-
-
-
-#    while stream.is_active():
-#        time.sleep(0.1)
-
-    #received_audio = np.zeros(32)
-    #read_audio = wav.readframes(32)
-    #while read_audio != b'':
-    #    read_audio = wav.readframes(32)
-    #    print(read_audio)
+    print("Initing pyaudio")
+    idx = 0
+    pyaud = pyaudio.PyAudio()
+    print("Inited pyaudio")
     
-    #while 
-    #audio.ProcessSourceAndListener(source_id, 32, py::array_t<int16> input_arr)
+    def getNextNFrames(n):
+        global idx
+        print(idx)
+        if idx >= wav_in_padded.size:
+           idx=0
+        aud =  wav_in_padded[idx:idx+n]
+        idx += n
+        return aud
 
 
+    def callback(in_data, frame_count, time_info, status):
+        global obj_id
+        global timestep
+        global alwaysCountCollisionIDs
+        start_t = time.time()
+        source_pos,_ = p.getBasePositionAndOrientation(obj_id)
+        listener_pos = [s.viewer.px, s.viewer.py, s.viewer.pz]
+        audio.SetSourcePosition(source_id, [source_pos[0], source_pos[1], source_pos[2]])
+        #from numpy-quaternion github
+        ct = np.cos(s.viewer.theta / 2.0)
+        cp = np.cos(s.viewer.phi / 2.0)
+        st = np.sin(s.viewer.theta / 2.0)
+        sp = np.sin(s.viewer.phi / 2.0)
+        audio.SetListenerPositionAndRotation(listener_pos, [-1*sp*st, st*cp, sp*ct,cp*ct])
+        occl_hits, hit_num = 0, 0
+        hit_ids = set()
+        while hit_num < 12:
+            rayHit = p.rayTestBatch([source_pos], [listener_pos], reportHitNumber=hit_num, fractionEpsilon=0.01)
+            #print(rayHit)
+            hit_id = rayHit[0][0]
+            if hit_id == -1: #add collision with listener
+                break
+            if hit_id != obj_id:
+                if hit_id not in hit_ids:
+                    occl_hits += 1
+                if hit_id not in alwaysCountCollisionIDs:
+                    hit_ids.add(hit_id)
+            hit_num += 1
+        #print(occl_hits)
+        #if rayHit and occl_hits <= 16:
+            #print(rayHit[0])
+            #print(rayHit[0][0])
+        #    if rayHit[0][0] != obj_id:
+        #        occl_hits += 1
+       # 	rayHit = p.rayTest(source_pos, listener_pos)
+        #	print(tmp)
+        data = wf.readframes(frame_count)
+        if len(data) < frame_count*wf.getsampwidth(): 
+            wf.rewind()
+            data = wf.readframes(frame_count)
+        out_audio = audio.ProcessSourceAndListener(source_id, frame_count, np.frombuffer(data, dtype=np.int16))#This is inefficient
+
+        if timestep % 10 == 0:
+            #print("Left volume  = " + str(np.linalg.norm(out_audio[0::2])))
+            #print("Right volume = " + str(np.linalg.norm(out_audio[1::2])))
+            print(occl_hits)
+            print(time.time() - start_t)
+            timestep = 0
+        timestep += 1
+        return (out_audio.tobytes(), pyaudio.paContinue)
 
 
+    stream = pyaud.open(rate=SR, frames_per_buffer=framesPerBuf, format=pyaudio.paInt16, channels=2, output=True,stream_callback=callback)
 
+
+    np.random.seed(0)
+    _,(px,py,pz) = scene.get_random_point()
+    s.viewer.px = px
+    s.viewer.py = py
+    s.viewer.pz = 1.7
+    s.viewer.update()
     
-    if np.all((audio_to_write == 0)):
-        print("Got all zero")
+    stream.start_stream()
+    while True:
+        s.step()
+    s.disconnect()
+    
+
 
 if __name__ == '__main__':
     main()
