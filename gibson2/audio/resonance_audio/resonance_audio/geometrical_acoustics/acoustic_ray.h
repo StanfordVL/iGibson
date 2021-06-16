@@ -26,6 +26,8 @@ limitations under the License.
 
 namespace vraudio {
 
+#define HIT_LIST_LENGTH 16
+
 // A class extending Embree's RTCRay (https://embree.github.io/api.html) with
 // data needed for acoustic computations.
 // It exposes useful fields through accessors.
@@ -164,6 +166,9 @@ class RTCORE_ALIGN(16) AcousticRay : public RTCRay {
     prior_distance_ = prior_distance;
   }
 
+  //number of hits along ray
+  const unsigned int num_hits() const { return hitSlot; }
+
   // Finds the first intersection between this ray and a scene. Some fields
   // will be filled/mutated, which can be examined by the following functions:
   // - t_far()
@@ -178,6 +183,14 @@ class RTCORE_ALIGN(16) AcousticRay : public RTCRay {
     return geomID != RTC_INVALID_GEOMETRY_ID;
   }
 
+  // we remember up to 16 hits to ignore duplicate hits
+  //unsigned int hit_geomIDs[HIT_LIST_LENGTH];
+  //unsigned int hit_primIDs[HIT_LIST_LENGTH];
+  float hit_tfars[HIT_LIST_LENGTH];
+  //std::vector<WorldPosition> hitPositions;
+  unsigned int hitSlot = 0;
+
+
  private:
   // Used to determine early-termination of rays. May also be used to model
   // source strength.
@@ -189,6 +202,11 @@ class RTCORE_ALIGN(16) AcousticRay : public RTCRay {
   // Accumulated distance traveled on the same path before this ray starts.
   float prior_distance_ = 0.0f;
 };
+
+
+/* occlusion filter function */
+void occlusionFilter(void* ptr, RTCRay& ray_i);
+
 
 }  // namespace vraudio
 

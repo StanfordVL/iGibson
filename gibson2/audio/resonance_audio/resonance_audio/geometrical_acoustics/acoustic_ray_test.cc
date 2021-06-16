@@ -191,6 +191,56 @@ TEST_F(AcousticRayTest, IntersectTriangleInGroundSceneTest) {
   }
 }
 
+
+TEST_F(AcousticRayTest, CountOcclusionsTest) {
+  AddVerticalPlaneAndRegisterOccl(scene_, 0.5f);
+  AddVerticalPlaneAndRegisterOccl(scene_, 1.5f);
+  AddVerticalPlaneAndRegisterOccl(scene_, 2.5f);
+  AddVerticalPlaneAndRegisterOccl(scene_, 3.5f);
+  rtcCommit(scene_);
+
+  const float t_near = 0.0f;
+  const float prior_distance = 0.0f;
+  // This ray should intersect the ground geometry (id: 0) and the first
+  // triangle (id: 0).
+  const float origin[3] = {0.0f, 0.0f, 0.0f};
+  float direction[3] = {0.0f, 1.0f, 0.0f};
+  NormalizeVector(direction);
+
+  {
+  AcousticRay ray(origin, direction, t_near, 0.1f, kZeroEnergies,
+                  AcousticRay::RayType::kSpecular, prior_distance);
+
+  rtcOccluded(scene_,*((RTCRay*)&ray));
+  EXPECT_EQ(ray.num_hits(), 0);
+  }
+  {
+  AcousticRay ray(origin, direction, t_near, 0.7f, kZeroEnergies,
+                  AcousticRay::RayType::kSpecular, prior_distance);
+
+  rtcOccluded(scene_,*((RTCRay*)&ray));
+  EXPECT_EQ(ray.num_hits(), 1);
+  }
+  {
+  AcousticRay ray(origin, direction, t_near, 1.7f, kZeroEnergies,
+                  AcousticRay::RayType::kSpecular, prior_distance);
+  rtcOccluded(scene_,*((RTCRay*)&ray));
+  EXPECT_EQ(ray.num_hits(), 2);
+  }
+  {
+  AcousticRay ray(origin, direction, t_near, 2.7f, kZeroEnergies,
+                  AcousticRay::RayType::kSpecular, prior_distance);
+  rtcOccluded(scene_,*((RTCRay*)&ray));
+  EXPECT_EQ(ray.num_hits(), 3);
+  }
+  {
+  AcousticRay ray(origin, direction, t_near, AcousticRay::kInfinity, kZeroEnergies,
+                  AcousticRay::RayType::kSpecular, prior_distance);
+  rtcOccluded(scene_,*((RTCRay*)&ray));
+  EXPECT_EQ(ray.num_hits(), 4);
+  }
+}
+
 TEST_F(AcousticRayTest, IntersectNothingBackfaceTest) {
   // Add a ground to the scene and commit.
   AddTestGround(scene_);

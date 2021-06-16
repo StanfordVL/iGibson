@@ -33,6 +33,8 @@ void LoadMesh(int num_vertices, int num_triangles,
 
 int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance);
 
+void SetSourcePosition(int source_id, py::array_t<float> source_pos); 
+
 void SetListenerPosition(py::array_t<float> listener_pos);
 
 

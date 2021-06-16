@@ -9,7 +9,6 @@
 #include "base/misc_math.h"
 #include "graph/resonance_audio_api_impl.h"
 #include "geometrical_acoustics/acoustic_ray.h"
-#include "geometrical_acoustics/occlusion_ray.h"
 #include "platforms/common/room_effects_utils.h"
 #include "bindings.h"
 
@@ -109,7 +108,7 @@ ResonanceAudioApi::SourceId CreateSoundObject(RenderingMode rendering_mode, floa
   if (resonance_audio_copy != nullptr) {
     id = resonance_audio_copy->api->CreateSoundObjectSource(rendering_mode);
     resonance_audio_copy->api->SetSourceDistanceModel(
-        id, DistanceRolloffModel::kLogarithmic, 0.0f, 0.0f);
+        id, DistanceRolloffModel::kLogarithmic, min_distance, max_distance);
   }
   return id;
 }
@@ -250,17 +249,19 @@ void EstimateAndUpdateOcclusion(int id) {
 
     AcousticRay ray;
     ray.set_origin(source_position.data());
-    float dir[3] = {direction[0], direction[1], direction[2]};
+    auto dir_norm = direction.normalized();
+    float dir[3] = {dir_norm[0], dir_norm[1], dir_norm[2]};
     ray.set_direction(dir);
+    ray.set_t_near(AcousticRay::kRayEpsilon);
     ray.set_t_far(direction.norm());
 
-    HitList hits;
-    RayHits(ray, hits, scene_manager->scene());
-    if (hits.size() != resonance_audio_copy->api->GetSoundObjectOcclusionIntensity(id)) {
-        LOG(WARNING) << "Changing occlusion to " << hits.size();
+    rtcOccluded(scene_manager->scene(),*((RTCRay*)&ray));
+
+    if (ray.num_hits() != resonance_audio_copy->api->GetSoundObjectOcclusionIntensity(id)) {
+        LOG(WARNING) << "Changing occlusion to " << ray.num_hits();
     }
     
-    resonance_audio_copy->api->SetSoundObjectOcclusionIntensity(id, hits.size());
+    resonance_audio_copy->api->SetSoundObjectOcclusionIntensity(id, ray.num_hits());
 }
 
 }

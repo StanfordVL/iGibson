@@ -55,6 +55,8 @@ void ValidateDistribution(const int num_samples, const int num_bins,
 // @param scene Test scene to which the ground is added.
 void AddTestGround(RTCScene scene);
 
+void AddVerticalPlaneAndRegisterOccl(RTCScene scene, float y);
+
 // Builds a box scene with 8 vertices, 12 triangles, and 6 walls.
 //
 // @param min_corner Corner of the box with minimum x-, y-, z-components.

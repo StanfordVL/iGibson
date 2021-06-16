@@ -98,6 +98,7 @@ void SceneManager::BuildScene(const std::vector<Vertex>& vertex_buffer,
     embree_index_array[3 * i + 2] = triangle_buffer[i].v1;
   }
   rtcUnmapBuffer(scene_, mesh_id, RTC_INDEX_BUFFER);
+  rtcSetOcclusionFilterFunction(scene_,mesh_id,occlusionFilter);
   rtcCommit(scene_);
   is_scene_committed_ = true;
 }

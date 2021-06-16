@@ -160,10 +160,6 @@ namespace igibson {
         py::buffer_info out_buf = output_py.request();
         int16* output = static_cast<int16*>(out_buf.ptr);
 
-        std::cout << out_buf.size << std::endl;
-        std::cout << ((sizeof output) / (sizeof output[0])) << std::endl;
-        std::cout << output << std::endl;
-
         ProcessListener(kFramesPerBuffer, output);
         time2 = std::chrono::high_resolution_clock::now();
 
@@ -186,6 +182,8 @@ namespace igibson {
 
     void InitializeSystem(int frames_per_buffer, int sample_rate) {
         Initialize(sample_rate, 2, frames_per_buffer);
+        //std::cout << "TODO: DISABLING ROOM EFFECTS" << std::endl;
+        //resonance_audio->api->EnableRoomEffects(false);
         //SetListenerStereoSpeakerMode(true);
     }
 
@@ -252,32 +250,45 @@ namespace igibson {
         py::print("Room properties set in ", fp_ms.count(), "ms");
     }
 
-
     int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance) {
-
-        py::print("Creating source");
 
         ResonanceAudioApi::SourceId source_id = CreateSoundObject(RenderingMode::kBinauralHighQuality, min_distance, max_distance);
 
-        py::print("Created source");
         py::buffer_info sl_buf = source_pos.request();
         float* source_location_arr = (float*)sl_buf.ptr;
 
-        py::print("Setting source position");
 
-        resonance_audio->api->SetSourcePosition(source_id, source_location_arr[0], source_location_arr[1], source_location_arr[2]);
+        SetSourcePosition(source_id, source_pos);
+        //std::cout << "TODO: SETTING 360 DEGREE SPREAD" << std::endl;
+        //SetSourceSpread(source_id, 360.0f);
+        SetSourceGain(source_id, 1.0f);
 
-        py::print("Returning");
         return source_id;
+    }
+
+    void SetSourcePosition(int source_id, py::array_t<float> source_pos) {
+        py::buffer_info sp_buf = source_pos.request();
+        float* source_pos_arr = (float*)sp_buf.ptr;
+
+        resonance_audio->api->SetSourcePosition(source_id, source_pos_arr[0], source_pos_arr[1], source_pos_arr[2]);
     }
 
     void SetListenerPosition(py::array_t<float> listener_pos) {
         py::buffer_info hp_buf = listener_pos.request();
-        int* head_pos_arr = (int*)hp_buf.ptr;
+        float* head_pos_arr = (float*)hp_buf.ptr;
 
         resonance_audio->api->SetHeadPosition(head_pos_arr[0], head_pos_arr[1], head_pos_arr[2]);
     }
 
+    void SetListenerPositionAndRotation(py::array_t<float> listener_pos, py::array_t<float> listener_rot) {
+        py::buffer_info hp_buf = listener_pos.request();
+        float* head_pos_arr = (float*)hp_buf.ptr;
+
+        py::buffer_info hr_buf = listener_rot.request();
+        float* head_rot_arr = (float*)hr_buf.ptr;
+
+        SetListenerTransform(head_pos_arr[0], head_pos_arr[1], head_pos_arr[2], head_rot_arr[0], head_rot_arr[1], head_rot_arr[2], head_rot_arr[3]);
+    }
 
     py::array_t<int16> ProcessSourceAndListener(int source_id, size_t num_frames, py::array_t<int16> input_arr) {
 
@@ -312,10 +323,19 @@ namespace igibson {
         m.def("InitializeSource", &InitializeSource, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
+        m.def("SetSourcePosition", &SetSourcePosition, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+
         m.def("SetListenerPosition", &SetListenerPosition, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        
+        m.def("SetListenerPositionAndRotation", &SetListenerPositionAndRotation, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
         m.def("ProcessSourceAndListener", &ProcessSourceAndListener, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        
+        m.def("SetSourceListenerDirectivity", &SetSourceListenerDirectivity, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
     }
 }
