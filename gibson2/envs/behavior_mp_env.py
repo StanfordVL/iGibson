@@ -127,7 +127,7 @@ class BehaviorMPEnv(BehaviorEnv):
                         if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed: # say we can only grasp small objects
                             if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                                 self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
-                                print('PRIMITIVE: grasp {} success'.format(obj.name))
+                                print('PRIMITIVE: grasp {} success, obj in hand {}'.format(obj.name, self.obj_in_hand))
                             else:
                                 print('PRIMITIVE: grasp {} fail, too far'.format(obj.name))
                         else:
@@ -216,12 +216,16 @@ class BehaviorMPEnv(BehaviorEnv):
             z = obj.states[AABB].get_value()[1][2]
             hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
 
-            minx = min(x, hand_x) - 0.25
-            miny = min(y, hand_y) - 0.25
-            minz = min(z, hand_z) - 0.25
-            maxx = max(x, hand_x) + 0.25
-            maxy = max(y, hand_y) + 0.25
-            maxz = max(z, hand_z) + 0.25
+            x += np.random.uniform(-0.025, 0.025)
+            y += np.random.uniform(-0.025, 0.025)
+            z += np.random.uniform(-0.025, 0.025)
+
+            minx = min(x, hand_x) - 0.5
+            miny = min(y, hand_y) - 0.5
+            minz = min(z, hand_z) - 0.5
+            maxx = max(x, hand_x) + 0.5
+            maxy = max(y, hand_y) + 0.5
+            maxz = max(z, hand_z) + 0.5
 
             state = p.saveState()
             plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
@@ -231,15 +235,22 @@ class BehaviorMPEnv(BehaviorEnv):
 
             if plan is not None:
                 grasp_success = self.execute_grasp_plan(plan, obj)
+                print('grasp success', grasp_success)
                 if grasp_success:
                     self.obj_in_hand = obj
                 else:
-                    for _ in range(5):
+                    print("grasp failed")
+                    for _ in range(100):
                         self.robots[0].parts['right_hand'].set_close_fraction(0)
                         self.robots[0].parts['right_hand'].trigger_fraction = 0
                         p.stepSimulation()
             else:
+                print('plan is None')
                 self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
+                for _ in range(100):
+                    self.robots[0].parts['right_hand'].set_close_fraction(0)
+                    self.robots[0].parts['right_hand'].trigger_fraction = 0
+                    p.stepSimulation()
                 #reset hand
         else:
             self.obj_in_hand = obj
@@ -263,7 +274,7 @@ class BehaviorMPEnv(BehaviorEnv):
             self.robots[0].parts['right_hand'].move([x, y, z-i * 0.005], p.getQuaternionFromEuler([roll, pitch, yaw]))
             p.stepSimulation()
 
-        for _ in range(10):
+        for _ in range(50):
             self.robots[0].parts['right_hand'].set_close_fraction(1)
             self.robots[0].parts['right_hand'].trigger_fraction = 1
             p.stepSimulation()
@@ -283,7 +294,7 @@ class BehaviorMPEnv(BehaviorEnv):
         p.restoreState(original_state)
         p.removeState(original_state)
         if not use_motion_planning:
-            for _ in range(5):
+            for _ in range(50):
                 self.robots[0].parts['right_hand'].set_close_fraction(0)
                 self.robots[0].parts['right_hand'].trigger_fraction = 0
                 p.stepSimulation()
@@ -296,12 +307,12 @@ class BehaviorMPEnv(BehaviorEnv):
             x,y,z = target_pos
             hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
 
-            minx = min(x, hand_x) - 0.25
-            miny = min(y, hand_y) - 0.25
-            minz = min(z, hand_z) - 0.25
-            maxx = max(x, hand_x) + 0.25
-            maxy = max(y, hand_y) + 0.25
-            maxz = max(z, hand_z) + 0.25
+            minx = min(x, hand_x) - 0.5
+            miny = min(y, hand_y) - 0.5
+            minz = min(z, hand_z) - 0.5
+            maxx = max(x, hand_x) + 0.5
+            maxy = max(y, hand_y) + 0.5
+            maxz = max(z, hand_z) + 0.5
 
             state = p.saveState()
             obstacles = self.get_body_ids()
