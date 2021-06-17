@@ -318,7 +318,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     p.stepSimulation()
                 released_obj = self.obj_in_hand
                 self.obj_in_hand = None
-                for _ in range(5):
+                for _ in range(50):
                     self.robots[0].parts['right_hand'].set_close_fraction(0)
                     self.robots[0].parts['right_hand'].trigger_fraction = 0
                     p.stepSimulation()
@@ -328,6 +328,10 @@ class BehaviorMPEnv(BehaviorEnv):
                 # reset hand
 
                 p.resetBaseVelocity(released_obj.get_body_id(), linearVelocity=[0,0,0], angularVelocity=[0,0,0])
+
+                # let object fall
+                for _ in range(100):
+                    p.stepSimulation()
 
 
     def navigate_to_obj(self, obj, use_motion_planning=False):
