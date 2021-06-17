@@ -630,7 +630,7 @@ class SemanticRearrangementTask(BaseTask):
                     # This is the target object, update it and break
                     self.target_object = obj
                     # Also update location info
-                    self.update_location_info()
+                    self.update_location_info(info_only=True)
                     break
 
     def check_obj_contact(self, obj):
