@@ -194,7 +194,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     else:
                         print('PRIMITIVE: place {} inside {} fail, too far'.format(self.obj_in_hand.name, obj.name))
             elif action_primitive == ActionPrimitives.OPEN:
-                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 4:
                     if hasattr(obj, 'states') and Open in obj.states:
                         obj.states[Open].set_value(True)
                     else:
@@ -203,7 +203,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     print('PRIMITIVE open failed, too far')
 
             elif action_primitive == ActionPrimitives.CLOSE:
-                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 4:
                     if hasattr(obj, 'states') and Open in obj.states:
                         obj.states[Open].set_value(False)
                     else:
@@ -233,7 +233,7 @@ class BehaviorMPEnv(BehaviorEnv):
             maxz = max(z, hand_z) + 0.5
 
             state = p.saveState()
-            plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
+            plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, np.random.uniform(-np.pi, np.pi)], ((minx, miny, minz), (maxx, maxy, maxz)),
                                        obstacles=self.get_body_ids(include_self=True))
             p.restoreState(state)
             p.removeState(state)
