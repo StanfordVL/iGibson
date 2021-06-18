@@ -17,11 +17,14 @@ from gibson2.objects.articulated_object import URDFObject
 
 def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[], direct=False,
                         weights=1 * np.ones(3), resolutions=0.05 * np.ones(3),
-                        max_distance=MAX_DISTANCE, **kwargs):
+                        max_distance=MAX_DISTANCE, override_sample_fn=None, **kwargs):
     def sample_fn():
         x, y = np.random.uniform(*base_limits)
         theta = np.random.uniform(*CIRCULAR_LIMITS)
         return (x, y, theta)
+
+    if override_sample_fn is not None:
+        sample_fn = override_sample_fn
 
     difference_fn = get_base_difference_fn()
     distance_fn = get_base_distance_fn(weights=weights)

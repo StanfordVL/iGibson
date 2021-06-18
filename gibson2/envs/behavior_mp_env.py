@@ -18,6 +18,10 @@ from gibson2.object_states.on_floor import RoomFloor
 from gibson2.utils.behavior_robot_planning_utils import plan_hand_motion_br, plan_base_motion_br, \
                                                  dry_run_base_plan, dry_run_arm_plan
 
+from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, \
+    get_base_distance_fn, circular_difference, set_base_values, pairwise_collision, get_base_values, direct_path, birrt, \
+    PI
+
 NUM_ACTIONS = 6
 
 class ActionPrimitives(IntEnum):
@@ -349,6 +353,11 @@ class BehaviorMPEnv(BehaviorEnv):
                 for _ in range(100):
                     p.stepSimulation()
 
+    def sample_fn(self):
+        random_point = self.scene.get_random_point()
+        x, y = random_point[1][:2]
+        theta = np.random.uniform(*CIRCULAR_LIMITS)
+        return (x, y, theta)
 
     def navigate_to_obj(self, obj, use_motion_planning=False):
         # test agent positions around an obj
@@ -413,7 +422,8 @@ class BehaviorMPEnv(BehaviorEnv):
                 plan = plan_base_motion_br(robot=self.robots[0],
                                            end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
                                            base_limits=[(minx,miny), (maxx,maxy)],
-                                           obstacles=self.get_body_ids())
+                                           obstacles=self.get_body_ids(),
+                                           override_sample_fn=self.sample_fn)
                 #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
 
                 if plan is not None:
