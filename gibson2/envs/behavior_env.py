@@ -489,6 +489,9 @@ class BehaviorEnv(iGibsonEnv):
                 self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
         else:
             self.task.reset_scene(snapshot_id=self.task.initial_state)
+
+        self.scene.force_wakeup_scene_objects()
+        self.scene.open_all_doors()
         # set the constraints to the current poses
         self.robots[0].update(np.zeros(28))
 
