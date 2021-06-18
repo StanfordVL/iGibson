@@ -76,3 +76,5 @@ hand_threshold: 0.4
 hand_speed: 0.3
 body_speed: 0.3
 
+# texture scale
+texture_scale: 0.5
