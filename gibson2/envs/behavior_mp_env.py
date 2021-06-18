@@ -99,11 +99,16 @@ class BehaviorMPEnv(BehaviorEnv):
         self.num_objects = len(self.task_relevant_objects)
         self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
-    def get_body_ids(self):
+    def get_body_ids(self, include_self=False):
         ids = []
         for object in self.scene.get_objects():
             if isinstance(object, URDFObject):
                 ids.extend(object.body_ids)
+
+        if include_self:
+            ids.append(self.robots[0].parts['left_hand'].get_body_id())
+            ids.append(self.robots[0].parts['body'].get_body_id())
+
         return ids
 
     def step(self, action):
@@ -229,7 +234,7 @@ class BehaviorMPEnv(BehaviorEnv):
 
             state = p.saveState()
             plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
-                                       obstacles=self.get_body_ids())
+                                       obstacles=self.get_body_ids(include_self=True))
             p.restoreState(state)
             p.removeState(state)
 
@@ -452,7 +457,8 @@ if __name__ == '__main__':
     env = BehaviorMPEnv(config_file=args.config,
                       mode=args.mode,
                       action_timestep=1.0 / 300.0,
-                      physics_timestep=1.0 / 300.0)
+                      physics_timestep=1.0 / 300.0,
+                      use_motion_planning=True)
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))
