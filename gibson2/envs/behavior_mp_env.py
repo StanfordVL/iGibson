@@ -363,7 +363,15 @@ class BehaviorMPEnv(BehaviorEnv):
                     pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
                     orn = [0,0,yaw-np.pi]
                     self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
-                    if not detect_robot_collision(self.robots[0]):
+                    #from IPython import embed; embed()
+                    eye_pos = self.robots[0].parts['eye'].get_position()
+                    obj_pos = obj.get_position()
+                    ray_test_res = p.rayTest(eye_pos, obj_pos)
+                    blocked = False
+                    if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
+                        blocked = True
+
+                    if not detect_robot_collision(self.robots[0]) and not blocked:
                         valid_position = (pos, orn)
                         break
                 if valid_position is not None:
