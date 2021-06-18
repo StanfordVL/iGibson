@@ -307,11 +307,11 @@ class BehaviorMPEnv(BehaviorEnv):
             x,y,z = target_pos
             hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
 
-            minx = min(x, hand_x) - 0.5
-            miny = min(y, hand_y) - 0.5
+            minx = min(x, hand_x) - 1
+            miny = min(y, hand_y) - 1
             minz = min(z, hand_z) - 0.5
-            maxx = max(x, hand_x) + 0.5
-            maxy = max(y, hand_y) + 0.5
+            maxx = max(x, hand_x) + 1
+            maxy = max(y, hand_y) + 1
             maxz = max(z, hand_z) + 0.5
 
             state = p.saveState()

@@ -27,7 +27,7 @@ def plan_base_motion_br(robot: BehaviorRobot, end_conf, base_limits, obstacles=[
     distance_fn = get_base_distance_fn(weights=weights)
 
     body_ids = []
-    for part in ['body', 'left_hand', 'right_hand']:
+    for part in ['body']:#, 'left_hand', 'right_hand']:
         body_ids.append(robot.parts[part].body_id)
 
     def extend_fn(q1, q2):
