@@ -145,6 +145,11 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
     physics_warming_steps = 200
 
     steps = 0
+
+
+    #pos, orn = vr_agent.parts['body'].get_position_orientation()
+    #vr_agent.set_position_orientation([pos[0], pos[1], 0.3], orn) 
+
     while max_steps < 0 or steps < max_steps:
         igtn_task.simulator.step(print_stats=profile)
         task_done, satisfied_predicates = igtn_task.check_success()
