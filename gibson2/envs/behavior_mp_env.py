@@ -198,7 +198,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     else:
                         print('PRIMITIVE: place {} inside {} fail, too far'.format(self.obj_in_hand.name, obj.name))
             elif action_primitive == ActionPrimitives.OPEN:
-                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 4:
+                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                     if hasattr(obj, 'states') and Open in obj.states:
                         obj.states[Open].set_value(True)
                     else:
@@ -207,7 +207,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     print('PRIMITIVE open failed, too far')
 
             elif action_primitive == ActionPrimitives.CLOSE:
-                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 4:
+                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                     if hasattr(obj, 'states') and Open in obj.states:
                         obj.states[Open].set_value(False)
                     else:
