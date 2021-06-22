@@ -13,6 +13,45 @@ import pybullet as p
 from collections import OrderedDict
 from gibson2.robots.behavior_robot import BehaviorRobot
 
+
+import json
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.backends.cudnn as cudnn
+from torch.utils.data import Dataset, DataLoader
+import os
+import argparse
+import random
+import time
+from torch.utils.tensorboard import SummaryWriter
+import shutil
+import h5py
+
+
+class Model(nn.Module):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers,
+                 arm_action_size):
+        super(Model, self).__init__()
+        assert num_layers > 0
+        layers = []
+        layers.append(nn.Linear(input_size, hidden_size))
+        layers.append(nn.ReLU())
+        for i in range(1, num_layers):
+            layers.append(nn.Linear(hidden_size, hidden_size))
+            layers.append(nn.ReLU())
+        self.layers = nn.Sequential(*layers)
+        self.arm_action_head = nn.Linear(hidden_size, arm_action_size)
+
+    def forward(self, x):
+        x = self.layers(x)
+        arm_action = self.arm_action_head(x)
+        return arm_action
+
+
 class BehaviorEnv(iGibsonEnv):
     """
     iGibson Environment (OpenAI Gym interface)
@@ -96,7 +135,8 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                    'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
+                    'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
+                    'load_object_categories': ["coffee_table", "cauldron"],
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
@@ -218,10 +258,42 @@ if __name__ == '__main__':
                         help='which mode for simulation (default: headless)')
     args = parser.parse_args()
 
+    model = Model(input_size=44,
+                  hidden_size=64,
+                  num_layers=5,
+                  arm_action_size=28,
+                  )
+    model = torch.nn.DataParallel(model).cuda()
+
+    resume = '/home/fei/Development/gibsonv2/gibson2/debug/bc_results/ckpt/model_best.pth.tar'
+
+    if os.path.isfile(resume):
+        print("=> loading checkpoint '{}'".format(resume))
+        #if args.gpu is None:
+        checkpoint = torch.load(resume)
+        #else:
+        #    # Map model to be loaded to specified single gpu.
+        #    loc = 'cuda:{}'.format(args.gpu)
+        #    checkpoint = torch.load(args.resume, map_location=loc)
+        #args.start_epoch = checkpoint['epoch']
+        # best_l1 = checkpoint['best_l1']
+        # if args.gpu is not None:
+        #    # best_acc1 may be from a checkpoint from a different GPU
+        #    best_l1 = best_l1.to(args.gpu)
+        model.load_state_dict(checkpoint['state_dict'])
+        #optimizer.load_state_dict(checkpoint['optimizer'])
+        input_mean = checkpoint['input_mean']
+        input_std = checkpoint['input_std']
+
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(resume, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(resume))
+
     env = BehaviorEnv(config_file=args.config,
                      mode=args.mode,
-                     action_timestep=1.0 / 10.0,
-                     physics_timestep=1.0 / 40.0)
+                     action_timestep=1.0 / 30.0,
+                     physics_timestep=1.0 / 300.0)
 
     env.simulator.viewer.px = -1.1
     env.simulator.viewer.py = 1.0
@@ -232,9 +304,57 @@ if __name__ == '__main__':
         print('Episode: {}'.format(episode))
         start = time.time()
         env.reset()
-        for i in range(1000):  # 10 seconds
-            action = env.action_space.sample()
+        #env.robots[0].set_position_orientation([ 0.32115,   -1.41382001,  1.31316097],
+        #                                       [1.05644993e-02, - 6.99956664e-03,  9.99919350e-01,  8.30828918e-04]
+        #                                       )
+
+        for i in range(100):  # 10 seconds
+
+            # construct input
+            left_hand_local_pos = env.robots[0].parts['left_hand'].local_pos
+            left_hand_local_orn = env.robots[0].parts['left_hand'].local_orn
+            right_hand_local_pos = env.robots[0].parts['right_hand'].local_pos
+            right_hand_local_orn = env.robots[0].parts['right_hand'].local_orn
+            left_hand_trigger_fraction = [env.robots[0].parts['left_hand'].trigger_fraction]
+            right_hand_trigger_fraction = [env.robots[0].parts['right_hand'].trigger_fraction]
+
+            proprioception = np.concatenate((left_hand_local_pos, left_hand_local_orn,
+                                             right_hand_local_pos, right_hand_local_orn,
+                                             left_hand_trigger_fraction, right_hand_trigger_fraction),
+                                            )
+            keys = ['1', '62', '8', '98']
+            tracked_objects = ['floor.n.01_1', 'caldron.n.01_1', 'table.n.02_1', 'agent.n.01_1']
+            task_obs = []
+
+            for obj in tracked_objects:
+                pos, orn = env.task.object_scope[obj].get_position_orientation()
+                task_obs.append(np.array(pos))
+                task_obs.append(np.array(orn))
+
+            task_obs = np.concatenate(task_obs)
+            task_obs[21 + 2] += 0.6
+            #from IPython import embed;
+            #embed()
+
+            agent_input = np.concatenate((proprioception, task_obs))
+            agent_input = (agent_input - input_mean) / (input_std + 1e-10)
+            agent_input = agent_input[None, :].astype(np.float32)
+
+            with torch.no_grad():
+                pred_action = model(torch.from_numpy(agent_input)).cpu().numpy()[0]
+
+            print(pred_action)
+
+            action = np.zeros((28,))#env.action_space.sample()
+            #action[:6] = pred_action[:6]
+            action[12:18] = pred_action[12:18]
+            action[20:26] = pred_action[20:26]
+            if i < 5:
+                action[19] = 1
+                action[27] = 1
+
             state, reward, done, _ = env.step(action)
+            time.sleep(0.05)
             print('reward', reward)
             if done:
                 break

@@ -1102,8 +1102,8 @@ class MeshRenderer(object):
         self.vertex_data = []
         self.shapes = []
         save_path = os.path.join(gibson2.ig_dataset_path, 'tmp')
-        if os.path.exists(save_path):
-            shutil.rmtree(save_path)
+        #if os.path.exists(save_path):
+        #    shutil.rmtree(save_path)
 
     def transform_vector(self, vec):
         vec = np.array(vec)

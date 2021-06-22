@@ -362,7 +362,7 @@ class iGTNTask(TaskNetTask):
     def import_agent(self):
         # TODO: replace this with self.simulator.import_robot(BehaviorRobot(self.simulator)) once BehaviorRobot supports
         # baserobot api
-        agent = BehaviorRobot(self.simulator)
+        agent = BehaviorRobot(self.simulator, use_tracked_body_override=False)
         self.simulator.import_behavior_robot(agent)
         self.simulator.register_main_vr_robot(agent)
         self.agent = agent

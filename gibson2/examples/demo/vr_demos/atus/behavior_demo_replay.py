@@ -21,6 +21,42 @@ import tasknet
 import numpy as np
 import pybullet as p
 
+import json
+import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.backends.cudnn as cudnn
+from torch.utils.data import Dataset, DataLoader
+import os
+import argparse
+import random
+import time
+from torch.utils.tensorboard import SummaryWriter
+import shutil
+import h5py
+from PIL import Image
+
+class Model(nn.Module):
+    def __init__(self,
+                 input_size,
+                 hidden_size,
+                 num_layers,
+                 arm_action_size):
+        super(Model, self).__init__()
+        assert num_layers > 0
+        layers = []
+        layers.append(nn.Linear(input_size, hidden_size))
+        layers.append(nn.ReLU())
+        for i in range(1, num_layers):
+            layers.append(nn.Linear(hidden_size, hidden_size))
+            layers.append(nn.ReLU())
+        self.layers = nn.Sequential(*layers)
+        self.arm_action_head = nn.Linear(hidden_size, arm_action_size)
+
+    def forward(self, x):
+        x = self.layers(x)
+        arm_action = self.arm_action_head(x)
+        return arm_action
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -40,18 +76,21 @@ def parse_args():
                         help='Whether to print profiling data.')
     parser.add_argument('--no_vr', action='store_true',
                         help='Whether to disable replay through VR and use iggui instead.')
+    parser.add_argument('--rewind', type=int)
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     tasknet.set_backend("iGibson")
+    # os.makedirs(args.frame_save_path, exist_ok=True)
     replay_demo(args.vr_log_path, args.vr_replay_log_path, args.disable_save, args.frame_save_path, args.highlight_gaze,
-                args.no_vr, profile=args.profile)
+                args.no_vr, profile=args.profile, rewind=args.rewind)
 
 
 def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_path=None, highlight_gaze=False,
-                no_vr=False, start_callback=None, step_callback=None, end_callback=None, profile=False):
+                no_vr=False, start_callback=None, step_callback=None, end_callback=None, profile=False, rewind=None):
     """
     Replay a BEHAVIOR demo.
 
@@ -184,6 +223,40 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     gaze_max_distance = 100.0
     task_done = False
     satisfied_predicates_cached = {}
+
+    # initialize model
+    model = Model(input_size=44,
+                  hidden_size=64,
+                  num_layers=5,
+                  arm_action_size=12,
+                  )
+    model = torch.nn.DataParallel(model).cuda()
+
+    resume = '/home/fei/Development/gibsonv2/gibson2/debug/bc_results/no_augmentation/ckpt/model_best.pth.tar'
+
+    if os.path.isfile(resume):
+        print("=> loading checkpoint '{}'".format(resume))
+        # if args.gpu is None:
+        checkpoint = torch.load(resume)
+        # else:
+        #    # Map model to be loaded to specified single gpu.
+        #    loc = 'cuda:{}'.format(args.gpu)
+        #    checkpoint = torch.load(args.resume, map_location=loc)
+        # args.start_epoch = checkpoint['epoch']
+        # best_l1 = checkpoint['best_l1']
+        # if args.gpu is not None:
+        #    # best_acc1 may be from a checkpoint from a different GPU
+        #    best_l1 = best_l1.to(args.gpu)
+        model.load_state_dict(checkpoint['state_dict'])
+        # optimizer.load_state_dict(checkpoint['optimizer'])
+        input_mean = checkpoint['input_mean']
+        input_std = checkpoint['input_std']
+
+        print("=> loaded checkpoint '{}' (epoch {})"
+              .format(resume, checkpoint['epoch']))
+    else:
+        print("=> no checkpoint found at '{}'".format(resume))
+
     while log_reader.get_data_left_to_read():
         if highlight_gaze:
             eye_data = log_reader.get_vr_data().query('eye_data')
@@ -209,11 +282,67 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         if not no_vr:
             log_reader.set_replay_camera(s)
 
+        # save_fn = "{}/frame_{:04d}.jpg".format(frame_save_path, log_reader.frame_counter)
+        # rgb_frame = igtn_task.simulator.renderer.render_robot_cameras()[0][:,:,:3]
+        # if log_reader.frame_counter > log_reader.total_frame_num - rewind:
+        #     rgb_frame[:20, :, 0] = 0
+        #     rgb_frame[:20, :, 1] = 1
+        #     rgb_frame[:20, :, 2] = 0
+        # else:
+        #     rgb_frame[:20, :, 0] = 0
+        #     rgb_frame[:20, :, 1] = 0
+        #     rgb_frame[:20, :, 2] = 1
+        # 
+        # image = Image.fromarray((rgb_frame * 255).astype(np.uint8))
+        # image.save(save_fn)
+
         if step_callback is not None:
             step_callback(igtn_task)
 
+        left_hand_local_pos = vr_agent.parts['left_hand'].local_pos
+        left_hand_local_orn = vr_agent.parts['left_hand'].local_orn
+        right_hand_local_pos = vr_agent.parts['right_hand'].local_pos
+        right_hand_local_orn = vr_agent.parts['right_hand'].local_orn
+        left_hand_trigger_fraction = [vr_agent.parts['left_hand'].trigger_fraction]
+        right_hand_trigger_fraction = [vr_agent.parts['right_hand'].trigger_fraction]
+
+        proprioception = np.concatenate((left_hand_local_pos, left_hand_local_orn,
+                                         right_hand_local_pos, right_hand_local_orn,
+                                         left_hand_trigger_fraction, right_hand_trigger_fraction),
+                                        )
+        keys = ['1', '62', '8', '98']
+        tracked_objects = ['floor.n.01_1', 'caldron.n.01_1', 'table.n.02_1', 'agent.n.01_1']
+        task_obs = []
+
+        for obj in tracked_objects:
+            pos, orn = igtn_task.object_scope[obj].get_position_orientation()
+            task_obs.append(np.array(pos))
+            task_obs.append(np.array(orn))
+
+        task_obs = np.concatenate(task_obs)
+        #task_obs[21 + 2] += 0.6
+        # from IPython import embed;
+        # embed()
+
+        agent_input = np.concatenate((proprioception, task_obs))
+        agent_input = (agent_input - input_mean) / (input_std + 1e-10)
+        agent_input = agent_input[None, :].astype(np.float32)
+
+        with torch.no_grad():
+            pred_action = model(torch.from_numpy(agent_input)).cpu().numpy()[0]
+
+        #print('pred action', pred_action)
+        #print('true action', log_reader.get_agent_action('vr_robot'))
+        true_action = log_reader.get_agent_action('vr_robot')
+
+
+        if log_reader.frame_counter > log_reader.total_frame_num - rewind:
+            true_action[12:18] = pred_action[:6]
+            true_action[20:26] = pred_action[6:]
+            print("using pred action")
+
         # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action('vr_robot'))
+        vr_agent.update(true_action)
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
