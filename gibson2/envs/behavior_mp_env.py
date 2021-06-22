@@ -18,6 +18,10 @@ from gibson2.object_states.on_floor import RoomFloor
 from gibson2.utils.behavior_robot_planning_utils import plan_hand_motion_br, plan_base_motion_br, \
                                                  dry_run_base_plan, dry_run_arm_plan
 
+from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, \
+    get_base_distance_fn, circular_difference, set_base_values, pairwise_collision, get_base_values, direct_path, birrt, \
+    PI
+
 NUM_ACTIONS = 6
 
 class ActionPrimitives(IntEnum):
@@ -99,11 +103,16 @@ class BehaviorMPEnv(BehaviorEnv):
         self.num_objects = len(self.task_relevant_objects)
         self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
-    def get_body_ids(self):
+    def get_body_ids(self, include_self=False):
         ids = []
         for object in self.scene.get_objects():
             if isinstance(object, URDFObject):
                 ids.extend(object.body_ids)
+
+        if include_self:
+            ids.append(self.robots[0].parts['left_hand'].get_body_id())
+            ids.append(self.robots[0].parts['body'].get_body_id())
+
         return ids
 
     def step(self, action):
@@ -127,7 +136,7 @@ class BehaviorMPEnv(BehaviorEnv):
                         if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed: # say we can only grasp small objects
                             if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
                                 self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
-                                print('PRIMITIVE: grasp {} success'.format(obj.name))
+                                print('PRIMITIVE: grasp {} success, obj in hand {}'.format(obj.name, self.obj_in_hand))
                             else:
                                 print('PRIMITIVE: grasp {} fail, too far'.format(obj.name))
                         else:
@@ -216,30 +225,41 @@ class BehaviorMPEnv(BehaviorEnv):
             z = obj.states[AABB].get_value()[1][2]
             hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
 
-            minx = min(x, hand_x) - 0.25
-            miny = min(y, hand_y) - 0.25
-            minz = min(z, hand_z) - 0.25
-            maxx = max(x, hand_x) + 0.25
-            maxy = max(y, hand_y) + 0.25
-            maxz = max(z, hand_z) + 0.25
+            x += np.random.uniform(-0.025, 0.025)
+            y += np.random.uniform(-0.025, 0.025)
+            z += np.random.uniform(-0.025, 0.025)
+
+            minx = min(x, hand_x) - 0.5
+            miny = min(y, hand_y) - 0.5
+            minz = min(z, hand_z) - 0.5
+            maxx = max(x, hand_x) + 0.5
+            maxy = max(y, hand_y) + 0.5
+            maxz = max(z, hand_z) + 0.5
 
             state = p.saveState()
-            plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, 0], ((minx, miny, minz), (maxx, maxy, maxz)),
-                                       obstacles=self.get_body_ids())
+            plan = plan_hand_motion_br(self.robots[0], None, [x, y, z+0.05, 0, np.pi * 5/6.0, np.random.uniform(-np.pi, np.pi)], ((minx, miny, minz), (maxx, maxy, maxz)),
+                                       obstacles=self.get_body_ids(include_self=True))
             p.restoreState(state)
             p.removeState(state)
 
             if plan is not None:
                 grasp_success = self.execute_grasp_plan(plan, obj)
+                print('grasp success', grasp_success)
                 if grasp_success:
                     self.obj_in_hand = obj
                 else:
-                    for _ in range(5):
+                    print("grasp failed")
+                    for _ in range(100):
                         self.robots[0].parts['right_hand'].set_close_fraction(0)
                         self.robots[0].parts['right_hand'].trigger_fraction = 0
                         p.stepSimulation()
             else:
+                print('plan is None')
                 self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
+                for _ in range(100):
+                    self.robots[0].parts['right_hand'].set_close_fraction(0)
+                    self.robots[0].parts['right_hand'].trigger_fraction = 0
+                    p.stepSimulation()
                 #reset hand
         else:
             self.obj_in_hand = obj
@@ -263,7 +283,7 @@ class BehaviorMPEnv(BehaviorEnv):
             self.robots[0].parts['right_hand'].move([x, y, z-i * 0.005], p.getQuaternionFromEuler([roll, pitch, yaw]))
             p.stepSimulation()
 
-        for _ in range(10):
+        for _ in range(50):
             self.robots[0].parts['right_hand'].set_close_fraction(1)
             self.robots[0].parts['right_hand'].trigger_fraction = 1
             p.stepSimulation()
@@ -283,7 +303,7 @@ class BehaviorMPEnv(BehaviorEnv):
         p.restoreState(original_state)
         p.removeState(original_state)
         if not use_motion_planning:
-            for _ in range(5):
+            for _ in range(50):
                 self.robots[0].parts['right_hand'].set_close_fraction(0)
                 self.robots[0].parts['right_hand'].trigger_fraction = 0
                 p.stepSimulation()
@@ -296,12 +316,12 @@ class BehaviorMPEnv(BehaviorEnv):
             x,y,z = target_pos
             hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
 
-            minx = min(x, hand_x) - 0.25
-            miny = min(y, hand_y) - 0.25
-            minz = min(z, hand_z) - 0.25
-            maxx = max(x, hand_x) + 0.25
-            maxy = max(y, hand_y) + 0.25
-            maxz = max(z, hand_z) + 0.25
+            minx = min(x, hand_x) - 1
+            miny = min(y, hand_y) - 1
+            minz = min(z, hand_z) - 0.5
+            maxx = max(x, hand_x) + 1
+            maxy = max(y, hand_y) + 1
+            maxz = max(z, hand_z) + 0.5
 
             state = p.saveState()
             obstacles = self.get_body_ids()
@@ -318,7 +338,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     p.stepSimulation()
                 released_obj = self.obj_in_hand
                 self.obj_in_hand = None
-                for _ in range(5):
+                for _ in range(50):
                     self.robots[0].parts['right_hand'].set_close_fraction(0)
                     self.robots[0].parts['right_hand'].trigger_fraction = 0
                     p.stepSimulation()
@@ -329,6 +349,15 @@ class BehaviorMPEnv(BehaviorEnv):
 
                 p.resetBaseVelocity(released_obj.get_body_id(), linearVelocity=[0,0,0], angularVelocity=[0,0,0])
 
+                # let object fall
+                for _ in range(100):
+                    p.stepSimulation()
+
+    def sample_fn(self):
+        random_point = self.scene.get_random_point()
+        x, y = random_point[1][:2]
+        theta = np.random.uniform(*CIRCULAR_LIMITS)
+        return (x, y, theta)
 
     def navigate_to_obj(self, obj, use_motion_planning=False):
         # test agent positions around an obj
@@ -348,7 +377,15 @@ class BehaviorMPEnv(BehaviorEnv):
                     pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
                     orn = [0,0,yaw-np.pi]
                     self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
-                    if not detect_robot_collision(self.robots[0]):
+                    #from IPython import embed; embed()
+                    eye_pos = self.robots[0].parts['eye'].get_position()
+                    obj_pos = obj.get_position()
+                    ray_test_res = p.rayTest(eye_pos, obj_pos)
+                    blocked = False
+                    if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
+                        blocked = True
+
+                    if not detect_robot_collision(self.robots[0]) and not blocked:
                         valid_position = (pos, orn)
                         break
                 if valid_position is not None:
@@ -385,7 +422,8 @@ class BehaviorMPEnv(BehaviorEnv):
                 plan = plan_base_motion_br(robot=self.robots[0],
                                            end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
                                            base_limits=[(minx,miny), (maxx,maxy)],
-                                           obstacles=self.get_body_ids())
+                                           obstacles=self.get_body_ids(),
+                                           override_sample_fn=self.sample_fn)
                 #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
 
                 if plan is not None:
@@ -429,7 +467,8 @@ if __name__ == '__main__':
     env = BehaviorMPEnv(config_file=args.config,
                       mode=args.mode,
                       action_timestep=1.0 / 300.0,
-                      physics_timestep=1.0 / 300.0)
+                      physics_timestep=1.0 / 300.0,
+                      use_motion_planning=True)
     step_time_list = []
     for episode in range(100):
         print('Episode: {}'.format(episode))

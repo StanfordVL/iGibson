@@ -128,7 +128,8 @@ class BehaviorEnv(iGibsonEnv):
         else:
             scene_kwargs = {
                 'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
-                #'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
+                # 'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"],
+                'trav_map_resolution': 0.025,
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
@@ -489,6 +490,9 @@ class BehaviorEnv(iGibsonEnv):
                 self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
         else:
             self.task.reset_scene(snapshot_id=self.task.initial_state)
+
+        self.scene.force_wakeup_scene_objects()
+        self.scene.open_all_doors()
         # set the constraints to the current poses
         self.robots[0].update(np.zeros(28))
 
