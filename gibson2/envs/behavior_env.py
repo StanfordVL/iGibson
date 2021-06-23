@@ -312,7 +312,6 @@ class BehaviorEnv(iGibsonEnv):
         self.robots[0].update(new_action)
         if self.log_writer is not None:
             self.log_writer.process_frame()
-
         self.simulator.step()
 
         if self.action_filter == 'magic_grasping':
@@ -502,8 +501,6 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene(snapshot_id=self.task.initial_state)
         # set the constraints to the current poses
         self.robots[0].update(np.zeros(28))
-        if self.log_writer is not None:
-            self.log_writer.process_frame()
 
 
     def reset(self, resample_objects=False):
@@ -599,7 +596,7 @@ if __name__ == '__main__':
                       action_filter=args.action_filter,
                       episode_save_dir='test')
     step_time_list = []
-    for episode in range(100):
+    for episode in range(2):
         print('Episode: {}'.format(episode))
         start = time.time()
         env.reset()
