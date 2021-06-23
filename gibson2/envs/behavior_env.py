@@ -25,7 +25,8 @@ from gibson2.object_states import Touching
 from gibson2.robots.behavior_robot import PALM_LINK_INDEX
 from gibson2.object_states.factory import get_state_from_name
 from gibson2.object_states import WaterSource, Stained, HeatSourceOrSink
-
+from gibson2.utils.ig_logging import IGLogWriter
+import datetime
 
 class BehaviorEnv(iGibsonEnv):
     """
@@ -45,6 +46,7 @@ class BehaviorEnv(iGibsonEnv):
         seed=0,
         action_filter='navigation',
         instance_id=0,
+        episode_save_dir=None
     ):
         """
         :param config_file: config_file path
@@ -68,6 +70,12 @@ class BehaviorEnv(iGibsonEnv):
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = 0
+        self.episode_save_dir = episode_save_dir
+        if self.episode_save_dir is not None:
+            os.makedirs(self.episode_save_dir, exist_ok=True)
+
+        self.log_writer = None
+
 
         # Make sure different parallel environments will have different random seeds
         np.random.seed(os.getpid())
@@ -117,7 +125,7 @@ class BehaviorEnv(iGibsonEnv):
         else:
             scene_kwargs = {
                 'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
-                # 'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
+                #'load_object_categories': ["breakfast_table", "shelf", "swivel_chair", "notebook", "hardback"]
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
@@ -302,6 +310,8 @@ class BehaviorEnv(iGibsonEnv):
             new_action = action
 
         self.robots[0].update(new_action)
+        if self.log_writer is not None:
+            self.log_writer.process_frame()
         self.simulator.step()
 
         if self.action_filter == 'magic_grasping':
@@ -492,10 +502,34 @@ class BehaviorEnv(iGibsonEnv):
         # set the constraints to the current poses
         self.robots[0].update(np.zeros(28))
 
+
     def reset(self, resample_objects=False):
         """
         Reset episode
         """
+        # if self.log_writer is not None, save previous episode
+        if self.log_writer is not None:
+            self.log_writer.end_log_session()
+            del self.log_writer
+            self.log_writer = None
+
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        task = self.config['task']
+        task_id = self.config['task_id']
+        scene = self.config['scene_id']
+        vr_log_path = os.path.join(self.episode_save_dir, "{}_{}_{}_{}_{}.hdf5".format(
+                task, task_id, scene, timestamp, self.current_episode))
+        self.log_writer = IGLogWriter(
+            self.simulator,
+            frames_before_write=200,
+            log_filepath=vr_log_path,
+            task=self.task,
+            store_vr=False,
+            vr_robot=self.robots[0],
+            filter_objects=True
+        )
+        self.log_writer.set_up_data_storage()
+
         self.robots[0].robot_specific_reset()
 
         if isinstance(self.task, PointNavRandomTask):
@@ -559,11 +593,11 @@ if __name__ == '__main__':
                       mode=args.mode,
                       action_timestep=1.0 / 10.0,
                       physics_timestep=1.0 / 240.0,
-                      action_filter=args.action_filter)
+                      action_filter=args.action_filter,
+                      episode_save_dir='test')
     step_time_list = []
-    for episode in range(100):
+    for episode in range(2):
         print('Episode: {}'.format(episode))
-        embed()
         start = time.time()
         env.reset()
         for i in range(1000):  # 10 seconds

@@ -154,6 +154,11 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
                                    load_clutter=True,
                                    online_sampling=False)
     vr_agent = igtn_task.simulator.robots[0]
+    vr_agent.activate()
+    igtn_task.reset_scene(snapshot_id=igtn_task.initial_state)
+    # set the constraints to the current poses
+    vr_agent.update(np.zeros(28))
+
     if not in_log_path:
         raise RuntimeError('Must provide a VR log path to run action replay!')
     log_reader = IGLogReader(in_log_path, log_status=False)
@@ -202,6 +207,13 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
                     if obj.category not in disallowed_categories:
                         obj.highlight()
 
+        action = log_reader.get_agent_action('vr_robot')
+        # Get relevant VR action data and update VR agent
+        vr_agent.update(action)
+
+        if not disable_save:
+            log_writer.process_frame()
+
         igtn_task.simulator.step(print_stats=profile)
         task_done, satisfied_predicates = igtn_task.check_success()
 
@@ -212,14 +224,9 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         if step_callback is not None:
             step_callback(igtn_task)
 
-        # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action('vr_robot'))
 
         if satisfied_predicates != satisfied_predicates_cached:
             satisfied_predicates_cached = satisfied_predicates
-
-        if not disable_save:
-            log_writer.process_frame()
 
         # Per-step determinism check. Activate if necessary.
         # things_to_compare = [thing for thing in log_writer.name_path_data if thing[0] == "physics_data"]
