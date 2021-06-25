@@ -1072,12 +1072,18 @@ class Simulator:
             self.step_vr(print_stats=print_stats)
             return
 
+        start = time.time()
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
-
+        physics = time.time()-start
+        start = time.time()
         self._non_physics_step()
+        non_physics = time.time()-start
+        start = time.time()
         self.sync()
+        render = time.time()-start
         self.frame_count += 1
+        return physics, non_physics, render
 
     def sync(self, force_sync=False):
         """

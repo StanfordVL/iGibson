@@ -282,6 +282,7 @@ class BehaviorEnv(iGibsonEnv):
         """
         self.current_step += 1
 
+        start = time.time()
         if self.action_filter == 'navigation':
             action = action * 0.05
             new_action = np.zeros((28,))
@@ -314,13 +315,24 @@ class BehaviorEnv(iGibsonEnv):
             new_action = action
 
         self.robots[0].update(new_action)
-        self.simulator.step()
+
+        robot_time = time.time()-start
+
+        physics, non_physics, render = self.simulator.step()
+
+        physics += robot_time
 
         if self.action_filter == 'magic_grasping':
             self.check_magic_grasping()
 
+        start = time.time()
         state = self.get_state()
+        render += time.time()-start
+
         info = {}
+
+        start = time.time()
+
         if isinstance(self.task, PointNavRandomTask):
             reward, info = self.task.get_reward(self)
             done, done_info = self.task.get_termination(self)
@@ -339,12 +351,18 @@ class BehaviorEnv(iGibsonEnv):
                 done = True
             reward, info = self.get_reward(satisfied_predicates)
 
+        checking = time.time()-start
         self.populate_info(info)
 
         if done and self.automatic_reset:
             info['last_observation'] = state
             state = self.reset()
 
+        info['time_physics'] = physics
+        info['time_render'] = render
+        info['time_non_physics'] = non_physics
+        info['time_checking'] = checking
+        info['time_all'] = physics + render + non_physics + checking
         if done:
             success, satisfied_predicates = self.task.check_success()
             episode_result = Episode(success=float(success), success_score=float(len(satisfied_predicates['satisfied']))/
