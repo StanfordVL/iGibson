@@ -365,7 +365,7 @@ class BehaviorMPEnv(BehaviorEnv):
         valid_position = None  # ((x,y,z),(roll, pitch, yaw))
         original_position = self.robots[0].get_position()
         original_orientation = self.robots[0].get_orientation()
-
+        # from IPython import embed; embed()
         #p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         if isinstance(obj, URDFObject):
             distance_to_try = [0.6, 1.2, 1.8, 2.4]
@@ -385,7 +385,18 @@ class BehaviorMPEnv(BehaviorEnv):
                     if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
                         blocked = True
 
-                    if not detect_robot_collision(self.robots[0]) and not blocked:
+                    valid_room = True
+                    in_rooms = obj.in_rooms
+                    if len(in_rooms) == 0:
+                        valid_room = False
+                    else:
+                        in_room = in_rooms[0]
+                        xy = np.array([pos[0], pos[1]])
+                        print(self.scene.get_room_instance_by_point(xy), in_room)
+                        if not self.scene.get_room_instance_by_point(xy) == in_room:
+                            valid_room = False
+
+                    if not detect_robot_collision(self.robots[0]) and not blocked and valid_room:
                         valid_position = (pos, orn)
                         break
                 if valid_position is not None:
