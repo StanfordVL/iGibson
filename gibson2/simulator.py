@@ -614,7 +614,9 @@ class Simulator:
             if len(p.getCollisionShapeData(object_pb_id, link_id)) == 0:
                 continue
             else:
-                id, link_id, type, dimensions, filename, rel_pos, rel_orn = p.getCollisionShapeData(object_pb_id, link_id)[0]
+                collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
+                collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
+                _, _, type, dimensions, filename, rel_pos, rel_orn = collision_shapes[0]
             if type == p.GEOM_MESH:
                 if link_name is not None and link_name in physical_object.link_name_to_vm:
                     filenames = physical_object.link_name_to_vm[link_name]
@@ -1770,11 +1772,11 @@ class Simulator:
             # Based on pyullet docuementation:
             # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
 
-            inv_inertial_pos, inv_inertial_orn =\
-                p.invertTransform(inertial_pos, inertial_orn)
-            # Now pos and orn are converted to the base link frame
-            pos, orn = p.multiplyTransforms(
-                pos, orn, inv_inertial_pos, inv_inertial_orn)
+            # inv_inertial_pos, inv_inertial_orn =\
+            #     p.invertTransform(inertial_pos, inertial_orn)
+            # # Now pos and orn are converted to the base link frame
+            # pos, orn = p.multiplyTransforms(
+            #     pos, orn, inv_inertial_pos, inv_inertial_orn)
 
             instance.set_position(pos)
             instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
@@ -1797,10 +1799,10 @@ class Simulator:
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
 
-                    inv_inertial_pos, inv_inertial_orn =\
-                        p.invertTransform(inertial_pos, inertial_orn)
-                    pos, orn = p.multiplyTransforms(
-                        pos, orn, inv_inertial_pos, inv_inertial_orn)
+                    # inv_inertial_pos, inv_inertial_orn =\
+                    #     p.invertTransform(inertial_pos, inertial_orn)
+                    # pos, orn = p.multiplyTransforms(
+                    #     pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
                     dynamics_info = p.getDynamicsInfo(
                         instance.pybullet_uuid, link_id)
