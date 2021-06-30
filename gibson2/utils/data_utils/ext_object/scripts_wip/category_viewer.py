@@ -1,26 +1,24 @@
-import itertools
-import json
 import os
-import pdb
 
 from tasknet.object_taxonomy import ObjectTaxonomy
 
 import gibson2
-from pynput import keyboard
 import numpy as np
-import pybullet as p
 
+from gibson2 import object_states
 from gibson2.objects.articulated_object import URDFObject
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.simulator import Simulator
-from gibson2.utils.assets_utils import download_assets
+from gibson2.utils.assets_utils import download_assets, get_ig_avg_category_specs
 
 download_assets()
 
-ABILITY_NAME = "cleaningTool"
+ABILITY_NAME = "stainable"
 CATEGORIES = [
-    "briefcase"
+    'hardback',
+    'notebook',
 ]
+
 USE_ABILITY_TO_FETCH_CATEGORIES = False
 
 OBJECT_TAXONOMY = ObjectTaxonomy()
@@ -69,37 +67,53 @@ def main():
         objects_by_category[cat] = []
         for objdir in os.listdir(cd):
             objdirfull = os.path.join(cd, objdir)
-            objects.append(objdirfull)
+            objects.append((cat, objdirfull))
             objects_by_category[cat].append(objdirfull)
 
     print("%d objects.\n" % len(objects))
-
-    max_bbox = [0.9, 0.9, 0.9]
-    avg = {"size": max_bbox, "density": 67.0}
     current_x = 0
+
+    failed_objects = []
+
+    batch_start = 0
+    batch_size = 100
+    max_attempts = 100
 
     s = Simulator(mode='gui')
     scene = EmptyScene()
     s.import_scene(scene)
-    for cat in categories:
+    acs = get_ig_avg_category_specs()
+
+    for cat, objdir in objects[batch_start:batch_start+batch_size]:
+        avg_category_spec = acs.get(cat)
         cd = get_category_directory(cat)
-        for objdir in os.listdir(cd):
-            objdirfull = os.path.join(cd, objdir)
+        objdirfull = os.path.join(cd, objdir)
 
-            obj = get_obj(objdirfull, fit_avg_dim_volume=True, avg_obj_dims=avg, category=cat)
-            # obj = get_obj(objdirfull, bounding_box=max_bbox, flags=p.URDF_ENABLE_SLEEPING)
-            s.import_object(obj)
-            obj_pos = np.array([current_x, 0., 0.5])
-            obj.set_position(obj_pos)
-            x_sign = -1 if current_x < 0 else 1
-            current_x = (abs(current_x) + 2) * x_sign * -1
+        obj = get_obj(objdirfull, fit_avg_dim_volume=True,
+                      avg_obj_dims=avg_category_spec, category=cat)
+        s.import_object(obj)
+        obj_pos = np.array([current_x, 0., 0.5])
+        obj.set_position(obj_pos)
+        obj.set_orientation(obj.sample_orientation())
 
-    try:
-        while True:
-            pdb.set_trace()
-            s.step()
-    finally:
-        s.disconnect()
+        # Uncomment if you want to test for Dusty/Stained sampling
+        # if object_states.Dusty in obj.states:
+        #     attempts = 0
+        #     while not obj.states[object_states.Dusty].set_value(True) and attempts < max_attempts:
+        #         attempts += 1
+
+        #     if not obj.states[object_states.Dusty].get_value():
+        #         failed_objects.append((cat, objdir))
+        # else:
+        #     print(obj.category + " is not dustyable")
+
+        x_sign = -1 if current_x < 0 else 1
+        current_x = (abs(current_x) +
+                     avg_category_spec["size"][0] * 2) * x_sign * -1
+
+    print(failed_objects)
+
+    s.disconnect()
 
 
 if __name__ == "__main__":

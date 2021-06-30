@@ -13,6 +13,7 @@ from gibson2.external.pybullet_tools.utils import *
 from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
 from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2.utils.checkpoint_utils import save_internal_states, load_internal_states
 import pybullet as p
 import cv2
 from tasknet.condition_evaluation import Negation
@@ -78,31 +79,12 @@ class iGTNTask(TaskNetTask):
 
     def save_scene(self):
         snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = {
-            "snapshot_id": snapshot_id,
-            "states_by_id": {}
-        }
-        states_by_id = {}
-        for obj_id, obj in self.scene.objects_by_id.items():
-            states_by_id[obj_id] = {}
-            for state_type, state in obj.states.items():
-                # TODO: We should ensure all states need to dump their state do (they don't)
-                try:
-                    states_by_id[obj_id][state_type] = state._dump()
-                except:
-                    pass
+        self.state_history[snapshot_id] = save_internal_states(self.simulator)
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
         p.restoreState(snapshot_id)
-        for obj_id, obj in self.scene.objects_by_id.items():
-            for state_type, state in obj.states.items():
-                # TODO: We should ensure all states need to load their state do (they don't)
-                try:
-                    prev_state = self.state_history[snapshot_id]["states_by_id"][obj_id][state_type]
-                    state._load(prev_state)
-                except:
-                    pass
+        load_internal_states(self.simulator, self.state_history[snapshot_id])
 
     def check_scene(self):
         feedback = {
@@ -308,14 +290,16 @@ class iGTNTask(TaskNetTask):
                 model = np.random.choice(model_choices)
 
                 # for "collecting aluminum cans", we need pop cans (not bottles) 
-                if category == 'pop' and self.atus_activity == 'collecting_aluminum_cans':
+                if category == 'pop' and self.atus_activity in ['collecting_aluminum_cans']:
                     model = np.random.choice([str(i) for i in range(40, 46)])
+                if category == 'spoon' and self.atus_activity in ['polishing_silver']:
+                    model = np.random.choice([str(i) for i in [2, 5, 6]])
 
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = '{}_{}'.format(
                     category,
-                    len(self.scene.objects_by_category.get(category, [])))
+                    len(self.scene.objects_by_name))
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
@@ -664,7 +648,7 @@ class iGTNTask(TaskNetTask):
 
         np.random.shuffle(self.ground_goal_state_options)
         logging.warning(('number of ground_goal_state_options',
-              len(self.ground_goal_state_options)))
+                         len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
 
         goal_sampling_error_msgs = []
@@ -827,7 +811,6 @@ class iGTNTask(TaskNetTask):
             num_trials = 10
             for _ in range(num_trials):
                 success = condition.sample(binary_state=positive)
-                # This should always succeed because it has succeeded before.
                 if success:
                     break
             if not success:
@@ -853,10 +836,14 @@ class iGTNTask(TaskNetTask):
                         continue
                     # Sample conditions that involve the current batch of objects
                     if condition.body[0] in cur_batch:
-                        success = condition.sample(binary_state=positive)
+                        num_trials = 100
+                        for _ in range(num_trials):
+                            success = condition.sample(binary_state=positive)
+                            if success:
+                                break
                         if not success:
-                            error_msg = 'Sampleable object conditions failed: {}'.format(
-                                condition.body)
+                            error_msg = 'Sampleable object conditions failed: {} {}'.format(
+                                condition.STATE_NAME, condition.body)
                             logging.warning(error_msg)
                             feedback['init_success'] = 'no'
                             feedback['init_feedback'] = error_msg
