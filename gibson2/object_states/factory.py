@@ -62,7 +62,6 @@ TEXTURE_CHANGE_PRIORITY = {
     Burnt: 3,
     Cooked: 2,
     Soaked: 1,
-    ToggledOn: 0,
 }
 
 
