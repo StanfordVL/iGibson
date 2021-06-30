@@ -23,7 +23,8 @@ class InstanceGroup(object):
                  robot=None,
                  use_pbr=True,
                  use_pbr_mapping=True,
-                 shadow_caster=True
+                 shadow_caster=True,
+                 using_com_frame=False
                  ):
         """
         :param objects: visual objects
@@ -67,6 +68,7 @@ class InstanceGroup(object):
         self.or_buffer_indices = None
         self.last_trans = [np.copy(item) for item in poses_trans]
         self.last_rot = [np.copy(item) for item in poses_rot]
+        self.using_com_frame = using_com_frame
 
     def set_highlight(self, highlight):
         self.highlight = highlight
@@ -255,7 +257,8 @@ class Instance(object):
                  softbody,
                  use_pbr=True,
                  use_pbr_mapping=True,
-                 shadow_caster=True
+                 shadow_caster=True,
+                 using_com_frame=False
                  ):
         """
         :param object: visual object
@@ -292,6 +295,7 @@ class Instance(object):
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
         self.highlight = False
+        self.using_com_frame=using_com_frame
 
     def set_highlight(self, highlight):
         self.highlight = highlight

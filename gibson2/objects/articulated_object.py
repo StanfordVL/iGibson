@@ -43,11 +43,13 @@ class ArticulatedObject(StatefulObject):
     They are passive (no motors).
     """
 
-    def __init__(self, filename, scale=1, merge_fixed_links=True):
+    def __init__(self, filename, scale=1, merge_fixed_links=True,
+                 ignore_visual_shape=False):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
         self.merge_fixed_links = merge_fixed_links
+        self.ignore_visual_shape=ignore_visual_shape
 
     def _load(self):
         """
@@ -56,6 +58,10 @@ class ArticulatedObject(StatefulObject):
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
+
+        if self.ignore_visual_shape:
+            flags |= p.URDF_IGNORE_VISUAL_SHAPES
+
         body_id = p.loadURDF(self.filename,
                              globalScaling=self.scale,
                              flags=flags)
@@ -118,6 +124,7 @@ class URDFObject(StatefulObject):
                  visualize_primitives=False,
                  joint_positions=None,
                  merge_fixed_links=True,
+                 ignore_visual_shape=False
                  ):
         """
         :param filename: urdf file path of that object model
@@ -156,6 +163,7 @@ class URDFObject(StatefulObject):
         self.joint_positions = joint_positions
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
+        self.ignore_visual_shape=ignore_visual_shape
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -797,6 +805,23 @@ class URDFObject(StatefulObject):
         if self.texture_procedural_generation:
             self.prepare_procedural_texture()
 
+        self.create_link_name_vm_mapping()
+
+    def create_link_name_vm_mapping(self):
+        self.link_name_to_vm = {}
+
+        for i in range(len(self.urdf_paths)):
+            sub_urdf_tree = ET.parse(self.urdf_paths[i])
+
+            links = sub_urdf_tree.findall(".//link")
+            for link in links:
+                name = link.attrib['name']
+                if name in self.link_name_to_vm:
+                    raise ValueError("link name collision")
+                self.link_name_to_vm[name] = []
+                for visual_mesh in link.findall('visual/geometry/mesh'):
+                    self.link_name_to_vm[name].append(visual_mesh.attrib['filename'])
+
     def randomize_texture(self):
         """
         Randomize texture and material for each link / visual shape
@@ -920,6 +945,10 @@ class URDFObject(StatefulObject):
         flags = p.URDF_ENABLE_SLEEPING
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
+
+        if self.ignore_visual_shape:
+            flags |= p.URDF_IGNORE_VISUAL_SHAPES
+
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]

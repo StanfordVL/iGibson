@@ -1,23 +1,34 @@
 from gibson2.task.task_base import iGTNTask
+from IPython import embed
+from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from gibson2.simulator import Simulator
 
 import tasknet
 tasknet.set_backend("iGibson")
 
+activity = 'assembling_gift_baskets'
+scene_id = 'Rs_int'
 
 igtn_task = iGTNTask(
-    'putting_dishes_away_after_cleaning_filtered', task_instance=0)
+    activity, task_instance=0)
 scene_kwargs = {
-    # 'load_object_categories': ['coffee_table', 'breakfast_table', 'countertop', 'fridge', 'table_lamp', 'sofa', 'bottom_cabinet', 'bottom_cabinet_no_top', 'top_cabinet'],
     'not_load_object_categories': ['ceilings'],
 }
+settings = MeshRendererSettings(texture_scale=1)
+simulator = Simulator(mode='headless',
+                      image_width=960,
+                      image_height=720,
+                      rendering_settings=settings)
 init_success = igtn_task.initialize_simulator(
-    scene_id='Rs_int',
-    mode='gui',
+    scene_id=scene_id,
+    simulator=simulator,
     load_clutter=False,
     should_debug_sampling=True,
     scene_kwargs=scene_kwargs
 )
 assert init_success
+print('success')
+embed()
 
 while True:
     igtn_task.simulator.step()
