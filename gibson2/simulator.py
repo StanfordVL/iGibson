@@ -476,7 +476,6 @@ class Simulator:
                                 ):
         """
         Load the object into renderer
-
         :param object_pb_id: pybullet body id
         :param class_id: Class id for rendering semantic segmentation
         :param softbody: Whether the object is soft body
@@ -488,18 +487,20 @@ class Simulator:
         :param shadow_caster: Whether to cast shadow
         :param physical_object: The reference to Object class
         """
-        for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:
 
-            #id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-            color = [0.5, 0.5, 0.3]
-            if len(p.getCollisionShapeData(object_pb_id, link_id)) == 0:
-                continue
-            else:
-                id, link_id, type, dimensions, filename, rel_pos, rel_orn = p.getCollisionShapeData(object_pb_id, -1)[0]
+        # Load object in renderer, use visual shape and base_link frame
+        # not CoM frame
+        # Do not load URDFObject or ArticulatedObject with this function
+        if physical_object is not None and \
+                (isinstance(physical_object, ArticulatedObject) or
+                    isinstance(physical_object, URDFObject)):
+            raise ValueError("loading articulated object with load_object_in_renderer function")
+
+        for shape in p.getVisualShapeData(object_pb_id):
+            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
-                filename = physical_object.cm_to_vm[filename][0]
                 if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
@@ -576,12 +577,13 @@ class Simulator:
     @load_without_pybullet_vis
     def load_articulated_object_in_renderer(self,
                                             object_pb_id,
+                                            physical_object,
                                             class_id=None,
                                             visual_mesh_to_material=None,
                                             use_pbr=True,
                                             use_pbr_mapping=True,
                                             shadow_caster=True,
-                                            physical_object=None):
+                                            ):
         """
         Load the articulated object into renderer
 
@@ -594,13 +596,19 @@ class Simulator:
         :param physical_object: The reference to Object class
         """
 
+        # Load object in renderer, use visual shape from physical_object class
+        # using CoM frame
+        # only load URDFObject or ArticulatedObject with this function
+        if not (isinstance(physical_object, ArticulatedObject) or
+                 isinstance(physical_object, URDFObject)):
+            raise ValueError("loading non-articulated object with load_articulated_object_in_renderer function")
+
         visual_objects = []
         link_ids = []
         poses_rot = []
         poses_trans = []
-
-        for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:#p.getVisualShapeData(object_pb_id):
-            color = [0.5, 0.5, 0.3]
+        color = [0,0,0]
+        for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:
             link_name = None
             try:
                 if link_id == -1:
@@ -617,83 +625,37 @@ class Simulator:
                 collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
                 collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
                 _, _, type, dimensions, filename, rel_pos, rel_orn = collision_shapes[0]
-            if type == p.GEOM_MESH:
-                if link_name is not None and link_name in physical_object.link_name_to_vm:
-                    filenames = physical_object.link_name_to_vm[link_name]
-                    for filename in filenames:
-                        overwrite_material = None
-                        if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
-                            overwrite_material = visual_mesh_to_material[filename]
 
-                        if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys() or \
-                                overwrite_material is not None:
-                            # if the object has an overwrite material, always create a
-                            # new visual object even if the same visual shape exsits
-                            self.renderer.load_object(
-                                filename,
-                                transform_orn=rel_orn,
-                                transform_pos=rel_pos,
-                                input_kd=color[:3],
-                                scale=np.array(dimensions),
-                                overwrite_material=overwrite_material)
-                            self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
-                                                ] = len(self.renderer.visual_objects) - 1
-                        visual_objects.append(
-                            self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
-                        link_ids.append(link_id)
+            if link_name is not None and link_name in physical_object.link_name_to_vm:
+                filenames = physical_object.link_name_to_vm[link_name]
+                for filename in filenames:
+                    overwrite_material = None
+                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                        overwrite_material = visual_mesh_to_material[filename]
 
-                        if link_id == -1:
-                            pos, orn = p.getBasePositionAndOrientation(object_pb_id)
-                        else:
-                            _, _, _, _, pos, orn = p.getLinkState(object_pb_id, link_id)
-                        poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-                        poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+                    if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys() or \
+                            overwrite_material is not None:
+                        # if the object has an overwrite material, always create a
+                        # new visual object even if the same visual shape exsits
+                        self.renderer.load_object(
+                            filename,
+                            transform_orn=rel_orn,
+                            transform_pos=rel_pos,
+                            input_kd=color[:3],
+                            scale=np.array(dimensions),
+                            overwrite_material=overwrite_material)
+                        self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
+                                            ] = len(self.renderer.visual_objects) - 1
+                    visual_objects.append(
+                        self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
+                    link_ids.append(link_id)
 
-            elif type == p.GEOM_SPHERE:
-                filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5])
-                visual_objects.append(
-                    len(self.renderer.get_visual_objects()) - 1)
-                link_ids.append(link_id)
-            elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]])
-                visual_objects.append(
-                    len(self.renderer.get_visual_objects()) - 1)
-                link_ids.append(link_id)
-            elif type == p.GEOM_BOX:
-                #filename = os.path.join(
-                #    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                if link_name is not None and link_name in physical_object.link_name_to_vm:
-                    filenames = physical_object.link_name_to_vm[link_name]
-                    for filename in filenames:
-                        self.renderer.load_object(filename,
-                                                  transform_orn=rel_orn,
-                                                  transform_pos=rel_pos,
-                                                  input_kd=color[:3],
-                                                  scale=np.array(dimensions))
-                        visual_objects.append(
-                            len(self.renderer.get_visual_objects()) - 1)
-                        link_ids.append(link_id)
-
-                        if link_id == -1:
-                            pos, orn = p.getBasePositionAndOrientation(object_pb_id)
-                        else:
-                            _, _, _, _, pos, orn = p.getLinkState(object_pb_id, link_id)
-                        poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-                        poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+                    if link_id == -1:
+                        pos, orn = p.getBasePositionAndOrientation(object_pb_id)
+                    else:
+                        pos, orn, _, _, _, _ = p.getLinkState(object_pb_id, link_id)
+                    poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
+                    poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
@@ -705,7 +667,8 @@ class Simulator:
                                          robot=None,
                                          use_pbr=use_pbr,
                                          use_pbr_mapping=use_pbr_mapping,
-                                         shadow_caster=shadow_caster)
+                                         shadow_caster=shadow_caster,
+                                         using_com_frame=True)
 
         if physical_object is not None:
             physical_object.renderer_instances.append(
@@ -1772,11 +1735,12 @@ class Simulator:
             # Based on pyullet docuementation:
             # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
 
-            # inv_inertial_pos, inv_inertial_orn =\
-            #     p.invertTransform(inertial_pos, inertial_orn)
-            # # Now pos and orn are converted to the base link frame
-            # pos, orn = p.multiplyTransforms(
-            #     pos, orn, inv_inertial_pos, inv_inertial_orn)
+            if not instance.using_com_frame:
+                inv_inertial_pos, inv_inertial_orn =\
+                    p.invertTransform(inertial_pos, inertial_orn)
+                # Now pos and orn are converted to the base link frame
+                pos, orn = p.multiplyTransforms(
+                    pos, orn, inv_inertial_pos, inv_inertial_orn)
 
             instance.set_position(pos)
             instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
@@ -1799,10 +1763,11 @@ class Simulator:
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
 
-                    # inv_inertial_pos, inv_inertial_orn =\
-                    #     p.invertTransform(inertial_pos, inertial_orn)
-                    # pos, orn = p.multiplyTransforms(
-                    #     pos, orn, inv_inertial_pos, inv_inertial_orn)
+                    if not instance.using_com_frame:
+                        inv_inertial_pos, inv_inertial_orn =\
+                            p.invertTransform(inertial_pos, inertial_orn)
+                        pos, orn = p.multiplyTransforms(
+                            pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
                     dynamics_info = p.getDynamicsInfo(
                         instance.pybullet_uuid, link_id)
@@ -1814,8 +1779,13 @@ class Simulator:
 
                     if activation_state != PyBulletSleepState.AWAKE:
                         continue
-                    _, _, _, _, pos, orn = p.getLinkState(
-                        instance.pybullet_uuid, link_id)
+
+                    if instance.using_com_frame:
+                        pos, orn = p.getLinkState(
+                            instance.pybullet_uuid, link_id)[:2]
+                    else:
+                        _, _, _, _, pos, orn = p.getLinkState(
+                           instance.pybullet_uuid, link_id)
 
                 instance.set_position_for_part(xyz2mat(pos), j)
                 instance.set_rotation_for_part(

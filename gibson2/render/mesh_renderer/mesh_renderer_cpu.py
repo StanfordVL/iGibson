@@ -567,7 +567,8 @@ class MeshRenderer(object):
                      softbody=False,
                      use_pbr=True,
                      use_pbr_mapping=True,
-                     shadow_caster=True):
+                     shadow_caster=True,
+                     using_com_frame=False):
         """
         Create instance for a visual object and link it to pybullet
 
@@ -600,7 +601,8 @@ class MeshRenderer(object):
                             softbody=softbody,
                             use_pbr=use_pbr,
                             use_pbr_mapping=use_pbr_mapping,
-                            shadow_caster=shadow_caster)
+                            shadow_caster=shadow_caster,
+                            using_com_frame=using_com_frame)
         self.instances.append(instance)
 
     def add_instance_group(self,
@@ -614,7 +616,8 @@ class MeshRenderer(object):
                            robot=None,
                            use_pbr=True,
                            use_pbr_mapping=True,
-                           shadow_caster=True):
+                           shadow_caster=True,
+                           using_com_frame=False):
         """
         Create an instance group for a list of visual objects and link it to pybullet
 
@@ -650,7 +653,8 @@ class MeshRenderer(object):
                                        robot=robot,
                                        use_pbr=use_pbr,
                                        use_pbr_mapping=use_pbr_mapping,
-                                       shadow_caster=shadow_caster)
+                                       shadow_caster=shadow_caster,
+                                       using_com_frame=using_com_frame)
         self.instances.append(instance_group)
 
     def add_robot(self,
