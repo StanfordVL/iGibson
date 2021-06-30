@@ -617,8 +617,7 @@ class Simulator:
                     link_name = p.getJointInfo(object_pb_id, link_id)[12].decode('utf-8')
             except:
                 pass
-
-            print(physical_object.link_name_to_vm)
+           
             if len(p.getCollisionShapeData(object_pb_id, link_id)) == 0:
                 continue
             else:
