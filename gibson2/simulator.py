@@ -498,6 +498,10 @@ class Simulator:
 
         for shape in p.getVisualShapeData(object_pb_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+            dynamics_info = p.getDynamicsInfo(id, link_id)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+            rel_pos, rel_orn = p.multiplyTransforms(*p.invertTransform(inertial_pos, inertial_orn),
+                                                    rel_pos, rel_orn)
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
@@ -652,7 +656,7 @@ class Simulator:
                     if link_id == -1:
                         pos, orn = p.getBasePositionAndOrientation(object_pb_id)
                     else:
-                        pos, orn, _, _, _, _ = p.getLinkState(object_pb_id, link_id)
+                        pos, orn = p.getLinkState(object_pb_id, link_id)[:2]
                     poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
                     poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
@@ -666,8 +670,7 @@ class Simulator:
                                          robot=None,
                                          use_pbr=use_pbr,
                                          use_pbr_mapping=use_pbr_mapping,
-                                         shadow_caster=shadow_caster,
-                                         using_com_frame=True)
+                                         shadow_caster=shadow_caster)
 
         if physical_object is not None:
             physical_object.renderer_instances.append(
@@ -775,6 +778,11 @@ class Simulator:
 
         for shape in p.getVisualShapeData(ids[0]):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+            dynamics_info = p.getDynamicsInfo(id, link_id)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+            rel_pos, rel_orn = p.multiplyTransforms(*p.invertTransform(inertial_pos, inertial_orn),
+                                                    rel_pos, rel_orn)
+
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
                 if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
@@ -827,7 +835,7 @@ class Simulator:
             if link_id == -1:
                 pos, orn = p.getBasePositionAndOrientation(id)
             else:
-                _, _, _, _, pos, orn = p.getLinkState(id, link_id)
+                pos, orn = p.getLinkState(id, link_id)[:2]
             poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
@@ -1734,13 +1742,6 @@ class Simulator:
             # Based on pyullet docuementation:
             # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
 
-            if not instance.using_com_frame:
-                inv_inertial_pos, inv_inertial_orn =\
-                    p.invertTransform(inertial_pos, inertial_orn)
-                # Now pos and orn are converted to the base link frame
-                pos, orn = p.multiplyTransforms(
-                    pos, orn, inv_inertial_pos, inv_inertial_orn)
-
             instance.set_position(pos)
             instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
             body_links_awake += 1
@@ -1762,11 +1763,6 @@ class Simulator:
                     pos, orn = p.getBasePositionAndOrientation(
                         instance.pybullet_uuid)
 
-                    if not instance.using_com_frame:
-                        inv_inertial_pos, inv_inertial_orn =\
-                            p.invertTransform(inertial_pos, inertial_orn)
-                        pos, orn = p.multiplyTransforms(
-                            pos, orn, inv_inertial_pos, inv_inertial_orn)
                 else:
                     dynamics_info = p.getDynamicsInfo(
                         instance.pybullet_uuid, link_id)
@@ -1779,12 +1775,9 @@ class Simulator:
                     if activation_state != PyBulletSleepState.AWAKE:
                         continue
 
-                    if instance.using_com_frame:
-                        pos, orn = p.getLinkState(
-                            instance.pybullet_uuid, link_id)[:2]
-                    else:
-                        _, _, _, _, pos, orn = p.getLinkState(
-                           instance.pybullet_uuid, link_id)
+                    pos, orn = p.getLinkState(
+                        instance.pybullet_uuid, link_id)[:2]
+
 
                 instance.set_position_for_part(xyz2mat(pos), j)
                 instance.set_rotation_for_part(
