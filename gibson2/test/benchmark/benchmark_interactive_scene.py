@@ -26,7 +26,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
         scene_name, texture_randomization=False, object_randomization=False, ignore_visual_shape=True)
     settings = MeshRendererSettings(
         msaa=False, enable_shadow=False, optimized=optimized)
-    s = Simulator(mode='iggui',
+    s = Simulator(mode='headless',
                   image_width=512,
                   image_height=512,
                   device_idx=0,
@@ -98,7 +98,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
         scene_name, optimized, import_robot))
 
 def main():
-    # benchmark_scene('Rs_int', optimized=True, import_robot=True)
+    benchmark_scene('Rs_int', optimized=True, import_robot=True)
     benchmark_scene('Rs_int', optimized=True, import_robot=False)
 
     # scenes = ["Beechwood_0_int",
