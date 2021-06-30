@@ -43,13 +43,11 @@ class ArticulatedObject(StatefulObject):
     They are passive (no motors).
     """
 
-    def __init__(self, filename, scale=1, merge_fixed_links=True,
-                 ignore_visual_shape=False):
+    def __init__(self, filename, scale=1, merge_fixed_links=True):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
         self.merge_fixed_links = merge_fixed_links
-        self.ignore_visual_shape=ignore_visual_shape
 
     def _load(self):
         """
@@ -59,12 +57,25 @@ class ArticulatedObject(StatefulObject):
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
 
-        if self.ignore_visual_shape:
-            flags |= p.URDF_IGNORE_VISUAL_SHAPES
-
         body_id = p.loadURDF(self.filename,
                              globalScaling=self.scale,
                              flags=flags)
+
+        self.link_name_to_vm = {}
+        for visual_shape in p.getVisualShapeData(body_id):
+            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = visual_shape[:8]
+            try:
+                if link_id == -1:
+                    link_name = p.getBodyInfo(id)[0].decode('utf-8')
+                else:
+                    link_name = p.getJointInfo(id, link_id)[12].decode('utf-8')
+                if not link_name in self.link_name_to_vm:
+                    self.link_name_to_vm[link_name] = []
+                self.link_name_to_vm[link_name].append(filename.decode('utf-8'))
+            except:
+                pass
+
+
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
         self.body_id = body_id
         return body_id

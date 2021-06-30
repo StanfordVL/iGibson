@@ -427,7 +427,7 @@ class Simulator:
                     visual_mesh_to_material = obj.visual_mesh_to_material[i]
                 self.load_articulated_object_in_renderer(
                     new_object_pb_id,
-                    class_id,
+                    class_id=class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     visual_mesh_to_material=visual_mesh_to_material,
@@ -437,8 +437,8 @@ class Simulator:
                 softbody = obj.__class__.__name__ == 'SoftObject'
                 self.load_object_in_renderer(
                     new_object_pb_id,
-                    class_id,
-                    softbody,
+                    class_id=class_id,
+                    softbody=softbody,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     shadow_caster=shadow_caster,
@@ -621,12 +621,13 @@ class Simulator:
                     link_name = p.getJointInfo(object_pb_id, link_id)[12].decode('utf-8')
             except:
                 pass
-           
-            if len(p.getCollisionShapeData(object_pb_id, link_id)) == 0:
+
+            collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
+            collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
+
+            if len(collision_shapes) == 0:
                 continue
             else:
-                collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
-                collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
                 _, _, type, dimensions, filename, rel_pos, rel_orn = collision_shapes[0]
 
             if link_name is not None and link_name in physical_object.link_name_to_vm:
