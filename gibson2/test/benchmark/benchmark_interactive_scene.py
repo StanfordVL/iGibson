@@ -23,7 +23,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
     scene = InteractiveIndoorScene(
-        scene_name, texture_randomization=False, object_randomization=False, not_load_object_categories=['walls'])
+        scene_name, texture_randomization=False, object_randomization=False)
     settings = MeshRendererSettings(
         msaa=False, enable_shadow=False, optimized=optimized)
     s = Simulator(mode='iggui',
