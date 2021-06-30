@@ -56,6 +56,7 @@ class ArticulatedObject(StatefulObject):
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
+
         body_id = p.loadURDF(self.filename,
                              globalScaling=self.scale,
                              flags=flags)
@@ -797,6 +798,22 @@ class URDFObject(StatefulObject):
         if self.texture_procedural_generation:
             self.prepare_procedural_texture()
 
+        self.create_link_name_vm_mapping()
+
+    def create_link_name_vm_mapping(self):
+        self.link_name_to_vm = {}
+
+        for i in range(len(self.urdf_paths)):
+            sub_urdf_tree = ET.parse(self.urdf_paths[i])
+
+            links = sub_urdf_tree.findall(".//link")
+            for link in links:
+                name = link.attrib['name']
+                self.link_name_to_vm[name] = []
+                for visual_mesh in link.findall('visual/geometry/mesh'):
+                    #print('VVVVMMMM', visual_mesh.attrib['filename'])
+                    self.link_name_to_vm[name].append(visual_mesh.attrib['filename'])
+
     def randomize_texture(self):
         """
         Randomize texture and material for each link / visual shape
@@ -920,6 +937,10 @@ class URDFObject(StatefulObject):
         flags = p.URDF_ENABLE_SLEEPING
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
+
+        flags |= 1 << 20
+        # before: 58.36s
+        # after: 11s
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]

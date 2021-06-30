@@ -23,16 +23,19 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
     scene = InteractiveIndoorScene(
-        scene_name, texture_randomization=False, object_randomization=False)
+        scene_name, texture_randomization=False, object_randomization=False, not_load_object_categories=['walls'])
     settings = MeshRendererSettings(
         msaa=False, enable_shadow=False, optimized=optimized)
-    s = Simulator(mode='headless',
+    s = Simulator(mode='iggui',
                   image_width=512,
                   image_height=512,
                   device_idx=0,
                   rendering_settings=settings,
                   )
+    start = time.time()
     s.import_ig_scene(scene)
+    print(time.time()-start)
+
     if import_robot:
         turtlebot = Turtlebot(config)
         s.import_robot(turtlebot)
@@ -95,7 +98,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
         scene_name, optimized, import_robot))
 
 def main():
-    benchmark_scene('Rs_int', optimized=True, import_robot=True)
+    # benchmark_scene('Rs_int', optimized=True, import_robot=True)
     benchmark_scene('Rs_int', optimized=True, import_robot=False)
 
     # scenes = ["Beechwood_0_int",

@@ -488,11 +488,18 @@ class Simulator:
         :param shadow_caster: Whether to cast shadow
         :param physical_object: The reference to Object class
         """
-        for shape in p.getVisualShapeData(object_pb_id):
-            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+        for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:
+
+            #id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
+            color = [0.5, 0.5, 0.3]
+            if len(p.getCollisionShapeData(object_pb_id, link_id)) == 0:
+                continue
+            else:
+                id, link_id, type, dimensions, filename, rel_pos, rel_orn = p.getCollisionShapeData(object_pb_id, -1)[0]
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
+                filename = physical_object.cm_to_vm[filename][0]
                 if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
@@ -592,30 +599,54 @@ class Simulator:
         poses_rot = []
         poses_trans = []
 
-        for shape in p.getVisualShapeData(object_pb_id):
-            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-            if type == p.GEOM_MESH:
-                filename = filename.decode('utf-8')
-                overwrite_material = None
-                if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
-                    overwrite_material = visual_mesh_to_material[filename]
+        for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:#p.getVisualShapeData(object_pb_id):
+            color = [0.5, 0.5, 0.3]
+            link_name = None
+            try:
+                if link_id == -1:
+                    link_name = p.getBodyInfo(object_pb_id)[0].decode('utf-8')
+                else:
+                    link_name = p.getJointInfo(object_pb_id, link_id)[12].decode('utf-8')
+            except:
+                pass
 
-                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys() or \
-                        overwrite_material is not None:
-                    # if the object has an overwrite material, always create a
-                    # new visual object even if the same visual shape exsits
-                    self.renderer.load_object(
-                        filename,
-                        transform_orn=rel_orn,
-                        transform_pos=rel_pos,
-                        input_kd=color[:3],
-                        scale=np.array(dimensions),
-                        overwrite_material=overwrite_material)
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
-                                        ] = len(self.renderer.visual_objects) - 1
-                visual_objects.append(
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
-                link_ids.append(link_id)
+            print(physical_object.link_name_to_vm)
+            if len(p.getCollisionShapeData(object_pb_id, link_id)) == 0:
+                continue
+            else:
+                id, link_id, type, dimensions, filename, rel_pos, rel_orn = p.getCollisionShapeData(object_pb_id, link_id)[0]
+            if type == p.GEOM_MESH:
+                if link_name is not None and link_name in physical_object.link_name_to_vm:
+                    filenames = physical_object.link_name_to_vm[link_name]
+                    for filename in filenames:
+                        overwrite_material = None
+                        if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                            overwrite_material = visual_mesh_to_material[filename]
+
+                        if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys() or \
+                                overwrite_material is not None:
+                            # if the object has an overwrite material, always create a
+                            # new visual object even if the same visual shape exsits
+                            self.renderer.load_object(
+                                filename,
+                                transform_orn=rel_orn,
+                                transform_pos=rel_pos,
+                                input_kd=color[:3],
+                                scale=np.array(dimensions),
+                                overwrite_material=overwrite_material)
+                            self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
+                                                ] = len(self.renderer.visual_objects) - 1
+                        visual_objects.append(
+                            self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
+                        link_ids.append(link_id)
+
+                        if link_id == -1:
+                            pos, orn = p.getBasePositionAndOrientation(object_pb_id)
+                        else:
+                            _, _, _, _, pos, orn = p.getLinkState(object_pb_id, link_id)
+                        poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
+                        poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
                     gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
@@ -641,23 +672,26 @@ class Simulator:
                     len(self.renderer.get_visual_objects()) - 1)
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
-                filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
-                self.renderer.load_object(filename,
-                                          transform_orn=rel_orn,
-                                          transform_pos=rel_pos,
-                                          input_kd=color[:3],
-                                          scale=np.array(dimensions))
-                visual_objects.append(
-                    len(self.renderer.get_visual_objects()) - 1)
-                link_ids.append(link_id)
+                #filename = os.path.join(
+                #    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                if link_name is not None and link_name in physical_object.link_name_to_vm:
+                    filenames = physical_object.link_name_to_vm[link_name]
+                    for filename in filenames:
+                        self.renderer.load_object(filename,
+                                                  transform_orn=rel_orn,
+                                                  transform_pos=rel_pos,
+                                                  input_kd=color[:3],
+                                                  scale=np.array(dimensions))
+                        visual_objects.append(
+                            len(self.renderer.get_visual_objects()) - 1)
+                        link_ids.append(link_id)
 
-            if link_id == -1:
-                pos, orn = p.getBasePositionAndOrientation(object_pb_id)
-            else:
-                _, _, _, _, pos, orn = p.getLinkState(object_pb_id, link_id)
-            poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-            poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+                        if link_id == -1:
+                            pos, orn = p.getBasePositionAndOrientation(object_pb_id)
+                        else:
+                            _, _, _, _, pos, orn = p.getLinkState(object_pb_id, link_id)
+                        poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
+                        poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
         self.renderer.add_instance_group(object_ids=visual_objects,
                                          link_ids=link_ids,
