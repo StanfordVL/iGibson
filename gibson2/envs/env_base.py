@@ -7,6 +7,8 @@ from gibson2.robots.jr2_kinova_robot import JR2_Kinova
 from gibson2.robots.freight_robot import Freight
 from gibson2.robots.fetch_robot import Fetch
 from gibson2.robots.locobot_robot import Locobot
+from gibson2.robots.tiago_single_robot import Tiago_Single
+from gibson2.robots.tiago_dual_robot import Tiago_Dual
 from gibson2.simulator import Simulator
 from gibson2.scenes.empty_scene import EmptyScene
 from gibson2.scenes.stadium_scene import StadiumScene
@@ -174,6 +176,9 @@ class BaseEnv(gym.Env):
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
             self.simulator.import_ig_scene(scene)
+        else:
+            raise Exception(
+                'Unknown scene type: {}'.format(self.config['scene']))
 
         if self.config['robot'] == 'Turtlebot':
             robot = Turtlebot(self.config)
@@ -193,9 +198,13 @@ class BaseEnv(gym.Env):
             robot = Fetch(self.config)
         elif self.config['robot'] == 'Locobot':
             robot = Locobot(self.config)
+        elif self.config['robot'] == 'Tiago_Single':
+            robot = Tiago_Single(self.config)
+        elif self.config['robot'] == 'Tiago_Dual':
+            robot = Tiago_Dual(self.config)
         else:
             raise Exception(
-                'unknown robot type: {}'.format(self.config['robot']))
+                'Unknown robot type: {}'.format(self.config['robot']))
 
         self.scene = scene
         self.robots = [robot]
