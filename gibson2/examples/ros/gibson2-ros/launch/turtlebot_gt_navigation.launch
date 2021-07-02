@@ -29,15 +29,16 @@
 
   <!-- Velocity muxer -->
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
-  <node pkg="nodelet" type="nodelet" name="cmd_vel_mux"
+  <!--node pkg="nodelet" type="nodelet" name="cmd_vel_mux"
         args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
     <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml" />
     <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
     <remap from="cmd_vel_mux/input/navi" to="/navigation_velocity_smoother/raw_cmd_vel" />
-  </node>
+  </node-->
 
- <include file="$(find turtlebot_teleop)/launch/ps3_teleop.launch">
- </include>
+  <node pkg="turtlebot3_teleop" type="turtlebot3_teleop_key" name="turtlebot3_teleop_keyboard"  output="screen">
+    <param name="model" value="burger" />
+  </node>
 
   <arg name="map_file" default="$(find gibson2-ros)/map/graphnav/area_1.yaml"/>
   <rosparam param="map_file" subst_value="True">$(arg map_file)</rosparam>
