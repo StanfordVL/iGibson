@@ -21,14 +21,15 @@
 
   <!-- Velocity muxer -->
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
-  <node pkg="nodelet" type="nodelet" name="cmd_vel_mux"
+  <!--node pkg="nodelet" type="nodelet" name="cmd_vel_mux"
         args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
     <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml" />
     <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
-  </node>
+  </node-->
 
- <include file="$(find turtlebot_teleop)/launch/keyboard_teleop.launch">
- </include>
+  <node pkg="turtlebot3_teleop" type="turtlebot3_teleop_key" name="turtlebot3_teleop_keyboard"  output="screen">
+    <param name="model" value="burger" />
+  </node>
 
   <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
     <param name="scan_height" value="2"/>
