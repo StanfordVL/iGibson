@@ -133,7 +133,7 @@ class ProceduralMaterial(Material):
             diffuse_tex_filename = os.path.join(
                 self.material_folder, "DIFFUSE.png")
             diffuse_tex_filename_lookup = os.path.join(
-                self.material_folder, "DIFFUSE_{}.png".format(state.__class__.__name__))
+                self.material_folder, "DIFFUSE_{}.png".format(state.__name__))
             if os.path.exists(diffuse_tex_filename_lookup):
                 self.texture_filenames[state] = diffuse_tex_filename_lookup
             else:

@@ -14,7 +14,7 @@ _TOGGLE_BUTTON_RADIUS = 0.05
 _TOGGLE_MARKER_OFF_POSITION = [0, 0, -100]
 
 
-class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
+class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureChangeStateMixin):
     def __init__(self, obj):
         super(ToggledOn, self).__init__(obj)
         self.value = False
@@ -115,7 +115,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
         for instance in hidden_marker.renderer_instances:
             instance.hidden = True
 
-        #self.update_texture()
+        self.update_texture()
 
     @staticmethod
     def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
