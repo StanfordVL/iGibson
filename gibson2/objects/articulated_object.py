@@ -61,6 +61,11 @@ class ArticulatedObject(StatefulObject):
                              globalScaling=self.scale,
                              flags=flags)
 
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+        self.body_id = body_id
+        return body_id
+
+    def create_link_name_to_vm_map(self, body_id):
         self.link_name_to_vm = {}
         for visual_shape in p.getVisualShapeData(body_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = visual_shape[:8]
@@ -76,11 +81,6 @@ class ArticulatedObject(StatefulObject):
                 self.link_name_to_vm[link_name].append(filename.decode('utf-8'))
             except:
                 pass
-
-
-        self.mass = p.getDynamicsInfo(body_id, -1)[0]
-        self.body_id = body_id
-        return body_id
 
     def force_wakeup(self):
         """
