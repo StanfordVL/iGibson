@@ -322,6 +322,10 @@ class Simulator:
         """
         assert isinstance(scene, InteractiveIndoorScene), \
             'import_ig_scene can only be called with InteractiveIndoorScene'
+        if not self.use_pb_renderer:
+            scene.set_ignore_visual_shape(True)
+            # skip loading visual shape if not using pybullet visualizer
+
         new_object_ids = scene.load()
         self.objects += new_object_ids
 
@@ -502,6 +506,7 @@ class Simulator:
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             rel_pos, rel_orn = p.multiplyTransforms(*p.invertTransform(inertial_pos, inertial_orn),
                                                     rel_pos, rel_orn)
+            # visual meshes frame are transformed from the urdfLinkFrame as origin to comLinkFrame as origin
             visual_object = None
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
@@ -624,6 +629,8 @@ class Simulator:
 
             collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
             collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
+            # a link can have multiple collision meshes due to boxification,
+            # and we want to query the original collision mesh for information
 
             if len(collision_shapes) == 0:
                 continue
@@ -783,6 +790,7 @@ class Simulator:
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             rel_pos, rel_orn = p.multiplyTransforms(*p.invertTransform(inertial_pos, inertial_orn),
                                                     rel_pos, rel_orn)
+            # visual meshes frame are transformed from the urdfLinkFrame as origin to comLinkFrame as origin
 
             if type == p.GEOM_MESH:
                 filename = filename.decode('utf-8')
