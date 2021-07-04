@@ -344,6 +344,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 multiplexer, [whole_object, grouped_obj_parts], current_index)
             self.add_object(obj)
 
+    def set_ignore_visual_shape(self, value):
+        self.ignore_visual_shape = value
+        for obj in self.get_objects():
+            obj.set_ignore_visual_shape(value)
+
     def get_objects(self):
         return list(self.objects_by_name.values())
 

@@ -71,6 +71,8 @@ class ArticulatedObject(StatefulObject):
                     link_name = p.getJointInfo(id, link_id)[12].decode('utf-8')
                 if not link_name in self.link_name_to_vm:
                     self.link_name_to_vm[link_name] = []
+                else:
+                    raise ValueError("link name clashing")
                 self.link_name_to_vm[link_name].append(filename.decode('utf-8'))
             except:
                 pass
@@ -334,6 +336,9 @@ class URDFObject(StatefulObject):
                 if issubclass(state, LinkBasedStateMixin):
                     self.merge_fixed_links = False
                     break
+
+    def set_ignore_visual_shape(self, value):
+        self.ignore_visual_shape = value
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
