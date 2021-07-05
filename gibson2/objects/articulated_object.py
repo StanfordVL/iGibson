@@ -63,6 +63,7 @@ class ArticulatedObject(StatefulObject):
 
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
         self.body_id = body_id
+        self.create_link_name_to_vm_map(body_id)
         return body_id
 
     def create_link_name_to_vm_map(self, body_id):

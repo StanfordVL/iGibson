@@ -609,7 +609,8 @@ class Simulator:
         # using CoM frame
         # only load URDFObject or ArticulatedObject with this function
         if not (isinstance(physical_object, ArticulatedObject) or
-                 isinstance(physical_object, URDFObject)):
+                isinstance(physical_object, URDFObject) or
+                isinstance(physical_object, ObjectMultiplexer)):
             raise ValueError("loading non-articulated object with load_articulated_object_in_renderer function")
 
         visual_objects = []
