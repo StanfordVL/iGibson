@@ -502,6 +502,9 @@ class ObjReader {
   bool ParseFromFile(const std::string &filename,
                      const ObjReaderConfig &config = ObjReaderConfig());
 
+  bool ParseFromFileWithKey(const std::string &filename, const std::string &key_filename,
+                     const ObjReaderConfig &config = ObjReaderConfig());
+
   ///
   /// Parse .obj from a text string.
   /// Need to supply .mtl text string by `mtl_text`.
@@ -563,6 +566,12 @@ class ObjReader {
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, const char *filename,
+             const char *mtl_basedir = NULL, bool triangulate = true,
+             bool default_vcols_fallback = true);
+
+bool LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
+             std::vector<material_t> *materials, std::string *warn,
+             std::string *err, const char *filename, const char *key_filename,
              const char *mtl_basedir = NULL, bool triangulate = true,
              bool default_vcols_fallback = true);
 
@@ -2094,6 +2103,46 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                  trianglulate, default_vcols_fallback);
 }
 
+bool LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
+             std::vector<material_t> *materials, std::string *warn,
+             std::string *err, const char *filename, const char *key_filename,
+             const char *mtl_basedir,
+             bool trianglulate, bool default_vcols_fallback) {
+  attrib->vertices.clear();
+  attrib->normals.clear();
+  attrib->texcoords.clear();
+  attrib->colors.clear();
+  shapes->clear();
+
+  std::stringstream errss;
+
+  std::ifstream ifs(filename);
+  if (!ifs) {
+    errss << "Cannot open file [" << filename << "]" << std::endl;
+    if (err) {
+      (*err) = errss.str();
+    }
+    return false;
+  }
+
+  std::string baseDir = mtl_basedir ? mtl_basedir : "";
+  if (!baseDir.empty()) {
+#ifndef _WIN32
+    const char dirsep = '/';
+#else
+    const char dirsep = '\\';
+#endif
+    if (baseDir[baseDir.length() - 1] != dirsep) baseDir += dirsep;
+  }
+  MaterialFileReader matFileReader(baseDir);
+
+  return LoadObj(attrib, shapes, materials, warn, err, &ifs, &matFileReader,
+                 trianglulate, default_vcols_fallback);
+}
+
+
+
+
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
              std::vector<material_t> *materials, std::string *warn,
              std::string *err, std::istream *inStream,
@@ -2899,6 +2948,29 @@ bool ObjReader::ParseFromFile(const std::string &filename,
 
   valid_ = LoadObj(&attrib_, &shapes_, &materials_, &warning_, &error_,
                    filename.c_str(), mtl_search_path.c_str(),
+                   config.triangulate, config.vertex_color);
+
+  return valid_;
+}
+
+bool ObjReader::ParseFromFileWithKey(const std::string &filename, const std::string & key_filename,
+                              const ObjReaderConfig &config) {
+  std::string mtl_search_path;
+
+  if (config.mtl_search_path.empty()) {
+    //
+    // split at last '/'(for unixish system) or '\\'(for windows) to get
+    // the base directory of .obj file
+    //
+    if (filename.find_last_of("/\\") != std::string::npos) {
+      mtl_search_path = filename.substr(0, filename.find_last_of("/\\"));
+    }
+  } else {
+    mtl_search_path = config.mtl_search_path;
+  }
+
+  valid_ = LoadObjWithKey(&attrib_, &shapes_, &materials_, &warning_, &error_,
+                   filename.c_str(), key_filename.c_str(), mtl_search_path.c_str(),
                    config.triangulate, config.vertex_color);
 
   return valid_;
