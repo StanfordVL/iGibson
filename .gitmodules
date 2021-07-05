@@ -10,3 +10,6 @@
 [submodule "gibson2/render/openvr"]
 	path = gibson2/render/openvr
 	url = https://github.com/ValveSoftware/openvr
+[submodule "gibson2/render/cryptopp"]
+	path = gibson2/render/cryptopp
+	url = https://github.com/fxia22/cryptopp
