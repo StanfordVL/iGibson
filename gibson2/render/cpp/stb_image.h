@@ -380,6 +380,9 @@ STBIDEF stbi_uc *stbi_load_from_callbacks(stbi_io_callbacks const *clbk  , void 
 STBIDEF stbi_uc *stbi_load            (char const *filename, int *x, int *y, int *channels_in_file, int desired_channels);
 STBIDEF stbi_uc *stbi_load_from_file  (FILE *f, int *x, int *y, int *channels_in_file, int desired_channels);
 // for stbi_load_from_file, file pointer is left pointing immediately after image
+STBIDEF stbi_uc *stbi_load_with_key   (char const *filename, char const *key_filename, int *x, int *y, int *channels_in_file, int desired_channels);
+STBIDEF stbi_uc *stbi_load_from_file_with_key
+                                      (FILE *f, FILE *f_k, int *x, int *y, int *channels_in_file, int desired_channels);
 #endif
 
 #ifndef STBI_NO_GIF
@@ -1275,7 +1278,35 @@ STBIDEF stbi_uc *stbi_load(char const *filename, int *x, int *y, int *comp, int 
    return result;
 }
 
+STBIDEF stbi_uc *stbi_load_with_key(char const *filename, char const *key_filename,int *x, int *y, int *comp, int req_comp)
+{
+   FILE *f = stbi__fopen(filename, "rb");
+   unsigned char *result;
+   if (!f) return stbi__errpuc("can't fopen", "Unable to open file");
+
+   FILE *f_k = stbi__fopen(key_filename, "rb");
+   if (!f_k) return stbi__errpuc("can't fopen", "Unable to open key file");
+
+   result = stbi_load_from_file_with_key(f, f_k, x,y,comp,req_comp);
+   fclose(f);
+   fclose(f_k);
+   return result;
+}
+
 STBIDEF stbi_uc *stbi_load_from_file(FILE *f, int *x, int *y, int *comp, int req_comp)
+{
+   unsigned char *result;
+   stbi__context s;
+   stbi__start_file(&s,f);
+   result = stbi__load_and_postprocess_8bit(&s,x,y,comp,req_comp);
+   if (result) {
+      // need to 'unget' all the characters in the IO buffer
+      fseek(f, - (int) (s.img_buffer_end - s.img_buffer), SEEK_CUR);
+   }
+   return result;
+}
+
+STBIDEF stbi_uc *stbi_load_from_file_with_key(FILE *f, FILE *f_k, int *x, int *y, int *comp, int req_comp)
 {
    unsigned char *result;
    stbi__context s;
