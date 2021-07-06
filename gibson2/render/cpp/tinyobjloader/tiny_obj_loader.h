@@ -2103,44 +2103,6 @@ bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
                  trianglulate, default_vcols_fallback);
 }
 
-bool LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
-             std::vector<material_t> *materials, std::string *warn,
-             std::string *err, const char *filename, const char *key_filename,
-             const char *mtl_basedir,
-             bool trianglulate, bool default_vcols_fallback) {
-  attrib->vertices.clear();
-  attrib->normals.clear();
-  attrib->texcoords.clear();
-  attrib->colors.clear();
-  shapes->clear();
-
-  std::stringstream errss;
-
-  std::ifstream ifs(filename);
-  if (!ifs) {
-    errss << "Cannot open file [" << filename << "]" << std::endl;
-    if (err) {
-      (*err) = errss.str();
-    }
-    return false;
-  }
-
-  std::string baseDir = mtl_basedir ? mtl_basedir : "";
-  if (!baseDir.empty()) {
-#ifndef _WIN32
-    const char dirsep = '/';
-#else
-    const char dirsep = '\\';
-#endif
-    if (baseDir[baseDir.length() - 1] != dirsep) baseDir += dirsep;
-  }
-  MaterialFileReader matFileReader(baseDir);
-
-  return LoadObj(attrib, shapes, materials, warn, err, &ifs, &matFileReader,
-                 trianglulate, default_vcols_fallback);
-}
-
-
 
 
 bool LoadObj(attrib_t *attrib, std::vector<shape_t> *shapes,
