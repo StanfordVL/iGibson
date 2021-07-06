@@ -212,6 +212,10 @@ namespace igibson {
 
         std::chrono::duration<double, std::milli> fp_ms = time2 - time1;
         py::print("Reverb Computer Initialized in ", fp_ms.count(), "ms");
+    }
+
+    void RegisterReverbProbe(const std::string &room, py::array_t<float> sample_pos) {
+        auto time1 = std::chrono::high_resolution_clock::now();
 
         // Ray-tracing related fields.
         const int kSampleRate = 48000;
@@ -227,27 +231,26 @@ namespace igibson {
 
         py::buffer_info sp_buf = sample_pos.request();
         float* sample_pos_arr = (float*)sp_buf.ptr;
-
-        py::print("Pre-compute rt60s");
-        time1 = std::chrono::high_resolution_clock::now();
-        if (!ComputeRt60sAndProxyRoom(kNumRays, kNumRaysPerBatch,
+        
+        ComputeRt60sAndProxyRoom(kNumRays, kNumRaysPerBatch,
             kMaxDepth, kEnergyThresold,
             sample_pos_arr,
             listener_sphere_radius, kSampleRate,
             impulse_response_num_samples,
             rt60s,
-            &proxy_room_properties)) assert(1);
+            &proxy_room_properties);
 
-        time2 = std::chrono::high_resolution_clock::now();
+        //SetRoomProperties(&proxy_room_properties, rt60s);
+        const auto reflection_properties = ComputeReflectionProperties(proxy_room_properties);
+        const auto reverb_properties = (rt60s == nullptr) ? ComputeReverbProperties(proxy_room_properties)
+          : ComputeReverbPropertiesFromRT60s(
+                rt60s, proxy_room_properties.reverb_brightness,
+                proxy_room_properties.reverb_time, proxy_room_properties.reverb_gain);
 
-        fp_ms = time2 - time1;
-        py::print("Computed rt60s in ", fp_ms.count(), "ms");
+        resonance_audio->room_to_reflection_and_reverb[room] = std::make_pair(reflection_properties, reverb_properties);
 
-        time1 = std::chrono::high_resolution_clock::now();
-        SetRoomProperties(&proxy_room_properties, rt60s);
-        time2 = std::chrono::high_resolution_clock::now();
-
-        py::print("Room properties set in ", fp_ms.count(), "ms");
+        auto elapsed_t = std::chrono::high_resolution_clock::now() - time1;
+        py::print("Reverb and reflection proeprties for room [", room, "] computed in ", elapsed_t.count(), "ms");
     }
 
     int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance) {
@@ -257,10 +260,7 @@ namespace igibson {
         py::buffer_info sl_buf = source_pos.request();
         float* source_location_arr = (float*)sl_buf.ptr;
 
-
         SetSourcePosition(source_id, source_pos);
-        //std::cout << "TODO: SETTING 360 DEGREE SPREAD" << std::endl;
-        //SetSourceSpread(source_id, 360.0f);
         SetSourceGain(source_id, 1.0f);
 
         return source_id;
@@ -318,6 +318,9 @@ namespace igibson {
                 py::scoped_estream_redirect>());
 
         m.def("LoadMesh", &LoadMesh, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+
+        m.def("RegisterReverbProbe", &RegisterReverbProbe, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
         m.def("InitializeSource", &InitializeSource, py::call_guard<py::scoped_ostream_redirect,
