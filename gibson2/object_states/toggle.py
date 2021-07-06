@@ -33,9 +33,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
 
     def _initialize(self):
         super(ToggledOn, self)._initialize()
-        self.initialize_link_mixin()
-
-        if self.link_id is not None:
+        if self.initialize_link_mixin():
             self.visual_marker_on = VisualMarker(
                 rgba_color=[0, 1, 0, 0.5],
                 radius=_TOGGLE_BUTTON_RADIUS)
@@ -94,7 +92,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
         hidden_marker = self.visual_marker_off if self.get_value() else self.visual_marker_on
 
         # update toggle button position depending if parent is awake
-        dynamics_info = p.getDynamicsInfo(self.body_id, self.link_id)
+        dynamics_info = p.getDynamicsInfo(self.body_id, -1)
 
         if len(dynamics_info) == 13:
             activation_state = dynamics_info[12]

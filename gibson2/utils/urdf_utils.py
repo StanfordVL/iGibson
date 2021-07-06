@@ -313,34 +313,33 @@ def add_fixed_link(tree, link_name, link_info):
     # mat = ET.SubElement(visual, "material", {"name": "red"})
     # ET.SubElement(mat, "color", {"rgba": "255 0 0 1.0"})
 
-    if link_info['geometry'] is not None:
-        visual = ET.SubElement(link, 'visual')
-        visual_origin = ET.SubElement(visual, 'origin')
-        visual_origin.attrib = {
-            'xyz': '0. 0. 0.',
-            'rpy': '0. 0. 0.',
-        }
-        visual_geometry = ET.SubElement(visual, 'geometry')
-        collision = ET.SubElement(link, 'collision')
-        collision_origin = ET.SubElement(collision, 'origin')
-        collision_origin.attrib = {
-            'xyz': '0. 0. 0.',
-            'rpy': '0. 0. 0.',
-        }
-        collision_geometry = ET.SubElement(collision, 'geometry')
-        if link_info['geometry'] == 'box':
-            # Make the visual box infinitely small so that it won't appear
-            # in the renderer
-            visual_box = ET.SubElement(visual_geometry, 'box')
-            visual_box.attrib = {
-                'size': "%.4f %.4f %.4f" % tuple([0., 0., 0.])}
-            # Uncomment the below to see the actual visual mesh.
-            #    'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
-            collision_box = ET.SubElement(collision_geometry, 'box')
-            collision_box.attrib = {
-                'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
-        else:
-            raise ValueError('add_fixed_link only supports box')
+    visual = ET.SubElement(link, 'visual')
+    visual_origin = ET.SubElement(visual, 'origin')
+    visual_origin.attrib = {
+        'xyz': '0. 0. 0.',
+        'rpy': '0. 0. 0.',
+    }
+    visual_geometry = ET.SubElement(visual, 'geometry')
+    collision = ET.SubElement(link, 'collision')
+    collision_origin = ET.SubElement(collision, 'origin')
+    collision_origin.attrib = {
+        'xyz': '0. 0. 0.',
+        'rpy': '0. 0. 0.',
+    }
+    collision_geometry = ET.SubElement(collision, 'geometry')
+    if link_info['geometry'] == 'box':
+        # Make the visual box infinitely small so that it won't appear
+        # in the renderer
+        visual_box = ET.SubElement(visual_geometry, 'box')
+        visual_box.attrib = {
+            'size': "%.4f %.4f %.4f" % tuple([0., 0., 0.])}
+        # Uncomment the below to see the actual visual mesh.
+        #    'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
+        collision_box = ET.SubElement(collision_geometry, 'box')
+        collision_box.attrib = {
+            'size': "%.4f %.4f %.4f" % tuple(link_info['size'])}
+    else:
+        raise ValueError('add_fixed_link only supports box')
 
     # Add the joint
     joint = ET.SubElement(
