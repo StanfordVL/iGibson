@@ -65,6 +65,8 @@ struct ResonanceAudioSystem {
     ReflectionProperties null_reflection_properties;
     ReverbProperties null_reverb_properties;
 
+    std::unordered_map<std::string, std::pair<ReflectionProperties,ReverbProperties>> room_to_reflection_and_reverb;
+
     // Denotes whether the soundfield recording is currently in progress.
     bool is_recording_soundfield;
 };
