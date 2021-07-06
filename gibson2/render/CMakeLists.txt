@@ -87,7 +87,7 @@ if (USE_VR)
     include_directories("${SRANI_DIR}/include")
 endif()
 
-add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
+add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/tiny_obj_loader_decrypt.cc cpp/tinyobjloader/bindings.cc)
 if (USE_VR)
     add_library(VRRendererContext MODULE glad/gl.cpp cpp/vr_mesh_renderer.cpp cpp/glfw_mesh_renderer.cpp cpp/mesh_renderer.cpp)
 else()
@@ -119,7 +119,7 @@ else ()
     endif()
 endif ()
 
-target_link_libraries(tinyobjloader PRIVATE pybind11::module)
+target_link_libraries(tinyobjloader PRIVATE pybind11::module cryptopp-shared)
 
 if (USE_VR) 
     set_target_properties(VRRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
