@@ -389,10 +389,10 @@ class MeshRenderer(object):
 
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
-        if obj_path.endswith('obj'):
-            ret = reader.ParseFromFile(obj_path)
-        else:
+        if obj_path.endswith('igib'):
             ret = reader.ParseFromFileWithKey(obj_path, gibson2.key_path)
+        else:
+            ret = reader.ParseFromFile(obj_path)
         vertex_data_indices = []
         face_indices = []
         if not ret:
