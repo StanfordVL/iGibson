@@ -315,7 +315,7 @@ class MeshRenderer(object):
             texture_id = len(self.texture_files)
         else:
             texture_id = self.r.loadTexture(
-                tex_filename, self.rendering_settings.texture_scale)
+                tex_filename, self.rendering_settings.texture_scale, gibson2.key_path)
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
@@ -1188,7 +1188,8 @@ class MeshRenderer(object):
             self.r.generateArrayTextures(texture_files,
                                          cutoff,
                                          shouldShrinkSmallTextures,
-                                         smallTexSize)
+                                         smallTexSize,
+                                         gibson2.key_path)
         print(self.tex_id_layer_mapping)
         print(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)
