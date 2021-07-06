@@ -40,7 +40,6 @@ endif ()
 add_subdirectory(pybind11)
 add_subdirectory(cryptopp)
 include_directories(cryptopp)
-add_subdirectory(aes_cbc)
 
 
 # Add GLM include directory
