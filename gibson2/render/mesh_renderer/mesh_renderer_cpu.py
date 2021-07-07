@@ -324,13 +324,13 @@ class MeshRenderer(object):
     def load_procedural_material(self, material):
         material.lookup_or_create_transformed_texture()
         material.texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "DIFFUSE.png"))
+            os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
         material.metallic_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "METALLIC.png"))
+            os.path.join(material.material_folder, "METALLIC.encrypted.png"))
         material.roughness_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "ROUGHNESS.png"))
+            os.path.join(material.material_folder, "ROUGHNESS.encrypted.png"))
         material.normal_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "NORMAL.png"))
+            os.path.join(material.material_folder, "NORMAL.encrypted.png"))
         for state in material.states:
             transformed_diffuse_id = self.load_texture_file(
                 material.texture_filenames[state])
@@ -389,7 +389,7 @@ class MeshRenderer(object):
 
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
-        if obj_path.endswith('igib'):
+        if obj_path.endswith('encrypted.obj'):
             ret = reader.ParseFromFileWithKey(obj_path, gibson2.key_path)
         else:
             ret = reader.ParseFromFile(obj_path)

@@ -786,7 +786,7 @@ int MeshRendererContext::loadTexture(std::string filename, float texture_scale, 
     stbi_set_flip_vertically_on_load(true);
 
     std::vector<unsigned char> buffer;
-    if (ends_with(filename, std::string("igib"))) {
+    if (ends_with(filename, std::string("encrypted.png"))) {
         buffer = readFileWithKey(filename.c_str(), keyfilename.c_str());
     } else {
         buffer = readFile(filename.c_str());
@@ -1168,7 +1168,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			int h;
 			int comp;
 			stbi_set_flip_vertically_on_load(true);
-			if (ends_with(filename, std::string("igib"))) {
+			if (ends_with(filename, std::string("encrypted.png"))) {
                 buffer = readFileWithKey(filename.c_str(), keyfilename.c_str());
             } else {
                 buffer = readFile(filename.c_str());

@@ -131,9 +131,9 @@ class ProceduralMaterial(Material):
         os.makedirs(save_path, exist_ok=True)
         for state in self.states:
             diffuse_tex_filename = os.path.join(
-                self.material_folder, "DIFFUSE.png")
+                self.material_folder, "DIFFUSE.encrypted.png")
             diffuse_tex_filename_lookup = os.path.join(
-                self.material_folder, "DIFFUSE_{}.png".format(state.__name__))
+                self.material_folder, "DIFFUSE_{}.encrypted.png".format(state.__name__))
             if os.path.exists(diffuse_tex_filename_lookup):
                 self.texture_filenames[state] = diffuse_tex_filename_lookup
             else:
