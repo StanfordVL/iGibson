@@ -139,7 +139,7 @@ def run_action_sr(mode):
 
     if mode == 'save':
         # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
-        log_writer = IGLogWriter(s, frames_before_write=200, store_vr=True, log_filepath=VR_LOG_PATH, vr_robot=bvr_robot, log_status=False)
+        log_writer = IGLogWriter(s, log_filepath=VR_LOG_PATH, frames_before_write=200, store_vr=True, vr_robot=bvr_robot, log_status=False)
 
         # Save a single button press as a mock action that demonstrates action-saving capabilities.
         log_writer.register_action(mock_vr_action_path, (1,))

@@ -29,7 +29,7 @@ class IGLogWriter(object):
     end_log_session
     """
 
-    def __init__(self, sim, frames_before_write, log_filepath, task=None, store_vr=False, vr_robot=None, filter_objects=True, profiling_mode=False, log_status=True):
+    def __init__(self, sim, log_filepath, frames_before_write=200, task=None, store_vr=False, vr_robot=None, filter_objects=True, profiling_mode=False, log_status=True):
         """
         Initializes IGLogWriter
         :param sim: Simulator object

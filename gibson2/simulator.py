@@ -464,6 +464,35 @@ class Simulator:
                     state.initialize(self)
 
         return new_object_pb_id_or_ids
+		
+    @load_without_pybullet_vis
+    def load_visual_sphere(self, radius, color=[1,0,0]):
+        """
+        Load a visual-only (not controlled by pybullet) sphere into the renderer.
+        Such a sphere can be moved around without affecting PyBullet determinism.
+        :param radius: the radius of the visual sphere in meters
+        :param color: RGB color of sphere (from 0 to 1 on each axis)
+        """
+        sphere_file = os.path.join(
+                        gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+        self.renderer.load_object(
+                    sphere_file,
+                    transform_orn=[0,0,0,1],
+                    transform_pos=[0,0,0],
+                    input_kd=[1,0,0],
+                    scale=[radius, radius, radius])
+        visual_object = len(self.renderer.get_visual_objects()) - 1
+        self.renderer.add_instance(visual_object,
+                                pybullet_uuid=0, # this can be ignored
+                                class_id=1, # this can be ignored
+                                dynamic=False,
+                                softbody=False,
+                                use_pbr=False,
+                                use_pbr_mapping=False,
+                                shadow_caster=False
+                                )
+        # Return instance so we can control it
+        return self.renderer.instances[-1]
 
     @load_without_pybullet_vis
     def load_object_in_renderer(self,
