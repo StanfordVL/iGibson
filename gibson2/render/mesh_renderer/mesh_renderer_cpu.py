@@ -323,14 +323,17 @@ class MeshRenderer(object):
 
     def load_procedural_material(self, material):
         material.lookup_or_create_transformed_texture()
-        material.texture_id = self.load_texture_file(
+        has_encrypted_texture = os.path.exists(
             os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
+        suffix = '.encrypted.png' if has_encrypted_texture else '.png'
+        material.texture_id = self.load_texture_file(
+            os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)))
         material.metallic_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "METALLIC.encrypted.png"))
+            os.path.join(material.material_folder, "METALLIC{}".format(suffix)))
         material.roughness_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "ROUGHNESS.encrypted.png"))
+            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix)))
         material.normal_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "NORMAL.encrypted.png"))
+            os.path.join(material.material_folder, "NORMAL{}".format(suffix)))
         for state in material.states:
             transformed_diffuse_id = self.load_texture_file(
                 material.texture_filenames[state])
