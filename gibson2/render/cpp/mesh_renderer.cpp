@@ -721,7 +721,7 @@ std::vector<unsigned char> readFileWithKey(const char* filename, const char* key
 	); // StringSource
 
 	ifstream in_file;
-    in_file.open(filename);
+    in_file.open(filename, std::ios::binary);
     stringstream str_stream;
     str_stream << in_file.rdbuf(); //read the file
 

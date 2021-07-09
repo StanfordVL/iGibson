@@ -78,7 +78,7 @@ bool tinyobj::LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
         ) // HexEncoder
     ); // StringSource
 
-  std::ifstream ifs(filename);
+  std::ifstream ifs(filename, std::ios::binary);
   stringstream str_stream;
   str_stream << ifs.rdbuf(); //read the file
 
