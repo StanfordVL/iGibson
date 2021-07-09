@@ -4,25 +4,11 @@
 
 #include "tiny_obj_loader.h"
 
-#include "osrng.h"
-using CryptoPP::AutoSeededRandomPool;
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
-
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::ifstream;
-using std::ofstream;
-using std::stringstream;
-
 #include <string>
-using std::string;
-
 #include <cstdlib>
-using std::exit;
 
 #include "cryptlib.h"
 using CryptoPP::Exception;
@@ -61,8 +47,8 @@ bool tinyobj::LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
 
     byte key[AES::DEFAULT_KEYLENGTH];
     byte iv[AES::BLOCKSIZE];
-    ifstream key_file(key_filename);
-    string key_string, iv_string;
+    std::ifstream key_file(key_filename);
+    std::string key_string, iv_string;
     std::getline(key_file, key_string);
     std::getline(key_file, iv_string);
 
@@ -79,11 +65,11 @@ bool tinyobj::LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
     ); // StringSource
 
   std::ifstream ifs(filename, std::ios::binary);
-  stringstream str_stream;
+  std::stringstream str_stream;
   str_stream << ifs.rdbuf(); //read the file
 
-  string cipher = str_stream.str();
-  string plain, encoded, recovered;
+  std::string cipher = str_stream.str();
+  std::string plain, encoded, recovered;
 
 	try
 	{
@@ -111,8 +97,8 @@ bool tinyobj::LoadObjWithKey(attrib_t *attrib, std::vector<shape_t> *shapes,
 	}
 	catch(const CryptoPP::Exception& e)
 	{
-		cerr << e.what() << endl;
-		exit(1);
+		std::cerr << e.what() << std::endl;
+		std::exit(1);
 	}
 
   std::stringstream ss;
