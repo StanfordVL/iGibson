@@ -148,7 +148,7 @@ public:
 
     void cglUseProgram(int shaderProgram);
 
-    int loadTexture(std::string filename, float texture_scale);
+    int loadTexture(std::string filename, float texture_scale, std::string keyfilename);
 
     void setup_pbr(std::string shader_path,
     std::string env_texture_filename,
@@ -192,7 +192,7 @@ public:
 
     // Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
 	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures,
-	int smallTexBucketSize);
+	int smallTexBucketSize, std::string keyfilename);
 
 	py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
 		py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,

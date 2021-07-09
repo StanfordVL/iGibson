@@ -38,6 +38,10 @@ if (USE_CUDA)
 endif ()
 
 add_subdirectory(pybind11)
+add_subdirectory(cryptopp)
+include_directories(cryptopp)
+
+
 # Add GLM include directory
 include_directories("glm")
 
@@ -82,7 +86,7 @@ if (USE_VR)
     include_directories("${SRANI_DIR}/include")
 endif()
 
-add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/bindings.cc)
+add_library(tinyobjloader MODULE cpp/tinyobjloader/tiny_obj_loader.cc cpp/tinyobjloader/tiny_obj_loader_decrypt.cc cpp/tinyobjloader/bindings.cc)
 if (USE_VR)
     add_library(VRRendererContext MODULE glad/gl.cpp cpp/vr_mesh_renderer.cpp cpp/glfw_mesh_renderer.cpp cpp/mesh_renderer.cpp)
 else()
@@ -99,22 +103,22 @@ else()
 endif()
 
 if (USE_VR)
-    target_link_libraries(VRRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENVR_LIBRARIES} ${SRANI_LIBRARIES})
+    target_link_libraries(VRRendererContext PRIVATE pybind11::module ${CMAKE_DL_LIBS} glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} ${OPENVR_LIBRARIES} ${SRANI_LIBRARIES} cryptopp-static)
 else ()
     if (USE_GLAD)
-        target_link_libraries(EGLRendererContext PRIVATE pybind11::module dl pthread)
+        target_link_libraries(EGLRendererContext PRIVATE pybind11::module dl pthread cryptopp-static)
         if (USE_GLFW)
-            target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES})
+            target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES} cryptopp-static)
         endif ()
     else ()
-        target_link_libraries(EGLRendererContext PRIVATE pybind11::module dl pthread EGL ${OPENGL_LIBRARIES})
+        target_link_libraries(EGLRendererContext PRIVATE pybind11::module dl pthread EGL ${OPENGL_LIBRARIES} cryptopp-static)
         if (USE_GLFW)
-            target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES})
+            target_link_libraries(GLFWRendererContext PRIVATE pybind11::module dl glfw ${GLFW_LIBRARIES} ${OPENGL_LIBRARIES} cryptopp-static)
         endif ()
     endif()
 endif ()
 
-target_link_libraries(tinyobjloader PRIVATE pybind11::module)
+target_link_libraries(tinyobjloader PRIVATE pybind11::module cryptopp-static)
 
 if (USE_VR) 
     set_target_properties(VRRendererContext PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}"
