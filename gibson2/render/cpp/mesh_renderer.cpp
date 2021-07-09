@@ -45,6 +45,35 @@ namespace py = pybind11;
 #define OS_SEP "/"
 #endif
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cstdlib>
+
+#include "cryptlib.h"
+using CryptoPP::Exception;
+
+#include "hex.h"
+using CryptoPP::HexEncoder;
+using CryptoPP::HexDecoder;
+
+#include "filters.h"
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
+using CryptoPP::StreamTransformationFilter;
+using CryptoPP::ArraySink;
+
+#include "aes.h"
+using CryptoPP::AES;
+
+#include "ccm.h"
+using CryptoPP::CBC_Mode;
+
+#include "assert.h"
+
+using CryptoPP::byte;
+
 class Image {
 public:
     static std::shared_ptr<Image> fromFile(const std::string &filename, int channels) {
@@ -641,7 +670,91 @@ void MeshRendererContext::cglUseProgram(int shaderProgram) {
     glUseProgram(shaderProgram);
 }
 
-int MeshRendererContext::loadTexture(std::string filename, float texture_scale) {
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+std::vector<unsigned char> readFile(const char* filename)
+{
+    // open the file:
+    std::ifstream file(filename, std::ios::binary);
+    // read the data:
+    return std::vector<unsigned char>((std::istreambuf_iterator<char>(file)),
+                              std::istreambuf_iterator<char>());
+}
+
+std::vector<unsigned char> readFileWithKey(const char* filename, const char* keyfilename)
+{
+
+    byte key[AES::DEFAULT_KEYLENGTH];
+	byte iv[AES::BLOCKSIZE];
+    std::ifstream key_file(keyfilename);
+    std::string key_string, iv_string;
+    std::getline(key_file, key_string);
+    std::getline(key_file, iv_string);
+    StringSource(key_string, true,
+		new HexDecoder(
+			new ArraySink(key, sizeof(key))
+		) // HexEncoder
+	); // StringSource
+
+    StringSource(iv_string, true,
+		new HexDecoder(
+			new ArraySink(iv, sizeof(iv))
+		) // HexEncoder
+	); // StringSource
+
+	std::ifstream in_file;
+    in_file.open(filename, std::ios::binary);
+    std::stringstream str_stream;
+    str_stream << in_file.rdbuf(); //read the file
+
+	std::string cipher = str_stream.str();
+	std::string plain, encoded, recovered;
+
+	try
+	{
+		CBC_Mode< AES >::Decryption d;
+		d.SetKeyWithIV(key, sizeof(key), iv);
+
+		// The StreamTransformationFilter removes
+		//  padding as required.
+		StringSource s(cipher, true,
+			new StreamTransformationFilter(d,
+				new StringSink(recovered)
+			) // StreamTransformationFilter
+		); // StringSource
+
+#if 0
+		StreamTransformationFilter filter(d);
+		filter.Put((const byte*)cipher.data(), cipher.size());
+		filter.MessageEnd();
+
+		const size_t ret = filter.MaxRetrievable();
+		recovered.resize(ret);
+		filter.Get((byte*)recovered.data(), recovered.size());
+#endif
+
+	}
+	catch(const CryptoPP::Exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		std::exit(1);
+	}
+
+    std::stringstream ss(recovered);
+
+    // open the file:
+    //std::ifstream file(filename, std::ios::binary);
+    // read the data:
+    return std::vector<unsigned char>((std::istreambuf_iterator<char>(ss)),
+                              std::istreambuf_iterator<char>());
+}
+
+
+int MeshRendererContext::loadTexture(std::string filename, float texture_scale, std::string keyfilename) {
     //width, height = img.size
     // glTexImage2D expects the first element of the image data to be the
     // bottom-left corner of the image.  Subsequent elements go left to right,
@@ -657,7 +770,15 @@ int MeshRendererContext::loadTexture(std::string filename, float texture_scale) 
     int h;
     int comp;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
+
+    std::vector<unsigned char> buffer;
+    if (ends_with(filename, std::string("encrypted.png"))) {
+        buffer = readFileWithKey(filename.c_str(), keyfilename.c_str());
+    } else {
+        buffer = readFile(filename.c_str());
+    }
+    unsigned char *image = stbi_load_from_memory(buffer.data(), buffer.size(), &w, &h, &comp, STBI_rgb);
+
     if (image == nullptr)
         throw (std::string("ERROR: Failed to load texture"));
 
@@ -1018,13 +1139,13 @@ void MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int he
 	glCopyTextureSubImage2D(texture_id, 0, 0, 0, 0, 0, width, height);
 }
 
-py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize) {
+py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize, std::string keyfilename) {
 		int num_textures = filenames.size();
 		std::vector<unsigned char*> image_data;
 		std::vector<int> texHeights;
 		std::vector<int> texWidths;
 		std::vector<int> texChannels;
-
+        std::vector<unsigned char> buffer;
 		printf("number of textures %d\n", num_textures);
 		for (int i = 0; i < num_textures; i++) {
 			std::string filename = filenames[i];
@@ -1033,7 +1154,13 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			int h;
 			int comp;
 			stbi_set_flip_vertically_on_load(true);
-			unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb); // force to 3 channels
+			if (ends_with(filename, std::string("encrypted.png"))) {
+                buffer = readFileWithKey(filename.c_str(), keyfilename.c_str());
+            } else {
+                buffer = readFile(filename.c_str());
+            }
+			unsigned char* image = stbi_load_from_memory(buffer.data(), buffer.size(), &w, &h, &comp, STBI_rgb);
+			// force to 3 channels
 			if (image == nullptr)
 				throw(std::string("Failed to load texture"));
 			std::cout << "Size is w: " << w << " by h: " << h << std::endl;
