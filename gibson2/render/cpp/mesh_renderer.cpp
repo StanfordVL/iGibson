@@ -45,25 +45,11 @@ namespace py = pybind11;
 #define OS_SEP "/"
 #endif
 
-#include "osrng.h"
-using CryptoPP::AutoSeededRandomPool;
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
-
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::ifstream;
-using std::ofstream;
-using std::stringstream;
-
 #include <string>
-using std::string;
-
 #include <cstdlib>
-using std::exit;
 
 #include "cryptlib.h"
 using CryptoPP::Exception;
@@ -704,8 +690,8 @@ std::vector<unsigned char> readFileWithKey(const char* filename, const char* key
 
     byte key[AES::DEFAULT_KEYLENGTH];
 	byte iv[AES::BLOCKSIZE];
-    ifstream key_file(keyfilename);
-    string key_string, iv_string;
+    std::ifstream key_file(keyfilename);
+    std::string key_string, iv_string;
     std::getline(key_file, key_string);
     std::getline(key_file, iv_string);
     StringSource(key_string, true,
@@ -720,13 +706,13 @@ std::vector<unsigned char> readFileWithKey(const char* filename, const char* key
 		) // HexEncoder
 	); // StringSource
 
-	ifstream in_file;
+	std::ifstream in_file;
     in_file.open(filename, std::ios::binary);
-    stringstream str_stream;
+    std::stringstream str_stream;
     str_stream << in_file.rdbuf(); //read the file
 
-	string cipher = str_stream.str();
-	string plain, encoded, recovered;
+	std::string cipher = str_stream.str();
+	std::string plain, encoded, recovered;
 
 	try
 	{
@@ -754,8 +740,8 @@ std::vector<unsigned char> readFileWithKey(const char* filename, const char* key
 	}
 	catch(const CryptoPP::Exception& e)
 	{
-		cerr << e.what() << endl;
-		exit(1);
+		std::cerr << e.what() << std::endl;
+		std::exit(1);
 	}
 
     std::stringstream ss(recovered);
