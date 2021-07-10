@@ -10,7 +10,7 @@ import tasknet
 
 import gibson2
 from gibson2 import object_states
-from gibson2.examples.demo.vr_demos.atus import behavior_demo_replay
+from gibson2.examples.behavior import behavior_demo_replay
 from gibson2.object_states import factory, ROOM_STATES
 from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
 from gibson2.robots.behavior_robot import BRBody
@@ -90,8 +90,6 @@ ALLOWED_SUB_SEGMENTS_BY_STATE = {
     object_states.Under: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
 }
 
-PROFILER = pyinstrument.Profiler()
-
 
 def process_states(objects, state_types):
     predicate_states = set()
@@ -144,7 +142,8 @@ def _get_goal_condition_states(igtn_task: iGTNTask):
 
 class DemoSegmentationProcessor(object):
     def __init__(self, state_types=None, object_selection=SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
-                 label_by_instance=False, hierarchical=False, diff_initial=False, state_directions=STATE_DIRECTIONS):
+                 label_by_instance=False, hierarchical=False, diff_initial=False, state_directions=STATE_DIRECTIONS,
+                 profiler=None):
         self.state_history = []
         self.last_state = None
 
@@ -161,7 +160,9 @@ class DemoSegmentationProcessor(object):
             self.state_history.append(StateEntry(0, set()))
             self.last_state = set()
 
-    def start_callback(self, igtn_task):
+        self.profiler = profiler
+
+    def start_callback(self, igtn_task, _):
         self.all_state_types = [
             state for state in factory.get_all_states()
             if (issubclass(state, BooleanState)
@@ -176,9 +177,9 @@ class DemoSegmentationProcessor(object):
         else:
             raise ValueError("Unknown segmentation state selection.")
 
-    def step_callback(self, igtn_task):
-        # print("Step %d" % igtn_task.simulator.frame_count)
-        # PROFILER.start()
+    def step_callback(self, igtn_task, _):
+        if self.profiler:
+            self.profiler.start()
 
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
             objects = [obj for obj in igtn_task.object_scope.values() if not isinstance(obj, BRBody)]
@@ -196,7 +197,9 @@ class DemoSegmentationProcessor(object):
             self.state_history.append(StateEntry(igtn_task.simulator.frame_count, processed_state))
 
         self.last_state = processed_state
-        # PROFILER.stop()
+
+        if self.profiler:
+            self.profiler.stop()
 
     def obj2str(self, obj):
         return obj.name if self.label_by_instance else obj.category
@@ -318,52 +321,55 @@ class DemoSegmentationProcessor(object):
 
 
 def run_segmentation(log_path, segmentation_processors, **kwargs):
-    def _multiple_segmentation_processor_start_callback(igtn_task):
+    def _multiple_segmentation_processor_start_callback(*cb_args, **cb_kwargs):
         for segmentation_processor in segmentation_processors:
-            segmentation_processor.start_callback(igtn_task)
+            segmentation_processor.start_callback(*cb_args, **cb_kwargs)
 
-    def _multiple_segmentation_processor_step_callback(igtn_task):
+    def _multiple_segmentation_processor_step_callback(*cb_args, **cb_kwargs):
         for segmentation_processor in segmentation_processors:
-            segmentation_processor.step_callback(igtn_task)
+            segmentation_processor.step_callback(*cb_args, **cb_kwargs)
 
-    behavior_demo_replay.replay_demo(
-        log_path, start_callback=_multiple_segmentation_processor_start_callback,
-        step_callback=_multiple_segmentation_processor_step_callback, **kwargs)
+    behavior_demo_replay.safe_replay_demo(
+        log_path, start_callbacks=[_multiple_segmentation_processor_start_callback],
+        step_callbacks=[_multiple_segmentation_processor_step_callback], **kwargs)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Run segmentation on an ATUS demo.')
-    parser.add_argument('--log_path', type=str, required=True,
-                        help='Path (and filename) of log to replay')
-    parser.add_argument('--no_vr', action='store_true',
-                        help='Whether to disable replay through VR and use iggui instead.')
+    parser.add_argument('--log_path', type=str,
+                        help='Path (and filename) of log to replay. If empty, test demo will be used.')
+    parser.add_argument('--out_dir', type=str,
+                        help="Directory to store results in. If empty, test directory will be used.")
+    parser.add_argument('--profile', action='store_true',
+                        help='Whether to profile the segmentation, outputting a profile HTML in the out path.')
     return parser.parse_args()
 
 
-def run_default_segmentation(demo_file, out_dir, **kwargs):
-    # flat_states = set(STATE_DIRECTIONS.keys())
+def run_default_segmentation(demo_file, out_dir, profiler, **kwargs):
+    # This applies a "flat" segmentation (e.g. not hierarchical) using only the states supported by our magic motion
+    # primitives.
     flat_states = [object_states.Open, object_states.OnTop, object_states.Inside, object_states.InHandOfRobot,
                    object_states.InReachOfRobot]
     flat_object_segmentation = DemoSegmentationProcessor(flat_states, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
-                                                         label_by_instance=True)
+                                                         label_by_instance=True, profiler=profiler)
 
+    # This applies a hierarchical segmentation based on goal condition states. It's WIP and currently unused.
     goal_segmentation = DemoSegmentationProcessor(
         SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
-        hierarchical=True, label_by_instance=True)
+        hierarchical=True, label_by_instance=True, profiler=profiler)
 
-    # Here we check for *leaving* rooms so that the segments match to the rooms the robot was in at that time.
-    # room_directions = {state: SegmentationStateDirection.TRUE_TO_FALSE for state in ROOM_STATES}
+    # This applies a flat segmentation that allows us to see what room the agent is in during which frames.
     room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS,
-                                                           diff_initial=True)
+                                                           diff_initial=True, profiler=profiler)
 
     segmentation_processors = {
-        # goal_segmentation,
-        # flat_object_segmentation,
+        # "goal": goal_segmentation,
+        "flat": flat_object_segmentation,
         "room": room_presence_segmentation,
     }
 
     # Run the segmentations.
-    run_segmentation(demo_file, list(segmentation_processors.values()), no_vr=False, **kwargs)
+    run_segmentation(demo_file, list(segmentation_processors.values()), **kwargs)
 
     demo_basename = os.path.splitext(os.path.basename(demo_file))[0]
     for segmentation_name, segmentation_processor in segmentation_processors.items():
@@ -382,17 +388,37 @@ def run_default_segmentation(demo_file, out_dir, **kwargs):
 
 def main():
     tasknet.set_backend("iGibson")
-    # args = parse_args()
+    args = parse_args()
 
+    # Select the demo to apply segmentation on.
     demo_file = os.path.join(gibson2.ig_dataset_path, 'tests',
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
-    if not os.path.exists("frames"):
-        os.mkdir("frames")
-    run_default_segmentation(demo_file, frame_save_path="frames")
+    if args.log_path:
+        demo_file = args.log_path
 
-    html = PROFILER.output_html()
-    with open('segmentation_profile.html', 'w') as f:
-        f.write(html)
+    # Select the output directory.
+    out_dir = os.path.join(gibson2.ig_dataset_path, 'tests', "segmentation_results")
+    if args.out_dir:
+        out_dir = args.out_dir
+
+    # Create output directory if needed.
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
+
+    # Set up the profiler
+    profiler = None
+    if args.profile:
+        profiler = pyinstrument.Profiler()
+
+    # Run default segmentation.
+    run_default_segmentation(demo_file, out_dir, profiler=profiler)
+
+    # Save profiling information.
+    if args.profile:
+        html = profiler.output_html()
+        html_path = os.path.join(out_dir, "segmentation_profile.html")
+        with open(html_path, 'w') as f:
+            f.write(html)
 
 if __name__ == "__main__":
     main()
