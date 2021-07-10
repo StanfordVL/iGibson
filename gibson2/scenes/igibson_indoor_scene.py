@@ -62,6 +62,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                  seg_map_resolution=0.1,
                  scene_source="IG",
                  merge_fixed_links=True,
+                 ignore_visual_shape=False,
                  ):
         """
         :param scene_id: Scene id
@@ -99,6 +100,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
+        self.ignore_visual_shape = ignore_visual_shape
         if urdf_file is None:
             if object_randomization:
                 if object_randomization_idx is None:
@@ -301,6 +303,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     tasknet_object_scope=tasknet_object_scope,
                     joint_positions=joint_positions,
                     merge_fixed_links=self.merge_fixed_links,
+                    ignore_visual_shape=ignore_visual_shape
                 )
 
                 # Load object states.
@@ -340,6 +343,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
             obj = ObjectMultiplexer(
                 multiplexer, [whole_object, grouped_obj_parts], current_index)
             self.add_object(obj)
+
+    def set_ignore_visual_shape(self, value):
+        self.ignore_visual_shape = value
+        for obj in self.get_objects():
+            obj.set_ignore_visual_shape(value)
 
     def get_objects(self):
         return list(self.objects_by_name.values())

@@ -13,6 +13,7 @@ The minimum system requirements are the following:
     - Nvidia driver >= 384
     - CUDA >= 9.0, CuDNN >= v7
     - CMake >= 2.8.12 (can install with `pip install cmake`)
+    - OpenGL|ES 2.x API development files (libgles2-mesa-dev)
 - Mac OS X
     - Tested on 10.15
     - PBR features not supported

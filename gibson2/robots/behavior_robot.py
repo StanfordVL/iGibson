@@ -304,6 +304,7 @@ class BRBody(ArticulatedObject):
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
+        self.create_link_name_to_vm_map(body_id)
 
         return body_id
 
@@ -442,6 +443,7 @@ class BRHandBase(ArticulatedObject):
         body_id = p.loadURDF(self.fpath, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
+        self.create_link_name_to_vm_map(body_id)
         return body_id
 
     def set_other_hand(self, other_hand):

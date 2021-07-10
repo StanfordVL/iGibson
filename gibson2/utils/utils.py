@@ -178,3 +178,10 @@ def transform_texture(input_filename, output_filename, mixture_weight=0, mixture
     img = img * (1-mixture_weight) + np.array(list(mixture_color))[None, None, :] * mixture_weight
     img = img.astype(np.uint8)
     Image.fromarray(img).save(output_filename)
+
+
+def brighten_texture(input_filename, output_filename, brightness=1):
+    img = np.array(Image.open(input_filename))
+    img = np.clip(img * brightness, 0, 255)
+    img = img.astype(np.uint8)
+    Image.fromarray(img).save(output_filename)
