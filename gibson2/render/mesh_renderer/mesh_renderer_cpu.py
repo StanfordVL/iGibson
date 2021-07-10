@@ -315,22 +315,25 @@ class MeshRenderer(object):
             texture_id = len(self.texture_files)
         else:
             texture_id = self.r.loadTexture(
-                tex_filename, self.rendering_settings.texture_scale)
+                tex_filename, self.rendering_settings.texture_scale, gibson2.key_path)
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
         return texture_id
 
     def load_procedural_material(self, material):
-        material.save_transformed_texture()
+        material.lookup_or_create_transformed_texture()
+        has_encrypted_texture = os.path.exists(
+            os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
+        suffix = '.encrypted.png' if has_encrypted_texture else '.png'
         material.texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "DIFFUSE.png"))
+            os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)))
         material.metallic_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "METALLIC.png"))
+            os.path.join(material.material_folder, "METALLIC{}".format(suffix)))
         material.roughness_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "ROUGHNESS.png"))
+            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix)))
         material.normal_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "NORMAL.png"))
+            os.path.join(material.material_folder, "NORMAL{}".format(suffix)))
         for state in material.states:
             transformed_diffuse_id = self.load_texture_file(
                 material.texture_filenames[state])
@@ -389,7 +392,10 @@ class MeshRenderer(object):
 
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
-        ret = reader.ParseFromFile(obj_path)
+        if obj_path.endswith('encrypted.obj'):
+            ret = reader.ParseFromFileWithKey(obj_path, gibson2.key_path)
+        else:
+            ret = reader.ParseFromFile(obj_path)
         vertex_data_indices = []
         face_indices = []
         if not ret:
@@ -1185,7 +1191,8 @@ class MeshRenderer(object):
             self.r.generateArrayTextures(texture_files,
                                          cutoff,
                                          shouldShrinkSmallTextures,
-                                         smallTexSize)
+                                         smallTexSize,
+                                         gibson2.key_path)
         print(self.tex_id_layer_mapping)
         print(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)

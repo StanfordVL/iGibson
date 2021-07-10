@@ -128,7 +128,7 @@ class BaseEnv(gym.Env):
         if self.config['scene'] == 'empty':
             scene = EmptyScene()
             self.simulator.import_scene(
-                scene, load_texture=self.config.get('load_texture', True))
+                scene, load_texture=self.config.get('load_texture', True), render_floor_plane=True)
         elif self.config['scene'] == 'stadium':
             scene = StadiumScene()
             self.simulator.import_scene(
