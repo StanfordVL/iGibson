@@ -303,9 +303,9 @@ class DemoSegmentationProcessor(object):
             self._segment_to_dict_tree(sub, sub_segments)
         output_dict[key] = sub_segments
 
-    def save(self, filename):
-        with open(filename, "w") as f:
-            json.dump(self._serialize_segment(self.get_segments()), f)
+    def serialize_segments(self):
+        # Make the root call to recursive function.
+        return self._serialize_segment(self.get_segments())
 
     def __str__(self):
         out = ""
@@ -320,20 +320,6 @@ class DemoSegmentationProcessor(object):
         return out
 
 
-def run_segmentation(log_path, segmentation_processors, **kwargs):
-    def _multiple_segmentation_processor_start_callback(*cb_args, **cb_kwargs):
-        for segmentation_processor in segmentation_processors:
-            segmentation_processor.start_callback(*cb_args, **cb_kwargs)
-
-    def _multiple_segmentation_processor_step_callback(*cb_args, **cb_kwargs):
-        for segmentation_processor in segmentation_processors:
-            segmentation_processor.step_callback(*cb_args, **cb_kwargs)
-
-    behavior_demo_replay.safe_replay_demo(
-        log_path, start_callbacks=[_multiple_segmentation_processor_start_callback],
-        step_callbacks=[_multiple_segmentation_processor_step_callback], **kwargs)
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Run segmentation on an ATUS demo.')
     parser.add_argument('--log_path', type=str,
@@ -345,7 +331,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def run_default_segmentation(demo_file, out_dir, profiler, **kwargs):
+def get_default_segmentation_processors(profiler=None):
     # This applies a "flat" segmentation (e.g. not hierarchical) using only the states supported by our magic motion
     # primitives.
     flat_states = [object_states.Open, object_states.OnTop, object_states.Inside, object_states.InHandOfRobot,
@@ -362,29 +348,12 @@ def run_default_segmentation(demo_file, out_dir, profiler, **kwargs):
     room_presence_segmentation = DemoSegmentationProcessor(ROOM_STATES, SegmentationObjectSelection.ROBOTS,
                                                            diff_initial=True, profiler=profiler)
 
-    segmentation_processors = {
+    return {
         # "goal": goal_segmentation,
         "flat": flat_object_segmentation,
         "room": room_presence_segmentation,
     }
 
-    # Run the segmentations.
-    run_segmentation(demo_file, list(segmentation_processors.values()), **kwargs)
-
-    demo_basename = os.path.splitext(os.path.basename(demo_file))[0]
-    for segmentation_name, segmentation_processor in segmentation_processors.items():
-        json_file = "%s_%s.json" % (demo_basename, segmentation_name)
-        json_fullpath = os.path.join(out_dir, json_file)
-        segmentation_processor.save(json_fullpath)
-
-    # Print the segmentations.
-    combined_output = ""
-    for segmentation_processor in segmentation_processors.values():
-        combined_output += str(segmentation_processor) + "\n"
-
-    print(combined_output)
-    # with open('segmentation_result.txt', 'w') as f:
-    #     f.write(combined_output)
 
 def main():
     tasknet.set_backend("iGibson")
@@ -410,8 +379,28 @@ def main():
     if args.profile:
         profiler = pyinstrument.Profiler()
 
-    # Run default segmentation.
-    run_default_segmentation(demo_file, out_dir, profiler=profiler)
+    # Create default segmentation processors.
+    segmentation_processors = get_default_segmentation_processors(profiler)
+
+    # Run the segmentations.
+    behavior_demo_replay.safe_replay_demo(
+        demo_file,
+        start_callbacks=[sp.start_callback for sp in segmentation_processors.values()],
+        step_callbacks=[sp.step_callback for sp in segmentation_processors.values()])
+
+    demo_basename = os.path.splitext(os.path.basename(demo_file))[0]
+    for segmentation_name, segmentation_processor in segmentation_processors.items():
+        json_file = "%s_%s.json" % (demo_basename, segmentation_name)
+        json_fullpath = os.path.join(out_dir, json_file)
+        with open(json_fullpath, "w") as f:
+            json.dump(segmentation_processor.serialize_segments(), f)
+
+    # Print the segmentations.
+    combined_output = ""
+    for segmentation_processor in segmentation_processors.values():
+        combined_output += str(segmentation_processor) + "\n"
+
+    print(combined_output)
 
     # Save profiling information.
     if args.profile:
