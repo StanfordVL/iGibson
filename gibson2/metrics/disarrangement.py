@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 
+from gibson2.metrics.metric_base import MetricBase
 from gibson2.objects.multi_object_wrappers import ObjectMultiplexer
 from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState
 from gibson2.object_states import Pose, OnFloor, Inside, Under, OnTop, Touching, NextTo
@@ -8,7 +9,7 @@ from gibson2.object_states.on_floor import RoomFloor
 
 SIMULATOR_SETTLE_TIME = 150
 
-class KinematicDisarrangement:
+class KinematicDisarrangement(MetricBase):
     def __init__(self):
         self.initialized = False
 
@@ -136,7 +137,7 @@ class KinematicDisarrangement:
         }
 
 
-class LogicalDisarrangement:
+class LogicalDisarrangement(MetricBase):
     def __init__(self):
         self.initialized = False
 
@@ -352,7 +353,7 @@ class LogicalDisarrangement:
         else:
             return
 
-    def compute_relative_disarrangement(self, igtn_task, _):
+    def end_callback(self, igtn_task, _):
         """
         When pybullet sleeps objects, getContactPoints is no longer refreshed
         Setting collision groups on the agent (which happens when users first activate the agent)
