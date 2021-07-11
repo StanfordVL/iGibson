@@ -23,7 +23,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
     scene = InteractiveIndoorScene(
-        scene_name, texture_randomization=False, object_randomization=False)
+        scene_name, texture_randomization=False, object_randomization=False, ignore_visual_shape=True)
     settings = MeshRendererSettings(
         msaa=False, enable_shadow=False, optimized=optimized)
     s = Simulator(mode='headless',
@@ -32,7 +32,10 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
                   device_idx=0,
                   rendering_settings=settings,
                   )
+    start = time.time()
     s.import_ig_scene(scene)
+    print(time.time()-start)
+
     if import_robot:
         turtlebot = Turtlebot(config)
         s.import_robot(turtlebot)

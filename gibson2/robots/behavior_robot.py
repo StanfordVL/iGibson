@@ -399,6 +399,7 @@ class BRBody(ArticulatedObject):
         self.bounding_box = [0.5, 0.5, 1]
         self.mass = 15  # p.getDynamicsInfo(body_id, -1)[0]
         p.changeDynamics(body_id, -1, mass=self.mass)
+        self.create_link_name_to_vm_map(body_id)
         return body_id
 
     def set_position_orientation_unwrapped(self, pos, orn):
@@ -551,6 +552,7 @@ class BRHandBase(ArticulatedObject):
         body_id = p.loadURDF(self.fpath, globalScaling=self.scale,
                              flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
+        self.create_link_name_to_vm_map(body_id)
         return body_id
 
     def set_other_hand(self, other_hand):
