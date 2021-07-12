@@ -1,8 +1,8 @@
 import numpy as np
 
-from gibson2.external.pybullet_tools.utils import get_aabb_center
-from gibson2.object_states import AABB
-from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState, AbsoluteObjectState
+from gibson2.object_states.room_states import InsideRoomTypes
+from gibson2.object_states.pose import Pose
+from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
 from gibson2.utils.constants import MAX_INSTANCE_COUNT
 
 _IN_REACH_DISTANCE_THRESHOLD = 2.0
@@ -26,16 +26,16 @@ def _get_behavior_robot(simulator):
 class InReachOfRobot(CachingEnabledObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [AABB]
+        return CachingEnabledObjectState.get_dependencies() + [Pose]
 
     def _compute_value(self):
         robot = _get_behavior_robot(self.simulator)
         if not robot:
             return False
 
-        robot_pose = robot.parts["body"].get_position()
-        object_pos = get_aabb_center(self.obj.states[AABB].get_value())
-        return np.linalg.norm(object_pos - np.array(robot_pose)) < _IN_REACH_DISTANCE_THRESHOLD
+        robot_pos = robot.parts["body"].get_position()
+        object_pos, _ = self.obj.states[Pose].get_value()
+        return np.linalg.norm(object_pos - np.array(robot_pos)) < _IN_REACH_DISTANCE_THRESHOLD
 
     def _set_value(self, new_value):
         raise NotImplementedError("InReachOfRobot state currently does not support setting.")
@@ -51,7 +51,7 @@ class InReachOfRobot(CachingEnabledObjectState, BooleanState):
 class InSameRoomAsRobot(CachingEnabledObjectState, BooleanState):
     @staticmethod
     def get_dependencies():
-        return CachingEnabledObjectState.get_dependencies() + [AABB]
+        return CachingEnabledObjectState.get_dependencies() + [Pose, InsideRoomTypes]
 
     def _compute_value(self):
         robot = _get_behavior_robot(self.simulator)
@@ -62,13 +62,9 @@ class InSameRoomAsRobot(CachingEnabledObjectState, BooleanState):
         if not scene or not hasattr(scene, "get_room_instance_by_point"):
             return False
 
-        robot_pose = robot.parts["body"].get_position()
-        robot_room = scene.get_room_instance_by_point(np.array(robot_pose[:2]))
-        if hasattr(self.obj, "in_rooms") and self.obj.in_rooms:
-            object_rooms = self.obj.in_rooms
-        else:
-            object_pos = get_aabb_center(self.obj.states[AABB].get_value())
-            object_rooms = [scene.get_room_instance_by_point(np.array(object_pos[:2]))]
+        robot_pos = robot.parts["body"].get_position()
+        robot_room = scene.get_room_instance_by_point(np.array(robot_pos[:2]))
+        object_rooms = self.obj.states[InsideRoomTypes].get_value()
 
         return robot_room is not None and robot_room in object_rooms
 
@@ -104,6 +100,7 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
 
     def load(self, data):
         pass
+
 
 class InFOVOfRobot(CachingEnabledObjectState, BooleanState):
     def _compute_value(self):

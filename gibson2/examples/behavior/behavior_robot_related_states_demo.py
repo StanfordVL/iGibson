@@ -4,12 +4,12 @@ import tasknet
 
 import gibson2
 from gibson2 import object_states
-from gibson2.examples.demo.vr_demos.atus import behavior_demo_replay
+from gibson2.examples.behavior import behavior_demo_replay
 
 tasknet.set_backend("iGibson")
 
 
-def robot_states_callback(igtn_task):
+def robot_states_callback(igtn_task, _):
     window1 = (igtn_task.object_scope["window.n.01_1"], "kitchen")
     window2 = (igtn_task.object_scope["window.n.01_2"], "living room")
     windows = [window1, window2]
@@ -27,9 +27,9 @@ def robot_states_callback(igtn_task):
 
     agent = igtn_task.object_scope["agent.n.01_1"]
     print("Agent is in kitchen: %r, living room: %r, bedroom: %r." % (
-        agent.states[object_states.IsRobotInKitchen].get_value(),
-        agent.states[object_states.IsRobotInLivingRoom].get_value(),
-        agent.states[object_states.IsRobotInBedroom].get_value(),
+        agent.states[object_states.IsInKitchen].get_value(),
+        agent.states[object_states.IsInLivingRoom].get_value(),
+        agent.states[object_states.IsInBedroom].get_value(),
     ))
 
 
@@ -38,7 +38,7 @@ def main():
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
 
     behavior_demo_replay.replay_demo(
-        DEMO_FILE, disable_save=True, step_callback=robot_states_callback, no_vr=True)
+        DEMO_FILE, disable_save=True, step_callbacks=[robot_states_callback], mode="headless")
 
 
 if __name__ == '__main__':
