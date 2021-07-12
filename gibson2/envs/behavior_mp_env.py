@@ -1,26 +1,20 @@
 import argparse
-import numpy as np
 import time
-import tasknet
-import types
+from enum import IntEnum
+
 import gym.spaces
+import numpy as np
 import pybullet as p
 
-from collections import OrderedDict
-from gibson2.robots.behavior_robot import BehaviorRobot
+from gibson2 import object_states
 from gibson2.envs.behavior_env import BehaviorEnv
-from enum import IntEnum
-from gibson2.object_states import *
-from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
+from gibson2.external.pybullet_tools.utils import CIRCULAR_LIMITS
+from gibson2.object_states.on_floor import RoomFloor
 from gibson2.object_states.utils import sample_kinematics
 from gibson2.objects.articulated_object import URDFObject
-from gibson2.object_states.on_floor import RoomFloor
+from gibson2.robots.behavior_robot import BREye, BRBody, BRHand
 from gibson2.utils.behavior_robot_planning_utils import plan_hand_motion_br, plan_base_motion_br, \
-                                                 dry_run_base_plan, dry_run_arm_plan
-
-from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, \
-    get_base_distance_fn, circular_difference, set_base_values, pairwise_collision, get_base_values, direct_path, birrt, \
-    PI
+    dry_run_base_plan
 
 NUM_ACTIONS = 6
 
@@ -130,8 +124,8 @@ class BehaviorMPEnv(BehaviorEnv):
 
             elif action_primitive == ActionPrimitives.GRASP:
                 if self.obj_in_hand is None:
-                    if isinstance(obj, URDFObject) and hasattr(obj, 'states') and AABB in obj.states:
-                        lo, hi = obj.states[AABB].get_value()
+                    if isinstance(obj, URDFObject) and hasattr(obj, 'states') and object_states.AABB in obj.states:
+                        lo, hi = obj.states[object_states.AABB].get_value()
                         volume = get_aabb_volume(lo, hi)
                         if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed: # say we can only grasp small objects
                             if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
@@ -179,8 +173,9 @@ class BehaviorMPEnv(BehaviorEnv):
                 if self.obj_in_hand is not None and self.obj_in_hand != obj and isinstance(obj, URDFObject):
                     print('PRIMITIVE:attempt to place {} inside {}'.format(self.obj_in_hand.name, obj.name))
                     if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                        if (hasattr(obj, 'states') and Open in obj.states and obj.states[Open].get_value()) \
-                                or (hasattr(obj, 'states') and not Open in obj.states):
+                        if (hasattr(obj, 'states') and object_states.Open in obj.states
+                                and obj.states[object_states.Open].get_value()) \
+                                or (hasattr(obj, 'states') and not object_states.Open in obj.states):
                             state = p.saveState()
                             result = sample_kinematics('inside', self.obj_in_hand, obj, True, use_ray_casting_method=True,
                                                        max_trials=20)
@@ -199,8 +194,8 @@ class BehaviorMPEnv(BehaviorEnv):
                         print('PRIMITIVE: place {} inside {} fail, too far'.format(self.obj_in_hand.name, obj.name))
             elif action_primitive == ActionPrimitives.OPEN:
                 if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                    if hasattr(obj, 'states') and Open in obj.states:
-                        obj.states[Open].set_value(True)
+                    if hasattr(obj, 'states') and object_states.Open in obj.states:
+                        obj.states[object_states.Open].set_value(True)
                     else:
                         print('PRIMITIVE open failed, cannot be opened')
                 else:
@@ -208,8 +203,8 @@ class BehaviorMPEnv(BehaviorEnv):
 
             elif action_primitive == ActionPrimitives.CLOSE:
                 if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-                    if hasattr(obj, 'states') and Open in obj.states:
-                        obj.states[Open].set_value(False)
+                    if hasattr(obj, 'states') and object_states.Open in obj.states:
+                        obj.states[object_states.Open].set_value(False)
                     else:
                         print('PRIMITIVE close failed, cannot be opened')
                 else:
@@ -222,7 +217,7 @@ class BehaviorMPEnv(BehaviorEnv):
     def grasp_obj(self, obj, use_motion_planning=False):
         if use_motion_planning:
             x,y,_ = obj.get_position()
-            z = obj.states[AABB].get_value()[1][2]
+            z = obj.states[object_states.AABB].get_value()[1][2]
             hand_x, hand_y, hand_z = self.robots[0].parts['right_hand'].get_position()
 
             x += np.random.uniform(-0.025, 0.025)
@@ -461,6 +456,8 @@ class BehaviorMPEnv(BehaviorEnv):
         self.robots[0].parts['right_hand'].trigger_fraction = 0
         self.robots[0].parts['right_hand'].force_release_obj()
         return obs
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
