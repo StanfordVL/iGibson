@@ -6,7 +6,7 @@ from gibson2.object_states.object_state_base import CachingEnabledObjectState, A
 class InsideRoomTypes(CachingEnabledObjectState):
     """The value of this state is the list of rooms that the object currently is in."""
     def _compute_value(self):
-        if hasattr(self.obj, "is_fixed") and self.obj.is_fixed[0]:
+        if hasattr(self.obj, "main_body_is_fixed") and self.obj.main_body_is_fixed:
             # For fixed objects, we can use the in_rooms attribute.
             if hasattr(self.obj, "in_rooms") and self.obj.in_rooms:
                 return self.obj.in_rooms

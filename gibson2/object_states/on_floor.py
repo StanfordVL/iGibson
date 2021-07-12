@@ -1,11 +1,12 @@
-from gibson2.object_states.touching import Touching
+import pybullet as p
+from IPython import embed
+
+import gibson2
 from gibson2.object_states.kinematics import KinematicsMixin
 from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
+from gibson2.object_states.touching import Touching
 from gibson2.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
-import gibson2
-from IPython import embed
-from collections import namedtuple
-import pybullet as p
+
 
 # TODO: remove after split floors
 
@@ -29,12 +30,15 @@ class RoomFloor(object):
         return getattr(self.floor_obj, item)
 
 
-class OnFloor(KinematicsMixin, BooleanState):
+class OnFloor(RelativeObjectState, KinematicsMixin, BooleanState):
     @staticmethod
     def get_dependencies():
         return KinematicsMixin.get_dependencies() + [Touching]
 
     def _set_value(self, other, new_value):
+        if not isinstance(other, RoomFloor):
+            return False
+
         state_id = p.saveState()
         for _ in range(10):
             sampling_success = sample_kinematics(
@@ -56,6 +60,9 @@ class OnFloor(KinematicsMixin, BooleanState):
         return sampling_success
 
     def _get_value(self, other):
+        if not isinstance(other, RoomFloor):
+            return False
+
         objA_states = self.obj.states
         center, extent = get_center_extent(objA_states)
         room_instance = other.scene.get_room_instance_by_point(center[:2])
