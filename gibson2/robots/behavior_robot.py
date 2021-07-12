@@ -23,6 +23,7 @@ import os
 import pybullet as p
 
 from gibson2 import assets_path
+from gibson2.object_states.factory import prepare_object_states
 from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_shape import VisualShape
 from gibson2.external.pybullet_tools.utils import set_all_collisions
@@ -290,6 +291,8 @@ class BRBody(ArticulatedObject):
         body_path_suffix = 'vr_body.urdf' if not self.parent.use_tracked_body else 'vr_body_tracker.urdf'
         self.vr_body_fpath = os.path.join(assets_path, 'models', 'vr_agent', 'vr_body', body_path, body_path_suffix)
         super(BRBody, self).__init__(filename=self.vr_body_fpath, scale=1)
+
+        prepare_object_states(self, {"robot": {}})
 
     def _load(self):
         """
