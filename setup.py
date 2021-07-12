@@ -60,9 +60,9 @@ class CMakeBuild(build_ext):
         extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/render/mesh_renderer'),
+            os.path.join(extdir, 'igibson/render/mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2/render/mesh_renderer', 'build'),
+            os.path.join(extdir, 'igibson/render/mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
 
@@ -114,8 +114,8 @@ else:
         long_description = fh.read()
 
 setup(
-    name='gibson2',
-    version='1.0.1',
+    name='igibson',
+    version='1.0.3',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -146,12 +146,12 @@ setup(
             'recommonmark',
             'sphinx_rtd_theme'
     ],
-    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='gibson2/render')],
+    ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='igibson/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
-    'gibson2/global_config.yaml',
-    'gibson2/render/mesh_renderer/shaders/*'
+    'igibson/global_config.yaml',
+    'igibson/render/mesh_renderer/shaders/*'
     ]},
     include_package_data=True,
 )   #yapf: disable
