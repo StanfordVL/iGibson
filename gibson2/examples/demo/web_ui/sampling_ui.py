@@ -11,13 +11,13 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.simulator import Simulator
-from tasknet.utils import UncontrolledCategoryError, UnsupportedSentenceError
-from tasknet.parsing import construct_full_pddl
-import tasknet
+from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
+from bddl.parsing import construct_full_pddl
+import bddl
 import json
 import sys
 from flask_apscheduler import APScheduler
@@ -235,8 +235,8 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
-        tasknet.set_backend("iGibson")
-        self.task = iGTNTask('trivial', task_instance=0)
+        bddl.set_backend("iGibson")
+        self.task = iGBEHAVIORActivityInstance('trivial', task_instance=0)
 
         settings = MeshRendererSettings(texture_scale=0.01)
         simulator = Simulator(mode='headless', image_width=400,
@@ -283,12 +283,12 @@ class ToyEnvInt(object):
                 'goal_feedback': 'Goal state has uncontrolled categories.'
             }
             return accept_scene, feedback
-        except UnsupportedSentenceError as e:
+        except UnsupportedPredicateError as e:
             accept_scene = False
             feedback = {
                 "init_success": "no",
                 "goal_success": "no",
-                "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
+                "init_feedback": f"We don't yet support the [{e.predicate}] adjective for any objects. We will soon!",
                 "goal_feedback": ""
             }
             return accept_scene, feedback

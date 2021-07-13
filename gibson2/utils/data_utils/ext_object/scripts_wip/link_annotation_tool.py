@@ -2,7 +2,7 @@ import itertools
 import json
 import os
 
-from tasknet.object_taxonomy import ObjectTaxonomy
+from bddl.object_taxonomy import ObjectTaxonomy
 
 import gibson2
 from pynput import keyboard

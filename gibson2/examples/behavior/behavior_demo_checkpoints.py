@@ -1,20 +1,20 @@
 """Save checkpoints from a BEHAVIOR demo."""
 import os
 
-import tasknet
+import bddl
 
 import gibson2
 from gibson2.examples.demo.vr_demos.atus.behavior_demo_replay import safe_replay_demo
 from gibson2.utils.checkpoint_utils import save_checkpoint
 
-tasknet.set_backend("iGibson")
+bddl.set_backend("iGibson")
 
 
 def create_checkpoints(demo_file, checkpoint_directory, checkpoint_every_n_steps):
     # Create a step callback function to feed replay steps into checkpoints.
-    def step_callback(igtn_task):
-        if not igtn_task.current_success and igtn_task.simulator.frame_count % checkpoint_every_n_steps == 0:
-            save_checkpoint(igtn_task.simulator, checkpoint_directory)
+    def step_callback(igbhvr_act_inst):
+        if not igbhvr_act_inst.current_success and igbhvr_act_inst.simulator.frame_count % checkpoint_every_n_steps == 0:
+            save_checkpoint(igbhvr_act_inst.simulator, checkpoint_directory)
 
     safe_replay_demo(demo_file, mode="headless", step_callback=step_callback)
 

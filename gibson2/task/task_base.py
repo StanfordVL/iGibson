@@ -2,7 +2,7 @@ import pprint
 import numpy as np
 import os
 
-from tasknet.task_base import TaskNetTask
+from bddl.activity_base import BDDLActivityInstance
 import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -16,8 +16,8 @@ from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.utils.checkpoint_utils import save_internal_states, load_internal_states
 import pybullet as p
 import cv2
-from tasknet.condition_evaluation import Negation
-from tasknet.logic_base import AtomicPredicate
+from bddl.condition_evaluation import Negation
+from bddl.logic_base import AtomicFormula
 
 import logging
 import networkx as nx
@@ -27,7 +27,7 @@ from IPython import embed
 KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
 
 
-class iGTNTask(TaskNetTask):
+class iGBEHAVIORActivityInstance(BDDLActivityInstance):
     def __init__(self, atus_activity, task_instance=0, predefined_problem=None):
         '''
         Initialize simulator with appropriate scene and sampled objects.
@@ -447,21 +447,21 @@ class iGTNTask(TaskNetTask):
                 # TODO: remove after split floors
                 if 'floor.n.01' in obj_inst:
                     for _, sim_obj in self.scene.objects_by_name.items():
-                        if sim_obj.tasknet_object_scope is not None and \
-                                obj_inst in sim_obj.tasknet_object_scope:
-                            tasknet_object_scope = \
-                                sim_obj.tasknet_object_scope.split(',')
-                            tasknet_object_scope = {
+                        if sim_obj.bddl_object_scope is not None and \
+                                obj_inst in sim_obj.bddl_object_scope:
+                            bddl_object_scope = \
+                                sim_obj.bddl_object_scope.split(',')
+                            bddl_object_scope = {
                                 item.split(':')[0]: item.split(':')[1]
-                                for item in tasknet_object_scope
+                                for item in bddl_object_scope
                             }
-                            assert obj_inst in tasknet_object_scope
-                            room_inst = tasknet_object_scope[obj_inst].replace(
+                            assert obj_inst in bddl_object_scope
+                            room_inst = bddl_object_scope[obj_inst].replace(
                                 'room_floor_', '')
                             matched_sim_obj = \
                                 RoomFloor(
                                     category='room_floor',
-                                    name=tasknet_object_scope[obj_inst],
+                                    name=bddl_object_scope[obj_inst],
                                     scene=self.scene,
                                     room_instance=room_inst,
                                     floor_obj=self.scene.objects_by_name['floors'])
@@ -470,7 +470,7 @@ class iGTNTask(TaskNetTask):
                     continue
                 else:
                     for _, sim_obj in self.scene.objects_by_name.items():
-                        if sim_obj.tasknet_object_scope == obj_inst:
+                        if sim_obj.bddl_object_scope == obj_inst:
                             matched_sim_obj = sim_obj
                             break
                 assert matched_sim_obj is not None, obj_inst
@@ -487,13 +487,13 @@ class iGTNTask(TaskNetTask):
         sampleable_obj_conditions = []
 
         # TODO: currently we assume self.initial_conditions is a list of
-        # tasknet.condition_evaluation.HEAD, each with one child.
+        # bddl.condition_evaluation.HEAD, each with one child.
         # This chid is either a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate or
         # a Negation of a ObjectStateUnaryPredicate/ObjectStateBinaryPredicate
         for condition in self.initial_conditions:
-            if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicPredicate):
+            if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicFormula):
                 logging.warning((
-                    "Skipping over sampling of predicate that is not a negation or an atomic predicate"))
+                    "Skipping over sampling of predicate that is not a negation or an atomic formula"))
                 continue
             if kinematic_only:
                 if isinstance(condition.children[0], Negation):
@@ -1118,16 +1118,16 @@ class iGTNTask(TaskNetTask):
 
 
 def main():
-    igtn_task = iGTNTask('kinematic_checker_testing', 2)
-    igtn_task.initialize_simulator()
+    igbhvr_act_inst = iGBEHAVIORActivityInstance('kinematic_checker_testing', 2)
+    igbhvr_act_inst.initialize_simulator()
 
     for i in range(500):
-        igtn_task.simulator.step()
-    success, failed_conditions = igtn_task.check_success()
+        igbhvr_act_inst.simulator.step()
+    success, failed_conditions = igbhvr_act_inst.check_success()
     print('TASK SUCCESS:', success)
     if not success:
         print('FAILED CONDITIONS:', failed_conditions)
-    igtn_task.simulator.disconnect()
+    igbhvr_act_inst.simulator.disconnect()
 
 
 if __name__ == '__main__':

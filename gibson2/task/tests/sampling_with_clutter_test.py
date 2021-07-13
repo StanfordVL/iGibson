@@ -1,17 +1,17 @@
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 
-igtn_task = iGTNTask('sampling_test', task_instance=4)
-igtn_task.initialize_simulator(
+igbhvr_act_inst = iGBEHAVIORActivityInstance('sampling_test', task_instance=4)
+igbhvr_act_inst.initialize_simulator(
     scene_id='Rs_int', mode='gui', load_clutter=True)
 
 while True:
-    igtn_task.simulator.step()
-    success, sorted_conditions = igtn_task.check_success()
-    print('TASK SUCCESS:', success)
+    igbhvr_act_inst.simulator.step()
+    success, sorted_conditions = igbhvr_act_inst.check_success()
+    print('ACTIVITY SUCCESS:', success)
     if not success:
         print('FAILED CONDITIONS:', sorted_conditions['unsatisfied'])
     else:

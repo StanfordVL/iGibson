@@ -1,17 +1,17 @@
 import os
 
-import tasknet
+import bddl
 
 import gibson2
 from gibson2 import object_states
 from gibson2.examples.behavior import behavior_demo_replay
 
-tasknet.set_backend("iGibson")
+bddl.set_backend("iGibson")
 
 
-def robot_states_callback(igtn_task, _):
-    window1 = (igtn_task.object_scope["window.n.01_1"], "kitchen")
-    window2 = (igtn_task.object_scope["window.n.01_2"], "living room")
+def robot_states_callback(igbhvr_act_inst, _):
+    window1 = (igbhvr_act_inst.object_scope["window.n.01_1"], "kitchen")
+    window2 = (igbhvr_act_inst.object_scope["window.n.01_2"], "living room")
     windows = [window1, window2]
 
     for window, roomname in windows:
@@ -22,10 +22,10 @@ def robot_states_callback(igtn_task, _):
             window.states[object_states.InReachOfRobot].get_value(),
         ))
 
-    rag = igtn_task.object_scope["rag.n.01_1"]
+    rag = igbhvr_act_inst.object_scope["rag.n.01_1"]
     print("Rag is in hand: %r" % rag.states[object_states.InHandOfRobot].get_value())
 
-    agent = igtn_task.object_scope["agent.n.01_1"]
+    agent = igbhvr_act_inst.object_scope["agent.n.01_1"]
     print("Agent is in kitchen: %r, living room: %r, bedroom: %r." % (
         agent.states[object_states.IsInKitchen].get_value(),
         agent.states[object_states.IsInLivingRoom].get_value(),

@@ -7,7 +7,7 @@ from collections import Counter
 import numpy as np
 import pybullet as p
 from pynput import keyboard
-from tasknet.object_taxonomy import ObjectTaxonomy
+from bddl.object_taxonomy import ObjectTaxonomy
 
 import gibson2
 from gibson2.external.pybullet_tools import utils
