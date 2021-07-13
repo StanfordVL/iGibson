@@ -67,7 +67,7 @@ def main():
         all_tasks = []
         all_task_ids = []
         condition_dir = os.path.join(os.path.dirname(
-            bddl.__file__), 'task_conditions')
+            bddl.__file__), 'activity_conditions')
         for task in sorted(os.listdir(condition_dir)):
             task_dir = os.path.join(condition_dir, task)
             if os.path.isdir(task_dir):
@@ -102,7 +102,7 @@ def main():
 
     num_initializations = args.num_initializations
     num_trials = args.max_trials
-    igbhvr_act_inst = iGBEHAVIORActivityInstance('trivial', task_instance=0)
+    igbhvr_act_inst = iGBEHAVIORActivityInstance('trivial', activity_definition=0)
     settings = MeshRendererSettings(texture_scale=0.01)
     simulator = Simulator(mode='headless', image_width=400,
                           image_height=400, rendering_settings=settings)

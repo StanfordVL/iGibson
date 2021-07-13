@@ -10,7 +10,7 @@ activity = 'assembling_gift_baskets'
 scene_id = 'Rs_int'
 
 igbhvr_act_inst = iGBEHAVIORActivityInstance(
-    activity, task_instance=0)
+    activity, activity_definition=0)
 scene_kwargs = {
     'not_load_object_categories': ['ceilings'],
 }

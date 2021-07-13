@@ -178,7 +178,7 @@ for item in pack_items:
         if item == 'container':
             p.changeDynamics(item_ob.body_id, -1, mass=8., lateralFriction=0.9)
 
-igbhvr_act_inst = iGBEHAVIORActivityInstance('lunchpacking_demo', task_instance=0)
+igbhvr_act_inst = iGBEHAVIORActivityInstance('lunchpacking_demo', activity_definition=0)
 igbhvr_act_inst.initialize_simulator(handmade_simulator=s,
                             handmade_sim_objs=sim_objects,
                             handmade_sim_obj_categories=sim_obj_categories)

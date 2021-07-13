@@ -4,7 +4,7 @@ import bddl
 bddl.set_backend("iGibson")
 
 
-igbhvr_act_inst = iGBEHAVIORActivityInstance('sampling_test', task_instance=4)
+igbhvr_act_inst = iGBEHAVIORActivityInstance('sampling_test', activity_definition=4)
 igbhvr_act_inst.initialize_simulator(
     scene_id='Rs_int', mode='gui', load_clutter=True)
 

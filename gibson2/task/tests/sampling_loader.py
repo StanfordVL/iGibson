@@ -21,7 +21,7 @@ task_id = 0
 scene = 'Rs_int'
 num_init = 0
 
-igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_instance=task_id)
+igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
 scene_kwargs = {
     # 'load_object_categories': ['oven', 'fridge', 'countertop', 'cherry', 'sausage', 'tray'],
     'not_load_object_categories': ['ceilings'],

@@ -28,16 +28,16 @@ KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
 
 
 class iGBEHAVIORActivityInstance(BDDLActivityInstance):
-    def __init__(self, atus_activity, task_instance=0, predefined_problem=None):
+    def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None):
         '''
         Initialize simulator with appropriate scene and sampled objects.
-        :param atus_activity: string, official ATUS activity label
-        :param task_instance: int, specific instance of atus_activity init/final conditions
+        :param behavior_activity: string, official ATUS activity label
+        :param activity_definition: int, specific instance of behavior_activity init/final conditions
                                    optional, randomly generated if not specified
         :param predefined_problem: string, in format of a BEHAVIOR problem file read
         '''
-        super().__init__(atus_activity,
-                         task_instance=task_instance,
+        super().__init__(behavior_activity,
+                         activity_definition=activity_definition,
                          scene_path=os.path.join(
                              gibson2.ig_dataset_path, 'scenes'),
                          predefined_problem=predefined_problem)
@@ -290,9 +290,9 @@ class iGBEHAVIORActivityInstance(BDDLActivityInstance):
                 model = np.random.choice(model_choices)
 
                 # for "collecting aluminum cans", we need pop cans (not bottles) 
-                if category == 'pop' and self.atus_activity in ['collecting_aluminum_cans']:
+                if category == 'pop' and self.behavior_activity in ['collecting_aluminum_cans']:
                     model = np.random.choice([str(i) for i in range(40, 46)])
-                if category == 'spoon' and self.atus_activity in ['polishing_silver']:
+                if category == 'spoon' and self.behavior_activity in ['polishing_silver']:
                     model = np.random.choice([str(i) for i in [2, 5, 6]])
 
                 model_path = get_ig_model_path(category, model)
@@ -1124,7 +1124,7 @@ def main():
     for i in range(500):
         igbhvr_act_inst.simulator.step()
     success, failed_conditions = igbhvr_act_inst.check_success()
-    print('TASK SUCCESS:', success)
+    print('ACTIVITY SUCCESS:', success)
     if not success:
         print('FAILED CONDITIONS:', failed_conditions)
     igbhvr_act_inst.simulator.disconnect()
