@@ -3,11 +3,15 @@ from typing import Callable
 
 import gibson2
 from gibson2.envs.igibson_env import iGibsonEnv
-from stable_baselines3.common.vec_env import SubprocVecEnv
-from stable_baselines3 import PPO
-from stable_baselines3.common.utils import set_random_seed
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import VecMonitor
+try:
+    from stable_baselines3.common.vec_env import SubprocVecEnv
+    from stable_baselines3 import PPO
+    from stable_baselines3.common.utils import set_random_seed
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.common.vec_env import VecMonitor
+except ModuleNotFoundError:
+    print('stable-baselines3 is not installed. You would need to do: pip install stable-baselines3')
+    exit(1)
 
 
 def main():
