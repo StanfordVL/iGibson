@@ -62,7 +62,7 @@ def main():
     simulator = Simulator(
         mode='headless', image_width=960, image_height=720, device_idx=0)
     scene_kwargs = {}
-    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_instance=task_id)
+    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
     for scene_id in scene_choices:
         logging.warning(('TRY SCENE:', scene_id))
 
