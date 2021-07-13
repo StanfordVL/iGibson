@@ -27,13 +27,13 @@ from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_u
 from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
 from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
-# Optionally import tasknet for object taxonomy.
+# Optionally import bddl for object taxonomy.
 try:
-    from tasknet.object_taxonomy import ObjectTaxonomy
+    from bddl.object_taxonomy import ObjectTaxonomy
 
     OBJECT_TAXONOMY = ObjectTaxonomy()
 except ImportError:
-    print("TaskNet could not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
+    print("BDDL could not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
     OBJECT_TAXONOMY = None
 
 
@@ -134,7 +134,7 @@ class URDFObject(StatefulObject):
                  texture_randomization=False,
                  overwrite_inertial=True,
                  scene_instance_folder=None,
-                 tasknet_object_scope=None,
+                 bddl_object_scope=None,
                  visualize_primitives=False,
                  joint_positions=None,
                  merge_fixed_links=True,
@@ -157,7 +157,7 @@ class URDFObject(StatefulObject):
         :param texture_randomization: whether to enable texture randomization
         :param overwrite_inertial: whether to overwrite the inertial frame of the original URDF using trimesh + density estimate
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
-        :param tasknet_object_scope: tasknet object scope name, e.g. chip.n.04_2
+        :param bddl_object_scope: bddl object scope name, e.g. chip.n.04_2
         :param visualize_primitives: whether to render geometric primitives
         :param joint_positions: Joint positions, keyed by body index and joint name, in the form of
             List[Dict[name, position]]
@@ -173,7 +173,7 @@ class URDFObject(StatefulObject):
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
-        self.tasknet_object_scope = tasknet_object_scope
+        self.bddl_object_scope = bddl_object_scope
         self.joint_positions = joint_positions
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None

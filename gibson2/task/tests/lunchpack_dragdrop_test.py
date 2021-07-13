@@ -22,13 +22,13 @@ from gibson2.objects.articulated_object import ArticulatedObject
 from gibson2.objects.visual_marker import VisualMarker
 from gibson2.objects.ycb_object import YCBObject
 from gibson2.simulator import Simulator
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from gibson2 import assets_path
 import signal
 import sys
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 # def signal_handler(sig, frame):
 #         print('You pressed Ctrl+C!')
@@ -178,11 +178,11 @@ for item in pack_items:
         if item == 'container':
             p.changeDynamics(item_ob.body_id, -1, mass=8., lateralFriction=0.9)
 
-igtn_task = iGTNTask('lunchpacking_demo', task_instance=0)
-igtn_task.initialize_simulator(handmade_simulator=s,
+igbhvr_act_inst = iGBEHAVIORActivityInstance('lunchpacking_demo', task_instance=0)
+igbhvr_act_inst.initialize_simulator(handmade_simulator=s,
                             handmade_sim_objs=sim_objects,
                             handmade_sim_obj_categories=sim_obj_categories)
-igtn_task.gen_conditions()      # TODO this happens after initialization because right now, we have no objects before
+igbhvr_act_inst.gen_conditions()      # TODO this happens after initialization because right now, we have no objects before
                                 # initialization and this gen_conditions() is functionally generating only final conditions.
                                 # In the future, initial and goal condition generation can be split up so that each one 
                                 # has the most up to date scope, and the initial checking can be done on the objects that 
@@ -194,8 +194,8 @@ igtn_task.gen_conditions()      # TODO this happens after initialization because
 
 # Main simulation loop
 while True:
-    igtn_task.simulator.step()
-    success, sorted_conditions = igtn_task.check_success()
+    igbhvr_act_inst.simulator.step()
+    success, sorted_conditions = igbhvr_act_inst.check_success()
     print('TASK SUCCESS:', success)
     if not success:
         print('FAILED CONDITIONS:', sorted_conditions['unsatisfied'])

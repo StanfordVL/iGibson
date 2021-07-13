@@ -29,8 +29,8 @@ class AgentMetric(MetricBase):
 
         self.clip = 0.2
 
-    def step_callback(self, igtn_task, _):
-        robot = igtn_task.simulator.robots[0]
+    def step_callback(self, igbhvr_act_inst, _):
+        robot = igbhvr_act_inst.simulator.robots[0]
         agent_work = {part: 0 for part in ['left_hand', 'right_hand', 'body']}
         agent_distance = {part: 0 for part in ['left_hand', 'right_hand', 'body']}
 

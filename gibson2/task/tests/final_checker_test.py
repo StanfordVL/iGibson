@@ -2,9 +2,9 @@ from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from gibson2.objects.articulated_object import ArticulatedObject
-# from tasknet.object import BaseObject
+# from bddl.object import BaseObject
 import os
 import gibson2
 import time
@@ -13,8 +13,8 @@ import sys
 import numpy as np
 import pybullet as p
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 
 scene_name = 'Beechwood_0_int'
@@ -125,18 +125,18 @@ for item in pack_items:
             p.changeDynamics(item_ob.body_id, -1, mass=8., lateralFriction=0.9)
 
 
-igtn_task = iGTNTask('lunchpacking_demo', task_instance=0)
-igtn_task.initialize_simulator(handmade_simulator=s,
+igbhvr_act_inst = iGBEHAVIORActivityInstance('lunchpacking_demo', task_instance=0)
+igbhvr_act_inst.initialize_simulator(handmade_simulator=s,
                             handmade_sim_objs=sim_objects,
                             handmade_sim_obj_categories=sim_obj_categories)
                         #    handmade_dsl_objs=dsl_objects)
-igtn_task.gen_conditions()
+igbhvr_act_inst.gen_conditions()
 
 while True:
     start_time = time.time()
 
-    igtn_task.simulator.step()
-    success, sorted_conditions = igtn_task.check_success()
+    igbhvr_act_inst.simulator.step()
+    success, sorted_conditions = igbhvr_act_inst.check_success()
     print('TASK SUCCESS:', success)
     if not success:
         print('FAILED CONDITIONS:', sorted_conditions['unsatisfied'])

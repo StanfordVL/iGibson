@@ -119,7 +119,7 @@ class VrConditionSwitcher(object):
         Switches to the next condition. This involves displaying the text for
         the new condition, as well as highlighting/un-highlighting the appropriate objects.
         """
-        # 1) Query tasknet for next state - get (text, color, obj_list) tuple
+        # 1) Query bddl for next state - get (text, color, obj_list) tuple
         if switch:
             self.switch_instr_func()
         new_text, new_color, new_obj_list = self.show_instr_func()
