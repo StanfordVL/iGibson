@@ -126,18 +126,30 @@ class ProceduralMaterial(Material):
     def add_state(self, state):
         self.states.append(state)
 
-    def save_transformed_texture(self):
+    def lookup_or_create_transformed_texture(self):
         save_path = os.path.join(gibson2.ig_dataset_path, 'tmp')
         os.makedirs(save_path, exist_ok=True)
 
+        has_encrypted_texture = os.path.exists(os.path.join(
+            self.material_folder, "DIFFUSE.encrypted.png"))
+
+        suffix = '.encrypted.png' if has_encrypted_texture else '.png'
+        diffuse_tex_filename = os.path.join(
+            self.material_folder, "DIFFUSE{}".format(suffix))
+
         for state in self.states:
-            diffuse_tex_filename = os.path.join(
-                self.material_folder, "DIFFUSE.png")
-            diffuse_tex_filename_transformed = os.path.join(
-                save_path, str(uuid.uuid4()) + '.png')
-            state.create_transformed_texture(diffuse_tex_filename=diffuse_tex_filename,
-                                             diffuse_tex_filename_transformed=diffuse_tex_filename_transformed)
-            self.texture_filenames[state] = diffuse_tex_filename_transformed
+            diffuse_tex_filename_lookup = os.path.join(
+                self.material_folder, "DIFFUSE_{}{}".format(state.__name__, suffix))
+            if os.path.exists(diffuse_tex_filename_lookup):
+                self.texture_filenames[state] = diffuse_tex_filename_lookup
+            else:
+                if has_encrypted_texture:
+                    raise ValueError("cannot create transformed textures for encrypted texture")
+                diffuse_tex_filename_transformed = os.path.join(
+                    save_path, str(uuid.uuid4()) + '.png')
+                state.create_transformed_texture(diffuse_tex_filename=diffuse_tex_filename,
+                                                 diffuse_tex_filename_transformed=diffuse_tex_filename_transformed)
+                self.texture_filenames[state] = diffuse_tex_filename_transformed
 
     def update(self):
         if len(self.requests) == 0:

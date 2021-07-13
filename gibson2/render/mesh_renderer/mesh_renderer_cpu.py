@@ -4,6 +4,7 @@ from gibson2.render.mesh_renderer import tinyobjloader
 import gibson2
 import gibson2.render.mesh_renderer as mesh_renderer
 from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
+from gibson2.robots.behavior_robot import BehaviorRobot
 from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
 from gibson2.utils.constants import AVAILABLE_MODALITIES, ShadowPass
@@ -29,14 +30,17 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
 
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0, rendering_settings=MeshRendererSettings()):
+    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0,
+                 rendering_settings=MeshRendererSettings(), simulator=None):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
         :param render_settings: rendering settings
+        :param simulator: Simulator object.
         """
+        self.simulator = simulator
         self.rendering_settings = rendering_settings
         self.shaderProgram = None
         self.windowShaderProgram = None
@@ -311,22 +315,25 @@ class MeshRenderer(object):
             texture_id = len(self.texture_files)
         else:
             texture_id = self.r.loadTexture(
-                tex_filename, self.rendering_settings.texture_scale)
+                tex_filename, self.rendering_settings.texture_scale, gibson2.key_path)
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
         return texture_id
 
     def load_procedural_material(self, material):
-        material.save_transformed_texture()
+        material.lookup_or_create_transformed_texture()
+        has_encrypted_texture = os.path.exists(
+            os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
+        suffix = '.encrypted.png' if has_encrypted_texture else '.png'
         material.texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "DIFFUSE.png"))
+            os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)))
         material.metallic_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "METALLIC.png"))
+            os.path.join(material.material_folder, "METALLIC{}".format(suffix)))
         material.roughness_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "ROUGHNESS.png"))
+            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix)))
         material.normal_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "NORMAL.png"))
+            os.path.join(material.material_folder, "NORMAL{}".format(suffix)))
         for state in material.states:
             transformed_diffuse_id = self.load_texture_file(
                 material.texture_filenames[state])
@@ -385,7 +392,10 @@ class MeshRenderer(object):
 
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
-        ret = reader.ParseFromFile(obj_path)
+        if obj_path.endswith('encrypted.obj'):
+            ret = reader.ParseFromFileWithKey(obj_path, gibson2.key_path)
+        else:
+            ret = reader.ParseFromFile(obj_path)
         vertex_data_indices = []
         face_indices = []
         if not ret:
@@ -1154,6 +1164,14 @@ class MeshRenderer(object):
                     hidden_instances.append(instance)
                 for item in self.render(modes=modes, hidden=hidden_instances):
                     frames.append(item)
+
+        # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.
+        # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface, it is not
+        # added using import_robot and needs to be found & handled separately.
+        behavior_robots = (robot for robot in self.simulator.robots if isinstance(robot, BehaviorRobot))
+        for robot in behavior_robots:
+            frames.extend(robot.render_camera_image(modes=modes))
+
         return frames
 
     def optimize_vertex_and_texture(self):
@@ -1173,7 +1191,8 @@ class MeshRenderer(object):
             self.r.generateArrayTextures(texture_files,
                                          cutoff,
                                          shouldShrinkSmallTextures,
-                                         smallTexSize)
+                                         smallTexSize,
+                                         gibson2.key_path)
         print(self.tex_id_layer_mapping)
         print(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)

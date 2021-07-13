@@ -1,10 +1,12 @@
 from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
 from gibson2.object_states.object_state_base import AbsoluteObjectState
 from gibson2.object_states.object_state_base import BooleanState
+from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from gibson2.objects.visual_marker import VisualMarker
 import numpy as np
 import pybullet as p
 from gibson2.utils.constants import PyBulletSleepState
+from gibson2.utils.utils import brighten_texture
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
@@ -12,7 +14,7 @@ _TOGGLE_BUTTON_RADIUS = 0.05
 _TOGGLE_MARKER_OFF_POSITION = [0, 0, -100]
 
 
-class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
+class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureChangeStateMixin):
     def __init__(self, obj):
         super(ToggledOn, self).__init__(obj)
         self.value = False
@@ -46,6 +48,9 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
             self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
 
     def _update(self):
+        # Yet another circular import issue.
+        from gibson2.robots import behavior_robot
+
         button_position_on_object = self.get_link_position()
         if button_position_on_object is None:
             return
@@ -59,7 +64,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
                             < _TOGGLE_DISTANCE_THRESHOLD):
                         hand_in_marker = True
                         break
-                    for finger in part.finger_tip_link_idxs:
+                    for finger in behavior_robot.FINGER_TIP_LINK_INDICES:
                         finger_link_state = p.getLinkState(part.body_id, finger)
                         link_pos = finger_link_state[0]
                         if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
@@ -109,6 +114,14 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin):
 
         for instance in hidden_marker.renderer_instances:
             instance.hidden = True
+
+        self.update_texture()
+
+    @staticmethod
+    def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
+        # make the texture 1.5x brighter
+        brighten_texture(diffuse_tex_filename,
+                          diffuse_tex_filename_transformed, brightness=1.5)
 
     # For this state, we simply store its value and the hand-in-marker steps.
     def _dump(self):

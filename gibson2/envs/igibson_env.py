@@ -124,7 +124,7 @@ class iGibsonEnv(BaseEnv):
 
         if 'task_obs' in self.output:
             observation_space['task_obs'] = self.build_obs_space(
-                shape=(self.task.task_obs_dim,), low=-np.inf, high=-np.inf)
+                shape=(self.task.task_obs_dim,), low=-np.inf, high=np.inf)
         if 'rgb' in self.output:
             observation_space['rgb'] = self.build_obs_space(
                 shape=(self.image_height, self.image_width, 3),

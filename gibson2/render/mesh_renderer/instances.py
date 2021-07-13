@@ -23,7 +23,7 @@ class InstanceGroup(object):
                  robot=None,
                  use_pbr=True,
                  use_pbr_mapping=True,
-                 shadow_caster=True
+                 shadow_caster=True,
                  ):
         """
         :param objects: visual objects
@@ -255,7 +255,7 @@ class Instance(object):
                  softbody,
                  use_pbr=True,
                  use_pbr_mapping=True,
-                 shadow_caster=True
+                 shadow_caster=True,
                  ):
         """
         :param object: visual object
