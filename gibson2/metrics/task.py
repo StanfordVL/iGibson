@@ -1,6 +1,9 @@
 import numpy as np
 
-class TaskMetric:
+from gibson2.metrics.metric_base import MetricBase
+
+
+class TaskMetric(MetricBase):
     def __init__(self):
         self.satisfied_predicates = []
         self.q_score = []
