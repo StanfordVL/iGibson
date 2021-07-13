@@ -2,7 +2,10 @@ import numpy as np
 import pybullet as p
 import copy
 
-class AgentMetric:
+from gibson2.metrics.metric_base import MetricBase
+
+
+class AgentMetric(MetricBase):
     def __init__(self):
         self.initialized = False
 
