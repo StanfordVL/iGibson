@@ -2,6 +2,8 @@ from collections import defaultdict
 import numpy as np
 import pybullet as p
 
+from gibson2.metrics.metric_base import MetricBase
+
 
 class GazeVizMarker(object):
     """
@@ -18,7 +20,7 @@ class GazeVizMarker(object):
         self.marker_instance.set_position(pos)
 
 
-class GazeMetric:
+class GazeMetric(MetricBase):
     def __init__(self):
         self.target_obj = -1
         self.disallowed_categories = ['walls', 'floors', 'ceilings']
