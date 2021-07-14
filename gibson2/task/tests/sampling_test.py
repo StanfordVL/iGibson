@@ -1,16 +1,16 @@
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from IPython import embed
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from gibson2.simulator import Simulator
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 activity = 'assembling_gift_baskets'
 scene_id = 'Rs_int'
 
-igtn_task = iGTNTask(
-    activity, task_instance=0)
+igbhvr_act_inst = iGBEHAVIORActivityInstance(
+    activity, activity_definition=0)
 scene_kwargs = {
     'not_load_object_categories': ['ceilings'],
 }
@@ -19,7 +19,7 @@ simulator = Simulator(mode='headless',
                       image_width=960,
                       image_height=720,
                       rendering_settings=settings)
-init_success = igtn_task.initialize_simulator(
+init_success = igbhvr_act_inst.initialize_simulator(
     scene_id=scene_id,
     simulator=simulator,
     load_clutter=False,
@@ -31,8 +31,8 @@ print('success')
 embed()
 
 while True:
-    igtn_task.simulator.step()
-    success, sorted_conditions = igtn_task.check_success()
+    igbhvr_act_inst.simulator.step()
+    success, sorted_conditions = igbhvr_act_inst.check_success()
     print('TASK SUCCESS:', success)
     if not success:
         print('FAILED CONDITIONS:', sorted_conditions['unsatisfied'])

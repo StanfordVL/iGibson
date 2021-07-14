@@ -1,10 +1,10 @@
 from tasknet.condition_evaluation import evaluate_state
 from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 import argparse
 import numpy as np
 import time
-import tasknet
+import bddl
 import gym.spaces
 import pybullet as p
 import os

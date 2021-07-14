@@ -54,11 +54,11 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
     @param profile: Whether the replay should be profiled, with profiler output to stdout.
     @param start_callback: A callback function that will be called immediately before starting to replay steps. Should
-        take a single argument, an iGTNTask.
+        take a single argument, an iGBEHAVIORActivityInstance.
     @param step_callback: A callback function that will be called immediately following each replayed step. Should
-        take a single argument, an iGTNTask.
+        take a single argument, an iGBEHAVIORActivityInstance.
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
-        argument, an iGTNTask.
+        argument, an iGBEHAVIORActivityInstance.
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
