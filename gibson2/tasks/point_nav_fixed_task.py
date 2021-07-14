@@ -175,7 +175,7 @@ class PointNavFixedTask(BaseTask):
         :param pos: a 3D point in global frame
         :return: the same 3D point in agent's local frame
         """
-        return rotate_vector_3d(pos - env.robots[0].get_position(),
+        return rotate_vector_3d(np.array(pos) - np.array(env.robots[0].get_position()),
                                 *env.robots[0].get_rpy())
 
     def get_task_obs(self, env):

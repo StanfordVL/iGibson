@@ -52,8 +52,8 @@ class ReachingRandomTask(PointNavRandomTask):
         """
         initial_pos, initial_orn, target_pos = \
             super(ReachingRandomTask, self).sample_initial_pose_and_target_pos(env)
-        target_pos += np.random.uniform(self.target_height_range[0],
-                                        self.target_height_range[1])
+        target_pos[2] += np.random.uniform(self.target_height_range[0],
+                                           self.target_height_range[1])
         return initial_pos, initial_orn, target_pos
 
     def get_task_obs(self, env):
