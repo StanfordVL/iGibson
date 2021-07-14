@@ -2,7 +2,7 @@ import pprint
 import numpy as np
 import os
 
-from bddl.activity_base import BDDLActivityInstance
+from bddl.activity_base import BEHAVIORActivityInstance
 import gibson2
 from gibson2.simulator import Simulator
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -27,7 +27,7 @@ from IPython import embed
 KINEMATICS_STATES = frozenset({'inside', 'ontop', 'under', 'onfloor'})
 
 
-class iGBEHAVIORActivityInstance(BDDLActivityInstance):
+class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
     def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None):
         '''
         Initialize simulator with appropriate scene and sampled objects.
