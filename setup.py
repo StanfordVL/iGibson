@@ -113,9 +113,21 @@ else:
     with open("README.md", "r") as fh:
         long_description = fh.read()
 
+
+message = 'You tried to install iGibson. The package named for iGibson is "igibson"'
+
+argv = lambda x: x in sys.argv
+
+if (argv('install') or argv('develop') or # pip install ..
+        (argv('--dist-dir') and argv('bdist_egg'))):  # easy_install
+    raise Exception(message)
+
+if argv('bdist_wheel'):  # modern pip install
+    raise Exception(message)
+
 setup(
     name='gibson2',
-    version='1.0.1',
+    version='1.0.2',
     author='Stanford University',
     long_description_content_type="text/markdown",
     long_description=long_description,
