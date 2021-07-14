@@ -147,33 +147,7 @@ class BehaviorEnv(iGibsonEnv):
         self.object_randomization_freq = self.config.get(
             'object_randomization_freq', None)
 
-<<<<<<< HEAD
-        # task
-        task = self.config['task']
-        task_id = self.config['task_id']
-        scene_id = self.config['scene_id']
-        clutter = self.config['clutter']
-        online_sampling = self.config['online_sampling']
-        if online_sampling:
-            scene_kwargs = {}
-        else:
-            scene_kwargs = {
-                    'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
-            }
-        bddl.set_backend("iGibson")
-        self.task = iGBEHAVIORActivityInstance(task, task_id)
-        self.task.initialize_simulator(
-                simulator=self.simulator, 
-                scene_id=scene_id, 
-                load_clutter=clutter, 
-                scene_kwargs=scene_kwargs, 
-                online_sampling=online_sampling
-        )
-
-        self.robots = [self.task.agent]
-=======
         self.load_behavior_task_setup()
->>>>>>> ig-develop
 
         # Activate the robot constraints so that we don't need to feed in
         # trigger press action in the first couple frames
