@@ -1,6 +1,6 @@
 import argparse
-import tasknet
-from gibson2.task.task_base import iGTNTask
+import bddl
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from gibson2.simulator import Simulator
 import logging
 import os
@@ -16,19 +16,19 @@ PARTIAL_RECACHE = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, required=True,
-                        help='Name of ATUS task matching PDDL parent folder in tasknet.')
+                        help='Name of ATUS task matching BDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int, required=True,
-                        help='PDDL integer ID, matching suffix of pddl.')
+                        help='BDDL integer ID, matching suffix of bddl.')
     parser.add_argument('--max_trials', type=int, default=1,
                         help='Maximum number of trials to try sampling.')
     parser.add_argument('--num_initializations', type=int, default=1,
-                        help='Number of initialization per PDDL per scene.')
+                        help='Number of initialization per BDDL per scene.')
     return parser.parse_args()
 
 
-def remove_newly_added_objects(igtn_task, state_id):
-    for sim_obj in igtn_task.newly_added_objects:
-        igtn_task.scene.remove_object(sim_obj)
+def remove_newly_added_objects(igbhvr_act_inst, state_id):
+    for sim_obj in igbhvr_act_inst.newly_added_objects:
+        igbhvr_act_inst.scene.remove_object(sim_obj)
         for id in sim_obj.body_ids:
             p.removeBody(id)
     p.restoreState(state_id)
@@ -36,14 +36,14 @@ def remove_newly_added_objects(igtn_task, state_id):
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     task = args.task
     task_id = args.task_id
     logging.warning('TASK: {}'.format(task))
     logging.warning('TASK ID: {}'.format(task_id))
 
     scene_json = os.path.join(os.path.dirname(
-        tasknet.__file__), '../utils', 'activity_to_preselected_scenes.json')
+        bddl.__file__), '../utils', 'activity_to_preselected_scenes.json')
 
     with open(scene_json) as f:
         activity_to_scenes = json.load(f)
@@ -62,7 +62,7 @@ def main():
     simulator = Simulator(
         mode='headless', image_width=960, image_height=720, device_idx=0)
     scene_kwargs = {}
-    igtn_task = iGTNTask(task, task_instance=task_id)
+    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
     for scene_id in scene_choices:
         logging.warning(('TRY SCENE:', scene_id))
 
@@ -75,7 +75,7 @@ def main():
                 logging.warning('Already cached: {}'.format(full_path))
                 continue
             for _ in range(num_trials):
-                success = igtn_task.initialize_simulator(
+                success = igbhvr_act_inst.initialize_simulator(
                     simulator=simulator,
                     scene_id=scene_id,
                     mode='headless',
@@ -88,11 +88,11 @@ def main():
                     break
 
             if success:
-                sim_obj_to_pddl_obj = {
+                sim_obj_to_bddl_obj = {
                     value.name: {'object_scope': key}
-                    for key, value in igtn_task.object_scope.items()}
-                igtn_task.scene.save_modified_urdf(
-                    urdf_path, sim_obj_to_pddl_obj)
+                    for key, value in igbhvr_act_inst.object_scope.items()}
+                igbhvr_act_inst.scene.save_modified_urdf(
+                    urdf_path, sim_obj_to_bddl_obj)
                 logging.warning(('Saved:', urdf_path))
 
 if __name__ == "__main__":

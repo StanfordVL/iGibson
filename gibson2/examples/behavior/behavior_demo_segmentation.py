@@ -6,7 +6,7 @@ from enum import Enum
 
 import printree
 import pyinstrument
-import tasknet
+import bddl
 
 import gibson2
 from gibson2 import object_states
@@ -14,8 +14,8 @@ from gibson2.examples.behavior import behavior_demo_replay
 from gibson2.object_states import factory, ROOM_STATES
 from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
 from gibson2.robots.behavior_robot import BRBody
-from gibson2.task.task_base import iGTNTask
-from gibson2.task.tasknet_backend import ObjectStateUnaryPredicate, ObjectStateBinaryPredicate
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
+from gibson2.task.bddl_backend import ObjectStateUnaryPredicate, ObjectStateBinaryPredicate
 
 StateRecord = namedtuple("StateRecord", ["state_type", "objects", "value"])
 StateEntry = namedtuple("StateEntry", ["frame_count", "state_records"])
@@ -124,11 +124,11 @@ def process_states(objects, state_types):
     return predicate_states
 
 
-def _get_goal_condition_states(igtn_task: iGTNTask):
+def _get_goal_condition_states(igbhvr_act_inst: iGBEHAVIORActivityInstance):
     state_types = set()
 
     q = deque()
-    q.extend(igtn_task.goal_conditions)
+    q.extend(igbhvr_act_inst.goal_conditions)
 
     while q:
         pred = q.popleft()
@@ -162,7 +162,7 @@ class DemoSegmentationProcessor(object):
 
         self.profiler = profiler
 
-    def start_callback(self, igtn_task, _):
+    def start_callback(self, igbhvr_act_inst, _):
         self.all_state_types = [
             state for state in factory.get_all_states()
             if (issubclass(state, BooleanState)
@@ -173,20 +173,20 @@ class DemoSegmentationProcessor(object):
         elif self.state_types_option == SegmentationStateSelection.ALL_STATES:
             self.state_types = self.all_state_types
         elif self.state_types_option == SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES:
-            self.state_types = _get_goal_condition_states(igtn_task)
+            self.state_types = _get_goal_condition_states(igbhvr_act_inst)
         else:
             raise ValueError("Unknown segmentation state selection.")
 
-    def step_callback(self, igtn_task, _):
+    def step_callback(self, igbhvr_act_inst, _):
         if self.profiler:
             self.profiler.start()
 
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
-            objects = [obj for obj in igtn_task.object_scope.values() if not isinstance(obj, BRBody)]
+            objects = [obj for obj in igbhvr_act_inst.object_scope.values() if not isinstance(obj, BRBody)]
         elif self.object_selection == SegmentationObjectSelection.ROBOTS:
-            objects = [obj for obj in igtn_task.object_scope.values() if isinstance(obj, BRBody)]
+            objects = [obj for obj in igbhvr_act_inst.object_scope.values() if isinstance(obj, BRBody)]
         elif self.object_selection == SegmentationObjectSelection.ALL_OBJECTS:
-            objects = igtn_task.simulator.scene.get_objects()
+            objects = igbhvr_act_inst.simulator.scene.get_objects()
         else:
             raise ValueError("Incorrect SegmentationObjectSelection %r" % self.object_selection)
 
@@ -194,7 +194,7 @@ class DemoSegmentationProcessor(object):
         state_types_to_use = self.state_types if not self.hierarchical else self.all_state_types
         processed_state = process_states(objects, state_types_to_use)
         if self.last_state is None or (processed_state - self.last_state):
-            self.state_history.append(StateEntry(igtn_task.simulator.frame_count, processed_state))
+            self.state_history.append(StateEntry(igbhvr_act_inst.simulator.frame_count, processed_state))
 
         self.last_state = processed_state
 
@@ -356,7 +356,7 @@ def get_default_segmentation_processors(profiler=None):
 
 
 def main():
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     args = parse_args()
 
     # Select the demo to apply segmentation on.
