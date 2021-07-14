@@ -1,6 +1,6 @@
 import subprocess
 import os
-import tasknet
+import bddl
 
 selected_tasks = [
     # 'cleaning_shoes',
@@ -14,7 +14,7 @@ selected_tasks = [
 
 def main():
     condition_dir = os.path.join(os.path.dirname(
-        tasknet.__file__), 'task_conditions')
+        bddl.__file__), 'activity_conditions')
     for task in sorted(os.listdir(condition_dir)):
         if task not in selected_tasks:
             continue

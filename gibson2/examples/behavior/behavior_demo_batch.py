@@ -8,7 +8,7 @@ import pandas as pd
 import logging
 from pathlib import Path
 
-import tasknet
+import bddl
 from gibson2.examples.behavior.behavior_demo_replay import replay_demo
 
 
@@ -32,7 +32,7 @@ def behavior_demo_batch(demo_root, log_manifest, out_dir, get_callbacks_callback
     logger = logging.getLogger()
     logger.disabled = True
 
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
 
     demo_list = pd.read_csv(log_manifest)
 
