@@ -16,7 +16,7 @@ from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.simulator import Simulator
 from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
-from bddl.parsing import construct_full_pddl
+from bddl.parsing import construct_full_bddl
 import bddl
 import json
 import sys
@@ -122,15 +122,15 @@ class ProcessPyEnvironment(object):
         else:
             return promise
 
-    def sample(self, behavior_activity, pddl, blocking=True):
+    def sample(self, behavior_activity, bddl, blocking=True):
         """Run a sampling in the environment
 
-        :param pddl (str): the pddl being sampled in the environment
+        :param bddl (str): the bddl being sampled in the environment
         :param blocking (bool): whether to wait for the result
         :return (bool, dict): (success, feedback) from the sampling process
         """
         self.last_active_time = time.time()
-        promise = self.call("sample", behavior_activity, pddl)
+        promise = self.call("sample", behavior_activity, bddl)
         self.last_active_time = time.time()
         if blocking:
             return promise()
@@ -269,10 +269,10 @@ class ToyEnvInt(object):
 
         p.restoreState(self.state_id)
 
-    def sample(self, behavior_activity, pddl):
+    def sample(self, behavior_activity, bddl):
         try:
             self.task.update_problem(
-                behavior_activity, "tester", predefined_problem=pddl)
+                behavior_activity, "tester", predefined_problem=bddl)
             self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
         except UncontrolledCategoryError:
             accept_scene = False
@@ -432,7 +432,7 @@ def setup():
 
 @app.route("/check_sampling", methods=["POST"])
 def check_sampling():
-    """Check PDDL sent by React app in all three relevant scenes 
+    """Check BDDL sent by React app in all three relevant scenes 
 
     :return (Response): response indicating success of sampling in all three 
                          scenes, feedback given from each 
@@ -443,8 +443,8 @@ def check_sampling():
     init_state = data["initialConditions"]
     goal_state = data["goalConditions"]
     object_list = data["objectList"]
-    # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
-    pddl = construct_full_pddl(
+    # bddl = init_state + goal_state + object_list        # TODO fix using existing utils
+    bddl = construct_full_bddl(
         behavior_activity,
         "feasibility_check",
         object_list,
@@ -470,7 +470,7 @@ def check_sampling():
                 f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
         else:
             new_unique_id = unique_id
-        success, feedback = app.envs[new_unique_id].sample(behavior_activity, pddl)
+        success, feedback = app.envs[new_unique_id].sample(behavior_activity, bddl)
         if success:
             num_successful_scenes += 1
             '''
