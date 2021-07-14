@@ -12,14 +12,20 @@ def get_actions_from_segmentation(env, demo_data):
     actions = []
     segmentation = demo_data["segmentations"]["flat"]["sub_segments"]
     for segment in segmentation:
-        assert len(segment["state_records"]) == 1, "Don't know what to do with multi-change segments."
-        state_change = segment['state_records'][0]
+        state_records = [sr for sr in segment["state_records"] if all("room_floor" not in obj for obj in sr["objects"])]
+        if len(state_records) == 0:
+            print("Found segment with no useful state changes: %r" % segment)
+            continue
+        elif len(state_records) > 1:
+            print("Found segment with multiple state changes, using the first: %r" % segment)
+
+        state_change = state_records[0]
 
         # Get the objects' indices.
         object_idxes = []
         for obj_name in state_change["objects"]:
             # Find the object in the scope.
-            obj = env.task.object_scope[obj_name]
+            obj = env.task.simulator.scene.objects_by_name[obj_name]
             idx = env.task_relevant_objects.index(obj)
             object_idxes.append(idx)
 
@@ -61,7 +67,7 @@ def main():
     parser.add_argument(
         '--config',
         '-c',
-        default=os.path.join(gibson2.example_config_path, 'behavior/behavior_collect_misplaced_items.yaml'),
+        default=os.path.join(gibson2.example_config_path, 'behavior/behavior_segmentation_replay.yaml'),
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',
@@ -74,7 +80,7 @@ def main():
                         mode=args.mode,
                         action_timestep=1.0 / 300.0,
                         physics_timestep=1.0 / 300.0,
-                        use_motion_planning=True)
+                        use_motion_planning=False)
 
     # Load the segmentation of a demo for this task.
     data_path = r"C:\Users\cgokmen\Stanford Drive\BEHAVIOR resources\segmentation_results"
@@ -87,11 +93,10 @@ def main():
     # Get the actions from the segmentation
     actions = get_actions_from_segmentation(env, selected_demo_data)
 
-    step_time_list = []
     start = time.time()
     env.reset()
 
-    env.robots[0].set_position_orientation([0, 0, 0.7], [0, 0, 0, 1])
+    # env.robots[0].set_position_orientation([0, 0, 0.7], [0, 0, 0, 1])
     done = False
     for action in actions:  # 10 seconds
         state, reward, done, info = env.step(action)

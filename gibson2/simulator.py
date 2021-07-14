@@ -322,8 +322,8 @@ class Simulator:
         """
         assert isinstance(scene, InteractiveIndoorScene), \
             'import_ig_scene can only be called with InteractiveIndoorScene'
-        if not self.use_pb_renderer:
-            scene.set_ignore_visual_shape(True)
+        # if not self.use_pb_renderer:
+        scene.set_ignore_visual_shape(True)
             # skip loading visual shape if not using pybullet visualizer
 
         new_object_ids = scene.load()

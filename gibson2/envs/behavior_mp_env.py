@@ -92,8 +92,7 @@ class BehaviorMPEnv(BehaviorEnv):
         self.robots[0].initial_z_offset = 0.7
 
     def load_action_space(self):
-        self.task_relevant_objects = [item for item in self.task.object_scope.values() if isinstance(item, URDFObject)
-                                      or isinstance(item, RoomFloor)]
+        self.task_relevant_objects = list(self.task.simulator.scene.objects_by_name.values())
         self.num_objects = len(self.task_relevant_objects)
         self.action_space = gym.spaces.Discrete(self.num_objects * NUM_ACTIONS)
 
