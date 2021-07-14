@@ -32,7 +32,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         clean_threshold = FLOOR_CLEAN_THRESHOLD if \
             self.obj.category == 'floors' else CLEAN_THRESHOLD
         max_particles_for_clean = (
-                self.dirt.get_num_particles_activated_at_any_time() * clean_threshold)
+            self.dirt.get_num_particles_activated_at_any_time() * clean_threshold)
         return self.dirt.get_num_active() > max_particles_for_clean
 
     def _set_value(self, new_value):
@@ -65,7 +65,6 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         else:
             # Otherwise, let the particle system know it needs to reset.
             self.dirt.reset_to_dump(data["particles"])
-
 
 
 class Dusty(_Dirty):
