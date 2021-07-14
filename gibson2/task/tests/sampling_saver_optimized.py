@@ -124,7 +124,7 @@ def main():
             logging.warning('TASK: {}'.format(task))
             logging.warning('TASK ID: {}'.format(task_id))
             for init_id in range(num_initializations):
-                urdf_path = '{}_neurips_task_{}_{}_{}'.format(
+                urdf_path = '{}_task_{}_{}_{}'.format(
                     scene_id, task, task_id, init_id)
                 for _ in range(num_trials):
                     igtn_task.update_problem(task, task_id)
