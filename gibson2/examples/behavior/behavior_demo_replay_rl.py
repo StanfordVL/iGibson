@@ -1,5 +1,5 @@
 """
-Main BEHAVIOR demo replay entrypoint
+BEHAVIOR RL episodes replay entrypoint
 """
 
 import argparse
@@ -156,6 +156,13 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
                                    load_clutter=True,
                                    online_sampling=False)
     vr_agent = igtn_task.simulator.robots[0]
+    vr_agent.activate()
+    igtn_task.reset_scene(snapshot_id=igtn_task.initial_state)
+    # set the constraints to the current poses
+    vr_agent.update(np.zeros(28))
+
+    if not in_log_path:
+        raise RuntimeError('Must provide a VR log path to run action replay!')
     log_reader = IGLogReader(in_log_path, log_status=False)
 
     log_writer = None
@@ -182,6 +189,13 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     task_done = False
     while log_reader.get_data_left_to_read():
 
+        action = log_reader.get_agent_action('vr_robot')
+        # Get relevant VR action data and update VR agent
+        vr_agent.update(action)
+
+        if not disable_save:
+            log_writer.process_frame()
+
         igtn_task.simulator.step(print_stats=profile)
         task_done, _ = igtn_task.check_success()
 
@@ -192,11 +206,19 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         for callback in step_callbacks:
             callback(igtn_task, log_reader)
 
-        # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action('vr_robot'))
-
-        if not disable_save:
-            log_writer.process_frame()
+        # Per-step determinism check. Activate if necessary.
+        # things_to_compare = [thing for thing in log_writer.name_path_data if thing[0] == "physics_data"]
+        # for thing in things_to_compare:
+        #     thing_path = "/".join(thing)
+        #     fc = log_reader.frame_counter % log_writer.frames_before_write
+        #     if fc == log_writer.frames_before_write - 1:
+        #         continue
+        #     replayed = log_writer.get_data_for_name_path(thing)[fc]
+        #     original = log_reader.read_value(thing_path)
+        #     if not np.all(replayed == original):
+        #         print("%s not equal in %d" % (thing_path, log_reader.frame_counter))
+        #     if not np.isclose(replayed, original).all():
+        #         print("%s not close in %d" % (thing_path, log_reader.frame_counter))
 
     print("Demo was succesfully completed: ", task_done)
 

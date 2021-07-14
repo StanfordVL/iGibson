@@ -75,6 +75,7 @@ class iGTNTask(TaskNetTask):
                                  online_sampling=online_sampling,
                                  )
         self.initial_state = self.save_scene()
+        self.task_obs_dim = len(self.object_scope) * 8 + 6
         return result
 
     def save_scene(self):
@@ -289,7 +290,7 @@ class iGTNTask(TaskNetTask):
 
                 model = np.random.choice(model_choices)
 
-                # for "collecting aluminum cans", we need pop cans (not bottles) 
+                # for "collecting aluminum cans", we need pop cans (not bottles)
                 if category == 'pop' and self.atus_activity in ['collecting_aluminum_cans']:
                     model = np.random.choice([str(i) for i in range(40, 46)])
                 if category == 'spoon' and self.atus_activity in ['polishing_silver']:
@@ -1115,6 +1116,29 @@ class iGTNTask(TaskNetTask):
 
     def sampleTouching(self, objA, objB):
         pass
+
+    def get_task_obs(self, env):
+        state = np.zeros((self.task_obs_dim))
+        i = 0
+
+        dim_per_obj = 8
+        for k, v in self.object_scope.items():
+            if isinstance(v, URDFObject):
+                state[i * dim_per_obj: i * dim_per_obj +
+                      3] = np.array(v.get_position())
+                state[i * dim_per_obj + 3: i * dim_per_obj +
+                      6] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
+                if env.robots[0].parts['left_hand'].object_in_hand == v.get_body_id():
+                    state[i * dim_per_obj + 6] = 1.0
+                if env.robots[0].parts['right_hand'].object_in_hand == v.get_body_id():
+                    state[i * dim_per_obj + 7] = 1.0
+            i += 1
+        state[i * dim_per_obj: i * dim_per_obj +
+              3] = env.robots[0].get_position()
+        state[i * dim_per_obj + 3: i * dim_per_obj +
+              6] = np.array(p.getEulerFromQuaternion(env.robots[0].get_orientation()))
+
+        return state
 
 
 def main():
