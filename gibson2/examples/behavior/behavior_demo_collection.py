@@ -8,13 +8,13 @@ import datetime
 import os
 
 import numpy as np
-import tasknet
+import bddl
 
 import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from gibson2.simulator import Simulator
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from gibson2.utils.ig_logging import IGLogWriter
 
 POST_TASK_STEPS = 200
@@ -43,9 +43,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Run and collect an ATUS demo')
     parser.add_argument('--task', type=str, required=True,
-                        nargs='?', help='Name of ATUS task matching PDDL parent folder in tasknet.')
+                        nargs='?', help='Name of ATUS activity matching parent folder in bddl.')
     parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
-                        nargs='?', help='PDDL integer ID, matching suffix of pddl.')
+                        nargs='?', help='BDDL integer ID, matching suffix of bddl.')
     parser.add_argument('--vr_log_path', type=str,
                         help='Path (and filename) of vr log')
     parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?',
@@ -65,7 +65,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     collect_demo(args.task, args.task_id, args.scene, args.vr_log_path, args.disable_save, args.max_steps, args.no_vr,
                  args.disable_scene_cache, args.profile)
 
@@ -100,7 +100,7 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
     mode = 'headless' if no_vr else 'vr'
     s = Simulator(mode=mode, rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True),
                   physics_timestep=1 / 300.0, render_timestep=1 / 30.0)
-    igtn_task = iGTNTask(task, task_id)
+    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
 
     scene_kwargs = None
     online_sampling = True
@@ -111,18 +111,18 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
         }
         online_sampling = False
 
-    igtn_task.initialize_simulator(simulator=s,
+    igbhvr_act_inst.initialize_simulator(simulator=s,
                                    scene_id=scene,
                                    scene_kwargs=scene_kwargs,
                                    load_clutter=True,
                                    online_sampling=online_sampling)
-    vr_agent = igtn_task.simulator.robots[0]
+    vr_agent = igbhvr_act_inst.simulator.robots[0]
 
     if not no_vr:
         vr_cs = VrConditionSwitcher(
-            igtn_task.simulator,
-            igtn_task.show_instruction,
-            igtn_task.iterate_instruction
+            igbhvr_act_inst.simulator,
+            igbhvr_act_inst.show_instruction,
+            igbhvr_act_inst.iterate_instruction
         )
 
     log_writer = None
@@ -134,7 +134,7 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
         log_writer = IGLogWriter(
             s,
             log_filepath=vr_log_path,
-            task=igtn_task,
+            task=igbhvr_act_inst,
             store_vr=False if no_vr else True,
             vr_robot=vr_agent,
             profiling_mode=profile,
@@ -148,8 +148,8 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
 
     steps = 0
     while max_steps < 0 or steps < max_steps:
-        igtn_task.simulator.step(print_stats=profile)
-        task_done, satisfied_predicates = igtn_task.check_success()
+        igbhvr_act_inst.simulator.step(print_stats=profile)
+        task_done, satisfied_predicates = igbhvr_act_inst.check_success()
 
         if no_vr:
             if steps < 2:
@@ -159,7 +159,7 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
             else:
                 action = np.random.uniform(-0.01, 0.01, size=(28,))
         else:
-            action = igtn_task.simulator.gen_vr_robot_action()
+            action = igbhvr_act_inst.simulator.gen_vr_robot_action()
             if steps < physics_warming_steps:
                 action = np.zeros_like(action)
 
@@ -170,10 +170,10 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
                 vr_cs.refresh_condition(switch=False)
                 satisfied_predicates_cached = satisfied_predicates
 
-            if igtn_task.simulator.query_vr_event('right_controller', 'overlay_toggle'):
+            if igbhvr_act_inst.simulator.query_vr_event('right_controller', 'overlay_toggle'):
                 vr_cs.refresh_condition()
 
-            if igtn_task.simulator.query_vr_event('left_controller', 'overlay_toggle'):
+            if igbhvr_act_inst.simulator.query_vr_event('left_controller', 'overlay_toggle'):
                 vr_cs.toggle_show_state()
 
         if log_writer and not disable_save:

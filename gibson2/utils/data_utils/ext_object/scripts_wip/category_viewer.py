@@ -1,6 +1,6 @@
 import os
 
-from tasknet.object_taxonomy import ObjectTaxonomy
+from bddl.object_taxonomy import ObjectTaxonomy
 
 import gibson2
 import numpy as np

@@ -90,9 +90,9 @@ class KinematicDisarrangement(MetricBase):
         return obj_disarrangement
 
 
-    def step_callback(self, igtn_task, _):
+    def step_callback(self, igbhvr_act_inst, _):
         total_disarrangement = 0
-        self.cur_state_cache = self.update_state_cache(igtn_task)
+        self.cur_state_cache = self.update_state_cache(igbhvr_act_inst)
 
         if not self.initialized:
             self.prev_state_cache = copy.deepcopy(self.cur_state_cache)
@@ -346,25 +346,25 @@ class LogicalDisarrangement(MetricBase):
             "total_states": total_states,
         }
 
-    def step_callback(self, igtn_task, _):
-        if not self.initialized and igtn_task.simulator.frame_count == SIMULATOR_SETTLE_TIME:
-            self.initial_state_cache = self.create_object_logical_state_cache(igtn_task)
+    def step_callback(self, igbhvr_act_inst, _):
+        if not self.initialized and igbhvr_act_inst.simulator.frame_count == SIMULATOR_SETTLE_TIME:
+            self.initial_state_cache = self.create_object_logical_state_cache(igbhvr_act_inst)
             self.initialized = True
         else:
             return
 
-    def end_callback(self, igtn_task, _):
+    def end_callback(self, igbhvr_act_inst, _):
         """
         When pybullet sleeps objects, getContactPoints is no longer refreshed
         Setting collision groups on the agent (which happens when users first activate the agent)
         Wipes active collision groups. To get the logical disarrangement, we must wake up all objects in the scene
         This can only be done at the end of the scene so as to not affect determinism.
         """
-        for obj in igtn_task.scene.objects_by_name.values():
+        for obj in igbhvr_act_inst.scene.objects_by_name.values():
             obj.force_wakeup()
-        igtn_task.simulator.step()
+        igbhvr_act_inst.simulator.step()
 
-        self.cur_state_cache = self.create_object_logical_state_cache(igtn_task)
+        self.cur_state_cache = self.create_object_logical_state_cache(igbhvr_act_inst)
 
         self.relative_logical_disarrangement = self.compute_logical_disarrangement(self.initial_state_cache, self.cur_state_cache)
 

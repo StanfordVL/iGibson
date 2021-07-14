@@ -11,13 +11,13 @@ from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from gibson2.utils.utils import parse_config
 import os
 import gibson2
-from gibson2.task.task_base import iGTNTask
+from gibson2.task.task_base import iGBEHAVIORActivityInstance
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
 from gibson2.simulator import Simulator
-from tasknet.utils import UncontrolledCategoryError, UnsupportedSentenceError
-from tasknet.parsing import construct_full_pddl
-import tasknet
+from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
+from bddl.parsing import construct_full_bddl
+import bddl
 import json
 import sys
 from flask_apscheduler import APScheduler
@@ -122,15 +122,15 @@ class ProcessPyEnvironment(object):
         else:
             return promise
 
-    def sample(self, atus_activity, pddl, blocking=True):
+    def sample(self, behavior_activity, bddl, blocking=True):
         """Run a sampling in the environment
 
-        :param pddl (str): the pddl being sampled in the environment
+        :param bddl (str): the bddl being sampled in the environment
         :param blocking (bool): whether to wait for the result
         :return (bool, dict): (success, feedback) from the sampling process
         """
         self.last_active_time = time.time()
-        promise = self.call("sample", atus_activity, pddl)
+        promise = self.call("sample", behavior_activity, bddl)
         self.last_active_time = time.time()
         if blocking:
             return promise()
@@ -235,8 +235,8 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene='Rs_int'):
-        tasknet.set_backend("iGibson")
-        self.task = iGTNTask('trivial', task_instance=0)
+        bddl.set_backend("iGibson")
+        self.task = iGBEHAVIORActivityInstance('trivial', activity_definition=0)
 
         settings = MeshRendererSettings(texture_scale=0.01)
         simulator = Simulator(mode='headless', image_width=400,
@@ -269,10 +269,10 @@ class ToyEnvInt(object):
 
         p.restoreState(self.state_id)
 
-    def sample(self, atus_activity, pddl):
+    def sample(self, behavior_activity, bddl):
         try:
             self.task.update_problem(
-                atus_activity, "tester", predefined_problem=pddl)
+                behavior_activity, "tester", predefined_problem=bddl)
             self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
         except UncontrolledCategoryError:
             accept_scene = False
@@ -283,12 +283,12 @@ class ToyEnvInt(object):
                 'goal_feedback': 'Goal state has uncontrolled categories.'
             }
             return accept_scene, feedback
-        except UnsupportedSentenceError as e:
+        except UnsupportedPredicateError as e:
             accept_scene = False
             feedback = {
                 "init_success": "no",
                 "goal_success": "no",
-                "init_feedback": f"We don't yet support the [{e.sentence}] adjective for any objects. We will soon!",
+                "init_feedback": f"We don't yet support the [{e.predicate}] adjective for any objects. We will soon!",
                 "goal_feedback": ""
             }
             return accept_scene, feedback
@@ -432,20 +432,20 @@ def setup():
 
 @app.route("/check_sampling", methods=["POST"])
 def check_sampling():
-    """Check PDDL sent by React app in all three relevant scenes 
+    """Check BDDL sent by React app in all three relevant scenes 
 
     :return (Response): response indicating success of sampling in all three 
                          scenes, feedback given from each 
     """
     # Prepare data
     data = json.loads(request.data)
-    atus_activity = data["activityName"]
+    behavior_activity = data["activityName"]
     init_state = data["initialConditions"]
     goal_state = data["goalConditions"]
     object_list = data["objectList"]
-    # pddl = init_state + goal_state + object_list        # TODO fix using existing utils
-    pddl = construct_full_pddl(
-        atus_activity,
+    # bddl = init_state + goal_state + object_list        # TODO fix using existing utils
+    bddl = construct_full_bddl(
+        behavior_activity,
         "feasibility_check",
         object_list,
         init_state,
@@ -470,7 +470,7 @@ def check_sampling():
                 f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
         else:
             new_unique_id = unique_id
-        success, feedback = app.envs[new_unique_id].sample(atus_activity, pddl)
+        success, feedback = app.envs[new_unique_id].sample(behavior_activity, bddl)
         if success:
             num_successful_scenes += 1
             '''

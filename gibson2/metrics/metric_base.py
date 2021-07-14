@@ -4,13 +4,13 @@ from future.utils import with_metaclass
 
 
 class MetricBase(with_metaclass(ABCMeta, object)):
-    def start_callback(self, igtn_task, log_reader):
+    def start_callback(self, igbhvr_act_inst, log_reader):
         pass
 
-    def step_callback(self, igtn_task, log_reader):
+    def step_callback(self, igbhvr_act_inst, log_reader):
         pass
 
-    def end_callback(self, igtn_task, log_reader):
+    def end_callback(self, igbhvr_act_inst, log_reader):
         pass
 
     @abstractmethod
