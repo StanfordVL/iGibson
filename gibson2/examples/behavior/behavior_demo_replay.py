@@ -150,7 +150,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     igtn_task.initialize_simulator(simulator=s,
                                    scene_id=scene,
                                    scene_kwargs={
-                                       'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task,
+                                       'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task,
                                                                                                      task_id),
                                    },
                                    load_clutter=True,

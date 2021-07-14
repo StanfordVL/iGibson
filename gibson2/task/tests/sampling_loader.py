@@ -25,7 +25,7 @@ igtn_task = iGTNTask(task, task_instance=task_id)
 scene_kwargs = {
     # 'load_object_categories': ['oven', 'fridge', 'countertop', 'cherry', 'sausage', 'tray'],
     'not_load_object_categories': ['ceilings'],
-    'urdf_file': '{}_neurips_task_{}_{}_{}'.format(scene, task, task_id, num_init),
+    'urdf_file': '{}_task_{}_{}_{}'.format(scene, task, task_id, num_init),
 }
 simulator = Simulator(mode='headless', image_width=960, image_height=720)
 init_success = igtn_task.initialize_simulator(

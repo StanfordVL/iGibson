@@ -30,7 +30,7 @@ for scene_id in os.listdir(scene_root_dir):
         continue
     scene_urdf_dir = os.path.join(scene_root_dir, scene_id, 'urdf')
     for urdf_file in os.listdir(scene_urdf_dir):
-        if '_neurips_task_' not in urdf_file:
+        if '_task_' not in urdf_file:
             continue
         # if '_task_' not in urdf_file:
         #     continue
