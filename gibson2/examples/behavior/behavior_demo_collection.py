@@ -43,9 +43,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Run and collect an ATUS demo')
     parser.add_argument('--task', type=str, required=True,
-                        nargs='?', help='Name of ATUS task matching PDDL parent folder in bddl.')
+                        nargs='?', help='Name of ATUS task matching BDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
-                        nargs='?', help='PDDL integer ID, matching suffix of pddl.')
+                        nargs='?', help='BDDL integer ID, matching suffix of bddl.')
     parser.add_argument('--vr_log_path', type=str,
                         help='Path (and filename) of vr log')
     parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?',

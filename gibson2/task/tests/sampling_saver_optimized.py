@@ -33,13 +33,13 @@ def parse_args():
     parser.add_argument('--scene_id', type=str, choices=scene_choices, required=True,
                         help='Scene id')
     parser.add_argument('--task', type=str,
-                        help='Name of ATUS task matching PDDL parent folder in bddl.')
+                        help='Name of ATUS task matching BDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int,
-                        help='PDDL integer ID, matching suffix of pddl.')
+                        help='BDDL integer ID, matching suffix of bddl.')
     parser.add_argument('--max_trials', type=int, default=1,
                         help='Maximum number of trials to try sampling.')
     parser.add_argument('--num_initializations', type=int, default=1,
-                        help='Number of initialization per PDDL per scene.')
+                        help='Number of initialization per BDDL per scene.')
     return parser.parse_args()
 
 
@@ -148,11 +148,11 @@ def main():
                                   num_particle_systems)
 
                 if accept_scene:
-                    sim_obj_to_pddl_obj = {
+                    sim_obj_to_bddl_obj = {
                         value.name: {'object_scope': key}
                         for key, value in igbhvr_act_inst.object_scope.items()}
                     igbhvr_act_inst.scene.save_modified_urdf(
-                        urdf_path, sim_obj_to_pddl_obj)
+                        urdf_path, sim_obj_to_bddl_obj)
                     restore_scene(igbhvr_act_inst, state_id, num_body_ids,
                                   num_particle_systems)
                     print('Saved:', urdf_path)

@@ -16,13 +16,13 @@ PARTIAL_RECACHE = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, required=True,
-                        help='Name of ATUS task matching PDDL parent folder in bddl.')
+                        help='Name of ATUS task matching BDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int, required=True,
-                        help='PDDL integer ID, matching suffix of pddl.')
+                        help='BDDL integer ID, matching suffix of bddl.')
     parser.add_argument('--max_trials', type=int, default=1,
                         help='Maximum number of trials to try sampling.')
     parser.add_argument('--num_initializations', type=int, default=1,
-                        help='Number of initialization per PDDL per scene.')
+                        help='Number of initialization per BDDL per scene.')
     return parser.parse_args()
 
 
@@ -88,11 +88,11 @@ def main():
                     break
 
             if success:
-                sim_obj_to_pddl_obj = {
+                sim_obj_to_bddl_obj = {
                     value.name: {'object_scope': key}
                     for key, value in igbhvr_act_inst.object_scope.items()}
                 igbhvr_act_inst.scene.save_modified_urdf(
-                    urdf_path, sim_obj_to_pddl_obj)
+                    urdf_path, sim_obj_to_bddl_obj)
                 logging.warning(('Saved:', urdf_path))
 
 if __name__ == "__main__":
