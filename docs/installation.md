@@ -13,15 +13,64 @@ The minimum system requirements are the following:
     - Nvidia driver >= 384
     - CUDA >= 9.0, CuDNN >= v7
     - CMake >= 2.8.12 (can install with `pip install cmake`)
-    - OpenGL|ES 2.x API development files (libgles2-mesa-dev)
+    - g++ (GNU C++ compiler)
+    - libegl1 (Debian/Ubuntu: vendor neutral GL dispatch library -- EGL support)
+- Windows
+    - Windows 10
+    - Nvidia GPU with VRAM > 6.0GB
+    - Nvidia driver >= 384
+    - CUDA >= 9.0, CuDNN >= v7
+    - CMake >= 2.8.12 (can install with `pip install cmake`)
+    - Microsoft Visual Studio 2017 with visual C++ tool and latest Windows 10 SDK
 - Mac OS X
     - Tested on 10.15
     - PBR features not supported
     - CMake >= 2.8.12 (can install with `pip install cmake`)
-- Windows
-    - Coming soon
 
 Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
+
+## Installing dependencies
+
+Beginning with a clean ubuntu 20.04 installation, the following script will install all needed dependencies to build and run iGibson with CUDA 11.1:
+
+```bash
+# Add the nvidia ubuntu repositories
+apt-get update && apt-get install -y --no-install-recommends \
+    gnupg2 curl ca-certificates && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub | apt-key add - && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
+
+# The following cuda libraries are required to compile igibson
+apt-get install -y --no-install-recommends \
+    cuda-cudart-11-1=11.1.74-1 \
+    cuda-compat-11-1 \
+    cuda-command-line-tools-11-1=11.1.1-1 \
+    cuda-libraries-dev-11-1=11.1.1-1 \
+
+# Set CUDA 11.1 as the default cuda installation (for pytorch or tensorflow, not required if you modify LD_LIBRARY_PATH)
+ln -s cuda-11.1 /usr/local/cuda
+
+# For building and running igibson
+apt-get install -y --no-install-recommends \
+    cmake \
+    git \
+    g++ \
+    libegl1
+
+# Install miniconda
+curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+bash Miniconda-latest-Linux-x86_64.sh
+rm Miniconda-latest-Linux-x86_64.sh
+
+# Add conda to your PATH
+echo "export PATH=$HOME/.miniconda/bin:$PATH" >> .bashrc 
+
+# Update conda and create a virtual environment for iGibson
+conda update -y conda
+conda create -y -n igibson python=3.8
+conda activate igibson
+```
 
 ## Installing the Environment
 
@@ -95,6 +144,7 @@ pip install https://github.com/StanfordVL/bullet3/archive/master.zip
 
 We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
+Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
 
 ## Downloading the Assets
 
