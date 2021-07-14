@@ -56,7 +56,7 @@ def main():
             objects.append((cat, obj))
 
     scene_files = list(glob.glob(
-        os.path.join(gibson2.ig_dataset_path, "scenes", "**", "*neurips*.urdf"), recursive=True))
+        os.path.join(gibson2.ig_dataset_path, "scenes", "**", "*task*.urdf"), recursive=True))
 
     by_scene = {}
     by_object = {x: [] for x in objects}

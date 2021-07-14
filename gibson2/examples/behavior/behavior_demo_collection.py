@@ -107,7 +107,7 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
 
     if not disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
+            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
         }
         online_sampling = False
 

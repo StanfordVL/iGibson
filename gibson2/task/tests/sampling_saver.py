@@ -67,7 +67,7 @@ def main():
         logging.warning(('TRY SCENE:', scene_id))
 
         for init_id in range(num_initializations):
-            urdf_path = '{}_neurips_task_{}_{}_{}'.format(
+            urdf_path = '{}_task_{}_{}_{}'.format(
                 scene_id, task, task_id, init_id)
             full_path = os.path.join(
                 gibson2.ig_dataset_path, 'scenes', scene_id, 'urdf', urdf_path + '.urdf')
