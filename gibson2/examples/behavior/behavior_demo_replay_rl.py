@@ -1,5 +1,5 @@
 """
-Main BEHAVIOR demo replay entrypoint
+BEHAVIOR RL episodes replay entrypoint
 """
 
 import argparse
@@ -12,11 +12,11 @@ import gibson2
 from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from gibson2.simulator import Simulator
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
+from gibson2.task.task_base import iGTNTask
 from gibson2.utils.ig_logging import IGLogReader, IGLogWriter
 from gibson2.utils.git_utils import project_git_info
 from gibson2.utils.utils import parse_str_config
-import bddl
+import tasknet
 
 import numpy as np
 
@@ -69,11 +69,11 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
     @param profile: Whether the replay should be profiled, with profiler output to stdout.
     @param start_callback: A callback function that will be called immediately before starting to replay steps. Should
-        take a single argument, an iGBEHAVIORActivityInstance.
+        take a single argument, an iGTNTask.
     @param step_callback: A callback function that will be called immediately following each replayed step. Should
-        take a single argument, an iGBEHAVIORActivityInstance.
+        take a single argument, an iGTNTask.
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
-        argument, an iGBEHAVIORActivityInstance.
+        argument, an iGTNTask.
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
@@ -146,8 +146,8 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         image_height=720,
     )
 
-    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
-    igbhvr_act_inst.initialize_simulator(simulator=s,
+    igtn_task = iGTNTask(task, task_id)
+    igtn_task.initialize_simulator(simulator=s,
                                    scene_id=scene,
                                    scene_kwargs={
                                        'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task,
@@ -155,7 +155,14 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
                                    },
                                    load_clutter=True,
                                    online_sampling=False)
-    vr_agent = igbhvr_act_inst.simulator.robots[0]
+    vr_agent = igtn_task.simulator.robots[0]
+    vr_agent.activate()
+    igtn_task.reset_scene(snapshot_id=igtn_task.initial_state)
+    # set the constraints to the current poses
+    vr_agent.update(np.zeros(28))
+
+    if not in_log_path:
+        raise RuntimeError('Must provide a VR log path to run action replay!')
     log_reader = IGLogReader(in_log_path, log_status=False)
 
     log_writer = None
@@ -168,7 +175,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         log_writer = IGLogWriter(
             s,
             log_filepath=out_log_path,
-            task=igbhvr_act_inst,
+            task=igtn_task,
             store_vr=False,
             vr_robot=vr_agent,
             profiling_mode=profile,
@@ -177,32 +184,47 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         log_writer.set_up_data_storage()
 
     for callback in start_callbacks:
-        callback(igbhvr_act_inst, log_reader)
+        callback(igtn_task, log_reader)
 
     task_done = False
     while log_reader.get_data_left_to_read():
 
-        igbhvr_act_inst.simulator.step(print_stats=profile)
-        task_done, _ = igbhvr_act_inst.check_success()
+        action = log_reader.get_agent_action('vr_robot')
+        # Get relevant VR action data and update VR agent
+        vr_agent.update(action)
+
+        if not disable_save:
+            log_writer.process_frame()
+
+        igtn_task.simulator.step(print_stats=profile)
+        task_done, _ = igtn_task.check_success()
 
         # Set camera each frame
         if mode == "vr":
             log_reader.set_replay_camera(s)
 
         for callback in step_callbacks:
-            callback(igbhvr_act_inst, log_reader)
+            callback(igtn_task, log_reader)
 
-        # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action('vr_robot'))
-
-        if not disable_save:
-            log_writer.process_frame()
+        # Per-step determinism check. Activate if necessary.
+        # things_to_compare = [thing for thing in log_writer.name_path_data if thing[0] == "physics_data"]
+        # for thing in things_to_compare:
+        #     thing_path = "/".join(thing)
+        #     fc = log_reader.frame_counter % log_writer.frames_before_write
+        #     if fc == log_writer.frames_before_write - 1:
+        #         continue
+        #     replayed = log_writer.get_data_for_name_path(thing)[fc]
+        #     original = log_reader.read_value(thing_path)
+        #     if not np.all(replayed == original):
+        #         print("%s not equal in %d" % (thing_path, log_reader.frame_counter))
+        #     if not np.isclose(replayed, original).all():
+        #         print("%s not close in %d" % (thing_path, log_reader.frame_counter))
 
     print("Demo was succesfully completed: ", task_done)
 
     demo_statistics = {}
     for callback in end_callbacks:
-        callback(igbhvr_act_inst, log_reader)
+        callback(igtn_task, log_reader)
 
     s.disconnect()
 

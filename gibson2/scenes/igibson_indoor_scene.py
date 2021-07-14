@@ -763,7 +763,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 p.removeState(state_id)
                 continue
             # this is the 2nd degree joint, ignore for now
-            if parent_idx != 0:
+            if parent_idx != -1:
                 p.removeState(state_id)
                 continue
 

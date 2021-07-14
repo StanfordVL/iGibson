@@ -1124,14 +1124,15 @@ class Simulator:
         self.sync()
         self.frame_count += 1
 
-    def sync(self):
+    def sync(self, force_sync=False):
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function
         """
         self.body_links_awake = 0
         for instance in self.renderer.instances:
             if instance.dynamic:
-                self.body_links_awake += self.update_position(instance)
+                self.body_links_awake += self.update_position(
+                    instance, force_sync=force_sync)
         if (self.use_ig_renderer or self.use_vr_renderer or self.use_simple_viewer) and self.viewer is not None:
             self.viewer.update()
         if self.first_sync:
@@ -1754,7 +1755,7 @@ class Simulator:
                     hasattr(self.scene.objects_by_id[body_id], "category") and
                     self.scene.objects_by_id[body_id].category == category_name)]
 
-    def update_position(self, instance):
+    def update_position(self, instance, force_sync=False):
         """
         Update position for an object or a robot in renderer.
         :param instance: Instance in the renderer
@@ -1764,7 +1765,7 @@ class Simulator:
             dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
             inertial_pos = dynamics_info[3]
             inertial_orn = dynamics_info[4]
-            if len(dynamics_info) == 13 and not self.first_sync:
+            if len(dynamics_info) == 13 and not self.first_sync and not force_sync:
                 activation_state = dynamics_info[12]
             else:
                 activation_state = PyBulletSleepState.AWAKE
