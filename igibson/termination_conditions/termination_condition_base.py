@@ -1,11 +1,12 @@
 from abc import abstractmethod, ABCMeta
 
 
-class BaseTerminationCondition():
+class BaseTerminationCondition:
     """
     Base TerminationCondition class
     Condition-specific get_termination method is implemented in subclasses
     """
+
     __metaclass__ = ABCMeta
 
     def __init__(self, config):

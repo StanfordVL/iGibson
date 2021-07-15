@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import os
 import random
 import sys
@@ -7,24 +8,21 @@ import time
 import xml.etree.ElementTree as ET
 
 import cv2
-import igibson
 import numpy as np
 import pybullet as p
 import trimesh
-import math
 
-from igibson.object_states.utils import clear_cached_states
-from igibson.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
-from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
-from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+import igibson
 from igibson.external.pybullet_tools.utils import link_from_name, get_joint_info, get_joints, set_joint_position
-from igibson.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
+from igibson.external.pybullet_tools.utils import matrix_from_quat, quat_from_matrix
 from igibson.object_states.factory import prepare_object_states
+from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from igibson.object_states.utils import clear_cached_states
 from igibson.objects.stateful_object import StatefulObject
+from igibson.render.mesh_renderer.materials import ProceduralMaterial
 from igibson.render.mesh_renderer.materials import RandomizedMaterial
-from igibson.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, \
-    add_fixed_link
-from igibson.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from igibson.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, add_fixed_link
+from igibson.utils.utils import get_transform_from_xyz_rpy
 from igibson.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
 # Optionally import bddl for object taxonomy.
@@ -57,9 +55,7 @@ class ArticulatedObject(StatefulObject):
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
 
-        body_id = p.loadURDF(self.filename,
-                             globalScaling=self.scale,
-                             flags=flags)
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
 
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
         self.body_id = body_id
@@ -72,14 +68,14 @@ class ArticulatedObject(StatefulObject):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = visual_shape[:8]
             try:
                 if link_id == -1:
-                    link_name = p.getBodyInfo(id)[0].decode('utf-8')
+                    link_name = p.getBodyInfo(id)[0].decode("utf-8")
                 else:
-                    link_name = p.getJointInfo(id, link_id)[12].decode('utf-8')
+                    link_name = p.getJointInfo(id, link_id)[12].decode("utf-8")
                 if not link_name in self.link_name_to_vm:
                     self.link_name_to_vm[link_name] = []
                 else:
                     raise ValueError("link name clashing")
-                self.link_name_to_vm[link_name].append(filename.decode('utf-8'))
+                self.link_name_to_vm[link_name].append(filename.decode("utf-8"))
             except:
                 pass
 
@@ -88,10 +84,8 @@ class ArticulatedObject(StatefulObject):
         Force wakeup sleeping objects
         """
         for joint_id in range(p.getNumJoints(self.body_id)):
-            p.changeDynamics(self.body_id, joint_id,
-                             activationState=p.ACTIVATION_STATE_WAKE_UP)
-        p.changeDynamics(self.body_id, -1,
-                         activationState=p.ACTIVATION_STATE_WAKE_UP)
+            p.changeDynamics(self.body_id, joint_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
+        p.changeDynamics(self.body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
 
     def get_body_id(self):
         return self.body_id
@@ -104,8 +98,7 @@ class RBOObject(ArticulatedObject):
     """
 
     def __init__(self, name, scale=1):
-        filename = os.path.join(igibson.assets_path, 'models', 'rbo', name, 'configuration',
-                                '{}.urdf'.format(name))
+        filename = os.path.join(igibson.assets_path, "models", "rbo", name, "configuration", "{}.urdf".format(name))
         super(RBOObject, self).__init__(filename, scale)
 
 
@@ -116,30 +109,31 @@ class URDFObject(StatefulObject):
     parse our modified link tag for URDFs that embed objects into scenes
     """
 
-    def __init__(self,
-                 filename,
-                 name='object_0',
-                 category='object',
-                 abilities=None,
-                 model_path=None,
-                 bounding_box=None,
-                 scale=None,
-                 fit_avg_dim_volume=False,
-                 connecting_joint=None,
-                 initial_pos=None,
-                 initial_orn=None,
-                 avg_obj_dims=None,
-                 joint_friction=None,
-                 in_rooms=None,
-                 texture_randomization=False,
-                 overwrite_inertial=True,
-                 scene_instance_folder=None,
-                 bddl_object_scope=None,
-                 visualize_primitives=False,
-                 joint_positions=None,
-                 merge_fixed_links=True,
-                 ignore_visual_shape=False
-                 ):
+    def __init__(
+        self,
+        filename,
+        name="object_0",
+        category="object",
+        abilities=None,
+        model_path=None,
+        bounding_box=None,
+        scale=None,
+        fit_avg_dim_volume=False,
+        connecting_joint=None,
+        initial_pos=None,
+        initial_orn=None,
+        avg_obj_dims=None,
+        joint_friction=None,
+        in_rooms=None,
+        texture_randomization=False,
+        overwrite_inertial=True,
+        scene_instance_folder=None,
+        bddl_object_scope=None,
+        visualize_primitives=False,
+        joint_positions=None,
+        merge_fixed_links=True,
+        ignore_visual_shape=False,
+    ):
         """
         :param filename: urdf file path of that object model
         :param name: object name, unique for each object instance, e.g. door_3
@@ -177,14 +171,12 @@ class URDFObject(StatefulObject):
         self.joint_positions = joint_positions
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
-        self.ignore_visual_shape=ignore_visual_shape
+        self.ignore_visual_shape = ignore_visual_shape
 
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
             if OBJECT_TAXONOMY is not None:
-                taxonomy_class = (
-                    OBJECT_TAXONOMY.get_class_name_from_igibson_category(
-                        self.category))
+                taxonomy_class = OBJECT_TAXONOMY.get_class_name_from_igibson_category(self.category)
                 if taxonomy_class is not None:
                     abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
                 else:
@@ -192,17 +184,16 @@ class URDFObject(StatefulObject):
             else:
                 abilities = {}
 
-        assert isinstance(
-            abilities, dict), "Object abilities must be in dictionary form."
+        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
         self.abilities = abilities
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
             self.joint_friction = joint_friction
         else:
-            if self.category in ['oven', 'dishwasher']:
+            if self.category in ["oven", "dishwasher"]:
                 self.joint_friction = 30
-            elif self.category in ['toilet']:
+            elif self.category in ["toilet"]:
                 self.joint_friction = 3
             else:
                 self.joint_friction = 10
@@ -232,9 +223,9 @@ class URDFObject(StatefulObject):
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
         if not visualize_primitives:
-            for link in self.object_tree.findall('link'):
+            for link in self.object_tree.findall("link"):
                 for element in link:
-                    if element.tag == 'visual' and len(element.findall('.//box')) > 0:
+                    if element.tag == "visual" and len(element.findall(".//box")) > 0:
                         link.remove(element)
 
         self.model_path = model_path
@@ -243,40 +234,38 @@ class URDFObject(StatefulObject):
 
         # Change the mesh filenames to include the entire path
         for mesh in self.object_tree.iter("mesh"):
-            mesh.attrib['filename'] = os.path.join(
-                self.model_path, mesh.attrib['filename'])
+            mesh.attrib["filename"] = os.path.join(self.model_path, mesh.attrib["filename"])
 
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
         if bounding_box is not None and scale is not None:
-            logging.error(
-                "You cannot define both scale and bounding box size when creating a URDF Objects")
+            logging.error("You cannot define both scale and bounding box size when creating a URDF Objects")
             exit(-1)
 
-        meta_json = os.path.join(self.model_path, 'misc', 'metadata.json')
-        bbox_json = os.path.join(self.model_path, 'misc', 'bbox.json')
+        meta_json = os.path.join(self.model_path, "misc", "metadata.json")
+        bbox_json = os.path.join(self.model_path, "misc", "bbox.json")
         # In the format of {link_name: [linkX, linkY, linkZ]}
         self.metadata = {}
         meta_links = dict()
         if os.path.isfile(meta_json):
-            with open(meta_json, 'r') as f:
+            with open(meta_json, "r") as f:
                 self.metadata = json.load(f)
-                bbox_size = np.array(self.metadata['bbox_size'])
-                base_link_offset = np.array(self.metadata['base_link_offset'])
+                bbox_size = np.array(self.metadata["bbox_size"])
+                base_link_offset = np.array(self.metadata["base_link_offset"])
 
-                if 'orientations' in self.metadata and len(self.metadata['orientations']) > 0:
-                    self.orientations = self.metadata['orientations']
+                if "orientations" in self.metadata and len(self.metadata["orientations"]) > 0:
+                    self.orientations = self.metadata["orientations"]
                 else:
                     self.orientations = None
 
-                if 'links' in self.metadata:
-                    meta_links = self.metadata['links']
+                if "links" in self.metadata:
+                    meta_links = self.metadata["links"]
 
         elif os.path.isfile(bbox_json):
-            with open(bbox_json, 'r') as bbox_file:
+            with open(bbox_json, "r") as bbox_file:
                 bbox_data = json.load(bbox_file)
-                bbox_max = np.array(bbox_data['max'])
-                bbox_min = np.array(bbox_data['min'])
+                bbox_max = np.array(bbox_data["max"])
+                bbox_min = np.array(bbox_data["min"])
                 bbox_size = bbox_max - bbox_min
                 base_link_offset = (bbox_min + bbox_max) / 2.0
         else:
@@ -288,8 +277,7 @@ class URDFObject(StatefulObject):
                 if avg_obj_dims is None:
                     scale = np.ones(3)
                 else:
-                    spec_vol = avg_obj_dims['size'][0] * \
-                        avg_obj_dims['size'][1] * avg_obj_dims['size'][2]
+                    spec_vol = avg_obj_dims["size"][0] * avg_obj_dims["size"][1] * avg_obj_dims["size"][2]
                     cur_vol = bbox_size[0] * bbox_size[1] * bbox_size[2]
                     volume_ratio = spec_vol / cur_vol
                     size_ratio = np.cbrt(volume_ratio)
@@ -338,31 +326,30 @@ class URDFObject(StatefulObject):
 
     def compute_object_pose(self):
         if self.connecting_joint is not None:
-            joint_type = self.connecting_joint.attrib['type']
-            joint_xyz = np.array(
-                [float(val) for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
-            if 'rpy' in self.connecting_joint.find("origin").attrib:
+            joint_type = self.connecting_joint.attrib["type"]
+            joint_xyz = np.array([float(val) for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
+            if "rpy" in self.connecting_joint.find("origin").attrib:
                 joint_rpy = np.array(
-                    [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")])
+                    [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")]
+                )
             else:
-                joint_rpy = np.array([0., 0., 0.])
+                joint_rpy = np.array([0.0, 0.0, 0.0])
         else:
-            joint_type = 'floating'
+            joint_type = "floating"
             if self.initial_pos is not None:
                 joint_xyz = self.initial_pos
             else:
-                joint_xyz = np.array([0., 0., 0.])
+                joint_xyz = np.array([0.0, 0.0, 0.0])
             if self.initial_orn is not None:
                 joint_rpy = self.initial_orn
             else:
-                joint_rpy = np.array([0., 0., 0.])
+                joint_rpy = np.array([0.0, 0.0, 0.0])
 
         # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
         # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
         x, y, z = self.scaled_bbxc_in_blf
         roll, pitch, yaw = joint_rpy
-        x, y, z = rotate_vector_3d(
-            self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
+        x, y, z = rotate_vector_3d(self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
         joint_xyz += np.array([x, y, z])
 
         # We save the transformation of the joint to be used when we load the
@@ -381,32 +368,26 @@ class URDFObject(StatefulObject):
         if self.merge_fixed_links:
             return
 
-        heights_file = os.path.join(
-            self.model_path, 'misc', 'heights_per_link.json')
+        heights_file = os.path.join(self.model_path, "misc", "heights_per_link.json")
         if not os.path.isfile(heights_file):
             return
 
-        with open(heights_file, 'r') as f:
+        with open(heights_file, "r") as f:
             heights = json.load(f)
 
         original_object_tree = ET.parse(self.filename)
         sub_urdfs = [ET.parse(urdf_path) for urdf_path in self.urdf_paths]
         for predicate in heights:
-            height_maps_dir = os.path.join(
-                self.model_path,
-                'misc', 'height_maps_per_link', '{}'.format(predicate))
+            height_maps_dir = os.path.join(self.model_path, "misc", "height_maps_per_link", "{}".format(predicate))
 
             height_maps = {}
             for link_name in heights[predicate]:
                 link_dir = os.path.join(height_maps_dir, link_name)
 
                 # Get collision mesh of the link in the original urdf
-                link = original_object_tree.find(
-                    ".//link[@name='{}']".format(link_name))
-                link_col_mesh = link.find('collision/geometry/mesh')
-                col_mesh_path = os.path.join(
-                    self.model_path,
-                    link_col_mesh.attrib['filename'])
+                link = original_object_tree.find(".//link[@name='{}']".format(link_name))
+                link_col_mesh = link.find("collision/geometry/mesh")
+                col_mesh_path = os.path.join(self.model_path, link_col_mesh.attrib["filename"])
 
                 # Try to find the body_id (after splitting) and the new link name (after renaming)
                 # by matching the collision mesh file path
@@ -414,12 +395,12 @@ class URDFObject(StatefulObject):
                 new_body_id = None
                 assert len(sub_urdfs) == len(self.body_ids)
                 for sub_urdf, body_id in zip(sub_urdfs, self.body_ids):
-                    for link in sub_urdf.findall('link'):
-                        link_col_mesh = link.find('collision/geometry/mesh')
+                    for link in sub_urdf.findall("link"):
+                        link_col_mesh = link.find("collision/geometry/mesh")
                         if link_col_mesh is None:
                             continue
-                        if link_col_mesh.attrib['filename'] == col_mesh_path:
-                            new_link = link.attrib['name']
+                        if link_col_mesh.attrib["filename"] == col_mesh_path:
+                            new_link = link.attrib["name"]
                             new_body_id = body_id
                             break
                     if new_link is not None:
@@ -431,19 +412,17 @@ class URDFObject(StatefulObject):
                 height_maps[(new_body_id, new_link_id)] = []
 
                 for i, z_value in enumerate(heights[predicate][link_name]):
-                    img_fname = os.path.join(
-                        link_dir, link_dir, '{}.png'.format(i))
+                    img_fname = os.path.join(link_dir, link_dir, "{}.png".format(i))
                     xy_map = cv2.imread(img_fname, 0)
-                    height_maps[(new_body_id, new_link_id)].append(
-                        (z_value, xy_map))
+                    height_maps[(new_body_id, new_link_id)].append((z_value, xy_map))
             self.supporting_surfaces[predicate] = height_maps
 
     def sample_orientation(self):
         if self.orientations is None:
-            raise ValueError('No orientation probabilities set')
+            raise ValueError("No orientation probabilities set")
         indices = list(range(len(self.orientations)))
-        orientations = [np.array(o['rotation']) for o in self.orientations]
-        probabilities = [o['prob'] for o in self.orientations]
+        orientations = [np.array(o["rotation"]) for o in self.orientations]
+        probabilities = [o["prob"] for o in self.orientations]
         probabilities = np.array(probabilities) / np.sum(probabilities)
         chosen_orientation_idx = np.random.choice(indices, p=probabilities)
         chosen_orientation = orientations[chosen_orientation_idx]
@@ -456,12 +435,14 @@ class URDFObject(StatefulObject):
 
         # Randomize yaw from -pi to pi
         rot_num = np.random.uniform(-1, 1)
-        rot_matrix = np.array([
-            [math.cos(math.pi*rot_num), -math.sin(math.pi*rot_num), 0.0],
-            [math.sin(math.pi*rot_num), math.cos(math.pi*rot_num), 0.0],
-            [0.0, 0.0, 1.0]])
-        rotated_quat = quat_from_matrix(
-            np.dot(rot_matrix, matrix_from_quat(chosen_orientation)))
+        rot_matrix = np.array(
+            [
+                [math.cos(math.pi * rot_num), -math.sin(math.pi * rot_num), 0.0],
+                [math.sin(math.pi * rot_num), math.cos(math.pi * rot_num), 0.0],
+                [0.0, 0.0, 1.0],
+            ]
+        )
+        rotated_quat = quat_from_matrix(np.dot(rot_matrix, matrix_from_quat(chosen_orientation)))
         return rotated_quat
 
     def get_prefixed_joint_name(self, name):
@@ -475,45 +456,41 @@ class URDFObject(StatefulObject):
         base_link_name = get_base_link_name(self.object_tree)
 
         # Change the links of the added object to adapt to the given name
-        for link_emb in self.object_tree.iter('link'):
+        for link_emb in self.object_tree.iter("link"):
             # If the original urdf already contains world link, do not rename
-            if link_emb.attrib['name'] == 'world':
+            if link_emb.attrib["name"] == "world":
                 pass
-            elif link_emb.attrib['name'] == base_link_name:
+            elif link_emb.attrib["name"] == base_link_name:
                 # The base_link get renamed as the link tag indicates
                 # Just change the name of the base link in the embedded urdf
-                link_emb.attrib['name'] = self.name
+                link_emb.attrib["name"] = self.name
             else:
                 # The other links get also renamed to add the name of the link tag as prefix
                 # This allows us to load several instances of the same object
-                link_emb.attrib['name'] = self.name + \
-                    "_" + link_emb.attrib['name']
+                link_emb.attrib["name"] = self.name + "_" + link_emb.attrib["name"]
 
         # Change the joints of the added object to adapt them to the given name
-        for joint_emb in self.object_tree.iter('joint'):
+        for joint_emb in self.object_tree.iter("joint"):
             # We change the joint name
-            joint_emb.attrib["name"] = self.get_prefixed_joint_name(
-                joint_emb.attrib["name"])
+            joint_emb.attrib["name"] = self.get_prefixed_joint_name(joint_emb.attrib["name"])
             # We change the child link names
-            for child_emb in joint_emb.findall('child'):
+            for child_emb in joint_emb.findall("child"):
                 # If the original urdf already contains world link, do not rename
-                if child_emb.attrib['link'] == 'world':
+                if child_emb.attrib["link"] == "world":
                     pass
-                elif child_emb.attrib['link'] == base_link_name:
-                    child_emb.attrib['link'] = self.name
+                elif child_emb.attrib["link"] == base_link_name:
+                    child_emb.attrib["link"] = self.name
                 else:
-                    child_emb.attrib['link'] = self.name + \
-                        "_" + child_emb.attrib['link']
+                    child_emb.attrib["link"] = self.name + "_" + child_emb.attrib["link"]
             # and the parent link names
-            for parent_emb in joint_emb.findall('parent'):
+            for parent_emb in joint_emb.findall("parent"):
                 # If the original urdf already contains world link, do not rename
-                if parent_emb.attrib['link'] == 'world':
+                if parent_emb.attrib["link"] == "world":
                     pass
-                elif parent_emb.attrib['link'] == base_link_name:
-                    parent_emb.attrib['link'] = self.name
+                elif parent_emb.attrib["link"] == base_link_name:
+                    parent_emb.attrib["link"] = self.name
                 else:
-                    parent_emb.attrib['link'] = self.name + \
-                        "_" + parent_emb.attrib['link']
+                    parent_emb.attrib["link"] = self.name + "_" + parent_emb.attrib["link"]
 
     def scale_object(self):
         """
@@ -538,92 +515,75 @@ class URDFObject(StatefulObject):
                     scale_in_parent_lf = scales_in_lf[parent_link_name]
                     # The location of the joint frame is scaled using the scale in the parent frame
                     for origin in joint.iter("origin"):
-                        current_origin_xyz = np.array(
-                            [float(val) for val in origin.attrib["xyz"].split(" ")])
-                        new_origin_xyz = np.multiply(
-                            current_origin_xyz, scale_in_parent_lf)
-                        new_origin_xyz = np.array(
-                            [round_up(val, 10) for val in new_origin_xyz])
-                        origin.attrib['xyz'] = ' '.join(
-                            map(str, new_origin_xyz))
+                        current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
+                        new_origin_xyz = np.multiply(current_origin_xyz, scale_in_parent_lf)
+                        new_origin_xyz = np.array([round_up(val, 10) for val in new_origin_xyz])
+                        origin.attrib["xyz"] = " ".join(map(str, new_origin_xyz))
 
                     # scale the prismatic joint
-                    if joint.attrib['type'] == 'prismatic':
-                        limits = joint.findall('limit')
+                    if joint.attrib["type"] == "prismatic":
+                        limits = joint.findall("limit")
                         assert len(limits) == 1
                         limit = limits[0]
-                        axes = joint.findall('axis')
+                        axes = joint.findall("axis")
                         assert len(axes) == 1
                         axis = axes[0]
-                        axis_np = np.array([
-                            float(elem) for elem in axis.attrib['xyz'].split()])
+                        axis_np = np.array([float(elem) for elem in axis.attrib["xyz"].split()])
                         major_axis = np.argmax(np.abs(axis_np))
                         # assume the prismatic joint is roughly axis-aligned
-                        limit.attrib['upper'] = str(
-                            float(limit.attrib['upper']) *
-                            scale_in_parent_lf[major_axis])
-                        limit.attrib['lower'] = str(
-                            float(limit.attrib['lower']) *
-                            scale_in_parent_lf[major_axis])
+                        limit.attrib["upper"] = str(float(limit.attrib["upper"]) * scale_in_parent_lf[major_axis])
+                        limit.attrib["lower"] = str(float(limit.attrib["lower"]) * scale_in_parent_lf[major_axis])
 
                     # Get the rotation of the joint frame and apply it to the scale
                     if "rpy" in joint.keys():
-                        joint_frame_rot = np.array(
-                            [float(val) for val in joint.attrib['rpy'].split(" ")])
+                        joint_frame_rot = np.array([float(val) for val in joint.attrib["rpy"].split(" ")])
                         # Rotate the scale
-                        scale_in_child_lf = rotate_vector_3d(
-                            scale_in_parent_lf, *joint_frame_rot, cck=True)
+                        scale_in_child_lf = rotate_vector_3d(scale_in_parent_lf, *joint_frame_rot, cck=True)
                         scale_in_child_lf = np.absolute(scale_in_child_lf)
                     else:
                         scale_in_child_lf = scale_in_parent_lf
 
                     # print("Adding: ", joint.find("child").attrib["link"])
 
-                    scales_in_lf[joint.find("child").attrib["link"]] = \
-                        scale_in_child_lf
+                    scales_in_lf[joint.find("child").attrib["link"]] = scale_in_child_lf
 
                     # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
                     for axis in joint.iter("axis"):
-                        current_axis_xyz = np.array(
-                            [float(val) for val in axis.attrib["xyz"].split(" ")])
-                        new_axis_xyz = np.multiply(
-                            current_axis_xyz, scale_in_child_lf)
+                        current_axis_xyz = np.array([float(val) for val in axis.attrib["xyz"].split(" ")])
+                        new_axis_xyz = np.multiply(current_axis_xyz, scale_in_child_lf)
                         new_axis_xyz /= np.linalg.norm(new_axis_xyz)
-                        new_axis_xyz = np.array(
-                            [round_up(val, 10) for val in new_axis_xyz])
-                        axis.attrib['xyz'] = ' '.join(map(str, new_axis_xyz))
+                        new_axis_xyz = np.array([round_up(val, 10) for val in new_axis_xyz])
+                        axis.attrib["xyz"] = " ".join(map(str, new_axis_xyz))
 
                     # Iterate again the for loop since we added new elements to the dictionary
                     all_processed = False
 
-        all_links = self.object_tree.findall('link')
+        all_links = self.object_tree.findall("link")
         # compute dynamics properties
         if self.overwrite_inertial and self.category not in ["walls", "floors", "ceilings"]:
             all_links_trimesh = []
             total_volume = 0.0
             for link in all_links:
-                meshes = link.findall('collision/geometry/mesh')
+                meshes = link.findall("collision/geometry/mesh")
                 if len(meshes) == 0:
                     all_links_trimesh.append(None)
                     continue
                 # assume one collision mesh per link
-                assert len(meshes) == 1, (self.filename, link.attrib['name'])
+                assert len(meshes) == 1, (self.filename, link.attrib["name"])
                 # check collision mesh path
-                collision_mesh_path = os.path.join(
-                    meshes[0].attrib['filename'])
-                trimesh_obj = trimesh.load(
-                    file_obj=collision_mesh_path, force='mesh')
+                collision_mesh_path = os.path.join(meshes[0].attrib["filename"])
+                trimesh_obj = trimesh.load(file_obj=collision_mesh_path, force="mesh")
                 all_links_trimesh.append(trimesh_obj)
                 volume = trimesh_obj.volume
                 # a hack to artificially increase the density of the lamp base
-                if link.attrib['name'] == base_link_name:
-                    if self.category in ['lamp']:
+                if link.attrib["name"] == base_link_name:
+                    if self.category in ["lamp"]:
                         volume *= 10.0
                 total_volume += volume
 
             # avg L x W x H and Weight is given for this object category
             if self.avg_obj_dims is not None:
-                avg_density = self.avg_obj_dims['density']
+                avg_density = self.avg_obj_dims["density"]
 
             # otherwise, use the median density across all existing object categories
             else:
@@ -631,9 +591,7 @@ class URDFObject(StatefulObject):
 
             # Scale the mass based on bounding box size
             # TODO: how to scale moment of inertia?
-            total_mass = avg_density * \
-                self.bounding_box[0] * \
-                self.bounding_box[1] * self.bounding_box[2]
+            total_mass = avg_density * self.bounding_box[0] * self.bounding_box[1] * self.bounding_box[2]
             # print('total_mass', total_mass)
 
             density = total_mass / total_volume
@@ -649,38 +607,38 @@ class URDFObject(StatefulObject):
             if self.overwrite_inertial and self.category not in ["walls", "floors", "ceilings"]:
                 link_trimesh = all_links_trimesh[i]
                 # assign dynamics properties
-                inertials = link.findall('inertial')
+                inertials = link.findall("inertial")
                 if len(inertials) == 0:
-                    inertial = ET.SubElement(link, 'inertial')
+                    inertial = ET.SubElement(link, "inertial")
                 else:
                     assert len(inertials) == 1
                     inertial = inertials[0]
 
-                masses = inertial.findall('mass')
+                masses = inertial.findall("mass")
                 if len(masses) == 0:
-                    mass = ET.SubElement(inertial, 'mass')
+                    mass = ET.SubElement(inertial, "mass")
                 else:
                     assert len(masses) == 1
                     mass = masses[0]
 
-                inertias = inertial.findall('inertia')
+                inertias = inertial.findall("inertia")
                 if len(inertias) == 0:
-                    inertia = ET.SubElement(inertial, 'inertia')
+                    inertia = ET.SubElement(inertial, "inertia")
                 else:
                     assert len(inertias) == 1
                     inertia = inertias[0]
 
-                origins = inertial.findall('origin')
+                origins = inertial.findall("origin")
                 if len(origins) == 0:
-                    origin = ET.SubElement(inertial, 'origin')
+                    origin = ET.SubElement(inertial, "origin")
                 else:
                     assert len(origins) == 1
                     origin = origins[0]
 
                 if link_trimesh is not None:
                     # a hack to artificially increase the density of the lamp base
-                    if link.attrib['name'] == base_link_name:
-                        if self.category in ['lamp']:
+                    if link.attrib["name"] == base_link_name:
+                        if self.category in ["lamp"]:
                             link_trimesh.density *= 10.0
 
                     if link_trimesh.is_watertight:
@@ -692,60 +650,53 @@ class URDFObject(StatefulObject):
                     # Here, it has the value BEFORE scaling
                     # TODO: this is not 100% correct. This assumes collision
                     # mesh has zero origin, which is not always true.
-                    origin.attrib['xyz'] = ' '.join(map(str, center))
-                    origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
+                    origin.attrib["xyz"] = " ".join(map(str, center))
+                    origin.attrib["rpy"] = " ".join(map(str, [0.0, 0.0, 0.0]))
 
-                    mass.attrib['value'] = str(round_up(link_trimesh.mass, 10))
+                    mass.attrib["value"] = str(round_up(link_trimesh.mass, 10))
                     moment_of_inertia = link_trimesh.moment_inertia
-                    inertia.attrib['ixx'] = str(moment_of_inertia[0][0])
-                    inertia.attrib['ixy'] = str(moment_of_inertia[0][1])
-                    inertia.attrib['ixz'] = str(moment_of_inertia[0][2])
-                    inertia.attrib['iyy'] = str(moment_of_inertia[1][1])
-                    inertia.attrib['iyz'] = str(moment_of_inertia[1][2])
-                    inertia.attrib['izz'] = str(moment_of_inertia[2][2])
+                    inertia.attrib["ixx"] = str(moment_of_inertia[0][0])
+                    inertia.attrib["ixy"] = str(moment_of_inertia[0][1])
+                    inertia.attrib["ixz"] = str(moment_of_inertia[0][2])
+                    inertia.attrib["iyy"] = str(moment_of_inertia[1][1])
+                    inertia.attrib["iyz"] = str(moment_of_inertia[1][2])
+                    inertia.attrib["izz"] = str(moment_of_inertia[2][2])
                 else:
                     # empty link that does not have any mesh
-                    origin.attrib['xyz'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
-                    origin.attrib['rpy'] = ' '.join(map(str, [0.0, 0.0, 0.0]))
-                    mass.attrib['value'] = str(0.0)
-                    inertia.attrib['ixx'] = str(0.0)
-                    inertia.attrib['ixy'] = str(0.0)
-                    inertia.attrib['ixz'] = str(0.0)
-                    inertia.attrib['iyy'] = str(0.0)
-                    inertia.attrib['iyz'] = str(0.0)
-                    inertia.attrib['izz'] = str(0.0)
+                    origin.attrib["xyz"] = " ".join(map(str, [0.0, 0.0, 0.0]))
+                    origin.attrib["rpy"] = " ".join(map(str, [0.0, 0.0, 0.0]))
+                    mass.attrib["value"] = str(0.0)
+                    inertia.attrib["ixx"] = str(0.0)
+                    inertia.attrib["ixy"] = str(0.0)
+                    inertia.attrib["ixz"] = str(0.0)
+                    inertia.attrib["iyy"] = str(0.0)
+                    inertia.attrib["iyz"] = str(0.0)
+                    inertia.attrib["izz"] = str(0.0)
 
             scale_in_lf = scales_in_lf[link.attrib["name"]]
             # Apply the scale to all mesh elements within the link (original scale and origin)
             for mesh in link.iter("mesh"):
                 if "scale" in mesh.attrib:
-                    mesh_scale = np.array(
-                        [float(val) for val in mesh.attrib["scale"].split(" ")])
+                    mesh_scale = np.array([float(val) for val in mesh.attrib["scale"].split(" ")])
                     new_scale = np.multiply(mesh_scale, scale_in_lf)
-                    new_scale = np.array([round_up(val, 10)
-                                          for val in new_scale])
-                    mesh.attrib['scale'] = ' '.join(map(str, new_scale))
+                    new_scale = np.array([round_up(val, 10) for val in new_scale])
+                    mesh.attrib["scale"] = " ".join(map(str, new_scale))
                 else:
-                    new_scale = np.array([round_up(val, 10)
-                                          for val in scale_in_lf])
-                    mesh.set('scale', ' '.join(map(str, new_scale)))
+                    new_scale = np.array([round_up(val, 10) for val in scale_in_lf])
+                    mesh.set("scale", " ".join(map(str, new_scale)))
 
             for box in link.iter("box"):
                 if "size" in box.attrib:
-                    box_scale = np.array(
-                        [float(val) for val in box.attrib["size"].split(" ")])
+                    box_scale = np.array([float(val) for val in box.attrib["size"].split(" ")])
                     new_scale = np.multiply(box_scale, scale_in_lf)
-                    new_scale = np.array([round_up(val, 10)
-                                          for val in new_scale])
-                    box.attrib['size'] = ' '.join(map(str, new_scale))
+                    new_scale = np.array([round_up(val, 10) for val in new_scale])
+                    box.attrib["size"] = " ".join(map(str, new_scale))
 
             for origin in link.iter("origin"):
-                origin_xyz = np.array(
-                    [float(val) for val in origin.attrib["xyz"].split(" ")])
+                origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
                 new_origin_xyz = np.multiply(origin_xyz, scale_in_lf)
-                new_origin_xyz = np.array(
-                    [round_up(val, 10) for val in new_origin_xyz])
-                origin.attrib['xyz'] = ' '.join(map(str, new_origin_xyz))
+                new_origin_xyz = np.array([round_up(val, 10) for val in new_origin_xyz])
+                origin.attrib["xyz"] = " ".join(map(str, new_origin_xyz))
 
     def remove_floating_joints(self, folder=None):
         """
@@ -754,23 +705,21 @@ class URDFObject(StatefulObject):
         if folder is None:
             timestr = time.strftime("%Y%m%d-%H%M%S")
             folder = os.path.join(
-                igibson.ig_dataset_path, "scene_instances",
-                '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
+                igibson.ig_dataset_path,
+                "scene_instances",
+                "{}_{}_{}".format(timestr, random.getrandbits(64), os.getpid()),
+            )
             os.makedirs(folder, exist_ok=True)
 
         # Deal with floating joints inside the embedded urdf
         file_prefix = os.path.join(folder, self.name)
-        urdfs_no_floating = \
-            save_urdfs_without_floating_joints(self.object_tree,
-                                               self.main_body_is_fixed,
-                                               file_prefix)
+        urdfs_no_floating = save_urdfs_without_floating_joints(self.object_tree, self.main_body_is_fixed, file_prefix)
 
         # append a new tuple of file name of the instantiated embedded urdf
         # and the transformation (!= identity if its connection was floating)
         for i, urdf in enumerate(urdfs_no_floating):
             self.urdf_paths.append(urdfs_no_floating[urdf][0])
-            transformation = np.dot(
-                self.joint_frame, urdfs_no_floating[urdf][1])
+            transformation = np.dot(self.joint_frame, urdfs_no_floating[urdf][1])
             self.poses.append(transformation)
             self.is_fixed.append(urdfs_no_floating[urdf][2])
             if urdfs_no_floating[urdf][3]:
@@ -809,8 +758,7 @@ class URDFObject(StatefulObject):
                 break
 
         if self.texture_randomization and self.texture_procedural_generation:
-            raise ValueError(
-                'Cannot support both randomized and procedural texture')
+            raise ValueError("Cannot support both randomized and procedural texture")
 
         if self.texture_randomization:
             self.prepare_randomized_texture()
@@ -827,12 +775,12 @@ class URDFObject(StatefulObject):
 
             links = sub_urdf_tree.findall(".//link")
             for link in links:
-                name = link.attrib['name']
+                name = link.attrib["name"]
                 if name in self.link_name_to_vm:
                     raise ValueError("link name collision")
                 self.link_name_to_vm[name] = []
-                for visual_mesh in link.findall('visual/geometry/mesh'):
-                    self.link_name_to_vm[name].append(visual_mesh.attrib['filename'])
+                for visual_mesh in link.findall("visual/geometry/mesh"):
+                    self.link_name_to_vm[name].append(visual_mesh.attrib["filename"])
 
     def randomize_texture(self):
         """
@@ -858,15 +806,13 @@ class URDFObject(StatefulObject):
             for j in np.arange(-1, p.getNumJoints(body_id)):
                 # base_link
                 if j == -1:
-                    link_name = p.getBodyInfo(body_id)[0].decode('UTF-8')
+                    link_name = p.getBodyInfo(body_id)[0].decode("UTF-8")
                 else:
-                    link_name = p.getJointInfo(body_id, j)[12].decode('UTF-8')
-                link = sub_urdf_tree.find(
-                    ".//link[@name='{}']".format(link_name))
+                    link_name = p.getJointInfo(body_id, j)[12].decode("UTF-8")
+                link = sub_urdf_tree.find(".//link[@name='{}']".format(link_name))
                 link_materials = []
-                for visual_mesh in link.findall('visual/geometry/mesh'):
-                    link_materials.append(
-                        self.visual_mesh_to_material[i][visual_mesh.attrib['filename']])
+                for visual_mesh in link.findall("visual/geometry/mesh"):
+                    link_materials.append(self.visual_mesh_to_material[i][visual_mesh.attrib["filename"]])
                 link_frictions = []
                 for link_material in link_materials:
                     if link_material.random_class is None:
@@ -874,8 +820,7 @@ class URDFObject(StatefulObject):
                     elif link_material.random_class not in self.material_to_friction:
                         friction = 0.5
                     else:
-                        friction = self.material_to_friction.get(
-                            link_material.random_class, 0.5)
+                        friction = self.material_to_friction.get(link_material.random_class, 0.5)
                     link_frictions.append(friction)
                 link_friction = np.mean(link_frictions)
                 p.changeDynamics(body_id, j, lateralFriction=link_friction)
@@ -886,13 +831,12 @@ class URDFObject(StatefulObject):
         """
         if self.category in ["walls", "floors", "ceilings"]:
             material_groups_file = os.path.join(
-                self.model_path, 'misc', '{}_material_groups.json'.format(self.category))
+                self.model_path, "misc", "{}_material_groups.json".format(self.category)
+            )
         else:
-            material_groups_file = os.path.join(
-                self.model_path, 'misc', 'material_groups.json')
+            material_groups_file = os.path.join(self.model_path, "misc", "material_groups.json")
 
-        assert os.path.isfile(material_groups_file), \
-            'cannot find material group: {}'.format(material_groups_file)
+        assert os.path.isfile(material_groups_file), "cannot find material group: {}".format(material_groups_file)
         with open(material_groups_file) as f:
             material_groups = json.load(f)
 
@@ -900,14 +844,12 @@ class URDFObject(StatefulObject):
         all_material_categories = material_groups[0]
         all_materials = {}
         for key in all_material_categories:
-            all_materials[int(key)] = \
-                RandomizedMaterial(all_material_categories[key])
+            all_materials[int(key)] = RandomizedMaterial(all_material_categories[key])
 
         # make visual mesh file path absolute
         visual_mesh_to_idx = material_groups[1]
         for old_path in list(visual_mesh_to_idx.keys()):
-            new_path = os.path.join(
-                self.model_path, 'shape', 'visual', old_path)
+            new_path = os.path.join(self.model_path, "shape", "visual", old_path)
             visual_mesh_to_idx[new_path] = visual_mesh_to_idx[old_path]
             del visual_mesh_to_idx[old_path]
 
@@ -917,13 +859,13 @@ class URDFObject(StatefulObject):
             for visual_mesh_path in visual_mesh_to_idx:
                 # check if this visual object belongs to this URDF
                 if sub_urdf_tree.find(".//mesh[@filename='{}']".format(visual_mesh_path)) is not None:
-                    self.visual_mesh_to_material[i][visual_mesh_path] = \
-                        all_materials[visual_mesh_to_idx[visual_mesh_path]]
+                    self.visual_mesh_to_material[i][visual_mesh_path] = all_materials[
+                        visual_mesh_to_idx[visual_mesh_path]
+                    ]
 
         self.randomized_materials = list(all_materials.values())
 
-        friction_json = os.path.join(
-            igibson.ig_dataset_path, 'materials', 'material_friction.json')
+        friction_json = os.path.join(igibson.ig_dataset_path, "materials", "material_friction.json")
         if os.path.isfile(friction_json):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)
@@ -933,15 +875,13 @@ class URDFObject(StatefulObject):
         Set up mapping from visual meshes to procedural materials
         Assign all visual meshes to the same ProceduralMaterial
         """
-        procedural_material = ProceduralMaterial(
-            material_folder=os.path.join(self.model_path, 'material'))
+        procedural_material = ProceduralMaterial(material_folder=os.path.join(self.model_path, "material"))
 
         for i, urdf_path in enumerate(self.urdf_paths):
             sub_urdf_tree = ET.parse(urdf_path)
-            for visual_mesh in sub_urdf_tree.findall('link/visual/geometry/mesh'):
-                filename = visual_mesh.attrib['filename']
-                self.visual_mesh_to_material[i][filename] = \
-                    procedural_material
+            for visual_mesh in sub_urdf_tree.findall("link/visual/geometry/mesh"):
+                filename = visual_mesh.attrib["filename"]
+                self.visual_mesh_to_material[i][filename] = procedural_material
 
         for state in self.states:
             if issubclass(state, TextureChangeStateMixin):
@@ -964,31 +904,25 @@ class URDFObject(StatefulObject):
         for idx in range(len(self.urdf_paths)):
             logging.info("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]
-            body_id = p.loadURDF(self.urdf_paths[idx],
-                                 flags=flags,
-                                 useFixedBase=is_fixed)
+            body_id = p.loadURDF(self.urdf_paths[idx], flags=flags, useFixedBase=is_fixed)
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Moving URDF to (pos,ori): " +
-                         np.array_str(pos) + ", " + np.array_str(orn))
+            logging.info("Moving URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-            pos, orn = p.multiplyTransforms(
-                pos, orn, inertial_pos, inertial_orn)
+            pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
             p.resetBasePositionAndOrientation(body_id, pos, orn)
-            p.changeDynamics(
-                body_id, -1,
-                activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
+            p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
 
             for j in get_joints(body_id):
                 info = get_joint_info(body_id, j)
                 jointType = info.jointType
                 if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
                     p.setJointMotorControl2(
-                        body_id, j, p.VELOCITY_CONTROL,
-                        targetVelocity=0.0, force=self.joint_friction)
+                        body_id, j, p.VELOCITY_CONTROL, targetVelocity=0.0, force=self.joint_friction
+                    )
 
                     # Only need to restore revolute and prismatic joints
                     if self.joint_positions:
@@ -1008,10 +942,8 @@ class URDFObject(StatefulObject):
         """
         for body_id in self.body_ids:
             for joint_id in range(p.getNumJoints(body_id)):
-                p.changeDynamics(body_id, joint_id,
-                                 activationState=p.ACTIVATION_STATE_WAKE_UP)
-            p.changeDynamics(body_id, -1,
-                             activationState=p.ACTIVATION_STATE_WAKE_UP)
+                p.changeDynamics(body_id, joint_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
+            p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
 
     def reset(self):
         """
@@ -1022,12 +954,10 @@ class URDFObject(StatefulObject):
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Resetting URDF to (pos,ori): " +
-                         np.array_str(pos) + ", " + np.array_str(orn))
+            logging.info("Resetting URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-            pos, orn = p.multiplyTransforms(
-                pos, orn, inertial_pos, inertial_orn)
+            pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
             p.resetBasePositionAndOrientation(body_id, pos, orn)
 
             # reset joint position to 0.0
@@ -1035,11 +965,10 @@ class URDFObject(StatefulObject):
                 info = p.getJointInfo(body_id, j)
                 jointType = info[2]
                 if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                    p.resetJointState(
-                        body_id, j, targetValue=0.0, targetVelocity=0.0)
+                    p.resetJointState(body_id, j, targetValue=0.0, targetVelocity=0.0)
                     p.setJointMotorControl2(
-                        body_id, j, p.VELOCITY_CONTROL,
-                        targetVelocity=0.0, force=self.joint_friction)
+                        body_id, j, p.VELOCITY_CONTROL, targetVelocity=0.0, force=self.joint_friction
+                    )
 
     def get_position(self):
         """
@@ -1085,10 +1014,8 @@ class URDFObject(StatefulObject):
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
         inertial_orn = dynamics_info[4]
-        inv_inertial_pos, inv_inertial_orn =\
-            p.invertTransform(inertial_pos, inertial_orn)
-        pos, orn = p.multiplyTransforms(
-            pos, orn, inv_inertial_pos, inv_inertial_orn)
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
         return pos, orn
 
     def set_position(self, pos):
@@ -1099,7 +1026,7 @@ class URDFObject(StatefulObject):
         """
         body_id = self.get_body_id()
         if self.main_body_is_fixed:
-            logging.warning('cannot set_position for fixed objects')
+            logging.warning("cannot set_position for fixed objects")
             return
 
         _, old_orn = p.getBasePositionAndOrientation(body_id)
@@ -1114,7 +1041,7 @@ class URDFObject(StatefulObject):
         """
         body_id = self.get_body_id()
         if self.main_body_is_fixed:
-            logging.warning('cannot set_orientation for fixed objects')
+            logging.warning("cannot set_orientation for fixed objects")
             return
 
         old_pos, _ = p.getBasePositionAndOrientation(body_id)
@@ -1129,8 +1056,7 @@ class URDFObject(StatefulObject):
         """
         body_id = self.get_body_id()
         if self.main_body_is_fixed:
-            logging.warning(
-                'cannot set_position_orientation for fixed objects')
+            logging.warning("cannot set_position_orientation for fixed objects")
             return
 
         p.resetBasePositionAndOrientation(body_id, pos, orn)
@@ -1139,8 +1065,7 @@ class URDFObject(StatefulObject):
     def set_base_link_position_orientation(self, pos, orn):
         body_id = self.get_body_id()
         if self.main_body_is_fixed:
-            logging.warning(
-                'cannot set_base_link_position_orientation for fixed objects')
+            logging.warning("cannot set_base_link_position_orientation for fixed objects")
             return
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
@@ -1160,7 +1085,7 @@ class URDFObject(StatefulObject):
         :return: None.
         """
         for meta_link_name, link_info in meta_links.items():
-            if link_info['geometry'] is not None:
+            if link_info["geometry"] is not None:
                 # Objects with geometry actually need to be added into the URDF for collision purposes.
                 # These objects cannot be imported with fixed links.
                 self.merge_fixed_links = False
@@ -1171,5 +1096,5 @@ class URDFObject(StatefulObject):
 
     # TODO: remove after split floors
     def set_room_floor(self, room_floor):
-        assert self.category == 'floors'
+        assert self.category == "floors"
         self.room_floor = room_floor

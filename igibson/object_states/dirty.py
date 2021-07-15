@@ -13,6 +13,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
     This class represents common logic between particle-based dirtyness states like
     dusty and stained. It should not be directly instantiated - use subclasses instead.
     """
+
     @staticmethod
     def get_dependencies():
         return AbsoluteObjectState.get_dependencies() + [AABB]
@@ -29,10 +30,8 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         self.simulator.import_particle_system(self.dirt)
 
     def _get_value(self):
-        clean_threshold = FLOOR_CLEAN_THRESHOLD if \
-            self.obj.category == 'floors' else CLEAN_THRESHOLD
-        max_particles_for_clean = (
-            self.dirt.get_num_particles_activated_at_any_time() * clean_threshold)
+        clean_threshold = FLOOR_CLEAN_THRESHOLD if self.obj.category == "floors" else CLEAN_THRESHOLD
+        max_particles_for_clean = self.dirt.get_num_particles_activated_at_any_time() * clean_threshold
         return self.dirt.get_num_active() > max_particles_for_clean
 
     def _set_value(self, new_value):

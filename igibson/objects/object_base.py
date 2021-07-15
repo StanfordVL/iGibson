@@ -1,6 +1,5 @@
 import pybullet as p
-import os
-import igibson
+
 
 class Object(object):
     """
@@ -100,8 +99,7 @@ class Object(object):
         Rotates an object by given euler angles
         """
         e_x, e_y, e_z = p.getEulerFromQuaternion(self.get_orientation())
-        self.set_orientation(p.getQuaternionFromEuler(
-            [e_x + x, e_y + y, e_z + z]))
+        self.set_orientation(p.getQuaternionFromEuler([e_x + x, e_y + y, e_z + z]))
 
     def dump_state(self):
         """Dumps the state of the object other than what's not included in pybullet state."""

@@ -1,6 +1,7 @@
 import os
-import igibson
 import platform
+
+import igibson
 
 
 class MeshRendererSettings(object):
@@ -10,21 +11,18 @@ class MeshRendererSettings(object):
         msaa=False,
         enable_shadow=False,
         enable_pbr=True,
-        env_texture_filename=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
-                                          'photo_studio_01_2k.hdr'),
-        env_texture_filename2=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
-                                           'photo_studio_01_2k.hdr'),
-        env_texture_filename3=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
-                                           'photo_studio_01_2k.hdr'),
-        light_modulation_map_filename='',
+        env_texture_filename=os.path.join(igibson.ig_dataset_path, "scenes", "background", "photo_studio_01_2k.hdr"),
+        env_texture_filename2=os.path.join(igibson.ig_dataset_path, "scenes", "background", "photo_studio_01_2k.hdr"),
+        env_texture_filename3=os.path.join(igibson.ig_dataset_path, "scenes", "background", "photo_studio_01_2k.hdr"),
+        light_modulation_map_filename="",
         optimized=False,
-        skybox_size=20.,
+        skybox_size=20.0,
         light_dimming_factor=1.0,
         fullscreen=False,
         glfw_gl_version=None,
         texture_scale=1.0,
         hide_robot=True,
-        show_glfw_window=False
+        show_glfw_window=False,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
@@ -63,7 +61,7 @@ class MeshRendererSettings(object):
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
         else:
-            if platform.system() == 'Darwin':
+            if platform.system() == "Darwin":
                 self.glfw_gl_version = [4, 1]
             else:
                 self.glfw_gl_version = [4, 5]

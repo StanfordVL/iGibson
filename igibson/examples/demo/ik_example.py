@@ -1,19 +1,25 @@
-from igibson.robots.fetch_robot import Fetch
-from igibson.simulator import Simulator
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.utils.utils import parse_config
-from igibson.render.profiler import Profiler
-
-import pybullet as p
-from igibson.external.pybullet_tools.utils import set_joint_positions, joints_from_names, get_joint_positions, \
-    get_max_limits, get_min_limits, get_sample_fn
-
 import numpy as np
+import pybullet as p
+
 import igibson
+from igibson.external.pybullet_tools.utils import (
+    set_joint_positions,
+    joints_from_names,
+    get_joint_positions,
+    get_max_limits,
+    get_min_limits,
+    get_sample_fn,
+)
+from igibson.render.profiler import Profiler
+from igibson.robots.fetch_robot import Fetch
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
+
 
 def main():
-    config = parse_config(os.path.join(igibson.example_config_path, 'fetch_reaching.yaml'))
-    s = Simulator(mode='gui', physics_timestep=1 / 240.0)
+    config = parse_config(os.path.join(igibson.example_config_path, "fetch_reaching.yaml"))
+    s = Simulator(mode="gui", physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)
     fetch = Fetch(config)
@@ -21,15 +27,19 @@ def main():
 
     robot_id = fetch.robot_ids[0]
 
-    arm_joints = joints_from_names(robot_id, [
-        'torso_lift_joint',
-        'shoulder_pan_joint',
-        'shoulder_lift_joint',
-        'upperarm_roll_joint',
-        'elbow_flex_joint',
-        'forearm_roll_joint',
-        'wrist_flex_joint',
-        'wrist_roll_joint'])
+    arm_joints = joints_from_names(
+        robot_id,
+        [
+            "torso_lift_joint",
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "upperarm_roll_joint",
+            "elbow_flex_joint",
+            "forearm_roll_joint",
+            "wrist_flex_joint",
+            "wrist_roll_joint",
+        ],
+    )
 
     fetch.robot_body.reset_position([0, 0, 0])
     fetch.robot_body.reset_orientation([0, 0, 1, 0])
@@ -58,7 +68,8 @@ def main():
                 upperLimits=max_limits,
                 jointRanges=joint_range,
                 restPoses=rest_position,
-                jointDamping=jd)
+                jointDamping=jd,
+            )
             set_joint_positions(robotid, arm_joints, jointPoses[2:10])
             ls = p.getLinkState(robotid, endEffectorId)
             newPos = ls[4]
@@ -79,31 +90,28 @@ def main():
             threshold = 0.01
             maxIter = 100
             joint_pos = accurateCalculateInverseKinematics(
-                robot_id,
-                fetch.parts['gripper_link'].body_part_index,
-                [x, y, z],
-                threshold,
-                maxIter)[2:10]
+                robot_id, fetch.parts["gripper_link"].body_part_index, [x, y, z], threshold, maxIter
+            )[2:10]
 
             s.step()
             keys = p.getKeyboardEvents()
             for k, v in keys.items():
-                if (k == p.B3G_RIGHT_ARROW and (v & p.KEY_IS_DOWN)):
+                if k == p.B3G_RIGHT_ARROW and (v & p.KEY_IS_DOWN):
                     x += 0.01
-                if (k == p.B3G_LEFT_ARROW and (v & p.KEY_IS_DOWN)):
+                if k == p.B3G_LEFT_ARROW and (v & p.KEY_IS_DOWN):
                     x -= 0.01
-                if (k == p.B3G_UP_ARROW and (v & p.KEY_IS_DOWN)):
+                if k == p.B3G_UP_ARROW and (v & p.KEY_IS_DOWN):
                     y += 0.01
-                if (k == p.B3G_DOWN_ARROW and (v & p.KEY_IS_DOWN)):
+                if k == p.B3G_DOWN_ARROW and (v & p.KEY_IS_DOWN):
                     y -= 0.01
-                if (k == ord('z') and (v & p.KEY_IS_DOWN)):
+                if k == ord("z") and (v & p.KEY_IS_DOWN):
                     z += 0.01
-                if (k == ord('x') and (v & p.KEY_IS_DOWN)):
+                if k == ord("x") and (v & p.KEY_IS_DOWN):
                     z -= 0.01
             p.resetBasePositionAndOrientation(marker, [x, y, z], [0, 0, 0, 1])
 
     s.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

@@ -2,6 +2,7 @@ from collections import namedtuple
 
 import numpy as np
 import pybullet as p
+
 from igibson.object_states.object_state_base import CachingEnabledObjectState
 from igibson.object_states.pose import Pose
 
@@ -40,11 +41,9 @@ def get_equidistant_coordinate_planes(n_planes):
     """
     # Compute the positive directions of the 1st axis of each plane.
     first_axis_angles = np.linspace(0, np.pi / 4, n_planes)
-    first_axes = np.stack([
-        np.cos(first_axis_angles),
-        np.sin(first_axis_angles),
-        np.zeros_like(first_axis_angles)
-    ], axis=1)
+    first_axes = np.stack(
+        [np.cos(first_axis_angles), np.sin(first_axis_angles), np.zeros_like(first_axis_angles)], axis=1
+    )
 
     # Compute the positive directions of the 2nd axes. These axes are
     # orthogonal to both their corresponding first axes and to the Z axis.
@@ -83,7 +82,7 @@ def compute_adjacencies(obj, axes, max_distance):
     # Cast rays repeatedly until the max number of casting is reached
     for i in range(_MAX_ITERATIONS):
         # Find which directions still need ray casting
-        unfinished_directions = (finalized != True)
+        unfinished_directions = finalized != True
         num_directions_to_cast = np.count_nonzero(unfinished_directions)
 
         # If all directions are ready, stop.
@@ -119,8 +118,8 @@ def compute_adjacencies(obj, axes, max_distance):
     # (axis_idx, direction-one-or-zero, hit_idx)
     bodies_by_axis = [
         AxisAdjacencyList(positive_neighbors, negative_neighbors)
-        for positive_neighbors, negative_neighbors in
-        zip(bodies_by_direction[::2], bodies_by_direction[1::2])]
+        for positive_neighbors, negative_neighbors in zip(bodies_by_direction[::2], bodies_by_direction[1::2])
+    ]
     return bodies_by_axis
 
 
@@ -128,6 +127,7 @@ class VerticalAdjacency(CachingEnabledObjectState):
     """State representing the object's vertical adjacencies.
     Value is a AxisAdjacencyList object.
     """
+
     def _compute_value(self):
         # Call the adjacency computation with th Z axis.
         bodies_by_axis = compute_adjacencies(self.obj, np.array([[0, 0, 1]]), _MAX_DISTANCE_VERTICAL)
@@ -136,8 +136,7 @@ class VerticalAdjacency(CachingEnabledObjectState):
         return bodies_by_axis[0]
 
     def _set_value(self, new_value):
-        raise NotImplementedError(
-            "VerticalAdjacency state currently does not support setting.")
+        raise NotImplementedError("VerticalAdjacency state currently does not support setting.")
 
     @staticmethod
     def get_dependencies():
@@ -149,7 +148,6 @@ class VerticalAdjacency(CachingEnabledObjectState):
 
     def load(self, data):
         return
-
 
 
 class HorizontalAdjacency(CachingEnabledObjectState):
@@ -184,8 +182,7 @@ class HorizontalAdjacency(CachingEnabledObjectState):
         return bodies_by_plane
 
     def _set_value(self, new_value):
-        raise NotImplementedError(
-            "HorizontalAdjacency state currently does not support setting.")
+        raise NotImplementedError("HorizontalAdjacency state currently does not support setting.")
 
     @staticmethod
     def get_dependencies():

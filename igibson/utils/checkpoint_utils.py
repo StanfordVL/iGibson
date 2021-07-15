@@ -6,8 +6,7 @@ import pybullet as p
 
 
 def save_checkpoint(simulator, root_directory):
-    bullet_path = os.path.join(
-        root_directory, "%d.bullet" % simulator.frame_count)
+    bullet_path = os.path.join(root_directory, "%d.bullet" % simulator.frame_count)
     json_path = os.path.join(root_directory, "%d.json" % simulator.frame_count)
 
     # Save the simulation state.

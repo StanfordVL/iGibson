@@ -23,20 +23,19 @@ import sys, os
 import igibson
 
 
+project = "iGibson"
+copyright = "Stanford University 2018-2021"
+author = "Bokui Shen*, Fei Xia*, Chengshu Li*, Roberto Martín-Martín*, Linxi Fan, Guanzhi Wang, Shyamal Buch, Claudia DArpino, Sanjana Srivastava, Lyne P. Tchapmi, Micael E. Tchapmi, Kent Vainio, Li Fei-Fei, Silvio Savarese (*Equal Contribution)"
 
-project = 'iGibson'
-copyright = 'Stanford University 2018-2021'
-author = 'Bokui Shen*, Fei Xia*, Chengshu Li*, Roberto Martín-Martín*, Linxi Fan, Guanzhi Wang, Shyamal Buch, Claudia DArpino, Sanjana Srivastava, Lyne P. Tchapmi, Micael E. Tchapmi, Kent Vainio, Li Fei-Fei, Silvio Savarese (*Equal Contribution)'
-
-github_doc_root = 'https://github.com/StanfordVL/iGibson'
+github_doc_root = "https://github.com/StanfordVL/iGibson"
 
 # The short X.Y version
 version = igibson.__version__
 # The full version, including alpha/beta/rc tags
 release = igibson.__version__
 
-sys.path.insert(0, os.path.abspath('../'))
-sys.path.insert(0, os.path.abspath('../../'))
+sys.path.insert(0, os.path.abspath("../"))
+sys.path.insert(0, os.path.abspath("../../"))
 
 # -- General configuration ---------------------------------------------------
 
@@ -45,21 +44,21 @@ sys.path.insert(0, os.path.abspath('../../'))
 # ones.
 
 extensions = [
-    'sphinx_rtd_theme',
-    'sphinx_markdown_tables',
-    'sphinx.ext.autodoc',
-    'sphinx.ext.mathjax',
+    "sphinx_rtd_theme",
+    "sphinx_markdown_tables",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.mathjax",
 ]
 
 html_theme = "sphinx_rtd_theme"
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -71,13 +70,12 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ["_static"]
 
-source_suffix = ['.rst', '.md']
+source_suffix = [".rst", ".md"]
 
-master_doc = 'index'
+master_doc = "index"
 
 source_parsers = {
-    '.md': CommonMarkParser,
+    ".md": CommonMarkParser,
 }
-

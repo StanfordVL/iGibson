@@ -1,6 +1,7 @@
-import igibson
 import pybullet as p
 from IPython import embed
+
+import igibson
 from igibson.object_states.adjacency import VerticalAdjacency
 from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
 from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
@@ -18,15 +19,15 @@ class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
 
         for _ in range(10):
             sampling_success = sample_kinematics(
-                'onTop', self.obj, other, new_value,
-                use_ray_casting_method=use_ray_casting_method)
+                "onTop", self.obj, other, new_value, use_ray_casting_method=use_ray_casting_method
+            )
             if sampling_success:
                 clear_cached_states(self.obj)
                 clear_cached_states(other)
                 if self.get_value(other) != new_value:
                     sampling_success = False
                 if igibson.debug_sampling:
-                    print('OnTop checking', sampling_success)
+                    print("OnTop checking", sampling_success)
                     embed()
             if sampling_success:
                 break
@@ -49,5 +50,6 @@ class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
         # costly.
         adjacency = self.obj.states[VerticalAdjacency].get_value()
         return (
-            other.get_body_id() in adjacency.negative_neighbors and
-            other.get_body_id() not in adjacency.positive_neighbors)
+            other.get_body_id() in adjacency.negative_neighbors
+            and other.get_body_id() not in adjacency.positive_neighbors
+        )

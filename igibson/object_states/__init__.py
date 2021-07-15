@@ -10,20 +10,43 @@ from igibson.object_states.heat_source_or_sink import HeatSourceOrSink
 from igibson.object_states.inside import Inside
 from igibson.object_states.max_temperature import MaxTemperature
 from igibson.object_states.next_to import NextTo
+from igibson.object_states.on_floor import OnFloor
 from igibson.object_states.on_top import OnTop
 from igibson.object_states.open import Open
 from igibson.object_states.pose import Pose
 from igibson.object_states.robot_related_states import InFOVOfRobot, InHandOfRobot, InReachOfRobot, InSameRoomAsRobot
-from igibson.object_states.room_states import IsInBathroom, IsInBedroom, IsInChildsRoom, IsInCloset, IsInCorridor, \
-    IsInDiningRoom, IsInEmptyRoom, IsInExerciseRoom, IsInGarage, IsInHomeOffice, IsInKitchen, IsInLivingRoom, IsInLobby, \
-    IsInPantryRoom, IsInPlayroom, IsInStaircase, IsInStorageRoom, IsInTelevisionRoom, IsInUtilityRoom, IsInBalcony, \
-    IsInLibrary, IsInAuditorium, IsInUndefined, InsideRoomTypes, ROOM_STATES
+from igibson.object_states.room_states import (
+    IsInBathroom,
+    IsInBedroom,
+    IsInChildsRoom,
+    IsInCloset,
+    IsInCorridor,
+    IsInDiningRoom,
+    IsInEmptyRoom,
+    IsInExerciseRoom,
+    IsInGarage,
+    IsInHomeOffice,
+    IsInKitchen,
+    IsInLivingRoom,
+    IsInLobby,
+    IsInPantryRoom,
+    IsInPlayroom,
+    IsInStaircase,
+    IsInStorageRoom,
+    IsInTelevisionRoom,
+    IsInUtilityRoom,
+    IsInBalcony,
+    IsInLibrary,
+    IsInAuditorium,
+    IsInUndefined,
+    InsideRoomTypes,
+    ROOM_STATES,
+)
+from igibson.object_states.sliced import Sliced
+from igibson.object_states.slicer import Slicer
 from igibson.object_states.soaked import Soaked
 from igibson.object_states.temperature import Temperature
 from igibson.object_states.toggle import ToggledOn
 from igibson.object_states.touching import Touching
 from igibson.object_states.under import Under
 from igibson.object_states.water_source import WaterSource
-from igibson.object_states.on_floor import OnFloor
-from igibson.object_states.sliced import Sliced
-from igibson.object_states.slicer import Slicer

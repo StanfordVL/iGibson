@@ -7,8 +7,8 @@ import copy
 import datetime
 import os
 
-import numpy as np
 import bddl
+import numpy as np
 
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -19,6 +19,7 @@ from igibson.utils.ig_logging import IGLogWriter
 
 POST_TASK_STEPS = 200
 PHYSICS_WARMING_STEPS = 200
+
 
 def parse_args():
     scene_choices = [
@@ -40,47 +41,68 @@ def parse_args():
     ]
 
     task_id_choices = [0, 1]
-    parser = argparse.ArgumentParser(
-        description='Run and collect an ATUS demo')
-    parser.add_argument('--task', type=str, required=True,
-                        nargs='?', help='Name of ATUS activity matching parent folder in bddl.')
-    parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
-                        nargs='?', help='BDDL integer ID, matching suffix of bddl.')
-    parser.add_argument('--vr_log_path', type=str,
-                        help='Path (and filename) of vr log')
-    parser.add_argument('--scene', type=str, choices=scene_choices, nargs='?',
-                        help='Scene name/ID matching iGibson interactive scenes.')
-    parser.add_argument('--disable_save', action='store_true',
-                        help='Whether to disable saving logfiles.')
-    parser.add_argument('--disable_scene_cache', action='store_true',
-                        help='Whether to disable using pre-initialized scene caches.')
-    parser.add_argument('--profile', action='store_true',
-                        help='Whether to print profiling data.')
-    parser.add_argument('--no_vr', action='store_true',
-                        help='Whether to turn off VR recording and save random actions.')
-    parser.add_argument('--max_steps', type=int, default=-1,
-                        help="Maximum number of steps to record before stopping.")
+    parser = argparse.ArgumentParser(description="Run and collect an ATUS demo")
+    parser.add_argument(
+        "--task", type=str, required=True, nargs="?", help="Name of ATUS activity matching parent folder in bddl."
+    )
+    parser.add_argument(
+        "--task_id",
+        type=int,
+        required=True,
+        choices=task_id_choices,
+        nargs="?",
+        help="BDDL integer ID, matching suffix of bddl.",
+    )
+    parser.add_argument("--vr_log_path", type=str, help="Path (and filename) of vr log")
+    parser.add_argument(
+        "--scene", type=str, choices=scene_choices, nargs="?", help="Scene name/ID matching iGibson interactive scenes."
+    )
+    parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
+    parser.add_argument(
+        "--disable_scene_cache", action="store_true", help="Whether to disable using pre-initialized scene caches."
+    )
+    parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
+    parser.add_argument(
+        "--no_vr", action="store_true", help="Whether to turn off VR recording and save random actions."
+    )
+    parser.add_argument("--max_steps", type=int, default=-1, help="Maximum number of steps to record before stopping.")
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     bddl.set_backend("iGibson")
-    collect_demo(args.task, args.task_id, args.scene, args.vr_log_path, args.disable_save, args.max_steps, args.no_vr,
-                 args.disable_scene_cache, args.profile)
+    collect_demo(
+        args.task,
+        args.task_id,
+        args.scene,
+        args.vr_log_path,
+        args.disable_save,
+        args.max_steps,
+        args.no_vr,
+        args.disable_scene_cache,
+        args.profile,
+    )
 
 
-def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max_steps=-1, no_vr=False,
-                 disable_scene_cache=False, profile=False):
+def collect_demo(
+    task,
+    task_id,
+    scene,
+    vr_log_path=None,
+    disable_save=False,
+    max_steps=-1,
+    no_vr=False,
+    disable_scene_cache=False,
+    profile=False,
+):
     # HDR files for PBR rendering
-    hdr_texture = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-    hdr_texture2 = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+    hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
     light_modulation_map_filename = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-    background_texture = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+    )
+    background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(
@@ -93,13 +115,18 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
         enable_shadow=True,
         enable_pbr=True,
         msaa=False,
-        light_dimming_factor=1.0
+        light_dimming_factor=1.0,
     )
 
     # VR system settings
-    mode = 'headless' if no_vr else 'vr'
-    s = Simulator(mode=mode, rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True),
-                  physics_timestep=1 / 300.0, render_timestep=1 / 30.0)
+    mode = "headless" if no_vr else "vr"
+    s = Simulator(
+        mode=mode,
+        rendering_settings=vr_rendering_settings,
+        vr_settings=VrSettings(use_vr=True),
+        physics_timestep=1 / 300.0,
+        render_timestep=1 / 30.0,
+    )
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
 
     scene_kwargs = None
@@ -107,30 +134,25 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
 
     if not disable_scene_cache:
         scene_kwargs = {
-            'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task, task_id),
+            "urdf_file": "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),
         }
         online_sampling = False
 
-    igbhvr_act_inst.initialize_simulator(simulator=s,
-                                   scene_id=scene,
-                                   scene_kwargs=scene_kwargs,
-                                   load_clutter=True,
-                                   online_sampling=online_sampling)
+    igbhvr_act_inst.initialize_simulator(
+        simulator=s, scene_id=scene, scene_kwargs=scene_kwargs, load_clutter=True, online_sampling=online_sampling
+    )
     vr_agent = igbhvr_act_inst.simulator.robots[0]
 
     if not no_vr:
         vr_cs = VrConditionSwitcher(
-            igbhvr_act_inst.simulator,
-            igbhvr_act_inst.show_instruction,
-            igbhvr_act_inst.iterate_instruction
+            igbhvr_act_inst.simulator, igbhvr_act_inst.show_instruction, igbhvr_act_inst.iterate_instruction
         )
 
     log_writer = None
     if not disable_save:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         if vr_log_path is None:
-            vr_log_path = "{}_{}_{}_{}.hdf5".format(
-                task, task_id, scene, timestamp)
+            vr_log_path = "{}_{}_{}_{}.hdf5".format(task, task_id, scene, timestamp)
         log_writer = IGLogWriter(
             s,
             log_filepath=vr_log_path,
@@ -138,7 +160,7 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
             store_vr=False if no_vr else True,
             vr_robot=vr_agent,
             profiling_mode=profile,
-            filter_objects=True
+            filter_objects=True,
         )
         log_writer.set_up_data_storage()
 
@@ -170,10 +192,10 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
                 vr_cs.refresh_condition(switch=False)
                 satisfied_predicates_cached = satisfied_predicates
 
-            if igbhvr_act_inst.simulator.query_vr_event('right_controller', 'overlay_toggle'):
+            if igbhvr_act_inst.simulator.query_vr_event("right_controller", "overlay_toggle"):
                 vr_cs.refresh_condition()
 
-            if igbhvr_act_inst.simulator.query_vr_event('left_controller', 'overlay_toggle'):
+            if igbhvr_act_inst.simulator.query_vr_event("left_controller", "overlay_toggle"):
                 vr_cs.toggle_show_state()
 
         if log_writer and not disable_save:

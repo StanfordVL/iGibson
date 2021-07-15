@@ -1,15 +1,15 @@
-from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from igibson.utils.utils import parse_config, parse_str_config, dump_config
-from igibson import assets_path
-import numpy as np
 import os
 import time
+
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from igibson.utils.utils import parse_config, parse_str_config, dump_config
 
 
 class VrOverlayBase(object):
     """
     Base class representing a VR overlay. Use one of the subclasses to create a specific overlay.
     """
+
     def __init__(self, overlay_name, renderer, width=1, pos=[0, 0, -1]):
         """
         :param overlay_name: the name of the overlay - must be a unique string
@@ -22,7 +22,7 @@ class VrOverlayBase(object):
         self.width = width
         self.pos = pos
         # Note: overlay will only be instantiated in subclasses
-    
+
     def set_overlay_show_state(self, show):
         """
         Sets show state of an overlay
@@ -33,7 +33,7 @@ class VrOverlayBase(object):
             self.renderer.vrsys.showOverlay(self.overlay_name)
         else:
             self.renderer.vrsys.hideOverlay(self.overlay_name)
-    
+
     def get_overlay_show_state(self):
         """
         Returns show state of an overlay
@@ -47,11 +47,8 @@ class VrHUDOverlay(VrOverlayBase):
     Text should not be rendered to the non-VR screen, as it will then appear as part of the VR image!
     There should only be one of these VrHUDOverlays per scene, as it will render all text. HUD stands for heads-up-display.
     """
-    def __init__(self, 
-                 overlay_name, 
-                 renderer, 
-                 width=1, 
-                 pos=[0, 0, -1]):
+
+    def __init__(self, overlay_name, renderer, width=1, pos=[0, 0, -1]):
         """
         :param overlay_name: the name of the overlay - must be a unique string
         :param renderer: instance of MeshRendererVR
@@ -59,7 +56,7 @@ class VrHUDOverlay(VrOverlayBase):
         :param pos: location of overlay quad - x is left, y is up and z is away from camera in VR headset space
         """
         super().__init__(overlay_name, renderer, width=width, pos=pos)
-        self.renderer.vrsys.createOverlay(self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], '')
+        self.renderer.vrsys.createOverlay(self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], "")
 
     def refresh_text(self):
         """
@@ -71,16 +68,13 @@ class VrHUDOverlay(VrOverlayBase):
         rtex = self.renderer.text_manager.get_render_tex()
         self.renderer.vrsys.updateOverlayTexture(self.overlay_name, rtex)
 
+
 class VrStaticImageOverlay(VrOverlayBase):
     """
     Class that renders a static image to the VR overlay a single time.
     """
-    def __init__(self, 
-                 overlay_name, 
-                 renderer, 
-                 image_fpath,
-                 width=1, 
-                 pos=[0, 0, -1]):
+
+    def __init__(self, overlay_name, renderer, image_fpath, width=1, pos=[0, 0, -1]):
         """
         :param overlay_name: the name of the overlay - must be a unique string
         :param renderer: instance of MeshRendererVR
@@ -90,13 +84,16 @@ class VrStaticImageOverlay(VrOverlayBase):
         """
         super().__init__(overlay_name, renderer, width=width, pos=pos)
         self.image_fpath = image_fpath
-        self.renderer.vrsys.createOverlay(self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], self.image_fpath)
+        self.renderer.vrsys.createOverlay(
+            self.overlay_name, self.width, self.pos[0], self.pos[1], self.pos[2], self.image_fpath
+        )
 
 
 class VrConditionSwitcher(object):
     """
     Class that handles switching of various ATUS conditions - including overlays and objects.
     """
+
     def __init__(self, s, show_instr_func, switch_instr_func):
         """
         :param s: reference to simulator
@@ -104,17 +101,18 @@ class VrConditionSwitcher(object):
         self.s = s
         # Store list of previous objects, so they can be un-highlighted
         self.prev_obj_list = []
-        self.start_text = 'Welcome!\nPlease press toggle\nto see the next goal condition!'
+        self.start_text = "Welcome!\nPlease press toggle\nto see the next goal condition!"
         self.show_instr_func = show_instr_func
-        self.switch_instr_func = switch_instr_func  
+        self.switch_instr_func = switch_instr_func
 
         self.is_showing = True
 
         # Text displaying next conditions
-        self.condition_text = s.add_vr_overlay_text(text_data=self.start_text, font_size=40, font_style='Bold', 
-                                                    color=[0,0,0], pos=[0, 75], size=[90, 50])
-    
-    def refresh_condition(self, switch = True):
+        self.condition_text = s.add_vr_overlay_text(
+            text_data=self.start_text, font_size=40, font_style="Bold", color=[0, 0, 0], pos=[0, 75], size=[90, 50]
+        )
+
+    def refresh_condition(self, switch=True):
         """
         Switches to the next condition. This involves displaying the text for
         the new condition, as well as highlighting/un-highlighting the appropriate objects.
@@ -157,6 +155,7 @@ class VrSettings(object):
     Class containing VR settings pertaining to both the VR renderer
     and VR functionality in the simulator/of VR objects
     """
+
     def __init__(self, use_vr=False, config_str=None):
         """
         Initializes VR settings.
@@ -170,7 +169,7 @@ class VrSettings(object):
         self.frame_save_path = None
 
         mesh_renderer_folder = os.path.abspath(os.path.dirname(__file__))
-        self.vr_config_path = os.path.join(mesh_renderer_folder, '..', '..', 'vr_config.yaml')
+        self.vr_config_path = os.path.join(mesh_renderer_folder, "..", "..", "vr_config.yaml")
         self.load_vr_config(config_str)
 
     def load_vr_config(self, config_str=None):
@@ -182,37 +181,38 @@ class VrSettings(object):
             self.vr_config = parse_str_config(config_str)
         else:
             self.vr_config = parse_config(self.vr_config_path)
-        
-        shared_settings = self.vr_config['shared_settings']
-        self.touchpad_movement = shared_settings['touchpad_movement']
-        self.movement_controller = shared_settings['movement_controller']
-        assert self.movement_controller in ['left', 'right']
-        self.relative_movement_device = shared_settings['relative_movement_device']
-        assert self.relative_movement_device in ['hmd', 'left_controller', 'right_controller']
-        self.movement_speed = shared_settings['movement_speed']
-        self.hud_width = shared_settings['hud_width']
-        self.hud_pos = shared_settings['hud_pos']
-        self.height_bounds = shared_settings['height_bounds']
-        self.use_companion_window = shared_settings['use_companion_window']
-        self.store_only_first_event_per_button = shared_settings['store_only_first_event_per_button']
-        self.use_tracked_body = shared_settings['use_tracked_body']
-        self.torso_tracker_serial = shared_settings['torso_tracker_serial']
+
+        shared_settings = self.vr_config["shared_settings"]
+        self.touchpad_movement = shared_settings["touchpad_movement"]
+        self.movement_controller = shared_settings["movement_controller"]
+        assert self.movement_controller in ["left", "right"]
+        self.relative_movement_device = shared_settings["relative_movement_device"]
+        assert self.relative_movement_device in ["hmd", "left_controller", "right_controller"]
+        self.movement_speed = shared_settings["movement_speed"]
+        self.hud_width = shared_settings["hud_width"]
+        self.hud_pos = shared_settings["hud_pos"]
+        self.height_bounds = shared_settings["height_bounds"]
+        self.use_companion_window = shared_settings["use_companion_window"]
+        self.store_only_first_event_per_button = shared_settings["store_only_first_event_per_button"]
+        self.use_tracked_body = shared_settings["use_tracked_body"]
+        self.torso_tracker_serial = shared_settings["torso_tracker_serial"]
         # Both body-related values need to be set in order to use the torso-tracked body
         self.using_tracked_body = self.use_tracked_body and self.torso_tracker_serial
-        if self.torso_tracker_serial == '': self.torso_tracker_serial = None
+        if self.torso_tracker_serial == "":
+            self.torso_tracker_serial = None
 
-        device_settings = self.vr_config['device_settings']
-        curr_device_candidate = self.vr_config['current_device']
+        device_settings = self.vr_config["device_settings"]
+        curr_device_candidate = self.vr_config["current_device"]
         if curr_device_candidate not in device_settings.keys():
-            self.curr_device = 'OTHER_VR'
+            self.curr_device = "OTHER_VR"
         else:
             self.curr_device = curr_device_candidate
         # Disable waist tracker by default for Oculus
-        if self.curr_device == 'OCULUS':
+        if self.curr_device == "OCULUS":
             self.torso_tracker_serial = None
         specific_device_settings = device_settings[self.curr_device]
-        self.eye_tracking = specific_device_settings['eye_tracking']
-        self.action_button_map = specific_device_settings['action_button_map']
+        self.eye_tracking = specific_device_settings["eye_tracking"]
+        self.action_button_map = specific_device_settings["action_button_map"]
         self.gen_button_action_map()
 
     def dump_vr_settings(self):
@@ -242,6 +242,7 @@ class VrSettings(object):
         """
         self.frame_save_path = frame_save_path
 
+
 class MeshRendererVR(MeshRenderer):
     """
     MeshRendererVR is iGibson's VR rendering class. It handles rendering to the VR headset and provides
@@ -259,8 +260,9 @@ class MeshRendererVR(MeshRenderer):
         self.vr_rendering_settings.show_glfw_window = self.vr_settings.use_companion_window
         self.width = 1296
         self.height = 1440
-        super().__init__(width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings,
-                         simulator=simulator)
+        super().__init__(
+            width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings, simulator=simulator
+        )
 
         # Rename self.r to self.vrsys
         self.vrsys = self.r
@@ -280,23 +282,16 @@ class MeshRendererVR(MeshRenderer):
         Generates VR HUD (heads-up-display).
         """
         # Create a unique overlay name based on current nanosecond
-        uniq_name = 'overlay{}'.format(time.perf_counter())
-        self.vr_hud = VrHUDOverlay(uniq_name, 
-                                   self, 
-                                   width=self.vr_settings.hud_width, 
-                                   pos=self.vr_settings.hud_pos)
+        uniq_name = "overlay{}".format(time.perf_counter())
+        self.vr_hud = VrHUDOverlay(uniq_name, self, width=self.vr_settings.hud_width, pos=self.vr_settings.hud_pos)
         self.vr_hud.set_overlay_show_state(True)
 
     def gen_static_overlay(self, image_fpath, width=1, pos=[0, 0, -1]):
         """
         Generates and returns an overlay containing a static image. This will display in addition to the HUD.
         """
-        uniq_name = 'overlay{}'.format(time.perf_counter())
-        static_overlay = VrStaticImageOverlay(uniq_name, 
-                                    self, 
-                                    image_fpath,
-                                    width=width, 
-                                    pos=pos)
+        uniq_name = "overlay{}".format(time.perf_counter())
+        static_overlay = VrStaticImageOverlay(uniq_name, self, image_fpath, width=width, pos=pos)
         static_overlay.set_overlay_show_state(True)
         return static_overlay
 
@@ -319,18 +314,20 @@ class MeshRendererVR(MeshRenderer):
             # Set camera to be at the camera position of the VR eye
             self.camera = left_cam_pos
             # Set camera once for both VR eyes - use the right eye since this is what we save in data save and replay
-            self.set_light_position_direction([right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0])
-            
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+            self.set_light_position_direction(
+                [right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0]
+            )
+
+            super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=True)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
             # Render and submit right eye
             self.V = right_view
             self.P = right_proj
             self.camera = right_cam_pos
-            
+
             # We don't need to render the shadow pass a second time for the second eye
             # We also don't need to render the text pass a second time
-            super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=False, render_text_pass=False)
+            super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=False, render_text_pass=False)
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
             # Update HUD so it renders in the HMD
@@ -338,9 +335,9 @@ class MeshRendererVR(MeshRenderer):
                 self.vr_hud.refresh_text()
         else:
             if return_frame:
-                return super().render(modes=('rgb'), return_buffer=return_frame, render_shadow_pass=True)
+                return super().render(modes=("rgb"), return_buffer=return_frame, render_shadow_pass=True)
             else:
-                super().render(modes=('rgb'), return_buffer=False, render_shadow_pass=True)
+                super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """
@@ -356,8 +353,9 @@ class MeshRendererVR(MeshRenderer):
         if self.vr_settings.use_vr:
             self.vrsys.releaseVR()
 
-if __name__ == '__main__':
-    x = {'hello': 8, 8:10, 'test': 99}
+
+if __name__ == "__main__":
+    x = {"hello": 8, 8: 10, "test": 99}
     x_str = dump_config(x)
     print(type(x_str))
     print(x_str)

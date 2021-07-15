@@ -1,10 +1,11 @@
+import numpy as np
+import pybullet as p
+
 from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.object_state_base import BooleanState
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.objects.visual_marker import VisualMarker
-import numpy as np
-import pybullet as p
 from igibson.utils.constants import PyBulletSleepState
 from igibson.utils.utils import brighten_texture
 
@@ -34,12 +35,8 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
     def _initialize(self):
         super(ToggledOn, self)._initialize()
         if self.initialize_link_mixin():
-            self.visual_marker_on = VisualMarker(
-                rgba_color=[0, 1, 0, 0.5],
-                radius=_TOGGLE_BUTTON_RADIUS)
-            self.visual_marker_off = VisualMarker(
-                rgba_color=[1, 0, 0, 0.5],
-                radius=_TOGGLE_BUTTON_RADIUS)
+            self.visual_marker_on = VisualMarker(rgba_color=[0, 1, 0, 0.5], radius=_TOGGLE_BUTTON_RADIUS)
+            self.visual_marker_off = VisualMarker(rgba_color=[1, 0, 0, 0.5], radius=_TOGGLE_BUTTON_RADIUS)
             self.simulator.import_object(self.visual_marker_on)
             self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
             self.simulator.import_object(self.visual_marker_off)
@@ -58,15 +55,19 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
         for robot in self.simulator.robots:
             for part_name, part in robot.parts.items():
                 if part_name in ["left_hand", "right_hand"]:
-                    if (np.linalg.norm(np.array(part.get_position()) - np.array(button_position_on_object))
-                            < _TOGGLE_DISTANCE_THRESHOLD):
+                    if (
+                        np.linalg.norm(np.array(part.get_position()) - np.array(button_position_on_object))
+                        < _TOGGLE_DISTANCE_THRESHOLD
+                    ):
                         hand_in_marker = True
                         break
                     for finger in behavior_robot.FINGER_TIP_LINK_INDICES:
                         finger_link_state = p.getLinkState(part.body_id, finger)
                         link_pos = finger_link_state[0]
-                        if (np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
-                                < _TOGGLE_DISTANCE_THRESHOLD):
+                        if (
+                            np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
+                            < _TOGGLE_DISTANCE_THRESHOLD
+                        ):
                             hand_in_marker = True
                             break
                     if hand_in_marker:
@@ -118,15 +119,11 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
     @staticmethod
     def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
         # make the texture 1.5x brighter
-        brighten_texture(diffuse_tex_filename,
-                          diffuse_tex_filename_transformed, brightness=1.5)
+        brighten_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, brightness=1.5)
 
     # For this state, we simply store its value and the hand-in-marker steps.
     def _dump(self):
-        return {
-            "value": self.value,
-            "hand_in_marker_steps": self.hand_in_marker_steps
-        }
+        return {"value": self.value, "hand_in_marker_steps": self.hand_in_marker_steps}
 
     def load(self, data):
         # Nothing special to do here when initialized vs. uninitialized

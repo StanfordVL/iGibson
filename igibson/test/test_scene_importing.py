@@ -1,20 +1,20 @@
-from igibson.simulator import Simulator
-from igibson.scenes.stadium_scene import StadiumScene
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.utils.utils import parse_config
 import os
-import igibson
 
+import igibson
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.utils import parse_config
 
 
 def test_import_building():
     download_assets()
     download_demo_data()
 
-    s = Simulator(mode='headless')
-    scene = StaticIndoorScene('Rs')
+    s = Simulator(mode="headless")
+    scene = StaticIndoorScene("Rs")
     s.import_scene(scene, texture_scale=0.4)
     for i in range(15):
         s.step()
@@ -26,8 +26,8 @@ def test_import_building_big():
     download_assets()
     download_demo_data()
 
-    s = Simulator(mode='headless')
-    scene = StaticIndoorScene('Rs')
+    s = Simulator(mode="headless")
+    scene = StaticIndoorScene("Rs")
     s.import_scene(scene, texture_scale=1)
     assert s.objects == list(range(2))
     s.disconnect()
@@ -37,7 +37,7 @@ def test_import_stadium():
     download_assets()
     download_demo_data()
 
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     print(s.objects)
@@ -48,11 +48,10 @@ def test_import_stadium():
 def test_import_building_viewing():
     download_assets()
     download_demo_data()
-    config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
+    config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))
 
-
-    s = Simulator(mode='headless')
-    scene = StaticIndoorScene('Rs')
+    s = Simulator(mode="headless")
+    scene = StaticIndoorScene("Rs")
     s.import_scene(scene)
     assert s.objects == list(range(2))
 
@@ -70,8 +69,8 @@ def test_import_building_viewing():
 
     for i in range(10):
         s.step()
-        #turtlebot1.apply_action(np.random.randint(4))
-        #turtlebot2.apply_action(np.random.randint(4))
-        #turtlebot3.apply_action(np.random.randint(4))
+        # turtlebot1.apply_action(np.random.randint(4))
+        # turtlebot2.apply_action(np.random.randint(4))
+        # turtlebot3.apply_action(np.random.randint(4))
 
     s.disconnect()

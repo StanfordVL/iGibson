@@ -19,16 +19,17 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
     Contains the functionalities for navigation such as shortest path computation
     """
 
-    def __init__(self,
-                 scene_id,
-                 trav_map_resolution=0.1,
-                 trav_map_erosion=2,
-                 trav_map_type='with_obj',
-                 build_graph=True,
-                 num_waypoints=10,
-                 waypoint_resolution=0.2,
-                 pybullet_load_texture=False,
-                 ):
+    def __init__(
+        self,
+        scene_id,
+        trav_map_resolution=0.1,
+        trav_map_erosion=2,
+        trav_map_type="with_obj",
+        build_graph=True,
+        num_waypoints=10,
+        waypoint_resolution=0.2,
+        pybullet_load_texture=False,
+    ):
         """
         Load an indoor scene and compute traversability
 
@@ -64,40 +65,28 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param maps_path: String with the path to the folder containing the traversability maps
         """
         if not os.path.exists(maps_path):
-            logging.warning('trav map does not exist: {}'.format(maps_path))
+            logging.warning("trav map does not exist: {}".format(maps_path))
             return
 
         self.floor_map = []
         self.floor_graph = []
         for floor in range(len(self.floor_heights)):
-            if self.trav_map_type == 'with_obj':
-                trav_map = np.array(Image.open(
-                    os.path.join(maps_path, 'floor_trav_{}.png'.format(floor))
-                ))
-                obstacle_map = np.array(Image.open(
-                    os.path.join(maps_path, 'floor_{}.png'.format(floor))
-                ))
+            if self.trav_map_type == "with_obj":
+                trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_{}.png".format(floor))))
+                obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_{}.png".format(floor))))
             else:
-                trav_map = np.array(Image.open(
-                    os.path.join(
-                        maps_path, 'floor_trav_no_obj_{}.png'.format(floor))
-                ))
-                obstacle_map = np.array(Image.open(
-                    os.path.join(
-                        maps_path, 'floor_no_obj_{}.png'.format(floor))
-                ))
+                trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
+                obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_no_obj_{}.png".format(floor))))
             if self.trav_map_original_size is None:
                 height, width = trav_map.shape
-                assert height == width, 'trav map is not a square'
+                assert height == width, "trav map is not a square"
                 self.trav_map_original_size = height
-                self.trav_map_size = int(self.trav_map_original_size *
-                                         self.trav_map_default_resolution /
-                                         self.trav_map_resolution)
+                self.trav_map_size = int(
+                    self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution
+                )
             trav_map[obstacle_map == 0] = 0
-            trav_map = cv2.resize(
-                trav_map, (self.trav_map_size, self.trav_map_size))
-            trav_map = cv2.erode(trav_map, np.ones(
-                (self.trav_map_erosion, self.trav_map_erosion)))
+            trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
+            trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
             trav_map[trav_map < 255] = 0
 
             if self.build_graph:
@@ -113,11 +102,12 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param floor: floor number
         :param trav_map: traversability map
         """
-        graph_file = os.path.join(maps_path, 'floor_trav_{}_py{}{}.p'.format(floor, sys.version_info.major,
-                                                                             sys.version_info.minor))
+        graph_file = os.path.join(
+            maps_path, "floor_trav_{}_py{}{}.p".format(floor, sys.version_info.major, sys.version_info.minor)
+        )
         if os.path.isfile(graph_file):
             logging.info("Loading traversable graph")
-            with open(graph_file, 'rb') as pfile:
+            with open(graph_file, "rb") as pfile:
                 g = pickle.load(pfile)
         else:
             logging.info("Building traversable graph")
@@ -128,20 +118,19 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
                         continue
                     g.add_node((i, j))
                     # 8-connected graph
-                    neighbors = [
-                        (i - 1, j - 1), (i, j - 1),
-                        (i + 1, j - 1), (i - 1, j)]
+                    neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
                     for n in neighbors:
-                        if 0 <= n[0] < self.trav_map_size and \
-                                0 <= n[1] < self.trav_map_size and \
-                                trav_map[n[0], n[1]] > 0:
-                            g.add_edge(
-                                n, (i, j), weight=l2_distance(n, (i, j)))
+                        if (
+                            0 <= n[0] < self.trav_map_size
+                            and 0 <= n[1] < self.trav_map_size
+                            and trav_map[n[0], n[1]] > 0
+                        ):
+                            g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
 
             # only take the largest connected component
             largest_cc = max(nx.connected_components(g), key=len)
             g = g.subgraph(largest_cc).copy()
-            with open(graph_file, 'wb') as pfile:
+            with open(graph_file, "wb") as pfile:
                 pickle.dump(g, pfile)
 
         self.floor_graph.append(g)
@@ -210,7 +199,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param target_world: 2D target location in world reference frame (metric)
         :param entire_path: whether to return the entire path
         """
-        assert self.build_graph, 'cannot get shortest path without building the graph'
+        assert self.build_graph, "cannot get shortest path without building the graph"
         source_map = tuple(self.world_to_map(source_world))
         target_map = tuple(self.world_to_map(target_world))
 
@@ -218,33 +207,25 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
 
         if not g.has_node(target_map):
             nodes = np.array(g.nodes)
-            closest_node = tuple(
-                nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
-            g.add_edge(closest_node, target_map,
-                       weight=l2_distance(closest_node, target_map))
+            closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - target_map, axis=1))])
+            g.add_edge(closest_node, target_map, weight=l2_distance(closest_node, target_map))
 
         if not g.has_node(source_map):
             nodes = np.array(g.nodes)
-            closest_node = tuple(
-                nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
-            g.add_edge(closest_node, source_map,
-                       weight=l2_distance(closest_node, source_map))
+            closest_node = tuple(nodes[np.argmin(np.linalg.norm(nodes - source_map, axis=1))])
+            g.add_edge(closest_node, source_map, weight=l2_distance(closest_node, source_map))
 
-        path_map = np.array(nx.astar_path(
-            g, source_map, target_map, heuristic=l2_distance))
+        path_map = np.array(nx.astar_path(g, source_map, target_map, heuristic=l2_distance))
 
         path_world = self.map_to_world(path_map)
-        geodesic_distance = np.sum(np.linalg.norm(
-            path_world[1:] - path_world[:-1], axis=1))
-        path_world = path_world[::self.waypoint_interval]
+        geodesic_distance = np.sum(np.linalg.norm(path_world[1:] - path_world[:-1], axis=1))
+        path_world = path_world[:: self.waypoint_interval]
 
         if not entire_path:
-            path_world = path_world[:self.num_waypoints]
+            path_world = path_world[: self.num_waypoints]
             num_remaining_waypoints = self.num_waypoints - path_world.shape[0]
             if num_remaining_waypoints > 0:
-                remaining_waypoints = np.tile(
-                    target_world, (num_remaining_waypoints, 1))
-                path_world = np.concatenate(
-                    (path_world, remaining_waypoints), axis=0)
+                remaining_waypoints = np.tile(target_world, (num_remaining_waypoints, 1))
+                path_world = np.concatenate((path_world, remaining_waypoints), axis=0)
 
         return path_world, geodesic_distance

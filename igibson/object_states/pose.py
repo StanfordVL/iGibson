@@ -1,9 +1,9 @@
-from igibson.object_states.object_state_base import CachingEnabledObjectState
 import numpy as np
+
+from igibson.object_states.object_state_base import CachingEnabledObjectState
 
 
 class Pose(CachingEnabledObjectState):
-
     def _compute_value(self):
         pos = self.obj.get_position()
         orn = self.obj.get_orientation()

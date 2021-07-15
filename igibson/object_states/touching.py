@@ -4,7 +4,6 @@ from igibson.object_states.object_state_base import BooleanState, RelativeObject
 
 
 class Touching(KinematicsMixin, RelativeObjectState, BooleanState):
-
     def _set_value(self, other, new_value):
         raise NotImplementedError()
 
