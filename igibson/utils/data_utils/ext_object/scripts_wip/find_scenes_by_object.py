@@ -24,12 +24,12 @@ download_assets()
 
 
 def get_categories():
-    dir = os.path.join(igibson.ig_dataset_path, 'objects')
+    dir = os.path.join(igibson.ig_dataset_path, "objects")
     return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
 
 
 def get_category_directory(category):
-    return os.path.join(igibson.ig_dataset_path, 'objects', category)
+    return os.path.join(igibson.ig_dataset_path, "objects", category)
 
 
 def get_urdf(objdir):
@@ -55,8 +55,7 @@ def main():
         for obj in os.listdir(cd):
             objects.append((cat, obj))
 
-    scene_files = list(glob.glob(
-        os.path.join(igibson.ig_dataset_path, "scenes", "**", "*task*.urdf"), recursive=True))
+    scene_files = list(glob.glob(os.path.join(igibson.ig_dataset_path, "scenes", "**", "*task*.urdf"), recursive=True))
 
     by_scene = {}
     by_object = {x: [] for x in objects}
@@ -83,6 +82,7 @@ def main():
     with open("by_scene.csv", "w") as f:
         w = csv.writer(f)
         w.writerows([scene] + ["%s/%s" % pair for pair in objects] for scene, objects in sorted(by_scene.items()))
+
 
 if __name__ == "__main__":
     main()

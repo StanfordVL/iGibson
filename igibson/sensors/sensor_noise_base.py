@@ -1,12 +1,14 @@
 from abc import abstractmethod, ABCMeta
 
 
-class BaseSensorNoise():
+class BaseSensorNoise:
     """
     Base SensorNoise class.
     Sensor noise-specific add_noise method is implemented in subclasses
     """
+
     __metaclass__ = ABCMeta
+
     def __init__(self, env):
         self.config = env.config
 

@@ -72,6 +72,7 @@ class AbsoluteObjectState(BaseObjectState):
     This class is used to track object states that are absolute, e.g. do not require a second object to compute
     the value.
     """
+
     @abstractmethod
     def _get_value(self):
         raise NotImplementedError()
@@ -98,6 +99,7 @@ class CachingEnabledObjectState(AbsoluteObjectState):
     This class is used to track absolute states that are expensive to compute. It adds out-of-the-box support for
     caching the results for each simulator step.
     """
+
     def __init__(self, obj):
         super(CachingEnabledObjectState, self).__init__(obj)
         self.value = None
@@ -146,4 +148,5 @@ class BooleanState(object):
     """
     This class is a mixin used to indicate that a state has a boolean value.
     """
+
     pass

@@ -13,8 +13,8 @@ class PointNavRandomTask(PointNavFixedTask):
 
     def __init__(self, env):
         super(PointNavRandomTask, self).__init__(env)
-        self.target_dist_min = self.config.get('target_dist_min', 1.0)
-        self.target_dist_max = self.config.get('target_dist_max', 10.0)
+        self.target_dist_min = self.config.get("target_dist_min", 1.0)
+        self.target_dist_max = self.config.get("target_dist_max", 10.0)
 
     def sample_initial_pose_and_target_pos(self, env):
         """
@@ -30,9 +30,8 @@ class PointNavRandomTask(PointNavFixedTask):
             _, target_pos = env.scene.get_random_point(floor=self.floor_num)
             if env.scene.build_graph:
                 _, dist = env.scene.get_shortest_path(
-                    self.floor_num,
-                    initial_pos[:2],
-                    target_pos[:2], entire_path=False)
+                    self.floor_num, initial_pos[:2], target_pos[:2], entire_path=False
+                )
             else:
                 dist = l2_distance(initial_pos, target_pos)
             if self.target_dist_min < dist < self.target_dist_max:
@@ -65,12 +64,10 @@ class PointNavRandomTask(PointNavFixedTask):
         # TODO: p.saveState takes a few seconds, need to speed up
         state_id = p.saveState()
         for i in range(max_trials):
-            initial_pos, initial_orn, target_pos = \
-                self.sample_initial_pose_and_target_pos(env)
+            initial_pos, initial_orn, target_pos = self.sample_initial_pose_and_target_pos(env)
             reset_success = env.test_valid_position(
-                env.robots[0], initial_pos, initial_orn) and \
-                env.test_valid_position(
-                    env.robots[0], target_pos)
+                env.robots[0], initial_pos, initial_orn
+            ) and env.test_valid_position(env.robots[0], target_pos)
             p.restoreState(state_id)
             if reset_success:
                 break

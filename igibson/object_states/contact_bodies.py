@@ -9,8 +9,7 @@ class ContactBodies(CachingEnabledObjectState):
         return [ContactResult(*item[:10]) for item in p.getContactPoints(bodyA=body_id)]
 
     def _set_value(self, new_value):
-        raise NotImplementedError(
-            "ContactBodies state currently does not support setting.")
+        raise NotImplementedError("ContactBodies state currently does not support setting.")
 
     # Nothing needs to be done to save/load ContactBodies since it will happen due to pose caching.
     def _dump(self):

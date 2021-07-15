@@ -21,7 +21,7 @@ from igibson.simulator import Simulator
 from igibson import assets_path
 from igibson.utils.muvr_utils import IGVRClient, IGVRServer
 
-sample_urdf_folder = os.path.join(assets_path, 'models', 'sample_urdfs')
+sample_urdf_folder = os.path.join(assets_path, "models", "sample_urdfs")
 
 # Only load in first few objects in Rs to decrease load times
 LOAD_PARTIAL = True
@@ -31,47 +31,42 @@ PRINT_FPS = True
 WAIT_FOR_CLIENT = False
 
 # Note: This is where the VR configuration for the MUVR experience can be changed.
-RUN_SETTINGS = {
-    'client': VrSettings(use_vr=False),
-    'server': VrSettings(use_vr=True)
-}
+RUN_SETTINGS = {"client": VrSettings(use_vr=False), "server": VrSettings(use_vr=True)}
 
 
-def run_muvr(mode='server', host='localhost', port='8885'):
+def run_muvr(mode="server", host="localhost", port="8885"):
     """
     Sets up the iGibson environment that will be used by both server and client
     """
-    print('INFO: Running MUVR {} at {}:{}'.format(mode, host, port))
+    print("INFO: Running MUVR {} at {}:{}".format(mode, host, port))
     # This function only runs if mode is one of server or client, so setting this bool is safe
-    is_server = mode == 'server'
+    is_server = mode == "server"
 
     vr_settings = RUN_SETTINGS[mode]
 
     # HDR files for PBR rendering
-    hdr_texture = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-    hdr_texture2 = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+    hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
     light_modulation_map_filename = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-    background_texture = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+    )
+    background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
     # VR rendering settings
-    vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                                fullscreen=False,
-                                                env_texture_filename=hdr_texture,
-                                                env_texture_filename2=hdr_texture2,
-                                                env_texture_filename3=background_texture,
-                                                light_modulation_map_filename=light_modulation_map_filename,
-                                                enable_shadow=True, 
-                                                enable_pbr=True,
-                                                msaa=True,
-                                                light_dimming_factor=1.0)
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=vr_settings)
-    scene = InteractiveIndoorScene('Rs_int')
+    vr_rendering_settings = MeshRendererSettings(
+        optimized=True,
+        fullscreen=False,
+        env_texture_filename=hdr_texture,
+        env_texture_filename2=hdr_texture2,
+        env_texture_filename3=background_texture,
+        light_modulation_map_filename=light_modulation_map_filename,
+        enable_shadow=True,
+        enable_pbr=True,
+        msaa=True,
+        light_dimming_factor=1.0,
+    )
+    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
+    scene = InteractiveIndoorScene("Rs_int")
     if LOAD_PARTIAL:
         scene._set_first_n_objects(10)
     s.import_ig_scene(scene)
@@ -91,7 +86,7 @@ def run_muvr(mode='server', host='localhost', port='8885'):
     mass_list = [5, 10, 20, 30]
     mustard_start = [-1, 1.55, 1.2]
     for i in range(len(mass_list)):
-        mustard = YCBObject('006_mustard_bottle')
+        mustard = YCBObject("006_mustard_bottle")
         s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
@@ -133,7 +128,7 @@ def run_muvr(mode='server', host='localhost', port='8885'):
             # Update client renderer with frame data received from server, and then render it
             vr_client.ingest_frame_data()
             vr_client.client_step()
-            
+
             # Generate and send client's VR data so it can be used to process client physics on the server
             # This does not generate or send data when the client is in non-VR mode - all error checking is
             # handled by IGVRClient internally
@@ -151,16 +146,16 @@ def run_muvr(mode='server', host='localhost', port='8885'):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Multi-user VR demo that can be run in server and client mode.')
-    parser.add_argument('--mode', default='server', help='Mode to run in: either server or client')
-    parser.add_argument('--host', default='localhost', help='Host to connect to - eg. localhost or an IP address')
-    parser.add_argument('--port', default='8885', help='Port to connect to - eg. 8887')
+    parser = argparse.ArgumentParser(description="Multi-user VR demo that can be run in server and client mode.")
+    parser.add_argument("--mode", default="server", help="Mode to run in: either server or client")
+    parser.add_argument("--host", default="localhost", help="Host to connect to - eg. localhost or an IP address")
+    parser.add_argument("--port", default="8885", help="Port to connect to - eg. 8887")
     args = parser.parse_args()
     try:
         port = int(args.port)
     except ValueError as ve:
-        print('ERROR: Non-integer port-number supplied!')
-    if args.mode in ['server', 'client']:
+        print("ERROR: Non-integer port-number supplied!")
+    if args.mode in ["server", "client"]:
         run_muvr(mode=args.mode, host=args.host, port=port)
     else:
-        print('ERROR: mode {} is not supported!'.format(args.mode))
+        print("ERROR: mode {} is not supported!".format(args.mode))

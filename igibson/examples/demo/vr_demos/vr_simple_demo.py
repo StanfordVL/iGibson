@@ -18,59 +18,48 @@ from igibson.simulator import Simulator
 from igibson import assets_path
 
 # HDR files for PBR rendering
-hdr_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-hdr_texture2 = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
 light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-background_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+)
+background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
 
 def main():
     # VR rendering settings
-    vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                                fullscreen=False,
-                                                env_texture_filename=hdr_texture,
-                                                env_texture_filename2=hdr_texture2,
-                                                env_texture_filename3=background_texture,
-                                                light_modulation_map_filename=light_modulation_map_filename,
-                                                enable_shadow=True, 
-                                                enable_pbr=True,
-                                                msaa=True,
-                                                light_dimming_factor=1.0)
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings(use_vr=True))
+    vr_rendering_settings = MeshRendererSettings(
+        optimized=True,
+        fullscreen=False,
+        env_texture_filename=hdr_texture,
+        env_texture_filename2=hdr_texture2,
+        env_texture_filename3=background_texture,
+        light_modulation_map_filename=light_modulation_map_filename,
+        enable_shadow=True,
+        enable_pbr=True,
+        msaa=True,
+        light_dimming_factor=1.0,
+    )
+    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
 
-    scene = InteractiveIndoorScene('Rs_int', load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
+    scene = InteractiveIndoorScene(
+        "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
+    )
     s.import_ig_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     objects = [
-        ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-                0.707107)),
-        ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-                0.707107)),
-        ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-                0.707107)),
-        ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-                0.707107)),
-        ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-                0.707107)),
-        ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-                0.707107)),
-        ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
-                0.707107)),
-        ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107,
-                0.707107)),
-        ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107,
-                0.707107)),
-        ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107,
-                0.707107)),
-        ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107,
-                0.707107)),
+        ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+        ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+        ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+        ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+        ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+        ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+        ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107)),
+        ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+        ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+        ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+        ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107, 0.707107)),
     ]
 
     for item in objects:
@@ -82,9 +71,16 @@ def main():
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    obj = ArticulatedObject(os.path.join(igibson.ig_dataset_path, 'objects',
-        'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
-                            scale=2)
+    obj = ArticulatedObject(
+        os.path.join(
+            igibson.ig_dataset_path,
+            "objects",
+            "basket",
+            "e3bae8da192ab3d4a17ae19fa77775ff",
+            "e3bae8da192ab3d4a17ae19fa77775ff.urdf",
+        ),
+        scale=2,
+    )
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
@@ -100,10 +96,11 @@ def main():
         bvr_robot.update(s.gen_vr_robot_action())
 
         # End demo by pressing overlay toggle
-        if s.query_vr_event('left_controller', 'overlay_toggle'):
-                break
+        if s.query_vr_event("left_controller", "overlay_toggle"):
+            break
 
     s.disconnect()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

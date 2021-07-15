@@ -7,19 +7,19 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--scene', type=str, help='Name of the scene in the iG Dataset')
+    parser.add_argument("--scene", type=str, help="Name of the scene in the iG Dataset")
     args = parser.parse_args()
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
-    s = Simulator(mode='gui', image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
 
     scene = InteractiveIndoorScene(args.scene)
     s.import_ig_scene(scene)
 
     for i in range(10000):
-        with Profiler('Simulator step'):
+        with Profiler("Simulator step"):
             s.step()
     s.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

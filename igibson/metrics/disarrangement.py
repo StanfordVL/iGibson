@@ -9,6 +9,7 @@ from igibson.object_states.on_floor import RoomFloor
 
 SIMULATOR_SETTLE_TIME = 150
 
+
 class KinematicDisarrangement(MetricBase):
     def __init__(self):
         self.initialized = False
@@ -45,9 +46,8 @@ class KinematicDisarrangement(MetricBase):
                         "base": obj.states[Pose].get_value(),
                     },
                     "active": 0,
-            }
+                }
         return state_cache
-
 
     @staticmethod
     def calculate_object_disarrangement(obj, prev_state_cache, cur_state_cache):
@@ -56,10 +56,7 @@ class KinematicDisarrangement(MetricBase):
         an object is split/joined. This logic should be shifted into the multiplexer class, as it requires
         a significant amount of (error prone) handling.
         """
-        obj_disarrangement = {
-            "base": 0,
-            "children": [0, 0]
-        }
+        obj_disarrangement = {"base": 0, "children": [0, 0]}
         if prev_state_cache[obj]["active"] == 0 and cur_state_cache[obj]["active"] == 0:
             obj_disarrangement["base"] = np.linalg.norm(
                 cur_state_cache[obj]["pose"]["base"][0] - prev_state_cache[obj]["pose"]["base"][0]
@@ -89,7 +86,6 @@ class KinematicDisarrangement(MetricBase):
             raise Exception
         return obj_disarrangement
 
-
     def step_callback(self, igbhvr_act_inst, _):
         total_disarrangement = 0
         self.cur_state_cache = self.update_state_cache(igbhvr_act_inst)
@@ -97,8 +93,8 @@ class KinematicDisarrangement(MetricBase):
         if not self.initialized:
             self.prev_state_cache = copy.deepcopy(self.cur_state_cache)
             self.initial_state_cache = copy.deepcopy(self.cur_state_cache)
-            self.delta_obj_disp_dict = {obj: { "base" : [], "children": [] } for obj in self.cur_state_cache}
-            self.int_obj_disp_dict = {obj: { "base" : 0, "children": [0, 0] } for obj in self.cur_state_cache}
+            self.delta_obj_disp_dict = {obj: {"base": [], "children": []} for obj in self.cur_state_cache}
+            self.int_obj_disp_dict = {obj: {"base": 0, "children": [0, 0]} for obj in self.cur_state_cache}
             self.initialized = True
 
         for obj in self.prev_state_cache:
@@ -109,8 +105,10 @@ class KinematicDisarrangement(MetricBase):
             self.delta_obj_disp_dict[obj]["base"].append(obj_disarrangement["base"])
             self.delta_obj_disp_dict[obj]["children"].append(obj_disarrangement["children"])
 
-            self.int_obj_disp_dict[obj]["base"]+= obj_disarrangement["base"]
-            self.int_obj_disp_dict[obj]["children"] = (np.array(self.int_obj_disp_dict[obj]["children"]) + np.array(obj_disarrangement["children"]))
+            self.int_obj_disp_dict[obj]["base"] += obj_disarrangement["base"]
+            self.int_obj_disp_dict[obj]["children"] = np.array(self.int_obj_disp_dict[obj]["children"]) + np.array(
+                obj_disarrangement["children"]
+            )
 
         self.prev_state_cache = copy.deepcopy(self.cur_state_cache)
         self.integrated_disarrangement += total_disarrangement
@@ -123,8 +121,8 @@ class KinematicDisarrangement(MetricBase):
         relative_disarrangement = 0
         for obj in self.initial_state_cache:
             disarrangement = self.calculate_object_disarrangement(obj, self.initial_state_cache, self.cur_state_cache)
-            relative_disarrangement += disarrangement['base']
-            relative_disarrangement += np.sum(disarrangement['children'])
+            relative_disarrangement += disarrangement["base"]
+            relative_disarrangement += np.sum(disarrangement["children"])
         return relative_disarrangement
 
     def gather_results(self):
@@ -132,7 +130,7 @@ class KinematicDisarrangement(MetricBase):
             "kinematic_disarrangement": {
                 "relative": self.relative_disarrangement,
                 "delta": self.delta_disarrangement,
-                "integrated" : self.integrated_disarrangement,
+                "integrated": self.integrated_disarrangement,
             }
         }
 
@@ -174,7 +172,6 @@ class LogicalDisarrangement(MetricBase):
                 obj_cache[state_class] = relational_state_cache
         return obj_cache
 
-
     def create_object_logical_state_cache(self, task):
         room_floors = {
             "room_floor_"
@@ -195,9 +192,7 @@ class LogicalDisarrangement(MetricBase):
             state_cache[obj_id] = {}
             if type(obj) == ObjectMultiplexer:
                 if obj.current_index == 0:
-                    cache_base = self.cache_single_object(
-                        obj_id, obj._multiplexed_objects[0], room_floors, task
-                    )
+                    cache_base = self.cache_single_object(obj_id, obj._multiplexed_objects[0], room_floors, task)
                     cache_part_1 = None
                     cache_part_2 = None
                 else:
@@ -222,7 +217,6 @@ class LogicalDisarrangement(MetricBase):
                 }
         return state_cache
 
-
     def diff_object_states(self, obj_1_states, obj_2_states):
         total_states = 0
         non_kinematic_edits = 0
@@ -238,7 +232,6 @@ class LogicalDisarrangement(MetricBase):
                     non_kinematic_edits += 1
         return total_states, kinematic_edits, non_kinematic_edits
 
-
     def compute_logical_disarrangement(self, object_state_cache_1, object_state_cache_2):
         total_edit_distance = 0
         total_objects = 0
@@ -251,10 +244,7 @@ class LogicalDisarrangement(MetricBase):
             obj_kinematic_edits = 0
             obj_non_kinematic_edits = 0
             if object_state_cache_1[obj_id]["type"] == "multiplexer":
-                if (
-                    object_state_cache_1[obj_id]["active"] == 0
-                    and object_state_cache_2[obj_id]["active"] == 0
-                ):
+                if object_state_cache_1[obj_id]["active"] == 0 and object_state_cache_2[obj_id]["active"] == 0:
                     obj_1_states = object_state_cache_1[obj_id]["base_states"]
                     obj_2_states = object_state_cache_2[obj_id]["base_states"]
                     (
@@ -262,10 +252,7 @@ class LogicalDisarrangement(MetricBase):
                         obj_kinematic_edits,
                         obj_non_kinematic_edits,
                     ) = self.diff_object_states(obj_1_states, obj_2_states)
-                elif (
-                    object_state_cache_1[obj_id]["active"] == 0
-                    and object_state_cache_2[obj_id]["active"] == 1
-                ):
+                elif object_state_cache_1[obj_id]["active"] == 0 and object_state_cache_2[obj_id]["active"] == 1:
                     obj_1_states = object_state_cache_1[obj_id]["base_states"]
                     obj_2_1_states = object_state_cache_2[obj_id]["part_states"][0]
                     obj_2_2_states = object_state_cache_2[obj_id]["part_states"][1]
@@ -282,10 +269,7 @@ class LogicalDisarrangement(MetricBase):
                         obj_kinematic_edits,
                         obj_non_kinematic_edits,
                     ) = self.diff_object_states(obj_1_states, obj_2_2_states)
-                elif (
-                    object_state_cache_1[obj_id]["active"] == 1
-                    and object_state_cache_2[obj_id]["active"] == 0
-                ):
+                elif object_state_cache_1[obj_id]["active"] == 1 and object_state_cache_2[obj_id]["active"] == 0:
                     obj_1_1_states = object_state_cache_1[obj_id]["part_states"][0]
                     obj_1_2_states = object_state_cache_1[obj_id]["part_states"][1]
                     obj_2_states = object_state_cache_2[obj_id]["base_states"]
@@ -302,10 +286,7 @@ class LogicalDisarrangement(MetricBase):
                         obj_kinematic_edits,
                         obj_non_kinematic_edits,
                     ) = self.diff_object_states(obj_1_2_states, obj_2_states)
-                elif (
-                    object_state_cache_1[obj_id]["active"] == 1
-                    and object_state_cache_2[obj_id]["active"] == 1
-                ):
+                elif object_state_cache_1[obj_id]["active"] == 1 and object_state_cache_2[obj_id]["active"] == 1:
                     obj_1_1_states = object_state_cache_1[obj_id]["part_states"][0]
                     obj_1_2_states = object_state_cache_1[obj_id]["part_states"][1]
                     obj_2_1_states = object_state_cache_1[obj_id]["part_states"][0]
@@ -366,13 +347,15 @@ class LogicalDisarrangement(MetricBase):
 
         self.cur_state_cache = self.create_object_logical_state_cache(igbhvr_act_inst)
 
-        self.relative_logical_disarrangement = self.compute_logical_disarrangement(self.initial_state_cache, self.cur_state_cache)
+        self.relative_logical_disarrangement = self.compute_logical_disarrangement(
+            self.initial_state_cache, self.cur_state_cache
+        )
 
     def gather_results(self):
         return {
             "logical_disarrangement": {
-                "relative" : self.relative_logical_disarrangement["total_edit_distance"],
-                "total_objects" : self.relative_logical_disarrangement["total_objects"],
-                "total_states" : self.relative_logical_disarrangement["total_states"],
+                "relative": self.relative_logical_disarrangement["total_edit_distance"],
+                "total_objects": self.relative_logical_disarrangement["total_objects"],
+                "total_states": self.relative_logical_disarrangement["total_states"],
             }
         }

@@ -26,36 +26,35 @@ PRINT_FPS = False
 VR_MODE = True
 
 # HDR files for PBR rendering
-hdr_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-hdr_texture2 = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
 light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-background_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+)
+background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
 # VR rendering settings
-vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                            fullscreen=False,
-                                            env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=True, 
-                                            enable_pbr=True,
-                                            msaa=True,
-                                            light_dimming_factor=1.0)
+vr_rendering_settings = MeshRendererSettings(
+    optimized=True,
+    fullscreen=False,
+    env_texture_filename=hdr_texture,
+    env_texture_filename2=hdr_texture2,
+    env_texture_filename3=background_texture,
+    light_modulation_map_filename=light_modulation_map_filename,
+    enable_shadow=True,
+    enable_pbr=True,
+    msaa=True,
+    light_dimming_factor=1.0,
+)
 if VR_MODE:
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings(vr_fps=VR_FPS))
+    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
-    s = Simulator(mode='iggui', image_width=960,
-                  image_height=720, device_idx=0, rendering_settings=vr_rendering_settings)
+    s = Simulator(
+        mode="iggui", image_width=960, image_height=720, device_idx=0, rendering_settings=vr_rendering_settings
+    )
     s.viewer.min_cam_z = 1.0
 
-scene = InteractiveIndoorScene('Rs_int')
+scene = InteractiveIndoorScene("Rs_int")
 # Turn this on when debugging to speed up loading
 if LOAD_PARTIAL:
     scene._set_first_n_objects(10)
@@ -74,7 +73,7 @@ fvr = FetchVR(s, [0.5, -1.5, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=
 mass_list = [5, 10, 100, 500]
 mustard_start = [-1, 1.55, 1.2]
 for i in range(len(mass_list)):
-    mustard = YCBObject('006_mustard_bottle')
+    mustard = YCBObject("006_mustard_bottle")
     s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
     mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
     p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])

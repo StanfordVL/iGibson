@@ -6,23 +6,25 @@ import sys
 import math
 
 ################################################################################
-# glob Utility 
+# glob Utility
 ################################################################################
+
 
 def insensitive_glob(pattern):
     def either(c):
-        return '[%s%s]' % (c.lower(), c.upper()) if c.isalpha() else c
-    return glob.glob(''.join(map(either, pattern)))
+        return "[%s%s]" % (c.lower(), c.upper()) if c.isalpha() else c
+
+    return glob.glob("".join(map(either, pattern)))
+
 
 ################################################################################
-# Node Utility 
+# Node Utility
 ################################################################################
 
-def create_texture_node(node_tree: bpy.types.NodeTree, 
-                        name: str, path: str, 
-                        is_color_data: bool) -> bpy.types.Node:
+
+def create_texture_node(node_tree: bpy.types.NodeTree, name: str, path: str, is_color_data: bool) -> bpy.types.Node:
     # Instantiate a new texture image node
-    texture_node = node_tree.nodes.new(type='ShaderNodeTexImage')
+    texture_node = node_tree.nodes.new(type="ShaderNodeTexImage")
     texture_node.name = name
     # print(path)
     # Open an image and set it to the node
@@ -32,153 +34,168 @@ def create_texture_node(node_tree: bpy.types.NodeTree,
     if bpy.app.version >= (2, 80, 0):
         texture_node.image.colorspace_settings.is_data = False if is_color_data else True
     else:
-        texture_node.color_space = 'COLOR' if is_color_data else 'NONE'
+        texture_node.color_space = "COLOR" if is_color_data else "NONE"
 
     # Return the node
     return texture_node
 
-def create_empty_image(node_tree: bpy.types.NodeTree, 
-                       name: str, is_color_data: bool,
-                       dim: Tuple[int, int] = (2048, 2048), add_uv_node: bool = False) -> bpy.types.Node:
+
+def create_empty_image(
+    node_tree: bpy.types.NodeTree,
+    name: str,
+    is_color_data: bool,
+    dim: Tuple[int, int] = (2048, 2048),
+    add_uv_node: bool = False,
+) -> bpy.types.Node:
     # Instantiate a new texture image node
     if node_tree is None:
         return
-    texture_node = node_tree.nodes.new(type='ShaderNodeTexImage')
+    texture_node = node_tree.nodes.new(type="ShaderNodeTexImage")
 
     if add_uv_node:
-        uv_node = node_tree.nodes.new(type='ShaderNodeUVMap')
-        uv_node.uv_map = 'obj_uv'
-        node_tree.links.new(uv_node.outputs['UV'], texture_node.inputs['Vector'])
+        uv_node = node_tree.nodes.new(type="ShaderNodeUVMap")
+        uv_node.uv_map = "obj_uv"
+        node_tree.links.new(uv_node.outputs["UV"], texture_node.inputs["Vector"])
 
     # Open an image and set it to the node
-    width,height = dim
+    width, height = dim
     if name in bpy.data.images:
         texture_node.image = bpy.data.images[name]
     else:
-        texture_node.image = bpy.data.images.new(name=name, 
-                                width=width, height=height)
+        texture_node.image = bpy.data.images.new(name=name, width=width, height=height)
     # Set other parameters
     if bpy.app.version >= (2, 80, 0):
         texture_node.image.colorspace_settings.is_data = False if is_color_data else True
     else:
-        texture_node.color_space = 'COLOR' if is_color_data else 'NONE'
+        texture_node.color_space = "COLOR" if is_color_data else "NONE"
 
     # Return the node
     return texture_node
+
 
 def clean_nodes(nodes: bpy.types.Nodes) -> None:
     for node in nodes:
         nodes.remove(node)
 
+
 ################################################################################
-# PBR Utility 
+# PBR Utility
 ################################################################################
 
-def build_pbr_textured_nodes(node_tree: bpy.types.NodeTree,
-                             color_texture_path: str = "",
-                             metallic_texture_path: str = "",
-                             roughness_texture_path: str = "",
-                             normal_texture_path: str = "",
-                             displacement_texture_path: str = "",
-                             ambient_occlusion_texture_path: str = "",
-                             scale: Tuple[float, float, float] = (1.0, 1.0, 1.0),
-                             is_cc0: bool = True) -> None:
-    output_node = node_tree.nodes.new(type='ShaderNodeOutputMaterial')
-    principled_node = node_tree.nodes.new(type='ShaderNodeBsdfPrincipled')
+
+def build_pbr_textured_nodes(
+    node_tree: bpy.types.NodeTree,
+    color_texture_path: str = "",
+    metallic_texture_path: str = "",
+    roughness_texture_path: str = "",
+    normal_texture_path: str = "",
+    displacement_texture_path: str = "",
+    ambient_occlusion_texture_path: str = "",
+    scale: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+    is_cc0: bool = True,
+) -> None:
+    output_node = node_tree.nodes.new(type="ShaderNodeOutputMaterial")
+    principled_node = node_tree.nodes.new(type="ShaderNodeBsdfPrincipled")
     # principled_node.name = 'BSDF'
-    node_tree.links.new(principled_node.outputs['BSDF'], output_node.inputs['Surface'])
+    node_tree.links.new(principled_node.outputs["BSDF"], output_node.inputs["Surface"])
 
-    coord_node = node_tree.nodes.new(type='ShaderNodeTexCoord')
-    mapping_node = node_tree.nodes.new(type='ShaderNodeMapping')
-    mapping_node.vector_type = 'POINT'
+    coord_node = node_tree.nodes.new(type="ShaderNodeTexCoord")
+    mapping_node = node_tree.nodes.new(type="ShaderNodeMapping")
+    mapping_node.vector_type = "POINT"
     if bpy.app.version >= (2, 81, 0):
         mapping_node.inputs["Scale"].default_value = scale
     else:
         mapping_node.scale = scale
-    node_tree.links.new(coord_node.outputs['UV'], mapping_node.inputs['Vector'])
+    node_tree.links.new(coord_node.outputs["UV"], mapping_node.inputs["Vector"])
 
     if color_texture_path != "":
-        texture_node = create_texture_node(node_tree, 'diffuse', color_texture_path, True)
-        node_tree.links.new(mapping_node.outputs['Vector'], texture_node.inputs['Vector'])
+        texture_node = create_texture_node(node_tree, "diffuse", color_texture_path, True)
+        node_tree.links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
         if ambient_occlusion_texture_path != "":
-            ao_texture_node = create_texture_node(node_tree, 'ambient_occlusion', ambient_occlusion_texture_path, False)
-            node_tree.links.new(mapping_node.outputs['Vector'], ao_texture_node.inputs['Vector'])
-            mix_node = node_tree.nodes.new(type='ShaderNodeMixRGB')
-            mix_node.blend_type = 'MULTIPLY'
-            node_tree.links.new(texture_node.outputs['Color'], mix_node.inputs['Color1'])
-            node_tree.links.new(ao_texture_node.outputs['Color'], mix_node.inputs['Color2'])
-            node_tree.links.new(mix_node.outputs['Color'], principled_node.inputs['Base Color'])
+            ao_texture_node = create_texture_node(node_tree, "ambient_occlusion", ambient_occlusion_texture_path, False)
+            node_tree.links.new(mapping_node.outputs["Vector"], ao_texture_node.inputs["Vector"])
+            mix_node = node_tree.nodes.new(type="ShaderNodeMixRGB")
+            mix_node.blend_type = "MULTIPLY"
+            node_tree.links.new(texture_node.outputs["Color"], mix_node.inputs["Color1"])
+            node_tree.links.new(ao_texture_node.outputs["Color"], mix_node.inputs["Color2"])
+            node_tree.links.new(mix_node.outputs["Color"], principled_node.inputs["Base Color"])
         else:
-            node_tree.links.new(texture_node.outputs['Color'], principled_node.inputs['Base Color'])
+            node_tree.links.new(texture_node.outputs["Color"], principled_node.inputs["Base Color"])
 
     if metallic_texture_path != "":
-        texture_node = create_texture_node(node_tree, 'metallic',  metallic_texture_path, False)
-        node_tree.links.new(mapping_node.outputs['Vector'], texture_node.inputs['Vector'])
-        node_tree.links.new(texture_node.outputs['Color'], principled_node.inputs['Metallic'])
+        texture_node = create_texture_node(node_tree, "metallic", metallic_texture_path, False)
+        node_tree.links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
+        node_tree.links.new(texture_node.outputs["Color"], principled_node.inputs["Metallic"])
 
     if roughness_texture_path != "":
-        texture_node = create_texture_node(node_tree, 'roughness', roughness_texture_path, False)
-        node_tree.links.new(mapping_node.outputs['Vector'], texture_node.inputs['Vector'])
-        node_tree.links.new(texture_node.outputs['Color'], principled_node.inputs['Roughness'])
+        texture_node = create_texture_node(node_tree, "roughness", roughness_texture_path, False)
+        node_tree.links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
+        node_tree.links.new(texture_node.outputs["Color"], principled_node.inputs["Roughness"])
 
     if normal_texture_path != "":
-        texture_node = create_texture_node(node_tree, 'normal',  normal_texture_path, False)
-        node_tree.links.new(mapping_node.outputs['Vector'], texture_node.inputs['Vector'])
-        normal_map_node = node_tree.nodes.new(type='ShaderNodeNormalMap')
+        texture_node = create_texture_node(node_tree, "normal", normal_texture_path, False)
+        node_tree.links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
+        normal_map_node = node_tree.nodes.new(type="ShaderNodeNormalMap")
         if is_cc0:
-            separate_map_node = node_tree.nodes.new(type='ShaderNodeSeparateRGB')
-            combine_map_node = node_tree.nodes.new(type='ShaderNodeCombineRGB')
-            invert_map_node = node_tree.nodes.new(type='ShaderNodeInvert')
-            node_tree.links.new(texture_node.outputs['Color'], separate_map_node.inputs['Image'])
-            node_tree.links.new(separate_map_node.outputs['R'], combine_map_node.inputs['R'])
-            node_tree.links.new(separate_map_node.outputs['B'], combine_map_node.inputs['B'])
-            node_tree.links.new(separate_map_node.outputs['G'], invert_map_node.inputs['Color'])
-            node_tree.links.new(invert_map_node.outputs['Color'], combine_map_node.inputs['G'])
-            node_tree.links.new(combine_map_node.outputs['Image'], normal_map_node.inputs['Color'])
+            separate_map_node = node_tree.nodes.new(type="ShaderNodeSeparateRGB")
+            combine_map_node = node_tree.nodes.new(type="ShaderNodeCombineRGB")
+            invert_map_node = node_tree.nodes.new(type="ShaderNodeInvert")
+            node_tree.links.new(texture_node.outputs["Color"], separate_map_node.inputs["Image"])
+            node_tree.links.new(separate_map_node.outputs["R"], combine_map_node.inputs["R"])
+            node_tree.links.new(separate_map_node.outputs["B"], combine_map_node.inputs["B"])
+            node_tree.links.new(separate_map_node.outputs["G"], invert_map_node.inputs["Color"])
+            node_tree.links.new(invert_map_node.outputs["Color"], combine_map_node.inputs["G"])
+            node_tree.links.new(combine_map_node.outputs["Image"], normal_map_node.inputs["Color"])
         else:
-            node_tree.links.new(texture_node.outputs['Color'], normal_map_node.inputs['Color'])
-        node_tree.links.new(normal_map_node.outputs['Normal'], principled_node.inputs['Normal'])
+            node_tree.links.new(texture_node.outputs["Color"], normal_map_node.inputs["Color"])
+        node_tree.links.new(normal_map_node.outputs["Normal"], principled_node.inputs["Normal"])
 
     if displacement_texture_path != "":
-        texture_node = create_texture_node(node_tree, 'displacement', displacement_texture_path, False)
-        node_tree.links.new(mapping_node.outputs['Vector'], texture_node.inputs['Vector'])
-        node_tree.links.new(texture_node.outputs['Color'], output_node.inputs['Displacement'])
+        texture_node = create_texture_node(node_tree, "displacement", displacement_texture_path, False)
+        node_tree.links.new(mapping_node.outputs["Vector"], texture_node.inputs["Vector"])
+        node_tree.links.new(texture_node.outputs["Color"], output_node.inputs["Displacement"])
 
     arrange_nodes(node_tree, use_current_layout_as_initial_guess=False)
 
 
-def build_pbr_textured_nodes_from_name(material_name: str, 
-                        texture_path: dict,
-                        scale: Tuple[float, float, float] = (1.0, 1.0, 1.0),
-                        is_cc0: bool = True,
-                        ) -> bpy.types.Material:
+def build_pbr_textured_nodes_from_name(
+    material_name: str,
+    texture_path: dict,
+    scale: Tuple[float, float, float] = (1.0, 1.0, 1.0),
+    is_cc0: bool = True,
+) -> bpy.types.Material:
     new_material = bpy.data.materials.new(material_name)
     new_material.use_nodes = True
     clean_nodes(new_material.node_tree.nodes)
 
-    build_pbr_textured_nodes(new_material.node_tree,
-                             color_texture_path=texture_path["color"],
-                             metallic_texture_path=texture_path["metallic"],
-                             roughness_texture_path=texture_path["roughness"],
-                             normal_texture_path=texture_path["normal"],
-                             displacement_texture_path=texture_path["displacement"],
-                             ambient_occlusion_texture_path=texture_path["ambient_occlusion"],
-                             scale=scale,
-                             is_cc0=is_cc0)
-    
+    build_pbr_textured_nodes(
+        new_material.node_tree,
+        color_texture_path=texture_path["color"],
+        metallic_texture_path=texture_path["metallic"],
+        roughness_texture_path=texture_path["roughness"],
+        normal_texture_path=texture_path["normal"],
+        displacement_texture_path=texture_path["displacement"],
+        ambient_occlusion_texture_path=texture_path["ambient_occlusion"],
+        scale=scale,
+        is_cc0=is_cc0,
+    )
+
     return new_material
 
 
 ################################################################################
-# Node Arrange 
+# Node Arrange
 ################################################################################
 
-def arrange_nodes(node_tree: bpy.types.NodeTree,
-                  use_current_layout_as_initial_guess: bool = False,
-                  fix_horizontal_location: bool = True,
-                  fix_vertical_location: bool = True,
-                  fix_overlaps: bool = True,
-                  verbose: bool = False) -> None:
+
+def arrange_nodes(
+    node_tree: bpy.types.NodeTree,
+    use_current_layout_as_initial_guess: bool = False,
+    fix_horizontal_location: bool = True,
+    fix_vertical_location: bool = True,
+    fix_overlaps: bool = True,
+    verbose: bool = False,
+) -> None:
     max_num_iters = 2000
     epsilon = 1e-05
     target_space = 50.0
@@ -343,5 +360,3 @@ def arrange_nodes(node_tree: bpy.types.NodeTree,
                 second_stage = True
 
         previous_squared_deltas_sum = squared_deltas_sum
-
-

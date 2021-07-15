@@ -21,26 +21,45 @@ from igibson.robots.behavior_robot import BehaviorRobot
 POST_TASK_STEPS = 200
 PHYSICS_WARMING_STEPS = 200
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Run and collect an ATUS demo')
-    parser.add_argument('--vr_log_path', type=str,
-                        help='Path (and filename) of vr log to replay')
-    parser.add_argument('--vr_replay_log_path', type=str,
-                        help='Path (and filename) of file to save replay to (for debugging)')
-    parser.add_argument('--frame_save_path', type=str,
-                        help='Path to save frames (frame number added automatically, as well as .jpg extension)')
-    parser.add_argument('--disable_save',
-                        action='store_true',
-                        help='Whether to disable saving log of replayed trajectory, used for validation.')
-    parser.add_argument('--profile', action='store_true',
-                        help='Whether to print profiling data.')
-    parser.add_argument('--mode', type=str, choices=["headless", "vr", "simple"],
-                        help='Whether to disable replay through VR and use iggui instead.')
+    parser = argparse.ArgumentParser(description="Run and collect an ATUS demo")
+    parser.add_argument("--vr_log_path", type=str, help="Path (and filename) of vr log to replay")
+    parser.add_argument(
+        "--vr_replay_log_path", type=str, help="Path (and filename) of file to save replay to (for debugging)"
+    )
+    parser.add_argument(
+        "--frame_save_path",
+        type=str,
+        help="Path to save frames (frame number added automatically, as well as .jpg extension)",
+    )
+    parser.add_argument(
+        "--disable_save",
+        action="store_true",
+        help="Whether to disable saving log of replayed trajectory, used for validation.",
+    )
+    parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["headless", "vr", "simple"],
+        help="Whether to disable replay through VR and use iggui instead.",
+    )
     return parser.parse_args()
 
-def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_path=None, verbose=True,
-                mode="headless", start_callbacks=[], step_callbacks=[], end_callbacks=[], profile=False):
+
+def replay_demo(
+    in_log_path,
+    out_log_path=None,
+    disable_save=False,
+    frame_save_path=None,
+    verbose=True,
+    mode="headless",
+    start_callbacks=[],
+    step_callbacks=[],
+    end_callbacks=[],
+    profile=False,
+):
     """
     Replay a BEHAVIOR demo.
 
@@ -62,14 +81,12 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
-    hdr_texture = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-    hdr_texture2 = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+    hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
     light_modulation_map_filename = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-    background_texture = os.path.join(
-        igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+    )
+    background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(
@@ -82,29 +99,27 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
         enable_shadow=True,
         enable_pbr=True,
         msaa=False,
-        light_dimming_factor=1.0
+        light_dimming_factor=1.0,
     )
 
     # Check mode
     assert mode in ["headless", "vr", "simple"]
 
     # Initialize settings to save action replay frames
-    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, '/metadata/vr_settings'))
+    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))
     vr_settings.set_frame_save_path(frame_save_path)
 
-    physics_timestep = IGLogReader.read_metadata_attr(in_log_path, '/metadata/physics_timestep')
-    render_timestep = IGLogReader.read_metadata_attr(in_log_path, '/metadata/render_timestep')
-    filter_objects = IGLogReader.read_metadata_attr(in_log_path, '/metadata/filter_objects')
+    physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
+    render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
+    filter_objects = IGLogReader.read_metadata_attr(in_log_path, "/metadata/filter_objects")
 
     scene_id = "Rs_int"
     # VR system settings
-    s = Simulator(
-            mode='vr', 
-            rendering_settings=vr_rendering_settings, 
-            vr_settings=VrSettings(use_vr=True)
-        )
+    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
 
-    scene = InteractiveIndoorScene(scene_id, load_object_categories=['walls', 'floors', 'ceilings'], load_room_types=['kitchen'])
+    scene = InteractiveIndoorScene(
+        scene_id, load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
+    )
 
     vr_agent = BehaviorRobot(s)
     s.import_ig_scene(scene)
@@ -116,7 +131,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
 
     log_writer = None
     if not disable_save:
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         if out_log_path == None:
             out_log_path = "{}_{}_replay.hdf5".format(scene_id, timestamp)
 
@@ -126,7 +141,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
             store_vr=False,
             vr_robot=vr_agent,
             profiling_mode=profile,
-            filter_objects=filter_objects
+            filter_objects=filter_objects,
         )
         log_writer.set_up_data_storage()
 
@@ -147,7 +162,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
             callback(vr_agent, log_reader)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action('vr_robot'))
+        vr_agent.update(log_reader.get_agent_action("vr_robot"))
 
         if not disable_save:
             log_writer.process_frame()
@@ -159,17 +174,28 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     s.disconnect()
 
     demo_statistics = {
-            "task_done": task_done,
-            "satisfied_predicates": satisfied_predicates,
-            "total_frame_num": log_reader.total_frame_num,
-        }
+        "task_done": task_done,
+        "satisfied_predicates": satisfied_predicates,
+        "total_frame_num": log_reader.total_frame_num,
+    }
     return demo_statistics
+
 
 def main():
     args = parse_args()
     agent_metrics = AgentMetric()
-    replay_demo(args.vr_log_path, out_log_path=args.vr_replay_log_path, step_callbacks=[agent_metrics.step_callback], disable_save=args.disable_save, frame_save_path=args.frame_save_path, mode=args.mode, profile=args.profile)
-    import pdb; pdb.set_trace()
+    replay_demo(
+        args.vr_log_path,
+        out_log_path=args.vr_replay_log_path,
+        step_callbacks=[agent_metrics.step_callback],
+        disable_save=args.disable_save,
+        frame_save_path=args.frame_save_path,
+        mode=args.mode,
+        profile=args.profile,
+    )
+    import pdb
+
+    pdb.set_trace()
 
 
 if __name__ == "__main__":

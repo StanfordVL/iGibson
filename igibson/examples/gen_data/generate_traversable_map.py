@@ -10,8 +10,9 @@ from PIL import Image
 import sys
 
 
-def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=False,
-                texture_wrapping='REPEAT', use_bilinear=True):
+def load_obj_np(
+    filename_obj, normalization=False, texture_size=4, load_texture=False, texture_wrapping="REPEAT", use_bilinear=True
+):
     """Load Wavefront .obj file into numpy array
     This function only supports vertices (v x x x) and faces (f x x x).
     """
@@ -23,7 +24,7 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=
     for line in lines:
         if len(line.split()) == 0:
             continue
-        if line.split()[0] == 'v':
+        if line.split()[0] == "v":
             vertices.append([float(v) for v in line.split()[1:4]])
     vertices = np.vstack(vertices).astype(np.float32)
 
@@ -32,13 +33,13 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=
     for line in lines:
         if len(line.split()) == 0:
             continue
-        if line.split()[0] == 'f':
+        if line.split()[0] == "f":
             vs = line.split()[1:]
             nv = len(vs)
-            v0 = int(vs[0].split('/')[0])
+            v0 = int(vs[0].split("/")[0])
             for i in range(nv - 2):
-                v1 = int(vs[i + 1].split('/')[0])
-                v2 = int(vs[i + 2].split('/')[0])
+                v1 = int(vs[i + 1].split("/")[0])
+                v2 = int(vs[i + 2].split("/")[0])
                 faces.append((v0, v1, v2))
     faces = np.vstack(faces).astype(np.int32) - 1
 
@@ -70,8 +71,9 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=
     else:
         return vertices, faces
 
+
 def get_xy_floors(root, dist_threshold=-0.98):
-    vertices, faces = load_obj_np(os.path.join(root, 'mesh_z_up.obj'))
+    vertices, faces = load_obj_np(os.path.join(root, "mesh_z_up.obj"))
     z_faces = []
     z = np.array([0, 0, 1])
     faces_selected = []
@@ -94,12 +96,12 @@ def gen_trav_map(mp3d_dir, add_clutter=False):
                 subdirectory should be a file named 'mesh_z_up.obj'.
         add_clutter: Boolean for whether to generate traversability maps with or without clutter.
     """
-    subdirectory_names = ['.']
+    subdirectory_names = ["."]
     for scene in subdirectory_names:
         try:
-            root = '{}/{}/'.format(mp3d_dir, scene)
+            root = "{}/{}/".format(mp3d_dir, scene)
             print(root)
-            with open(os.path.join(root, 'floors.txt'), 'r') as ff:
+            with open(os.path.join(root, "floors.txt"), "r") as ff:
                 floors = sorted(list(map(float, ff.readlines())))
 
             z_faces, vertices, faces_selected = get_xy_floors(root)
@@ -113,7 +115,7 @@ def gen_trav_map(mp3d_dir, add_clutter=False):
 
             for i_floor in range(len(floors)):
                 floor = floors[i_floor]
-                mask = (np.abs(z_faces - floor) < 0.2)
+                mask = np.abs(z_faces - floor) < 0.2
                 faces_new = np.array(faces_selected)[mask, :]
 
                 t = (vertices[faces_new][:, :, :2] + max_length) * 100
@@ -139,16 +141,16 @@ def gen_trav_map(mp3d_dir, add_clutter=False):
                 erosion = cv2.erode(erosion, kernel, iterations=4)
 
                 if add_clutter is True:
-                    filename_format = 'floor_trav_{}.png'
+                    filename_format = "floor_trav_{}.png"
                 else:
-                    filename_format = 'floor_trav_{}_v1.png'
+                    filename_format = "floor_trav_{}_v1.png"
 
                 cur_img = Image.fromarray((erosion * 255).astype(np.uint8))
-                #cur_img = Image.fromarray(np.flipud(cur_img))
+                # cur_img = Image.fromarray(np.flipud(cur_img))
                 cur_img.save(os.path.join(mp3d_dir, scene, filename_format.format(i_floor)))
         except Exception as e:  # Which exception are we trying to ignore here?
             print(e)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     gen_trav_map(sys.argv[1], True)

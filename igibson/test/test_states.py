@@ -6,8 +6,11 @@ import numpy as np
 import pybullet as p
 from igibson import object_states
 from igibson.external.pybullet_tools.utils import quat_from_euler, Euler
-from igibson.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
-    prepare_object_states
+from igibson.object_states.factory import (
+    get_state_dependency_graph,
+    get_states_by_dependency_order,
+    prepare_object_states,
+)
 from igibson.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.articulated_object import URDFObject
@@ -21,16 +24,14 @@ download_assets()
 
 
 def test_on_top():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
 
     try:
         scene = EmptyScene()
         s.import_scene(scene)
 
-        cabinet_0007 = os.path.join(
-            igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
-        cabinet_0004 = os.path.join(
-            igibson.assets_path, 'models/cabinet/cabinet_0004.urdf')
+        cabinet_0007 = os.path.join(igibson.assets_path, "models/cabinet2/cabinet_0007.urdf")
+        cabinet_0004 = os.path.join(igibson.assets_path, "models/cabinet/cabinet_0004.urdf")
 
         obj1 = ArticulatedObject(filename=cabinet_0007)
         s.import_object(obj1)
@@ -40,7 +41,7 @@ def test_on_top():
         s.import_object(obj2)
         obj2.set_position([0, 0, 2])
 
-        obj3 = YCBObject('003_cracker_box')
+        obj3 = YCBObject("003_cracker_box")
         s.import_object(obj3)
         obj3.set_position_orientation([0, 0, 1.1], [0, 0, 0, 1])
 
@@ -62,16 +63,14 @@ def test_on_top():
 
 
 def test_inside():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
 
     try:
         scene = EmptyScene()
         s.import_scene(scene)
 
-        cabinet_0007 = os.path.join(
-            igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
-        cabinet_0004 = os.path.join(
-            igibson.assets_path, 'models/cabinet/cabinet_0004.urdf')
+        cabinet_0007 = os.path.join(igibson.assets_path, "models/cabinet2/cabinet_0007.urdf")
+        cabinet_0004 = os.path.join(igibson.assets_path, "models/cabinet/cabinet_0004.urdf")
 
         obj1 = ArticulatedObject(filename=cabinet_0007)
         s.import_object(obj1)
@@ -81,7 +80,7 @@ def test_inside():
         s.import_object(obj2)
         obj2.set_position([0, 0, 2])
 
-        obj3 = YCBObject('003_cracker_box')
+        obj3 = YCBObject("003_cracker_box")
         s.import_object(obj3)
         obj3.set_position_orientation([0, 0, 2.1], [0, 0, 0, 1])
 
@@ -118,17 +117,21 @@ def test_inside():
 
 
 def test_open():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
 
     try:
         scene = EmptyScene()
         s.import_scene(scene)
 
-        microwave_dir = os.path.join(
-            igibson.ig_dataset_path, 'objects/microwave/7128/')
-        microwave_filename = os.path.join(microwave_dir, '7128.urdf')
-        obj = URDFObject(filename=microwave_filename, category="microwave", model_path=microwave_dir,
-                         scale=np.array([0.5, 0.5, 0.5]), abilities={"openable": {}})
+        microwave_dir = os.path.join(igibson.ig_dataset_path, "objects/microwave/7128/")
+        microwave_filename = os.path.join(microwave_dir, "7128.urdf")
+        obj = URDFObject(
+            filename=microwave_filename,
+            category="microwave",
+            model_path=microwave_dir,
+            scale=np.array([0.5, 0.5, 0.5]),
+            abilities={"openable": {}},
+        )
         s.import_object(obj)
         obj.set_position([0, 0, 0.5])
 
@@ -184,36 +187,36 @@ def test_open():
 def test_state_graph():
     # Construct the state graph
     G = get_state_dependency_graph()
-    assert nx.algorithms.is_directed_acyclic_graph(
-        G), "State dependency graph needs to be a DAG."
+    assert nx.algorithms.is_directed_acyclic_graph(G), "State dependency graph needs to be a DAG."
 
     # Get the dependency-sorted list of states.
     ordered_states = get_states_by_dependency_order()
     assert object_states.Inside in ordered_states
     assert object_states.AABB in ordered_states
     assert ordered_states.index(object_states.AABB) < ordered_states.index(
-        object_states.Inside), "Each state should be preceded by its deps."
+        object_states.Inside
+    ), "Each state should be preceded by its deps."
 
 
 def test_toggle():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
 
     try:
         scene = EmptyScene()
         s.import_scene(scene)
-        model_path = os.path.join(get_ig_model_path(
-            'sink', 'sink_1'), 'sink_1.urdf')
+        model_path = os.path.join(get_ig_model_path("sink", "sink_1"), "sink_1.urdf")
 
-        sink = URDFObject(filename=model_path,
-                          category='sink',
-                          name='sink_1',
-                          scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'toggleable': {}}
-                          )
+        sink = URDFObject(
+            filename=model_path,
+            category="sink",
+            name="sink_1",
+            scale=np.array([0.8, 0.8, 0.8]),
+            abilities={"toggleable": {}},
+        )
 
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
-        assert 'toggleable' in sink.abilities
+        assert "toggleable" in sink.abilities
         assert object_states.ToggledOn in sink.states
 
     finally:
@@ -221,24 +224,24 @@ def test_toggle():
 
 
 def test_dirty():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
 
     try:
         scene = EmptyScene()
         s.import_scene(scene)
-        model_path = os.path.join(get_ig_model_path(
-            'sink', 'sink_1'), 'sink_1.urdf')
+        model_path = os.path.join(get_ig_model_path("sink", "sink_1"), "sink_1.urdf")
 
-        sink = URDFObject(filename=model_path,
-                          category='sink',
-                          name='sink_1',
-                          scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'dustyable': {}}
-                          )
+        sink = URDFObject(
+            filename=model_path,
+            category="sink",
+            name="sink_1",
+            scale=np.array([0.8, 0.8, 0.8]),
+            abilities={"dustyable": {}},
+        )
 
         s.import_object(sink)
         sink.set_position([1, 1, 0.8])
-        assert 'dustyable' in sink.abilities
+        assert "dustyable" in sink.abilities
         assert object_states.Dusty in sink.states
 
         for i in range(10):
@@ -249,25 +252,25 @@ def test_dirty():
 
 
 def test_water_source():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
 
     try:
         scene = EmptyScene()
         s.import_scene(scene)
-        model_path = os.path.join(get_ig_model_path(
-            'sink', 'sink_1'), 'sink_1.urdf')
+        model_path = os.path.join(get_ig_model_path("sink", "sink_1"), "sink_1.urdf")
 
-        sink = URDFObject(filename=model_path,
-                          category='sink',
-                          name='sink_1',
-                          scale=np.array([0.8, 0.8, 0.8]),
-                          abilities={'waterSource': {}, 'toggleable': {}}
-                          )
+        sink = URDFObject(
+            filename=model_path,
+            category="sink",
+            name="sink_1",
+            scale=np.array([0.8, 0.8, 0.8]),
+            abilities={"waterSource": {}, "toggleable": {}},
+        )
 
         s.import_object(sink)
         sink.states[object_states.ToggledOn].set_value(True)
         sink.set_position([1, 1, 0.8])
-        assert 'waterSource' in sink.abilities
+        assert "waterSource" in sink.abilities
         assert object_states.WaterSource in sink.states
 
         for i in range(2):

@@ -60,13 +60,16 @@ class Temperature(AbsoluteObjectState):
                     if not self.obj.states[Inside].get_value(obj2):
                         continue
 
-                new_temperature += ((heat_source.temperature - self.value) * heat_source.heating_rate *
-                                    self.simulator.render_timestep)
+                new_temperature += (
+                    (heat_source.temperature - self.value) * heat_source.heating_rate * self.simulator.render_timestep
+                )
                 affected_by_heat_source = True
 
         # Apply temperature decay if not affected by any heat source.
         if not affected_by_heat_source:
-            new_temperature += (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * self.simulator.render_timestep
+            new_temperature += (
+                (DEFAULT_TEMPERATURE - self.value) * TEMPERATURE_DECAY_SPEED * self.simulator.render_timestep
+            )
 
         self.value = new_temperature
 

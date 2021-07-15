@@ -13,7 +13,7 @@ def main():
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
-        model_path = os.path.join(get_scene_path('Rs'), 'mesh_z_up.obj')
+        model_path = os.path.join(get_scene_path("Rs"), "mesh_z_up.obj")
 
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)
@@ -44,36 +44,32 @@ def main():
                 dy = (y - _mouse_iy) / 100.0
                 _mouse_ix = x
                 _mouse_iy = y
-                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [
-                              0, 1, 0], [-np.sin(dy), 0, np.cos(dy)]])
-                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0],
-                               [np.sin(-dx), np.cos(-dx), 0], [0, 0, 1]])
+                r1 = np.array([[np.cos(dy), 0, np.sin(dy)], [0, 1, 0], [-np.sin(dy), 0, np.cos(dy)]])
+                r2 = np.array([[np.cos(-dx), -np.sin(-dx), 0], [np.sin(-dx), np.cos(-dx), 0], [0, 0, 1]])
                 view_direction = r1.dot(r2).dot(view_direction)
         elif event == cv2.EVENT_LBUTTONUP:
             down = False
 
-    cv2.namedWindow('test')
-    cv2.setMouseCallback('test', change_dir)
+    cv2.namedWindow("test")
+    cv2.setMouseCallback("test", change_dir)
 
     while True:
-        with Profiler('Render'):
-            frame = renderer.render(modes=('rgb'))
-        cv2.imshow('test', cv2.cvtColor(
-            np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+        with Profiler("Render"):
+            frame = renderer.render(modes=("rgb"))
+        cv2.imshow("test", cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
         q = cv2.waitKey(1)
-        if q == ord('w'):
+        if q == ord("w"):
             px += 0.01
-        elif q == ord('s'):
+        elif q == ord("s"):
             px -= 0.01
-        elif q == ord('a'):
+        elif q == ord("a"):
             py += 0.01
-        elif q == ord('d'):
+        elif q == ord("d"):
             py -= 0.01
-        elif q == ord('q'):
+        elif q == ord("q"):
             break
         camera_pose = np.array([px, py, 0.5])
-        renderer.set_camera(camera_pose, camera_pose +
-                            view_direction, [0, 0, 1])
+        renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
 
     # start = time.time()
 
@@ -86,5 +82,5 @@ def main():
     renderer.release()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

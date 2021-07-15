@@ -24,16 +24,16 @@ class BehaviorEnv(iGibsonEnv):
         self,
         config_file,
         scene_id=None,
-        mode='headless',
+        mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter='navigation',
+        action_filter="navigation",
         instance_id=0,
-        episode_save_dir=None
+        episode_save_dir=None,
     ):
         """
         :param config_file: config_file path
@@ -47,13 +47,15 @@ class BehaviorEnv(iGibsonEnv):
         """
         self.action_filter = action_filter
         self.instance_id = instance_id
-        super(BehaviorEnv, self).__init__(config_file=config_file,
-                                          scene_id=scene_id,
-                                          mode=mode,
-                                          action_timestep=action_timestep,
-                                          physics_timestep=physics_timestep,
-                                          device_idx=device_idx,
-                                          render_to_tensor=render_to_tensor)
+        super(BehaviorEnv, self).__init__(
+            config_file=config_file,
+            scene_id=scene_id,
+            mode=mode,
+            action_timestep=action_timestep,
+            physics_timestep=physics_timestep,
+            device_idx=device_idx,
+            render_to_tensor=render_to_tensor,
+        )
         self.rng = np.random.default_rng(seed=seed)
         self.automatic_reset = automatic_reset
         self.reward_potential = None
@@ -70,42 +72,32 @@ class BehaviorEnv(iGibsonEnv):
         """
         Load action space
         """
-        if self.action_filter == 'navigation':
-            self.action_space = gym.spaces.Box(shape=(3,),
-                                               low=-1.0,
-                                               high=1.0,
-                                               dtype=np.float32)
-        elif self.action_filter == 'mobile_manipulation':
-            self.action_space = gym.spaces.Box(shape=(17,),
-                                               low=-1.0,
-                                               high=1.0,
-                                               dtype=np.float32)
-        elif self.action_filter == 'tabletop_manipulation':
-            self.action_space = gym.spaces.Box(shape=(7,),
-                                               low=-1.0,
-                                               high=1.0,
-                                               dtype=np.float32)
+        if self.action_filter == "navigation":
+            self.action_space = gym.spaces.Box(shape=(3,), low=-1.0, high=1.0, dtype=np.float32)
+        elif self.action_filter == "mobile_manipulation":
+            self.action_space = gym.spaces.Box(shape=(17,), low=-1.0, high=1.0, dtype=np.float32)
+        elif self.action_filter == "tabletop_manipulation":
+            self.action_space = gym.spaces.Box(shape=(7,), low=-1.0, high=1.0, dtype=np.float32)
         else:
-            self.action_space = gym.spaces.Box(shape=(28,),
-                                               low=-1.0,
-                                               high=1.0,
-                                               dtype=np.float32)
+            self.action_space = gym.spaces.Box(shape=(28,), low=-1.0, high=1.0, dtype=np.float32)
 
     def load_behavior_task_setup(self):
         """
         Load task setup
         """
         # task
-        task = self.config['task']
-        task_id = self.config['task_id']
-        scene_id = self.config['scene_id']
-        clutter = self.config['clutter']
-        online_sampling = self.config['online_sampling']
+        task = self.config["task"]
+        task_id = self.config["task_id"]
+        scene_id = self.config["scene_id"]
+        clutter = self.config["clutter"]
+        online_sampling = self.config["online_sampling"]
         if online_sampling:
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                'urdf_file': '{}_neurips_task_{}_{}_{}_fixed_furniture'.format(scene_id, task, task_id, self.instance_id),
+                "urdf_file": "{}_neurips_task_{}_{}_{}_fixed_furniture".format(
+                    scene_id, task, task_id, self.instance_id
+                ),
             }
         tasknet.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
@@ -114,38 +106,31 @@ class BehaviorEnv(iGibsonEnv):
             scene_id=scene_id,
             load_clutter=clutter,
             scene_kwargs=scene_kwargs,
-            online_sampling=online_sampling
+            online_sampling=online_sampling,
         )
         self.scene = self.task.scene
         self.robots = [self.task.agent]
 
-        self.reset_checkpoint_idx = self.config.get('reset_checkpoint_idx', -1)
-        self.reset_checkpoint_dir = self.config.get(
-            'reset_checkpoint_dir', None)
+        self.reset_checkpoint_idx = self.config.get("reset_checkpoint_idx", -1)
+        self.reset_checkpoint_dir = self.config.get("reset_checkpoint_dir", None)
 
     def load_task_setup(self):
-        self.initial_pos_z_offset = self.config.get(
-            'initial_pos_z_offset', 0.1)
+        self.initial_pos_z_offset = self.config.get("initial_pos_z_offset", 0.1)
         # s = 0.5 * G * (t ** 2)
         drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
-        assert drop_distance < self.initial_pos_z_offset, \
-            'initial_pos_z_offset is too small for collision checking'
+        assert drop_distance < self.initial_pos_z_offset, "initial_pos_z_offset is too small for collision checking"
 
         # ignore the agent's collision with these body ids
-        self.collision_ignore_body_b_ids = set(
-            self.config.get('collision_ignore_body_b_ids', []))
+        self.collision_ignore_body_b_ids = set(self.config.get("collision_ignore_body_b_ids", []))
         # ignore the agent's collision with these link ids of itself
-        self.collision_ignore_link_a_ids = set(
-            self.config.get('collision_ignore_link_a_ids', []))
+        self.collision_ignore_link_a_ids = set(self.config.get("collision_ignore_link_a_ids", []))
 
         # discount factor
-        self.discount_factor = self.config.get('discount_factor', 0.99)
+        self.discount_factor = self.config.get("discount_factor", 0.99)
 
         # domain randomization frequency
-        self.texture_randomization_freq = self.config.get(
-            'texture_randomization_freq', None)
-        self.object_randomization_freq = self.config.get(
-            'object_randomization_freq', None)
+        self.texture_randomization_freq = self.config.get("texture_randomization_freq", None)
+        self.object_randomization_freq = self.config.get("object_randomization_freq", None)
 
         self.load_behavior_task_setup()
 
@@ -164,14 +149,12 @@ class BehaviorEnv(iGibsonEnv):
 
     def load_observation_space(self):
         super(BehaviorEnv, self).load_observation_space()
-        if 'proprioception' in self.output:
+        if "proprioception" in self.output:
             proprioception_dim = self.robots[0].get_proprioception_dim()
-            self.observation_space.spaces['proprioception'] = \
-                gym.spaces.Box(low=-np.inf,
-                               high=np.inf,
-                               shape=(proprioception_dim,))
-            self.observation_space = gym.spaces.Dict(
-                self.observation_space.spaces)
+            self.observation_space.spaces["proprioception"] = gym.spaces.Box(
+                low=-np.inf, high=np.inf, shape=(proprioception_dim,)
+            )
+            self.observation_space = gym.spaces.Dict(self.observation_space.spaces)
 
     def step(self, action):
         """
@@ -187,12 +170,12 @@ class BehaviorEnv(iGibsonEnv):
         """
         self.current_step += 1
 
-        if self.action_filter == 'navigation':
+        if self.action_filter == "navigation":
             action = action * 0.05
             new_action = np.zeros((28,))
             new_action[:2] = action[:2]
             new_action[5] = action[2]
-        elif self.action_filter == 'mobile_manipulation':
+        elif self.action_filter == "mobile_manipulation":
             self.robots[0].hand_thresh = 0.8
             action = action * 0.05
             new_action = np.zeros((28,))
@@ -203,7 +186,7 @@ class BehaviorEnv(iGibsonEnv):
             new_action[12:19] = action[3:10]
             # right hand 7d
             new_action[20:27] = action[10:17]
-        elif self.action_filter == 'tabletop_manipulation':
+        elif self.action_filter == "tabletop_manipulation":
             # Note: only using right hand
             self.robots[0].hand_thresh = 0.8
             action = action * 0.05
@@ -224,17 +207,16 @@ class BehaviorEnv(iGibsonEnv):
         # because if an intermediate checkpoint is loaded, we need step the
         # simulator before calling task.check_success
         if self.current_step == 1:
-            self.reward_potential = self.get_potential(
-                satisfied_predicates)
+            self.reward_potential = self.get_potential(satisfied_predicates)
 
-        if self.current_step >= self.config['max_step']:
+        if self.current_step >= self.config["max_step"]:
             done = True
         reward, info = self.get_reward(satisfied_predicates)
 
         self.populate_info(info)
 
         if done and self.automatic_reset:
-            info['last_observation'] = state
+            info["last_observation"] = state
             state = self.reset()
 
         return state, reward, done, info
@@ -243,11 +225,10 @@ class BehaviorEnv(iGibsonEnv):
         potential = 0.0
 
         # Evaluate the first ground predicate
-        _, satisfied_predicates = evaluate_state(
-            self.task.ground_goal_state_options[0])
-        success_score = len(satisfied_predicates['satisfied']) / \
-            (len(satisfied_predicates['satisfied']) +
-             len(satisfied_predicates['unsatisfied']))
+        _, satisfied_predicates = evaluate_state(self.task.ground_goal_state_options[0])
+        success_score = len(satisfied_predicates["satisfied"]) / (
+            len(satisfied_predicates["satisfied"]) + len(satisfied_predicates["unsatisfied"])
+        )
         predicate_potential = success_score
         potential += predicate_potential
 
@@ -267,29 +248,27 @@ class BehaviorEnv(iGibsonEnv):
         :return: observation as a dictionary
         """
         state = OrderedDict()
-        if 'task_obs' in self.output:
-            state['task_obs'] = self.task.get_task_obs(self)
-        if 'vision' in self.sensors:
-            vision_obs = self.sensors['vision'].get_obs(self)
+        if "task_obs" in self.output:
+            state["task_obs"] = self.task.get_task_obs(self)
+        if "vision" in self.sensors:
+            vision_obs = self.sensors["vision"].get_obs(self)
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
-        if 'scan_occ' in self.sensors:
-            scan_obs = self.sensors['scan_occ'].get_obs(self)
+        if "scan_occ" in self.sensors:
+            scan_obs = self.sensors["scan_occ"].get_obs(self)
             for modality in scan_obs:
                 state[modality] = scan_obs[modality]
-        if 'bump' in self.sensors:
-            state['bump'] = self.sensors['bump'].get_obs(self)
+        if "bump" in self.sensors:
+            state["bump"] = self.sensors["bump"].get_obs(self)
 
-        if 'proprioception' in self.output:
-            state['proprioception'] = np.array(
-                self.robots[0].get_proprioception())
+        if "proprioception" in self.output:
+            state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
 
     def reset_scene_and_agent(self):
         if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
-            load_checkpoint(
-                self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
+            load_checkpoint(self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
         else:
             self.task.reset_scene(snapshot_id=self.task.initial_state)
         # set the constraints to the current poses
@@ -305,13 +284,15 @@ class BehaviorEnv(iGibsonEnv):
             del self.log_writer
             self.log_writer = None
 
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-        task = self.config['task']
-        task_id = self.config['task_id']
-        scene = self.config['scene_id']
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        task = self.config["task"]
+        task_id = self.config["task_id"]
+        scene = self.config["scene_id"]
         if self.episode_save_dir:
-            vr_log_path = os.path.join(self.episode_save_dir, "{}_{}_{}_{}_{}.hdf5".format(
-                task, task_id, scene, timestamp, self.current_episode))
+            vr_log_path = os.path.join(
+                self.episode_save_dir,
+                "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, timestamp, self.current_episode),
+            )
             self.log_writer = IGLogWriter(
                 self.simulator,
                 frames_before_write=200,
@@ -319,7 +300,7 @@ class BehaviorEnv(iGibsonEnv):
                 task=self.task,
                 store_vr=False,
                 vr_robot=self.robots[0],
-                filter_objects=True
+                filter_objects=True,
             )
             self.log_writer.set_up_data_storage()
 
@@ -336,35 +317,41 @@ class BehaviorEnv(iGibsonEnv):
         return state
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--config',
-        '-c',
-        default='igibson/examples/configs/behavior.yaml',
-        help='which config file to use [default: use yaml files in examples/configs]')
-    parser.add_argument('--mode',
-                        '-m',
-                        choices=['headless', 'gui', 'iggui', 'pbgui'],
-                        default='gui',
-                        help='which mode for simulation (default: headless)')
-    parser.add_argument('--action_filter',
-                        '-af',
-                        choices=['navigation', 'tabletop_manipulation',
-                                 'mobile_manipulation', 'all'],
-                        default='mobile_manipulation',
-                        help='which action filter')
+        "--config",
+        "-c",
+        default="igibson/examples/configs/behavior.yaml",
+        help="which config file to use [default: use yaml files in examples/configs]",
+    )
+    parser.add_argument(
+        "--mode",
+        "-m",
+        choices=["headless", "gui", "iggui", "pbgui"],
+        default="gui",
+        help="which mode for simulation (default: headless)",
+    )
+    parser.add_argument(
+        "--action_filter",
+        "-af",
+        choices=["navigation", "tabletop_manipulation", "mobile_manipulation", "all"],
+        default="mobile_manipulation",
+        help="which action filter",
+    )
     args = parser.parse_args()
 
-    env = BehaviorEnv(config_file=args.config,
-                      mode=args.mode,
-                      action_timestep=1.0 / 10.0,
-                      physics_timestep=1.0 / 240.0,
-                      action_filter=args.action_filter,
-                      episode_save_dir='test')
+    env = BehaviorEnv(
+        config_file=args.config,
+        mode=args.mode,
+        action_timestep=1.0 / 10.0,
+        physics_timestep=1.0 / 240.0,
+        action_filter=args.action_filter,
+        episode_save_dir="test",
+    )
     step_time_list = []
     for episode in range(1):
-        print('Episode: {}'.format(episode))
+        print("Episode: {}".format(episode))
         start = time.time()
         env.reset()
         for i in range(1000):  # 10 seconds
@@ -372,6 +359,5 @@ if __name__ == '__main__':
             state, reward, done, _ = env.step(action)
             if done:
                 break
-        print('Episode finished after {} timesteps, took {} seconds.'.format(
-            env.current_step, time.time() - start))
+        print("Episode finished after {} timesteps, took {} seconds.".format(env.current_step, time.time() - start))
     env.close()

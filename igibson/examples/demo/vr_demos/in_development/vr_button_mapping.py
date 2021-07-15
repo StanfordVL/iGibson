@@ -13,23 +13,22 @@ from igibson.simulator import Simulator
 
 
 def main():
-    s = Simulator(mode='vr', 
-                rendering_settings=MeshRendererSettings(enable_shadow=True, optimized=True))
+    s = Simulator(mode="vr", rendering_settings=MeshRendererSettings(enable_shadow=True, optimized=True))
     scene = EmptyScene()
     s.import_scene(scene, render_floor_plane=True)
 
     # Main simulation loop
     while True:
         s.step()
-        
+
         # Print all button events that happen each frame
         event_data = s.get_vr_events()
         if event_data:
-            print('----- Next set of event data (on current frame): -----')
+            print("----- Next set of event data (on current frame): -----")
             for event in event_data:
-                readable_event = ['left_controller' if event[0] == 0 else 'right_controller', event[1], event[2]]
-                print('Event (controller, button_idx, press_id): {}'.format(readable_event))
-                
+                readable_event = ["left_controller" if event[0] == 0 else "right_controller", event[1], event[2]]
+                print("Event (controller, button_idx, press_id): {}".format(readable_event))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

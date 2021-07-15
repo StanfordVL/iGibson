@@ -14,20 +14,32 @@ if __name__ == "__main__":
     for category_path in object_categories:
         if os.path.isdir(category_path):
             for object_instance in os.listdir(category_path):
-                heights_per_link = os.path.join(category_path, object_instance, 'misc', 'heights_per_link.json')
+                heights_per_link = os.path.join(category_path, object_instance, "misc", "heights_per_link.json")
                 if os.path.exists(heights_per_link):
                     with open(heights_per_link, "r") as f:
                         link_data = json.load(f)
                     height_maps = {}
                     if "under" in link_data:
-                        del link_data['under']
+                        del link_data["under"]
                     for link_folder in link_data:
                         height_maps[link_folder] = {}
                         for link in link_data[link_folder]:
-                            height_map_dir = os.path.join(category_path, object_instance, "misc", "height_maps_per_link", link_folder, link)
+                            height_map_dir = os.path.join(
+                                category_path, object_instance, "misc", "height_maps_per_link", link_folder, link
+                            )
                             link_height_maps = []
                             for link_png in os.listdir(height_map_dir):
-                                link_height_maps.append( os.path.join(category_path, object_instance, "misc", "height_maps_per_link", link_folder, link, link_png))
+                                link_height_maps.append(
+                                    os.path.join(
+                                        category_path,
+                                        object_instance,
+                                        "misc",
+                                        "height_maps_per_link",
+                                        link_folder,
+                                        link,
+                                        link_png,
+                                    )
+                                )
                             height_maps[link_folder][link] = link_height_maps
 
                     objects_to_process[idx] = {
@@ -36,13 +48,13 @@ if __name__ == "__main__":
                         "object_instance": object_instance,
                         "urdf": os.path.join(category_path, object_instance, f"{object_instance}.urdf"),
                         "height_maps": height_maps,
-                        "offset": link_data
+                        "offset": link_data,
                     }
                     idx += 1
 
     insert_visual_mesh = True
     for obj_name, obj_properties in objects_to_process.items():
-        tree = ET.parse(obj_properties['urdf'])
+        tree = ET.parse(obj_properties["urdf"])
         links = tree.findall("link")
         succesful_write = False
         for support_type in obj_properties["height_maps"]:
@@ -63,14 +75,14 @@ if __name__ == "__main__":
 
                     depth = (max_row - min_row) * 0.01 * 0.98
                     width = (max_column - min_column) * 0.01 * 0.98
-                    euler = [0,0,0]
+                    euler = [0, 0, 0]
                     # offset = [x_offset, y_offset, obj_properties["offset"][support_type][child_link][0]]
                     offset = [0, y_offset, obj_properties["offset"][support_type][child_link][idx]]
                     size = np.array([width, depth, 0.01])
-                    for urdf_link in tree.findall('link'):
-                        link_name = urdf_link.get('name')
+                    for urdf_link in tree.findall("link"):
+                        link_name = urdf_link.get("name")
                         if link_name == child_link:
-                        
+
                             if insert_visual_mesh:
                                 visual_mesh = ET.fromstring(
                                     f"""
@@ -98,6 +110,10 @@ if __name__ == "__main__":
                             succesful_write = True
 
         if succesful_write:
-            urdf_path = os.path.join(obj_properties['category_path'], obj_properties['object_instance'], f"{obj_properties['object_instance']}_simplified.urdf" )
+            urdf_path = os.path.join(
+                obj_properties["category_path"],
+                obj_properties["object_instance"],
+                f"{obj_properties['object_instance']}_simplified.urdf",
+            )
             with open(urdf_path, "w") as f:
                 tree.write(f, encoding="unicode")

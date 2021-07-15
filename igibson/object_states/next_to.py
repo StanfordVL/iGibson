@@ -37,15 +37,14 @@ class NextTo(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
         avg_aabb_length = np.mean(objA_dims + objB_dims)
 
         # If the distance is longer than acceptable, return False.
-        if distance > avg_aabb_length * (1./6.):
+        if distance > avg_aabb_length * (1.0 / 6.0):
             return False
 
         # Otherwise, check if the other object shows up in the adjacency list.
         adjacency_this = self.obj.states[HorizontalAdjacency].get_value()
         other_body_id = other.get_body_id()
         in_any_horizontal_adjacency_of_this = any(
-            (other_body_id in adjacency_list.positive_neighbors or
-             other_body_id in adjacency_list.negative_neighbors)
+            (other_body_id in adjacency_list.positive_neighbors or other_body_id in adjacency_list.negative_neighbors)
             for adjacency_list in flatten_planes(adjacency_this)
         )
         if in_any_horizontal_adjacency_of_this:
@@ -55,8 +54,7 @@ class NextTo(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
         adjacency_other = other.states[HorizontalAdjacency].get_value()
         this_body_id = self.obj.get_body_id()
         in_any_horizontal_adjacency_of_other = any(
-            (this_body_id in adjacency_list.positive_neighbors or
-             this_body_id in adjacency_list.negative_neighbors)
+            (this_body_id in adjacency_list.positive_neighbors or this_body_id in adjacency_list.negative_neighbors)
             for adjacency_list in flatten_planes(adjacency_other)
         )
 
