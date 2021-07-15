@@ -1,15 +1,15 @@
 [submodule "gibson2/render/pybind11"]
-	path = gibson2/render/pybind11
+	path = igibson/render/pybind11
 	url = https://github.com/pybind/pybind11.git
 [submodule "gibson2/render/glfw"]
-	path = gibson2/render/glfw
+	path = igibson/render/glfw
 	url = https://github.com/glfw/glfw
 [submodule "gibson2/render/glm"]
-	path = gibson2/render/glm
+	path = igibson/render/glm
 	url = https://github.com/g-truc/glm
 [submodule "gibson2/render/openvr"]
-	path = gibson2/render/openvr
+	path = igibson/render/openvr
 	url = https://github.com/ValveSoftware/openvr
 [submodule "gibson2/render/cryptopp"]
-	path = gibson2/render/cryptopp
+	path = igibson/render/cryptopp
 	url = https://github.com/fxia22/cryptopp
