@@ -12,21 +12,20 @@ import pybullet as p
 from PIL import Image
 
 import igibson
-from igibson.external.pybullet_tools.utils import euler_from_quat
-from igibson.external.pybullet_tools.utils import get_joints, get_joint_names, get_joint_positions
-from igibson.object_states.factory import get_state_name, get_state_from_name
+from igibson.external.pybullet_tools.utils import euler_from_quat, get_joint_names, get_joint_positions, get_joints
+from igibson.object_states.factory import get_state_from_name, get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.objects.articulated_object import URDFObject
-from igibson.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
+from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.utils.assets_utils import (
-    get_ig_avg_category_specs,
-    get_ig_scene_path,
-    get_ig_model_path,
-    get_ig_category_path,
-    get_ig_category_ids,
-    get_cubicasa_scene_path,
     get_3dfront_scene_path,
+    get_cubicasa_scene_path,
+    get_ig_avg_category_specs,
+    get_ig_category_ids,
+    get_ig_category_path,
+    get_ig_model_path,
+    get_ig_scene_path,
 )
 from igibson.utils.utils import rotate_vector_3d
 

@@ -7,8 +7,8 @@ from abc import ABCMeta
 import cv2
 import networkx as nx
 import numpy as np
-from PIL import Image
 from future.utils import with_metaclass
+from PIL import Image
 
 from igibson.scenes.scene_base import Scene
 from igibson.utils.utils import l2_distance

@@ -6,9 +6,8 @@ import tempfile
 from math import *
 
 import bpy
+from material_util import build_pbr_textured_nodes_from_name, clean_nodes, create_empty_image
 from mathutils import *
-
-from material_util import clean_nodes, build_pbr_textured_nodes_from_name, create_empty_image
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 

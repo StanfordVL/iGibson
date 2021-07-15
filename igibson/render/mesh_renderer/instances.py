@@ -1,13 +1,8 @@
 import numpy as np
 import pybullet as p
 
-from igibson.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
-from igibson.utils.mesh_util import (
-    xyz2mat,
-    mat2xyz,
-    safemat2quat,
-    transform_vertex,
-)
+from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
+from igibson.utils.mesh_util import mat2xyz, safemat2quat, transform_vertex, xyz2mat
 
 
 class InstanceGroup(object):

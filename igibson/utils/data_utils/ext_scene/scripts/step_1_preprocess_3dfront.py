@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 from PIL import ImageDraw
 from scipy.spatial import ConvexHull
 from shapely.geometry import Polygon as shape_poly
-
-import igibson
-from utils.scene_urdf import gen_scene_urdf, gen_orig_urdf_with_cabinet
+from utils.scene_urdf import gen_orig_urdf_with_cabinet, gen_scene_urdf
 from utils.semantics import *
 from utils.utils import *
+
+import igibson
 
 parser = argparse.ArgumentParser("Convert 3D-Front...")
 

@@ -12,8 +12,8 @@ import numpy as np
 import pybullet as p
 
 from igibson.utils.git_utils import project_git_info
-from igibson.utils.utils import parse_str_config, dump_config
-from igibson.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
+from igibson.utils.utils import dump_config, parse_str_config
+from igibson.utils.vr_utils import VR_BUTTON_COMBO_NUM, VrData, convert_button_data_to_binary
 
 
 class IGLogWriter(object):

@@ -2,8 +2,7 @@ import itertools
 
 import pybullet as p
 
-from igibson.object_states.object_state_base import AbsoluteObjectState
-from igibson.object_states.object_state_base import BooleanState
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.objects.object_base import Object
 from igibson.objects.stateful_object import StatefulObject
 

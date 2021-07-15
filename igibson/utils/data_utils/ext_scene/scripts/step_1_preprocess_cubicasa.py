@@ -9,15 +9,15 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image, ImageDraw
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
+from PIL import Image, ImageDraw
 from shapely.geometry import Polygon as shape_poly
-
-import igibson
 from utils.semantics import *
 from utils.svg_utils import PolygonWall, get_icon, get_points
-from utils.utils import polygon_to_bbox, has_overlap, get_volume, semmap_to_lightmap
+from utils.utils import get_volume, has_overlap, polygon_to_bbox, semmap_to_lightmap
+
+import igibson
 
 parser = argparse.ArgumentParser("Convert Cubicasa5k...")
 

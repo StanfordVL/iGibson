@@ -6,15 +6,15 @@ import pybullet as p
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
-    MAX_DISTANCE,
     CIRCULAR_LIMITS,
+    MAX_DISTANCE,
+    PI,
+    birrt,
+    circular_difference,
+    direct_path,
     get_base_difference_fn,
     get_base_distance_fn,
-    circular_difference,
     pairwise_collision,
-    direct_path,
-    birrt,
-    PI,
 )
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.behavior_robot import BehaviorRobot

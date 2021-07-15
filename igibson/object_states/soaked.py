@@ -1,6 +1,5 @@
 from igibson.object_states.contact_bodies import ContactBodies
-from igibson.object_states.object_state_base import AbsoluteObjectState
-from igibson.object_states.object_state_base import BooleanState
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.object_states.water_source import WaterSource
 from igibson.utils.utils import transform_texture

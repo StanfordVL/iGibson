@@ -10,8 +10,8 @@ import uuid
 from io import BytesIO
 
 import numpy as np
+from flask import Flask, Response, render_template, request
 from PIL import Image
-from flask import Flask, render_template, Response, request
 
 import igibson
 from igibson.objects.ycb_object import YCBObject

@@ -2,8 +2,8 @@ import json
 import os
 
 import pybullet as p
-from IPython import embed
 from bddl.object_taxonomy import ObjectTaxonomy
+from IPython import embed
 
 
 def set_pos_orn(body_id, pos, orn):

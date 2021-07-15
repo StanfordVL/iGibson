@@ -7,8 +7,8 @@ import numpy as np
 # We will use the version number for backcompatibility
 import scipy
 import yaml
-from PIL import Image
 from packaging import version
+from PIL import Image
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
 

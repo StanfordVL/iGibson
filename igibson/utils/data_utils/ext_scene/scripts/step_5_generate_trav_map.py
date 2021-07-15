@@ -4,13 +4,9 @@ import argparse
 import os
 import random
 
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene, SCENE_SOURCE
+from igibson.scenes.igibson_indoor_scene import SCENE_SOURCE, InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.assets_utils import (
-    get_ig_scene_path,
-    get_cubicasa_scene_path,
-    get_3dfront_scene_path,
-)
+from igibson.utils.assets_utils import get_3dfront_scene_path, get_cubicasa_scene_path, get_ig_scene_path
 from igibson.utils.map_utils import gen_trav_map
 
 """

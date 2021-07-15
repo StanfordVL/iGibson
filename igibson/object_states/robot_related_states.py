@@ -1,6 +1,6 @@
 import numpy as np
 
-from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.object_states.object_state_base import BooleanState, CachingEnabledObjectState
 from igibson.object_states.pose import Pose
 from igibson.object_states.room_states import InsideRoomTypes
 from igibson.utils.constants import MAX_INSTANCE_COUNT
