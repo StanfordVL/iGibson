@@ -1,11 +1,12 @@
-import numpy as np
-import random
-import os
 import argparse
-import json
 import glob
-import igibson
+import json
+import os
+
+import numpy as np
 from PIL import Image
+
+import igibson
 
 parser = argparse.ArgumentParser("Generate Mesh meta-data...")
 parser.add_argument("--input_dir", dest="input_dir")

@@ -1,5 +1,6 @@
-from igibson.objects.object_base import Object
 import pybullet as p
+
+from igibson.objects.object_base import Object
 
 
 class VisualMarker(Object):

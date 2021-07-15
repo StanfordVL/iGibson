@@ -2,14 +2,9 @@ from __future__ import print_function
 
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
-import torch.optim as optim
 import torch
-import torchvision
-from torchvision import datasets, transforms
 from torch.autograd import Variable
 import torch.nn.functional as F
-import shutil
-import time
 
 cudnn.benchmark = True
 

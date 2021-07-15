@@ -1,15 +1,13 @@
+import logging
 import os
 import random
-import subprocess
-from threading import Thread
-import logging
 import time
 
 import cv2
 import numpy as np
 import pybullet as p
+
 from igibson.objects.visual_marker import VisualMarker
-from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 from igibson.utils.utils import rotate_vector_2d
 
 

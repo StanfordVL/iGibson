@@ -1,9 +1,5 @@
-import os
-import subprocess
 import argparse
-import json
-import numpy as np
-from IPython import embed
+import os
 import xml.etree.ElementTree as ET
 
 parser = argparse.ArgumentParser("Generate URDF for rigid_body")

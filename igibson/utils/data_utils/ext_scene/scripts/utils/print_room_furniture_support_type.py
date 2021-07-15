@@ -1,11 +1,10 @@
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import numpy as np
-import math
-import os
-import json
 import argparse
+import json
+import os
+
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 
 def get_scene_support_objs(scene_name):

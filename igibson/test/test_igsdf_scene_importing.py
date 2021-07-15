@@ -1,12 +1,9 @@
 #!/usr/bin/env python
 
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.utils import parse_config
-import os
-import igibson
 import time
-import random
+
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 
 def test_import_igsdf():

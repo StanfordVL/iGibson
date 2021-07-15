@@ -1,10 +1,11 @@
-from igibson.sensors.sensor_base import BaseSensor
-from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
-from igibson.utils.constants import OccupancyGridState
-import numpy as np
-from transforms3d.quaternions import quat2mat
-import pybullet as p
 import cv2
+import numpy as np
+import pybullet as p
+from transforms3d.quaternions import quat2mat
+
+from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
+from igibson.sensors.sensor_base import BaseSensor
+from igibson.utils.constants import OccupancyGridState
 
 
 class ScanSensor(BaseSensor):

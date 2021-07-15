@@ -3,8 +3,6 @@ import numpy as np
 # import poly_decomp as pd
 from . import earcut
 
-from .utils import BBox
-
 
 class Wall_bbox(object):
     def __init__(self, bbox, ceiling_height=2.4):

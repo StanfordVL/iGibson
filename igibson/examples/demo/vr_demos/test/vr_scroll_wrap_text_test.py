@@ -5,22 +5,19 @@ You can use the left and right controllers to start/stop/reset the timer,
 as well as show/hide its display. The "overlay toggle" action and its
 corresponding button index mapping can be found in the vr_config.yaml file in the igibson folder.
 """
-import numpy as np
 import os
+
+import numpy as np
 import pybullet as p
 import pybullet_data
-import time
 
 import igibson
-from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.objects.articulated_object import ArticulatedObject
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.objects.ycb_object import YCBObject
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson import assets_path
-
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
 # transferability to the real world

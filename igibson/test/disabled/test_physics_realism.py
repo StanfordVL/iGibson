@@ -1,25 +1,23 @@
+import json
 import os
+import xml.etree.ElementTree as ET
 
-import igibson
-import pybullet as p
 import numpy as np
-
-from igibson.external.pybullet_tools.utils import stable_z_on_aabb
-from igibson.external.pybullet_tools.utils import get_center_extent
-from igibson.simulator import Simulator
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.utils.urdf_utils import save_urdfs_without_floating_joints
-from igibson.objects.articulated_object import ArticulatedObject
-from igibson.objects.visual_marker import VisualMarker
-from igibson.utils.utils import rotate_vector_3d
-from igibson.utils.urdf_utils import round_up
-
+import pybullet as p
+import trimesh
 from IPython import embed
 from PIL import Image
-import json
-import trimesh
 
-import xml.etree.ElementTree as ET
+import igibson
+from igibson.external.pybullet_tools.utils import get_center_extent
+from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.visual_marker import VisualMarker
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.urdf_utils import round_up
+from igibson.utils.urdf_utils import save_urdfs_without_floating_joints
+from igibson.utils.utils import rotate_vector_3d
 
 SELECTED_CLASSES = ["window"]
 SELECTED_INSTANCES = "103070"

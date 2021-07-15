@@ -1,25 +1,27 @@
-from igibson.utils.utils import quatToXYZW
-from igibson.envs.env_base import BaseEnv
-from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
-from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
-from igibson.tasks.point_nav_random_task import PointNavRandomTask
-from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
-from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
-from igibson.tasks.reaching_random_task import ReachingRandomTask
-from igibson.sensors.scan_sensor import ScanSensor
-from igibson.sensors.vision_sensor import VisionSensor
-from igibson.robots.robot_base import BaseRobot
-from igibson.external.pybullet_tools.utils import stable_z_on_aabb
-from igibson.sensors.bump_sensor import BumpSensor
-from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
-from transforms3d.euler import euler2quat
-from collections import OrderedDict
 import argparse
+import logging
+import time
+from collections import OrderedDict
+
 import gym
 import numpy as np
 import pybullet as p
-import time
-import logging
+from transforms3d.euler import euler2quat
+
+from igibson.envs.env_base import BaseEnv
+from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.robots.robot_base import BaseRobot
+from igibson.sensors.bump_sensor import BumpSensor
+from igibson.sensors.scan_sensor import ScanSensor
+from igibson.sensors.vision_sensor import VisionSensor
+from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
+from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
+from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.tasks.reaching_random_task import ReachingRandomTask
+from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
+from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
+from igibson.utils.utils import quatToXYZW
 
 
 class iGibsonEnv(BaseEnv):

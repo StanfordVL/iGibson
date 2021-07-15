@@ -2,8 +2,8 @@ import gym
 import numpy as np
 import pybullet as p
 
+from igibson.external.pybullet_tools.utils import joints_from_names
 from igibson.robots.robot_locomotor import LocomotorRobot
-from igibson.external.pybullet_tools.utils import joints_from_names, set_joint_positions
 
 
 class JR2_Kinova(LocomotorRobot):

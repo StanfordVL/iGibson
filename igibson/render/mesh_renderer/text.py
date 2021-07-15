@@ -1,9 +1,11 @@
+import os
 from collections import deque
+
 import freetype as ft
-from igibson import assets_path
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+
+from igibson import assets_path
 
 
 class Character(object):

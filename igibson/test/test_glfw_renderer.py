@@ -1,9 +1,6 @@
-from igibson.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 import cv2
-import sys
 import numpy as np
-from igibson.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
-import time
+from igibson.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 
 renderer = MeshRenderer(width=512, height=512)
 renderer.load_object(

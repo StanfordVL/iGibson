@@ -1,6 +1,7 @@
-from igibson.objects.stateful_object import StatefulObject
-import pybullet as p
 import numpy as np
+import pybullet as p
+
+from igibson.objects.stateful_object import StatefulObject
 
 
 class ShapeNetObject(StatefulObject):

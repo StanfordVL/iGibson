@@ -1,4 +1,5 @@
 import argparse
+import logging
 import time
 from enum import IntEnum
 
@@ -14,7 +15,6 @@ from igibson.object_states.utils import sample_kinematics
 from igibson.objects.articulated_object import URDFObject
 from igibson.robots.behavior_robot import BREye, BRBody, BRHand
 from igibson.utils.behavior_robot_planning_utils import plan_hand_motion_br, plan_base_motion_br, dry_run_base_plan
-import logging
 
 NUM_ACTIONS = 6
 

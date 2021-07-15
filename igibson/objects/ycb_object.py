@@ -1,8 +1,9 @@
 import os
+
+import pybullet as p
+
 import igibson
 from igibson.objects.stateful_object import StatefulObject
-import pybullet as p
-from igibson.object_states.factory import prepare_object_states
 
 
 class YCBObject(StatefulObject):

@@ -1,7 +1,6 @@
-import math
+import pybullet as p
 
 from igibson.objects.stateful_object import StatefulObject
-import pybullet as p
 
 
 class Cube(StatefulObject):

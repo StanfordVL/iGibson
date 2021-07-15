@@ -1,11 +1,9 @@
 import os
 
+import numpy as np
 from bddl.object_taxonomy import ObjectTaxonomy
 
 import igibson
-import numpy as np
-
-from igibson import object_states
 from igibson.objects.articulated_object import URDFObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator

@@ -5,12 +5,10 @@ import pybullet as p
 
 from igibson import object_states
 from igibson.objects.articulated_object import URDFObject
+from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_model_path
-from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
-
-from IPython import embed
 
 
 def main():

@@ -1,11 +1,12 @@
-import igibson
-import os
 import argparse
-import random
-import subprocess
 import json
+import os
+import subprocess
 from collections import defaultdict
+
 import yaml
+
+import igibson
 
 
 def get_ig_avg_category_specs():

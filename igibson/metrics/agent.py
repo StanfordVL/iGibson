@@ -1,6 +1,7 @@
+import copy
+
 import numpy as np
 import pybullet as p
-import copy
 
 from igibson.metrics.metric_base import MetricBase
 

@@ -1,14 +1,16 @@
-from igibson.robots.locobot_robot import Locobot
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
-from igibson.robots.fetch_robot import Fetch
-from igibson.utils.utils import parse_config
 import os
 import time
+
 import numpy as np
 import pybullet as p
 import pybullet_data
+
 import igibson
+from igibson.robots.fetch_robot import Fetch
+from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.locobot_robot import Locobot
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.utils.utils import parse_config
 
 
 def main():

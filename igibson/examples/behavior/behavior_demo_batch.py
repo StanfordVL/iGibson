@@ -2,13 +2,14 @@
 BEHAVIOR demo batch analysis script
 """
 
-import os
 import json
-import pandas as pd
 import logging
+import os
 from pathlib import Path
 
 import bddl
+import pandas as pd
+
 from igibson.examples.behavior.behavior_demo_replay import replay_demo
 
 

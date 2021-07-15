@@ -1,13 +1,14 @@
-from igibson.tasks.task_base import BaseTask
-import pybullet as p
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.termination_conditions.max_collision import MaxCollision
-from igibson.termination_conditions.timeout import Timeout
-from igibson.termination_conditions.out_of_bound import OutOfBound
-from igibson.reward_functions.potential_reward import PotentialReward
-
 import logging
+
 import numpy as np
+import pybullet as p
+
+from igibson.reward_functions.potential_reward import PotentialReward
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.tasks.task_base import BaseTask
+from igibson.termination_conditions.max_collision import MaxCollision
+from igibson.termination_conditions.out_of_bound import OutOfBound
+from igibson.termination_conditions.timeout import Timeout
 
 
 class RoomRearrangementTask(BaseTask):

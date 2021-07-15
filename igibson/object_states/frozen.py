@@ -1,4 +1,5 @@
 import numpy as np
+
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.object_states.temperature import Temperature
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin

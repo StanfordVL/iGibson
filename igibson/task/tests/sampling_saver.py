@@ -1,12 +1,14 @@
 import argparse
-import bddl
-from igibson.task.task_base import iGBEHAVIORActivityInstance
-from igibson.simulator import Simulator
+import json
 import logging
 import os
-import json
+
+import bddl
 import pybullet as p
+
 import igibson
+from igibson.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 PARTIAL_RECACHE = {
     # 'sorting_books': ['Ihlen_0_int'],

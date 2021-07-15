@@ -1,16 +1,12 @@
 import os
 
-import igibson
 import networkx as nx
 import numpy as np
 import pybullet as p
+
+import igibson
 from igibson import object_states
 from igibson.external.pybullet_tools.utils import quat_from_euler, Euler
-from igibson.object_states.factory import (
-    get_state_dependency_graph,
-    get_states_by_dependency_order,
-    prepare_object_states,
-)
 from igibson.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.articulated_object import URDFObject

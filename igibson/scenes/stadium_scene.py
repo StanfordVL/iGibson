@@ -1,10 +1,12 @@
 import logging
-import numpy as np
-from igibson.utils.utils import l2_distance
-import pybullet_data
-import pybullet as p
 import os
+
+import numpy as np
+import pybullet as p
+import pybullet_data
+
 from igibson.scenes.scene_base import Scene
+from igibson.utils.utils import l2_distance
 
 
 class StadiumScene(Scene):

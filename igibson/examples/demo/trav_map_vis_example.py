@@ -1,10 +1,10 @@
-import networkx as nx
-import matplotlib.pyplot as plt
-import cv2
-import igibson
-from PIL import Image
-import numpy as np
 import os
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+
 from igibson.utils.assets_utils import get_scene_path
 
 

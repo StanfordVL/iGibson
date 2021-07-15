@@ -1,6 +1,8 @@
-from igibson.scenes.stadium_scene import StadiumScene
-import pybullet as p
 import time
+
+import pybullet as p
+
+from igibson.scenes.stadium_scene import StadiumScene
 
 
 def main():

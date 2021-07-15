@@ -1,6 +1,4 @@
 from igibson import object_states
-from igibson.object_states.factory import prepare_object_states
-from igibson.objects.ycb_object import YCBObject
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 

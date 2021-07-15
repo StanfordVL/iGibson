@@ -1,4 +1,5 @@
 import platform
+
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
 
 

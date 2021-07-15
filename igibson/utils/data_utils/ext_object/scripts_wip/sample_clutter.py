@@ -1,16 +1,17 @@
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.objects.articulated_object import URDFObject
-from igibson.object_states.utils import sample_kinematics
-from igibson.utils.assets_utils import get_ig_avg_category_specs
+import argparse
+import json
+import os
+import random
+
 import matplotlib.pyplot as plt
 import numpy as np
-import math
-import os
-import json
-import random
-import argparse
+
+from igibson.object_states.utils import sample_kinematics
+from igibson.objects.articulated_object import URDFObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import get_ig_avg_category_specs
 
 
 def main(args):

@@ -1,21 +1,20 @@
 #!/usr/bin/env python
 
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.utils.constants import AVAILABLE_MODALITIES
-from igibson.utils.utils import parse_config
-from igibson.utils.constants import NamedRenderingPresets
 import os
-import igibson
-import time
-import random
-import matplotlib.pyplot as plt
-from igibson.utils.assets_utils import get_ig_assets_version
-from igibson.utils.assets_utils import get_scene_path
 import pickle as pkl
+import time
+
+import matplotlib.pyplot as plt
 import numpy as np
+
+import igibson
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import get_ig_assets_version
+from igibson.utils.constants import AVAILABLE_MODALITIES
+from igibson.utils.constants import NamedRenderingPresets
+from igibson.utils.utils import parse_config
 
 
 def benchmark_rendering(scene_list, rendering_presets_list, modality_list):

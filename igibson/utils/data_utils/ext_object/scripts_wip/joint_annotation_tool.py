@@ -6,12 +6,12 @@ from collections import Counter
 
 import numpy as np
 import pybullet as p
-from pynput import keyboard
 from bddl.object_taxonomy import ObjectTaxonomy
+from pynput import keyboard
 
 import igibson
-from igibson.external.pybullet_tools import utils
 import igibson.object_states.open as open_state
+from igibson.external.pybullet_tools import utils
 from igibson.objects.articulated_object import URDFObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator

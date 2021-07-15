@@ -1,29 +1,26 @@
-from igibson.envs.igibson_env import iGibsonEnv
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import igibson
 import os
-from igibson.robots.behavior_robot import BehaviorRobot
+import time
+
 import numpy as np
+import pybullet as p
+
+import igibson
 from igibson.external.pybullet_tools.utils import (
     MAX_DISTANCE,
     CIRCULAR_LIMITS,
     get_base_difference_fn,
     get_base_distance_fn,
     circular_difference,
-    set_base_values,
     pairwise_collision,
-    get_base_values,
     direct_path,
     birrt,
     PI,
 )
-import pybullet as p
-import time
-from igibson.objects.articulated_object import URDFObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
 
 
 def plan_base_motion_br(

@@ -6,20 +6,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
-import sys
-import os
-import numpy as np
 import argparse
-import random
+import sys
 
-import pybullet as pb
-import pybullet_data
-import time
-
-import pickle
-from PIL import Image
-import igibson
 from sim import *
 
 

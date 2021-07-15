@@ -1,10 +1,12 @@
-from igibson.objects.ycb_object import YCBObject
-from igibson.objects.articulated_object import ArticulatedObject
-import igibson
 import os
+import time
+
 import pybullet as p
 import pybullet_data
-import time
+
+import igibson
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.ycb_object import YCBObject
 
 
 def main():

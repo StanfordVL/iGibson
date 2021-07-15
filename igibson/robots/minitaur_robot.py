@@ -3,11 +3,13 @@
 """
 import copy
 import math
+
+import gym
 import numpy as np
+import pybullet as p
+
 from igibson.physics import motor
 from igibson.robots.robot_locomotor import LocomotorRobot
-import pybullet as p
-import gym
 
 tracking_camera = {"yaw": 20, "z_offset": 0.3, "distance": 2, "pitch": -20}
 

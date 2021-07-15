@@ -4,9 +4,7 @@ Usage: python muvr_demo.py --mode=[server or client] --host=[localhost or ip add
 """
 
 import argparse
-import numpy as np
 import time
-from time import sleep
 
 from igibson.utils.muvr_utils import IGVRTestClient, IGVRTestServer
 

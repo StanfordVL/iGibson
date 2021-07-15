@@ -1,16 +1,11 @@
-import math
-
-import igibson
-import os
-import argparse
-import random
-import xml.etree.ElementTree as ET
-from igibson.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat, get_rpy_from_transform
-from igibson.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
-import numpy as np
 import logging
 import math
+import xml.etree.ElementTree as ET
+
+import numpy as np
 import trimesh
+
+from igibson.utils.utils import get_transform_from_xyz_rpy, get_rpy_from_transform
 
 
 def get_aabb_urdf(tree):

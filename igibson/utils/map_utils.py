@@ -1,10 +1,10 @@
 import os
-import numpy as np
-from tqdm import tqdm
+
 import cv2
+import numpy as np
 from PIL import Image
-import sys
 from scipy.spatial import ConvexHull
+from tqdm import tqdm
 
 
 def get_xy_floors(vertices, faces, dist_threshold=-0.98):

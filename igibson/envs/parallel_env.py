@@ -1,11 +1,13 @@
-import igibson
-from igibson.envs.igibson_env import iGibsonEnv
 import atexit
 import multiprocessing
+import os
 import sys
 import traceback
+
 import numpy as np
-import os
+
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 
 
 class ParallelNavEnv(iGibsonEnv):

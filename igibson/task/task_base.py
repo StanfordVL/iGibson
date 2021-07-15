@@ -1,28 +1,23 @@
-import pprint
-import numpy as np
-import os
+import logging
 
-from bddl.activity_base import BEHAVIORActivityInstance
-import igibson
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.objects.articulated_object import URDFObject
-from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
-from igibson.object_states.on_floor import RoomFloor
-from igibson.external.pybullet_tools.utils import *
-from igibson.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
-from igibson.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
-from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.utils.checkpoint_utils import save_internal_states, load_internal_states
-import pybullet as p
 import cv2
+import networkx as nx
+import pybullet as p
+from bddl.activity_base import BEHAVIORActivityInstance
 from bddl.condition_evaluation import Negation
 from bddl.logic_base import AtomicFormula
 
-import logging
-import networkx as nx
-from IPython import embed
-
+import igibson
+from igibson.external.pybullet_tools.utils import *
+from igibson.object_states.on_floor import RoomFloor
+from igibson.objects.articulated_object import URDFObject
+from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
+from igibson.utils.checkpoint_utils import save_internal_states, load_internal_states
+from igibson.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 

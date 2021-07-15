@@ -1,6 +1,10 @@
+import cv2
 import numpy as np
 import pybullet as p
-import cv2
+from IPython import embed
+from scipy.spatial.transform import Rotation as R
+
+import igibson
 from igibson.external.pybullet_tools.utils import (
     get_link_pose,
     matrix_from_quat,
@@ -11,10 +15,7 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState
-import igibson
-from IPython import embed
 from igibson.utils import sampling_utils
-from scipy.spatial.transform import Rotation as R
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
     # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.

@@ -1,10 +1,11 @@
+import numpy as np
+import pybullet as p
+
 from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.object_state_base import BooleanState
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.objects.visual_marker import VisualMarker
-import numpy as np
-import pybullet as p
 from igibson.utils.constants import PyBulletSleepState
 from igibson.utils.utils import brighten_texture
 

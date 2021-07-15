@@ -1,16 +1,13 @@
 import os
 
 import numpy as np
-import pdb
 
 import igibson
 from igibson import object_states
-from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.articulated_object import URDFObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets
-from IPython import embed
 
 download_assets()
 

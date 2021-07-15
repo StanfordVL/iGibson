@@ -1,6 +1,6 @@
-import subprocess
-import os
 import logging
+import os
+import subprocess
 
 
 def get_available_devices():

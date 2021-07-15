@@ -1,6 +1,7 @@
+import numpy as np
+
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-import numpy as np
 
 
 def main():

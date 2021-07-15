@@ -1,29 +1,27 @@
-import pybullet as p
-import uuid
-import time
 import atexit
-import traceback
-import multiprocessing
-from io import BytesIO
-from PIL import Image
-import numpy as np
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.utils.utils import parse_config
-import os
-import igibson
-from igibson.task.task_base import iGBEHAVIORActivityInstance
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.simulator import Simulator
-from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
-from bddl.parsing import construct_full_bddl
-import bddl
 import json
+import multiprocessing
+import os
 import sys
+import time
+import traceback
+import uuid
+
+import bddl
+import numpy as np
+import pybullet as p
+from bddl.parsing import construct_full_bddl
+from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
+from flask import Flask, render_template, Response, request
 from flask_apscheduler import APScheduler
 from flask_cors import CORS
-from flask import Flask, render_template, Response, request, session
 
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.utils.utils import parse_config
 
 interactive = True
 NUM_REQUIRED_SUCCESSFUL_SCENES = 3

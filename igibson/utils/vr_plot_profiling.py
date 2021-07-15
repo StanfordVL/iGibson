@@ -9,10 +9,11 @@ python my_gibson_test.py > log.txt
 and provide log.txt to the profiling script via the --filename arg
 """
 
+import argparse
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-import argparse
 
 
 def parse_args():

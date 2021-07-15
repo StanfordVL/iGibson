@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
-import os
+import argparse
 import json
 import math
+import os
 import shutil
-import igibson
-import argparse
-import numpy as np
 import xml.etree.ElementTree as ET
-from igibson.utils.utils import parse_config
 
+import numpy as np
+
+import igibson
 from igibson.scenes.igibson_indoor_scene import SCENE_SOURCE
 from igibson.utils.assets_utils import (
     get_ig_scene_path,
@@ -17,6 +17,7 @@ from igibson.utils.assets_utils import (
     get_3dfront_scene_path,
     get_ig_category_path,
 )
+from igibson.utils.utils import parse_config
 
 """
 Script to update all urdfs

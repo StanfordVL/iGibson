@@ -1,8 +1,10 @@
 import os
-import igibson
+
 import numpy as np
 import open3d as o3d
 import pandas as pd
+
+import igibson
 
 base_dir = os.path.join(igibson.ig_dataset_path, "objects")
 

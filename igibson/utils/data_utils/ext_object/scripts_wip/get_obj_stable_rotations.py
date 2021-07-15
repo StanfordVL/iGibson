@@ -2,17 +2,17 @@
 Credit: Andrey Kurenkov
 """
 
-import os
-import trimesh
 import argparse
-import numpy as np
 import json
 import math
-from pyquaternion import Quaternion
-import pybullet as p
-import matplotlib.pyplot as plt
+import os
 import signal
 import xml.etree.ElementTree as ET
+
+import numpy as np
+import pybullet as p
+import trimesh
+from pyquaternion import Quaternion
 
 """
 Analyzes a model for possible ways to place it flat on a surface.

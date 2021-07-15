@@ -1,9 +1,10 @@
-import bpy
 import glob
-import os
-from typing import Tuple
-import sys
 import math
+import sys
+from typing import Tuple
+
+import bpy
+
 
 ################################################################################
 # glob Utility

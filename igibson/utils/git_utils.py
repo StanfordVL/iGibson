@@ -1,7 +1,9 @@
-import git
-import igibson
 from pathlib import Path
+
 import bddl
+import git
+
+import igibson
 
 
 def git_info(directory):

@@ -1,6 +1,6 @@
-from igibson.sensors.sensor_noise_base import BaseSensorNoise
-
 import numpy as np
+
+from igibson.sensors.sensor_noise_base import BaseSensorNoise
 
 
 class DropoutSensorNoise(BaseSensorNoise):

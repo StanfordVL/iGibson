@@ -1,19 +1,18 @@
-from igibson.tasks.task_base import BaseTask
+import numpy as np
 import pybullet as p
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.termination_conditions.max_collision import MaxCollision
-from igibson.termination_conditions.timeout import Timeout
-from igibson.termination_conditions.out_of_bound import OutOfBound
-from igibson.termination_conditions.point_goal import PointGoal
-from igibson.reward_functions.potential_reward import PotentialReward
+
+from igibson.objects.visual_marker import VisualMarker
 from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
-
+from igibson.reward_functions.potential_reward import PotentialReward
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.tasks.task_base import BaseTask
+from igibson.termination_conditions.max_collision import MaxCollision
+from igibson.termination_conditions.out_of_bound import OutOfBound
+from igibson.termination_conditions.point_goal import PointGoal
+from igibson.termination_conditions.timeout import Timeout
 from igibson.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
-from igibson.objects.visual_marker import VisualMarker
-
-import numpy as np
 
 
 class PointNavFixedTask(BaseTask):

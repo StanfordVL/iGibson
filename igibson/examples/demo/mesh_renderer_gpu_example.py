@@ -1,10 +1,12 @@
-import sys
 import os
+import sys
+
+import matplotlib.pyplot as plt
 import numpy as np
+
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.profiler import Profiler
 from igibson.utils.assets_utils import get_scene_path
-import matplotlib.pyplot as plt
 
 
 def main():

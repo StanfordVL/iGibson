@@ -1,7 +1,8 @@
+import os
+from time import time
+
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from time import time
-import os
 from igibson.utils.assets_utils import download_assets, download_demo_data
 
 

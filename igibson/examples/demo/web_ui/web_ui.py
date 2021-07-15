@@ -1,31 +1,27 @@
-from flask import Flask, render_template, Response, request, session
-import sys
-import pickle
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.robots.fetch_robot import Fetch
-
-from igibson.simulator import Simulator
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-import igibson
-import os
-
-from igibson.objects.ycb_object import YCBObject
-from igibson.utils.utils import parse_config
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import numpy as np
-from igibson.render.profiler import Profiler
-import cv2
-from PIL import Image
-from io import BytesIO
+import atexit
 import base64
 import binascii
 import multiprocessing
-import traceback
-import atexit
+import os
+import sys
 import time
-import cv2
+import traceback
 import uuid
+from io import BytesIO
+
+import numpy as np
+from PIL import Image
+from flask import Flask, render_template, Response, request
+
+import igibson
+from igibson.objects.ycb_object import YCBObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.robots.fetch_robot import Fetch
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
 
 interactive = True
 

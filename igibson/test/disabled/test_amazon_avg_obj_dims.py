@@ -1,12 +1,10 @@
-import os
 import json
-import numpy as np
-from IPython import embed
-from mws import mws
-import urllib.request
+import os
 import time
-import sys
+import urllib.request
 
+import numpy as np
+from mws import mws
 
 # More docuemntation can be found in here: https://docs.google.com/document/d/1sTkbLHr-tNhkGnGwpl1SWxjzFHy87PLzu0FmwPXlqKQ/edit?usp=sharing
 # The handpicked ASINs and the object dims for NOT_IN_AMAZON can be found here: https://docs.google.com/spreadsheets/d/1D5LJDqY0hzyCuMSSZS34nP0H7Vi6Kq2RxQWon2Sg_mg/edit?usp=sharing

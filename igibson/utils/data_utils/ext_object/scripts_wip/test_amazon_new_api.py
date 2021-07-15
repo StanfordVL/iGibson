@@ -1,9 +1,9 @@
-from IPython import embed
-from aws_requests_auth.aws_auth import AWSRequestsAuth
-import boto3
-import requests
 import argparse
+
+import boto3
 import numpy as np
+import requests
+from aws_requests_auth.aws_auth import AWSRequestsAuth
 
 
 def main(args):

@@ -1,13 +1,13 @@
-import cv2
-import sys
 import os
+import sys
+
+import cv2
 import numpy as np
+
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.profiler import Profiler
 from igibson.utils.assets_utils import get_scene_path
-from PIL import Image
-import igibson
 
 
 def load_obj_np(filename_obj, normalization=False, texture_size=4, texture_wrapping="REPEAT", use_bilinear=True):

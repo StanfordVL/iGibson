@@ -2,9 +2,10 @@
 
 from builtins import str
 from collections import OrderedDict
+
 import numpy as np
 from transforms3d import quaternions
-from transforms3d.quaternions import axangle2quat, mat2quat
+from transforms3d.quaternions import mat2quat
 
 
 def xyzw2wxyz(orn):

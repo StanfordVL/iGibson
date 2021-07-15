@@ -1,24 +1,14 @@
-import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
-from xml.dom import minidom
-import itertools
-from collections import defaultdict
-import numpy as np
-from shapely.geometry import Polygon as shape_poly
-from shapely.geometry import LineString as shape_string
-from shapely.ops import cascaded_union
-import warnings
-import open3d as o3d
 import argparse
-import pickle
 import json
-import subprocess
+from collections import defaultdict
 
-from utils.Wall_bbox import Wall_bbox
+from shapely.geometry import Polygon as shape_poly
+from shapely.ops import cascaded_union
+
 import utils.earcut as earcut
-from utils.utils import *
+from utils.Wall_bbox import Wall_bbox
 from utils.scene_urdf import gen_scene_urdf, gen_orig_urdf
+from utils.utils import *
 
 parser = argparse.ArgumentParser("Generate mesh based on labelImg annotation...")
 

@@ -1,11 +1,9 @@
-import os
 import json
-from IPython import embed
+import os
+
 import pybullet as p
+from IPython import embed
 from bddl.object_taxonomy import ObjectTaxonomy
-import xml.etree.ElementTree as ET
-import numpy as np
-from xml.dom import minidom
 
 
 def set_pos_orn(body_id, pos, orn):

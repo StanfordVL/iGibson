@@ -1,10 +1,10 @@
 import os
 from collections import deque
 
-import igibson
 import numpy as np
 import pybullet as p
 
+import igibson
 from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
 from igibson.objects.object_base import Object

@@ -2,10 +2,11 @@
 Constant Definitions
 """
 
-from enum import IntEnum
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import igibson
 import os
+from enum import IntEnum
+
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
 
 class SemanticClass(IntEnum):

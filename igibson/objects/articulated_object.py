@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 import os
 import random
 import sys
@@ -7,23 +8,21 @@ import time
 import xml.etree.ElementTree as ET
 
 import cv2
-import igibson
 import numpy as np
 import pybullet as p
 import trimesh
-import math
 
-from igibson.object_states.utils import clear_cached_states
-from igibson.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
-from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
-from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+import igibson
 from igibson.external.pybullet_tools.utils import link_from_name, get_joint_info, get_joints, set_joint_position
-from igibson.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
+from igibson.external.pybullet_tools.utils import matrix_from_quat, quat_from_matrix
 from igibson.object_states.factory import prepare_object_states
+from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from igibson.object_states.utils import clear_cached_states
 from igibson.objects.stateful_object import StatefulObject
+from igibson.render.mesh_renderer.materials import ProceduralMaterial
 from igibson.render.mesh_renderer.materials import RandomizedMaterial
 from igibson.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, add_fixed_link
-from igibson.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from igibson.utils.utils import get_transform_from_xyz_rpy
 from igibson.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
 # Optionally import bddl for object taxonomy.

@@ -1,11 +1,8 @@
-from xml.dom import minidom
-from shapely.geometry import Polygon as shape_poly
-from shapely.geometry import LineString as shape_string
-import numpy as np
-import random
-import os
 import cv2
+import numpy as np
 from PIL import Image
+from shapely.geometry import LineString as shape_string
+from shapely.geometry import Polygon as shape_poly
 
 
 def angle_between(p1, p2):

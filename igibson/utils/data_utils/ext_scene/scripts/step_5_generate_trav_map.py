@@ -1,21 +1,17 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import time
-import random
-import igibson
 import argparse
-from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config
-from igibson.utils.map_utils import gen_trav_map
+import os
+import random
+
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene, SCENE_SOURCE
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import (
     get_ig_scene_path,
     get_cubicasa_scene_path,
     get_3dfront_scene_path,
-    get_ig_category_path,
 )
+from igibson.utils.map_utils import gen_trav_map
 
 """
 script to generate all traversability maps:

@@ -1,5 +1,5 @@
-import os
 import csv
+import os
 import subprocess
 from shutil import copyfile
 

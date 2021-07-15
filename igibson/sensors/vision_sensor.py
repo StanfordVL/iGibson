@@ -1,11 +1,12 @@
-from igibson.sensors.sensor_base import BaseSensor
-from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
+import os
+from collections import OrderedDict
 
 import numpy as np
-import os
+
 import igibson
-from collections import OrderedDict
 from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
+from igibson.sensors.sensor_base import BaseSensor
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 
 
