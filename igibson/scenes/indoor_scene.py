@@ -113,7 +113,8 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param floor: floor number
         :param trav_map: traversability map
         """
-        graph_file = os.path.join(maps_path, 'floor_trav_{}.p'.format(floor))
+        graph_file = os.path.join(maps_path, 'floor_trav_{}_py{}{}.p'.format(floor, sys.version_info.major,
+                                                                             sys.version_info.minor))
         if os.path.isfile(graph_file):
             logging.info("Loading traversable graph")
             with open(graph_file, 'rb') as pfile:
