@@ -10,22 +10,22 @@ Some key functions are the following:
 - `import_{object, articulated_object, robot}`: import the object, articulated object and robot into the simulator in a similar manner
 - `sync`: synchronize the poses of the dynamic objects (including the robots) between PyBullet and MeshRenderer. Specifically, it calls `update_position` for each object, in which it retrieve the object's pose in PyBullet, and then update its pose accordingly in MeshRenderer.
 
-If `Simulator` uses `gui` mode, by default it will also maintain a `Viewer`, which essentially is a virtual camera in the scene that can render images. More info about the `Viewer` can be found here: [gibson2/render/viewer.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/render/viewer.py). Notably, you can press `h` in the `ExternalView` window to show the help menu for mouse/keyboard control.
+If `Simulator` uses `gui` mode, by default it will also maintain a `Viewer`, which essentially is a virtual camera in the scene that can render images. More info about the `Viewer` can be found here: [igibson/render/viewer.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/render/viewer.py). Notably, you can press `h` in the `ExternalView` window to show the help menu for mouse/keyboard control.
 
-Most of the code can be found here: [gibson2/simulator.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/simulator.py).
+Most of the code can be found here: [igibson/simulator.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/simulator.py).
 
 ### Examples
-In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [gibson2/examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/simulator_example.py)
+In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [igibson/examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/simulator_example.py)
 
 ```python
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.simulator import Simulator
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.objects.ycb_object import YCBObject
+from igibson.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
-from gibson2.render.profiler import Profiler
+from igibson.render.profiler import Profiler
 from IPython import embed
 
 
