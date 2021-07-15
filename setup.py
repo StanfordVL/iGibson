@@ -60,16 +60,16 @@ class CMakeBuild(build_ext):
 
         if platform.system() == "Windows":
             mesh_renderer_dir = os.path.join(
-                here, 'gibson2', 'render', 'mesh_renderer')
+                here, 'igibson', 'render', 'mesh_renderer')
             release_dir = os.path.join(mesh_renderer_dir, 'Release')
             for f in os.listdir(release_dir):
                 shutil.copy(os.path.join(release_dir, f), mesh_renderer_dir)
 
             shutil.rmtree(release_dir)
-            vr_dll = os.path.join(here, 'gibson2', 'render',
+            vr_dll = os.path.join(here, 'igibson', 'render',
                                   'openvr', 'bin', 'win64', 'openvr_api.dll')
             sr_ani_dir = os.path.join(
-                here, 'gibson2', 'render', 'sranipal', 'bin')
+                here, 'igibson', 'render', 'sranipal', 'bin')
             shutil.copy(vr_dll, mesh_renderer_dir)
 
             for f in os.listdir(sr_ani_dir):
@@ -81,9 +81,9 @@ class CMakeBuild(build_ext):
             self.get_ext_fullpath(ext.name)))
         cmake_args = [
             '-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2', 'render', 'mesh_renderer'),
+            os.path.join(extdir, 'igibson', 'render', 'mesh_renderer'),
             '-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=' +
-            os.path.join(extdir, 'gibson2', 'render',
+            os.path.join(extdir, 'igibson', 'render',
                          'mesh_renderer', 'build'),
             '-DPYTHON_EXECUTABLE=' + sys.executable
         ]
@@ -140,7 +140,7 @@ else:
         long_description = fh.read()
 
 setup(
-    name='gibson2',
+    name='igibson',
     version='1.0.1',
     author='Stanford University',
     long_description_content_type="text/markdown",
@@ -176,12 +176,12 @@ setup(
             'gitpython'
     ],
     ext_modules=[CMakeExtension(
-        'MeshRendererContext', sourcedir='gibson2/render')],
+        'MeshRendererContext', sourcedir='igibson/render')],
     cmdclass=dict(build_ext=CMakeBuild),
     tests_require=[],
     package_data={'': [
-        'gibson2/global_config.yaml',
-        'gibson2/render/mesh_renderer/shaders/*'
+        'igibson/global_config.yaml',
+        'igibson/render/mesh_renderer/shaders/*'
     ]},
     include_package_data=True,
 )  # yapf: disable
