@@ -42,7 +42,7 @@ RUN git clone https://github.com/StanfordVL/agents/ /opt/agents
 WORKDIR /opt/agents
 RUN pip install -e .
 
-RUN python -m gibson2.utils.assets_utils --download_assets
-RUN python -m gibson2.utils.assets_utils --download_demo_data
+RUN python -m igibson.utils.assets_utils --download_assets
+RUN python -m igibson.utils.assets_utils --download_demo_data
 
-WORKDIR /opt/igibson/gibson2/examples/demo
+WORKDIR /opt/igibson/igibson/examples/demo
