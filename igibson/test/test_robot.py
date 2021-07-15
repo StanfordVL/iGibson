@@ -1,22 +1,22 @@
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.robots.husky_robot import Husky
-from gibson2.robots.ant_robot import Ant
-from gibson2.robots.humanoid_robot import Humanoid
-from gibson2.robots.jr2_robot import JR2
-from gibson2.robots.jr2_kinova_robot import JR2_Kinova
-from gibson2.robots.quadrotor_robot import Quadrotor
-from gibson2.robots.fetch_robot import Fetch
-from gibson2.simulator import Simulator
-from gibson2.scenes.stadium_scene import StadiumScene
-from gibson2.utils.utils import parse_config
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.husky_robot import Husky
+from igibson.robots.ant_robot import Ant
+from igibson.robots.humanoid_robot import Humanoid
+from igibson.robots.jr2_robot import JR2
+from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.quadrotor_robot import Quadrotor
+from igibson.robots.fetch_robot import Fetch
+from igibson.simulator import Simulator
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.utils.utils import parse_config
 import pybullet as p
 import numpy as np
-import gibson2
+import igibson
 import os
-from gibson2.utils.assets_utils import download_assets
+from igibson.utils.assets_utils import download_assets
 
 download_assets()
-config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
+config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
 
 
 def test_fetch():

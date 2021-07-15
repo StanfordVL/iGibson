@@ -1,6 +1,6 @@
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.objects.articulated_object import ArticulatedObject
-import gibson2
+from igibson.objects.ycb_object import YCBObject
+from igibson.objects.articulated_object import ArticulatedObject
+import igibson
 import os
 import pybullet as p
 import pybullet_data
@@ -16,9 +16,9 @@ def main():
     p.loadMJCF(floor)
 
     cabinet_0007 = os.path.join(
-        gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
+        igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
     cabinet_0004 = os.path.join(
-        gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf')
+        igibson.assets_path, 'models/cabinet/cabinet_0004.urdf')
 
     obj1 = ArticulatedObject(filename=cabinet_0007)
     obj1.load()

@@ -22,12 +22,12 @@ import numpy as np
 import os
 import pybullet as p
 
-from gibson2 import assets_path
-from gibson2.object_states.factory import prepare_object_states
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.visual_shape import VisualShape
-from gibson2.external.pybullet_tools.utils import set_all_collisions
-from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz
+from igibson import assets_path
+from igibson.object_states.factory import prepare_object_states
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.visual_shape import VisualShape
+from igibson.external.pybullet_tools.utils import set_all_collisions
+from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 from collections import OrderedDict
 
 # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold

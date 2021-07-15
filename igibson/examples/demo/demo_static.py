@@ -1,10 +1,10 @@
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.utils.utils import parse_config
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.simulator import Simulator
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.utils.utils import parse_config
 import os
-import gibson2
-from gibson2.utils.assets_utils import download_assets, download_demo_data
+import igibson
+from igibson.utils.assets_utils import download_assets, download_demo_data
 
 
 class DemoStatic(object):
@@ -13,7 +13,7 @@ class DemoStatic(object):
         download_demo_data()
 
     def run_demo(self):
-        config = parse_config(os.path.join(gibson2.example_config_path,
+        config = parse_config(os.path.join(igibson.example_config_path,
             'turtlebot_demo.yaml'))
 
         s = Simulator(mode='gui', image_width=700, image_height=700)

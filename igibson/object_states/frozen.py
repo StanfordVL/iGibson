@@ -1,8 +1,8 @@
 import numpy as np
-from gibson2.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from gibson2.object_states.temperature import Temperature
-from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
-from gibson2.utils.utils import transform_texture
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
+from igibson.object_states.temperature import Temperature
+from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from igibson.utils.utils import transform_texture
 
 _DEFAULT_FREEZE_TEMPERATURE = 0.0
 

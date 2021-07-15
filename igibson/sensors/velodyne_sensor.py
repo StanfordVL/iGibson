@@ -1,9 +1,9 @@
-from gibson2.sensors.sensor_base import BaseSensor
-from gibson2.sensors.dropout_sensor_noise import DropoutSensorNoise
+from igibson.sensors.sensor_base import BaseSensor
+from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
 
 import numpy as np
 import os
-import gibson2
+import igibson
 from collections import OrderedDict
 
 

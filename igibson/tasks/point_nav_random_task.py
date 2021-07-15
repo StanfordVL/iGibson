@@ -1,5 +1,5 @@
-from gibson2.tasks.point_nav_fixed_task import PointNavFixedTask
-from gibson2.utils.utils import l2_distance
+from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
+from igibson.utils.utils import l2_distance
 import pybullet as p
 import logging
 import numpy as np

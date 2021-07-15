@@ -1,10 +1,10 @@
 import xml.etree.ElementTree as ET
 import json
 import glob
-import gibson2
+import igibson
 import os
 import numpy as np
-from gibson2.utils.utils import get_rpy_from_transform
+from igibson.utils.utils import get_rpy_from_transform
 
 def insert_geometric_primitive(obj, insert_visual_mesh=True):
     tree = ET.parse(obj['urdf'])
@@ -44,7 +44,7 @@ def insert_geometric_primitive(obj, insert_visual_mesh=True):
     return tree
 
 if __name__ == "__main__":
-    object_categories = glob.glob(os.path.join(gibson2.ig_dataset_path, "objects/*"))
+    object_categories = glob.glob(os.path.join(igibson.ig_dataset_path, "objects/*"))
 
     idx = 0
     objects_to_process = {}

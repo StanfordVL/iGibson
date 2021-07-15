@@ -8,8 +8,8 @@ import inspect
 import pybullet_data
 from transforms3d.euler import euler2quat
 from transforms3d import quaternions
-from gibson2.utils.utils import quatFromXYZW, quatToXYZW
-import gibson2
+from igibson.utils.utils import quatFromXYZW, quatToXYZW
+import igibson
 import logging
 
 
@@ -36,7 +36,7 @@ class BaseRobot(object):
         self.robot_ids = None
         self.robot_mass = None
         self.model_file = model_file
-        self.physics_model_dir = os.path.join(gibson2.assets_path, "models")
+        self.physics_model_dir = os.path.join(igibson.assets_path, "models")
         self.scale = scale
         self.eyes = None
         logging.info('Loading robot model file: {}'.format(self.model_file))

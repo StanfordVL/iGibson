@@ -7,8 +7,8 @@ import numpy as np
 import time
 from time import sleep
 
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
-from gibson2.utils.vr_utils import calc_offset, VrData
+from igibson.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
+from igibson.utils.vr_utils import calc_offset, VrData
 
 from PodSixNet.Channel import Channel
 from PodSixNet.Connection import connection, ConnectionListener

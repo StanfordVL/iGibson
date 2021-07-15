@@ -2,14 +2,14 @@ import os
 
 from bddl.object_taxonomy import ObjectTaxonomy
 
-import gibson2
+import igibson
 import numpy as np
 
-from gibson2 import object_states
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.simulator import Simulator
-from gibson2.utils.assets_utils import download_assets, get_ig_avg_category_specs
+from igibson import object_states
+from igibson.objects.articulated_object import URDFObject
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import download_assets, get_ig_avg_category_specs
 
 download_assets()
 
@@ -25,12 +25,12 @@ OBJECT_TAXONOMY = ObjectTaxonomy()
 
 
 def get_categories():
-    dir = os.path.join(gibson2.ig_dataset_path, 'objects')
+    dir = os.path.join(igibson.ig_dataset_path, 'objects')
     return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
 
 
 def get_category_directory(category):
-    return os.path.join(gibson2.ig_dataset_path, 'objects', category)
+    return os.path.join(igibson.ig_dataset_path, 'objects', category)
 
 
 def get_obj(folder, **kwargs):

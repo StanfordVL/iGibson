@@ -1,7 +1,7 @@
 import argparse
 
-from gibson2.examples.behavior.behavior_demo_batch import behavior_demo_batch
-from gibson2.examples.behavior.behavior_demo_segmentation import get_default_segmentation_processors
+from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
+from igibson.examples.behavior.behavior_demo_segmentation import get_default_segmentation_processors
 
 
 def parse_args():

@@ -1,6 +1,6 @@
 import pybullet as p
-from gibson2.utils.assets_utils import get_scene_path, get_texture_file
-import gibson2
+from igibson.utils.assets_utils import get_scene_path, get_texture_file
+import igibson
 
 import os
 import sys
@@ -31,15 +31,15 @@ def main():
 
     # Load robots
     turtlebot_urdf = os.path.join(
-        gibson2.assets_path, 'models/turtlebot/turtlebot.urdf')
+        igibson.assets_path, 'models/turtlebot/turtlebot.urdf')
     robot_id = p.loadURDF(
         turtlebot_urdf, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
 
     # Load objects
     obj_visual_filename = os.path.join(
-        gibson2.assets_path, 'models/ycb/002_master_chef_can/textured_simple.obj')
+        igibson.assets_path, 'models/ycb/002_master_chef_can/textured_simple.obj')
     obj_collision_filename = os.path.join(
-        gibson2.assets_path, 'models/ycb/002_master_chef_can/textured_simple_vhacd.obj')
+        igibson.assets_path, 'models/ycb/002_master_chef_can/textured_simple_vhacd.obj')
     collision_id = p.createCollisionShape(p.GEOM_MESH,
                                           fileName=obj_collision_filename,
                                           meshScale=1.0)

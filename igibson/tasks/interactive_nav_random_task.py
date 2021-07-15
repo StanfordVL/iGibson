@@ -1,6 +1,6 @@
-from gibson2.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
 import pybullet as p
-from gibson2.objects.ycb_object import YCBObject
+from igibson.objects.ycb_object import YCBObject
 import numpy as np
 
 

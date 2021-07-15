@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.utils.utils import parse_config
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.utils.utils import parse_config
 import os
-import gibson2
+import igibson
 import time
 import random
 

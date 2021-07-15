@@ -4,19 +4,19 @@ import os
 import sys
 import time
 import random
-import gibson2
+import igibson
 import argparse
 
-from gibson2.simulator import Simulator
-from gibson2.utils.utils import parse_config
-from gibson2.utils.map_utils import gen_trav_map
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene,SCENE_SOURCE
-from gibson2.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path, get_ig_category_path
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
+from igibson.utils.map_utils import gen_trav_map
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene,SCENE_SOURCE
+from igibson.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path, get_ig_category_path
 
 """
 script to generate all traversability maps:
 
-for file in ../../gibson2/ig_dataset/scenes/*
+for file in ../../igibson/ig_dataset/scenes/*
   python generate_trav_map.py $(basename $file)
 
 to generate traversability maps for cubicasa5k or 3dfront:

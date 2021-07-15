@@ -1,7 +1,7 @@
 from bddl.backend_abc import BDDLBackend
 from bddl.logic_base import UnaryAtomicFormula, BinaryAtomicFormula
 
-from gibson2 import object_states
+from igibson import object_states
 
 
 class ObjectStateUnaryPredicate(UnaryAtomicFormula):

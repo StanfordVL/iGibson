@@ -1,19 +1,19 @@
-from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.simulator import Simulator
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import gibson2
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import igibson
 import os
-from gibson2.robots.behavior_robot import BehaviorRobot
+from igibson.robots.behavior_robot import BehaviorRobot
 import numpy as np
-from gibson2.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, \
+from igibson.external.pybullet_tools.utils import MAX_DISTANCE, CIRCULAR_LIMITS, get_base_difference_fn, \
     get_base_distance_fn, circular_difference, set_base_values, pairwise_collision, get_base_values, direct_path, birrt, \
     PI
 import pybullet as p
 import time
-from gibson2.objects.articulated_object import URDFObject
+from igibson.objects.articulated_object import URDFObject
 
 def plan_base_motion_br(robot: BehaviorRobot,
                         end_conf,
@@ -189,7 +189,7 @@ def plan_hand_motion_br(robot: BehaviorRobot,
 
 
 if __name__ == "__main__":
-    config = parse_config(os.path.join(gibson2.example_config_path, 'behavior.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'behavior.yaml'))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(mode='gui', image_width=256,
                   image_height=256, rendering_settings=settings)

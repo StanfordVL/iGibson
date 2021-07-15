@@ -7,25 +7,25 @@ import time
 import xml.etree.ElementTree as ET
 
 import cv2
-import gibson2
+import igibson
 import numpy as np
 import pybullet as p
 import trimesh
 import math
 
-from gibson2.object_states.utils import clear_cached_states
-from gibson2.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
-from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
-from gibson2.external.pybullet_tools.utils import link_from_name, get_joint_info, get_joints, set_joint_position
-from gibson2.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
-from gibson2.object_states.factory import prepare_object_states
-from gibson2.objects.stateful_object import StatefulObject
-from gibson2.render.mesh_renderer.materials import RandomizedMaterial
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, \
+from igibson.object_states.utils import clear_cached_states
+from igibson.render.mesh_renderer.materials import RandomizedMaterial, ProceduralMaterial
+from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
+from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from igibson.external.pybullet_tools.utils import link_from_name, get_joint_info, get_joints, set_joint_position
+from igibson.external.pybullet_tools.utils import z_rotation, matrix_from_quat, quat_from_matrix
+from igibson.object_states.factory import prepare_object_states
+from igibson.objects.stateful_object import StatefulObject
+from igibson.render.mesh_renderer.materials import RandomizedMaterial
+from igibson.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, \
     add_fixed_link
-from gibson2.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
-from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+from igibson.utils.utils import get_transform_from_xyz_rpy, rotate_vector_2d
+from igibson.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
 
 # Optionally import bddl for object taxonomy.
 try:
@@ -104,7 +104,7 @@ class RBOObject(ArticulatedObject):
     """
 
     def __init__(self, name, scale=1):
-        filename = os.path.join(gibson2.assets_path, 'models', 'rbo', name, 'configuration',
+        filename = os.path.join(igibson.assets_path, 'models', 'rbo', name, 'configuration',
                                 '{}.urdf'.format(name))
         super(RBOObject, self).__init__(filename, scale)
 
@@ -754,7 +754,7 @@ class URDFObject(StatefulObject):
         if folder is None:
             timestr = time.strftime("%Y%m%d-%H%M%S")
             folder = os.path.join(
-                gibson2.ig_dataset_path, "scene_instances",
+                igibson.ig_dataset_path, "scene_instances",
                 '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
             os.makedirs(folder, exist_ok=True)
 
@@ -923,7 +923,7 @@ class URDFObject(StatefulObject):
         self.randomized_materials = list(all_materials.values())
 
         friction_json = os.path.join(
-            gibson2.ig_dataset_path, 'materials', 'material_friction.json')
+            igibson.ig_dataset_path, 'materials', 'material_friction.json')
         if os.path.isfile(friction_json):
             with open(friction_json) as f:
                 self.material_to_friction = json.load(f)

@@ -1,4 +1,4 @@
-from gibson2.core.render.mesh_renderer.Release import MeshRendererContext
+from igibson.core.render.mesh_renderer.Release import MeshRendererContext
 
 vrsys = MeshRendererContext.VRSystem()
 recommendedWidth, recommendedHeight = vrsys.initVR()

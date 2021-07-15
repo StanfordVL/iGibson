@@ -10,12 +10,12 @@ import os
 import numpy as np
 import bddl
 
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
-from gibson2.simulator import Simulator
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.utils.ig_logging import IGLogWriter
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
+from igibson.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.utils.ig_logging import IGLogWriter
 
 POST_TASK_STEPS = 200
 PHYSICS_WARMING_STEPS = 200
@@ -74,13 +74,13 @@ def collect_demo(task, task_id, scene, vr_log_path=None, disable_save=False, max
                  disable_scene_cache=False, profile=False):
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
     light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+        igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(

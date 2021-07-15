@@ -11,14 +11,14 @@ import rospkg
 import numpy as np
 from cv_bridge import CvBridge
 import tf
-from gibson2.envs.igibson_env import iGibsonEnv
+from igibson.envs.igibson_env import iGibsonEnv
 
 
 class SimNode:
     def __init__(self):
-        rospy.init_node('gibson2_sim')
+        rospy.init_node('igibson_sim')
         rospack = rospkg.RosPack()
-        path = rospack.get_path('gibson2-ros')
+        path = rospack.get_path('igibson-ros')
         config_filename = os.path.join(path, 'turtlebot_rgbd.yaml')
 
         self.cmdx = 0.0

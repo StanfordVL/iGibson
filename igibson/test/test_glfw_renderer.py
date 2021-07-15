@@ -1,12 +1,12 @@
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from igibson.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 import cv2
 import sys
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
+from igibson.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
 import time
 
 renderer = MeshRenderer(width=512, height=512)
-renderer.load_object("C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\gibson2\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj")
+renderer.load_object("C:\\Users\\shen\\Desktop\\GibsonVRStuff\\vr_branch\\gibsonv2\\igibson\\assets\\datasets\\Ohoopee\\Ohoopee_mesh_texture.obj")
 renderer.add_instance(0)
 
 print(renderer.visual_objects, renderer.instances)

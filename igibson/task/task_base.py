@@ -3,17 +3,17 @@ import numpy as np
 import os
 
 from bddl.activity_base import BEHAVIORActivityInstance
-import gibson2
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
-from gibson2.object_states.on_floor import RoomFloor
-from gibson2.external.pybullet_tools.utils import *
-from gibson2.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
-from gibson2.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.utils.checkpoint_utils import save_internal_states, load_internal_states
+import igibson
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.objects.articulated_object import URDFObject
+from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson.object_states.on_floor import RoomFloor
+from igibson.external.pybullet_tools.utils import *
+from igibson.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
+from igibson.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.utils.checkpoint_utils import save_internal_states, load_internal_states
 import pybullet as p
 import cv2
 from bddl.condition_evaluation import Negation
@@ -39,7 +39,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         super().__init__(behavior_activity,
                          activity_definition=activity_definition,
                          scene_path=os.path.join(
-                             gibson2.ig_dataset_path, 'scenes'),
+                             igibson.ig_dataset_path, 'scenes'),
                          predefined_problem=predefined_problem)
         self.state_history = {}
 
@@ -871,7 +871,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                        scene_object_scope_filtered,
                        non_sampleable_obj_conditions,
                        goal_condition_set=None):
-        gibson2.debug_sampling = True
+        igibson.debug_sampling = True
         for room_type in self.non_sampleable_object_scope:
             for scene_obj in self.non_sampleable_object_scope[room_type]:
                 if len(scene_object_scope_filtered[room_type][scene_obj].keys()) != 0:

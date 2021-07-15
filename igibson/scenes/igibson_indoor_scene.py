@@ -7,25 +7,25 @@ import json
 import pybullet as p
 import os
 import xml.etree.ElementTree as ET
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
 import json
-from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
-from gibson2.external.pybullet_tools.utils import euler_from_quat, get_joints, get_joint_names, get_joint_positions
+from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from igibson.external.pybullet_tools.utils import euler_from_quat, get_joints, get_joint_names, get_joint_positions
 from PIL import Image
 from xml.dom import minidom
 from IPython import embed
 
-import gibson2
+import igibson
 
-from gibson2.object_states.factory import get_state_name, get_state_from_name
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.utils import rotate_vector_3d
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
-from gibson2.external.pybullet_tools.utils import euler_from_quat
-from gibson2.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
+from igibson.object_states.factory import get_state_name, get_state_from_name
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.objects.articulated_object import URDFObject
+from igibson.utils.utils import rotate_vector_3d
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_scene_path, get_ig_model_path, get_ig_category_path, get_ig_category_ids, get_cubicasa_scene_path, get_3dfront_scene_path
+from igibson.external.pybullet_tools.utils import euler_from_quat
+from igibson.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
 
 
 SCENE_SOURCE = ['IG', 'CUBICASA', 'THREEDFRONT']
@@ -139,7 +139,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         timestr = time.strftime("%Y%m%d-%H%M%S")
         # Create the subfolder
         self.scene_instance_folder = os.path.join(
-            gibson2.ig_dataset_path, "scene_instances",
+            igibson.ig_dataset_path, "scene_instances",
             '{}_{}_{}'.format(timestr, random.getrandbits(64), os.getpid()))
         os.makedirs(self.scene_instance_folder, exist_ok=True)
 
@@ -429,7 +429,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             (self.seg_map_size, self.seg_map_size), Image.NEAREST))
 
         room_categories = os.path.join(
-            gibson2.ig_dataset_path, 'metadata', 'room_categories.txt')
+            igibson.ig_dataset_path, 'metadata', 'room_categories.txt')
         with open(room_categories, 'r') as fp:
             room_cats = [line.rstrip() for line in fp.readlines()]
 

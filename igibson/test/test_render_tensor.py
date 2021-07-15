@@ -1,13 +1,13 @@
-from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
 import numpy as np
 import os
-import gibson2
+import igibson
 import GPUtil
 import time
-from gibson2.utils.assets_utils import download_assets
-from gibson2.utils.assets_utils import get_ig_model_path
+from igibson.utils.assets_utils import download_assets
+from igibson.utils.assets_utils import get_ig_model_path
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch
@@ -17,7 +17,7 @@ def test_tensor_render_rendering():
     h = 600
     setting = MeshRendererSettings(enable_pbr=False, msaa=True)
     renderer = MeshRendererG2G(w, h, rendering_settings=setting)
-    test_dir = os.path.join(gibson2.assets_path, 'test')
+    test_dir = os.path.join(igibson.assets_path, 'test')
     renderer.load_object(os.path.join(test_dir, 'mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj'))
     renderer.add_instance(0)
 

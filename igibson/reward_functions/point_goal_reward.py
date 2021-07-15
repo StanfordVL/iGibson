@@ -1,5 +1,5 @@
-from gibson2.reward_functions.reward_function_base import BaseRewardFunction
-from gibson2.utils.utils import l2_distance
+from igibson.reward_functions.reward_function_base import BaseRewardFunction
+from igibson.utils.utils import l2_distance
 
 
 class PointGoalReward(BaseRewardFunction):

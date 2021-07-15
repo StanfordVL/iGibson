@@ -1,9 +1,9 @@
-import gibson2
-from gibson2.envs.igibson_env import iGibsonEnv
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 from time import time
 import os
-from gibson2.utils.assets_utils import download_assets, download_demo_data
-from gibson2.utils.motion_planning_wrapper import MotionPlanningWrapper
+from igibson.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -11,7 +11,7 @@ def test_occupancy_grid():
     print("Test env")
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(gibson2.root_path, 'test', 'test_house_occupancy_grid.yaml')
+    config_filename = os.path.join(igibson.root_path, 'test', 'test_house_occupancy_grid.yaml')
     
     nav_env = iGibsonEnv(config_file=config_filename, mode='headless')
     nav_env.reset()
@@ -32,7 +32,7 @@ def test_base_planning():
     print("Test env")
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(gibson2.root_path, 'test', 'test_house_occupancy_grid.yaml')
+    config_filename = os.path.join(igibson.root_path, 'test', 'test_house_occupancy_grid.yaml')
 
     nav_env = iGibsonEnv(config_file=config_filename, mode='headless')
     motion_planner = MotionPlanningWrapper(nav_env)

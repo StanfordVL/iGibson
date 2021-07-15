@@ -1,20 +1,20 @@
 from flask import Flask, render_template, Response, request, session
 import sys
 import pickle
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.robots.fetch_robot import Fetch
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.fetch_robot import Fetch
 
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-import gibson2
+from igibson.simulator import Simulator
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+import igibson
 import os
 
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.objects.ycb_object import YCBObject
+from igibson.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
-from gibson2.render.profiler import Profiler
+from igibson.render.profiler import Profiler
 import cv2
 from PIL import Image
 from io import BytesIO
@@ -197,15 +197,15 @@ class ToyEnv(object):
     """
     def __init__(self):
         config = parse_config(os.path.join(
-            gibson2.example_config_path, 'turtlebot_demo.yaml'))
+            igibson.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+            igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+            igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
         light_modulation_map_filename = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+            igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
         background_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+            igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
 
@@ -242,15 +242,15 @@ class ToyEnvInt(object):
     """
     def __init__(self, robot='turtlebot', scene='Rs_int'):
         config = parse_config(os.path.join(
-            gibson2.example_config_path, 'turtlebot_demo.yaml'))
+            igibson.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+            igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+            igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
         light_modulation_map_filename = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+            igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
         background_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+            igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         scene = InteractiveIndoorScene(
             scene, texture_randomization=False, object_randomization=False)

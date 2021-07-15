@@ -23,9 +23,9 @@ import pybullet_data
 import matplotlib
 import matplotlib.pyplot as plt
 from pyquaternion import Quaternion
-from gibson2.simulator import Simulator
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
-from gibson2.objects.articulated_object import ArticulatedObject
+from igibson.simulator import Simulator
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
+from igibson.objects.articulated_object import ArticulatedObject
 
 CAMERA_UP_VECTOR =[0, 0, 1]
 

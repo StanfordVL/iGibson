@@ -1,6 +1,6 @@
-from gibson2.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
 import pybullet as p
-from gibson2.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot_robot import Turtlebot
 import numpy as np
 
 

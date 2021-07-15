@@ -1,6 +1,6 @@
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from gibson2.utils.utils import parse_config, parse_str_config, dump_config
-from gibson2 import assets_path
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from igibson.utils.utils import parse_config, parse_str_config, dump_config
+from igibson import assets_path
 import numpy as np
 import os
 import time

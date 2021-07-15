@@ -1,9 +1,9 @@
-from gibson2.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
+from igibson.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
 import cv2
 import sys
 import numpy as np
-from gibson2.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
-from gibson2 import assets_path, dataset_path
+from igibson.core.render.mesh_renderer.mesh_renderer_cpu import VisualObject, InstanceGroup, MeshRenderer
+from igibson import assets_path, dataset_path
 import time
 
 renderer = MeshRendererVR(MeshRenderer, msaa=True)

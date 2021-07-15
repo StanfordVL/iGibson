@@ -7,9 +7,9 @@ can be directly pasted into the vr_config.yaml.
 Please use this if creating a custom action-button mapping for a VR controller
 that is neither an HTC Vive controller nor an Oculus controller.
 """
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.simulator import Simulator
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
 
 
 def main():

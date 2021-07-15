@@ -1,12 +1,12 @@
 import numpy as np
 import pybullet as p
 import cv2
-from gibson2.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb, get_aabb
-from gibson2.object_states.aabb import AABB
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
-import gibson2
+from igibson.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb, get_aabb
+from igibson.object_states.aabb import AABB
+from igibson.object_states.object_state_base import CachingEnabledObjectState
+import igibson
 from IPython import embed
-from gibson2.utils import sampling_utils
+from igibson.utils import sampling_utils
 from scipy.spatial.transform import Rotation as R
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
@@ -184,7 +184,7 @@ def sample_kinematics(predicate, objA, objB, binary_state,
             objA.set_position_orientation(pos, orientation)
             success = not detect_collision(objA.get_body_id()) #len(p.getContactPoints(objA.get_body_id())) == 0
 
-        if gibson2.debug_sampling:
+        if igibson.debug_sampling:
             print('sample_kinematics', success)
             embed()
 

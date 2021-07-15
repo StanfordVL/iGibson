@@ -1,12 +1,12 @@
-from gibson2.sensors.sensor_base import BaseSensor
-from gibson2.sensors.dropout_sensor_noise import DropoutSensorNoise
+from igibson.sensors.sensor_base import BaseSensor
+from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
 
 import numpy as np
 import os
-import gibson2
+import igibson
 from collections import OrderedDict
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 
 class VisionSensor(BaseSensor):
     """
@@ -33,7 +33,7 @@ class VisionSensor(BaseSensor):
                 import torch.nn as nn
                 import torch
                 from torchvision import transforms
-                from gibson2.learn.completion import CompletionNet
+                from igibson.learn.completion import CompletionNet
             except ImportError:
                 raise Exception(
                     'Trying to use rgb_filled ("the goggle"), but torch is not installed. Try "pip install torch torchvision".')
@@ -41,7 +41,7 @@ class VisionSensor(BaseSensor):
             self.comp = CompletionNet(norm=nn.BatchNorm2d, nf=64)
             self.comp = torch.nn.DataParallel(self.comp).cuda()
             self.comp.load_state_dict(torch.load(
-                os.path.join(gibson2.assets_path, 'networks', 'model.pth')))
+                os.path.join(igibson.assets_path, 'networks', 'model.pth')))
             self.comp.eval()
 
     def get_raw_modalities(self, modalities):

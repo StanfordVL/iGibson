@@ -1,5 +1,5 @@
 import os
-import gibson2
+import igibson
 import platform
 
 
@@ -10,11 +10,11 @@ class MeshRendererSettings(object):
         msaa=False,
         enable_shadow=False,
         enable_pbr=True,
-        env_texture_filename=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background',
+        env_texture_filename=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
                                           'photo_studio_01_2k.hdr'),
-        env_texture_filename2=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background',
+        env_texture_filename2=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
                                            'photo_studio_01_2k.hdr'),
-        env_texture_filename3=os.path.join(gibson2.ig_dataset_path, 'scenes', 'background',
+        env_texture_filename3=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
                                            'photo_studio_01_2k.hdr'),
         light_modulation_map_filename='',
         optimized=False,

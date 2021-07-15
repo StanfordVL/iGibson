@@ -1,11 +1,11 @@
 import numpy as np
 import copy
 
-from gibson2.metrics.metric_base import MetricBase
-from gibson2.objects.multi_object_wrappers import ObjectMultiplexer
-from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState
-from gibson2.object_states import Pose, OnFloor, Inside, Under, OnTop, Touching, NextTo
-from gibson2.object_states.on_floor import RoomFloor
+from igibson.metrics.metric_base import MetricBase
+from igibson.objects.multi_object_wrappers import ObjectMultiplexer
+from igibson.object_states.object_state_base import BooleanState, AbsoluteObjectState
+from igibson.object_states import Pose, OnFloor, Inside, Under, OnTop, Touching, NextTo
+from igibson.object_states.on_floor import RoomFloor
 
 SIMULATOR_SETTLE_TIME = 150
 

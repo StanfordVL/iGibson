@@ -1,4 +1,4 @@
-from gibson2.sensors.sensor_noise_base import BaseSensorNoise
+from igibson.sensors.sensor_noise_base import BaseSensorNoise
 
 import numpy as np
 

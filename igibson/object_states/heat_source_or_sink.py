@@ -1,21 +1,21 @@
 import os
 
-import gibson2
-from gibson2.object_states.aabb import AABB
-from gibson2.object_states.inside import Inside
-from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.object_states.open import Open
-from gibson2.object_states.toggle import ToggledOn
+import igibson
+from igibson.object_states.aabb import AABB
+from igibson.object_states.inside import Inside
+from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.object_states.open import Open
+from igibson.object_states.toggle import ToggledOn
 
 # The name of the heat source link inside URDF files.
-from gibson2.objects.visual_shape import VisualShape
+from igibson.objects.visual_shape import VisualShape
 
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
 
 _HEATING_ELEMENT_MARKER_SCALE = 1.0
 _HEATING_ELEMENT_MARKER_FILENAME = os.path.join(
-    gibson2.assets_path, "models/fire/fire.obj"
+    igibson.assets_path, "models/fire/fire.obj"
 )
 
 # TODO: Delete default values for this and make them required.

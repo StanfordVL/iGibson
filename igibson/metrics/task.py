@@ -1,6 +1,6 @@
 import numpy as np
 
-from gibson2.metrics.metric_base import MetricBase
+from igibson.metrics.metric_base import MetricBase
 
 
 class TaskMetric(MetricBase):

@@ -8,14 +8,14 @@ import printree
 import pyinstrument
 import bddl
 
-import gibson2
-from gibson2 import object_states
-from gibson2.examples.behavior import behavior_demo_replay
-from gibson2.object_states import factory, ROOM_STATES
-from gibson2.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
-from gibson2.robots.behavior_robot import BRBody
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.task.bddl_backend import ObjectStateUnaryPredicate, ObjectStateBinaryPredicate
+import igibson
+from igibson import object_states
+from igibson.examples.behavior import behavior_demo_replay
+from igibson.object_states import factory, ROOM_STATES
+from igibson.object_states.object_state_base import BooleanState, AbsoluteObjectState, RelativeObjectState
+from igibson.robots.behavior_robot import BRBody
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.task.bddl_backend import ObjectStateUnaryPredicate, ObjectStateBinaryPredicate
 
 StateRecord = namedtuple("StateRecord", ["state_type", "objects", "value"])
 StateEntry = namedtuple("StateEntry", ["frame_count", "state_records"])
@@ -360,13 +360,13 @@ def main():
     args = parse_args()
 
     # Select the demo to apply segmentation on.
-    demo_file = os.path.join(gibson2.ig_dataset_path, 'tests',
+    demo_file = os.path.join(igibson.ig_dataset_path, 'tests',
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
     if args.log_path:
         demo_file = args.log_path
 
     # Select the output directory.
-    out_dir = os.path.join(gibson2.ig_dataset_path, 'tests', "segmentation_results")
+    out_dir = os.path.join(igibson.ig_dataset_path, 'tests', "segmentation_results")
     if args.out_dir:
         out_dir = args.out_dir
 

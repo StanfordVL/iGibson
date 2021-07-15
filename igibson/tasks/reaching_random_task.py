@@ -1,9 +1,9 @@
-from gibson2.tasks.point_nav_random_task import PointNavRandomTask
-from gibson2.termination_conditions.point_goal import PointGoal
-from gibson2.termination_conditions.reaching_goal import ReachingGoal
-from gibson2.reward_functions.point_goal_reward import PointGoalReward
-from gibson2.reward_functions.reaching_goal_reward import ReachingGoalReward
-from gibson2.utils.utils import l2_distance
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.termination_conditions.point_goal import PointGoal
+from igibson.termination_conditions.reaching_goal import ReachingGoal
+from igibson.reward_functions.point_goal_reward import PointGoalReward
+from igibson.reward_functions.reaching_goal_reward import ReachingGoalReward
+from igibson.utils.utils import l2_distance
 
 import numpy as np
 
