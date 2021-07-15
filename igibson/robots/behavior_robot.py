@@ -52,9 +52,6 @@ LEFT_HAND_LOC_POSE_TRACKED = ([0.1, 0.12, 0.05], [0.7, 0.7, 0.0, 0.15])
 # Body parameters
 BODY_LINEAR_VELOCITY = 0.3  # linear velocity thresholds in meters/frame
 BODY_ANGULAR_VELOCITY = 1  # angular velocity thresholds in radians/frame
-BODY_MASS = 15  # body mass in kg
-BODY_MOVING_FORCE = BODY_MASS * 500
-
 
 # Hand parameters
 HAND_LINEAR_VELOCITY = 0.3  # linear velocity thresholds in meters/frame
@@ -72,7 +69,6 @@ THUMB_1_POS = [0, -0.015, -0.02]
 PALM_CENTER_POS = [0, -0.04, 0.01]
 PALM_BASE_POS = [0, 0, 0.015]
 FINGER_TIP_POS = [0, -0.025, -0.055]
-HAND_LIFTING_FORCE = 300
 
 # Assisted grasping parameters
 ASSIST_FRACTION = 1.0
@@ -384,8 +380,7 @@ class BRBody(ArticulatedObject):
         self.body_ids = [body_id]
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
-        self.mass = BODY_MASS  # p.getDynamicsInfo(body_id, -1)[0]
-        p.changeDynamics(body_id, -1, mass=self.mass)
+        self.mass = p.getDynamicsInfo(body_id, -1)[0]
         self.create_link_name_to_vm_map(body_id)
 
         return body_id
@@ -441,7 +436,7 @@ class BRBody(ArticulatedObject):
                     p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
 
     def move(self, pos, orn):
-        p.changeConstraint(self.movement_cid, pos, orn, maxForce=BODY_MOVING_FORCE)
+        p.changeConstraint(self.movement_cid, pos, orn, maxForce=50)
 
     def clip_delta_pos_orn(self, delta_pos, delta_orn):
         """
@@ -605,7 +600,7 @@ class BRHandBase(ArticulatedObject):
         clipped_delta_pos = np.clip(delta_pos, -HAND_LINEAR_VELOCITY, HAND_LINEAR_VELOCITY)
         clipped_delta_pos = clipped_delta_pos.tolist()
         clipped_delta_orn = np.clip(delta_orn, -HAND_ANGULAR_VELOCITY, HAND_ANGULAR_VELOCITY)
-        clipped_delta_orn = clipped_delta_orn.tolist()
+        clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn.tolist())
 
         # Constraint position so hand doesn't go further than hand_thresh from corresponding shoulder
         if not self.parent.use_tracked_body:
@@ -617,8 +612,10 @@ class BRHandBase(ArticulatedObject):
 
         shoulder_point = left_shoulder_rel_pos if self.hand == "left" else right_shoulder_rel_pos
         shoulder_point = np.array(shoulder_point)
-        desired_local_pos = np.array(self.local_pos) + np.array(clipped_delta_pos)
-        shoulder_to_hand = desired_local_pos - shoulder_point
+        desired_local_pos, desired_local_orn = p.multiplyTransforms(
+            self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn
+        )
+        shoulder_to_hand = np.array(desired_local_pos) - shoulder_point
         dist_to_shoulder = np.linalg.norm(shoulder_to_hand)
         if dist_to_shoulder > (HAND_DISTANCE_THRESHOLD + THRESHOLD_EPSILON):
             # Project onto sphere around shoulder
@@ -628,9 +625,12 @@ class BRHandBase(ArticulatedObject):
             # Add to shoulder position to get final local position
             reduced_local_pos = shoulder_point + reduced_shoulder_to_hand
             # Calculate new delta to get to this point
-            clipped_delta_pos = reduced_local_pos - np.array(self.local_pos)
+            inv_old_local_pos, inv_old_local_orn = p.invertTransform(self.local_pos, self.local_orn)
+            clipped_delta_pos, clipped_delta_orn = p.multiplyTransforms(
+                inv_old_local_pos, inv_old_local_orn, reduced_local_pos.tolist(), desired_local_orn
+            )
 
-        return clipped_delta_pos, clipped_delta_orn
+        return clipped_delta_pos, p.getEulerFromQuaternion(clipped_delta_orn)
 
     def update(self, action):
         """
@@ -650,9 +650,9 @@ class BRHandBase(ArticulatedObject):
 
         # Calculate new local transform
         old_local_pos, old_local_orn = self.local_pos, self.local_orn
-        _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], old_local_orn)
-        new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
-
+        new_local_pos, new_local_orn = p.multiplyTransforms(
+            old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn
+        )
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
 
@@ -691,7 +691,7 @@ class BRHandBase(ArticulatedObject):
             self.update_ghost_hands()
 
     def move(self, pos, orn):
-        p.changeConstraint(self.movement_cid, pos, orn, maxForce=HAND_LIFTING_FORCE)
+        p.changeConstraint(self.movement_cid, pos, orn, maxForce=300)
 
     def set_close_fraction(self, close_frac):
         """
@@ -1338,24 +1338,29 @@ class BREye(ArticulatedObject):
         clipped_delta_pos = np.clip(delta_pos, -HEAD_LINEAR_VELOCITY, HEAD_LINEAR_VELOCITY)
         clipped_delta_pos = clipped_delta_pos.tolist()
         clipped_delta_orn = np.clip(delta_orn, -HEAD_ANGULAR_VELOCITY, HEAD_ANGULAR_VELOCITY)
-        clipped_delta_orn = clipped_delta_orn.tolist()
+        clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn.tolist())
 
         if not self.parent.use_tracked_body:
             neck_base_rel_pos = NECK_BASE_REL_POS_TRACKED
         else:
             neck_base_rel_pos = NECK_BASE_REL_POS_UNTRACKED
         neck_base_point = np.array(neck_base_rel_pos)
-        desired_local_pos = np.array(self.local_pos) + np.array(clipped_delta_pos)
-        neck_to_head = desired_local_pos - neck_base_point
+        desired_local_pos, desired_local_orn = p.multiplyTransforms(
+            self.local_pos, self.local_orn, clipped_delta_pos, clipped_delta_orn
+        )
+        neck_to_head = np.array(desired_local_pos) - neck_base_point
         dist_to_neck = np.linalg.norm(neck_to_head)
         if dist_to_neck > (HEAD_DISTANCE_THRESHOLD + THRESHOLD_EPSILON):
             # Project onto sphere around neck base
             shrink_factor = HEAD_DISTANCE_THRESHOLD / dist_to_neck
             reduced_neck_to_head = neck_to_head * shrink_factor
             reduced_local_pos = neck_base_point + reduced_neck_to_head
-            clipped_delta_pos = reduced_local_pos - np.array(self.local_pos)
+            inv_old_local_pos, inv_old_local_orn = p.invertTransform(self.local_pos, self.local_orn)
+            clipped_delta_pos, clipped_delta_orn = p.multiplyTransforms(
+                inv_old_local_pos, inv_old_local_orn, reduced_local_pos.tolist(), desired_local_orn
+            )
 
-        return clipped_delta_pos, clipped_delta_orn
+        return clipped_delta_pos, p.getEulerFromQuaternion(clipped_delta_orn)
 
     def update(self, action):
         """
@@ -1375,9 +1380,9 @@ class BREye(ArticulatedObject):
 
         # Calculate new local transform
         old_local_pos, old_local_orn = self.local_pos, self.local_orn
-        _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], old_local_orn)
-        new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
-
+        new_local_pos, new_local_orn = p.multiplyTransforms(
+            old_local_pos, old_local_orn, clipped_delta_pos, clipped_delta_orn
+        )
         self.local_pos = new_local_pos
         self.local_orn = new_local_orn
 
