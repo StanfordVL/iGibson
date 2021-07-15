@@ -40,6 +40,7 @@ pipeline {
                 sh 'pytest igibson/test/test_sensors.py --junitxml=test_result/test_sensors.py.xml'
                 sh 'pytest igibson/test/test_motion_planning.py --junitxml=test_result/test_motion_planning.py.xml'
                 sh 'pytest igibson/test/test_states.py --junitxml=test_result/test_states.py.xml'
+                sh 'pytest igibson/test/test_determinism_against_same_version.py --junitxml=test_result/test_determinism_against_same_version.py.xml'
             }
         }
 
