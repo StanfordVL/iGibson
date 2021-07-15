@@ -10,7 +10,7 @@ import igibson
 from igibson.objects.visual_marker import VisualMarker
 
 _DEFAULT_AABB_OFFSET = 0.1
-_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 1.  # Around 60 degrees
+_PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 1.0  # Around 60 degrees
 _DEFAULT_HIT_TO_PLANE_THRESHOLD = 0.05
 _DEFAULT_MAX_ANGLE_WITH_Z_AXIS = 3 * np.pi / 4
 _DEFAULT_MAX_SAMPLING_ATTEMPTS = 10
@@ -28,7 +28,8 @@ def fit_plane(points):
     :return Tuple[np.array, np.array] where first element is the points' centroid and the second is
     """
     assert points.shape[1] <= points.shape[0], "Cannot fit plane with only {} points in {} dimensions.".format(
-        points.shape[0], points.shape[1])
+        points.shape[0], points.shape[1]
+    )
     ctr = points.mean(axis=0)
     x = points - ctr[np.newaxis, :]
     M = np.dot(x.T, x)
@@ -48,18 +49,15 @@ def get_projection_onto_plane(points, plane_centroid, plane_normal):
 def draw_debug_markers(hit_positions):
     color = np.concatenate([np.random.rand(3), [1]])
     for vec in hit_positions:
-        m = VisualMarker(
-            rgba_color=color,
-            radius=0.001,
-            initial_offset=vec
-        )
+        m = VisualMarker(rgba_color=color, radius=0.001, initial_offset=vec)
         # This is normally very illegal - the simulator should do it.
         # But since this is debug mode only I think we'll be fine.
         m.load()
 
 
-def get_parallel_rays(source, destination, offset,
-                      new_ray_per_horizontal_distance=_DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE):
+def get_parallel_rays(
+    source, destination, offset, new_ray_per_horizontal_distance=_DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE
+):
     """Given a ray described by a source and a destination, sample parallel rays and return together with input ray.
 
     The parallel rays start at the corners of a square of edge length `offset` centered on `source`, with the square
@@ -159,18 +157,20 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
     return results
 
 
-def sample_cuboid_on_object(obj,
-                            num_samples,
-                            cuboid_dimensions,
-                            bimodal_mean_fraction,
-                            bimodal_stdev_fraction,
-                            axis_probabilities,
-                            undo_padding=False,
-                            aabb_offset=_DEFAULT_AABB_OFFSET,
-                            max_sampling_attempts=_DEFAULT_MAX_SAMPLING_ATTEMPTS,
-                            max_angle_with_z_axis=_DEFAULT_MAX_ANGLE_WITH_Z_AXIS,
-                            hit_to_plane_threshold=_DEFAULT_HIT_TO_PLANE_THRESHOLD,
-                            refuse_downwards=False):
+def sample_cuboid_on_object(
+    obj,
+    num_samples,
+    cuboid_dimensions,
+    bimodal_mean_fraction,
+    bimodal_stdev_fraction,
+    axis_probabilities,
+    undo_padding=False,
+    aabb_offset=_DEFAULT_AABB_OFFSET,
+    max_sampling_attempts=_DEFAULT_MAX_SAMPLING_ATTEMPTS,
+    max_angle_with_z_axis=_DEFAULT_MAX_ANGLE_WITH_Z_AXIS,
+    hit_to_plane_threshold=_DEFAULT_HIT_TO_PLANE_THRESHOLD,
+    refuse_downwards=False,
+):
     """
     Samples points on an object's surface using ray casting.
 
@@ -202,6 +202,7 @@ def sample_cuboid_on_object(obj,
     """
     # This is imported here to avoid a circular import with object_states.
     from igibson.object_states import AABB
+
     aabb = obj.states[AABB].get_value()
     aabb_min = np.array(aabb[0])
     aabb_max = np.array(aabb[1])
@@ -221,8 +222,14 @@ def sample_cuboid_on_object(obj,
 
     for i in range(num_samples):
         # Sample the starting positions in advance.
-        samples = sample_origin_positions(sampling_aabb_min, sampling_aabb_max, max_sampling_attempts,
-                                          bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities)
+        samples = sample_origin_positions(
+            sampling_aabb_min,
+            sampling_aabb_max,
+            max_sampling_attempts,
+            bimodal_mean_fraction,
+            bimodal_stdev_fraction,
+            axis_probabilities,
+        )
 
         refusal_reasons = results[i][4]
 
@@ -235,8 +242,7 @@ def sample_cuboid_on_object(obj,
             this_cuboid_dimensions = cuboid_dimensions if cuboid_dimensions.ndim == 1 else cuboid_dimensions[i]
 
             # Obtain the parallel rays using the direction sampling method.
-            sources, destinations, grid = get_parallel_rays(
-                start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.)
+            sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0)
 
             # Time to cast the rays.
             cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations, numThreads=0)
@@ -256,8 +262,9 @@ def sample_cuboid_on_object(obj,
 
             # Reject anything facing more than 45deg downwards if requested.
             if refuse_downwards:
-                if not check_hit_max_angle_from_z_axis(center_hit_normal, max_angle_with_z_axis,
-                                                       refusal_reasons["downward_normal"]):
+                if not check_hit_max_angle_from_z_axis(
+                    center_hit_normal, max_angle_with_z_axis, refusal_reasons["downward_normal"]
+                ):
                     continue
 
             # Check that none of the parallel rays' hit normal differs from center ray by more than threshold.
@@ -283,7 +290,8 @@ def sample_cuboid_on_object(obj,
 
             # Check that the plane normal is similar to the hit normal
             if not check_normal_similarity(
-                    center_hit_normal, plane_normal[None, :], refusal_reasons["plane_normal_similarity"]):
+                center_hit_normal, plane_normal[None, :], refusal_reasons["plane_normal_similarity"]
+            ):
                 continue
 
             # Check that the points are all within some acceptable distance of the plane.
@@ -298,20 +306,27 @@ def sample_cuboid_on_object(obj,
             padding = _DEFAULT_CUBOID_BOTTOM_PADDING * plane_normal
             projected_hits += padding
             center_projected_hit = projected_hits[center_idx]
-            cuboid_centroid = center_projected_hit + plane_normal * this_cuboid_dimensions[2] / 2.
-            rotation = compute_rotation_from_grid_sample(grid, projected_hits, cuboid_centroid,
-                                                         this_cuboid_dimensions)
+            cuboid_centroid = center_projected_hit + plane_normal * this_cuboid_dimensions[2] / 2.0
+            rotation = compute_rotation_from_grid_sample(grid, projected_hits, cuboid_centroid, this_cuboid_dimensions)
             corner_positions = cuboid_centroid[None, :] + (
-                rotation.apply(0.5 * this_cuboid_dimensions * np.array([
-                    [1, 1, -1],
-                    [-1, 1, -1],
-                    [-1, -1, -1],
-                    [1, -1, -1],
-                ])))
+                rotation.apply(
+                    0.5
+                    * this_cuboid_dimensions
+                    * np.array(
+                        [
+                            [1, 1, -1],
+                            [-1, 1, -1],
+                            [-1, -1, -1],
+                            [1, -1, -1],
+                        ]
+                    )
+                )
+            )
 
             # Now we use the cuboid's diagonals to check that the cuboid is actually empty.
-            if not check_cuboid_empty(plane_normal, corner_positions, refusal_reasons["cuboid_not_empty"],
-                                      this_cuboid_dimensions):
+            if not check_cuboid_empty(
+                plane_normal, corner_positions, refusal_reasons["cuboid_not_empty"], this_cuboid_dimensions
+            ):
                 continue
 
             if undo_padding:
@@ -339,7 +354,7 @@ def compute_rotation_from_grid_sample(two_d_grid, hit_positions, cuboid_centroid
     grid_in_planar_coordinates = two_d_grid.reshape(-1, 2)
     grid_in_object_coordinates = np.zeros((len(grid_in_planar_coordinates), 3))
     grid_in_object_coordinates[:, :2] = grid_in_planar_coordinates
-    grid_in_object_coordinates[:, 2] = -this_cuboid_dimensions[2] / 2.
+    grid_in_object_coordinates[:, 2] = -this_cuboid_dimensions[2] / 2.0
     grid_in_object_coordinates /= np.linalg.norm(grid_in_object_coordinates, axis=1)[:, None]
 
     sampled_grid_relative_vectors = hit_positions - cuboid_centroid
@@ -348,7 +363,8 @@ def compute_rotation_from_grid_sample(two_d_grid, hit_positions, cuboid_centroid
     # Grab the vectors that are nonzero in both
     nonzero_indices = np.logical_and(
         np.any(np.isfinite(grid_in_object_coordinates), axis=1),
-        np.any(np.isfinite(sampled_grid_relative_vectors), axis=1))
+        np.any(np.isfinite(sampled_grid_relative_vectors), axis=1),
+    )
     grid_in_object_coordinates = grid_in_object_coordinates[nonzero_indices]
     sampled_grid_relative_vectors = sampled_grid_relative_vectors[nonzero_indices]
 
@@ -358,16 +374,18 @@ def compute_rotation_from_grid_sample(two_d_grid, hit_positions, cuboid_centroid
 
 def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
     parallel_hit_main_hit_dot_products = np.clip(
-        np.dot(hit_normals, center_hit_normal) / (
-                np.linalg.norm(hit_normals, axis=1) * np.linalg.norm(center_hit_normal)),
-        -1.0, 1.0)
+        np.dot(hit_normals, center_hit_normal)
+        / (np.linalg.norm(hit_normals, axis=1) * np.linalg.norm(center_hit_normal)),
+        -1.0,
+        1.0,
+    )
     parallel_hit_normal_angles_to_hit_normal = np.arccos(parallel_hit_main_hit_dot_products)
     all_rays_hit_with_similar_normal = np.all(
-        parallel_hit_normal_angles_to_hit_normal < _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE)
+        parallel_hit_normal_angles_to_hit_normal < _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE
+    )
     if not all_rays_hit_with_similar_normal:
         if igibson.debug_sampling:
-            refusal_log.append(
-                "angles %r" % (np.rad2deg(parallel_hit_normal_angles_to_hit_normal), ))
+            refusal_log.append("angles %r" % (np.rad2deg(parallel_hit_normal_angles_to_hit_normal),))
 
         return False
 
@@ -427,8 +445,7 @@ def compute_ray_destination(axis, is_top, start_pos, aabb_min, aabb_max):
     return point_on_face
 
 
-def check_cuboid_empty(hit_normal, bottom_corner_positions, refusal_log,
-                       this_cuboid_dimensions):
+def check_cuboid_empty(hit_normal, bottom_corner_positions, refusal_log, this_cuboid_dimensions):
     # Compute top corners.
     top_corner_positions = bottom_corner_positions + hit_normal * this_cuboid_dimensions[2]
 
@@ -442,8 +459,9 @@ def check_cuboid_empty(hit_normal, bottom_corner_positions, refusal_log,
 
     # Combine all these pairs, cast the rays, and make sure the rays don't hit anything.
     all_pairs = np.array(top_to_bottom_pairs + bottom_pairs + top_pairs)
-    check_cast_results = p.rayTestBatch(rayFromPositions=all_pairs[:, 0, :], rayToPositions=all_pairs[:, 1, :],
-                                        numThreads=0)
+    check_cast_results = p.rayTestBatch(
+        rayFromPositions=all_pairs[:, 0, :], rayToPositions=all_pairs[:, 1, :], numThreads=0
+    )
     if not all(ray[0] == -1 for ray in check_cast_results):
         if igibson.debug_sampling:
             refusal_log.append("check ray info: %r" % (check_cast_results,))

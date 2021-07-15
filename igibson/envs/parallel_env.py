@@ -27,8 +27,7 @@ class ParallelNavEnv(iGibsonEnv):
             communication to reduce overhead.
         :raise ValueError: If the action or observation specs don't match.
         """
-        self._envs = [ProcessPyEnvironment(
-            ctor, flatten=flatten) for ctor in env_constructors]
+        self._envs = [ProcessPyEnvironment(ctor, flatten=flatten) for ctor in env_constructors]
         self._num_envs = len(env_constructors)
         self.start()
         self.action_space = self._envs[0].action_space
@@ -67,8 +66,7 @@ class ParallelNavEnv(iGibsonEnv):
         :param actions: batched action, possibly nested, to apply to the environment.
         :return: a list of [next_obs, reward, done, info]
         """
-        time_steps = [env.step(action, self._blocking)
-                      for env, action in zip(self._envs, actions)]
+        time_steps = [env.step(action, self._blocking) for env, action in zip(self._envs, actions)]
         # When blocking is False we get promises that need to be called.
         if not self._blocking:
             time_steps = [promise() for promise in time_steps]
@@ -109,8 +107,7 @@ class ProcessPyEnvironment(object):
     def start(self):
         """Start the process."""
         self._conn, conn = multiprocessing.Pipe()
-        self._process = multiprocessing.Process(target=self._worker,
-                                                args=(conn, self._env_constructor, self._flatten))
+        self._process = multiprocessing.Process(target=self._worker, args=(conn, self._env_constructor, self._flatten))
         atexit.register(self.close)
         self._process.start()
         result = self._conn.recv()
@@ -160,7 +157,7 @@ class ProcessPyEnvironment(object):
         :param blocking: whether to wait for the result.
         :return: (next_obs, reward, done, info) tuple when blocking, otherwise callable that returns that tuple
         """
-        promise = self.call('step', action)
+        promise = self.call("step", action)
         if blocking:
             return promise()
         else:
@@ -172,7 +169,7 @@ class ProcessPyEnvironment(object):
         :param blocking: whether to wait for the result.
         :return: next_obs when blocking, otherwise callable that returns next_obs
         """
-        promise = self.call('reset')
+        promise = self.call("reset")
         if blocking:
             return promise()
         else:
@@ -194,8 +191,7 @@ class ProcessPyEnvironment(object):
         if message == self._RESULT:
             return payload
         self.close()
-        raise KeyError(
-            'Received message of unexpected type {}'.format(message))
+        raise KeyError("Received message of unexpected type {}".format(message))
 
     def _worker(self, conn, env_constructor, flatten=False):
         """The process waits for actions and sends back environment results.
@@ -210,7 +206,7 @@ class ProcessPyEnvironment(object):
         try:
             np.random.seed()
             env = env_constructor()
-            conn.send(self._READY)    # Ready.
+            conn.send(self._READY)  # Ready.
             while True:
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
@@ -226,19 +222,18 @@ class ProcessPyEnvironment(object):
                     continue
                 if message == self._CALL:
                     name, args, kwargs = payload
-                    if name == 'step' or name == 'reset':
+                    if name == "step" or name == "reset":
                         result = getattr(env, name)(*args, **kwargs)
                     conn.send((self._RESULT, result))
                     continue
                 if message == self._CLOSE:
                     assert payload is None
                     break
-                raise KeyError(
-                    'Received message of unknown type {}'.format(message))
-        except Exception:    # pylint: disable=broad-except
+                raise KeyError("Received message of unknown type {}".format(message))
+        except Exception:  # pylint: disable=broad-except
             etype, evalue, tb = sys.exc_info()
-            stacktrace = ''.join(traceback.format_exception(etype, evalue, tb))
-            message = 'Error in environment process: {}'.format(stacktrace)
+            stacktrace = "".join(traceback.format_exception(etype, evalue, tb))
+            message = "Error in environment process: {}".format(stacktrace)
             # tf.logging.error(message)
             conn.send((self._EXCEPTION, stacktrace))
         finally:
@@ -246,15 +241,15 @@ class ProcessPyEnvironment(object):
 
 
 if __name__ == "__main__":
-    config_filename = os.path.join(os.path.dirname(
-        igibson.__file__), 'test', 'test.yaml')
+    config_filename = os.path.join(os.path.dirname(igibson.__file__), "test", "test.yaml")
 
     def load_env():
-        return iGibsonEnv(config_file=config_filename, mode='headless')
+        return iGibsonEnv(config_file=config_filename, mode="headless")
 
     parallel_env = ParallelNavEnv([load_env] * 2, blocking=False)
 
     from time import time
+
     for episode in range(10):
         start = time()
         print("episode {}".format(episode))

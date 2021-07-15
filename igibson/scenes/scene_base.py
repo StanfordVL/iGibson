@@ -45,7 +45,7 @@ class Scene(with_metaclass(ABCMeta)):
         raise NotImplementedError()
 
     def get_objects_with_state(self, state):
-        return [item for item in self.get_objects() if hasattr(item, 'states') and state in item.states]
+        return [item for item in self.get_objects() if hasattr(item, "states") and state in item.states]
 
     @abstractmethod
     def _add_object(self, obj):
@@ -73,12 +73,12 @@ class Scene(with_metaclass(ABCMeta)):
             (in that case, the object is stored to be loaded together with the scene).
         """
         if self.loaded and not _is_call_from_simulator:
-            raise ValueError(
-                "To add an object to an already-loaded scene, use the Simulator's import_object function.")
+            raise ValueError("To add an object to an already-loaded scene, use the Simulator's import_object function.")
 
         if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
             raise ValueError(
-                "VisualMarker, VisualShape and Particle objects and subclasses should be added directly to simulator.")
+                "VisualMarker, VisualShape and Particle objects and subclasses should be added directly to simulator."
+            )
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
         # let scene._load() load the object when called later on.

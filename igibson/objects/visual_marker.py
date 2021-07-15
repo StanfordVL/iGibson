@@ -7,13 +7,15 @@ class VisualMarker(Object):
     Visual shape created with shape primitives
     """
 
-    def __init__(self,
-                 visual_shape=p.GEOM_SPHERE,
-                 rgba_color=[1, 0, 0, 0.5],
-                 radius=1.0,
-                 half_extents=[1, 1, 1],
-                 length=1,
-                 initial_offset=[0, 0, 0]):
+    def __init__(
+        self,
+        visual_shape=p.GEOM_SPHERE,
+        rgba_color=[1, 0, 0, 0.5],
+        radius=1.0,
+        half_extents=[1, 1, 1],
+        length=1,
+        initial_offset=[0, 0, 0],
+    ):
         """
         create a visual shape to show in pybullet and MeshRenderer
 
@@ -37,23 +39,30 @@ class VisualMarker(Object):
         Load the object into pybullet
         """
         if self.visual_shape == p.GEOM_BOX:
-            shape = p.createVisualShape(self.visual_shape,
-                                        rgbaColor=self.rgba_color,
-                                        halfExtents=self.half_extents,
-                                        visualFramePosition=self.initial_offset)
+            shape = p.createVisualShape(
+                self.visual_shape,
+                rgbaColor=self.rgba_color,
+                halfExtents=self.half_extents,
+                visualFramePosition=self.initial_offset,
+            )
         elif self.visual_shape in [p.GEOM_CYLINDER, p.GEOM_CAPSULE]:
-            shape = p.createVisualShape(self.visual_shape,
-                                        rgbaColor=self.rgba_color,
-                                        radius=self.radius,
-                                        length=self.length,
-                                        visualFramePosition=self.initial_offset)
+            shape = p.createVisualShape(
+                self.visual_shape,
+                rgbaColor=self.rgba_color,
+                radius=self.radius,
+                length=self.length,
+                visualFramePosition=self.initial_offset,
+            )
         else:
-            shape = p.createVisualShape(self.visual_shape,
-                                        rgbaColor=self.rgba_color,
-                                        radius=self.radius,
-                                        visualFramePosition=self.initial_offset)
+            shape = p.createVisualShape(
+                self.visual_shape,
+                rgbaColor=self.rgba_color,
+                radius=self.radius,
+                visualFramePosition=self.initial_offset,
+            )
         body_id = p.createMultiBody(
-            baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1, flags=p.URDF_ENABLE_SLEEPING)
+            baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1, flags=p.URDF_ENABLE_SLEEPING
+        )
 
         return body_id
 

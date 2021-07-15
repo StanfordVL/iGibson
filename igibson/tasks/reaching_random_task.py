@@ -16,9 +16,7 @@ class ReachingRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         super(ReachingRandomTask, self).__init__(env)
-        self.target_height_range = self.config.get(
-            'target_height_range', [0.0, 1.0]
-        )
+        self.target_height_range = self.config.get("target_height_range", [0.0, 1.0])
         assert isinstance(self.termination_conditions[-1], PointGoal)
         self.termination_conditions[-1] = ReachingGoal(self.config)
         assert isinstance(self.reward_functions[-1], PointGoalReward)
@@ -31,8 +29,7 @@ class ReachingRandomTask(PointNavRandomTask):
         :param env: environment instance
         :return: potential based on L2 distance to goal
         """
-        return l2_distance(env.robots[0].get_end_effector_position(),
-                           self.target_pos)
+        return l2_distance(env.robots[0].get_end_effector_position(), self.target_pos)
 
     def get_potential(self, env):
         """
@@ -50,10 +47,8 @@ class ReachingRandomTask(PointNavRandomTask):
         :param env: environment instance
         :return: initial pose and target position
         """
-        initial_pos, initial_orn, target_pos = \
-            super(ReachingRandomTask, self).sample_initial_pose_and_target_pos(env)
-        target_pos[2] += np.random.uniform(self.target_height_range[0],
-                                           self.target_height_range[1])
+        initial_pos, initial_orn, target_pos = super(ReachingRandomTask, self).sample_initial_pose_and_target_pos(env)
+        target_pos[2] += np.random.uniform(self.target_height_range[0], self.target_height_range[1])
         return initial_pos, initial_orn, target_pos
 
     def get_task_obs(self, env):
@@ -65,9 +60,7 @@ class ReachingRandomTask(PointNavRandomTask):
         """
         task_obs = super(ReachingRandomTask, self).get_task_obs(env)
         goal_z_local = self.global_to_local(env, self.target_pos)[2]
-        end_effector_pos_local = self.global_to_local(
-            env,
-            env.robots[0].get_end_effector_position())
+        end_effector_pos_local = self.global_to_local(env, env.robots[0].get_end_effector_position())
 
         task_obs = np.append(task_obs, goal_z_local)
         task_obs = np.append(task_obs, end_effector_pos_local)

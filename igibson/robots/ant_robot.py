@@ -27,10 +27,7 @@ class Ant(LocomotorRobot):
         """
         Set up continuous action space
         """
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,),
-                                           low=-1.0,
-                                           high=1.0,
-                                           dtype=np.float32)
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
         self.action_high = self.torque * np.ones([self.action_dim])
         self.action_low = -self.action_high
 

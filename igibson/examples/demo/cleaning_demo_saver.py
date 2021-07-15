@@ -6,19 +6,19 @@ from igibson.simulator import Simulator
 
 
 def main():
-    s = Simulator(mode='gui', device_idx=0)
+    s = Simulator(mode="gui", device_idx=0)
     scene = InteractiveIndoorScene(
-        'Rs_int',
-        texture_randomization=False,
-        object_randomization=False,
-        merge_fixed_links=False
+        "Rs_int", texture_randomization=False, object_randomization=False, merge_fixed_links=False
     )
     s.import_ig_scene(scene)
 
     # Set everything that can go dirty.
     stateful_objects = set(
-        scene.get_objects_with_state(object_states.Dusty) + scene.get_objects_with_state(object_states.Stained) +
-        scene.get_objects_with_state(object_states.WaterSource) + scene.get_objects_with_state(object_states.Open))
+        scene.get_objects_with_state(object_states.Dusty)
+        + scene.get_objects_with_state(object_states.Stained)
+        + scene.get_objects_with_state(object_states.WaterSource)
+        + scene.get_objects_with_state(object_states.Open)
+    )
     for obj in stateful_objects:
         if object_states.Dusty in obj.states:
             obj.states[object_states.Dusty].set_value(True)

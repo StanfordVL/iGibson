@@ -9,7 +9,9 @@ import time
 from igibson.envs.igibson_env import iGibsonEnv
 
 import ray
+
 ray.init()
+
 
 @ray.remote
 class iGibsonRayEnv(iGibsonEnv):
@@ -19,29 +21,26 @@ class iGibsonRayEnv(iGibsonEnv):
     def get_current_step(self):
         return self.current_step
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--config", "-c", help="which config file to use [default: use yaml files in examples/configs]")
     parser.add_argument(
-        '--config',
-        '-c',
-        help='which config file to use [default: use yaml files in examples/configs]')
-    parser.add_argument('--mode',
-                        '-m',
-                        choices=['headless', 'gui', 'iggui'],
-                        default='headless',
-                        help='which mode for simulation (default: headless)')
+        "--mode",
+        "-m",
+        choices=["headless", "gui", "iggui"],
+        default="headless",
+        help="which mode for simulation (default: headless)",
+    )
     args = parser.parse_args()
 
     env = iGibsonRayEnv.remote(
-            config_file=args.config,
-            mode=args.mode,
-            action_timestep=1.0 / 10.0,
-            physics_timestep=1.0 / 40.0
-        )
+        config_file=args.config, mode=args.mode, action_timestep=1.0 / 10.0, physics_timestep=1.0 / 40.0
+    )
 
     step_time_list = []
     for episode in range(100):
-        print('Episode: {}'.format(episode))
+        print("Episode: {}".format(episode))
         start = time.time()
         env.reset.remote()
         for _ in range(100):  # 10 seconds
@@ -49,9 +48,12 @@ if __name__ == '__main__':
             # the handle to your actor
             action = ray.get(env.sample_action_space.remote())
             state, reward, done, _ = ray.get(env.step.remote(action))
-            print('reward', reward)
+            print("reward", reward)
             if done:
                 break
-        print('Episode finished after {} timesteps, took {} seconds.'.format(
-            ray.get(env.get_current_step.remote()), time.time() - start))
+        print(
+            "Episode finished after {} timesteps, took {} seconds.".format(
+                ray.get(env.get_current_step.remote()), time.time() - start
+            )
+        )
     env.remote.close()

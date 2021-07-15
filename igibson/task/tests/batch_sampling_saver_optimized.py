@@ -20,11 +20,10 @@ def main():
         "Wainscott_1_int",
     ]
     for scene_id in scene_choices:
-        subprocess.call('python sampling_saver_optimized.py --scene_id {} --max_trials {}'.format(
-            scene_id,
-            10
-        ), shell=True)
+        subprocess.call(
+            "python sampling_saver_optimized.py --scene_id {} --max_trials {}".format(scene_id, 10), shell=True
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

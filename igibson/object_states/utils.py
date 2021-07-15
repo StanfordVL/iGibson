@@ -1,7 +1,14 @@
 import numpy as np
 import pybullet as p
 import cv2
-from igibson.external.pybullet_tools.utils import get_link_pose, matrix_from_quat, get_aabb_center, get_aabb_extent, stable_z_on_aabb, get_aabb
+from igibson.external.pybullet_tools.utils import (
+    get_link_pose,
+    matrix_from_quat,
+    get_aabb_center,
+    get_aabb_extent,
+    stable_z_on_aabb,
+    get_aabb,
+)
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState
 import igibson
@@ -11,20 +18,20 @@ from scipy.spatial.transform import Rotation as R
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
     # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
-    'max_angle_with_z_axis': 0.17,
-    'bimodal_stdev_fraction': 1e-6,
-    'bimodal_mean_fraction': 1.0,
-    'max_sampling_attempts': 50,
-    'aabb_offset': 0.01,
+    "max_angle_with_z_axis": 0.17,
+    "bimodal_stdev_fraction": 1e-6,
+    "bimodal_mean_fraction": 1.0,
+    "max_sampling_attempts": 50,
+    "aabb_offset": 0.01,
 }
 
 _INSIDE_RAY_CASTING_SAMPLING_PARAMS = {
     # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
-    'max_angle_with_z_axis': 0.17,
-    'bimodal_stdev_fraction': 0.4,
-    'bimodal_mean_fraction': 0.5,
-    'max_sampling_attempts': 100,
-    'aabb_offset': -0.01,
+    "max_angle_with_z_axis": 0.17,
+    "bimodal_stdev_fraction": 0.4,
+    "bimodal_mean_fraction": 0.5,
+    "max_sampling_attempts": 100,
+    "aabb_offset": -0.01,
 }
 
 
@@ -40,6 +47,7 @@ def clear_cached_states(obj):
         if isinstance(obj_state, CachingEnabledObjectState):
             obj_state.clear_cached_value()
 
+
 def detect_collision(bodyA):
     collision = False
     for body_id in range(p.getNumBodies()):
@@ -51,16 +59,17 @@ def detect_collision(bodyA):
             break
     return collision
 
-def sample_kinematics(predicate, objA, objB, binary_state,
-                      use_ray_casting_method=False, max_trials=100, z_offset=0.05, skip_falling=False):
+
+def sample_kinematics(
+    predicate, objA, objB, binary_state, use_ray_casting_method=False, max_trials=100, z_offset=0.05, skip_falling=False
+):
     if not binary_state:
         raise NotImplementedError()
 
-    sample_on_floor = predicate == 'onFloor'
+    sample_on_floor = predicate == "onFloor"
 
     if not use_ray_casting_method and not sample_on_floor and predicate not in objB.supporting_surfaces:
         return False
-
 
     objA.force_wakeup()
     if not sample_on_floor:
@@ -81,26 +90,21 @@ def sample_kinematics(predicate, objA, objB, binary_state,
         objA.set_position_orientation(old_pos, orientation)
 
         if sample_on_floor:
-            _, pos = objB.scene.get_random_point_by_room_instance(
-                objB.room_instance)
+            _, pos = objB.scene.get_random_point_by_room_instance(objB.room_instance)
 
             if pos is not None:
-                pos[2] = stable_z_on_aabb(
-                    objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
+                pos[2] = stable_z_on_aabb(objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
         else:
             if use_ray_casting_method:
-                if predicate == 'onTop':
+                if predicate == "onTop":
                     params = _ON_TOP_RAY_CASTING_SAMPLING_PARAMS
-                elif predicate == 'inside':
+                elif predicate == "inside":
                     params = _INSIDE_RAY_CASTING_SAMPLING_PARAMS
                 else:
-                    assert False, \
-                        'predicate is not onTop or inside: {}'.format(
-                            predicate)
+                    assert False, "predicate is not onTop or inside: {}".format(predicate)
 
                 aabb = get_aabb(objA.get_body_id())
-                aabb_center, aabb_extent = \
-                    get_aabb_center(aabb), get_aabb_extent(aabb)
+                aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
@@ -109,7 +113,8 @@ def sample_kinematics(predicate, objA, objB, binary_state,
                     cuboid_dimensions=aabb_extent,
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
-                    **params)
+                    **params
+                )
 
                 sampled_vector = sampling_results[0][0]
                 sampled_quaternion = sampling_results[0][2]
@@ -129,21 +134,14 @@ def sample_kinematics(predicate, objA, objB, binary_state,
                     pos = sampled_vector + rotated_diff
                     orientation = combined_rotation.as_quat()
             else:
-                random_idx = np.random.randint(
-                    len(objB.supporting_surfaces[predicate].keys()))
-                body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[
-                    random_idx]
-                random_height_idx = np.random.randint(
-                    len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
-                height, height_map = objB.supporting_surfaces[predicate][(
-                    body_id, link_id)][random_height_idx]
+                random_idx = np.random.randint(len(objB.supporting_surfaces[predicate].keys()))
+                body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[random_idx]
+                random_height_idx = np.random.randint(len(objB.supporting_surfaces[predicate][(body_id, link_id)]))
+                height, height_map = objB.supporting_surfaces[predicate][(body_id, link_id)][random_height_idx]
                 obj_half_size = np.max(objA.bounding_box) / 2 * 100
-                obj_half_size_scaled = np.array(
-                    [obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
-                obj_half_size_scaled = np.ceil(
-                    obj_half_size_scaled).astype(np.int)
-                height_map_eroded = cv2.erode(
-                    height_map, np.ones(obj_half_size_scaled, np.uint8))
+                obj_half_size_scaled = np.array([obj_half_size / objB.scale[1], obj_half_size / objB.scale[0]])
+                obj_half_size_scaled = np.ceil(obj_half_size_scaled).astype(np.int)
+                height_map_eroded = cv2.erode(height_map, np.ones(obj_half_size_scaled, np.uint8))
 
                 valid_pos = np.array(height_map_eroded.nonzero())
                 if valid_pos.shape[1] != 0:
@@ -160,21 +158,18 @@ def sample_kinematics(predicate, objA, objB, binary_state,
                     # the supporting surface is defined w.r.t to the link frame, not
                     # the inertial frame
                     if link_id == -1:
-                        link_pos, link_orn = p.getBasePositionAndOrientation(
-                            body_id)
+                        link_pos, link_orn = p.getBasePositionAndOrientation(body_id)
                         dynamics_info = p.getDynamicsInfo(body_id, -1)
                         inertial_pos = dynamics_info[3]
                         inertial_orn = dynamics_info[4]
-                        inv_inertial_pos, inv_inertial_orn =\
-                            p.invertTransform(inertial_pos, inertial_orn)
+                        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
                         link_pos, link_orn = p.multiplyTransforms(
-                            link_pos, link_orn, inv_inertial_pos, inv_inertial_orn)
+                            link_pos, link_orn, inv_inertial_pos, inv_inertial_orn
+                        )
                     else:
                         link_pos, link_orn = get_link_pose(body_id, link_id)
-                    pos = matrix_from_quat(link_orn).dot(
-                        pos) + np.array(link_pos)
-                    z = stable_z_on_aabb(
-                        objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
+                    pos = matrix_from_quat(link_orn).dot(pos) + np.array(link_pos)
+                    z = stable_z_on_aabb(objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
                     pos[2] = z
 
         if pos is None:
@@ -182,10 +177,10 @@ def sample_kinematics(predicate, objA, objB, binary_state,
         else:
             pos[2] += z_offset
             objA.set_position_orientation(pos, orientation)
-            success = not detect_collision(objA.get_body_id()) #len(p.getContactPoints(objA.get_body_id())) == 0
+            success = not detect_collision(objA.get_body_id())  # len(p.getContactPoints(objA.get_body_id())) == 0
 
         if igibson.debug_sampling:
-            print('sample_kinematics', success)
+            print("sample_kinematics", success)
             embed()
 
         if success:
@@ -198,7 +193,7 @@ def sample_kinematics(predicate, objA, objB, binary_state,
     if success and not skip_falling:
         objA.set_position_orientation(pos, orientation)
         # Let it fall for 0.2 second
-        physics_timestep = p.getPhysicsEngineParameters()['fixedTimeStep']
+        physics_timestep = p.getPhysicsEngineParameters()["fixedTimeStep"]
         for _ in range(int(0.2 / physics_timestep)):
             p.stepSimulation()
             if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:

@@ -16,11 +16,11 @@ import os
 from igibson.utils.assets_utils import download_assets
 
 download_assets()
-config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
+config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))
 
 
 def test_fetch():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     fetch = Fetch(config)
@@ -32,7 +32,7 @@ def test_fetch():
 
 
 def test_turtlebot():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -43,7 +43,7 @@ def test_turtlebot():
 
 
 def test_jr2():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     jr2 = JR2(config)
@@ -54,7 +54,7 @@ def test_jr2():
 
 
 def test_ant():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     ant = Ant(config)
@@ -70,7 +70,7 @@ def test_ant():
 
 
 def test_husky():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     husky = Husky(config)
@@ -81,7 +81,7 @@ def test_husky():
 
 
 def test_humanoid():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     humanoid = Humanoid(config)
@@ -92,7 +92,7 @@ def test_humanoid():
 
 
 def test_quadrotor():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     quadrotor = Quadrotor(config)
@@ -103,7 +103,7 @@ def test_quadrotor():
 
 
 def test_turtlebot_position():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
@@ -119,7 +119,7 @@ def test_turtlebot_position():
 
 
 def test_humanoid_position():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     humanoid = Humanoid(config)
@@ -134,7 +134,7 @@ def test_humanoid_position():
 
 
 def test_multiagent():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
     turtlebot1 = Turtlebot(config)
@@ -158,7 +158,7 @@ def test_multiagent():
 
 
 def show_action_sensor_space():
-    s = Simulator(mode='headless')
+    s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
 

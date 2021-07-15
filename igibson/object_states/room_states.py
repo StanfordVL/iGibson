@@ -5,6 +5,7 @@ from igibson.object_states.object_state_base import CachingEnabledObjectState, A
 
 class InsideRoomTypes(CachingEnabledObjectState):
     """The value of this state is the list of rooms that the object currently is in."""
+
     def _compute_value(self):
         if hasattr(self.obj, "main_body_is_fixed") and self.obj.main_body_is_fixed:
             # For fixed objects, we can use the in_rooms attribute.
@@ -49,6 +50,7 @@ class IsInRoomTemplate(AbsoluteObjectState, BooleanState):
 
     def load(self, data):
         pass
+
 
 IsInBathroom = type("IsInBathroom", (IsInRoomTemplate,), {"ROOM_TYPE": "bathroom"})
 IsInBedroom = type("IsInBedroom", (IsInRoomTemplate,), {"ROOM_TYPE": "bedroom"})
@@ -97,5 +99,5 @@ ROOM_STATES = [
     IsInBalcony,
     IsInLibrary,
     IsInAuditorium,
-    IsInUndefined
+    IsInUndefined,
 ]

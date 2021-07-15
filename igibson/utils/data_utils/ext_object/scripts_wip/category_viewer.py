@@ -15,8 +15,8 @@ download_assets()
 
 ABILITY_NAME = "stainable"
 CATEGORIES = [
-    'hardback',
-    'notebook',
+    "hardback",
+    "notebook",
 ]
 
 USE_ABILITY_TO_FETCH_CATEGORIES = False
@@ -25,12 +25,12 @@ OBJECT_TAXONOMY = ObjectTaxonomy()
 
 
 def get_categories():
-    dir = os.path.join(igibson.ig_dataset_path, 'objects')
+    dir = os.path.join(igibson.ig_dataset_path, "objects")
     return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
 
 
 def get_category_directory(category):
-    return os.path.join(igibson.ig_dataset_path, 'objects', category)
+    return os.path.join(igibson.ig_dataset_path, "objects", category)
 
 
 def get_obj(folder, **kwargs):
@@ -79,20 +79,19 @@ def main():
     batch_size = 100
     max_attempts = 100
 
-    s = Simulator(mode='gui')
+    s = Simulator(mode="gui")
     scene = EmptyScene()
     s.import_scene(scene)
     acs = get_ig_avg_category_specs()
 
-    for cat, objdir in objects[batch_start:batch_start+batch_size]:
+    for cat, objdir in objects[batch_start : batch_start + batch_size]:
         avg_category_spec = acs.get(cat)
         cd = get_category_directory(cat)
         objdirfull = os.path.join(cd, objdir)
 
-        obj = get_obj(objdirfull, fit_avg_dim_volume=True,
-                      avg_obj_dims=avg_category_spec, category=cat)
+        obj = get_obj(objdirfull, fit_avg_dim_volume=True, avg_obj_dims=avg_category_spec, category=cat)
         s.import_object(obj)
-        obj_pos = np.array([current_x, 0., 0.5])
+        obj_pos = np.array([current_x, 0.0, 0.5])
         obj.set_position(obj_pos)
         obj.set_orientation(obj.sample_orientation())
 
@@ -108,8 +107,7 @@ def main():
         #     print(obj.category + " is not dustyable")
 
         x_sign = -1 if current_x < 0 else 1
-        current_x = (abs(current_x) +
-                     avg_category_spec["size"][0] * 2) * x_sign * -1
+        current_x = (abs(current_x) + avg_category_spec["size"][0] * 2) * x_sign * -1
 
     print(failed_objects)
 

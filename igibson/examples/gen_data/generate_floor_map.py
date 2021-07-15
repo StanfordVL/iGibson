@@ -11,9 +11,9 @@ from tqdm import tqdm
 from PIL import Image
 
 
-
-def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=False,
-                texture_wrapping='REPEAT', use_bilinear=True):
+def load_obj_np(
+    filename_obj, normalization=False, texture_size=4, load_texture=False, texture_wrapping="REPEAT", use_bilinear=True
+):
     """Load Wavefront .obj file into numpy array
     This function only supports vertices (v x x x) and faces (f x x x).
     """
@@ -25,7 +25,7 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=
     for line in lines:
         if len(line.split()) == 0:
             continue
-        if line.split()[0] == 'v':
+        if line.split()[0] == "v":
             vertices.append([float(v) for v in line.split()[1:4]])
     vertices = np.vstack(vertices).astype(np.float32)
 
@@ -34,13 +34,13 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, load_texture=
     for line in lines:
         if len(line.split()) == 0:
             continue
-        if line.split()[0] == 'f':
+        if line.split()[0] == "f":
             vs = line.split()[1:]
             nv = len(vs)
-            v0 = int(vs[0].split('/')[0])
+            v0 = int(vs[0].split("/")[0])
             for i in range(nv - 2):
-                v1 = int(vs[i + 1].split('/')[0])
-                v2 = int(vs[i + 2].split('/')[0])
+                v1 = int(vs[i + 1].split("/")[0])
+                v2 = int(vs[i + 2].split("/")[0])
                 faces.append((v0, v1, v2))
     faces = np.vstack(faces).astype(np.int32) - 1
 
@@ -87,7 +87,7 @@ def get_hist_num_faces(obj_filepath):
             b = np.linalg.norm(vertices[face[2]] - vertices[face[0]])
             c = np.linalg.norm(vertices[face[0]] - vertices[face[1]])
             s = (a + b + c) / 2
-            area = (s*(s-a)*(s-b)*(s-c)) ** 0.5
+            area = (s * (s - a) * (s - b) * (s - c)) ** 0.5
             weights.append(area)
 
     hist = np.histogram(np.array(z_faces), bins=100, weights=np.array(weights))
@@ -105,7 +105,7 @@ def get_floor_height(hist, n_floors=1):
     return heights
 
 
-def gen_map(obj_filepath, mesh_dir, img_filename_format='floor_{}.png'):
+def gen_map(obj_filepath, mesh_dir, img_filename_format="floor_{}.png"):
     vertices, faces = load_obj_np(obj_filepath)
     xmin, ymin, _ = vertices.min(axis=0)
     xmax, ymax, _ = vertices.max(axis=0)
@@ -113,7 +113,7 @@ def gen_map(obj_filepath, mesh_dir, img_filename_format='floor_{}.png'):
     max_length = np.max([np.abs(xmin), np.abs(ymin), np.abs(xmax), np.abs(ymax)])
     max_length = np.ceil(max_length).astype(np.int)
 
-    with open(os.path.join(mesh_dir, 'floors.txt')) as f:
+    with open(os.path.join(mesh_dir, "floors.txt")) as f:
         floors = map(float, f.readlines())
         floors = sorted(floors)
         print(floors)
@@ -125,27 +125,27 @@ def gen_map(obj_filepath, mesh_dir, img_filename_format='floor_{}.png'):
 
             for item in cross_section:
                 for i in range(len(item) - 1):
-                    x1, x2 = (item[i:i+2, 0]+max_length) * 100
-                    y1, y2 = (item[i:i+2, 1]+max_length) * 100
+                    x1, x2 = (item[i : i + 2, 0] + max_length) * 100
+                    y1, y2 = (item[i : i + 2, 1] + max_length) * 100
                     cv2.line(floor_map, (x1, y1), (x2, y2), color=(0, 0, 0), thickness=2)
 
             cur_img = Image.fromarray((floor_map * 255).astype(np.uint8))
-            #cur_img = Image.fromarray(np.flipud(cur_img))
+            # cur_img = Image.fromarray(np.flipud(cur_img))
             img_filename = img_filename_format.format(i_floor)
             cur_img.save(os.path.join(mesh_dir, img_filename))
 
-            write_yaml(mesh_dir, np.array(cur_img), img_filename, 'floor_{}.yaml'.format(i_floor),
-                       resolution=0.01)
+            write_yaml(mesh_dir, np.array(cur_img), img_filename, "floor_{}.yaml".format(i_floor), resolution=0.01)
 
 
 def get_obj_filepath(mesh_dir):
-    return mesh_dir + '/mesh_z_up.obj'
+    return mesh_dir + "/mesh_z_up.obj"
 
 
 def get_n_floors(mesh_dir):
     return 1
 
-#def get_n_floors(mesh_dir):
+
+# def get_n_floors(mesh_dir):
 #    house_seg_filepaths = glob.glob(os.path.join(mesh_dir, 'house_segmentations', '*.house'))
 #    assert len(house_seg_filepaths) == 1
 #    with open(house_seg_filepaths[0]) as f:
@@ -157,6 +157,7 @@ def get_n_floors(mesh_dir):
 #        if line.startswith('L '):
 #            n_levels += 1
 #    return n_levels
+
 
 def fill_template(map_filepath, resolution, origin):  # NOTE: Copied from generate_map_yaml.py
     """Return a string that contains the contents for the yaml file, filling out the blanks where
@@ -174,25 +175,28 @@ negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196
 """
-    template = template.replace('MAP_FILEPATH', map_filepath)
-    template = template.replace('RESOLUTION', str(resolution))
-    template = template.replace('ORIGIN_X', str(origin[0]))
-    template = template.replace('ORIGIN_Y', str(origin[1]))
-    template = template.replace('YAW', str(origin[2]))
+    template = template.replace("MAP_FILEPATH", map_filepath)
+    template = template.replace("RESOLUTION", str(resolution))
+    template = template.replace("ORIGIN_X", str(origin[0]))
+    template = template.replace("ORIGIN_Y", str(origin[1]))
+    template = template.replace("YAW", str(origin[2]))
     return template
 
 
-def write_yaml(mesh_dir, map_img, map_img_filepath, yaml_filename, resolution=0.01):  # NOTE: Copied from generate_map_yaml.py
+def write_yaml(
+    mesh_dir, map_img, map_img_filepath, yaml_filename, resolution=0.01
+):  # NOTE: Copied from generate_map_yaml.py
     origin_px_coord = (map_img.shape[0] / 2, map_img.shape[1] / 2)  # (row, col)
-    cur_origin_map_coord = (-float(origin_px_coord[1]) * resolution,
-                            float(origin_px_coord[0] - map_img.shape[0]) * resolution,
-                            0.0)  # (x, y, yaw)
-    yaml_content = fill_template(map_img_filepath, resolution=resolution,
-                                 origin=cur_origin_map_coord)
+    cur_origin_map_coord = (
+        -float(origin_px_coord[1]) * resolution,
+        float(origin_px_coord[0] - map_img.shape[0]) * resolution,
+        0.0,
+    )  # (x, y, yaw)
+    yaml_content = fill_template(map_img_filepath, resolution=resolution, origin=cur_origin_map_coord)
 
     cur_yaml_filepath = os.path.join(mesh_dir, yaml_filename)
-    print('Writing to:', cur_yaml_filepath)
-    with open(cur_yaml_filepath, 'w') as f:
+    print("Writing to:", cur_yaml_filepath)
+    with open(cur_yaml_filepath, "w") as f:
         f.write(yaml_content)
 
 
@@ -209,14 +213,14 @@ def generate_floorplan(mesh_dir):
     hist = tuple(hist)
 
     heights = get_floor_height(hist, n_floors=n_floors)
-    with open(os.path.join(mesh_dir, 'floors.txt'), 'w') as f:
+    with open(os.path.join(mesh_dir, "floors.txt"), "w") as f:
         for height in heights:
             f.write("{}\n".format(height))
 
     gen_map(obj_filepath, mesh_dir)  # Generate floor maps
 
 
-
 import sys
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     generate_floorplan(sys.argv[1])

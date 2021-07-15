@@ -12,7 +12,6 @@ _LINK_NAME = "cleaning_tool_area"
 
 
 class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
-
     def __init__(self, obj):
         super(CleaningTool, self).__init__(obj)
 
@@ -45,11 +44,9 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
             # cleaning link.
             contact_bodies = self.obj.states[ContactBodies].get_value()
             touching_body = [
-                cb for cb in contact_bodies
-                if cb.bodyUniqueIdB == particle_system.parent_obj.get_body_id()]
-            touching_link = any(
-                self.link_id is None or cb.linkIndexA == self.link_id
-                for cb in touching_body)
+                cb for cb in contact_bodies if cb.bodyUniqueIdB == particle_system.parent_obj.get_body_id()
+            ]
+            touching_link = any(self.link_id is None or cb.linkIndexA == self.link_id for cb in touching_body)
             if not touching_link:
                 continue
 
@@ -85,5 +82,4 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
 
     @staticmethod
     def get_optional_dependencies():
-        return AbsoluteObjectState.get_optional_dependencies() + \
-               [Dusty, Stained, Soaked, ToggledOn, ContactBodies]
+        return AbsoluteObjectState.get_optional_dependencies() + [Dusty, Stained, Soaked, ToggledOn, ContactBodies]

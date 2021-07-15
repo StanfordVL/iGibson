@@ -6,15 +6,17 @@ import os
 import numpy as np
 from igibson.utils.utils import get_rpy_from_transform
 
+
 def insert_geometric_primitive(obj, insert_visual_mesh=True):
-    tree = ET.parse(obj['urdf'])
+    tree = ET.parse(obj["urdf"])
     links = tree.findall("link")
-    size = obj['size']
-    euler = obj['euler']
-    offset = obj['base_link_offset']
+    size = obj["size"]
+    euler = obj["euler"]
+    offset = obj["base_link_offset"]
 
     for link in links:
         import pdb
+
         pdb.set_trace()
         if insert_visual_mesh:
             visual_mesh = ET.fromstring(
@@ -43,6 +45,7 @@ def insert_geometric_primitive(obj, insert_visual_mesh=True):
 
     return tree
 
+
 if __name__ == "__main__":
     object_categories = glob.glob(os.path.join(igibson.ig_dataset_path, "objects/*"))
 
@@ -60,22 +63,26 @@ if __name__ == "__main__":
                     with open(metadata_json, "r") as f:
                         metadata = json.load(f)
                     size = np.array(object_data["max_vert"]) - np.array(object_data["min_vert"])
-                    if object_data['ratio'] >= 0.9:
+                    if object_data["ratio"] >= 0.9:
                         objects_to_process[idx] = {
                             "category": os.path.basename(category_path),
                             "category_path": category_path,
                             "object_instance": object_instance,
                             "urdf": os.path.join(category_path, object_instance, f"{object_instance}.urdf"),
                             "mvbb_meta": mvbb_meta,
-                            "base_link_offset": np.array(metadata['base_link_offset']),
+                            "base_link_offset": np.array(metadata["base_link_offset"]),
                             "size": size,
-                            "euler": get_rpy_from_transform(np.reshape(object_data["transform"], [3, 3]))
+                            "euler": get_rpy_from_transform(np.reshape(object_data["transform"], [3, 3])),
                         }
                         idx += 1
     new_urdfs = []
     for obj_name, obj_properties in objects_to_process.items():
         tree = insert_geometric_primitive(obj_properties)
-        urdf_path = os.path.join(obj_properties['category_path'], obj_properties['object_instance'], f"{obj_properties['object_instance']}_simplified.urdf" )
+        urdf_path = os.path.join(
+            obj_properties["category_path"],
+            obj_properties["object_instance"],
+            f"{obj_properties['object_instance']}_simplified.urdf",
+        )
         new_urdfs.append(urdf_path)
         with open(urdf_path, "w") as f:
             tree.write(f, encoding="unicode")

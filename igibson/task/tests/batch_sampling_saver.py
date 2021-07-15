@@ -13,24 +13,23 @@ selected_tasks = [
 
 
 def main():
-    condition_dir = os.path.join(os.path.dirname(
-        bddl.__file__), 'activity_conditions')
+    condition_dir = os.path.join(os.path.dirname(bddl.__file__), "activity_conditions")
     for task in sorted(os.listdir(condition_dir)):
         if task not in selected_tasks:
             continue
         task_dir = os.path.join(condition_dir, task)
         if os.path.isdir(task_dir):
             for task_id_file in sorted(os.listdir(task_dir)):
-                task_id = task_id_file.replace('problem', '')[0]
-                if task_id != '0':
+                task_id = task_id_file.replace("problem", "")[0]
+                if task_id != "0":
                     continue
-                subprocess.call('python sampling_saver.py --task {} --task_id {} --max_trials {} --num_initializations {}'.format(
-                    task,
-                    task_id,
-                    1,
-                    1
-                ), shell=True)
+                subprocess.call(
+                    "python sampling_saver.py --task {} --task_id {} --max_trials {} --num_initializations {}".format(
+                        task, task_id, 1, 1
+                    ),
+                    shell=True,
+                )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

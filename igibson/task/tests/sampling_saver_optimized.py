@@ -30,16 +30,13 @@ def parse_args():
         "Wainscott_1_int",
     ]
     parser = argparse.ArgumentParser()
-    parser.add_argument('--scene_id', type=str, choices=scene_choices, required=True,
-                        help='Scene id')
-    parser.add_argument('--task', type=str,
-                        help='Name of ATUS task matching BDDL parent folder in bddl.')
-    parser.add_argument('--task_id', type=int,
-                        help='BDDL integer ID, matching suffix of bddl.')
-    parser.add_argument('--max_trials', type=int, default=1,
-                        help='Maximum number of trials to try sampling.')
-    parser.add_argument('--num_initializations', type=int, default=1,
-                        help='Number of initialization per BDDL per scene.')
+    parser.add_argument("--scene_id", type=str, choices=scene_choices, required=True, help="Scene id")
+    parser.add_argument("--task", type=str, help="Name of ATUS task matching BDDL parent folder in bddl.")
+    parser.add_argument("--task_id", type=int, help="BDDL integer ID, matching suffix of bddl.")
+    parser.add_argument("--max_trials", type=int, default=1, help="Maximum number of trials to try sampling.")
+    parser.add_argument(
+        "--num_initializations", type=int, default=1, help="Number of initialization per BDDL per scene."
+    )
     return parser.parse_args()
 
 
@@ -47,8 +44,7 @@ def restore_scene(igbhvr_act_inst, state_id, num_body_ids, num_particle_systems)
     for sim_obj in igbhvr_act_inst.newly_added_objects:
         igbhvr_act_inst.scene.remove_object(sim_obj)
 
-    igbhvr_act_inst.simulator.particle_systems = \
-        igbhvr_act_inst.simulator.particle_systems[:num_particle_systems]
+    igbhvr_act_inst.simulator.particle_systems = igbhvr_act_inst.simulator.particle_systems[:num_particle_systems]
 
     for body_id in range(num_body_ids, p.getNumBodies()):
         p.removeBody(body_id)
@@ -66,20 +62,18 @@ def main():
     else:
         all_tasks = []
         all_task_ids = []
-        condition_dir = os.path.join(os.path.dirname(
-            bddl.__file__), 'activity_conditions')
+        condition_dir = os.path.join(os.path.dirname(bddl.__file__), "activity_conditions")
         for task in sorted(os.listdir(condition_dir)):
             task_dir = os.path.join(condition_dir, task)
             if os.path.isdir(task_dir):
                 for task_id_file in sorted(os.listdir(task_dir)):
-                    task_id = int(task_id_file.replace('problem', '')[0])
+                    task_id = int(task_id_file.replace("problem", "")[0])
                     if task_id != 0:
                         continue
                     all_tasks.append(task)
                     all_task_ids.append(task_id)
 
-        scene_json = os.path.join(os.path.dirname(
-            bddl.__file__), '../utils', 'activity_to_preselected_scenes.json')
+        scene_json = os.path.join(os.path.dirname(bddl.__file__), "../utils", "activity_to_preselected_scenes.json")
         with open(scene_json) as f:
             activity_to_scenes = json.load(f)
 
@@ -102,10 +96,9 @@ def main():
 
     num_initializations = args.num_initializations
     num_trials = args.max_trials
-    igbhvr_act_inst = iGBEHAVIORActivityInstance('trivial', activity_definition=0)
+    igbhvr_act_inst = iGBEHAVIORActivityInstance("trivial", activity_definition=0)
     settings = MeshRendererSettings(texture_scale=0.01)
-    simulator = Simulator(mode='headless', image_width=400,
-                          image_height=400, rendering_settings=settings)
+    simulator = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
     scene_kwargs = {}
     igbhvr_act_inst.initialize_simulator(
         simulator=simulator,
@@ -121,41 +114,35 @@ def main():
 
     for task in tasks:
         for task_id in task_ids:
-            logging.warning('TASK: {}'.format(task))
-            logging.warning('TASK ID: {}'.format(task_id))
+            logging.warning("TASK: {}".format(task))
+            logging.warning("TASK ID: {}".format(task_id))
             for init_id in range(num_initializations):
-                urdf_path = '{}_task_{}_{}_{}'.format(
-                    scene_id, task, task_id, init_id)
+                urdf_path = "{}_task_{}_{}_{}".format(scene_id, task, task_id, init_id)
                 for _ in range(num_trials):
                     igbhvr_act_inst.update_problem(task, task_id)
-                    igbhvr_act_inst.object_scope['agent.n.01_1'] = igbhvr_act_inst.agent.parts['body']
+                    igbhvr_act_inst.object_scope["agent.n.01_1"] = igbhvr_act_inst.agent.parts["body"]
                     accept_scene, _ = igbhvr_act_inst.check_scene()
                     if not accept_scene:
-                        restore_scene(igbhvr_act_inst, state_id, num_body_ids,
-                                      num_particle_systems)
+                        restore_scene(igbhvr_act_inst, state_id, num_body_ids, num_particle_systems)
                         continue
 
                     accept_scene, _ = igbhvr_act_inst.sample()
                     if not accept_scene:
-                        restore_scene(igbhvr_act_inst, state_id, num_body_ids,
-                                      num_particle_systems)
+                        restore_scene(igbhvr_act_inst, state_id, num_body_ids, num_particle_systems)
                         continue
 
                     if accept_scene:
                         break
 
-                    restore_scene(igbhvr_act_inst, state_id, num_body_ids,
-                                  num_particle_systems)
+                    restore_scene(igbhvr_act_inst, state_id, num_body_ids, num_particle_systems)
 
                 if accept_scene:
                     sim_obj_to_bddl_obj = {
-                        value.name: {'object_scope': key}
-                        for key, value in igbhvr_act_inst.object_scope.items()}
-                    igbhvr_act_inst.scene.save_modified_urdf(
-                        urdf_path, sim_obj_to_bddl_obj)
-                    restore_scene(igbhvr_act_inst, state_id, num_body_ids,
-                                  num_particle_systems)
-                    print('Saved:', urdf_path)
+                        value.name: {"object_scope": key} for key, value in igbhvr_act_inst.object_scope.items()
+                    }
+                    igbhvr_act_inst.scene.save_modified_urdf(urdf_path, sim_obj_to_bddl_obj)
+                    restore_scene(igbhvr_act_inst, state_id, num_body_ids, num_particle_systems)
+                    print("Saved:", urdf_path)
 
 
 if __name__ == "__main__":

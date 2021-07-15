@@ -22,8 +22,10 @@ MUVR_FPS_CAP = 30.0
 
 # Classes used in MUVR demos
 
+
 class IGVRClient(ConnectionListener):
-    """ MUVR client that uses server's frame data to render and generates VR data for the server to consume. """
+    """MUVR client that uses server's frame data to render and generates VR data for the server to consume."""
+
     def __init__(self, host, port):
         self.Connect((host, port))
         self.frame_data = {}
@@ -34,8 +36,8 @@ class IGVRClient(ConnectionListener):
         self.s = sim
         self.renderer = sim.renderer
         self.client_agent = client_agent
-        self.vr_device = '{}_controller'.format(self.s.vr_settings.movement_controller)
-        self.devices = ['left_controller', 'right_controller', 'hmd']
+        self.vr_device = "{}_controller".format(self.s.vr_settings.movement_controller)
+        self.devices = ["left_controller", "right_controller", "hmd"]
 
     def ingest_frame_data(self):
         self.frame_start = time.time()
@@ -88,21 +90,21 @@ class IGVRClient(ConnectionListener):
                 is_valid, trans, rot = self.s.get_data_for_vr_device(device)
                 device_data.extend([is_valid, trans.tolist(), rot.tolist()])
                 device_data.extend(self.s.get_device_coordinate_system(device))
-                if device in ['left_controller', 'right_controller']:
+                if device in ["left_controller", "right_controller"]:
                     device_data.extend(self.s.get_button_data_for_controller(device))
                 vr_data_dict[device] = device_data
 
-            vr_data_dict['eye_data'] = self.s.get_eye_tracking_data()
+            vr_data_dict["eye_data"] = self.s.get_eye_tracking_data()
             # We need to get VR events instead of polling here, otherwise the previously events will be erased
-            vr_data_dict['event_data'] = self.s.get_vr_events()
-            vr_data_dict['vr_pos'] = self.s.get_vr_pos().tolist()
-            vr_data_dict['vr_offset'] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
-            vr_data_dict['vr_settings'] = [
+            vr_data_dict["event_data"] = self.s.get_vr_events()
+            vr_data_dict["vr_pos"] = self.s.get_vr_pos().tolist()
+            vr_data_dict["vr_offset"] = [float(self.vr_offset[0]), float(self.vr_offset[1]), float(self.vr_offset[2])]
+            vr_data_dict["vr_settings"] = [
                 self.s.vr_settings.eye_tracking,
                 self.s.vr_settings.touchpad_movement,
                 self.s.vr_settings.movement_controller,
                 self.s.vr_settings.relative_movement_device,
-                self.s.vr_settings.movement_speed
+                self.s.vr_settings.movement_speed,
             ]
 
             self.vr_data = dict(vr_data_dict)
@@ -129,11 +131,12 @@ class IGVRClient(ConnectionListener):
 
 
 class IGVRChannel(Channel):
-    """ Server's representation of the IGVRClient. """
+    """Server's representation of the IGVRClient."""
+
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
         self.vr_data = {}
-    
+
     def Close(self):
         print(self, "Client disconnected")
 
@@ -147,9 +150,10 @@ class IGVRChannel(Channel):
 
 
 class IGVRServer(Server):
-    """ MUVR server that sends frame data and ingests vr data each frame. """
+    """MUVR server that sends frame data and ingests vr data each frame."""
+
     channelClass = IGVRChannel
-    
+
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
         self.client = None
@@ -157,7 +161,7 @@ class IGVRServer(Server):
         self.frame_start = 0
 
     def Connected(self, channel, addr):
-        #print("Someone connected to the server!")
+        # print("Someone connected to the server!")
         self.client = channel
 
     def register_data(self, sim, client_agent):
@@ -172,7 +176,7 @@ class IGVRServer(Server):
         self.frame_start = time.time()
         if not self.client:
             return
-        
+
         if not self.client.vr_data:
             return
         if not self.latest_vr_data:
@@ -205,7 +209,7 @@ class IGVRServer(Server):
     def send_frame_data(self):
         if self.client:
             self.client.send_frame_data(self.frame_data)
-    
+
     def Refresh(self):
         self.Pump()
 
@@ -215,26 +219,25 @@ class IGVRServer(Server):
         if time_until_min_dur > 0:
             sleep(time_until_min_dur)
 
+
 # Test functions/classes used for debugging network issues
 
-def gen_test_packet(sender='server', size=3000):
+
+def gen_test_packet(sender="server", size=3000):
     """
     Generates a simple test packet, containing a decent amount of data,
     as well as the timestamp of generation and the sender.
     """
     # Packet containing 'size' floats
     data = [0.0 if i % 2 == 0 else 1.0 for i in range(size)]
-    timestamp = '{}'.format(time.time())
-    packet = {
-        "data": data,
-        "timestamp": timestamp,
-        "sender": sender
-    }
+    timestamp = "{}".format(time.time())
+    packet = {"data": data, "timestamp": timestamp, "sender": sender}
     return packet
 
 
 class IGVRTestClient(ConnectionListener):
-    """ Test client to debug connections. """
+    """Test client to debug connections."""
+
     def __init__(self, host, port):
         self.Connect((host, port))
 
@@ -242,19 +245,19 @@ class IGVRTestClient(ConnectionListener):
         self.packet_size = size
 
     def gen_packet(self):
-        self.packet = gen_test_packet(sender='client', size=self.packet_size)
+        self.packet = gen_test_packet(sender="client", size=self.packet_size)
 
     def send_packet(self):
         self.Send({"action": "client_packet", "packet": self.packet})
 
     def Network_server_packet(self, data):
         self.server_packet = data["packet"]
-        print('----- Packet received from {} -----'.format(self.server_packet["sender"]))
+        print("----- Packet received from {} -----".format(self.server_packet["sender"]))
         packet_tstamp = float(self.server_packet["timestamp"])
-        print('Packet Timestamp: {}'.format(packet_tstamp))
+        print("Packet Timestamp: {}".format(packet_tstamp))
         curr_time = time.time()
-        print('Current Timestamp: {}'.format(curr_time))
-        print('Delta (+ is delay): {}\n'.format(curr_time - packet_tstamp))
+        print("Current Timestamp: {}".format(curr_time))
+        print("Delta (+ is delay): {}\n".format(curr_time - packet_tstamp))
 
     def Refresh(self):
         # Receive data from connection's queue
@@ -264,7 +267,8 @@ class IGVRTestClient(ConnectionListener):
 
 
 class IGVRTestChannel(Channel):
-    """ Server's representation of the IGVRTestClient. """
+    """Server's representation of the IGVRTestClient."""
+
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
 
@@ -273,21 +277,22 @@ class IGVRTestChannel(Channel):
 
     def Network_client_packet(self, data):
         self.client_packet = data["packet"]
-        print('----- Packet received from {} -----'.format(self.client_packet["sender"]))
+        print("----- Packet received from {} -----".format(self.client_packet["sender"]))
         packet_tstamp = float(self.client_packet["timestamp"])
-        print('Packet Timestamp: {}'.format(packet_tstamp))
+        print("Packet Timestamp: {}".format(packet_tstamp))
         curr_time = time.time()
-        print('Current Timestamp: {}'.format(curr_time))
-        print('Delta (+ is delay): {}\n'.format(curr_time - packet_tstamp))
+        print("Current Timestamp: {}".format(curr_time))
+        print("Delta (+ is delay): {}\n".format(curr_time - packet_tstamp))
 
     def send_packet(self, packet):
         self.Send({"action": "server_packet", "packet": packet})
 
 
 class IGVRTestServer(Server):
-    """ Test MUVR server. """
+    """Test MUVR server."""
+
     channelClass = IGVRTestChannel
-    
+
     def __init__(self, *args, **kwargs):
         Server.__init__(self, *args, **kwargs)
         self.client = None
@@ -303,11 +308,11 @@ class IGVRTestServer(Server):
         self.packet_size = size
 
     def gen_packet(self):
-        self.packet = gen_test_packet(sender='server', size=self.packet_size)
+        self.packet = gen_test_packet(sender="server", size=self.packet_size)
 
     def send_packet(self):
         if self.client:
             self.client.send_packet(self.packet)
-    
+
     def Refresh(self):
         self.Pump()

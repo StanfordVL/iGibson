@@ -6,7 +6,7 @@ import numpy as np
 
 class NoiseInjectionNode:
     def __init__(self):
-        rospy.init_node('gibson-sim-noise')
+        rospy.init_node("gibson-sim-noise")
         self.register_callback()
         self.pub = rospy.Publisher("/mobile_base/commands/velocity", Twist, queue_size=10)
 
@@ -25,7 +25,7 @@ class NoiseInjectionNode:
             self.x = self.x * 0.95 + np.random.normal(0, 0.2) * 0.05
             self.z = self.z * 0.95 + np.random.normal(0, 1) * 0.05
 
-        #pass through for zero velocity command
+        # pass through for zero velocity command
 
         self.pub.publish(msg)
 

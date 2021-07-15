@@ -27,32 +27,38 @@ class ObjectStateBinaryPredicate(BinaryAtomicFormula):
 
 
 def get_unary_predicate_for_state(state_class, state_name):
-    return type(state_class.__name__ + "StateUnaryPredicate", (ObjectStateUnaryPredicate,),
-                {'STATE_CLASS': state_class, 'STATE_NAME': state_name})
+    return type(
+        state_class.__name__ + "StateUnaryPredicate",
+        (ObjectStateUnaryPredicate,),
+        {"STATE_CLASS": state_class, "STATE_NAME": state_name},
+    )
 
 
 def get_binary_predicate_for_state(state_class, state_name):
-    return type(state_class.__name__ + "StateBinaryPredicate", (ObjectStateBinaryPredicate,),
-                {'STATE_CLASS': state_class, 'STATE_NAME': state_name})
+    return type(
+        state_class.__name__ + "StateBinaryPredicate",
+        (ObjectStateBinaryPredicate,),
+        {"STATE_CLASS": state_class, "STATE_NAME": state_name},
+    )
 
 
 # TODO: Add remaining predicates.
 SUPPORTED_PREDICATES = {
-    'inside': get_binary_predicate_for_state(object_states.Inside, 'inside'),
-    'nextto': get_binary_predicate_for_state(object_states.NextTo, 'nextto'),
-    'ontop': get_binary_predicate_for_state(object_states.OnTop, 'ontop'),
-    'under': get_binary_predicate_for_state(object_states.Under, 'under'),
-    'touching': get_binary_predicate_for_state(object_states.Touching, 'touching'),
-    'onfloor': get_binary_predicate_for_state(object_states.OnFloor, 'onfloor'),
-    'cooked': get_unary_predicate_for_state(object_states.Cooked, 'cooked'),
-    'burnt': get_unary_predicate_for_state(object_states.Burnt, 'burnt'),
-    'soaked': get_unary_predicate_for_state(object_states.Soaked, 'soaked'),
-    'open': get_unary_predicate_for_state(object_states.Open, 'open'),
-    'dusty': get_unary_predicate_for_state(object_states.Dusty, 'dusty'),
-    'stained': get_unary_predicate_for_state(object_states.Stained, 'stained'),
-    'sliced': get_unary_predicate_for_state(object_states.Sliced, 'sliced'),
-    'toggled_on': get_unary_predicate_for_state(object_states.ToggledOn, 'toggled_on'),
-    'frozen': get_unary_predicate_for_state(object_states.Frozen, 'frozen')
+    "inside": get_binary_predicate_for_state(object_states.Inside, "inside"),
+    "nextto": get_binary_predicate_for_state(object_states.NextTo, "nextto"),
+    "ontop": get_binary_predicate_for_state(object_states.OnTop, "ontop"),
+    "under": get_binary_predicate_for_state(object_states.Under, "under"),
+    "touching": get_binary_predicate_for_state(object_states.Touching, "touching"),
+    "onfloor": get_binary_predicate_for_state(object_states.OnFloor, "onfloor"),
+    "cooked": get_unary_predicate_for_state(object_states.Cooked, "cooked"),
+    "burnt": get_unary_predicate_for_state(object_states.Burnt, "burnt"),
+    "soaked": get_unary_predicate_for_state(object_states.Soaked, "soaked"),
+    "open": get_unary_predicate_for_state(object_states.Open, "open"),
+    "dusty": get_unary_predicate_for_state(object_states.Dusty, "dusty"),
+    "stained": get_unary_predicate_for_state(object_states.Stained, "stained"),
+    "sliced": get_unary_predicate_for_state(object_states.Sliced, "sliced"),
+    "toggled_on": get_unary_predicate_for_state(object_states.ToggledOn, "toggled_on"),
+    "frozen": get_unary_predicate_for_state(object_states.Frozen, "frozen"),
 }
 
 

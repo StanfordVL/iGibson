@@ -18,12 +18,11 @@ class RoomRearrangementTask(BaseTask):
 
     def __init__(self, env):
         super(RoomRearrangementTask, self).__init__(env)
-        assert isinstance(env.scene, InteractiveIndoorScene), \
-            'room rearrangement can only be done in InteractiveIndoorScene'
-        self.prismatic_joint_reward_scale = self.config.get(
-            'prismatic_joint_reward_scale', 1.0)
-        self.revolute_joint_reward_scale = self.config.get(
-            'revolute_joint_reward_scale', 1.0)
+        assert isinstance(
+            env.scene, InteractiveIndoorScene
+        ), "room rearrangement can only be done in InteractiveIndoorScene"
+        self.prismatic_joint_reward_scale = self.config.get("prismatic_joint_reward_scale", 1.0)
+        self.revolute_joint_reward_scale = self.config.get("revolute_joint_reward_scale", 1.0)
         self.termination_conditions = [
             MaxCollision(self.config),
             Timeout(self.config),
@@ -45,9 +44,9 @@ class RoomRearrangementTask(BaseTask):
         for (body_id, joint_id) in self.body_joint_pairs:
             j_type = p.getJointInfo(body_id, joint_id)[2]
             j_pos = p.getJointState(body_id, joint_id)[0]
-            scale = self.prismatic_joint_reward_scale \
-                if j_type == p.JOINT_PRISMATIC \
-                else self.revolute_joint_reward_scale
+            scale = (
+                self.prismatic_joint_reward_scale if j_type == p.JOINT_PRISMATIC else self.revolute_joint_reward_scale
+            )
             task_potential += scale * j_pos
         return task_potential
 
@@ -60,16 +59,19 @@ class RoomRearrangementTask(BaseTask):
         env.scene.reset_scene_objects()
         env.scene.force_wakeup_scene_objects()
         self.body_joint_pairs = env.scene.open_all_objs_by_categories(
-            ['bottom_cabinet',
-             'bottom_cabinet_no_top',
-             'top_cabinet',
-             'dishwasher',
-             'fridge',
-             'microwave',
-             'oven',
-             'washer'
-             'dryer',
-             ], mode='random', prob=0.5)
+            [
+                "bottom_cabinet",
+                "bottom_cabinet_no_top",
+                "top_cabinet",
+                "dishwasher",
+                "fridge",
+                "microwave",
+                "oven",
+                "washer" "dryer",
+            ],
+            mode="random",
+            prob=0.5,
+        )
 
     def sample_initial_pose(self, env):
         """
@@ -97,8 +99,7 @@ class RoomRearrangementTask(BaseTask):
         state_id = p.saveState()
         for _ in range(max_trials):
             initial_pos, initial_orn = self.sample_initial_pose(env)
-            reset_success = env.test_valid_position(
-                env.robots[0], initial_pos, initial_orn)
+            reset_success = env.test_valid_position(env.robots[0], initial_pos, initial_orn)
             p.restoreState(state_id)
             if reset_success:
                 break

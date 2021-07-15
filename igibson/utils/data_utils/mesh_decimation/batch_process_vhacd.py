@@ -20,8 +20,8 @@ successes = []
 mesh_counts = []
 
 for obj in objects:
-    category = obj['category']
-    object_id = obj['object_id']
+    category = obj["category"]
+    object_id = obj["object_id"]
 
     object_export_dir = base_dir + "/{}/{}/shape".format(category, object_id)
     input_dir = os.path.join(object_export_dir, "collision")
@@ -32,12 +32,12 @@ for obj in objects:
 
     success = True
     mesh_count = 0
-    meshes = [ mesh for mesh in os.listdir(input_dir)  if not mesh.endswith('_original.obj')]
+    meshes = [mesh for mesh in os.listdir(input_dir) if not mesh.endswith("_original.obj")]
     # if category != "swivel_chair" or object_id != "2627":
     #     continue
     for mesh in meshes:
         # Copy the original mesh to a backup file
-        backup_mesh = os.path.join(input_dir, os.path.splitext(mesh)[0] + '_original.obj')
+        backup_mesh = os.path.join(input_dir, os.path.splitext(mesh)[0] + "_original.obj")
         input_mesh = os.path.join(input_dir, mesh)
 
         if not os.path.exists(backup_mesh):

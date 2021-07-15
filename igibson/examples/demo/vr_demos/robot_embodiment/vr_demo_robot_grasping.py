@@ -25,36 +25,35 @@ PRINT_FPS = True
 VR_MODE = True
 
 # HDR files for PBR rendering
-hdr_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-hdr_texture2 = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
 light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-background_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+)
+background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
 # VR rendering settings
-vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                            fullscreen=False,
-                                            env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=True, 
-                                            enable_pbr=True,
-                                            msaa=True,
-                                            light_dimming_factor=1.0)
+vr_rendering_settings = MeshRendererSettings(
+    optimized=True,
+    fullscreen=False,
+    env_texture_filename=hdr_texture,
+    env_texture_filename2=hdr_texture2,
+    env_texture_filename3=background_texture,
+    light_modulation_map_filename=light_modulation_map_filename,
+    enable_shadow=True,
+    enable_pbr=True,
+    msaa=True,
+    light_dimming_factor=1.0,
+)
 if VR_MODE:
-    s = Simulator(mode='vr', 
-                rendering_settings=vr_rendering_settings, 
-                vr_settings=VrSettings(vr_fps=VR_FPS))
+    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
-    s = Simulator(mode='iggui', image_width=960,
-                  image_height=720, device_idx=0, rendering_settings=vr_rendering_settings)
+    s = Simulator(
+        mode="iggui", image_width=960, image_height=720, device_idx=0, rendering_settings=vr_rendering_settings
+    )
     s.viewer.min_cam_z = 1.0
 
-scene = InteractiveIndoorScene('Rs_int')
+scene = InteractiveIndoorScene("Rs_int")
 scene._set_first_n_objects(2)
 s.import_ig_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -69,28 +68,17 @@ if not VR_MODE:
 fvr = FetchVR(s, [0.45, 0, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=True)
 
 objects = [
-    ("jenga/jenga.urdf", (1.500000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("jenga/jenga.urdf", (1.400000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000,
-               0.707107)),
-    ("table/table.urdf", (1.300000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107,
-               0.707107)),
-    ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107,
-               0.707107)),
-    ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107,
-               0.707107)),
-    ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107,
-               0.707107)),
-    ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107,
-               0.707107)),
+    ("jenga/jenga.urdf", (1.500000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    ("jenga/jenga.urdf", (1.400000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
+    ("table/table.urdf", (1.300000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
+    ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107, 0.707107)),
 ]
 
 for item in objects:
@@ -103,7 +91,7 @@ for item in objects:
     item_ob.set_orientation(orn)
 
 for i in range(3):
-    obj = YCBObject('003_cracker_box')
+    obj = YCBObject("003_cracker_box")
     s.import_object(obj)
     obj.set_position_orientation([1.100000 + 0.12 * i, -0.300000, 0.750000], [0, 0, 0, 1])
 

@@ -24,7 +24,7 @@ class PointNavFixedTask(BaseTask):
 
     def __init__(self, env):
         super(PointNavFixedTask, self).__init__(env)
-        self.reward_type = self.config.get('reward_type', 'l2')
+        self.reward_type = self.config.get("reward_type", "l2")
         self.termination_conditions = [
             MaxCollision(self.config),
             Timeout(self.config),
@@ -37,18 +37,14 @@ class PointNavFixedTask(BaseTask):
             PointGoalReward(self.config),
         ]
 
-        self.initial_pos = np.array(self.config.get('initial_pos', [0, 0, 0]))
-        self.initial_orn = np.array(self.config.get('initial_orn', [0, 0, 0]))
-        self.target_pos = np.array(self.config.get('target_pos', [5, 5, 0]))
-        self.goal_format = self.config.get('goal_format', 'polar')
+        self.initial_pos = np.array(self.config.get("initial_pos", [0, 0, 0]))
+        self.initial_orn = np.array(self.config.get("initial_orn", [0, 0, 0]))
+        self.target_pos = np.array(self.config.get("target_pos", [5, 5, 0]))
+        self.goal_format = self.config.get("goal_format", "polar")
         self.dist_tol = self.termination_conditions[-1].dist_tol
 
-        self.visual_object_at_initial_target_pos = self.config.get(
-            'visual_object_at_initial_target_pos', True
-        )
-        self.target_visual_object_visible_to_agent = self.config.get(
-            'target_visual_object_visible_to_agent', False
-        )
+        self.visual_object_at_initial_target_pos = self.config.get("visual_object_at_initial_target_pos", True)
+        self.target_visual_object_visible_to_agent = self.config.get("target_visual_object_visible_to_agent", False)
         self.floor_num = 0
 
         self.load_visualization(env)
@@ -59,7 +55,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if env.mode != 'gui':
+        if env.mode != "gui":
             return
 
         cyl_length = 0.2
@@ -68,13 +64,15 @@ class PointNavFixedTask(BaseTask):
             rgba_color=[1, 0, 0, 0.3],
             radius=self.dist_tol,
             length=cyl_length,
-            initial_offset=[0, 0, cyl_length / 2.0])
+            initial_offset=[0, 0, cyl_length / 2.0],
+        )
         self.target_pos_vis_obj = VisualMarker(
             visual_shape=p.GEOM_CYLINDER,
             rgba_color=[0, 0, 1, 0.3],
             radius=self.dist_tol,
             length=cyl_length,
-            initial_offset=[0, 0, cyl_length / 2.0])
+            initial_offset=[0, 0, cyl_length / 2.0],
+        )
 
         if self.target_visual_object_visible_to_agent:
             env.simulator.import_object(self.initial_pos_vis_obj)
@@ -85,13 +83,16 @@ class PointNavFixedTask(BaseTask):
 
         if env.scene.build_graph:
             self.num_waypoints_vis = 250
-            self.waypoints_vis = [VisualMarker(
-                visual_shape=p.GEOM_CYLINDER,
-                rgba_color=[0, 1, 0, 0.3],
-                radius=0.1,
-                length=cyl_length,
-                initial_offset=[0, 0, cyl_length / 2.0])
-                for _ in range(self.num_waypoints_vis)]
+            self.waypoints_vis = [
+                VisualMarker(
+                    visual_shape=p.GEOM_CYLINDER,
+                    rgba_color=[0, 1, 0, 0.3],
+                    radius=0.1,
+                    length=cyl_length,
+                    initial_offset=[0, 0, cyl_length / 2.0],
+                )
+                for _ in range(self.num_waypoints_vis)
+            ]
             for waypoint in self.waypoints_vis:
                 waypoint.load()
 
@@ -112,8 +113,7 @@ class PointNavFixedTask(BaseTask):
         :param env: environment instance
         :return: L2 distance to the target position
         """
-        return l2_distance(env.robots[0].get_position()[:2],
-                           self.target_pos[:2])
+        return l2_distance(env.robots[0].get_position()[:2], self.target_pos[:2])
 
     def get_potential(self, env):
         """
@@ -122,9 +122,9 @@ class PointNavFixedTask(BaseTask):
         :param env: environment instance
         :return: task potential
         """
-        if self.reward_type == 'l2':
+        if self.reward_type == "l2":
             return self.get_l2_potential(env)
-        elif self.reward_type == 'geodesic':
+        elif self.reward_type == "geodesic":
             return self.get_geodesic_potential(env)
 
     def reset_scene(self, env):
@@ -155,15 +155,13 @@ class PointNavFixedTask(BaseTask):
         """
         Aggreate termination conditions and fill info
         """
-        done, info = super(PointNavFixedTask, self).get_termination(
-            env, collision_links, action, info)
+        done, info = super(PointNavFixedTask, self).get_termination(env, collision_links, action, info)
 
-        info['path_length'] = self.path_length
+        info["path_length"] = self.path_length
         if done:
-            info['spl'] = float(info['success']) * \
-                min(1.0, self.geodesic_dist / self.path_length)
+            info["spl"] = float(info["success"]) * min(1.0, self.geodesic_dist / self.path_length)
         else:
-            info['spl'] = 0.0
+            info["spl"] = 0.0
 
         return done, info
 
@@ -175,8 +173,7 @@ class PointNavFixedTask(BaseTask):
         :param pos: a 3D point in global frame
         :return: the same 3D point in agent's local frame
         """
-        return rotate_vector_3d(np.array(pos) - np.array(env.robots[0].get_position()),
-                                *env.robots[0].get_rpy())
+        return rotate_vector_3d(np.array(pos) - np.array(env.robots[0].get_position()), *env.robots[0].get_rpy())
 
     def get_task_obs(self, env):
         """
@@ -186,26 +183,18 @@ class PointNavFixedTask(BaseTask):
         :return: task-specific observation
         """
         task_obs = self.global_to_local(env, self.target_pos)[:2]
-        if self.goal_format == 'polar':
+        if self.goal_format == "polar":
             task_obs = np.array(cartesian_to_polar(task_obs[0], task_obs[1]))
 
         # linear velocity along the x-axis
-        linear_velocity = rotate_vector_3d(
-            env.robots[0].get_linear_velocity(),
-            *env.robots[0].get_rpy())[0]
+        linear_velocity = rotate_vector_3d(env.robots[0].get_linear_velocity(), *env.robots[0].get_rpy())[0]
         # angular velocity along the z-axis
-        angular_velocity = rotate_vector_3d(
-            env.robots[0].get_angular_velocity(),
-            *env.robots[0].get_rpy())[2]
-        task_obs = np.append(
-            task_obs, [linear_velocity, angular_velocity])
+        angular_velocity = rotate_vector_3d(env.robots[0].get_angular_velocity(), *env.robots[0].get_rpy())[2]
+        task_obs = np.append(task_obs, [linear_velocity, angular_velocity])
 
         return task_obs
 
-    def get_shortest_path(self,
-                          env,
-                          from_initial_pos=False,
-                          entire_path=False):
+    def get_shortest_path(self, env, from_initial_pos=False, entire_path=False):
         """
         Get the shortest path and geodesic distance from the robot or the initial position to the target position
 
@@ -219,8 +208,7 @@ class PointNavFixedTask(BaseTask):
         else:
             source = env.robots[0].get_position()[:2]
         target = self.target_pos[:2]
-        return env.scene.get_shortest_path(
-            self.floor_num, source, target, entire_path=entire_path)
+        return env.scene.get_shortest_path(self.floor_num, source, target, entire_path=entire_path)
 
     def step_visualization(self, env):
         """
@@ -228,7 +216,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if env.mode != 'gui':
+        if env.mode != "gui":
             return
 
         self.initial_pos_vis_obj.set_position(self.initial_pos)
@@ -240,12 +228,10 @@ class PointNavFixedTask(BaseTask):
             num_nodes = min(self.num_waypoints_vis, shortest_path.shape[0])
             for i in range(num_nodes):
                 self.waypoints_vis[i].set_position(
-                    pos=np.array([shortest_path[i][0],
-                                  shortest_path[i][1],
-                                  floor_height]))
+                    pos=np.array([shortest_path[i][0], shortest_path[i][1], floor_height])
+                )
             for i in range(num_nodes, self.num_waypoints_vis):
-                self.waypoints_vis[i].set_position(
-                    pos=np.array([0.0, 0.0, 100.0]))
+                self.waypoints_vis[i].set_position(pos=np.array([0.0, 0.0, 100.0]))
 
     def step(self, env):
         """
