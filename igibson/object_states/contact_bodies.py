@@ -1,6 +1,6 @@
 import pybullet as p
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from gibson2.external.pybullet_tools.utils import ContactResult
+from igibson.object_states.object_state_base import CachingEnabledObjectState
+from igibson.external.pybullet_tools.utils import ContactResult
 
 
 class ContactBodies(CachingEnabledObjectState):

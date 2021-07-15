@@ -8,14 +8,14 @@ import datetime
 import h5py
 import pprint
 
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.simulator import Simulator
-from gibson2.task.task_base import iGTNTask
-from gibson2.utils.ig_logging import IGLogReader, IGLogWriter
-from gibson2.utils.git_utils import project_git_info
-from gibson2.utils.utils import parse_str_config
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from igibson.simulator import Simulator
+from igibson.task.task_base import iGTNTask
+from igibson.utils.ig_logging import IGLogReader, IGLogWriter
+from igibson.utils.git_utils import project_git_info
+from igibson.utils.utils import parse_str_config
 import tasknet
 
 import numpy as np
@@ -78,13 +78,13 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     """
     # HDR files for PBR rendering
     hdr_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
     light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+        igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(

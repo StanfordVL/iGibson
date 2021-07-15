@@ -1,4 +1,4 @@
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 import pybullet as p
 import numpy as np
 import time

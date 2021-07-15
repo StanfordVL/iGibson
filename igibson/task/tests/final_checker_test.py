@@ -1,12 +1,12 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.objects.articulated_object import ArticulatedObject
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.objects.articulated_object import ArticulatedObject
 # from bddl.object import BaseObject
 import os
-import gibson2
+import igibson
 import time
 import random
 import sys
@@ -20,13 +20,13 @@ bddl.set_backend("iGibson")
 scene_name = 'Beechwood_0_int'
 def test_import_igsdf():
     hdr_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
     light_modulation_map_filename = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', scene_name, 'layout', 'floor_lighttype_0.png')
+        igibson.ig_dataset_path, 'scenes', scene_name, 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+        igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
     scene = InteractiveIndoorScene(
         scene_name, texture_randomization=False, object_randomization=False)
@@ -51,7 +51,7 @@ s, scene = test_import_igsdf()
 
 
 # List of object names to filename mapping
-lunch_pack_folder = os.path.join(gibson2.assets_path, 'dataset', 'processed', 'pack_lunch')
+lunch_pack_folder = os.path.join(igibson.assets_path, 'dataset', 'processed', 'pack_lunch')
 lunch_pack_files = {
     'chips': os.path.join(lunch_pack_folder, 'food', 'snack', 'chips', 'chips0', 'rigid_body.urdf'),
     'fruit': os.path.join(lunch_pack_folder, 'food', 'fruit', 'pear', 'pear00', 'rigid_body.urdf'),

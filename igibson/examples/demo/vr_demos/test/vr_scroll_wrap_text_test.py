@@ -3,7 +3,7 @@ and interactive objects, and provides a good way to qualitatively measure the de
 
 You can use the left and right controllers to start/stop/reset the timer,
 as well as show/hide its display. The "overlay toggle" action and its
-corresponding button index mapping can be found in the vr_config.yaml file in the gibson2 folder.
+corresponding button index mapping can be found in the vr_config.yaml file in the igibson folder.
 """
 import numpy as np
 import os
@@ -11,15 +11,15 @@ import pybullet as p
 import pybullet_data
 import time
 
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.simulator import Simulator
-from gibson2 import assets_path
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.objects.ycb_object import YCBObject
+from igibson.simulator import Simulator
+from igibson import assets_path
 
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
@@ -45,13 +45,13 @@ USE_GRIPPER = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
 SYMBOL_LIST = [l for l in '.,:;!?()+-=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789']
     

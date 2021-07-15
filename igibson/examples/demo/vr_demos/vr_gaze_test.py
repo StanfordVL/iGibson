@@ -8,24 +8,24 @@ import pybullet as p
 import pybullet_data
 import time
 
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.simulator import Simulator
-from gibson2 import assets_path
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.simulator import Simulator
+from igibson import assets_path
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
 
 def main():
@@ -82,7 +82,7 @@ def main():
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
-    obj = ArticulatedObject(os.path.join(gibson2.ig_dataset_path, 'objects', 
+    obj = ArticulatedObject(os.path.join(igibson.ig_dataset_path, 'objects', 
         'basket', 'e3bae8da192ab3d4a17ae19fa77775ff', 'e3bae8da192ab3d4a17ae19fa77775ff.urdf'),
                             scale=2)
     s.import_object(obj)

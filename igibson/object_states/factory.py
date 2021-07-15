@@ -1,6 +1,6 @@
 import networkx as nx
-from gibson2.object_states import *
-from gibson2.object_states.object_state_base import BaseObjectState
+from igibson.object_states import *
+from igibson.object_states.object_state_base import BaseObjectState
 
 _ALL_STATES = frozenset([
     AABB,

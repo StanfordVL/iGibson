@@ -1,10 +1,10 @@
 import numpy as np
 
-from gibson2.object_states.contact_bodies import ContactBodies
-from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.toggle import ToggledOn
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.objects.particles import WaterStream
+from igibson.object_states.contact_bodies import ContactBodies
+from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
+from igibson.object_states.toggle import ToggledOn
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.objects.particles import WaterStream
 
 _WATER_SOURCE_LINK_NAME = "water_source"
 

@@ -1,9 +1,9 @@
 import numpy as np
 
-from gibson2.object_states.room_states import InsideRoomTypes
-from gibson2.object_states.pose import Pose
-from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
-from gibson2.utils.constants import MAX_INSTANCE_COUNT
+from igibson.object_states.room_states import InsideRoomTypes
+from igibson.object_states.pose import Pose
+from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.utils.constants import MAX_INSTANCE_COUNT
 
 _IN_REACH_DISTANCE_THRESHOLD = 2.0
 
@@ -11,7 +11,7 @@ _IN_FOV_PIXEL_FRACTION_THRESHOLD = 0.05
 
 
 def _get_behavior_robot(simulator):
-    from gibson2.robots.behavior_robot import BehaviorRobot
+    from igibson.robots.behavior_robot import BehaviorRobot
 
     valid_robots = [robot for robot in simulator.robots if isinstance(robot, BehaviorRobot)]
     if not valid_robots:
@@ -85,7 +85,7 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
         if not robot:
             return False
 
-        from gibson2.robots.behavior_robot import BRHand
+        from igibson.robots.behavior_robot import BRHand
         robot_hands = [part for part in robot.parts.values() if isinstance(part, BRHand)]
         robot_objects_in_hand = [hand.object_in_hand for hand in robot_hands]
 

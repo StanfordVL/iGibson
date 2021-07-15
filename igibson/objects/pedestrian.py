@@ -1,6 +1,6 @@
 import os
-import gibson2
-from gibson2.objects.stateful_object import StatefulObject
+import igibson
+from igibson.objects.stateful_object import StatefulObject
 import pybullet as p
 
 
@@ -12,10 +12,10 @@ class Pedestrian(StatefulObject):
     def __init__(self, style='standing', pos=[0, 0, 0]):
         super(Pedestrian, self).__init__()
         self.collision_filename = os.path.join(
-            gibson2.assets_path, 'models', 'person_meshes',
+            igibson.assets_path, 'models', 'person_meshes',
             'person_{}'.format(style), 'meshes', 'person_vhacd.obj')
         self.visual_filename = os.path.join(
-            gibson2.assets_path, 'models', 'person_meshes',
+            igibson.assets_path, 'models', 'person_meshes',
             'person_{}'.format(style), 'meshes', 'person.obj')
         self.cid = None
         self.pos = pos

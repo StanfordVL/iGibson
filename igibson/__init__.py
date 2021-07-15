@@ -58,7 +58,7 @@ if not os.path.isabs(cubicasa_dataset_path):
     cubicasa_dataset_path = os.path.join(os.path.dirname(
         os.path.realpath(__file__)), cubicasa_dataset_path)
 
-logging.info('Importing iGibson (gibson2 module)')
+logging.info('Importing iGibson (igibson module)')
 logging.info('Assets path: {}'.format(assets_path))
 logging.info('Gibson Dataset path: {}'.format(g_dataset_path))
 logging.info('iG Dataset path: {}'.format(ig_dataset_path))

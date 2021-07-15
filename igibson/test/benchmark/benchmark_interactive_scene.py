@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.utils.constants import AVAILABLE_MODALITIES
-from gibson2.utils.utils import parse_config
-from gibson2.utils.constants import NamedRenderingPresets
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.utils.constants import AVAILABLE_MODALITIES
+from igibson.utils.utils import parse_config
+from igibson.utils.constants import NamedRenderingPresets
 import os
-import gibson2
+import igibson
 import time
 import random
 import matplotlib.pyplot as plt
-from gibson2.utils.assets_utils import get_ig_assets_version
-from gibson2.utils.assets_utils import get_scene_path
+from igibson.utils.assets_utils import get_ig_assets_version
+from igibson.utils.assets_utils import get_scene_path
 import pickle as pkl
 import numpy as np
 
 
 def benchmark_scene(scene_name, optimized=False, import_robot=True):
-    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
+    config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
     assets_version = get_ig_assets_version()
     print('assets_version', assets_version)
     scene = InteractiveIndoorScene(

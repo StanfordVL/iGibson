@@ -8,9 +8,9 @@ import time
 import cv2
 import numpy as np
 import pybullet as p
-from gibson2.objects.visual_marker import VisualMarker
-from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
-from gibson2.utils.utils import rotate_vector_2d
+from igibson.objects.visual_marker import VisualMarker
+from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
+from igibson.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:

@@ -1,9 +1,9 @@
 from scipy.spatial.kdtree import KDTree
 from heapq import heappush, heappop
 from collections import namedtuple
-from gibson2.external.motion.motion_planners.utils import INF, elapsed_time
-from gibson2.external.motion.motion_planners.rrt_connect import direct_path
-from gibson2.external.motion.motion_planners.smoothing import smooth_path
+from igibson.external.motion.motion_planners.utils import INF, elapsed_time
+from igibson.external.motion.motion_planners.rrt_connect import direct_path
+from igibson.external.motion.motion_planners.smoothing import smooth_path
 
 import random
 import time

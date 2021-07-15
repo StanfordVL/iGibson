@@ -28,7 +28,7 @@ We use Blender 2.82 for mesh processing. Follow the instruction here: [blender_u
 
 First, you need to download some helper assets for external scenes, which can be done by simply running:
 ```
-python -m gibson2.utils.assets_utils --download_ext_scene_assets
+python -m igibson.utils.assets_utils --download_ext_scene_assets
 ```
 This will download some default materials, as well as 3D-Front's no-collision URDFs (explained more in details in section [3D-Front)](#important:-addressing-overlapping-bounding-boxes-in-3d-front).
 
@@ -101,7 +101,7 @@ We managed to provide no-collision URDFs for 6049 scenes.  If the scene your are
 
 ### Examine generated scenes
 
-To examine the scene, you can leverage the ```mouse_interaction.py``` in iGibson's ```example/demo``` folder [gibson2/examples/demo/mouse_interaction.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/mouse_interaction.py). 
+To examine the scene, you can leverage the ```mouse_interaction.py``` in iGibson's ```example/demo``` folder [igibson/examples/demo/mouse_interaction.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/mouse_interaction.py). 
 
 For Cubicasa5K, you can examine a scene by running:
 ```

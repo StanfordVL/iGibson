@@ -1,14 +1,14 @@
 import numpy as np
 import os
 
-import gibson2
-from gibson2 import object_states
-from gibson2.simulator import Simulator
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.utils.assets_utils import get_ig_model_path
-from gibson2.object_states.factory import prepare_object_states
+import igibson
+from igibson import object_states
+from igibson.simulator import Simulator
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.objects.ycb_object import YCBObject
+from igibson.objects.articulated_object import URDFObject
+from igibson.utils.assets_utils import get_ig_model_path
+from igibson.object_states.factory import prepare_object_states
 
 
 def main():

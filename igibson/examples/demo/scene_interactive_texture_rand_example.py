@@ -1,5 +1,5 @@
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 
 def main():

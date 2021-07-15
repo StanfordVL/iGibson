@@ -10,9 +10,9 @@ import time
 import datetime
 import copy
 
-from gibson2.utils.utils import parse_str_config, dump_config
-from gibson2.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
-from gibson2.utils.git_utils import project_git_info
+from igibson.utils.utils import parse_str_config, dump_config
+from igibson.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
+from igibson.utils.git_utils import project_git_info
 
 
 class IGLogWriter(object):

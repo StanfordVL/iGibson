@@ -4,15 +4,15 @@ that can be used to benchmark the dexterity of the VR hand.
 import os
 import pybullet as p
 
-import gibson2
-from gibson2 import object_states
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.simulator import Simulator
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.object_states.factory import prepare_object_states
+import igibson
+from igibson import object_states
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
+from igibson.objects.ycb_object import YCBObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.object_states.factory import prepare_object_states
 
 
 # Set to true to use viewer manipulation instead of VR
@@ -25,13 +25,13 @@ USE_GRIPPER = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
 # VR rendering settings
 vr_rendering_settings = MeshRendererSettings(optimized=True,

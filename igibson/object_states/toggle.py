@@ -1,12 +1,12 @@
-from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.object_states.object_state_base import BooleanState
-from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
-from gibson2.objects.visual_marker import VisualMarker
+from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.object_states.object_state_base import BooleanState
+from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from igibson.objects.visual_marker import VisualMarker
 import numpy as np
 import pybullet as p
-from gibson2.utils.constants import PyBulletSleepState
-from gibson2.utils.utils import brighten_texture
+from igibson.utils.constants import PyBulletSleepState
+from igibson.utils.utils import brighten_texture
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
@@ -47,7 +47,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
 
     def _update(self):
         # Yet another circular import issue.
-        from gibson2.robots import behavior_robot
+        from igibson.robots import behavior_robot
 
         button_position_on_object = self.get_link_position()
         if button_position_on_object is None:

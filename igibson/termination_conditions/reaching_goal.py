@@ -1,5 +1,5 @@
-from gibson2.termination_conditions.termination_condition_base import BaseTerminationCondition
-from gibson2.utils.utils import l2_distance
+from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
+from igibson.utils.utils import l2_distance
 
 
 class ReachingGoal(BaseTerminationCondition):

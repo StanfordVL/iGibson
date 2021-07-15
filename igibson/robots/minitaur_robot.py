@@ -4,8 +4,8 @@
 import copy
 import math
 import numpy as np
-from gibson2.physics import motor
-from gibson2.robots.robot_locomotor import LocomotorRobot
+from igibson.physics import motor
+from igibson.robots.robot_locomotor import LocomotorRobot
 import pybullet as p
 import gym
 

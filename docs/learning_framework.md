@@ -20,7 +20,7 @@ def load(config_file,
          gym_env_wrappers=(),
          env_wrappers=(),
          spec_dtype_map=None):
-    config_file = os.path.join(os.path.dirname(gibson2.__file__), config_file)
+    config_file = os.path.join(os.path.dirname(igibson.__file__), config_file)
     env = iGibsonEnv(config_file=config_file,
                      scene_id=model_id,
                      mode=env_mode,

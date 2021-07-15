@@ -4,13 +4,13 @@
 
 We provide **Environments** that follow the [OpenAI gym](https://github.com/openai/gym) interface for applications such as reinforcement learning algorithms. Generally speaking, an **Environment** instantiates **Scene**, **Object** and **Robot** and import them into its **Simulator**. An **Environment** also instantiates a list of **Sensors** (usually as part of the observation space) and a **Task**, which further includes a list of **Reward Functions** and **Termination Conditions**.
 
-Most of the code can be found here: [gibson2/envs/igibson_env.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/envs/igibson_env.py).
+Most of the code can be found here: [igibson/envs/igibson_env.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/envs/igibson_env.py).
 
 #### Sensors
 
 We provide different types of sensors as lightweight wrappers around the renderer. Currently we support RGB, surface normal, segmentation, 3D point cloud, depth map, optical flow, and scene flow, and also 1-beam and 16-beam LiDAR signals. Additionally, we provide a sensor noise model with random dropout (currently only for depth map and 1-beam LiDAR) to simulate real-world sensor noise. The amount of noise can be controlled by `depth_noise_rate` and `scan_noise_rate` in the config files. Contribution of more noise models is most welcome.
 
-Most of the code can be found in [gibson2/sensors](https://github.com/StanfordVL/iGibson/tree/master/gibson2/sensors).
+Most of the code can be found in [igibson/sensors](https://github.com/StanfordVL/iGibson/tree/master/igibson/sensors).
 
 #### Tasks
 
@@ -27,7 +27,7 @@ We provide a few Embodied AI tasks.
 - ReachingRandomTask
 - RoomRearrangementTask
 
-Most of the code can be found in [gibson2/tasks](https://github.com/StanfordVL/iGibson/tree/master/gibson2/tasks).
+Most of the code can be found in [igibson/tasks](https://github.com/StanfordVL/iGibson/tree/master/igibson/tasks).
 
 #### Reward Functions
 
@@ -38,7 +38,7 @@ We provide a few common reward functions for robotics tasks.
 - PotentialReward
 - CollisionReward
 
-Most of the code can be found in [gibson2/reward_functions](https://github.com/StanfordVL/iGibson/tree/master/gibson2/reward_functions).
+Most of the code can be found in [igibson/reward_functions](https://github.com/StanfordVL/iGibson/tree/master/igibson/reward_functions).
 
 #### Termination Conditions
 
@@ -49,7 +49,7 @@ We provide a few common termination conditions for robotics tasks.
 - MaxCollision
 - Timeout
 - OutOfBound
-Most of the code can be found in [gibson2/termination_conditions](https://github.com/StanfordVL/iGibson/tree/master/gibson2/termination_conditions).
+Most of the code can be found in [igibson/termination_conditions](https://github.com/StanfordVL/iGibson/tree/master/igibson/termination_conditions).
 
 #### Configs
 To instantiate an **Environment**, we first need to create a YAML config file. It will specify parameters for the **Environment** (e.g. robot type, action frequency, etc), the **Sensors** (e.g. sensor types, image resolution, noise rate, etc), the **Task** (e.g. task type, goal distance range, etc), the **Reward Functions** (e.g. reward types, reward scale, etc) and the **Termination Conditions** (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: [examples/configs](https://github.com/StanfordVL/iGibson/tree/master/examples/configs).
@@ -194,19 +194,19 @@ In this example, we show how to instantiate `iGibsonEnv` and how to step through
 - `reward`: a scalar that represents the current reward
 - `done`: a boolean that indicates whether the episode should terminate
 - `info`: a python dictionary for bookkeeping purpose
-The code can be found here: [gibson2/examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/env_example.py).
+The code can be found here: [igibson/examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_example.py).
 
 ```python
-from gibson2.envs.igibson_env import iGibsonEnv
+from igibson.envs.igibson_env import iGibsonEnv
 from time import time
-import gibson2
+import igibson
 import os
-from gibson2.render.profiler import Profiler
+from igibson.render.profiler import Profiler
 import logging
 
 
 def main():
-    config_filename = os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml')
+    config_filename = os.path.join(igibson.example_config_path, 'turtlebot_demo.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         env.reset()
@@ -226,4 +226,4 @@ if __name__ == "__main__":
 ```
 
 #### Interactive Environments
-In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [gibson2/examples/demo/env_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/env_interactive_example.py).
+In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [igibson/examples/demo/env_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_interactive_example.py).

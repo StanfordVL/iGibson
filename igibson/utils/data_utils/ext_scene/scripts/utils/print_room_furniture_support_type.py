@@ -1,6 +1,6 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
 import math
 import os

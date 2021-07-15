@@ -1,7 +1,7 @@
 import json
 import os
 
-import gibson2
+import igibson
 
 LINK_NAME = None  # TODO: Add the link name you want to add here.
 OFFSETS = {
@@ -11,7 +11,7 @@ OFFSETS = {
 
 
 def get_category_directory(category):
-    return os.path.join(gibson2.ig_dataset_path, 'objects', category)
+    return os.path.join(igibson.ig_dataset_path, 'objects', category)
 
 
 def get_metadata_filename(objdir):

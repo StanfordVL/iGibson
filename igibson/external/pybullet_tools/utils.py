@@ -17,12 +17,12 @@ from itertools import product, combinations, count
 
 from .transformations import quaternion_from_matrix, unit_vector
 
-from gibson2.external.motion.motion_planners.rrt_connect import birrt, direct_path
-from gibson2.external.motion.motion_planners.rrt_star import rrt_star
-from gibson2.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
-from gibson2.external.motion.motion_planners.rrt import rrt
-from gibson2.external.motion.motion_planners.smoothing import optimize_path
-from gibson2.utils.constants import OccupancyGridState
+from igibson.external.motion.motion_planners.rrt_connect import birrt, direct_path
+from igibson.external.motion.motion_planners.rrt_star import rrt_star
+from igibson.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
+from igibson.external.motion.motion_planners.rrt import rrt
+from igibson.external.motion.motion_planners.smoothing import optimize_path
+from igibson.utils.constants import OccupancyGridState
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
 import cv2
 

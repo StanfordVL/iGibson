@@ -1,4 +1,4 @@
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 import bddl
 bddl.set_backend("iGibson")

@@ -1,7 +1,7 @@
-from gibson2.object_states.aabb import AABB
-from gibson2.object_states.contact_bodies import ContactBodies
-from gibson2.object_states.pose import Pose
-from gibson2.object_states.object_state_base import BaseObjectState
+from igibson.object_states.aabb import AABB
+from igibson.object_states.contact_bodies import ContactBodies
+from igibson.object_states.pose import Pose
+from igibson.object_states.object_state_base import BaseObjectState
 
 
 class KinematicsMixin(BaseObjectState):

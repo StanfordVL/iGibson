@@ -1,6 +1,6 @@
 from tasknet.condition_evaluation import evaluate_state
-from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 import argparse
 import numpy as np
 import time
@@ -10,8 +10,8 @@ import pybullet as p
 import os
 
 from collections import OrderedDict
-from gibson2.utils.checkpoint_utils import load_checkpoint
-from gibson2.utils.ig_logging import IGLogWriter
+from igibson.utils.checkpoint_utils import load_checkpoint
+from igibson.utils.ig_logging import IGLogWriter
 import datetime
 
 
@@ -341,7 +341,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config',
         '-c',
-        default='gibson2/examples/configs/behavior.yaml',
+        default='igibson/examples/configs/behavior.yaml',
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',

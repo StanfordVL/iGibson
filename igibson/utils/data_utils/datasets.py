@@ -15,7 +15,7 @@ import argparse
 import json
 from numpy.linalg import inv
 import pickle
-import gibson2
+import igibson
 
 IMG_EXTENSIONS = [
     '.jpg',
@@ -204,7 +204,7 @@ def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform,
                  only_load=None):
         print('Processing the data:')
         if not root:
-            self.root = gibson2.dataset_path
+            self.root = igibson.dataset_path
         else:
             self.root = root
         self.train = train

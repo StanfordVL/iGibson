@@ -3,24 +3,24 @@ import os
 import sys
 import time
 import random
-import gibson2
+import igibson
 import argparse
 import numpy as np
 import pybullet as p
 import matplotlib.pyplot as plt
-from gibson2.simulator import Simulator
-from gibson2.utils.utils import parse_config
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.utils.assets_utils import get_ig_scene_path, get_cubicasa_scene_path, get_3dfront_scene_path
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.utils.assets_utils import get_ig_scene_path, get_cubicasa_scene_path, get_3dfront_scene_path
 # human interaction demo
 
 
 def test_import_igsdf(scene_name, scene_source):
     hdr_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     hdr_texture2 = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 
     if scene_source == "IG":
         scene_dir = get_ig_scene_path(scene_name)
@@ -32,7 +32,7 @@ def test_import_igsdf(scene_name, scene_source):
     light_modulation_map_filename = os.path.join(
         scene_dir, 'layout', 'floor_lighttype_0.png')
     background_texture = os.path.join(
-        gibson2.ig_dataset_path, 'scenes', 'background',
+        igibson.ig_dataset_path, 'scenes', 'background',
         'urban_street_01.jpg')
 
     scene = InteractiveIndoorScene(

@@ -1,9 +1,9 @@
-import gibson2
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.render.profiler import Profiler
-from gibson2.utils.assets_utils import get_ig_scene_path
+import igibson
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
+from igibson.utils.assets_utils import get_ig_scene_path
 import argparse
 import os
 from PIL import Image
@@ -29,16 +29,16 @@ def main():
     args = parser.parse_args()
 
     # hdr_texture1 = os.path.join(
-                 # gibson2.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
+                 # igibson.ig_dataset_path, 'scenes', 'background', 'photo_studio_01_2k.hdr')
     hdr_texture1 = os.path.join(
-                 gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+                 igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
     hdr_texture2 = os.path.join(
-                 gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+                 igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
     light_map= os.path.join(
                  get_ig_scene_path(args.scene), 'layout', 'floor_lighttype_0.png')
 
     background_texture = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+                igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
     settings = MeshRendererSettings(
                env_texture_filename=hdr_texture1,

@@ -3,11 +3,11 @@ Rs_int PBR scene.
 
 Important - VR functionality and where to find it:
 
-1) Most VR functions can be found in the gibson2/simulator.py
-2) The BehaviorRobot and its associated parts can be found in gibson2/robots/behavior_robot.py
-3) VR utility functions are found in gibson2/utils/vr_utils.py
-4) The VR renderer can be found in gibson2/render/mesh_renderer.py
-5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
+1) Most VR functions can be found in the igibson/simulator.py
+2) The BehaviorRobot and its associated parts can be found in igibson/robots/behavior_robot.py
+3) VR utility functions are found in igibson/utils/vr_utils.py
+4) The VR renderer can be found in igibson/render/mesh_renderer.py
+5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in igibson/render/cpp
 """
 
 import numpy as np
@@ -15,16 +15,16 @@ import os
 import pybullet as p
 import time
 
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.object_base import Object
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.simulator import Simulator
-from gibson2 import assets_path
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.objects.object_base import Object
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.objects.ycb_object import YCBObject
+from igibson.simulator import Simulator
+from igibson import assets_path
 
 # Whether to use VR mode or not
 VR_MODE = True
@@ -37,13 +37,13 @@ USE_GRIPPER = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
 
 def main():

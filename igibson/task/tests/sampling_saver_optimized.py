@@ -1,14 +1,14 @@
 import argparse
 import bddl
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.simulator import Simulator
 import logging
 import os
 import json
 import pybullet as p
 from IPython import embed
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
 
 def parse_args():

@@ -1,6 +1,6 @@
 from collections import deque
 import freetype as ft
-from gibson2 import assets_path
+from igibson import assets_path
 import matplotlib.pyplot as plt
 import numpy as np
 import os

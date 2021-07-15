@@ -1,10 +1,10 @@
-from gibson2.tasks.task_base import BaseTask
+from igibson.tasks.task_base import BaseTask
 import pybullet as p
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.termination_conditions.max_collision import MaxCollision
-from gibson2.termination_conditions.timeout import Timeout
-from gibson2.termination_conditions.out_of_bound import OutOfBound
-from gibson2.reward_functions.potential_reward import PotentialReward
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.termination_conditions.max_collision import MaxCollision
+from igibson.termination_conditions.timeout import Timeout
+from igibson.termination_conditions.out_of_bound import OutOfBound
+from igibson.reward_functions.potential_reward import PotentialReward
 
 import logging
 import numpy as np

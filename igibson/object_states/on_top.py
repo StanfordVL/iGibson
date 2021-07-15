@@ -1,11 +1,11 @@
-import gibson2
+import igibson
 import pybullet as p
 from IPython import embed
-from gibson2.object_states.adjacency import VerticalAdjacency
-from gibson2.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
-from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.touching import Touching
-from gibson2.object_states.utils import clear_cached_states, sample_kinematics
+from igibson.object_states.adjacency import VerticalAdjacency
+from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
+from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
+from igibson.object_states.touching import Touching
+from igibson.object_states.utils import clear_cached_states, sample_kinematics
 
 
 class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, BooleanState):
@@ -25,7 +25,7 @@ class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
                 clear_cached_states(other)
                 if self.get_value(other) != new_value:
                     sampling_success = False
-                if gibson2.debug_sampling:
+                if igibson.debug_sampling:
                     print('OnTop checking', sampling_success)
                     embed()
             if sampling_success:

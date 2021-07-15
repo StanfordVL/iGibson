@@ -10,7 +10,7 @@ cd $PSScriptRoot
 ## 1. directory to the source files
 ## 2. category label of the object
 ##########
-$IGIBSON_DIR=(python -c "import gibson2; print(gibson2.ig_dataset_path)")
+$IGIBSON_DIR=(python -c "import igibson; print(igibson.ig_dataset_path)")
 
 Write-Host $IGIBSON_DIR
 

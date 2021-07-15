@@ -1,16 +1,16 @@
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.simulator import Simulator
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.objects.ycb_object import YCBObject
+from igibson.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import numpy as np
-from gibson2.render.profiler import Profiler
-import gibson2
+from igibson.render.profiler import Profiler
+import igibson
 import os
 
 def main():
-    config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'turtlebot_demo.yaml'))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(mode='gui', image_width=256,
                   image_height=256, rendering_settings=settings)

@@ -3,8 +3,8 @@ Constant Definitions
 """
 
 from enum import IntEnum
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import gibson2
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import igibson
 import os
 
 
@@ -33,7 +33,7 @@ class PyBulletSleepState(IntEnum):
 
 # iGATUS-related
 FLOOR_SYNSET = 'floor.n.01'
-with open(os.path.join(gibson2.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
+with open(os.path.join(igibson.ig_dataset_path, 'metadata/non_sampleable_categories.txt')) as f:
     NON_SAMPLEABLE_OBJECTS = [FLOOR_SYNSET] + \
         [line.strip() for line in f.readlines()]
 
@@ -58,13 +58,13 @@ UNDER_OBJECTS = [
 ]
 
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
 NamedRenderingPresets = {
     'NO_PBR': MeshRendererSettings(enable_pbr=False, enable_shadow=False),

@@ -2,8 +2,8 @@ import gym
 import numpy as np
 import pybullet as p
 
-from gibson2.external.pybullet_tools.utils import joints_from_names, set_joint_positions
-from gibson2.robots.robot_locomotor import LocomotorRobot
+from igibson.external.pybullet_tools.utils import joints_from_names, set_joint_positions
+from igibson.robots.robot_locomotor import LocomotorRobot
 
 
 class Fetch(LocomotorRobot):

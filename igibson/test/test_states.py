@@ -1,21 +1,21 @@
 import os
 
-import gibson2
+import igibson
 import networkx as nx
 import numpy as np
 import pybullet as p
-from gibson2 import object_states
-from gibson2.external.pybullet_tools.utils import quat_from_euler, Euler
-from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
+from igibson import object_states
+from igibson.external.pybullet_tools.utils import quat_from_euler, Euler
+from igibson.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order, \
     prepare_object_states
-from gibson2.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.simulator import Simulator
-from gibson2.utils.assets_utils import download_assets
-from gibson2.utils.assets_utils import get_ig_model_path
+from igibson.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.articulated_object import URDFObject
+from igibson.objects.ycb_object import YCBObject
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import download_assets
+from igibson.utils.assets_utils import get_ig_model_path
 
 download_assets()
 
@@ -28,9 +28,9 @@ def test_on_top():
         s.import_scene(scene)
 
         cabinet_0007 = os.path.join(
-            gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
+            igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
         cabinet_0004 = os.path.join(
-            gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf')
+            igibson.assets_path, 'models/cabinet/cabinet_0004.urdf')
 
         obj1 = ArticulatedObject(filename=cabinet_0007)
         s.import_object(obj1)
@@ -69,9 +69,9 @@ def test_inside():
         s.import_scene(scene)
 
         cabinet_0007 = os.path.join(
-            gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
+            igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
         cabinet_0004 = os.path.join(
-            gibson2.assets_path, 'models/cabinet/cabinet_0004.urdf')
+            igibson.assets_path, 'models/cabinet/cabinet_0004.urdf')
 
         obj1 = ArticulatedObject(filename=cabinet_0007)
         s.import_object(obj1)
@@ -125,7 +125,7 @@ def test_open():
         s.import_scene(scene)
 
         microwave_dir = os.path.join(
-            gibson2.ig_dataset_path, 'objects/microwave/7128/')
+            igibson.ig_dataset_path, 'objects/microwave/7128/')
         microwave_filename = os.path.join(microwave_dir, '7128.urdf')
         obj = URDFObject(filename=microwave_filename, category="microwave", model_path=microwave_dir,
                          scale=np.array([0.5, 0.5, 0.5]), abilities={"openable": {}})

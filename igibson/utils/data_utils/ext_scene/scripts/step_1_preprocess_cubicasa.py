@@ -22,7 +22,7 @@ from utils.utils import BBox,polygon_to_bbox,has_overlap,get_volume, semmap_to_l
 from utils.svg_utils import PolygonWall, get_polygon, get_icon, get_points, get_direction
 from utils.semantics import *
 
-import gibson2
+import igibson
 
 
 parser = argparse.ArgumentParser("Convert Cubicasa5k...")
@@ -30,7 +30,7 @@ parser = argparse.ArgumentParser("Convert Cubicasa5k...")
 parser.add_argument('--model_dir', dest='model_dir')
 parser.add_argument('--viz', dest='viz', action='store_true')
 parser.add_argument('--save_root', dest='save_root', 
-        default=os.path.join(gibson2.cubicasa_dataset_path, 'scenes'))
+        default=os.path.join(igibson.cubicasa_dataset_path, 'scenes'))
 
 
 def get_z_dim(e):

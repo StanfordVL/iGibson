@@ -2,12 +2,12 @@ import os
 import pybullet as p
 import numpy as np
 from transforms3d.euler import euler2quat
-from gibson2.utils.utils import quatToXYZW
+from igibson.utils.utils import quatToXYZW
 
-from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
-from gibson2.external.pybullet_tools.utils import get_center_extent
-from gibson2.simulator import Simulator
-from gibson2.objects.articulated_object import ArticulatedObject
+from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.external.pybullet_tools.utils import get_center_extent
+from igibson.simulator import Simulator
+from igibson.objects.articulated_object import ArticulatedObject
 from PIL import Image
 import json
 

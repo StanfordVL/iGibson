@@ -7,14 +7,14 @@ import multiprocessing
 from io import BytesIO
 from PIL import Image
 import numpy as np
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.utils.utils import parse_config
 import os
-import gibson2
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.simulator import Simulator
+import igibson
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.simulator import Simulator
 from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
 from bddl.parsing import construct_full_bddl
 import bddl
@@ -206,15 +206,15 @@ class ProcessPyEnvironment(object):
 class ToyEnv(object):
     def __init__(self):
         config = parse_config(os.path.join(
-            gibson2.example_config_path, 'turtlebot_demo.yaml'))
+            igibson.example_config_path, 'turtlebot_demo.yaml'))
         hdr_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+            igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
         hdr_texture2 = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+            igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
         light_modulation_map_filename = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+            igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
         background_texture = os.path.join(
-            gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+            igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
 

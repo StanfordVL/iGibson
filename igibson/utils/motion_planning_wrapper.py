@@ -1,30 +1,30 @@
-import gibson2
-from gibson2.envs.igibson_env import iGibsonEnv
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 from time import time, sleep
 import os
-from gibson2.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.assets_utils import download_assets, download_demo_data
 import numpy as np
-from gibson2.external.pybullet_tools.utils import control_joints
-from gibson2.external.pybullet_tools.utils import get_joint_positions
-from gibson2.external.pybullet_tools.utils import get_joint_velocities
-from gibson2.external.pybullet_tools.utils import get_max_limits
-from gibson2.external.pybullet_tools.utils import get_min_limits
-from gibson2.external.pybullet_tools.utils import plan_joint_motion
-from gibson2.external.pybullet_tools.utils import link_from_name
-from gibson2.external.pybullet_tools.utils import joints_from_names
-from gibson2.external.pybullet_tools.utils import set_joint_positions
-from gibson2.external.pybullet_tools.utils import get_sample_fn
-from gibson2.external.pybullet_tools.utils import set_base_values_with_z
-from gibson2.external.pybullet_tools.utils import get_base_values
-from gibson2.external.pybullet_tools.utils import plan_base_motion_2d
-from gibson2.external.pybullet_tools.utils import get_moving_links
-from gibson2.external.pybullet_tools.utils import is_collision_free
+from igibson.external.pybullet_tools.utils import control_joints
+from igibson.external.pybullet_tools.utils import get_joint_positions
+from igibson.external.pybullet_tools.utils import get_joint_velocities
+from igibson.external.pybullet_tools.utils import get_max_limits
+from igibson.external.pybullet_tools.utils import get_min_limits
+from igibson.external.pybullet_tools.utils import plan_joint_motion
+from igibson.external.pybullet_tools.utils import link_from_name
+from igibson.external.pybullet_tools.utils import joints_from_names
+from igibson.external.pybullet_tools.utils import set_joint_positions
+from igibson.external.pybullet_tools.utils import get_sample_fn
+from igibson.external.pybullet_tools.utils import set_base_values_with_z
+from igibson.external.pybullet_tools.utils import get_base_values
+from igibson.external.pybullet_tools.utils import plan_base_motion_2d
+from igibson.external.pybullet_tools.utils import get_moving_links
+from igibson.external.pybullet_tools.utils import is_collision_free
 
-from gibson2.utils.utils import rotate_vector_2d, rotate_vector_3d
-from gibson2.utils.utils import l2_distance, quatToXYZW
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.visual_marker import VisualMarker
+from igibson.utils.utils import rotate_vector_2d, rotate_vector_3d
+from igibson.utils.utils import l2_distance, quatToXYZW
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.objects.visual_marker import VisualMarker
 from transforms3d import euler
 
 import pybullet as p

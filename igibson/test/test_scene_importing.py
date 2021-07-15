@@ -1,12 +1,12 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.stadium_scene import StadiumScene
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.utils.utils import parse_config
+from igibson.simulator import Simulator
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.utils.utils import parse_config
 import os
-import gibson2
+import igibson
 
-from gibson2.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.assets_utils import download_assets, download_demo_data
 
 
 def test_import_building():
@@ -48,7 +48,7 @@ def test_import_stadium():
 def test_import_building_viewing():
     download_assets()
     download_demo_data()
-    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
+    config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
 
 
     s = Simulator(mode='headless')

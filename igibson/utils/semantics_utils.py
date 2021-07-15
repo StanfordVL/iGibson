@@ -1,6 +1,6 @@
-import gibson2
+import igibson
 import os
-from gibson2.utils.constants import SemanticClass
+from igibson.utils.constants import SemanticClass
 
 def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS):
     """
@@ -8,7 +8,7 @@ def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS):
 
     :param starting_class_id: starting class id for scene objects
     """
-    category_txt = os.path.join(gibson2.ig_dataset_path,
+    category_txt = os.path.join(igibson.ig_dataset_path,
                                 'metadata/categories.txt')
     class_name_to_class_id = dict()
     if os.path.isfile(category_txt):

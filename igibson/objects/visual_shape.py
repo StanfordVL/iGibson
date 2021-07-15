@@ -1,4 +1,4 @@
-from gibson2.objects.object_base import Object
+from igibson.objects.object_base import Object
 import pybullet as p
 
 

@@ -1,11 +1,11 @@
 import pybullet as p
 from IPython import embed
 
-import gibson2
-from gibson2.object_states.kinematics import KinematicsMixin
-from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.touching import Touching
-from gibson2.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
+import igibson
+from igibson.object_states.kinematics import KinematicsMixin
+from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
+from igibson.object_states.touching import Touching
+from igibson.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
 
 
 # TODO: remove after split floors
@@ -47,7 +47,7 @@ class OnFloor(RelativeObjectState, KinematicsMixin, BooleanState):
                 clear_cached_states(self.obj)
                 if self.get_value(other) != new_value:
                     sampling_success = False
-                if gibson2.debug_sampling:
+                if igibson.debug_sampling:
                     print('OnFloor checking', sampling_success)
                     embed()
             if sampling_success:

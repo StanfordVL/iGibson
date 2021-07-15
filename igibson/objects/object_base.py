@@ -1,6 +1,6 @@
 import pybullet as p
 import os
-import gibson2
+import igibson
 
 class Object(object):
     """

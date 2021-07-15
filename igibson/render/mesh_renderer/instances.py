@@ -1,8 +1,8 @@
 import pybullet as p
-from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+from igibson.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
 import numpy as np
-from gibson2.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
+from igibson.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
 
 class InstanceGroup(object):
     """

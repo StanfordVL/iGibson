@@ -1,15 +1,15 @@
 import os
 from collections import deque
 
-import gibson2
+import igibson
 import numpy as np
 import pybullet as p
 
-from gibson2.external.pybullet_tools import utils
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
-from gibson2.objects.object_base import Object
-from gibson2.utils import sampling_utils
-from gibson2.utils.constants import SemanticClass, PyBulletSleepState
+from igibson.external.pybullet_tools import utils
+from igibson.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
+from igibson.objects.object_base import Object
+from igibson.utils import sampling_utils
+from igibson.utils.constants import SemanticClass, PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -481,7 +481,7 @@ class _Dirt(AttachedParticleSystem):
     """
 
     # This parameters are used when sampling dirt particles.
-    # See gibson2/utils/sampling_utils.py for how they are used.
+    # See igibson/utils/sampling_utils.py for how they are used.
     _SAMPLING_AXIS_PROBABILITIES = [0.25, 0.25, 0.5]
     _SAMPLING_AABB_OFFSET = 0.1
     _SAMPLING_BIMODAL_MEAN_FRACTION = 0.9
@@ -559,7 +559,7 @@ class Stain(_Dirt):
     _BOUNDING_BOX_UPPER_LIMIT_MAX = 0.1
 
     _MESH_FILENAME = os.path.join(
-        gibson2.assets_path, "models/stain/stain.obj")
+        igibson.assets_path, "models/stain/stain.obj")
     _MESH_BOUNDING_BOX = np.array([0.0368579992, 0.03716399827, 0.004])
 
     def __init__(self, parent_obj, initial_dump=None, **kwargs):
@@ -567,7 +567,7 @@ class Stain(_Dirt):
             self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
             # Particle size range changes based on parent object size.
-            from gibson2.object_states import AABB
+            from igibson.object_states import AABB
             median_aabb_dim = np.median(
                 parent_obj.bounding_box
                 if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
