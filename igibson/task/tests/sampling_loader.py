@@ -1,6 +1,6 @@
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 from IPython import embed
-from gibson2.simulator import Simulator
+from igibson.simulator import Simulator
 
 import bddl
 bddl.set_backend("iGibson")

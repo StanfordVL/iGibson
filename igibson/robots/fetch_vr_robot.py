@@ -3,14 +3,14 @@ import numpy as np
 import os
 import pybullet as p
 
-from gibson2 import assets_path
-from gibson2.external.pybullet_tools.utils import joints_from_names, get_joint_positions, set_joint_positions, get_max_limits, get_min_limits
-from gibson2.objects.visual_marker import VisualMarker
-from gibson2.objects.vr_objects import VrGazeMarker
-from gibson2.robots.fetch_robot import Fetch
-from gibson2.robots.robot_locomotor import LocomotorRobot
-from gibson2.utils.utils import l2_distance, parse_config
-from gibson2.utils.vr_utils import calc_z_dropoff
+from igibson import assets_path
+from igibson.external.pybullet_tools.utils import joints_from_names, get_joint_positions, set_joint_positions, get_max_limits, get_min_limits
+from igibson.objects.visual_marker import VisualMarker
+from igibson.objects.vr_objects import VrGazeMarker
+from igibson.robots.fetch_robot import Fetch
+from igibson.robots.robot_locomotor import LocomotorRobot
+from igibson.utils.utils import l2_distance, parse_config
+from igibson.utils.vr_utils import calc_z_dropoff
 
 
 class FetchVR(Fetch):

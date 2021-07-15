@@ -1,18 +1,18 @@
 import os
 
-import gibson2
+import igibson
 import pybullet as p
 import numpy as np
 
-from gibson2.external.pybullet_tools.utils import stable_z_on_aabb
-from gibson2.external.pybullet_tools.utils import get_center_extent
-from gibson2.simulator import Simulator
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.utils.urdf_utils import save_urdfs_without_floating_joints
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.visual_marker import VisualMarker
-from gibson2.utils.utils import rotate_vector_3d
-from gibson2.utils.urdf_utils import round_up
+from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.external.pybullet_tools.utils import get_center_extent
+from igibson.simulator import Simulator
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.utils.urdf_utils import save_urdfs_without_floating_joints
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.visual_marker import VisualMarker
+from igibson.utils.utils import rotate_vector_3d
+from igibson.utils.urdf_utils import round_up
 
 from IPython import embed
 from PIL import Image
@@ -274,7 +274,7 @@ def save_scaled_urdf(filename, avg_size_mass, obj_class):
 def get_avg_size_mass():
 
     avg_obj_dims_json = os.path.join(
-        gibson2.ig_dataset_path, 'objects/avg_category_specs.json')
+        igibson.ig_dataset_path, 'objects/avg_category_specs.json')
     with open(avg_obj_dims_json) as f:
         avg_obj_dims = json.load(f)
     return avg_obj_dims

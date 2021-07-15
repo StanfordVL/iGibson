@@ -1,4 +1,4 @@
-from gibson2.reward_functions.reward_function_base import BaseRewardFunction
+from igibson.reward_functions.reward_function_base import BaseRewardFunction
 
 
 class CollisionReward(BaseRewardFunction):

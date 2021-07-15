@@ -1,10 +1,10 @@
 import argparse
 
-from gibson2.examples.behavior.behavior_demo_batch import behavior_demo_batch
-from gibson2.metrics.agent import AgentMetric
-from gibson2.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
-from gibson2.metrics.gaze import GazeMetric
-from gibson2.metrics.task import TaskMetric
+from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
+from igibson.metrics.agent import AgentMetric
+from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
+from igibson.metrics.gaze import GazeMetric
+from igibson.metrics.task import TaskMetric
 
 def parse_args():
     parser = argparse.ArgumentParser(

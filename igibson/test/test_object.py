@@ -1,13 +1,13 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.stadium_scene import StadiumScene
-from gibson2.objects.cube import Cube
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.objects.articulated_object import RBOObject, ArticulatedObject
-from gibson2.robots.turtlebot_robot import Turtlebot
-import gibson2
+from igibson.simulator import Simulator
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.objects.cube import Cube
+from igibson.objects.ycb_object import YCBObject
+from igibson.objects.articulated_object import RBOObject, ArticulatedObject
+from igibson.robots.turtlebot_robot import Turtlebot
+import igibson
 import os
-from gibson2.utils.utils import parse_config
-from gibson2.utils.assets_utils import download_assets
+from igibson.utils.utils import parse_config
+from igibson.utils.assets_utils import download_assets
 
 download_assets()
 
@@ -55,7 +55,7 @@ def test_import_rbo_object():
         obj2.set_position([0, 1, 2])
 
         obj3 = ArticulatedObject(
-            os.path.join(gibson2.assets_path, 'models', 'scene_components', 'door.urdf'))
+            os.path.join(igibson.assets_path, 'models', 'scene_components', 'door.urdf'))
         s.import_object(obj3)
 
         for i in range(100):
@@ -87,7 +87,7 @@ def test_import_box():
         obj = Cube(curr[0], curr[1])
         s.import_object(obj)
 
-    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
+    config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
     turtlebot1 = Turtlebot(config)
     turtlebot2 = Turtlebot(config)
     s.import_robot(turtlebot1)

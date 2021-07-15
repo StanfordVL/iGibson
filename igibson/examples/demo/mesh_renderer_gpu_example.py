@@ -1,9 +1,9 @@
 import sys
 import os
 import numpy as np
-from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.render.profiler import Profiler
-from gibson2.utils.assets_utils import get_scene_path
+from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+from igibson.render.profiler import Profiler
+from igibson.utils.assets_utils import get_scene_path
 import matplotlib.pyplot as plt
 
 

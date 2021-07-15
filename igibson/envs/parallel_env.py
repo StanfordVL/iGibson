@@ -1,5 +1,5 @@
-import gibson2
-from gibson2.envs.igibson_env import iGibsonEnv
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 import atexit
 import multiprocessing
 import sys
@@ -247,7 +247,7 @@ class ProcessPyEnvironment(object):
 
 if __name__ == "__main__":
     config_filename = os.path.join(os.path.dirname(
-        gibson2.__file__), 'test', 'test.yaml')
+        igibson.__file__), 'test', 'test.yaml')
 
     def load_env():
         return iGibsonEnv(config_file=config_filename, mode='headless')

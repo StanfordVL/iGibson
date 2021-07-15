@@ -53,7 +53,7 @@ The script will perform the following operations:
 
 Each step will use the default options.
 
-The name of the object will be ```OBJECT_NAME= basename $DIRECTORY```. The object will be generated at location ```objects/$CATEGORY/OBJECT_NAME``` with in the directory containing iGibson assets, which is by default: ```gibson2/ig_dataset``` (see more on configuring dataset path [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-igibson-data) )
+The name of the object will be ```OBJECT_NAME= basename $DIRECTORY```. The object will be generated at location ```objects/$CATEGORY/OBJECT_NAME``` with in the directory containing iGibson assets, which is by default: ```igibson/ig_dataset``` (see more on configuring dataset path [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-igibson-data) )
 
 ## (Optional) Details on individual steps:
 

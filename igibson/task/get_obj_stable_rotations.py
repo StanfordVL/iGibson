@@ -12,9 +12,9 @@ from pyquaternion import Quaternion
 from transformations import euler_from_matrix
 import pybullet as pb
 
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.simulator import Simulator
-from gibson2.objects.articulated_object import ArticulatedObject
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.objects.articulated_object import ArticulatedObject
 import matplotlib.pyplot as plt
 
 '''

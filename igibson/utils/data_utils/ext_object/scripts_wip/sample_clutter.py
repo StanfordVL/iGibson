@@ -1,9 +1,9 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.object_states.utils import sample_kinematics
-from gibson2.utils.assets_utils import get_ig_avg_category_specs
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.objects.articulated_object import URDFObject
+from igibson.object_states.utils import sample_kinematics
+from igibson.utils.assets_utils import get_ig_avg_category_specs
 import matplotlib.pyplot as plt
 import numpy as np
 import math

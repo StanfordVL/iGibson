@@ -1,22 +1,22 @@
 import logging
 import platform
-from gibson2.render.mesh_renderer import tinyobjloader
-import gibson2
-import gibson2.render.mesh_renderer as mesh_renderer
-from gibson2.render.mesh_renderer.get_available_devices import get_available_devices
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
+from igibson.render.mesh_renderer import tinyobjloader
+import igibson
+import igibson.render.mesh_renderer as mesh_renderer
+from igibson.render.mesh_renderer.get_available_devices import get_available_devices
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
     safemat2quat, xyzw2wxyz, ortho, transform_vertex
-from gibson2.utils.constants import AVAILABLE_MODALITIES, ShadowPass
+from igibson.utils.constants import AVAILABLE_MODALITIES, ShadowPass
 import numpy as np
 import os
 import sys
-from gibson2.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
-from gibson2.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
-from gibson2.render.mesh_renderer.text import TextManager, Text
-from gibson2.render.mesh_renderer.visual_object import VisualObject
+from igibson.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
+from igibson.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
+from igibson.render.mesh_renderer.text import TextManager, Text
+from igibson.render.mesh_renderer.visual_object import VisualObject
 from PIL import Image
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import time
 import shutil
 
@@ -112,7 +112,7 @@ class MeshRenderer(object):
             logging.error('Optimized renderer is not supported on Mac')
             exit()
         if self.platform == 'Darwin':
-            from gibson2.render.mesh_renderer import GLFWRendererContext
+            from igibson.render.mesh_renderer import GLFWRendererContext
             self.r = GLFWRendererContext.GLFWRendererContext(
                 width, height,
                 int(self.rendering_settings.glfw_gl_version[0]),
@@ -121,7 +121,7 @@ class MeshRenderer(object):
                 rendering_settings.fullscreen
             )
         elif self.platform == 'Windows':
-            from gibson2.render.mesh_renderer import VRRendererContext
+            from igibson.render.mesh_renderer import VRRendererContext
             self.r = VRRendererContext.VRRendererContext(
                 width, height,
                 int(self.rendering_settings.glfw_gl_version[0]),
@@ -130,7 +130,7 @@ class MeshRenderer(object):
                 rendering_settings.fullscreen
             )
         else:
-            from gibson2.render.mesh_renderer import EGLRendererContext
+            from igibson.render.mesh_renderer import EGLRendererContext
             self.r = EGLRendererContext.EGLRendererContext(
                 width, height, device)
 
@@ -315,7 +315,7 @@ class MeshRenderer(object):
             texture_id = len(self.texture_files)
         else:
             texture_id = self.r.loadTexture(
-                tex_filename, self.rendering_settings.texture_scale, gibson2.key_path)
+                tex_filename, self.rendering_settings.texture_scale, igibson.key_path)
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
@@ -393,7 +393,7 @@ class MeshRenderer(object):
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         if obj_path.endswith('encrypted.obj'):
-            ret = reader.ParseFromFileWithKey(obj_path, gibson2.key_path)
+            ret = reader.ParseFromFileWithKey(obj_path, igibson.key_path)
         else:
             ret = reader.ParseFromFile(obj_path)
         vertex_data_indices = []
@@ -1107,7 +1107,7 @@ class MeshRenderer(object):
         self.instances = []
         self.vertex_data = []
         self.shapes = []
-        save_path = os.path.join(gibson2.ig_dataset_path, 'tmp')
+        save_path = os.path.join(igibson.ig_dataset_path, 'tmp')
         if os.path.exists(save_path):
             shutil.rmtree(save_path)
 
@@ -1192,7 +1192,7 @@ class MeshRenderer(object):
                                          cutoff,
                                          shouldShrinkSmallTextures,
                                          smallTexSize,
-                                         gibson2.key_path)
+                                         igibson.key_path)
         print(self.tex_id_layer_mapping)
         print(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)

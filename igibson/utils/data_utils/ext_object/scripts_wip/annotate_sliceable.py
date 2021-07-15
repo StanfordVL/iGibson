@@ -13,7 +13,7 @@ def get_pos_orn(body_id):
 
 
 p.connect(p.GUI)
-obj_root_dir = '/cvgl2/u/chengshu/gibsonv2/gibson2/data/ig_dataset/objects'
+obj_root_dir = '/cvgl2/u/chengshu/gibsonv2/igibson/data/ig_dataset/objects'
 
 prematched_category = ['apple', 'vidalia_onion']
 for obj_cat in sorted(os.listdir(obj_root_dir)):

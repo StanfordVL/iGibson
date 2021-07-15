@@ -1,12 +1,12 @@
 import argparse
 import bddl
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.simulator import Simulator
 import logging
 import os
 import json
 import pybullet as p
-import gibson2
+import igibson
 
 PARTIAL_RECACHE = {
     # 'sorting_books': ['Ihlen_0_int'],
@@ -70,7 +70,7 @@ def main():
             urdf_path = '{}_task_{}_{}_{}'.format(
                 scene_id, task, task_id, init_id)
             full_path = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', scene_id, 'urdf', urdf_path + '.urdf')
+                igibson.ig_dataset_path, 'scenes', scene_id, 'urdf', urdf_path + '.urdf')
             if os.path.isfile(full_path):
                 logging.warning('Already cached: {}'.format(full_path))
                 continue

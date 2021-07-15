@@ -1,10 +1,10 @@
-import gibson2
+import igibson
 import pybullet as p
 from IPython import embed
-from gibson2.object_states.adjacency import VerticalAdjacency
-from gibson2.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
-from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.utils import sample_kinematics, clear_cached_states
+from igibson.object_states.adjacency import VerticalAdjacency
+from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
+from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
+from igibson.object_states.utils import sample_kinematics, clear_cached_states
 
 
 class Under(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, BooleanState):
@@ -23,7 +23,7 @@ class Under(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
                 clear_cached_states(other)
                 if self.get_value(other) != new_value:
                     sampling_success = False
-                if gibson2.debug_sampling:
+                if igibson.debug_sampling:
                     print('Under checking', sampling_success)
                     embed()
             if sampling_success:

@@ -6,7 +6,7 @@ are installed *without* MKL support.
 import argparse
 import time
 
-from gibson2.envs.igibson_env import iGibsonEnv
+from igibson.envs.igibson_env import iGibsonEnv
 
 import ray
 ray.init()

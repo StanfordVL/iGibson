@@ -2,8 +2,8 @@ from collections import namedtuple
 
 import numpy as np
 import pybullet as p
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from gibson2.object_states.pose import Pose
+from igibson.object_states.object_state_base import CachingEnabledObjectState
+from igibson.object_states.pose import Pose
 
 _MAX_ITERATIONS = 10
 _MAX_DISTANCE_VERTICAL = 5.0

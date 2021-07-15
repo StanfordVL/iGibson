@@ -1,7 +1,7 @@
-from gibson2.external.pybullet_tools.utils import aabb_contains_point
-from gibson2.object_states import ContactBodies, Sliced
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.object_states.link_based_state_mixin import LinkBasedStateMixin
+from igibson.external.pybullet_tools.utils import aabb_contains_point
+from igibson.object_states import ContactBodies, Sliced
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 
 _SLICER_LINK_NAME = "slicer"
 

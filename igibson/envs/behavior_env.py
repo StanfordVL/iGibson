@@ -1,6 +1,6 @@
-from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.task.task_base import iGBEHAVIORActivityInstance
-from gibson2.scenes.empty_scene import EmptyScene
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.scenes.empty_scene import EmptyScene
 
 import argparse
 import numpy as np
@@ -11,7 +11,7 @@ import gym.spaces
 import pybullet as p
 
 from collections import OrderedDict
-from gibson2.robots.behavior_robot import BehaviorRobot
+from igibson.robots.behavior_robot import BehaviorRobot
 
 class BehaviorEnv(iGibsonEnv):
     """
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config',
         '-c',
-        default = 'gibson2/examples/configs/behavior.yaml',
+        default = 'igibson/examples/configs/behavior.yaml',
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',

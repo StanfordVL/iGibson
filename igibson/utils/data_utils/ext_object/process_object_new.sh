@@ -8,7 +8,7 @@ cd $BASEDIR
 # 1. directory to the source files
 # 2. category label of the object
 #########
-IGIBSON_DIR=$(python -c "import gibson2; print(gibson2.ig_dataset_path)" | tail -1)
+IGIBSON_DIR=$(python -c "import igibson; print(igibson.ig_dataset_path)" | tail -1)
 SRC_BLEND_FILE=$1
 CATEGORY=$2
 OBJECT_ID=$3

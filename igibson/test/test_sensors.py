@@ -1,19 +1,19 @@
-import gibson2
-from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.utils.assets_utils import download_assets, download_demo_data
-from gibson2.sensors.scan_sensor import ScanSensor
-from gibson2.sensors.vision_sensor import VisionSensor
-from gibson2.sensors.velodyne_sensor import VelodyneSensor
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.utils.assets_utils import download_assets, download_demo_data
+from igibson.sensors.scan_sensor import ScanSensor
+from igibson.sensors.vision_sensor import VisionSensor
+from igibson.sensors.velodyne_sensor import VelodyneSensor
 import numpy as np
 import os
-from gibson2.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
+from igibson.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
 
 
 def test_vision_sensor():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
-        gibson2.root_path, 'test', 'test_house.yaml')
+        igibson.root_path, 'test', 'test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
     vision_modalities = ['rgb', 'depth', 'pc', 'normal', 'seg']
     vision_sensor = VisionSensor(env, vision_modalities)
@@ -41,7 +41,7 @@ def test_scan_sensor():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
-        gibson2.root_path, 'test', 'test_house.yaml')
+        igibson.root_path, 'test', 'test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
     scan_sensor = ScanSensor(env, ['scan'])
     scan_obs = scan_sensor.get_obs(env)['scan']
@@ -54,7 +54,7 @@ def test_velodyne():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
-        gibson2.root_path, 'test', 'test_house.yaml')
+        igibson.root_path, 'test', 'test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
     velodyne_sensor = VelodyneSensor(env)
     velodyne_obs = velodyne_sensor.get_obs(env)

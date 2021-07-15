@@ -1,30 +1,30 @@
-from gibson2.objects.stateful_object import StatefulObject
-from gibson2.objects.visual_marker import VisualMarker
-from gibson2.objects.visual_shape import VisualShape
-from gibson2.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
-from gibson2.utils.semantics_utils import get_class_name_to_class_id
-from gibson2.utils.constants import SemanticClass, PyBulletSleepState
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
-from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from gibson2.render.viewer import Viewer, ViewerVR, ViewerSimple
-from gibson2.object_states.factory import get_states_by_dependency_order
-from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.scenes.scene_base import Scene
-from gibson2.robots.robot_base import BaseRobot
-from gibson2.objects.object_base import Object
-from gibson2.objects.particles import ParticleSystem, Particle
-from gibson2.utils.utils import quatXYZWFromRotMat, rotate_vector_3d, multQuatLists
-from gibson2.utils.assets_utils import get_ig_avg_category_specs
-from gibson2.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
-from gibson2.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset, calc_z_rot_from_right
+from igibson.objects.stateful_object import StatefulObject
+from igibson.objects.visual_marker import VisualMarker
+from igibson.objects.visual_shape import VisualShape
+from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
+from igibson.utils.semantics_utils import get_class_name_to_class_id
+from igibson.utils.constants import SemanticClass, PyBulletSleepState
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
+from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
+from igibson.render.viewer import Viewer, ViewerVR, ViewerSimple
+from igibson.object_states.factory import get_states_by_dependency_order
+from igibson.objects.articulated_object import ArticulatedObject, URDFObject
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.scene_base import Scene
+from igibson.robots.robot_base import BaseRobot
+from igibson.objects.object_base import Object
+from igibson.objects.particles import ParticleSystem, Particle
+from igibson.utils.utils import quatXYZWFromRotMat, rotate_vector_3d, multQuatLists
+from igibson.utils.assets_utils import get_ig_avg_category_specs
+from igibson.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
+from igibson.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset, calc_z_rot_from_right
 
 import ctypes
 import pybullet as p
-import gibson2
+import igibson
 import json
 import os
 import numpy as np
@@ -474,7 +474,7 @@ class Simulator:
         :param color: RGB color of sphere (from 0 to 1 on each axis)
         """
         sphere_file = os.path.join(
-                        gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                        igibson.assets_path, 'models/mjcf_primitives/sphere8.obj')
         self.renderer.load_object(
                     sphere_file,
                     transform_orn=[0,0,0,1],
@@ -557,7 +557,7 @@ class Simulator:
                      )]
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                    igibson.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -567,7 +567,7 @@ class Simulator:
                 visual_object = len(self.renderer.get_visual_objects()) - 1
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    igibson.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -577,7 +577,7 @@ class Simulator:
                 visual_object = len(self.renderer.get_visual_objects()) - 1
             elif type == p.GEOM_BOX:
                 filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    igibson.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,
@@ -590,7 +590,7 @@ class Simulator:
                 # However, if you do want to render it for some reason, you can set render_floor_plane to be True.
                 if render_floor_plane:
                     filename = os.path.join(
-                        gibson2.assets_path,
+                        igibson.assets_path,
                         'models/mjcf_primitives/cube.obj')
                     self.renderer.load_object(filename,
                                               transform_orn=rel_orn,
@@ -837,7 +837,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_SPHERE:
                 filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/sphere8.obj')
+                    igibson.assets_path, 'models/mjcf_primitives/sphere8.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -849,7 +849,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    igibson.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -861,7 +861,7 @@ class Simulator:
                 link_ids.append(link_id)
             elif type == p.GEOM_BOX:
                 filename = os.path.join(
-                    gibson2.assets_path, 'models/mjcf_primitives/cube.obj')
+                    igibson.assets_path, 'models/mjcf_primitives/cube.obj')
                 self.renderer.load_object(filename,
                                           transform_orn=rel_orn,
                                           transform_pos=rel_pos,

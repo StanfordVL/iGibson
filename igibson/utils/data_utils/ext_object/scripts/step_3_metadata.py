@@ -4,7 +4,7 @@ import os
 import argparse
 import json
 import glob
-import gibson2
+import igibson
 from PIL import Image
 
 parser = argparse.ArgumentParser("Generate Mesh meta-data...")
@@ -100,7 +100,7 @@ def gen_bbox(input_dir):
 
 def gen_material(input_dir, material_string):
     materials = material_string.split(',')
-    material_dir = os.path.join(gibson2.ig_dataset_path, 'materials')
+    material_dir = os.path.join(igibson.ig_dataset_path, 'materials')
     material_json_file = os.path.join(material_dir, 'materials.json')
     assert os.path.isfile(material_json_file), \
         'cannot find material files: {}'.format(material_json_file)

@@ -1,8 +1,8 @@
-from gibson2.object_states.heat_source_or_sink import HeatSourceOrSink
-from gibson2.object_states.inside import Inside
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.object_states.pose import Pose
-from gibson2.utils.utils import l2_distance
+from igibson.object_states.heat_source_or_sink import HeatSourceOrSink
+from igibson.object_states.inside import Inside
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.object_states.pose import Pose
+from igibson.utils.utils import l2_distance
 
 # TODO: Consider sourcing default temperature from scene
 # Default ambient temperature.

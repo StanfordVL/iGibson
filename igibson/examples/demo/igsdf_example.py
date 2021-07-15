@@ -1,7 +1,7 @@
-from gibson2.simulator import Simulator
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.render.profiler import Profiler
+from igibson.simulator import Simulator
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
 import argparse
 
 

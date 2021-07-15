@@ -1,15 +1,15 @@
-import gibson2
-from gibson2.envs.igibson_env import iGibsonEnv
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 from time import time
 import os
-from gibson2.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.assets_utils import download_assets, download_demo_data
 
 
 def test_env():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
-        gibson2.root_path, 'test', 'test_house.yaml')
+        igibson.root_path, 'test', 'test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
     try:
         for j in range(2):
@@ -30,7 +30,7 @@ def test_env_reload():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
-        gibson2.root_path, 'test', 'test_house.yaml')
+        igibson.root_path, 'test', 'test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
     try:
         for i in range(3):
@@ -52,7 +52,7 @@ def test_env_reset():
     download_assets()
     download_demo_data()
     config_filename = os.path.join(
-        gibson2.root_path, 'test', 'test_house.yaml')
+        igibson.root_path, 'test', 'test_house.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='headless')
 
     class DummyTask(object):

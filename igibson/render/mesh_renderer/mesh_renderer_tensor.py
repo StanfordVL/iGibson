@@ -1,7 +1,7 @@
 import numpy as np
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from gibson2.render.mesh_renderer.get_available_devices import get_cuda_device
-from gibson2.utils.constants import AVAILABLE_MODALITIES
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from igibson.render.mesh_renderer.get_available_devices import get_cuda_device
+from igibson.utils.constants import AVAILABLE_MODALITIES
 import logging
 
 

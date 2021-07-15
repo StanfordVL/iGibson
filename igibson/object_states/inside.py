@@ -1,15 +1,15 @@
 import pybullet as p
 from IPython import embed
 
-import gibson2
-from gibson2.external.pybullet_tools.utils import aabb_contains_point
-from gibson2.object_states.aabb import AABB
-from gibson2.object_states.adjacency import VerticalAdjacency, HorizontalAdjacency, flatten_planes
-from gibson2.object_states.kinematics import KinematicsMixin
-from gibson2.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
-from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
-from gibson2.object_states.pose import Pose
-from gibson2.object_states.utils import sample_kinematics, clear_cached_states
+import igibson
+from igibson.external.pybullet_tools.utils import aabb_contains_point
+from igibson.object_states.aabb import AABB
+from igibson.object_states.adjacency import VerticalAdjacency, HorizontalAdjacency, flatten_planes
+from igibson.object_states.kinematics import KinematicsMixin
+from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
+from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
+from igibson.object_states.pose import Pose
+from igibson.object_states.utils import sample_kinematics, clear_cached_states
 
 
 class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, RelativeObjectState, BooleanState):
@@ -29,7 +29,7 @@ class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
                 clear_cached_states(other)
                 if self.get_value(other) != new_value:
                     sampling_success = False
-                if gibson2.debug_sampling:
+                if igibson.debug_sampling:
                     print('Inside checking', sampling_success)
                     embed()
             if sampling_success:

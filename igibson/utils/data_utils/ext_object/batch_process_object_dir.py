@@ -2,8 +2,8 @@ import subprocess
 import os
 
 dst_folder = '/cvgl2/u/chengshu/atus_dataset/processed'
-src_folder = '/cvgl2/u/chengshu/gibsonv2/gibson2/data/assets/models/processed'
-obj_list_file = '/cvgl2/u/chengshu/gibsonv2/gibson2/utils/data_utils/ext_object/scripts_wip/catalog_new.txt'
+src_folder = '/cvgl2/u/chengshu/gibsonv2/igibson/data/assets/models/processed'
+obj_list_file = '/cvgl2/u/chengshu/gibsonv2/igibson/utils/data_utils/ext_object/scripts_wip/catalog_new.txt'
 
 
 def main():

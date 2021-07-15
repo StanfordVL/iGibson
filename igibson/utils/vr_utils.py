@@ -2,7 +2,7 @@
 
 import numpy as np
 import time
-from gibson2.utils.utils import normalizeListVec
+from igibson.utils.utils import normalizeListVec
 
 # List of all VR button idx/press combos, which will be used to form a compact binary representation
 # These are taken from the openvr.h header file

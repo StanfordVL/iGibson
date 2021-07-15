@@ -18,13 +18,13 @@ from utils.utils import *
 from utils.semantics import *
 from utils.scene_urdf import gen_scene_urdf,gen_orig_urdf,gen_orig_urdf_with_cabinet
 
-import gibson2
+import igibson
 
 parser = argparse.ArgumentParser("Convert 3D-Front...")
 
 parser.add_argument('--model_path', dest='model_path')
 parser.add_argument('--save_root', dest='save_root', 
-        default=os.path.join(gibson2.threedfront_dataset_path, 'scenes'))
+        default=os.path.join(igibson.threedfront_dataset_path, 'scenes'))
 
 # https://stackoverflow.com/questions/13542855/
 # algorithm-to-find-the-minimum-area-rectangle-for-given-points-in-order-to-comput/

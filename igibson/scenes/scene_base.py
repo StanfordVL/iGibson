@@ -1,9 +1,9 @@
 from abc import ABCMeta, abstractmethod
 
 from future.utils import with_metaclass
-from gibson2.objects.particles import Particle
-from gibson2.objects.visual_marker import VisualMarker
-from gibson2.objects.visual_shape import VisualShape
+from igibson.objects.particles import Particle
+from igibson.objects.visual_marker import VisualMarker
+from igibson.objects.visual_shape import VisualShape
 
 
 class Scene(with_metaclass(ABCMeta)):

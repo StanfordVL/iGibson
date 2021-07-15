@@ -2,13 +2,13 @@ import cv2
 import sys
 import os
 import numpy as np
-from gibson2.simulator import Simulator
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from gibson2.render.profiler import Profiler
-# from gibson2.utils.assets_utils import get_model_path
-from gibson2.objects.articulated_object import ArticulatedObject
-import gibson2
+from igibson.simulator import Simulator
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
+# from igibson.utils.assets_utils import get_model_path
+from igibson.objects.articulated_object import ArticulatedObject
+import igibson
 from PIL import Image
 import pybullet as p
 import subprocess
@@ -84,7 +84,7 @@ def main():
     category = os.path.basename(os.path.dirname(model_path))
 
     hdr_texture = os.path.join(
-                gibson2.ig_dataset_path, 'scenes', 'background', 
+                igibson.ig_dataset_path, 'scenes', 'background',
                 'photo_studio_01_2k.hdr')
     settings = MeshRendererSettings(env_texture_filename=hdr_texture,
                enable_shadow=True, msaa=True,

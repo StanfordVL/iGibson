@@ -4,8 +4,8 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 from six import with_metaclass
 
-from gibson2.object_states.pose import Pose
-from gibson2.utils.utils import l2_distance
+from igibson.object_states.pose import Pose
+from igibson.utils.utils import l2_distance
 
 POSITIONAL_VALIDATION_EPSILON = 1e-5
 

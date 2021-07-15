@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 
-from gibson2.robots.robot_locomotor import LocomotorRobot
+from igibson.robots.robot_locomotor import LocomotorRobot
 
 
 class Freight(LocomotorRobot):

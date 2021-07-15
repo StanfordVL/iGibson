@@ -3,7 +3,7 @@
 BASEDIR=$(dirname "$0")
 cd $BASEDIR
 
-CUBICASA_DIR=$(python -c "import gibson2; print(gibson2.cubicasa_dataset_path)" | tail -1)
+CUBICASA_DIR=$(python -c "import igibson; print(igibson.cubicasa_dataset_path)" | tail -1)
 DIRECTORY=$1
 
 python step_1_preprocess_cubicasa.py --model_dir $1

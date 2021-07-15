@@ -1,6 +1,6 @@
 import numpy as np
 
-from gibson2.object_states.object_state_base import CachingEnabledObjectState, AbsoluteObjectState, BooleanState
+from igibson.object_states.object_state_base import CachingEnabledObjectState, AbsoluteObjectState, BooleanState
 
 
 class InsideRoomTypes(CachingEnabledObjectState):

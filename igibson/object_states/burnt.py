@@ -1,7 +1,7 @@
-from gibson2.object_states.max_temperature import MaxTemperature
-from gibson2.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from gibson2.object_states.texture_change_state_mixin import TextureChangeStateMixin
-from gibson2.utils.utils import transform_texture
+from igibson.object_states.max_temperature import MaxTemperature
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
+from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
+from igibson.utils.utils import transform_texture
 
 
 _DEFAULT_BURN_TEMPERATURE = 200

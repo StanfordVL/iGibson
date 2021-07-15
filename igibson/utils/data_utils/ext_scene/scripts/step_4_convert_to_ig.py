@@ -4,23 +4,23 @@ import os
 import json
 import math
 import shutil
-import gibson2
+import igibson
 import argparse
 import numpy as np
 import xml.etree.ElementTree as ET
-from gibson2.utils.utils import parse_config
+from igibson.utils.utils import parse_config
 
-from gibson2.scenes.igibson_indoor_scene import SCENE_SOURCE
-from gibson2.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path, get_ig_category_path
+from igibson.scenes.igibson_indoor_scene import SCENE_SOURCE
+from igibson.utils.assets_utils import get_ig_scene_path,get_cubicasa_scene_path,get_3dfront_scene_path, get_ig_category_path
 
 """
 Script to update all urdfs
 
-for file in ../../gibson2/ig_dataset/scenes/*
+for file in ../../igibson/ig_dataset/scenes/*
   python scene_converter.py $(basename $file)
 """
 
-config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
+config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
 missing_models = set([
     'exercise_equipment',
     'curtain',
@@ -156,7 +156,7 @@ def convert_scene(scene_name, scene_source, select_best=False):
     scene_tree.write(scene_file_out, xml_declaration=True)
     if select_best and scene_source == 'THREEDFRONT':
         urdf_dir = os.path.join(
-                gibson2.threedfront_dataset_path, 
+                igibson.threedfront_dataset_path, 
                 'no_col_urdfs')
         urdf_no_col = os.path.join(urdf_dir, 
                         "{}_best_no_col.urdf".format(scene_name))

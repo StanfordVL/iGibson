@@ -10,7 +10,7 @@ Note: rllib only supports a single observation modality:
 """
 import argparse
 
-from gibson2.envs.igibson_env import iGibsonEnv
+from igibson.envs.igibson_env import iGibsonEnv
 
 import ray
 from ray.rllib.agents import ppo
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--config',
         '-c',
-        default='gibson2/examples/configs/turtlebot_point_nav_ray.yaml',
+        default='igibson/examples/configs/turtlebot_point_nav_ray.yaml',
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
                         '-m',

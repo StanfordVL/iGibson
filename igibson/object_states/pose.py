@@ -1,4 +1,4 @@
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
+from igibson.object_states.object_state_base import CachingEnabledObjectState
 import numpy as np
 
 

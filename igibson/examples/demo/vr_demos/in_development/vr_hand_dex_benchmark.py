@@ -2,22 +2,22 @@
 and interactive objects, and provides a good way to qualitatively measure the dexterity of a VR hand.
 You can use the left and right controllers to start/stop/reset the timer,
 as well as show/hide its display. The "overlay toggle" action and its
-corresponding button index mapping can be found in the vr_config.yaml file in the gibson2 folder.
+corresponding button index mapping can be found in the vr_config.yaml file in the igibson folder.
 """
 import os
 import pybullet as p
 import pybullet_data
 import time
 
-import gibson2
-from gibson2.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from gibson2.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.robots.behavior_robot import BehaviorRobot
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.simulator import Simulator
-from gibson2 import assets_path
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.objects.ycb_object import YCBObject
+from igibson.simulator import Simulator
+from igibson import assets_path
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
 # transferability to the real world
@@ -42,13 +42,13 @@ USE_GRIPPER = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
 hdr_texture2 = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
 light_modulation_map_filename = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
 background_texture = os.path.join(
-    gibson2.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
 
 def main():
     # VR rendering settings
@@ -113,98 +113,98 @@ def main():
 
     table_objects_to_load = {
         "tray" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "tray", "tray_000", "tray_000.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "tray", "tray_000", "tray_000.urdf"),
             "pos": (1.100000, 0.200000, 0.650000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 0.15,
             "mass": 1.7
         },
         "plate_1" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (0.700000, -0.300000, 0.650000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 0.01,
             "mass": 1.5
         },
         "plate_2" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (1.100000, -0.300000, 0.650000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 0.01,
             "mass": 1.5
         },
         "plate_3" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (0.700000, -1.200000, 0.000000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 0.01,
             "mass": 1.5
         },
         "plate_4" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "plate", "plate_000", "plate_000.urdf"),
             "pos": (1.100000, -1.200000, 0.000000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 0.01,
             "mass": 1.5
         },
         "chip_1" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
             "pos": (0.700000, -0.800000, 0.750000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 1,
             "mass": 0.22
         },
         "chip_2" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
             "pos": (1.100000, -0.800000, 0.750000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 1,
             "mass": 0.22
         },
         "cherry_1" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
             "pos": (0.700000, -0.600000, 0.680000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 1,
             "mass": 0.02
         },
         "cherry_2" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "cherry", "02_0", "02_0.urdf"),
             "pos": (1.100000, -0.600000, 0.680000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
             "scale": 1,
             "mass": 0.02
         },
         "shelf" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "shelf", "de3b28f255111570bc6a557844fbbce9", "de3b28f255111570bc6a557844fbbce9.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "shelf", "de3b28f255111570bc6a557844fbbce9", "de3b28f255111570bc6a557844fbbce9.urdf"),
             "pos": (1.700000, -3.500000, 1.15000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
             "scale": 2.50,
             "mass": 11
         },
         "wine_bottle_1" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
             "pos": (1.700000, -3.500000, 1.90000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
             "scale": 1,
             "mass": 1.2
         },
         "wine_bottle_2" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
             "pos": (1.700000, -3.2500000, 1.90000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
             "scale": 1,
             "mass": 1.2
         },
         "wine_bottle_3" : {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "wine_bottle", "23_1", "23_1.urdf"),
             "pos": (1.700000, -3.750000, 1.90000), 
             "orn": (0.000000, 0.00000, -0.707107, 0.707107),
             "scale": 1,
             "mass": 1.2
         },
         "floor_lamp": {
-            "urdf": os.path.join(gibson2.ig_dataset_path, "objects", "floor_lamp", "lamp_0035", "lamp_0035.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "floor_lamp", "lamp_0035", "lamp_0035.urdf"),
             "pos": (-1.500000, 0.00000, 0.500000), 
             "orn": (0.000000, 0.000000, 0.707107, 0.707107),
             "scale": 1,

@@ -1,8 +1,8 @@
 import os
-import gibson2
-from gibson2.objects.stateful_object import StatefulObject
+import igibson
+from igibson.objects.stateful_object import StatefulObject
 import pybullet as p
-from gibson2.object_states.factory import prepare_object_states
+from igibson.object_states.factory import prepare_object_states
 
 class YCBObject(StatefulObject):
     """
@@ -12,9 +12,9 @@ class YCBObject(StatefulObject):
 
     def __init__(self, name, scale=1):
         super(YCBObject, self).__init__()
-        self.visual_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
+        self.visual_filename = os.path.join(igibson.assets_path, 'models', 'ycb', name,
                                             'textured_simple.obj')
-        self.collision_filename = os.path.join(gibson2.assets_path, 'models', 'ycb', name,
+        self.collision_filename = os.path.join(igibson.assets_path, 'models', 'ycb', name,
                                                'textured_simple_vhacd.obj')
         self.scale = scale
 

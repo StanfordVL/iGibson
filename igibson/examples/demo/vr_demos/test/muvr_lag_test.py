@@ -8,7 +8,7 @@ import numpy as np
 import time
 from time import sleep
 
-from gibson2.utils.muvr_utils import IGVRTestClient, IGVRTestServer
+from igibson.utils.muvr_utils import IGVRTestClient, IGVRTestServer
 
 # Client and server settings
 SERVER_FPS  = 30.0

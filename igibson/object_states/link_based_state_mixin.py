@@ -1,4 +1,4 @@
-from gibson2.external.pybullet_tools.utils import link_from_name, get_link_state
+from igibson.external.pybullet_tools.utils import link_from_name, get_link_state
 
 
 class LinkBasedStateMixin(object):

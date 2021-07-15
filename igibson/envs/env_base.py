@@ -1,19 +1,19 @@
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.robots.husky_robot import Husky
-from gibson2.robots.ant_robot import Ant
-from gibson2.robots.humanoid_robot import Humanoid
-from gibson2.robots.jr2_robot import JR2
-from gibson2.robots.jr2_kinova_robot import JR2_Kinova
-from gibson2.robots.freight_robot import Freight
-from gibson2.robots.fetch_robot import Fetch
-from gibson2.robots.locobot_robot import Locobot
-from gibson2.simulator import Simulator
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.scenes.stadium_scene import StadiumScene
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.utils.utils import parse_config
-from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.husky_robot import Husky
+from igibson.robots.ant_robot import Ant
+from igibson.robots.humanoid_robot import Humanoid
+from igibson.robots.jr2_robot import JR2
+from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.freight_robot import Freight
+from igibson.robots.fetch_robot import Fetch
+from igibson.robots.locobot_robot import Locobot
+from igibson.simulator import Simulator
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.utils.utils import parse_config
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import gym
 
 

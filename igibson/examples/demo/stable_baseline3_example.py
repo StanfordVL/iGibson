@@ -1,8 +1,8 @@
 import os
 from typing import Callable
 
-import gibson2
-from gibson2.envs.igibson_env import iGibsonEnv
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 try:
     from stable_baselines3.common.vec_env import SubprocVecEnv
     from stable_baselines3 import PPO
@@ -23,7 +23,7 @@ def main():
         def _init() -> iGibsonEnv:
             env = iGibsonEnv(
                 config_file=os.path.join(
-                    gibson2.example_config_path, config_file),
+                    igibson.example_config_path, config_file),
                 mode='headless',
                 action_timestep=1 / 10.0,
                 physics_timestep=1 / 120.0,
@@ -43,7 +43,7 @@ def main():
     print(model.policy)
 
     eval_env = iGibsonEnv(
-        config_file=os.path.join(gibson2.example_config_path, config_file),
+        config_file=os.path.join(igibson.example_config_path, config_file),
         mode='headless',
         action_timestep=1 / 10.0,
         physics_timestep=1 / 120.0,

@@ -1,9 +1,9 @@
 import numpy as np
-from gibson2.object_states.aabb import AABB
-from gibson2.object_states.adjacency import HorizontalAdjacency, flatten_planes
-from gibson2.object_states.kinematics import KinematicsMixin
-from gibson2.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
-from gibson2.object_states.object_state_base import BooleanState, RelativeObjectState
+from igibson.object_states.aabb import AABB
+from igibson.object_states.adjacency import HorizontalAdjacency, flatten_planes
+from igibson.object_states.kinematics import KinematicsMixin
+from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
+from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
 
 
 class NextTo(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, RelativeObjectState, BooleanState):

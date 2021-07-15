@@ -1,13 +1,13 @@
-from gibson2.envs.igibson_env import iGibsonEnv
+from igibson.envs.igibson_env import iGibsonEnv
 from time import time
-import gibson2
+import igibson
 import os
-from gibson2.render.profiler import Profiler
+from igibson.render.profiler import Profiler
 import logging
 
 
 def main():
-    config_filename = os.path.join(gibson2.example_config_path, 'turtlebot_demo.yaml')
+    config_filename = os.path.join(igibson.example_config_path, 'turtlebot_demo.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         env.reset()

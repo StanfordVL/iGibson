@@ -1,7 +1,7 @@
-from gibson2.object_states import AABB
-from gibson2.object_states.object_state_base import AbsoluteObjectState
-from gibson2.object_states.object_state_base import BooleanState
-from gibson2.objects.particles import Dust, Stain
+from igibson.object_states import AABB
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.object_states.object_state_base import BooleanState
+from igibson.objects.particles import Dust, Stain
 
 CLEAN_THRESHOLD = 0.5
 FLOOR_CLEAN_THRESHOLD = 0.75

@@ -1,15 +1,15 @@
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.simulator import Simulator
-from gibson2.scenes.gibson_indoor_scene import StaticIndoorScene
-from gibson2.utils.utils import parse_config
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.simulator import Simulator
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.utils.utils import parse_config
 import time
 import os
-import gibson2
+import igibson
 import matplotlib.pyplot as plt
 
 
 def benchmark(render_to_tensor=False, resolution=512):
-    config = parse_config(os.path.join(gibson2.root_path, 'test', 'test.yaml'))
+    config = parse_config(os.path.join(igibson.root_path, 'test', 'test.yaml'))
     s = Simulator(mode='headless', image_width=resolution, image_height=resolution, render_to_tensor=render_to_tensor)
     scene = StaticIndoorScene('Rs',
                               build_graph=True,

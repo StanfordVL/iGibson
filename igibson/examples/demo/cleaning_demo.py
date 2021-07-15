@@ -1,8 +1,8 @@
-from gibson2 import object_states
-from gibson2.object_states.factory import prepare_object_states
-from gibson2.objects.ycb_object import YCBObject
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.simulator import Simulator
+from igibson import object_states
+from igibson.object_states.factory import prepare_object_states
+from igibson.objects.ycb_object import YCBObject
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 
 def main():

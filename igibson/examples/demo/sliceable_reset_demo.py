@@ -3,12 +3,12 @@ import os
 import numpy as np
 import pybullet as p
 
-from gibson2 import object_states
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.simulator import Simulator
-from gibson2.utils.assets_utils import get_ig_model_path
-from gibson2.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson import object_states
+from igibson.objects.articulated_object import URDFObject
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import get_ig_model_path
+from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 
 from IPython import embed
 

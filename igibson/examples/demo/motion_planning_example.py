@@ -1,6 +1,6 @@
-from gibson2.envs.igibson_env import iGibsonEnv
-from gibson2.utils.motion_planning_wrapper import MotionPlanningWrapper
-import gibson2
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
+import igibson
 import argparse
 import numpy as np
 import os
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--config',
         '-c',
-        default=os.path.join(gibson2.example_config_path, 'fetch_motion_planning.yaml'),
+        default=os.path.join(igibson.example_config_path, 'fetch_motion_planning.yaml'),
         help='which config file to use [default: use yaml files in examples/configs]')
     parser.add_argument('--mode',
         '-m',

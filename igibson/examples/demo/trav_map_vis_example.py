@@ -1,11 +1,11 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 import cv2
-import gibson2
+import igibson
 from PIL import Image
 import numpy as np
 import os
-from gibson2.utils.assets_utils import get_scene_path
+from igibson.utils.assets_utils import get_scene_path
 
 
 def main():

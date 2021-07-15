@@ -1,7 +1,7 @@
 import tempfile
 import bddl
-from gibson2.examples.behavior import behavior_demo_collection, behavior_demo_replay
-import gibson2
+from igibson.examples.behavior import behavior_demo_collection, behavior_demo_replay
+import igibson
 import os
 
 bddl.set_backend("iGibson")
@@ -22,7 +22,7 @@ def test_determinism_with_new_demo():
 
 
 def test_determinism_with_existing_vr_demo():
-    DEMO_FILE = os.path.join(gibson2.ig_dataset_path, 'tests',
+    DEMO_FILE = os.path.join(igibson.ig_dataset_path, 'tests',
                              'cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5')
 
     with tempfile.TemporaryDirectory() as directory:

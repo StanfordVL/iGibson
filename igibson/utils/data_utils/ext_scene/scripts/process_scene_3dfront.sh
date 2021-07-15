@@ -3,7 +3,7 @@
 BASEDIR=$(dirname "$0")
 cd $BASEDIR
 
-THREEDFRONT_DIR=$(python -c "import gibson2; print(gibson2.threedfront_dataset_path)" | tail -1)
+THREEDFRONT_DIR=$(python -c "import igibson; print(igibson.threedfront_dataset_path)" | tail -1)
 JSON_PATH=$1
 
 python step_1_preprocess_3dfront.py --model_path $JSON_PATH

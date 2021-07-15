@@ -1,12 +1,12 @@
-import gibson2
+import igibson
 import numpy as np
 import os
 import json
 import random
 import math
 import uuid
-from gibson2.object_states.factory import TEXTURE_CHANGE_PRIORITY
-import gibson2
+from igibson.object_states.factory import TEXTURE_CHANGE_PRIORITY
+import igibson
 
 class Material(object):
     """
@@ -127,7 +127,7 @@ class ProceduralMaterial(Material):
         self.states.append(state)
 
     def lookup_or_create_transformed_texture(self):
-        save_path = os.path.join(gibson2.ig_dataset_path, 'tmp')
+        save_path = os.path.join(igibson.ig_dataset_path, 'tmp')
         os.makedirs(save_path, exist_ok=True)
 
         has_encrypted_texture = os.path.exists(os.path.join(
@@ -279,7 +279,7 @@ class RandomizedMaterial(Material):
 
         :return material_files: a dict that maps material_class to material files
         """
-        material_dir = os.path.join(gibson2.ig_dataset_path, 'materials')
+        material_dir = os.path.join(igibson.ig_dataset_path, 'materials')
         material_json_file = os.path.join(material_dir, 'materials.json')
         assert os.path.isfile(material_json_file), \
             'cannot find material files: {}'.format(material_json_file)
@@ -292,7 +292,7 @@ class RandomizedMaterial(Material):
             assert material_class in all_materials, \
                 'unknown material class: {}'.format(material_class)
 
-            # append gibson2.ig_dataset_path/materials to the beginning
+            # append igibson.ig_dataset_path/materials to the beginning
             for material_instance in all_materials[material_class]:
                 for key in all_materials[material_class][material_instance]:
                     value = all_materials[material_class][material_instance][key]

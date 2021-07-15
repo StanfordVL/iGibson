@@ -1,6 +1,6 @@
 import math
 
-from gibson2.objects.stateful_object import StatefulObject
+from igibson.objects.stateful_object import StatefulObject
 import pybullet as p
 
 

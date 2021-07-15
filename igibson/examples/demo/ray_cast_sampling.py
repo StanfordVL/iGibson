@@ -3,13 +3,13 @@ import os
 import numpy as np
 import pdb
 
-import gibson2
-from gibson2 import object_states
-from gibson2.objects.articulated_object import ArticulatedObject
-from gibson2.objects.articulated_object import URDFObject
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.simulator import Simulator
-from gibson2.utils.assets_utils import download_assets
+import igibson
+from igibson import object_states
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.articulated_object import URDFObject
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.assets_utils import download_assets
 from IPython import embed
 download_assets()
 
@@ -31,17 +31,17 @@ def main():
 
 def sample_microwave_plates_apples(simulator):
     cabinet_filename = os.path.join(
-        gibson2.assets_path, 'models/cabinet2/cabinet_0007.urdf')
+        igibson.assets_path, 'models/cabinet2/cabinet_0007.urdf')
 
     microwave_dir = os.path.join(
-        gibson2.ig_dataset_path, 'objects/microwave/7128/')
+        igibson.ig_dataset_path, 'objects/microwave/7128/')
     microwave_filename = os.path.join(microwave_dir, '7128.urdf')
 
-    plate_dir = os.path.join(gibson2.ig_dataset_path,
+    plate_dir = os.path.join(igibson.ig_dataset_path,
                              'objects/plate/plate_000/')
     plate_filename = os.path.join(plate_dir, 'plate_000.urdf')
 
-    apple_dir = os.path.join(gibson2.ig_dataset_path, 'objects/apple/00_0/')
+    apple_dir = os.path.join(igibson.ig_dataset_path, 'objects/apple/00_0/')
     apple_filename = os.path.join(apple_dir, '00_0.urdf')
 
     cabinet = URDFObject(filename=cabinet_filename,
@@ -91,13 +91,13 @@ def sample_microwave_plates_apples(simulator):
 
 
 def sample_boxes_on_shelf(simulator):
-    shelf_dir = os.path.join(gibson2.ig_dataset_path,
+    shelf_dir = os.path.join(igibson.ig_dataset_path,
                              'objects/shelf/1170df5b9512c1d92f6bce2b7e6c12b7/')
     shelf_filename = os.path.join(
         shelf_dir, '1170df5b9512c1d92f6bce2b7e6c12b7.urdf')
 
     cracker_box_dir = os.path.join(
-        gibson2.ig_dataset_path, 'objects/cracker_box/cracker_box_000/')
+        igibson.ig_dataset_path, 'objects/cracker_box/cracker_box_000/')
     cracker_box_filename = os.path.join(
         cracker_box_dir, 'cracker_box_000.urdf')
 

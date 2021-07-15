@@ -9,8 +9,8 @@ import numpy as np
 from PIL import Image
 from future.utils import with_metaclass
 
-from gibson2.scenes.scene_base import Scene
-from gibson2.utils.utils import l2_distance
+from igibson.scenes.scene_base import Scene
+from igibson.utils.utils import l2_distance
 
 
 class IndoorScene(with_metaclass(ABCMeta, Scene)):

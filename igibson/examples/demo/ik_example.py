@@ -1,18 +1,18 @@
-from gibson2.robots.fetch_robot import Fetch
-from gibson2.simulator import Simulator
-from gibson2.scenes.empty_scene import EmptyScene
-from gibson2.utils.utils import parse_config
-from gibson2.render.profiler import Profiler
+from igibson.robots.fetch_robot import Fetch
+from igibson.simulator import Simulator
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.utils.utils import parse_config
+from igibson.render.profiler import Profiler
 
 import pybullet as p
-from gibson2.external.pybullet_tools.utils import set_joint_positions, joints_from_names, get_joint_positions, \
+from igibson.external.pybullet_tools.utils import set_joint_positions, joints_from_names, get_joint_positions, \
     get_max_limits, get_min_limits, get_sample_fn
 
 import numpy as np
-import gibson2
+import igibson
 
 def main():
-    config = parse_config(os.path.join(gibson2.example_config_path, 'fetch_reaching.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'fetch_reaching.yaml'))
     s = Simulator(mode='gui', physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)

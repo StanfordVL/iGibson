@@ -1,4 +1,4 @@
-from gibson2.termination_conditions.termination_condition_base import BaseTerminationCondition
+from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
 
 
 class MaxCollision(BaseTerminationCondition):

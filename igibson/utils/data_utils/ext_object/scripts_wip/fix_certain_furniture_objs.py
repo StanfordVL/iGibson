@@ -5,7 +5,7 @@ from IPython import embed
 import shutil
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
-import gibson2
+import igibson
 
 fixed_categories = frozenset([
     'bottom_cabinet',
@@ -22,7 +22,7 @@ fixed_categories = frozenset([
     'gaming_table'
 ])
 
-scene_root_dir = os.path.join(gibson2.ig_dataset_path, 'scenes')
+scene_root_dir = os.path.join(igibson.ig_dataset_path, 'scenes')
 for scene_id in os.listdir(scene_root_dir):
     # if 'Rs_int' not in scene_id:
     #     continue

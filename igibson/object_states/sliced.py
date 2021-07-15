@@ -1,7 +1,7 @@
-from gibson2.object_states.max_temperature import MaxTemperature
-from gibson2.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from gibson2.object_states import *
-import gibson2
+from igibson.object_states.max_temperature import MaxTemperature
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
+from igibson.object_states import *
+import igibson
 import pybullet as p
 
 # TODO: propagate dusty/stained to object parts

@@ -1,7 +1,7 @@
 import random
 
-from gibson2.external.pybullet_tools import utils
-from gibson2.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.external.pybullet_tools import utils
+from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
 import pybullet as p
 
 # Joint position threshold before a joint is considered open.

@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 import bddl
-from gibson2.examples.behavior.behavior_demo_replay import replay_demo
+from igibson.examples.behavior.behavior_demo_replay import replay_demo
 
 
 def behavior_demo_batch(demo_root, log_manifest, out_dir, get_callbacks_callback,

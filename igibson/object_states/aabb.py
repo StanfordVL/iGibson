@@ -1,5 +1,5 @@
-from gibson2.object_states.object_state_base import CachingEnabledObjectState
-from gibson2.external.pybullet_tools.utils import aabb_union, get_aabb, get_all_links
+from igibson.object_states.object_state_base import CachingEnabledObjectState
+from igibson.external.pybullet_tools.utils import aabb_union, get_aabb, get_all_links
 import numpy as np
 import pybullet as p
 

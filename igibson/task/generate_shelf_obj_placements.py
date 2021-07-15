@@ -19,7 +19,7 @@ import time
 
 import pickle
 from PIL import Image
-import gibson2
+import igibson
 from sim import *
 
 def generate_shelf_placements(objects_path,
