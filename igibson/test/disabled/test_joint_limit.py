@@ -6,8 +6,7 @@ import pybullet as p
 from PIL import Image
 from transforms3d.euler import euler2quat
 
-from igibson.external.pybullet_tools.utils import get_center_extent
-from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.external.pybullet_tools.utils import get_center_extent, stable_z_on_aabb
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.simulator import Simulator
 from igibson.utils.utils import quatToXYZW

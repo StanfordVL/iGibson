@@ -12,22 +12,13 @@ import igibson.render.mesh_renderer as mesh_renderer
 from igibson.render.mesh_renderer import tinyobjloader
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
 from igibson.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
-from igibson.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
+from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.render.mesh_renderer.text import TextManager, Text
+from igibson.render.mesh_renderer.text import Text, TextManager
 from igibson.render.mesh_renderer.visual_object import VisualObject
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.utils.constants import AVAILABLE_MODALITIES, ShadowPass
-from igibson.utils.mesh_util import (
-    perspective,
-    lookat,
-    xyz2mat,
-    quat2rotmat,
-    mat2xyz,
-    safemat2quat,
-    xyzw2wxyz,
-    ortho,
-)
+from igibson.utils.mesh_util import lookat, mat2xyz, ortho, perspective, quat2rotmat, safemat2quat, xyz2mat, xyzw2wxyz
 
 Image.MAX_IMAGE_PIXELS = None
 

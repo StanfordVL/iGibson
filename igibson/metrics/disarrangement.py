@@ -3,8 +3,8 @@ import copy
 import numpy as np
 
 from igibson.metrics.metric_base import MetricBase
-from igibson.object_states import Pose, OnFloor, Inside, Under, OnTop, Touching, NextTo
-from igibson.object_states.object_state_base import BooleanState, AbsoluteObjectState
+from igibson.object_states import Inside, NextTo, OnFloor, OnTop, Pose, Touching, Under
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.multi_object_wrappers import ObjectMultiplexer
 

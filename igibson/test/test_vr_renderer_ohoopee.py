@@ -1,9 +1,8 @@
 import time
 
+from igibson import dataset_path
 from igibson.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.core.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR
-
-from igibson import dataset_path
 
 renderer = MeshRendererVR(MeshRenderer, msaa=True)
 # Note that it is necessary to load the full path of an object!

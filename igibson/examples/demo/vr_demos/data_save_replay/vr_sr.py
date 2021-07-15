@@ -26,7 +26,7 @@ from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.ig_logging import IGLogWriter, IGLogReader
+from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 
 # Number of frames to save
 FRAMES_TO_SAVE = 600

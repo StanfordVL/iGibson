@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 import trimesh
 
-from igibson.utils.utils import get_transform_from_xyz_rpy, get_rpy_from_transform
+from igibson.utils.utils import get_rpy_from_transform, get_transform_from_xyz_rpy
 
 
 def get_aabb_urdf(tree):

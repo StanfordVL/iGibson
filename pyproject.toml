@@ -7,7 +7,7 @@ extend-exclude = 'igibson/(data|external|render/(cpp|cryptopp|glad|glfw|glm|open
 [tool.isort]
 profile = "black"
 line_length = 120
-skip_gitignore = true
+py_version = 'all'
 extend_skip = [
     'igibson/data',
     'igibson/external',

@@ -2,13 +2,12 @@ import argparse
 import json
 from collections import defaultdict
 
+import utils.earcut as earcut
 from shapely.geometry import Polygon as shape_poly
 from shapely.ops import cascaded_union
-
-import utils.earcut as earcut
-from utils.Wall_bbox import Wall_bbox
-from utils.scene_urdf import gen_scene_urdf, gen_orig_urdf
+from utils.scene_urdf import gen_orig_urdf, gen_scene_urdf
 from utils.utils import *
+from utils.Wall_bbox import Wall_bbox
 
 parser = argparse.ArgumentParser("Generate mesh based on labelImg annotation...")
 

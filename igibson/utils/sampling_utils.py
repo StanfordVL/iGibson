@@ -1,5 +1,5 @@
 import itertools
-from collections import defaultdict, Counter
+from collections import Counter, defaultdict
 
 import numpy as np
 import pybullet as p

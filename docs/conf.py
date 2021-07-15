@@ -17,11 +17,13 @@
 
 # -- Project information -----------------------------------------------------
 
+import os
+import sys
+
 import sphinx_rtd_theme
 from recommonmark.parser import CommonMarkParser
-import sys, os
-import igibson
 
+import igibson
 
 project = "iGibson"
 copyright = "Stanford University 2018-2021"

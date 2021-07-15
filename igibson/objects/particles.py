@@ -6,10 +6,10 @@ import pybullet as p
 
 import igibson
 from igibson.external.pybullet_tools import utils
-from igibson.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
+from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
 from igibson.objects.object_base import Object
 from igibson.utils import sampling_utils
-from igibson.utils.constants import SemanticClass, PyBulletSleepState
+from igibson.utils.constants import PyBulletSleepState, SemanticClass
 
 _STASH_POSITION = [0, 0, -100]
 

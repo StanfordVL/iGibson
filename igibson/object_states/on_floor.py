@@ -5,8 +5,7 @@ import igibson
 from igibson.object_states.kinematics import KinematicsMixin
 from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
 from igibson.object_states.touching import Touching
-from igibson.object_states.utils import sample_kinematics, get_center_extent, clear_cached_states
-
+from igibson.object_states.utils import clear_cached_states, get_center_extent, sample_kinematics
 
 # TODO: remove after split floors
 

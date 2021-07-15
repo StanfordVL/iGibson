@@ -3,7 +3,7 @@ import random
 import pybullet as p
 
 from igibson.external.pybullet_tools import utils
-from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.object_states.object_state_base import BooleanState, CachingEnabledObjectState
 
 # Joint position threshold before a joint is considered open.
 # Should be a number in the range [0, 1] which will be transformed

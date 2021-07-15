@@ -10,10 +10,10 @@ import os.path
 import cv2
 import numpy as np
 import torch
+from numpy.linalg import inv
 
 # import torch.utils.data as data
 from PIL import Image
-from numpy.linalg import inv
 
 IMG_EXTENSIONS = [
     ".jpg",

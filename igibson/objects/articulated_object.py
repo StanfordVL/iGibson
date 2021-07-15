@@ -13,17 +13,21 @@ import pybullet as p
 import trimesh
 
 import igibson
-from igibson.external.pybullet_tools.utils import link_from_name, get_joint_info, get_joints, set_joint_position
-from igibson.external.pybullet_tools.utils import matrix_from_quat, quat_from_matrix
+from igibson.external.pybullet_tools.utils import (
+    get_joint_info,
+    get_joints,
+    link_from_name,
+    matrix_from_quat,
+    quat_from_matrix,
+    set_joint_position,
+)
 from igibson.object_states.factory import prepare_object_states
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.object_states.utils import clear_cached_states
 from igibson.objects.stateful_object import StatefulObject
-from igibson.render.mesh_renderer.materials import ProceduralMaterial
-from igibson.render.mesh_renderer.materials import RandomizedMaterial
-from igibson.utils.urdf_utils import save_urdfs_without_floating_joints, round_up, get_base_link_name, add_fixed_link
-from igibson.utils.utils import get_transform_from_xyz_rpy
-from igibson.utils.utils import quatXYZWFromRotMat, rotate_vector_3d
+from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
+from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
+from igibson.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_3d
 
 # Optionally import bddl for object taxonomy.
 try:

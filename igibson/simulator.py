@@ -11,27 +11,27 @@ import pybullet as p
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
-from igibson.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
+from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.objects.object_base import Object
-from igibson.objects.particles import ParticleSystem, Particle
+from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.stateful_object import StatefulObject
 from igibson.objects.visual_marker import VisualMarker
 from igibson.objects.visual_shape import VisualShape
-from igibson.render.mesh_renderer.instances import InstanceGroup, Instance
+from igibson.render.mesh_renderer.instances import Instance, InstanceGroup
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
-from igibson.render.viewer import Viewer, ViewerVR, ViewerSimple
+from igibson.render.viewer import Viewer, ViewerSimple, ViewerVR
 from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs
-from igibson.utils.constants import SemanticClass, PyBulletSleepState
-from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz, xyz2mat
+from igibson.utils.constants import PyBulletSleepState, SemanticClass
+from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
 from igibson.utils.semantics_utils import get_class_name_to_class_id
 from igibson.utils.utils import quatXYZWFromRotMat
-from igibson.utils.vr_utils import VrData, VR_CONTROLLERS, VR_DEVICES, calc_offset, calc_z_rot_from_right
+from igibson.utils.vr_utils import VR_CONTROLLERS, VR_DEVICES, VrData, calc_offset, calc_z_rot_from_right
 
 
 class Simulator:
