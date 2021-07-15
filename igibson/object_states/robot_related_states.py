@@ -1,8 +1,8 @@
 import numpy as np
 
-from igibson.object_states.room_states import InsideRoomTypes
-from igibson.object_states.pose import Pose
 from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.object_states.pose import Pose
+from igibson.object_states.room_states import InsideRoomTypes
 from igibson.utils.constants import MAX_INSTANCE_COUNT
 
 _IN_REACH_DISTANCE_THRESHOLD = 2.0

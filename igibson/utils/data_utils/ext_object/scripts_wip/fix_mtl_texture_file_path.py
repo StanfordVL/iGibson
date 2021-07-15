@@ -1,5 +1,5 @@
-import os
 import argparse
+import os
 
 DIRECT_QUERY_SUB = {
     "scale": "mechanical_kitchen_scale",

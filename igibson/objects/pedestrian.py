@@ -1,7 +1,9 @@
 import os
+
+import pybullet as p
+
 import igibson
 from igibson.objects.stateful_object import StatefulObject
-import pybullet as p
 
 
 class Pedestrian(StatefulObject):

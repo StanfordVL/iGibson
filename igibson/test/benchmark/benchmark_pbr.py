@@ -1,10 +1,12 @@
-import numpy as np
+import os
+import sys
 import time
+
+import cv2
+import numpy as np
+
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import sys
-import os
-import cv2
 
 
 def benchmark(render_to_tensor=False, resolution=512, obj_num=100, optimized=True):

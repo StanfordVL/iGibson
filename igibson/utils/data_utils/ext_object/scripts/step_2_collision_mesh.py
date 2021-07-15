@@ -1,11 +1,10 @@
-import os
-import sys
-import subprocess
 import argparse
+import os
+import shutil
+import subprocess
+import sys
 import threading
 import xml.etree.ElementTree as ET
-import shutil
-
 
 NUM_THREADS = 32
 parser = argparse.ArgumentParser("gen all vhacd")

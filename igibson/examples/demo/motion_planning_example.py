@@ -1,9 +1,11 @@
+import argparse
+import os
+
+import numpy as np
+
+import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
-import igibson
-import argparse
-import numpy as np
-import os
 
 
 def run_example(args):

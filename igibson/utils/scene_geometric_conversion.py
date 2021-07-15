@@ -1,10 +1,12 @@
-import xml.etree.ElementTree as ET
-import json
 import glob
-import igibson
+import json
 import os
+import xml.etree.ElementTree as ET
+
 import numpy as np
 from PIL import Image
+
+import igibson
 
 if __name__ == "__main__":
     object_categories = glob.glob(os.path.join(igibson.ig_dataset_path, "objects/*"))

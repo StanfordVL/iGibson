@@ -1,5 +1,6 @@
-import subprocess
 import os
+import subprocess
+
 import bddl
 
 selected_tasks = [

@@ -1,9 +1,9 @@
-from igibson.envs.igibson_env import iGibsonEnv
-from time import time
-import igibson
-import os
-from igibson.render.profiler import Profiler
 import logging
+import os
+
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.render.profiler import Profiler
 
 
 def main():

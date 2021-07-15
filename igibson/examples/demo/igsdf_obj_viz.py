@@ -1,18 +1,17 @@
-import cv2
-import sys
 import os
+import subprocess
+import sys
+
 import numpy as np
-from igibson.simulator import Simulator
-from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.render.profiler import Profiler
+from PIL import Image
+
+import igibson
 
 # from igibson.utils.assets_utils import get_model_path
 from igibson.objects.articulated_object import ArticulatedObject
-import igibson
-from PIL import Image
-import pybullet as p
-import subprocess
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
+from igibson.simulator import Simulator
 
 
 def load_obj_np(

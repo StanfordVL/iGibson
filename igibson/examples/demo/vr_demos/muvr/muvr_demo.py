@@ -4,21 +4,20 @@ Usage: python muvr_demo.py --mode=[server or client] --host=[localhost or ip add
 """
 
 import argparse
-import numpy as np
 import os
-import pybullet as p
 import time
-from time import sleep
+
+import numpy as np
+import pybullet as p
 
 import igibson
+from igibson import assets_path
+from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.objects.articulated_object import ArticulatedObject
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.objects.ycb_object import YCBObject
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson import assets_path
 from igibson.utils.muvr_utils import IGVRClient, IGVRServer
 
 sample_urdf_folder = os.path.join(assets_path, "models", "sample_urdfs")

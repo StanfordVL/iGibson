@@ -1,8 +1,8 @@
-from igibson.task.task_base import iGBEHAVIORActivityInstance
-from IPython import embed
-from igibson.simulator import Simulator
-
 import bddl
+from IPython import embed
+
+from igibson.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 bddl.set_backend("iGibson")
 

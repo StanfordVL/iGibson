@@ -1,16 +1,12 @@
 import logging
-import pickle
-import networkx as nx
-import cv2
-from PIL import Image
-import numpy as np
-from igibson.objects.articulated_object import ArticulatedObject, URDFObject
-from igibson.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
-from igibson.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
-import pybullet_data
-import pybullet as p
 import os
+
+import numpy as np
+import pybullet as p
+import pybullet_data
+
 from igibson.scenes.indoor_scene import IndoorScene
+from igibson.utils.assets_utils import get_scene_path, get_texture_file
 
 
 class StaticIndoorScene(IndoorScene):

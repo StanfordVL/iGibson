@@ -1,4 +1,5 @@
 import numpy as np
+
 from igibson.object_states.aabb import AABB
 from igibson.object_states.adjacency import HorizontalAdjacency, flatten_planes
 from igibson.object_states.kinematics import KinematicsMixin

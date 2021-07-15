@@ -1,7 +1,9 @@
 """This module contains vr utility functions and classes."""
 
-import numpy as np
 import time
+
+import numpy as np
+
 from igibson.utils.utils import normalizeListVec
 
 # List of all VR button idx/press combos, which will be used to form a compact binary representation

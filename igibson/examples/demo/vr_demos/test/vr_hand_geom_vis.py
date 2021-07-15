@@ -2,10 +2,12 @@
 Simple script to visualize the collision mesh of the VR hand in Pybullet
 """
 
-from igibson import assets_path
 import os
-import pybullet as p
 import time
+
+import pybullet as p
+
+from igibson import assets_path
 
 p.connect(p.GUI)
 

@@ -1,7 +1,9 @@
-import gym
 import numpy as np
 import os
+
+import numpy as np
 import pybullet as p
+from igibson.objects.vr_objects import VrGazeMarker
 
 from igibson import assets_path
 from igibson.external.pybullet_tools.utils import (
@@ -12,10 +14,9 @@ from igibson.external.pybullet_tools.utils import (
     get_min_limits,
 )
 from igibson.objects.visual_marker import VisualMarker
-from igibson.objects.vr_objects import VrGazeMarker
 from igibson.robots.fetch_robot import Fetch
 from igibson.robots.robot_locomotor import LocomotorRobot
-from igibson.utils.utils import l2_distance, parse_config
+from igibson.utils.utils import parse_config
 from igibson.utils.vr_utils import calc_z_dropoff
 
 

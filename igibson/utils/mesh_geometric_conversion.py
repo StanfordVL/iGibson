@@ -1,9 +1,11 @@
-import xml.etree.ElementTree as ET
-import json
 import glob
-import igibson
+import json
 import os
+import xml.etree.ElementTree as ET
+
 import numpy as np
+
+import igibson
 from igibson.utils.utils import get_rpy_from_transform
 
 

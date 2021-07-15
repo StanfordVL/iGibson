@@ -1,16 +1,14 @@
-from material_util import clean_nodes, build_pbr_textured_nodes_from_name, create_empty_image
-from os import close, dup, O_WRONLY
-import json
-from collections import defaultdict
-from mathutils import *
-from math import *
-import bpy
+import getpass
+import glob
 import os
 import sys
-import glob
 import tempfile
-import getpass
-import xml.etree.ElementTree as ET
+from math import *
+
+import bpy
+from mathutils import *
+
+from material_util import clean_nodes, build_pbr_textured_nodes_from_name, create_empty_image
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 

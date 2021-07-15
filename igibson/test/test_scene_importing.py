@@ -1,12 +1,12 @@
-from igibson.simulator import Simulator
-from igibson.scenes.stadium_scene import StadiumScene
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.utils.utils import parse_config
 import os
-import igibson
 
+import igibson
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.utils import parse_config
 
 
 def test_import_building():

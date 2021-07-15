@@ -3,9 +3,9 @@ from igibson.object_states.aabb import AABB
 from igibson.object_states.contact_bodies import ContactBodies
 from igibson.object_states.dirty import Dusty, Stained
 from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
+from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.soaked import Soaked
 from igibson.object_states.toggle import ToggledOn
-from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.objects.particles import Stain, Dust
 
 _LINK_NAME = "cleaning_tool_area"

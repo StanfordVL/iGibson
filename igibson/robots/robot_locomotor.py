@@ -1,8 +1,9 @@
-from igibson.robots.robot_base import BaseRobot
-from igibson.utils.utils import rotate_vector_3d
 import numpy as np
 from transforms3d.euler import euler2quat
 from transforms3d.quaternions import quat2mat, qmult
+
+from igibson.robots.robot_base import BaseRobot
+from igibson.utils.utils import rotate_vector_3d
 
 
 class LocomotorRobot(BaseRobot):

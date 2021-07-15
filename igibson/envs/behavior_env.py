@@ -1,18 +1,18 @@
-from bddl.condition_evaluation import evaluate_state
-from igibson.envs.igibson_env import iGibsonEnv
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 import argparse
-import numpy as np
+import datetime
+import os
 import time
+from collections import OrderedDict
+
 import bddl
 import gym.spaces
-import pybullet as p
-import os
+import numpy as np
+from bddl.condition_evaluation import evaluate_state
 
-from collections import OrderedDict
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
-import datetime
 
 
 class BehaviorEnv(iGibsonEnv):

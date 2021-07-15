@@ -1,9 +1,6 @@
-import os
-import glob
-import random
-import subprocess
 import argparse
 import json
+import os
 
 use_mat = "mtllib {}.mtl\nusemtl default\n"
 wall_default = """newmtl default

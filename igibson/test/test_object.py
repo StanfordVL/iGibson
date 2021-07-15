@@ -1,13 +1,14 @@
-from igibson.simulator import Simulator
-from igibson.scenes.stadium_scene import StadiumScene
+import os
+
+import igibson
+from igibson.objects.articulated_object import RBOObject, ArticulatedObject
 from igibson.objects.cube import Cube
 from igibson.objects.ycb_object import YCBObject
-from igibson.objects.articulated_object import RBOObject, ArticulatedObject
 from igibson.robots.turtlebot_robot import Turtlebot
-import igibson
-import os
-from igibson.utils.utils import parse_config
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets
+from igibson.utils.utils import parse_config
 
 download_assets()
 

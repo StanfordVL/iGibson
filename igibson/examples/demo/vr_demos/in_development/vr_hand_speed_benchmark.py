@@ -7,20 +7,19 @@ as well as show/hide its display. The "overlay toggle" action and its
 corresponding button index mapping can be found in the vr_config.yaml file in the igibson folder.
 """
 import os
+
 import pybullet as p
 import pybullet_data
-import time
 
 import igibson
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.objects.articulated_object import ArticulatedObject
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.objects.ycb_object import YCBObject
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.vr_utils import VrTimer
-from igibson import assets_path
 
 # Set to true to use viewer manipulation instead of VR
 # Set to false by default so this benchmark task can be performed in VR

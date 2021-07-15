@@ -1,6 +1,7 @@
-import bpy
 import os
 import sys
+
+import bpy
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 utils_dir = os.path.join(script_dir, "../../blender_utils")

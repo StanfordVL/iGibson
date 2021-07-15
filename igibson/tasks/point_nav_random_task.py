@@ -1,8 +1,10 @@
+import logging
+
+import numpy as np
+import pybullet as p
+
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.utils.utils import l2_distance
-import pybullet as p
-import logging
-import numpy as np
 
 
 class PointNavRandomTask(PointNavFixedTask):

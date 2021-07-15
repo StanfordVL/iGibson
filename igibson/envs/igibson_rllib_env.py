@@ -9,23 +9,19 @@ This example requires ray to be installed with rllib support, and pytorch to be 
 Note: rllib only supports a single observation modality:
 """
 import argparse
-
-from igibson.envs.igibson_env import iGibsonEnv
-
 import os
 
-from ray import tune
-from ray.rllib.models import ModelCatalog
-from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
-from ray.rllib.models.torch.fcnet import FullyConnectedNetwork as TorchFC
-from ray.tune.registry import register_env
 import ray
 import torch
 import torch.nn as nn
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from ray import tune
+from ray.rllib.models import ModelCatalog
+from ray.rllib.models.torch.torch_modelv2 import TorchModelV2
+from ray.tune.registry import register_env
+
 import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 
 # ray.init(local_mode=True)
 ray.init()

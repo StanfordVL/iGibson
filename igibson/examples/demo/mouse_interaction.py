@@ -1,18 +1,18 @@
 #!/usr/bin/env python
-import os
-import sys
-import time
-import random
-import igibson
 import argparse
+import os
+import time
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pybullet as p
-import matplotlib.pyplot as plt
-from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+
+import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_scene_path, get_cubicasa_scene_path, get_3dfront_scene_path
+
 
 # human interaction demo
 

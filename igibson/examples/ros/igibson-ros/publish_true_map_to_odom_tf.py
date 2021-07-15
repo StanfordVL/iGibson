@@ -9,13 +9,15 @@
 # Author: Marynel Vazquez (marynelv@stanford.edu)
 # Creation Date: 12/29/17
 
-import os
-import rospy
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped, PoseWithCovarianceStamped
-import tf, tf2_ros
-from visualization_msgs.msg import Marker, MarkerArray
 import copy
+
+import rospy
+import tf
+import tf2_ros
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from nav_msgs.msg import Odometry
+from visualization_msgs.msg import Marker
+
 
 # hacky matrix inverse because BLAS has an issue that makes it use all GPUs!!
 # see bug here:

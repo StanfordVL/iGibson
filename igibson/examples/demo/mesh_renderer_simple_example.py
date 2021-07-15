@@ -1,7 +1,9 @@
-import cv2
-import sys
 import os
+import sys
+
+import cv2
 import numpy as np
+
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.utils.assets_utils import get_scene_path
 

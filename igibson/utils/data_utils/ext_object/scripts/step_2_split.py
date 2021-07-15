@@ -1,12 +1,7 @@
-import bpy
-import glob
 import os
-from typing import Tuple
 import sys
-import math
-import json
-import random
-import numpy as np
+
+import bpy
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 utils_dir = os.path.join(script_dir, "../../blender_utils")

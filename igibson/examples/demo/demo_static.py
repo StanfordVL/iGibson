@@ -1,10 +1,11 @@
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.simulator import Simulator
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.utils.utils import parse_config
 import os
+
 import igibson
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.utils import parse_config
 
 
 class DemoStatic(object):

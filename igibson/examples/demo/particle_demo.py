@@ -1,14 +1,12 @@
-import numpy as np
 import os
 
-import igibson
+import numpy as np
+
 from igibson import object_states
-from igibson.simulator import Simulator
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.objects.ycb_object import YCBObject
 from igibson.objects.articulated_object import URDFObject
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_model_path
-from igibson.object_states.factory import prepare_object_states
 
 
 def main():

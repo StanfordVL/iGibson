@@ -1,6 +1,4 @@
 import pybullet as p
-import os
-import igibson
 
 
 class Object(object):

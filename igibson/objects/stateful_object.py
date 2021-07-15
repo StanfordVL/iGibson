@@ -1,7 +1,7 @@
+from igibson.object_states.factory import prepare_object_states, get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.utils import clear_cached_states
 from igibson.objects.object_base import Object
-from igibson.object_states.factory import prepare_object_states, get_state_name, get_state_from_name
 
 
 class StatefulObject(Object):

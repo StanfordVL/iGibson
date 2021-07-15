@@ -1,12 +1,14 @@
+import os
+
+import numpy as np
+
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.utils.assets_utils import download_assets, download_demo_data
 from igibson.sensors.scan_sensor import ScanSensor
-from igibson.sensors.vision_sensor import VisionSensor
 from igibson.sensors.velodyne_sensor import VelodyneSensor
-import numpy as np
-import os
-from igibson.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
+from igibson.sensors.vision_sensor import VisionSensor
+from igibson.utils.assets_utils import download_assets, download_demo_data
+from igibson.utils.constants import MAX_CLASS_COUNT
 
 
 def test_vision_sensor():

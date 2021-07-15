@@ -1,15 +1,16 @@
-import os
-import numpy as np
-import yaml
 import collections
-from scipy.spatial.transform import Rotation as R
-from transforms3d import quaternions
-from packaging import version
-from PIL import Image
+import os
+
+import numpy as np
 
 # The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
 # We will use the version number for backcompatibility
 import scipy
+import yaml
+from PIL import Image
+from packaging import version
+from scipy.spatial.transform import Rotation as R
+from transforms3d import quaternions
 
 scipy_version = version.parse(scipy.version.version)
 

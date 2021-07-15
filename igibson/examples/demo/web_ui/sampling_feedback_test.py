@@ -1,6 +1,6 @@
 import json
+
 import requests
-import sys
 
 PRODUCTION_URL = "http://34.123.89.206:8000"
 TEST_URL = "http://34.123.89.206:5000"

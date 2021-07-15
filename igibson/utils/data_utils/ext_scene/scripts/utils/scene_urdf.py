@@ -1,6 +1,5 @@
-import os
-import subprocess
 import argparse
+import os
 
 parser = argparse.ArgumentParser("Generate URDF for scene structure")
 parser.add_argument("--model_dir", dest="model_dir")

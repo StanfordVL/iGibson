@@ -1,8 +1,10 @@
-import tempfile
-import bddl
-from igibson.examples.behavior import behavior_demo_collection, behavior_demo_replay
-import igibson
 import os
+import tempfile
+
+import bddl
+
+import igibson
+from igibson.examples.behavior import behavior_demo_collection, behavior_demo_replay
 
 bddl.set_backend("iGibson")
 

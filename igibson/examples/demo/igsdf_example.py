@@ -1,8 +1,9 @@
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+import argparse
+
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.profiler import Profiler
-import argparse
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 
 def main():

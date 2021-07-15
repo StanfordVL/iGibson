@@ -1,12 +1,13 @@
-import igibson
-import numpy as np
-import os
 import json
-import random
 import math
+import os
+import random
 import uuid
-from igibson.object_states.factory import TEXTURE_CHANGE_PRIORITY
+
+import numpy as np
+
 import igibson
+from igibson.object_states.factory import TEXTURE_CHANGE_PRIORITY
 
 
 class Material(object):

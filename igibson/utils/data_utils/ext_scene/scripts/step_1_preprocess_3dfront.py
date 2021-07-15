@@ -1,24 +1,19 @@
-import os
-import sys
+import argparse
 import json
 import math
-import argparse
-import matplotlib
+import os
 import subprocess
-import numpy as np
-import matplotlib.pyplot as plt
-from PIL import Image, ImageDraw
 from collections import defaultdict
-from matplotlib.patches import Polygon
-from matplotlib.collections import PatchCollection
-from scipy.spatial import ConvexHull, convex_hull_plot_2d
+
+import matplotlib.pyplot as plt
+from PIL import ImageDraw
+from scipy.spatial import ConvexHull
 from shapely.geometry import Polygon as shape_poly
 
-from utils.utils import *
-from utils.semantics import *
-from utils.scene_urdf import gen_scene_urdf, gen_orig_urdf, gen_orig_urdf_with_cabinet
-
 import igibson
+from utils.scene_urdf import gen_scene_urdf, gen_orig_urdf_with_cabinet
+from utils.semantics import *
+from utils.utils import *
 
 parser = argparse.ArgumentParser("Convert 3D-Front...")
 
@@ -36,7 +31,6 @@ def minimum_bounding_rectangle(points):
     :param points: an nx2 matrix of coordinates
     :rval: an nx2 matrix of coordinates
     """
-    from scipy.ndimage.interpolation import rotate
 
     pi2 = np.pi / 2.0
 

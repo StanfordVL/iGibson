@@ -1,6 +1,7 @@
-import igibson
 import pybullet as p
 from IPython import embed
+
+import igibson
 from igibson.object_states.adjacency import VerticalAdjacency
 from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
 from igibson.object_states.object_state_base import BooleanState, RelativeObjectState

@@ -1,19 +1,18 @@
 """ Utility classes and functions needed for the multi-user VR experience. """
 
 
-from collections import defaultdict
 import copy
-import numpy as np
 import time
+from collections import defaultdict
 from time import sleep
 
-from igibson.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
-from igibson.utils.vr_utils import calc_offset, VrData
-
+import numpy as np
 from PodSixNet.Channel import Channel
 from PodSixNet.Connection import connection, ConnectionListener
 from PodSixNet.Server import Server
 
+from igibson.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
+from igibson.utils.vr_utils import VrData
 
 # An FPS cap is needed to ensure that the client and server don't fall too far out of sync
 # 30 is a good cap that matches average VR speed and guarantees that the server frame data queue does not become backlogged

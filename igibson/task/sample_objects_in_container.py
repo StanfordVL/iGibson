@@ -2,18 +2,6 @@
 Adapted from Andrey Kurenkov's work
 """
 
-import copy
-import sys
-import os
-import numpy as np
-import argparse
-import random
-import pickle
-from PIL import Image
-
-import pybullet as pb
-import pybullet_data
-import time
 from sim import *
 
 

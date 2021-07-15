@@ -2,20 +2,16 @@
 Credit: Andrey Kurenkov 
 """
 
-import os
 import argparse
-import numpy as np
-import yaml
-import math
-import trimesh
-from pyquaternion import Quaternion
-from transformations import euler_from_matrix
-import pybullet as pb
+import os
 
+import pybullet as pb
+import trimesh
+import yaml
+
+from igibson.objects.articulated_object import ArticulatedObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
-from igibson.objects.articulated_object import ArticulatedObject
-import matplotlib.pyplot as plt
 
 """
 Analyzes a model for heights of surfaces within it.

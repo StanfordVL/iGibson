@@ -1,7 +1,8 @@
-import os
 import json
-from IPython import embed
+import os
+
 import pybullet as p
+from IPython import embed
 
 
 def set_pos_orn(body_id, pos, orn):

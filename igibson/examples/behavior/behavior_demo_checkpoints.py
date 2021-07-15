@@ -2,9 +2,9 @@
 import os
 
 import bddl
+from igibson.examples.demo.vr_demos.atus.behavior_demo_replay import safe_replay_demo
 
 import igibson
-from igibson.examples.demo.vr_demos.atus.behavior_demo_replay import safe_replay_demo
 from igibson.utils.checkpoint_utils import save_checkpoint
 
 bddl.set_backend("iGibson")

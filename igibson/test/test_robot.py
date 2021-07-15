@@ -1,19 +1,21 @@
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.robots.husky_robot import Husky
-from igibson.robots.ant_robot import Ant
-from igibson.robots.humanoid_robot import Humanoid
-from igibson.robots.jr2_robot import JR2
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
-from igibson.robots.quadrotor_robot import Quadrotor
-from igibson.robots.fetch_robot import Fetch
-from igibson.simulator import Simulator
-from igibson.scenes.stadium_scene import StadiumScene
-from igibson.utils.utils import parse_config
-import pybullet as p
-import numpy as np
-import igibson
 import os
+
+import numpy as np
+import pybullet as p
+
+import igibson
+from igibson.robots.ant_robot import Ant
+from igibson.robots.fetch_robot import Fetch
+from igibson.robots.humanoid_robot import Humanoid
+from igibson.robots.husky_robot import Husky
+from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.jr2_robot import JR2
+from igibson.robots.quadrotor_robot import Quadrotor
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets
+from igibson.utils.utils import parse_config
 
 download_assets()
 config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))

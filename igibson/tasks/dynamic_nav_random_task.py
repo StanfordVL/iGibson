@@ -1,7 +1,8 @@
-from igibson.tasks.point_nav_random_task import PointNavRandomTask
-import pybullet as p
-from igibson.robots.turtlebot_robot import Turtlebot
 import numpy as np
+import pybullet as p
+
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
 
 
 class DynamicNavRandomTask(PointNavRandomTask):

@@ -1,10 +1,7 @@
-from igibson.robots.fetch_robot import Fetch
-from igibson.simulator import Simulator
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.utils.utils import parse_config
-from igibson.render.profiler import Profiler
-
+import numpy as np
 import pybullet as p
+
+import igibson
 from igibson.external.pybullet_tools.utils import (
     set_joint_positions,
     joints_from_names,
@@ -13,9 +10,11 @@ from igibson.external.pybullet_tools.utils import (
     get_min_limits,
     get_sample_fn,
 )
-
-import numpy as np
-import igibson
+from igibson.render.profiler import Profiler
+from igibson.robots.fetch_robot import Fetch
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
 
 
 def main():

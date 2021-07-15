@@ -4,11 +4,10 @@
 #####
 
 import math
+
 import numpy as np
-from xml.dom import minidom
 from skimage.draw import polygon
 from svgpathtools import parse_path
-from logging import warning
 
 
 def get_icon(ee):

@@ -3,19 +3,18 @@ Demo to show a sample VR HUD (heads-up-display), constructed using
 VR overlay classes (found in render/mesh_renderer/mesh_renderer_vr.py) and Text (found in render/mesh_renderer/text.py)
 """
 import os
-import pybullet as p
-import pybullet_data
 import time
 
+import pybullet as p
+import pybullet_data
+
 import igibson
-from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.objects.articulated_object import ArticulatedObject
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.objects.ycb_object import YCBObject
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson import assets_path
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
 # transferability to the real world

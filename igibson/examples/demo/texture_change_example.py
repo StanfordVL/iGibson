@@ -1,18 +1,14 @@
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.objects.ycb_object import YCBObject
-from igibson.utils.utils import parse_config
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson import object_states
-import numpy as np
-from igibson.render.profiler import Profiler
-from igibson.objects.articulated_object import URDFObject
-import igibson
 import os
+
+import igibson
+from igibson import object_states
+from igibson.objects.articulated_object import URDFObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_model_path
-import pybullet as p
+from igibson.utils.utils import parse_config
 
 
 def main():

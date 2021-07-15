@@ -1,14 +1,12 @@
 # Code adapted from Fei Xia
 
-import glob
 import os
 
 import cv2
 import meshcut
 import numpy as np
-
-from tqdm import tqdm
 from PIL import Image
+from tqdm import tqdm
 
 
 def load_obj_np(

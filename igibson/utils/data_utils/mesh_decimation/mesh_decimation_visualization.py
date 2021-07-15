@@ -6,14 +6,14 @@
     Run as:
         blender -b --python mesh_decimation_visualization.py -- --ig_dataset $(pwd)/../../../data/ig_dataset
 """
-import bpy
-import math
-import subprocess
-import os
+import argparse
 import csv
+import math
+import os
+import subprocess
 import sys
 
-import argparse
+import bpy
 
 
 def collision_filter(x):

@@ -2,20 +2,19 @@
 Credit: Andrey Kurenkov 
 """
 
-import os
-import trimesh
 import argparse
-import numpy as np
-import yaml
 import math
-from pyquaternion import Quaternion
-from transformations import euler_from_matrix
-import pybullet as pb
+import os
 
+import numpy as np
+import pybullet as pb
+import trimesh
+import yaml
+from pyquaternion import Quaternion
+
+from igibson.objects.articulated_object import ArticulatedObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
-from igibson.objects.articulated_object import ArticulatedObject
-import matplotlib.pyplot as plt
 
 """
 Analyzes a model for possible ways to place it flat on a surface.

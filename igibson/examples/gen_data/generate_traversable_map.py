@@ -3,11 +3,12 @@ clutter into account.
 """
 
 import os
-import numpy as np
-from tqdm import tqdm
-import cv2
-from PIL import Image
 import sys
+
+import cv2
+import numpy as np
+from PIL import Image
+from tqdm import tqdm
 
 
 def load_obj_np(

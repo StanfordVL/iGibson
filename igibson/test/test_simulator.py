@@ -1,7 +1,6 @@
-from igibson.scenes.stadium_scene import StadiumScene
 from igibson.objects.ycb_object import YCBObject
+from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
-
 from igibson.utils.assets_utils import download_assets
 
 

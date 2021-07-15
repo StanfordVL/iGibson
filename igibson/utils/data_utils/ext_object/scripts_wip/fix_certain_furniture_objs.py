@@ -1,10 +1,7 @@
 import os
-import cv2
-import numpy as np
-from IPython import embed
-import shutil
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+
 import igibson
 
 fixed_categories = frozenset(

@@ -3,16 +3,17 @@ IG logging classes that write/read iGibson data to/from HDF5. These classes
 can be used to write regular logs, iGATUS task logs or VR logs to HDF5 for saving and replay.
 """
 
+import copy
+import datetime
+import time
+
 import h5py
 import numpy as np
 import pybullet as p
-import time
-import datetime
-import copy
 
+from igibson.utils.git_utils import project_git_info
 from igibson.utils.utils import parse_str_config, dump_config
 from igibson.utils.vr_utils import VrData, convert_button_data_to_binary, VR_BUTTON_COMBO_NUM
-from igibson.utils.git_utils import project_git_info
 
 
 class IGLogWriter(object):

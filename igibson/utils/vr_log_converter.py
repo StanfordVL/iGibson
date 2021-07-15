@@ -1,10 +1,8 @@
-import h5py
 import argparse
-import os
 import pathlib
-import numpy as np
-from tqdm import tqdm
 
+import h5py
+from tqdm import tqdm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="VR state saving and replay demo")

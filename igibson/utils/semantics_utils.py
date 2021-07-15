@@ -1,5 +1,6 @@
-import igibson
 import os
+
+import igibson
 from igibson.utils.constants import SemanticClass
 
 

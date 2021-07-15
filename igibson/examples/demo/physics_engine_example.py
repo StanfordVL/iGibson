@@ -1,10 +1,10 @@
-import pybullet as p
-from igibson.utils.assets_utils import get_scene_path, get_texture_file
-import igibson
-
 import os
 import sys
-import time
+
+import pybullet as p
+
+import igibson
+from igibson.utils.assets_utils import get_scene_path
 
 
 def main():

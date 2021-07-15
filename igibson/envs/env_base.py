@@ -1,20 +1,21 @@
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.robots.husky_robot import Husky
+import gym
+
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.ant_robot import Ant
-from igibson.robots.humanoid_robot import Humanoid
-from igibson.robots.jr2_robot import JR2
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
-from igibson.robots.freight_robot import Freight
 from igibson.robots.fetch_robot import Fetch
+from igibson.robots.freight_robot import Freight
+from igibson.robots.humanoid_robot import Humanoid
+from igibson.robots.husky_robot import Husky
+from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.jr2_robot import JR2
 from igibson.robots.locobot_robot import Locobot
-from igibson.simulator import Simulator
+from igibson.robots.turtlebot_robot import Turtlebot
 from igibson.scenes.empty_scene import EmptyScene
-from igibson.scenes.stadium_scene import StadiumScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.stadium_scene import StadiumScene
+from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import gym
 
 
 class BaseEnv(gym.Env):

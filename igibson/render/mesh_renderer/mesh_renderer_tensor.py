@@ -1,9 +1,9 @@
-import numpy as np
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from igibson.render.mesh_renderer.get_available_devices import get_cuda_device
-from igibson.utils.constants import AVAILABLE_MODALITIES
 import logging
 
+from igibson.render.mesh_renderer.get_available_devices import get_cuda_device
+from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from igibson.utils.constants import AVAILABLE_MODALITIES
 
 try:
     import torch

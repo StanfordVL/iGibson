@@ -1,29 +1,23 @@
-import cv2
-import os
-import sys
-import math
-import json
-import shutil
-import random
 import argparse
-import matplotlib
+import json
+import math
+import os
+from collections import defaultdict
 from xml.dom import minidom
-import numpy as np
 
+import cv2
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image, ImageDraw
+from matplotlib.collections import PatchCollection
 from matplotlib.patches import Polygon
 from shapely.geometry import Polygon as shape_poly
-import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
-from shapely.geometry import Polygon as shape_poly
-from collections import defaultdict
-from PIL import Image, ImageDraw
-
-from utils.utils import BBox, polygon_to_bbox, has_overlap, get_volume, semmap_to_lightmap
-from utils.svg_utils import PolygonWall, get_polygon, get_icon, get_points, get_direction
-from utils.semantics import *
 
 import igibson
-
+from utils.semantics import *
+from utils.svg_utils import PolygonWall, get_icon, get_points
+from utils.utils import polygon_to_bbox, has_overlap, get_volume, semmap_to_lightmap
 
 parser = argparse.ArgumentParser("Convert Cubicasa5k...")
 

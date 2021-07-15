@@ -1,13 +1,15 @@
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.simulator import Simulator
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.objects.ycb_object import YCBObject
-from igibson.utils.utils import parse_config
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import numpy as np
-from igibson.render.profiler import Profiler
-import igibson
 import os
+
+import numpy as np
+
+import igibson
+from igibson.objects.ycb_object import YCBObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
 
 
 def main():

@@ -1,35 +1,23 @@
-from collections import defaultdict
-import time
+import json
 import logging
-import numpy as np
-import random
-import json
-import pybullet as p
 import os
-import xml.etree.ElementTree as ET
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 import random
-import json
-from igibson.utils.assets_utils import (
-    get_ig_avg_category_specs,
-    get_ig_scene_path,
-    get_ig_model_path,
-    get_ig_category_path,
-    get_ig_category_ids,
-    get_cubicasa_scene_path,
-    get_3dfront_scene_path,
-)
-from igibson.external.pybullet_tools.utils import euler_from_quat, get_joints, get_joint_names, get_joint_positions
-from PIL import Image
+import time
+import xml.etree.ElementTree as ET
+from collections import defaultdict
 from xml.dom import minidom
-from IPython import embed
+
+import numpy as np
+import pybullet as p
+from PIL import Image
 
 import igibson
-
+from igibson.external.pybullet_tools.utils import euler_from_quat
+from igibson.external.pybullet_tools.utils import get_joints, get_joint_names, get_joint_positions
 from igibson.object_states.factory import get_state_name, get_state_from_name
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.objects.articulated_object import URDFObject
-from igibson.utils.utils import rotate_vector_3d
+from igibson.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.utils.assets_utils import (
     get_ig_avg_category_specs,
@@ -40,9 +28,7 @@ from igibson.utils.assets_utils import (
     get_cubicasa_scene_path,
     get_3dfront_scene_path,
 )
-from igibson.external.pybullet_tools.utils import euler_from_quat
-from igibson.objects.multi_object_wrappers import ObjectMultiplexer, ObjectGrouper
-
+from igibson.utils.utils import rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
 

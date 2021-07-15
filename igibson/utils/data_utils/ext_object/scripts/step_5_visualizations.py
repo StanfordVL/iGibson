@@ -1,23 +1,21 @@
-import os
-import cv2
-import sys
-import json
-import igibson
 import argparse
+import json
+import os
 import subprocess
-import numpy as np
-import pybullet as p
-from PIL import Image
 from shutil import which
-from igibson.simulator import Simulator
-from igibson.render.profiler import Profiler
+
+import numpy as np
+from PIL import Image
+from transforms3d.euler import euler2quat
+
+import igibson
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from transforms3d.euler import euler2quat
+from igibson.render.profiler import Profiler
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.simulator import Simulator
 from igibson.utils.utils import quatToXYZW
 from igibson.utils.utils import rotate_vector_2d
-from igibson.scenes.empty_scene import EmptyScene
-
 
 parser = argparse.ArgumentParser("Generate visulization for iGibson object")
 parser.add_argument("--input_dir", dest="input_dir")

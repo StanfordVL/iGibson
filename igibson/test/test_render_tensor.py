@@ -1,16 +1,10 @@
-from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import os
 
 import numpy as np
-import os
+
 import igibson
-import GPUtil
-import time
-from igibson.utils.assets_utils import download_assets
-from igibson.utils.assets_utils import get_ig_model_path
-from PIL import Image
-import matplotlib.pyplot as plt
-import torch
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 
 
 def test_tensor_render_rendering():

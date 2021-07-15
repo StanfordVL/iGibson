@@ -18,17 +18,18 @@ Left hand, right hand (in that order):
 Total size: 28
 """
 
-import numpy as np
 import os
+from collections import OrderedDict
+
+import numpy as np
 import pybullet as p
 
 from igibson import assets_path
+from igibson.external.pybullet_tools.utils import set_all_collisions
 from igibson.object_states.factory import prepare_object_states
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.visual_shape import VisualShape
-from igibson.external.pybullet_tools.utils import set_all_collisions
 from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
-from collections import OrderedDict
 
 # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
 THRESHOLD_EPSILON = 0.001

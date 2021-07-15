@@ -1,6 +1,7 @@
-import yaml
-import os
 import logging
+import os
+
+import yaml
 
 __version__ = "1.0.1"
 

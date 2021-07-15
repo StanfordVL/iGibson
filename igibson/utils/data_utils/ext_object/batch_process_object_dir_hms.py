@@ -1,5 +1,5 @@
-import subprocess
 import os
+import subprocess
 
 dst_folder = "/cvgl2/u/chengshu/atus_dataset/hms"
 src_folder = "/cvgl2/u/chengshu/hms_dataset"

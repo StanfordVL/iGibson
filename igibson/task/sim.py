@@ -6,26 +6,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import os
 import os.path
-import sys
-import math
-import random
 import pickle
 import time
-import yaml
-import copy
-import cv2
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pybullet as pb
 import pybullet_data
-import matplotlib
-import matplotlib.pyplot as plt
+import yaml
 from pyquaternion import Quaternion
-from igibson.simulator import Simulator
-from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, InstanceGroup, Instance, quat2rotmat, xyz2mat
+
 from igibson.objects.articulated_object import ArticulatedObject
+from igibson.render.mesh_renderer.mesh_renderer_cpu import Instance
+from igibson.simulator import Simulator
 
 CAMERA_UP_VECTOR = [0, 0, 1]
 
