@@ -12,11 +12,11 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGTNTask
+from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 from igibson.utils.git_utils import project_git_info
 from igibson.utils.utils import parse_str_config
-import tasknet
+import bddl
 
 import numpy as np
 
@@ -86,11 +86,11 @@ def replay_demo(
     @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
     @param profile: Whether the replay should be profiled, with profiler output to stdout.
     @param start_callback: A callback function that will be called immediately before starting to replay steps. Should
-        take a single argument, an iGTNTask.
+        take a single argument, an iGBEHAVIORActivityInstance.
     @param step_callback: A callback function that will be called immediately following each replayed step. Should
-        take a single argument, an iGTNTask.
+        take a single argument, an iGBEHAVIORActivityInstance.
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
-        argument, an iGTNTask.
+        argument, an iGBEHAVIORActivityInstance.
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
@@ -155,7 +155,7 @@ def replay_demo(
         image_height=720,
     )
 
-    igtn_task = iGTNTask(task, task_id)
+    igtn_task = iGBEHAVIORActivityInstance(task, task_id)
     igtn_task.initialize_simulator(
         simulator=s,
         scene_id=scene,
@@ -264,7 +264,7 @@ def safe_replay_demo(*args, **kwargs):
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     replay_demo(
         args.vr_log_path,
         out_log_path=args.vr_replay_log_path,

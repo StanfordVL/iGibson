@@ -1,4 +1,4 @@
-from tasknet.condition_evaluation import evaluate_state
+from bddl.condition_evaluation import evaluate_state
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.task.task_base import iGBEHAVIORActivityInstance
 import argparse
@@ -99,8 +99,8 @@ class BehaviorEnv(iGibsonEnv):
                     scene_id, task, task_id, self.instance_id
                 ),
             }
-        tasknet.set_backend("iGibson")
-        self.task = iGTNTask(task, task_id)
+        bddl.set_backend("iGibson")
+        self.task = iGBEHAVIORActivityInstance(task, task_id)
         self.task.initialize_simulator(
             simulator=self.simulator,
             scene_id=scene_id,

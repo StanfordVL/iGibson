@@ -242,7 +242,7 @@ def safe_replay_demo(*args, **kwargs):
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     replay_demo(
         args.vr_log_path,
         out_log_path=args.vr_replay_log_path,
