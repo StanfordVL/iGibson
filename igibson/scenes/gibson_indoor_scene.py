@@ -1,16 +1,12 @@
 import logging
-import pickle
-import networkx as nx
-import cv2
-from PIL import Image
-import numpy as np
-from igibson.objects.articulated_object import ArticulatedObject, URDFObject
-from igibson.utils.utils import l2_distance, get_transform_from_xyz_rpy, quatXYZWFromRotMat
-from igibson.utils.assets_utils import get_scene_path, get_texture_file, get_ig_scene_path
-import pybullet_data
-import pybullet as p
 import os
+
+import numpy as np
+import pybullet as p
+import pybullet_data
+
 from igibson.scenes.indoor_scene import IndoorScene
+from igibson.utils.assets_utils import get_scene_path, get_texture_file
 
 
 class StaticIndoorScene(IndoorScene):
@@ -19,16 +15,17 @@ class StaticIndoorScene(IndoorScene):
     Contains the functionalities for navigation such as shortest path computation
     """
 
-    def __init__(self,
-                 scene_id,
-                 trav_map_resolution=0.1,
-                 trav_map_erosion=2,
-                 trav_map_type='with_obj',
-                 build_graph=True,
-                 num_waypoints=10,
-                 waypoint_resolution=0.2,
-                 pybullet_load_texture=False,
-                 ):
+    def __init__(
+        self,
+        scene_id,
+        trav_map_resolution=0.1,
+        trav_map_erosion=2,
+        trav_map_type="with_obj",
+        build_graph=True,
+        num_waypoints=10,
+        waypoint_resolution=0.2,
+        pybullet_load_texture=False,
+    ):
         """
         Load a building scene and compute traversability
 
@@ -58,63 +55,45 @@ class StaticIndoorScene(IndoorScene):
         """
         Load floor metadata
         """
-        floor_height_path = os.path.join(
-            get_scene_path(self.scene_id), 'floors.txt')
+        floor_height_path = os.path.join(get_scene_path(self.scene_id), "floors.txt")
         if not os.path.isfile(floor_height_path):
-            raise Exception(
-                'floor_heights.txt cannot be found in model: {}'.format(self.scene_id))
-        with open(floor_height_path, 'r') as f:
+            raise Exception("floor_heights.txt cannot be found in model: {}".format(self.scene_id))
+        with open(floor_height_path, "r") as f:
             self.floor_heights = sorted(list(map(float, f.readlines())))
-            logging.debug('Floors {}'.format(self.floor_heights))
+            logging.debug("Floors {}".format(self.floor_heights))
 
     def load_scene_mesh(self):
         """
         Load scene mesh
         """
-        filename = os.path.join(get_scene_path(
-            self.scene_id), "mesh_z_up_downsampled.obj")
+        filename = os.path.join(get_scene_path(self.scene_id), "mesh_z_up_downsampled.obj")
         if not os.path.isfile(filename):
-            filename = os.path.join(get_scene_path(
-                self.scene_id), "mesh_z_up.obj")
+            filename = os.path.join(get_scene_path(self.scene_id), "mesh_z_up.obj")
 
-        collision_id = p.createCollisionShape(
-            p.GEOM_MESH,
-            fileName=filename,
-            flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
+        collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=filename, flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
         if self.pybullet_load_texture:
-            visual_id = p.createVisualShape(
-                p.GEOM_MESH,
-                fileName=filename)
+            visual_id = p.createVisualShape(p.GEOM_MESH, fileName=filename)
         else:
             visual_id = -1
 
-        self.mesh_body_id = p.createMultiBody(
-            baseCollisionShapeIndex=collision_id,
-            baseVisualShapeIndex=visual_id)
+        self.mesh_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id, baseVisualShapeIndex=visual_id)
         p.changeDynamics(self.mesh_body_id, -1, lateralFriction=1)
 
         if self.pybullet_load_texture:
             texture_filename = get_texture_file(filename)
             if texture_filename is not None:
                 texture_id = p.loadTexture(texture_filename)
-                p.changeVisualShape(
-                    self.mesh_body_id,
-                    -1,
-                    textureUniqueId=texture_id)
+                p.changeVisualShape(self.mesh_body_id, -1, textureUniqueId=texture_id)
 
     def load_floor_planes(self):
         """
         Load additional floor planes (because the scene mesh can have bumpy floor surfaces)
         """
         # load the default floor plane (only once) and later reset it to different floor heiights
-        plane_name = os.path.join(
-            pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
+        plane_name = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         floor_body_id = p.loadMJCF(plane_name)[0]
-        p.resetBasePositionAndOrientation(floor_body_id,
-                                          posObj=[0, 0, 0],
-                                          ornObj=[0, 0, 0, 1])
-        p.setCollisionFilterPair(
-            self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
+        p.resetBasePositionAndOrientation(floor_body_id, posObj=[0, 0, 0], ornObj=[0, 0, 0, 1])
+        p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
         self.floor_body_ids.append(floor_body_id)
 
     def _load(self):
@@ -152,11 +131,8 @@ class StaticIndoorScene(IndoorScene):
         :param additional_elevation: Additional elevation with respect to the height of the floor
         :param height: Alternative parameter to control directly the height of the ground plane
         """
-        height = height if height is not None \
-            else self.floor_heights[floor] + additional_elevation
-        p.resetBasePositionAndOrientation(self.floor_body_ids[0],
-                                          posObj=[0, 0, height],
-                                          ornObj=[0, 0, 0, 1])
+        height = height if height is not None else self.floor_heights[floor] + additional_elevation
+        p.resetBasePositionAndOrientation(self.floor_body_ids[0], posObj=[0, 0, height], ornObj=[0, 0, 0, 1])
 
     def get_floor_height(self, floor=0):
         """

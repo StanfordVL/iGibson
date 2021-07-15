@@ -1,19 +1,14 @@
 #!/usr/bin/env python
 
-from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.utils import parse_config
-import os
-import igibson
 import time
-import random
+
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.simulator import Simulator
 
 
 def test_import_igsdf():
-    scene = InteractiveIndoorScene(
-        'Rs_int', texture_randomization=False, object_randomization=False)
-    s = Simulator(mode='headless', image_width=512,
-                  image_height=512, device_idx=0)
+    scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
+    s = Simulator(mode="headless", image_width=512, image_height=512, device_idx=0)
     s.import_ig_scene(scene)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)

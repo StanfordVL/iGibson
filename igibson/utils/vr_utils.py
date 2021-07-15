@@ -1,24 +1,51 @@
 """This module contains vr utility functions and classes."""
 
-import numpy as np
 import time
+
+import numpy as np
+
 from igibson.utils.utils import normalizeListVec
 
 # List of all VR button idx/press combos, which will be used to form a compact binary representation
 # These are taken from the openvr.h header file
 VR_BUTTON_COMBOS = [
-    (0, 0), (0, 1), (1, 0), (1, 1), (2, 0), (2, 1), (3, 0), (3, 1),
-    (4, 0), (4, 1), (5, 0), (5, 1), (6, 0), (6, 1), (7, 0), (7, 1),
-    (31, 0), (31, 1), (32, 0), (32, 1), (33, 0), (33, 1), (34, 0), (34, 1),
-    (35, 0), (35, 1), (36, 0), (36, 1)
+    (0, 0),
+    (0, 1),
+    (1, 0),
+    (1, 1),
+    (2, 0),
+    (2, 1),
+    (3, 0),
+    (3, 1),
+    (4, 0),
+    (4, 1),
+    (5, 0),
+    (5, 1),
+    (6, 0),
+    (6, 1),
+    (7, 0),
+    (7, 1),
+    (31, 0),
+    (31, 1),
+    (32, 0),
+    (32, 1),
+    (33, 0),
+    (33, 1),
+    (34, 0),
+    (34, 1),
+    (35, 0),
+    (35, 1),
+    (36, 0),
+    (36, 1),
 ]
 VR_BUTTON_COMBO_NUM = 28
 
 # List of VR controllers and devices
-VR_CONTROLLERS = ['left_controller', 'right_controller']
-VR_DEVICES = ['left_controller', 'right_controller', 'hmd']
+VR_CONTROLLERS = ["left_controller", "right_controller"]
+VR_DEVICES = ["left_controller", "right_controller", "hmd"]
 
 # ----- Utility classes ------
+
 
 class VrData(object):
     """
@@ -50,6 +77,7 @@ class VrData(object):
     Key: vr_settings
     Values: touchpad_movement, movement_controller, movement_speed, relative_movement_device
     """
+
     def __init__(self, data_dict=None):
         """
         Constructs VrData object
@@ -67,7 +95,7 @@ class VrData(object):
         q is the input query and must be a string corresponding to one of the keys of the self.vr_data_dict object
         """
         if q not in self.vr_data_dict.keys():
-            raise RuntimeError('ERROR: Key {} does not exist in VR data dictionary!'.format(q))
+            raise RuntimeError("ERROR: Key {} does not exist in VR data dictionary!".format(q))
 
         return self.vr_data_dict[q]
 
@@ -78,32 +106,46 @@ class VrData(object):
         :param frame_num: frame to recover action replay data on
         """
         for device in VR_DEVICES:
-            device_data = ar_data['vr/vr_device_data/{}'.format(device)][frame_num].tolist()
-            self.vr_data_dict[device] = [device_data[0], device_data[1:4], device_data[4:8], device_data[8:11], device_data[11:14], device_data[14:17], device_data[17:21]]
+            device_data = ar_data["vr/vr_device_data/{}".format(device)][frame_num].tolist()
+            self.vr_data_dict[device] = [
+                device_data[0],
+                device_data[1:4],
+                device_data[4:8],
+                device_data[8:11],
+                device_data[11:14],
+                device_data[14:17],
+                device_data[17:21],
+            ]
             # TODO: Remove!!!
             if device in VR_CONTROLLERS:
                 # Check if we have stored model rotations for an agent
                 if len(device_data) > 18:
-                    self.vr_data_dict['{}_model_rotation'.format(device)] = device_data[17:21]
-                self.vr_data_dict['{}_button'.format(device)] = ar_data['vr/vr_button_data/{}'.format(device)][frame_num].tolist()
+                    self.vr_data_dict["{}_model_rotation".format(device)] = device_data[17:21]
+                self.vr_data_dict["{}_button".format(device)] = ar_data["vr/vr_button_data/{}".format(device)][
+                    frame_num
+                ].tolist()
 
-        torso_tracker_data = ar_data['vr/vr_device_data/torso_tracker'][frame_num].tolist()
-        self.vr_data_dict['torso_tracker'] = [torso_tracker_data[0], torso_tracker_data[1:4], torso_tracker_data[4:]]
+        torso_tracker_data = ar_data["vr/vr_device_data/torso_tracker"][frame_num].tolist()
+        self.vr_data_dict["torso_tracker"] = [torso_tracker_data[0], torso_tracker_data[1:4], torso_tracker_data[4:]]
 
-        eye_data = ar_data['vr/vr_eye_tracking_data'][frame_num].tolist()
-        self.vr_data_dict['eye_data'] = [eye_data[0], eye_data[1:4], eye_data[4:7], eye_data[7], eye_data[8]]
+        eye_data = ar_data["vr/vr_eye_tracking_data"][frame_num].tolist()
+        self.vr_data_dict["eye_data"] = [eye_data[0], eye_data[1:4], eye_data[4:7], eye_data[7], eye_data[8]]
 
         events = []
         for controller in VR_CONTROLLERS:
-            for button_press_data in convert_binary_to_button_data(ar_data['vr/vr_event_data/{}'.format(controller)][frame_num]):
+            for button_press_data in convert_binary_to_button_data(
+                ar_data["vr/vr_event_data/{}".format(controller)][frame_num]
+            ):
                 events.append((controller, button_press_data))
-        self.vr_data_dict['event_data'] = events
-        self.vr_data_dict['reset_actions'] = [bool(x) for x in list(ar_data['vr/vr_event_data/reset_actions'][frame_num])]
+        self.vr_data_dict["event_data"] = events
+        self.vr_data_dict["reset_actions"] = [
+            bool(x) for x in list(ar_data["vr/vr_event_data/reset_actions"][frame_num])
+        ]
 
-        pos_data = ar_data['vr/vr_device_data/vr_position_data'][frame_num].tolist()
-        self.vr_data_dict['vr_positions'] = [pos_data[:3], pos_data[3:]]
+        pos_data = ar_data["vr/vr_device_data/vr_position_data"][frame_num].tolist()
+        self.vr_data_dict["vr_positions"] = [pos_data[:3], pos_data[3:]]
         # Action replay does not use VR settings, so we leave this as an empty list
-        self.vr_data_dict['vr_settings'] = []
+        self.vr_data_dict["vr_settings"] = []
 
     def to_dict(self):
         """
@@ -112,7 +154,7 @@ class VrData(object):
         return self.vr_data_dict
 
     def print_data(self):
-        """ Utility function to print VrData object in a pretty fashion. """
+        """Utility function to print VrData object in a pretty fashion."""
         for k, v in self.vr_data_dict.items():
             print("{}: {}".format(k, v))
 
@@ -121,6 +163,7 @@ class VrTimer(object):
     """
     Class that can be used to time events - eg. in speed benchmarks.
     """
+
     def __init__(self):
         """
         Initializes timer
@@ -133,14 +176,14 @@ class VrTimer(object):
         """
         self.timer_start = time.perf_counter()
         self.timer_stop = None
-    
+
     def get_timer_val(self):
         """
         Gets timer value. If not start value, return 0.
         If we haven't stopped (ie. self.time_stop is None),
         return time since start. If we have stopped,
         return duration of timer interval.
-        """ 
+        """
         if not self.timer_start:
             return 0.0
         if not self.timer_stop:
@@ -153,7 +196,7 @@ class VrTimer(object):
         Returns state of timer - either running or not
         """
         return self.timer_start is not None and self.timer_stop is None
-    
+
     def stop_timer(self):
         """
         Stop timer
@@ -173,6 +216,7 @@ class VrTimer(object):
 
 # ----- Utility functions ------
 
+
 def calc_z_dropoff(theta, t_min, t_max):
     """
     Calculates and returns the dropoff coefficient for a z rotation (used in both VR body and Fetch VR).
@@ -183,11 +227,12 @@ def calc_z_dropoff(theta, t_min, t_max):
         # Apply the following quadratic to get faster falloff closer to the poles:
         # y = -1/(min_z - max_z)^2 * x*2 + 2 * max_z / (min_z - max_z) ^2 * x + (min_z^2 - 2 * min_z * max_z) / (min_z - max_z) ^2
         d = (t_min - t_max) ** 2
-        z_mult = -1/d * theta ** 2 + 2*t_max/d * theta + (t_min ** 2 - 2*t_min*t_max)/d
+        z_mult = -1 / d * theta ** 2 + 2 * t_max / d * theta + (t_min ** 2 - 2 * t_min * t_max) / d
     elif theta < t_min:
         z_mult = 0.0
 
     return z_mult
+
 
 def calc_z_rot_from_right(right):
     """
@@ -205,15 +250,16 @@ def calc_z_rot_from_right(right):
         z *= -1
     # Add pi/2 to get forward direction, but need to deal with jumping
     # over quadrant boundaries
-    if 0 <= z and z <= np.pi/2:
-        return z + np.pi/2
-    elif np.pi/2 < z and z <= np.pi:
-        angle_from_ax = np.pi/2 - (np.pi - z)
+    if 0 <= z and z <= np.pi / 2:
+        return z + np.pi / 2
+    elif np.pi / 2 < z and z <= np.pi:
+        angle_from_ax = np.pi / 2 - (np.pi - z)
         return -np.pi + angle_from_ax
-    elif -np.pi <= z and z <= -np.pi/2:
-        return z + np.pi/2
+    elif -np.pi <= z and z <= -np.pi / 2:
+        return z + np.pi / 2
     else:
-        return np.pi/2 + z
+        return np.pi / 2 + z
+
 
 def convert_button_data_to_binary(bdata):
     """
@@ -228,6 +274,7 @@ def convert_button_data_to_binary(bdata):
 
     return bin_events
 
+
 def convert_binary_to_button_data(bin_events):
     """
     Converts a list of binary vr events to (button_idx, press_id) tuples.
@@ -240,16 +287,19 @@ def convert_binary_to_button_data(bin_events):
 
     return button_press_data
 
+
 def move_player(s, touch_x, touch_y, movement_speed, relative_device):
     """Moves the VR player. Takes in the simulator,
     information from the right touchpad, player movement speed and the device relative to which
     we would like to move."""
     s.set_vr_offset(calc_offset(s, touch_x, touch_y, movement_speed, relative_device))
 
+
 def calc_offset(s, touch_x, touch_y, movement_speed, relative_device):
     curr_offset = s.get_vr_offset()
     right, _, forward = s.get_device_coordinate_system(relative_device)
     return translate_vr_position_by_vecs(touch_x, touch_y, right, forward, curr_offset, movement_speed)
+
 
 def get_normalized_translation_vec(right_frac, forward_frac, right, forward):
     """Generates a normalized translation vector that is a linear combination of forward and right."""
@@ -257,13 +307,15 @@ def get_normalized_translation_vec(right_frac, forward_frac, right, forward):
     vr_offset_vec[2] = 0
     return normalizeListVec(vr_offset_vec)
 
+
 def translate_vr_position_by_vecs(right_frac, forward_frac, right, forward, curr_offset, movement_speed):
     """Generates a normalized translation vector that is a linear combination of forward and right, the"""
     """direction vectors of the chosen VR device (HMD/controller), and adds this vector to the current offset."""
     vr_offset_vec = get_normalized_translation_vec(right_frac, forward_frac, right, forward)
     return [curr_offset[i] + vr_offset_vec[i] * movement_speed for i in range(3)]
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     f = [-1, -0.2, 0]
     u = [0, 0, 1]
     z = calc_z_rot_from_vecs(f, u)

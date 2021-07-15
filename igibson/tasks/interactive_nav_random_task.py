@@ -1,7 +1,8 @@
-from igibson.tasks.point_nav_random_task import PointNavRandomTask
-import pybullet as p
-from igibson.objects.ycb_object import YCBObject
 import numpy as np
+import pybullet as p
+
+from igibson.objects.ycb_object import YCBObject
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
 
 
 class InteractiveNavRandomTask(PointNavRandomTask):
@@ -13,8 +14,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
     def __init__(self, env):
         super(InteractiveNavRandomTask, self).__init__(env)
         self.interactive_objects = self.load_interactive_objects(env)
-        env.collision_ignore_body_b_ids |= set(
-            [obj.body_id for obj in self.interactive_objects])
+        env.collision_ignore_body_b_ids |= set([obj.body_id for obj in self.interactive_objects])
 
     def load_interactive_objects(self, env):
         """
@@ -25,11 +25,11 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         """
         interactive_objects = []
         object_paths = [
-            '002_master_chef_can',
-            '003_cracker_box',
-            '004_sugar_box',
-            '005_tomato_soup_can',
-            '006_mustard_bottle',
+            "002_master_chef_can",
+            "003_cracker_box",
+            "004_sugar_box",
+            "005_tomato_soup_can",
+            "006_mustard_bottle",
         ]
 
         for object_path in object_paths:

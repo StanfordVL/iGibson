@@ -1,8 +1,14 @@
-import pybullet as p
-from igibson.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
-    safemat2quat, xyzw2wxyz, ortho, transform_vertex
 import numpy as np
+import pybullet as p
+
 from igibson.utils.constants import MAX_INSTANCE_COUNT, MAX_CLASS_COUNT
+from igibson.utils.mesh_util import (
+    xyz2mat,
+    mat2xyz,
+    safemat2quat,
+    transform_vertex,
+)
+
 
 class InstanceGroup(object):
     """
@@ -11,20 +17,21 @@ class InstanceGroup(object):
     Robots and articulated objects are represented as instance groups.
     """
 
-    def __init__(self,
-                 objects,
-                 id,
-                 link_ids,
-                 pybullet_uuid,
-                 class_id,
-                 poses_trans,
-                 poses_rot,
-                 dynamic,
-                 robot=None,
-                 use_pbr=True,
-                 use_pbr_mapping=True,
-                 shadow_caster=True,
-                 ):
+    def __init__(
+        self,
+        objects,
+        id,
+        link_ids,
+        pybullet_uuid,
+        class_id,
+        poses_trans,
+        poses_rot,
+        dynamic,
+        robot=None,
+        use_pbr=True,
+        use_pbr_mapping=True,
+        shadow_caster=True,
+    ):
         """
         :param objects: visual objects
         :param id: id of this instance_group
@@ -78,45 +85,45 @@ class InstanceGroup(object):
         shadow_pass = 1: enable_shadow, rendering depth map from light space
         shadow_pass = 2: use rendered depth map to calculate shadow
 
-        :param shadow_pass: shadow pass mode        """
+        :param shadow_pass: shadow pass mode"""
         if self.renderer is None:
             return
 
-        self.renderer.r.initvar(self.renderer.shaderProgram,
-                                self.renderer.V,
-                                self.renderer.last_V,
-                                self.renderer.lightV,
-                                shadow_pass,
-                                self.renderer.P,
-                                self.renderer.lightP,
-                                self.renderer.camera,
-                                self.renderer.lightpos,
-                                self.renderer.lightcolor)
+        self.renderer.r.initvar(
+            self.renderer.shaderProgram,
+            self.renderer.V,
+            self.renderer.last_V,
+            self.renderer.lightV,
+            shadow_pass,
+            self.renderer.P,
+            self.renderer.lightP,
+            self.renderer.camera,
+            self.renderer.lightpos,
+            self.renderer.lightcolor,
+        )
 
         for i, visual_object in enumerate(self.objects):
             for object_idx in visual_object.VAO_ids:
-                self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
-                                                  self.poses_trans[i],
-                                                  self.poses_rot[i],
-                                                  self.last_trans[i],
-                                                  self.last_rot[i])
-                current_material = self.renderer.materials_mapping[
-                    self.renderer.mesh_materials[object_idx]]
-                self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                       float(
-                                                           self.class_id) / MAX_CLASS_COUNT,
-                                                       float(
-                                                           self.id) / MAX_INSTANCE_COUNT,
-                                                       current_material.kd,
-                                                       float(
-                                                           current_material.is_texture()),
-                                                       float(self.use_pbr),
-                                                       float(
-                                                           self.use_pbr_mapping),
-                                                       float(self.metalness),
-                                                       float(self.roughness),
-                                                       current_material.transform_param
-                                                       )
+                self.renderer.r.init_pos_instance(
+                    self.renderer.shaderProgram,
+                    self.poses_trans[i],
+                    self.poses_rot[i],
+                    self.last_trans[i],
+                    self.last_rot[i],
+                )
+                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                self.renderer.r.init_material_instance(
+                    self.renderer.shaderProgram,
+                    float(self.class_id) / MAX_CLASS_COUNT,
+                    float(self.id) / MAX_INSTANCE_COUNT,
+                    current_material.kd,
+                    float(current_material.is_texture()),
+                    float(self.use_pbr),
+                    float(self.use_pbr_mapping),
+                    float(self.metalness),
+                    float(self.roughness),
+                    current_material.transform_param,
+                )
 
                 try:
                     texture_id = current_material.texture_id
@@ -138,8 +145,7 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
                     self.renderer.r.draw_elements_instance(
-                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(
-                        ),
+                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                         texture_id,
                         metallic_texture_id,
                         roughness_texture_id,
@@ -148,7 +154,8 @@ class InstanceGroup(object):
                         self.renderer.VAOs[object_idx],
                         self.renderer.faces[object_idx].size,
                         self.renderer.faces[object_idx],
-                        buffer)
+                        buffer,
+                    )
                 finally:
                     self.renderer.r.cglBindVertexArray(0)
         self.renderer.r.cglUseProgram(0)
@@ -211,15 +218,18 @@ class InstanceGroup(object):
         faces_info = []
         for i, visual_obj in enumerate(self.objects):
             for vertex_data_index, face_data_index in zip(visual_obj.vertex_data_indices, visual_obj.face_indices):
-                vertices_info.append(transform_vertex(self.renderer.vertex_data[vertex_data_index],
-                                                      pose_trans=self.poses_trans[i],
-                                                      pose_rot=self.poses_rot[i]))
+                vertices_info.append(
+                    transform_vertex(
+                        self.renderer.vertex_data[vertex_data_index],
+                        pose_trans=self.poses_trans[i],
+                        pose_rot=self.poses_rot[i],
+                    )
+                )
                 faces_info.append(self.renderer.faces[face_data_index])
         return vertices_info, faces_info
 
     def __str__(self):
-        return "InstanceGroup({}) -> Objects({})".format(
-            self.id, ",".join([str(object.id) for object in self.objects]))
+        return "InstanceGroup({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
 
     def __repr__(self):
         return self.__str__()
@@ -234,8 +244,7 @@ class Robot(InstanceGroup):
         super(Robot, self).__init__(*args, **kwargs)
 
     def __str__(self):
-        return "Robot({}) -> Objects({})".format(
-            self.id, ",".join([str(object.id) for object in self.objects]))
+        return "Robot({}) -> Objects({})".format(self.id, ",".join([str(object.id) for object in self.objects]))
 
 
 class Instance(object):
@@ -244,19 +253,20 @@ class Instance(object):
     One visual object can have multiple instances to save memory.
     """
 
-    def __init__(self,
-                 object,
-                 id,
-                 pybullet_uuid,
-                 class_id,
-                 pose_trans,
-                 pose_rot,
-                 dynamic,
-                 softbody,
-                 use_pbr=True,
-                 use_pbr_mapping=True,
-                 shadow_caster=True,
-                 ):
+    def __init__(
+        self,
+        object,
+        id,
+        pybullet_uuid,
+        class_id,
+        pose_trans,
+        pose_rot,
+        dynamic,
+        softbody,
+        use_pbr=True,
+        use_pbr_mapping=True,
+        shadow_caster=True,
+    ):
         """
         :param object: visual object
         :param id: id of this instance_group
@@ -313,10 +323,8 @@ class Instance(object):
             # construct new vertex position into shape format
             object_idx = self.object.VAO_ids[0]
             vertices = p.getMeshData(self.pybullet_uuid)[1]
-            vertices_flattened = [
-                item for sublist in vertices for item in sublist]
-            vertex_position = np.array(vertices_flattened).reshape(
-                (len(vertices_flattened) // 3, 3))
+            vertices_flattened = [item for sublist in vertices for item in sublist]
+            vertex_position = np.array(vertices_flattened).reshape((len(vertices_flattened) // 3, 3))
             shape = self.renderer.shapes[object_idx]
             n_indices = len(shape.mesh.indices)
             np_indices = shape.mesh.numpy_indices().reshape((n_indices, 3))
@@ -325,7 +333,7 @@ class Instance(object):
 
             # update new vertex position in buffer data
             new_data = self.renderer.vertex_data[object_idx]
-            new_data[:, 0:shape_vertex.shape[1]] = shape_vertex
+            new_data[:, 0 : shape_vertex.shape[1]] = shape_vertex
             new_data = new_data.astype(np.float32)
 
             # transform and rotation already included in mesh data
@@ -336,41 +344,40 @@ class Instance(object):
 
             # update buffer data into VBO
             self.renderer.r.render_softbody_instance(
-                self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data)
+                self.renderer.VAOs[object_idx], self.renderer.VBOs[object_idx], new_data
+            )
 
-        self.renderer.r.initvar(self.renderer.shaderProgram,
-                                self.renderer.V,
-                                self.renderer.last_V,
-                                self.renderer.lightV,
-                                shadow_pass,
-                                self.renderer.P,
-                                self.renderer.lightP,
-                                self.renderer.camera,
-                                self.renderer.lightpos,
-                                self.renderer.lightcolor)
+        self.renderer.r.initvar(
+            self.renderer.shaderProgram,
+            self.renderer.V,
+            self.renderer.last_V,
+            self.renderer.lightV,
+            shadow_pass,
+            self.renderer.P,
+            self.renderer.lightP,
+            self.renderer.camera,
+            self.renderer.lightpos,
+            self.renderer.lightcolor,
+        )
 
-        self.renderer.r.init_pos_instance(self.renderer.shaderProgram,
-                                          self.pose_trans,
-                                          self.pose_rot,
-                                          self.last_trans,
-                                          self.last_rot)
+        self.renderer.r.init_pos_instance(
+            self.renderer.shaderProgram, self.pose_trans, self.pose_rot, self.last_trans, self.last_rot
+        )
 
         for object_idx in self.object.VAO_ids:
-            current_material = self.renderer.materials_mapping[
-                self.renderer.mesh_materials[object_idx]]
-            self.renderer.r.init_material_instance(self.renderer.shaderProgram,
-                                                   float(
-                                                       self.class_id) / MAX_CLASS_COUNT,
-                                                   float(
-                                                       self.id) / MAX_INSTANCE_COUNT,
-                                                   current_material.kd,
-                                                   float(
-                                                       current_material.is_texture()),
-                                                   float(self.use_pbr),
-                                                   float(self.use_pbr_mapping),
-                                                   float(self.metalness),
-                                                   float(self.roughness),
-                                                   current_material.transform_param)
+            current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+            self.renderer.r.init_material_instance(
+                self.renderer.shaderProgram,
+                float(self.class_id) / MAX_CLASS_COUNT,
+                float(self.id) / MAX_INSTANCE_COUNT,
+                current_material.kd,
+                float(current_material.is_texture()),
+                float(self.use_pbr),
+                float(self.use_pbr_mapping),
+                float(self.metalness),
+                float(self.roughness),
+                current_material.transform_param,
+            )
             try:
 
                 texture_id = current_material.texture_id
@@ -393,8 +400,7 @@ class Instance(object):
                     buffer = self.renderer.fbo
 
                 self.renderer.r.draw_elements_instance(
-                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(
-                    ),
+                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
                     texture_id,
                     metallic_texture_id,
                     roughness_texture_id,
@@ -403,7 +409,8 @@ class Instance(object):
                     self.renderer.VAOs[object_idx],
                     self.renderer.faces[object_idx].size,
                     self.renderer.faces[object_idx],
-                    buffer)
+                    buffer,
+                )
             finally:
                 self.renderer.r.cglBindVertexArray(0)
 
@@ -442,9 +449,11 @@ class Instance(object):
         vertices_info = []
         faces_info = []
         for vertex_data_index, face_index in zip(self.object.vertex_data_indices, self.object.face_indices):
-            vertices_info.append(transform_vertex(self.renderer.vertex_data[vertex_data_index],
-                                                  pose_rot=self.pose_rot,
-                                                  pose_trans=self.pose_trans))
+            vertices_info.append(
+                transform_vertex(
+                    self.renderer.vertex_data[vertex_data_index], pose_rot=self.pose_rot, pose_trans=self.pose_trans
+                )
+            )
             faces_info.append(self.renderer.faces[face_index])
         return vertices_info, faces_info
 

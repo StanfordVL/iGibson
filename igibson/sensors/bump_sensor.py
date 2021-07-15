@@ -1,10 +1,4 @@
 from igibson.sensors.sensor_base import BaseSensor
-from igibson.sensors.dropout_sensor_noise import DropoutSensorNoise
-
-import numpy as np
-import os
-import igibson
-from collections import OrderedDict
 
 
 class BumpSensor(BaseSensor):

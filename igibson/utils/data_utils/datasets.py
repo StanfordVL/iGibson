@@ -1,33 +1,31 @@
 from __future__ import print_function
-#import torch.utils.data as data
-from PIL import Image
+
+import ctypes as ct
+
+# import torchvision.transforms as transforms
+import json
 import os
 import os.path
-from multiprocessing import Pool
-from functools import partial
-import torch
+
 import cv2
 import numpy as np
-import ctypes as ct
-from tqdm import tqdm
-#import torchvision.transforms as transforms
-import argparse
-import json
+import torch
+
+# import torch.utils.data as data
+from PIL import Image
 from numpy.linalg import inv
-import pickle
-import igibson
 
 IMG_EXTENSIONS = [
-    '.jpg',
-    '.JPG',
-    '.jpeg',
-    '.JPEG',
-    '.png',
-    '.PNG',
-    '.ppm',
-    '.PPM',
-    '.bmp',
-    '.BMP',
+    ".jpg",
+    ".JPG",
+    ".jpeg",
+    ".JPEG",
+    ".png",
+    ".PNG",
+    ".ppm",
+    ".PPM",
+    ".bmp",
+    ".BMP",
 ]
 
 
@@ -37,59 +35,53 @@ def is_image_file(filename):
 
 def default_loader(path):
     ## Heavy usage
-    img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)    #.convert('RGB')
-    #img = Image.open(path)
+    img = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)  # .convert('RGB')
+    # img = Image.open(path)
     return img
 
 
 def depth_loader(path):
     ## Heavy usage
     ## TODO: Image.open for depth image is main data loading bottleneck
-    #img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)#.convert('I')
+    # img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)#.convert('I')
     img = Image.open(path)
     return img
 
 
-
-
-
-def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform, depth_trans,
-                off_pc_render, dll, train, require_rgb):
-    """ Functional programming version of Dataset.__getitem__
+def get_item_fn(
+    inds, select, root, loader, transform, off_3d, target_transform, depth_trans, off_pc_render, dll, train, require_rgb
+):
+    """Functional programming version of Dataset.__getitem__
     The advantage is that it is pickle-friendly and supports python multiprocessing
-    
-    Argument: 
+
+    Argument:
         inds: tuple of scene index and output index
     """
     index, out_i = inds
     scene = select[index][0][0]
     uuids = [item[1] for item in select[index]]
-    paths = ([
-        os.path.join(root, scene, 'pano', 'rgb',
-                     "point_" + item + "_view_equirectangular_domain_rgb.png") for item in uuids
-    ])
-    mist_paths = ([
-        os.path.join(root, scene, 'pano', 'mist',
-                     "point_" + item + "_view_equirectangular_domain_mist.png") for item in uuids
-    ])
-    normal_paths = ([
-        os.path.join(root, scene, 'pano', 'normal',
-                     "point_" + item + "_view_equirectangular_domain_normal.png") for item in uuids
-    ])
-    pose_paths = ([
-        os.path.join(root, scene, 'pano', 'points', "point_" + item + ".json") for item in uuids
-    ])
-    semantic_paths = ([
-        os.path.join(root, scene, 'pano', 'semantic',
-                     "point_" + item + "_view_equirectangular_domain_semantic.png")
+    paths = [
+        os.path.join(root, scene, "pano", "rgb", "point_" + item + "_view_equirectangular_domain_rgb.png")
         for item in uuids
-    ])
+    ]
+    mist_paths = [
+        os.path.join(root, scene, "pano", "mist", "point_" + item + "_view_equirectangular_domain_mist.png")
+        for item in uuids
+    ]
+    normal_paths = [
+        os.path.join(root, scene, "pano", "normal", "point_" + item + "_view_equirectangular_domain_normal.png")
+        for item in uuids
+    ]
+    pose_paths = [os.path.join(root, scene, "pano", "points", "point_" + item + ".json") for item in uuids]
+    semantic_paths = [
+        os.path.join(root, scene, "pano", "semantic", "point_" + item + "_view_equirectangular_domain_semantic.png")
+        for item in uuids
+    ]
     poses = []
     for i, item in enumerate(pose_paths):
         f = open(item)
         pose_dict = json.load(f)
-        p = np.concatenate(np.array(pose_dict[1][u'camera_rt_matrix'])).astype(np.float32).reshape(
-            (4, 4))
+        p = np.concatenate(np.array(pose_dict[1][u"camera_rt_matrix"])).astype(np.float32).reshape((4, 4))
         rotation = np.array([[0, 1, 0, 0], [0, 0, 1, 0], [-1, 0, 0, 0], [0, 0, 0, 1]])
         p = np.dot(p, rotation)
         poses.append(p)
@@ -145,9 +137,7 @@ def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform,
         target = target_transform(target)
 
     if not off_3d and require_rgb:
-        mist_imgs = [
-            np.expand_dims(np.array(item).astype(np.float32) / 65536.0, 2) for item in mist_imgs
-        ]
+        mist_imgs = [np.expand_dims(np.array(item).astype(np.float32) / 65536.0, 2) for item in mist_imgs]
         org_mist = mist_imgs[0][:, :, 0].copy()
         mist_target = np.expand_dims(np.array(mist_target).astype(np.float32) / 65536.0, 2)
 
@@ -165,13 +155,19 @@ def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform,
     if not off_pc_render and require_rgb:
         img = np.array(org_img)
         h, w, _ = img.shape
-        render = np.zeros((h, w, 3), dtype='uint8')
+        render = np.zeros((h, w, 3), dtype="uint8")
         target_depth = np.zeros((h, w)).astype(np.float32)
         depth = org_mist
         pose = poses_relative[0].numpy()
-        dll.render(ct.c_int(img.shape[0]), ct.c_int(img.shape[1]), img.ctypes.data_as(ct.c_void_p),
-                   depth.ctypes.data_as(ct.c_void_p), pose.ctypes.data_as(ct.c_void_p),
-                   render.ctypes.data_as(ct.c_void_p), target_depth.ctypes.data_as(ct.c_void_p))
+        dll.render(
+            ct.c_int(img.shape[0]),
+            ct.c_int(img.shape[1]),
+            img.ctypes.data_as(ct.c_void_p),
+            depth.ctypes.data_as(ct.c_void_p),
+            pose.ctypes.data_as(ct.c_void_p),
+            render.ctypes.data_as(ct.c_void_p),
+            target_depth.ctypes.data_as(ct.c_void_p),
+        )
         if not transform is None:
             render = transform(Image.fromarray(render))
         if not depth_trans is None:
@@ -182,9 +178,9 @@ def get_item_fn(inds, select, root, loader, transform, off_3d, target_transform,
     elif off_pc_render:
         out = (imgs, target, mist_imgs, mist_target, normal_imgs, normal_target, poses_relative)
     else:
-        out = (imgs, target, mist_imgs, mist_target, normal_imgs, normal_target, poses_relative,
-               render, target_depth)
+        out = (imgs, target, mist_imgs, mist_target, normal_imgs, normal_target, poses_relative, render, target_depth)
     return (out_i, out)
+
 
 """ class ViewDataSet3D(data.Dataset):
     def __init__(self,

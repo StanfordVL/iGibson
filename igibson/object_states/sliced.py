@@ -1,8 +1,7 @@
-from igibson.object_states.max_temperature import MaxTemperature
-from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from igibson.object_states import *
-import igibson
 import pybullet as p
+
+from igibson.object_states import *
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 
 # TODO: propagate dusty/stained to object parts
 _DEFAULT_SLICE_FORCE = 10
@@ -23,7 +22,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
             return True
 
         if not new_value:
-            raise ValueError('Cannot set sliced from True to False')
+            raise ValueError("Cannot set sliced from True to False")
 
         self.value = new_value
 
@@ -31,7 +30,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
         # (an object part) that does not have multiplexer registered. This is
         # used when we propagate sliced=True from the whole object to all the
         # object parts.
-        if not hasattr(self.obj, 'multiplexer'):
+        if not hasattr(self.obj, "multiplexer"):
             return True
 
         # Object parts offset annotation are w.r.t the base link of the whole object
@@ -39,10 +38,8 @@ class Sliced(AbsoluteObjectState, BooleanState):
         dynamics_info = p.getDynamicsInfo(self.obj.get_body_id(), -1)
         inertial_pos = dynamics_info[3]
         inertial_orn = dynamics_info[4]
-        inv_inertial_pos, inv_inertial_orn =\
-            p.invertTransform(inertial_pos, inertial_orn)
-        pos, orn = p.multiplyTransforms(
-            pos, orn, inv_inertial_pos, inv_inertial_orn)
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
         self.obj.set_position(_STASH_POSITION)
 
         # force_wakeup is needed to properly update the self.obj pose in the renderer

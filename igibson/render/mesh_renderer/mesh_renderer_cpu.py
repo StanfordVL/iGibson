@@ -1,24 +1,33 @@
 import logging
+import os
 import platform
-from igibson.render.mesh_renderer import tinyobjloader
+import shutil
+import sys
+
+import numpy as np
+from PIL import Image
+
 import igibson
 import igibson.render.mesh_renderer as mesh_renderer
+from igibson.render.mesh_renderer import tinyobjloader
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
-from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.utils.mesh_util import perspective, lookat, xyz2mat, quat2rotmat, mat2xyz, \
-    safemat2quat, xyzw2wxyz, ortho, transform_vertex
-from igibson.utils.constants import AVAILABLE_MODALITIES, ShadowPass
-import numpy as np
-import os
-import sys
-from igibson.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
 from igibson.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
+from igibson.render.mesh_renderer.materials import Material, RandomizedMaterial, ProceduralMaterial
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.text import TextManager, Text
 from igibson.render.mesh_renderer.visual_object import VisualObject
-from PIL import Image
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-import time
-import shutil
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.utils.constants import AVAILABLE_MODALITIES, ShadowPass
+from igibson.utils.mesh_util import (
+    perspective,
+    lookat,
+    xyz2mat,
+    quat2rotmat,
+    mat2xyz,
+    safemat2quat,
+    xyzw2wxyz,
+    ortho,
+)
 
 Image.MAX_IMAGE_PIXELS = None
 
@@ -30,8 +39,15 @@ class MeshRenderer(object):
     It also manage a device to create OpenGL context on, and create buffers to store rendering results.
     """
 
-    def __init__(self, width=512, height=512, vertical_fov=90, device_idx=0,
-                 rendering_settings=MeshRendererSettings(), simulator=None):
+    def __init__(
+        self,
+        width=512,
+        height=512,
+        vertical_fov=90,
+        device_idx=0,
+        rendering_settings=MeshRendererSettings(),
+        simulator=None,
+    ):
         """
         :param width: width of the renderer output
         :param height: width of the renderer output
@@ -85,134 +101,173 @@ class MeshRenderer(object):
         TODO: add device management for windows platform.
         """
 
-        if os.environ.get('GIBSON_DEVICE_ID', None):
-            device = int(os.environ.get('GIBSON_DEVICE_ID'))
-            logging.info("GIBSON_DEVICE_ID environment variable has been manually set. "
-                         "Using device {} for rendering".format(device))
+        if os.environ.get("GIBSON_DEVICE_ID", None):
+            device = int(os.environ.get("GIBSON_DEVICE_ID"))
+            logging.info(
+                "GIBSON_DEVICE_ID environment variable has been manually set. "
+                "Using device {} for rendering".format(device)
+            )
         else:
-            if self.platform != 'Windows':
+            if self.platform != "Windows":
                 available_devices = get_available_devices()
                 if device_idx < len(available_devices):
                     device = available_devices[device_idx]
-                    logging.info(
-                        "Using device {} for rendering".format(device))
+                    logging.info("Using device {} for rendering".format(device))
                 else:
-                    logging.info(
-                        "Device index is larger than number of devices, falling back to use 0")
+                    logging.info("Device index is larger than number of devices, falling back to use 0")
                     logging.info(
                         "If you have trouble using EGL, please visit our trouble shooting guide",
-                        "at http://svl.stanford.edu/igibson/docs/issues.html")
+                        "at http://svl.stanford.edu/igibson/docs/issues.html",
+                    )
 
                     device = 0
 
         self.device_idx = device_idx
         self.device_minor = device
         self.msaa = rendering_settings.msaa
-        if self.platform == 'Darwin' and self.optimized:
-            logging.error('Optimized renderer is not supported on Mac')
+        if self.platform == "Darwin" and self.optimized:
+            logging.error("Optimized renderer is not supported on Mac")
             exit()
-        if self.platform == 'Darwin':
+        if self.platform == "Darwin":
             from igibson.render.mesh_renderer import GLFWRendererContext
+
             self.r = GLFWRendererContext.GLFWRendererContext(
-                width, height,
+                width,
+                height,
                 int(self.rendering_settings.glfw_gl_version[0]),
                 int(self.rendering_settings.glfw_gl_version[1]),
                 self.rendering_settings.show_glfw_window,
-                rendering_settings.fullscreen
+                rendering_settings.fullscreen,
             )
-        elif self.platform == 'Windows':
+        elif self.platform == "Windows":
             from igibson.render.mesh_renderer import VRRendererContext
+
             self.r = VRRendererContext.VRRendererContext(
-                width, height,
+                width,
+                height,
                 int(self.rendering_settings.glfw_gl_version[0]),
                 int(self.rendering_settings.glfw_gl_version[1]),
                 self.rendering_settings.show_glfw_window,
-                rendering_settings.fullscreen
+                rendering_settings.fullscreen,
             )
         else:
             from igibson.render.mesh_renderer import EGLRendererContext
-            self.r = EGLRendererContext.EGLRendererContext(
-                width, height, device)
+
+            self.r = EGLRendererContext.EGLRendererContext(width, height, device)
 
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
 
-        logging.debug('Rendering device and GL version')
+        logging.debug("Rendering device and GL version")
         logging.debug(self.glstring)
 
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.lightcolor = [1, 1, 1]
 
-        logging.debug('Is using fisheye camera: {}'.format(self.fisheye))
+        logging.debug("Is using fisheye camera: {}".format(self.fisheye))
 
         if self.fisheye:
-            logging.error('Fisheye is currently not supported.')
+            logging.error("Fisheye is currently not supported.")
             exit(1)
         else:
-            if self.platform == 'Darwin':
+            if self.platform == "Darwin":
                 self.shaderProgram = self.r.compile_shader_meshrenderer(
-                    "".join(open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders', '410', 'vert.shader')).readlines()),
-                    "".join(open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders', '410', 'frag.shader')).readlines()))
+                    "".join(
+                        open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "vert.shader")
+                        ).readlines()
+                    ),
+                    "".join(
+                        open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "frag.shader")
+                        ).readlines()
+                    ),
+                )
                 self.textShaderProgram = self.r.compile_shader_meshrenderer(
-                    "".join(open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders', '410', 'text_vert.shader')).readlines()),
-                    "".join(open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders', '410', 'text_frag.shader')).readlines()))
+                    "".join(
+                        open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "text_vert.shader")
+                        ).readlines()
+                    ),
+                    "".join(
+                        open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "text_frag.shader")
+                        ).readlines()
+                    ),
+                )
             else:
                 if self.optimized:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                         'shaders', '450', 'optimized_vert.shader')).readlines()),
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                         'shaders', '450', 'optimized_frag.shader')).readlines()))
+                        "".join(
+                            open(
+                                os.path.join(
+                                    os.path.dirname(mesh_renderer.__file__), "shaders", "450", "optimized_vert.shader"
+                                )
+                            ).readlines()
+                        ),
+                        "".join(
+                            open(
+                                os.path.join(
+                                    os.path.dirname(mesh_renderer.__file__), "shaders", "450", "optimized_frag.shader"
+                                )
+                            ).readlines()
+                        ),
+                    )
                 else:
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                         'shaders', '450', 'vert.shader')).readlines()),
-                        "".join(open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                         'shaders', '450', 'frag.shader')).readlines()))
+                        "".join(
+                            open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "vert.shader")
+                            ).readlines()
+                        ),
+                        "".join(
+                            open(
+                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "frag.shader")
+                            ).readlines()
+                        ),
+                    )
                 self.textShaderProgram = self.r.compile_shader_meshrenderer(
-                    "".join(open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders', '450', 'text_vert.shader')).readlines()),
-                    "".join(open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                     'shaders', '450', 'text_frag.shader')).readlines()))
+                    "".join(
+                        open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "text_vert.shader")
+                        ).readlines()
+                    ),
+                    "".join(
+                        open(
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "text_frag.shader")
+                        ).readlines()
+                    ),
+                )
 
             self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
-                "".join(open(
-                    os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                 'shaders', '410', 'skybox_vs.glsl')).readlines()),
-                "".join(open(
-                    os.path.join(os.path.dirname(mesh_renderer.__file__),
-                                 'shaders', '410', 'skybox_fs.glsl')).readlines()))
+                "".join(
+                    open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "skybox_vs.glsl")
+                    ).readlines()
+                ),
+                "".join(
+                    open(
+                        os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "skybox_fs.glsl")
+                    ).readlines()
+                ),
+            )
 
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
 
         self.setup_framebuffer()
         self.vertical_fov = vertical_fov
-        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
-                                            self.height) / np.pi * 180.0
+        self.horizontal_fov = (
+            2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width / self.height) / np.pi * 180.0
+        )
 
         self.camera = [1, 0, 0]
         self.target = [0, 0, 0]
         self.up = [0, 0, 1]
         self.znear = 0.1
         self.zfar = 100
-        P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), self.znear, self.zfar)
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), self.znear, self.zfar)
         V = lookat(self.camera, self.target, up=self.up)
 
         self.V = np.ascontiguousarray(V, np.float32)
@@ -229,7 +284,7 @@ class MeshRenderer(object):
         self.rot_data = None
 
         self.skybox_size = rendering_settings.skybox_size
-        if not self.platform == 'Darwin' and rendering_settings.enable_pbr:
+        if not self.platform == "Darwin" and rendering_settings.enable_pbr:
             self.setup_pbr()
 
         self.setup_lidar_param()
@@ -241,19 +296,21 @@ class MeshRenderer(object):
         """
         Set up physics-based rendering
         """
-        if os.path.exists(self.rendering_settings.env_texture_filename) or \
-                os.path.exists(self.rendering_settings.env_texture_filename2) or \
-                os.path.exists(self.rendering_settings.env_texture_filename3):
-            self.r.setup_pbr(os.path.join(os.path.dirname(mesh_renderer.__file__), 'shaders', '450'),
-                             self.rendering_settings.env_texture_filename,
-                             self.rendering_settings.env_texture_filename2,
-                             self.rendering_settings.env_texture_filename3,
-                             self.rendering_settings.light_modulation_map_filename,
-                             self.rendering_settings.light_dimming_factor
-                             )
+        if (
+            os.path.exists(self.rendering_settings.env_texture_filename)
+            or os.path.exists(self.rendering_settings.env_texture_filename2)
+            or os.path.exists(self.rendering_settings.env_texture_filename3)
+        ):
+            self.r.setup_pbr(
+                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450"),
+                self.rendering_settings.env_texture_filename,
+                self.rendering_settings.env_texture_filename2,
+                self.rendering_settings.env_texture_filename3,
+                self.rendering_settings.light_modulation_map_filename,
+                self.rendering_settings.light_dimming_factor,
+            )
         else:
-            logging.warning(
-                "Environment texture not available, cannot use PBR.")
+            logging.warning("Environment texture not available, cannot use PBR.")
         if self.rendering_settings.enable_pbr:
             self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
 
@@ -272,26 +329,30 @@ class MeshRenderer(object):
         """
         Set up framebuffers for the renderer
         """
-        [self.fbo,
-         self.color_tex_rgb,
-         self.color_tex_normal,
-         self.color_tex_semantics,
-         self.color_tex_ins_seg,
-         self.color_tex_3d,
-         self.color_tex_scene_flow,
-         self.color_tex_optical_flow,
-         self.depth_tex] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
+        [
+            self.fbo,
+            self.color_tex_rgb,
+            self.color_tex_normal,
+            self.color_tex_semantics,
+            self.color_tex_ins_seg,
+            self.color_tex_3d,
+            self.color_tex_scene_flow,
+            self.color_tex_optical_flow,
+            self.depth_tex,
+        ] = self.r.setup_framebuffer_meshrenderer(self.width, self.height)
 
         if self.msaa:
-            [self.fbo_ms,
-             self.color_tex_rgb_ms,
-             self.color_tex_normal_ms,
-             self.color_tex_semantics_ms,
-             self.color_tex_ins_seg_ms,
-             self.color_tex_3d_ms,
-             self.color_tex_scene_flow_ms,
-             self.color_tex_optical_flow_ms,
-             self.depth_tex_ms] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
+            [
+                self.fbo_ms,
+                self.color_tex_rgb_ms,
+                self.color_tex_normal_ms,
+                self.color_tex_semantics_ms,
+                self.color_tex_ins_seg_ms,
+                self.color_tex_3d_ms,
+                self.color_tex_scene_flow_ms,
+                self.color_tex_optical_flow_ms,
+                self.depth_tex_ms,
+            ] = self.r.setup_framebuffer_meshrenderer_ms(self.width, self.height)
 
         self.depth_tex_shadow = self.r.allocateTexture(self.width, self.height)
 
@@ -314,8 +375,7 @@ class MeshRenderer(object):
             # assume optimized renderer will have texture id starting from 0
             texture_id = len(self.texture_files)
         else:
-            texture_id = self.r.loadTexture(
-                tex_filename, self.rendering_settings.texture_scale, igibson.key_path)
+            texture_id = self.r.loadTexture(tex_filename, self.rendering_settings.texture_scale, igibson.key_path)
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
@@ -323,20 +383,20 @@ class MeshRenderer(object):
 
     def load_procedural_material(self, material):
         material.lookup_or_create_transformed_texture()
-        has_encrypted_texture = os.path.exists(
-            os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
-        suffix = '.encrypted.png' if has_encrypted_texture else '.png'
-        material.texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)))
+        has_encrypted_texture = os.path.exists(os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
+        suffix = ".encrypted.png" if has_encrypted_texture else ".png"
+        material.texture_id = self.load_texture_file(os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)))
         material.metallic_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "METALLIC{}".format(suffix)))
+            os.path.join(material.material_folder, "METALLIC{}".format(suffix))
+        )
         material.roughness_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix)))
+            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix))
+        )
         material.normal_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "NORMAL{}".format(suffix)))
+            os.path.join(material.material_folder, "NORMAL{}".format(suffix))
+        )
         for state in material.states:
-            transformed_diffuse_id = self.load_texture_file(
-                material.texture_filenames[state])
+            transformed_diffuse_id = self.load_texture_file(material.texture_filenames[state])
             material.texture_ids[state] = transformed_diffuse_id
         material.default_texture_id = material.texture_id
 
@@ -357,21 +417,21 @@ class MeshRenderer(object):
             for material_instance in material.material_files[material_class]:
                 material_id_instance = {}
                 for key in material_instance:
-                    material_id_instance[key] = \
-                        self.load_texture_file(material_instance[key])
-                material.material_ids[material_class].append(
-                    material_id_instance)
+                    material_id_instance[key] = self.load_texture_file(material_instance[key])
+                material.material_ids[material_class].append(material_id_instance)
         material.randomize()
 
-    def load_object(self,
-                    obj_path,
-                    scale=np.array([1, 1, 1]),
-                    transform_orn=None,
-                    transform_pos=None,
-                    input_kd=None,
-                    texture_scale=1.0,
-                    load_texture=True,
-                    overwrite_material=None):
+    def load_object(
+        self,
+        obj_path,
+        scale=np.array([1, 1, 1]),
+        transform_orn=None,
+        transform_pos=None,
+        input_kd=None,
+        texture_scale=1.0,
+        load_texture=True,
+        overwrite_material=None,
+    ):
         """
         Load a wavefront obj file into the renderer and create a VisualObject to manage it.
 
@@ -386,13 +446,14 @@ class MeshRenderer(object):
         :return: VAO_ids
         """
         if self.optimization_process_executed and self.optimized:
-            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
-                          "objects")
+            logging.error(
+                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
+            )
             return
 
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
-        if obj_path.endswith('encrypted.obj'):
+        if obj_path.endswith("encrypted.obj"):
             ret = reader.ParseFromFileWithKey(obj_path, igibson.key_path)
         else:
             ret = reader.ParseFromFile(obj_path)
@@ -425,8 +486,7 @@ class MeshRenderer(object):
 
         material_count = len(self.materials_mapping)
         if overwrite_material is not None and len(materials) > 1:
-            logging.warning(
-                "passed in one material ends up overwriting multiple materials")
+            logging.warning("passed in one material ends up overwriting multiple materials")
 
         for i, item in enumerate(materials):
             if overwrite_material is not None:
@@ -435,40 +495,35 @@ class MeshRenderer(object):
                 elif isinstance(overwrite_material, ProceduralMaterial):
                     self.load_procedural_material(overwrite_material)
                 material = overwrite_material
-            elif item.diffuse_texname != '' and load_texture:
+            elif item.diffuse_texname != "" and load_texture:
                 obj_dir = os.path.dirname(obj_path)
-                texture = self.load_texture_file(
-                    os.path.join(obj_dir, item.diffuse_texname))
-                texture_metallic = self.load_texture_file(
-                    os.path.join(obj_dir, item.metallic_texname))
-                texture_roughness = self.load_texture_file(
-                    os.path.join(obj_dir, item.roughness_texname))
-                texture_normal = self.load_texture_file(
-                    os.path.join(obj_dir, item.bump_texname))
-                material = Material('texture',
-                                    texture_id=texture,
-                                    metallic_texture_id=texture_metallic,
-                                    roughness_texture_id=texture_roughness,
-                                    normal_texture_id=texture_normal)
+                texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname))
+                texture_metallic = self.load_texture_file(os.path.join(obj_dir, item.metallic_texname))
+                texture_roughness = self.load_texture_file(os.path.join(obj_dir, item.roughness_texname))
+                texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname))
+                material = Material(
+                    "texture",
+                    texture_id=texture,
+                    metallic_texture_id=texture_metallic,
+                    roughness_texture_id=texture_roughness,
+                    normal_texture_id=texture_normal,
+                )
             else:
-                material = Material('color', kd=item.diffuse)
+                material = Material("color", kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[len(
-                materials) + material_count] = Material('color', kd=input_kd, texture_id=-1)
+            self.materials_mapping[len(materials) + material_count] = Material("color", kd=input_kd, texture_id=-1)
         else:
-            self.materials_mapping[len(
-                materials) + material_count] = Material('color', kd=[0.5, 0.5, 0.5], texture_id=-1)
+            self.materials_mapping[len(materials) + material_count] = Material(
+                "color", kd=[0.5, 0.5, 0.5], texture_id=-1
+            )
 
         VAO_ids = []
 
-        vertex_position = np.array(attrib.vertices).reshape(
-            (len(attrib.vertices) // 3, 3))
-        vertex_normal = np.array(attrib.normals).reshape(
-            (len(attrib.normals) // 3, 3))
-        vertex_texcoord = np.array(attrib.texcoords).reshape(
-            (len(attrib.texcoords) // 2, 2))
+        vertex_position = np.array(attrib.vertices).reshape((len(attrib.vertices) // 3, 3))
+        vertex_normal = np.array(attrib.normals).reshape((len(attrib.normals) // 3, 3))
+        vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords) // 2, 2))
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
@@ -525,21 +580,15 @@ class MeshRenderer(object):
             delta_pos2 = v2 - v0
             delta_uv1 = uv1 - uv0
             delta_uv2 = uv2 - uv0
-            r = 1.0 / (delta_uv1[:, 0] * delta_uv2[:, 1] -
-                       delta_uv1[:, 1] * delta_uv2[:, 0])
-            tangent = (delta_pos1 * delta_uv2[:, 1][:, None] -
-                       delta_pos2 * delta_uv1[:, 1][:, None]) * r[:, None]
-            bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] -
-                         delta_pos1 * delta_uv2[:, 0][:, None]) * r[:, None]
+            r = 1.0 / (delta_uv1[:, 0] * delta_uv2[:, 1] - delta_uv1[:, 1] * delta_uv2[:, 0])
+            tangent = (delta_pos1 * delta_uv2[:, 1][:, None] - delta_pos2 * delta_uv1[:, 1][:, None]) * r[:, None]
+            bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] - delta_pos1 * delta_uv2[:, 0][:, None]) * r[:, None]
             bitangent = bitangent.repeat(3, axis=0)
             tangent = tangent.repeat(3, axis=0)
-            vertices = np.concatenate(
-                [shape_vertex, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
-            faces = np.array(range(len(vertices))).reshape(
-                (len(vertices) // 3, 3))
+            vertices = np.concatenate([shape_vertex, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
+            faces = np.array(range(len(vertices))).reshape((len(vertices) // 3, 3))
             vertexData = vertices.astype(np.float32)
-            [VAO, VBO] = self.r.load_object_meshrenderer(
-                self.shaderProgram, vertexData)
+            [VAO, VBO] = self.r.load_object_meshrenderer(self.shaderProgram, vertexData)
             self.VAOs.append(VAO)
             self.VBOs.append(VBO)
             face_indices.append(len(self.faces))
@@ -554,26 +603,33 @@ class MeshRenderer(object):
             else:
                 self.mesh_materials.append(material_id + material_count)
 
-            logging.debug('mesh_materials: {}'.format(self.mesh_materials))
+            logging.debug("mesh_materials: {}".format(self.mesh_materials))
             VAO_ids.append(self.get_num_objects() - 1)
 
         new_obj = VisualObject(
-            obj_path, VAO_ids=VAO_ids, vertex_data_indices=vertex_data_indices, face_indices=face_indices,
-            id=len(self.visual_objects), renderer=self)
+            obj_path,
+            VAO_ids=VAO_ids,
+            vertex_data_indices=vertex_data_indices,
+            face_indices=face_indices,
+            id=len(self.visual_objects),
+            renderer=self,
+        )
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def add_instance(self,
-                     object_id,
-                     pybullet_uuid=None,
-                     class_id=0,
-                     pose_trans=np.eye(4),
-                     pose_rot=np.eye(4),
-                     dynamic=False,
-                     softbody=False,
-                     use_pbr=True,
-                     use_pbr_mapping=True,
-                     shadow_caster=True):
+    def add_instance(
+        self,
+        object_id,
+        pybullet_uuid=None,
+        class_id=0,
+        pose_trans=np.eye(4),
+        pose_rot=np.eye(4),
+        dynamic=False,
+        softbody=False,
+        use_pbr=True,
+        use_pbr_mapping=True,
+        shadow_caster=True,
+    ):
         """
         Create instance for a visual object and link it to pybullet
 
@@ -589,38 +645,43 @@ class MeshRenderer(object):
         :param shadow_caster: whether to cast shadow
         """
         if self.optimization_process_executed and self.optimized:
-            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
-                          "objects")
+            logging.error(
+                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
+            )
             return
 
         use_pbr = use_pbr and self.rendering_settings.enable_pbr
         use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
 
-        instance = Instance(self.visual_objects[object_id],
-                            id=len(self.instances),
-                            pybullet_uuid=pybullet_uuid,
-                            class_id=class_id,
-                            pose_trans=pose_trans,
-                            pose_rot=pose_rot,
-                            dynamic=dynamic,
-                            softbody=softbody,
-                            use_pbr=use_pbr,
-                            use_pbr_mapping=use_pbr_mapping,
-                            shadow_caster=shadow_caster)
+        instance = Instance(
+            self.visual_objects[object_id],
+            id=len(self.instances),
+            pybullet_uuid=pybullet_uuid,
+            class_id=class_id,
+            pose_trans=pose_trans,
+            pose_rot=pose_rot,
+            dynamic=dynamic,
+            softbody=softbody,
+            use_pbr=use_pbr,
+            use_pbr_mapping=use_pbr_mapping,
+            shadow_caster=shadow_caster,
+        )
         self.instances.append(instance)
 
-    def add_instance_group(self,
-                           object_ids,
-                           link_ids,
-                           poses_trans,
-                           poses_rot,
-                           pybullet_uuid=None,
-                           class_id=0,
-                           dynamic=False,
-                           robot=None,
-                           use_pbr=True,
-                           use_pbr_mapping=True,
-                           shadow_caster=True):
+    def add_instance_group(
+        self,
+        object_ids,
+        link_ids,
+        poses_trans,
+        poses_rot,
+        pybullet_uuid=None,
+        class_id=0,
+        dynamic=False,
+        robot=None,
+        use_pbr=True,
+        use_pbr_mapping=True,
+        shadow_caster=True,
+    ):
         """
         Create an instance group for a list of visual objects and link it to pybullet
 
@@ -638,36 +699,33 @@ class MeshRenderer(object):
         """
 
         if self.optimization_process_executed and self.optimized:
-            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
-                          "objects")
+            logging.error(
+                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
+            )
             return
 
         use_pbr = use_pbr and self.rendering_settings.enable_pbr
         use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
 
-        instance_group = InstanceGroup([self.visual_objects[object_id] for object_id in object_ids],
-                                       id=len(self.instances),
-                                       link_ids=link_ids,
-                                       pybullet_uuid=pybullet_uuid,
-                                       class_id=class_id,
-                                       poses_trans=poses_trans,
-                                       poses_rot=poses_rot,
-                                       dynamic=dynamic,
-                                       robot=robot,
-                                       use_pbr=use_pbr,
-                                       use_pbr_mapping=use_pbr_mapping,
-                                       shadow_caster=shadow_caster)
+        instance_group = InstanceGroup(
+            [self.visual_objects[object_id] for object_id in object_ids],
+            id=len(self.instances),
+            link_ids=link_ids,
+            pybullet_uuid=pybullet_uuid,
+            class_id=class_id,
+            poses_trans=poses_trans,
+            poses_rot=poses_rot,
+            dynamic=dynamic,
+            robot=robot,
+            use_pbr=use_pbr,
+            use_pbr_mapping=use_pbr_mapping,
+            shadow_caster=shadow_caster,
+        )
         self.instances.append(instance_group)
 
-    def add_robot(self,
-                  object_ids,
-                  link_ids,
-                  poses_trans,
-                  poses_rot,
-                  pybullet_uuid=None,
-                  class_id=0,
-                  dynamic=False,
-                  robot=None):
+    def add_robot(
+        self, object_ids, link_ids, poses_trans, poses_rot, pybullet_uuid=None, class_id=0, dynamic=False, robot=None
+    ):
         """
         Create an instance group (a robot) for a list of visual objects and link it to pybullet
 
@@ -682,34 +740,39 @@ class MeshRenderer(object):
         """
 
         if self.optimization_process_executed and self.optimized:
-            logging.error("Using optimized renderer and optimization process is already excuted, cannot add new "
-                          "objects")
+            logging.error(
+                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
+            )
             return
 
-        robot = Robot([self.visual_objects[object_id] for object_id in object_ids],
-                      id=len(self.instances),
-                      link_ids=link_ids,
-                      pybullet_uuid=pybullet_uuid,
-                      class_id=class_id,
-                      poses_trans=poses_trans,
-                      poses_rot=poses_rot,
-                      dynamic=dynamic,
-                      robot=robot,
-                      use_pbr=False,
-                      use_pbr_mapping=False)
+        robot = Robot(
+            [self.visual_objects[object_id] for object_id in object_ids],
+            id=len(self.instances),
+            link_ids=link_ids,
+            pybullet_uuid=pybullet_uuid,
+            class_id=class_id,
+            poses_trans=poses_trans,
+            poses_rot=poses_rot,
+            dynamic=dynamic,
+            robot=robot,
+            use_pbr=False,
+            use_pbr_mapping=False,
+        )
         self.instances.append(robot)
 
-    def add_text(self,
-                 text_data='PLACEHOLDER: PLEASE REPLACE!',
-                 font_name='OpenSans',
-                 font_style='Regular',
-                 font_size=48,
-                 color=[0, 0, 0],
-                 pixel_pos=[0, 0],
-                 pixel_size=[200, 200],
-                 scale=1.0,
-                 background_color=None,
-                 render_to_tex=False):
+    def add_text(
+        self,
+        text_data="PLACEHOLDER: PLEASE REPLACE!",
+        font_name="OpenSans",
+        font_style="Regular",
+        font_size=48,
+        color=[0, 0, 0],
+        pixel_pos=[0, 0],
+        pixel_size=[200, 200],
+        scale=1.0,
+        background_color=None,
+        render_to_tex=False,
+    ):
         """
         Creates a Text object with the given parameters. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
@@ -724,18 +787,20 @@ class MeshRenderer(object):
         :param background_color: color of the background in form [r, g, b, a] - background will only appear if this is not None
         :param render_to_tex: whether text should be rendered to an OpenGL texture or the screen (the default)
         """
-        text = Text(text_data=text_data,
-                    font_name=font_name,
-                    font_style=font_style,
-                    font_size=font_size,
-                    color=color,
-                    pos=pixel_pos,
-                    scale=scale,
-                    tbox_height=pixel_size[1],
-                    tbox_width=pixel_size[0],
-                    render_to_tex=render_to_tex,
-                    background_color=background_color,
-                    text_manager=self.text_manager)
+        text = Text(
+            text_data=text_data,
+            font_name=font_name,
+            font_style=font_style,
+            font_size=font_size,
+            color=color,
+            pos=pixel_pos,
+            scale=scale,
+            tbox_height=pixel_size[1],
+            tbox_width=pixel_size[0],
+            render_to_tex=render_to_tex,
+            background_color=background_color,
+            text_manager=self.text_manager,
+        )
         self.texts.append(text)
         return text
 
@@ -757,8 +822,7 @@ class MeshRenderer(object):
         V = lookat(self.camera, self.target, up=self.up)
         self.V = np.ascontiguousarray(V, np.float32)
         # change shadow mapping camera to be above the real camera
-        self.set_light_position_direction([self.camera[0], self.camera[1], 10],
-                                          [self.camera[0], self.camera[1], 0])
+        self.set_light_position_direction([self.camera[0], self.camera[1], 10], [self.camera[0], self.camera[1], 0])
         if cache:
             self.cache = self.V
 
@@ -780,10 +844,10 @@ class MeshRenderer(object):
         :param fov: vertical fov
         """
         self.vertical_fov = fov
-        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width /
-                                            self.height) / np.pi * 180.0
-        P = perspective(self.vertical_fov, float(
-            self.width) / float(self.height), self.znear, self.zfar)
+        self.horizontal_fov = (
+            2 * np.arctan(np.tan(self.vertical_fov / 180.0 * np.pi / 2.0) * self.width / self.height) / np.pi * 180.0
+        )
+        P = perspective(self.vertical_fov, float(self.width) / float(self.height), self.znear, self.zfar)
         self.P = np.ascontiguousarray(P, np.float32)
 
     def set_light_color(self, color):
@@ -855,9 +919,8 @@ class MeshRenderer(object):
 
         for mode in modes:
             if mode not in AVAILABLE_MODALITIES:
-                raise Exception('unknown rendering mode: {}'.format(mode))
-            frame = self.r.readbuffer_meshrenderer(
-                mode, self.width, self.height, self.fbo)
+                raise Exception("unknown rendering mode: {}".format(mode))
+            frame = self.r.readbuffer_meshrenderer(mode, self.width, self.height, self.fbo)
             frame = frame.reshape(self.height, self.width, 4)[::-1, :]
             results.append(frame)
         return results
@@ -865,15 +928,19 @@ class MeshRenderer(object):
     def update_optimized_texture(self):
         request_update = False
         for material in self.materials_mapping:
-            if isinstance(self.materials_mapping[material], ProceduralMaterial) and \
-                    self.materials_mapping[material].request_update:
+            if (
+                isinstance(self.materials_mapping[material], ProceduralMaterial)
+                and self.materials_mapping[material].request_update
+            ):
                 request_update = True
                 self.materials_mapping[material].request_update = False
 
         if request_update:
             self.update_optimized_texture_internal()
 
-    def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True):
+    def render(
+        self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True
+    ):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
@@ -889,13 +956,14 @@ class MeshRenderer(object):
         if self.optimized:
             self.update_optimized_texture()
 
-        if 'seg' in modes and self.rendering_settings.msaa:
+        if "seg" in modes and self.rendering_settings.msaa:
             logging.warning(
                 "Rendering segmentation masks with MSAA on may generate interpolation artifacts. "
-                "It is recommended to turn MSAA off when rendering segmentation.")
+                "It is recommended to turn MSAA off when rendering segmentation."
+            )
 
-        render_shadow_pass = render_shadow_pass and 'rgb' in modes
-        need_flow_info = 'optical_flow' in modes or 'scene_flow' in modes
+        render_shadow_pass = render_shadow_pass and "rgb" in modes
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
         self.update_dynamic_positions(need_flow_info=need_flow_info)
 
         if self.enable_shadow and render_shadow_pass:
@@ -910,15 +978,24 @@ class MeshRenderer(object):
                 # If objects are not shadow casters, we do not render them during the shadow pass. This can be achieved
                 # by setting their state to hidden for rendering the depth map
                 # Store which instances we hide, so we don't accidentally unhide instances that should remain hidden
-                shadow_hidden_instances = [
-                    i for i in self.instances if not i.shadow_caster and not i.hidden]
+                shadow_hidden_instances = [i for i in self.instances if not i.shadow_caster and not i.hidden]
                 for instance in shadow_hidden_instances:
                     instance.hidden = True
                 self.update_hidden_highlight_state(shadow_hidden_instances)
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array, self.V, self.last_V, self.P,
-                    self.lightV, self.lightP, ShadowPass.HAS_SHADOW_RENDER_SHADOW, self.camera)
+                    self.shaderProgram,
+                    self.pose_trans_array,
+                    self.pose_rot_array,
+                    self.last_trans_array,
+                    self.last_rot_array,
+                    self.V,
+                    self.last_V,
+                    self.P,
+                    self.lightV,
+                    self.lightP,
+                    ShadowPass.HAS_SHADOW_RENDER_SHADOW,
+                    self.camera,
+                )
                 self.r.renderOptimized(self.optimized_VAO)
                 for instance in shadow_hidden_instances:
                     instance.hidden = False
@@ -926,21 +1003,17 @@ class MeshRenderer(object):
             else:
                 for instance in self.instances:
                     if (instance not in hidden and not instance.hidden) and instance.shadow_caster:
-                        instance.render(
-                            shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SHADOW)
+                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SHADOW)
 
             self.r.render_meshrenderer_post()
 
             if self.msaa:
-                self.r.blit_buffer(self.width, self.height,
-                                   self.fbo_ms, self.fbo)
+                self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
 
-            self.r.readbuffer_meshrenderer_shadow_depth(
-                self.width, self.height, self.fbo, self.depth_tex_shadow)
+            self.r.readbuffer_meshrenderer_shadow_depth(self.width, self.height, self.fbo, self.depth_tex_shadow)
 
         if self.optimized:
-            all_instances = [
-                i for i in self.instances if i.or_buffer_indices is not None]
+            all_instances = [i for i in self.instances if i.or_buffer_indices is not None]
             self.update_hidden_highlight_state(all_instances)
             # TODO: support highlighting for non-optimized renderer
 
@@ -956,24 +1029,42 @@ class MeshRenderer(object):
         if self.optimized:
             if self.enable_shadow:
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array, self.V, self.last_V, self.P,
-                    self.lightV, self.lightP, ShadowPass.HAS_SHADOW_RENDER_SCENE, self.camera)
+                    self.shaderProgram,
+                    self.pose_trans_array,
+                    self.pose_rot_array,
+                    self.last_trans_array,
+                    self.last_rot_array,
+                    self.V,
+                    self.last_V,
+                    self.P,
+                    self.lightV,
+                    self.lightP,
+                    ShadowPass.HAS_SHADOW_RENDER_SCENE,
+                    self.camera,
+                )
             else:
                 self.r.updateDynamicData(
-                    self.shaderProgram, self.pose_trans_array, self.pose_rot_array, self.last_trans_array,
-                    self.last_rot_array, self.V, self.last_V, self.P,
-                    self.lightV, self.lightP, ShadowPass.NO_SHADOW, self.camera)
+                    self.shaderProgram,
+                    self.pose_trans_array,
+                    self.pose_rot_array,
+                    self.last_trans_array,
+                    self.last_rot_array,
+                    self.V,
+                    self.last_V,
+                    self.P,
+                    self.lightV,
+                    self.lightP,
+                    ShadowPass.NO_SHADOW,
+                    self.camera,
+                )
             self.r.renderOptimized(self.optimized_VAO)
         else:
             for instance in self.instances:
                 if instance not in hidden and not instance.hidden:
                     if self.enable_shadow:
-                        instance.render(
-                            shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
+                        instance.render(shadow_pass=ShadowPass.HAS_SHADOW_RENDER_SCENE)
                     else:
-                        instance.render(
-                            shadow_pass=ShadowPass.NO_SHADOW)
+                        instance.render(shadow_pass=ShadowPass.NO_SHADOW)
 
         # render text
         if render_text_pass:
@@ -1048,18 +1139,15 @@ class MeshRenderer(object):
         :param idx: instance id
         """
         self.instances[idx].last_rot = np.copy(self.instances[idx].pose_rot)
-        self.instances[idx].last_trans = np.copy(
-            self.instances[idx].pose_trans)
-        self.instances[idx].pose_rot = np.ascontiguousarray(
-            quat2rotmat(pose[3:]))
-        self.instances[idx].pose_trans = np.ascontiguousarray(
-            xyz2mat(pose[:3]))
+        self.instances[idx].last_trans = np.copy(self.instances[idx].pose_trans)
+        self.instances[idx].pose_rot = np.ascontiguousarray(quat2rotmat(pose[3:]))
+        self.instances[idx].pose_trans = np.ascontiguousarray(xyz2mat(pose[:3]))
 
     def release(self):
         """
         Clean everything, and release the openGL context.
         """
-        logging.debug('Releasing. {}'.format(self.glstring))
+        logging.debug("Releasing. {}".format(self.glstring))
         self.clean()
         self.r.release()
 
@@ -1068,14 +1156,27 @@ class MeshRenderer(object):
         Clean all the framebuffers, objects and instances
         """
         clean_list = [
-            self.color_tex_rgb, self.color_tex_normal, self.color_tex_semantics, self.color_tex_3d,
-            self.depth_tex, self.color_tex_scene_flow, self.color_tex_optical_flow, self.color_tex_ins_seg,
-            self.text_manager.render_tex] + [i for i in self.text_manager.tex_ids]
+            self.color_tex_rgb,
+            self.color_tex_normal,
+            self.color_tex_semantics,
+            self.color_tex_3d,
+            self.depth_tex,
+            self.color_tex_scene_flow,
+            self.color_tex_optical_flow,
+            self.color_tex_ins_seg,
+            self.text_manager.render_tex,
+        ] + [i for i in self.text_manager.tex_ids]
         fbo_list = [self.fbo, self.text_manager.FBO]
         if self.msaa:
             clean_list += [
-                self.color_tex_rgb_ms, self.color_tex_normal_ms, self.color_tex_semantics_ms, self.color_tex_3d_ms,
-                self.depth_tex_ms, self.color_tex_scene_flow_ms, self.color_tex_optical_flow_ms, self.color_tex_ins_seg_ms
+                self.color_tex_rgb_ms,
+                self.color_tex_normal_ms,
+                self.color_tex_semantics_ms,
+                self.color_tex_3d_ms,
+                self.depth_tex_ms,
+                self.color_tex_scene_flow_ms,
+                self.color_tex_optical_flow_ms,
+                self.color_tex_ins_seg_ms,
             ]
             fbo_list += [self.fbo_ms]
 
@@ -1083,11 +1184,16 @@ class MeshRenderer(object):
         text_vbos = [t.VBO for t in self.texts]
 
         if self.optimized and self.optimization_process_executed:
-            self.r.clean_meshrenderer_optimized(clean_list, [self.tex_id_1, self.tex_id_2], fbo_list,
-                                                [self.optimized_VAO] + text_vaos, [self.optimized_VBO] + text_vbos, [self.optimized_EBO])
+            self.r.clean_meshrenderer_optimized(
+                clean_list,
+                [self.tex_id_1, self.tex_id_2],
+                fbo_list,
+                [self.optimized_VAO] + text_vaos,
+                [self.optimized_VBO] + text_vbos,
+                [self.optimized_EBO],
+            )
         else:
-            self.r.clean_meshrenderer(
-                clean_list, self.textures, fbo_list, self.VAOs + text_vaos, self.VBOs + text_vbos)
+            self.r.clean_meshrenderer(clean_list, self.textures, fbo_list, self.VAOs + text_vaos, self.VBOs + text_vbos)
         self.text_manager.tex_ids = []
         self.color_tex_rgb = None
         self.color_tex_normal = None
@@ -1107,7 +1213,7 @@ class MeshRenderer(object):
         self.instances = []
         self.vertex_data = []
         self.shapes = []
-        save_path = os.path.join(igibson.ig_dataset_path, 'tmp')
+        save_path = os.path.join(igibson.ig_dataset_path, "tmp")
         if os.path.exists(save_path):
             shutil.rmtree(save_path)
 
@@ -1144,7 +1250,7 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robot_cameras(self, modes=('rgb')):
+    def render_robot_cameras(self, modes=("rgb")):
         """
         Render robot camera images
 
@@ -1157,8 +1263,7 @@ class MeshRenderer(object):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos +
-                                view_direction, [0, 0, 1], cache=True)
+                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1], cache=True)
                 hidden_instances = []
                 if self.rendering_settings.hide_robot:
                     hidden_instances.append(instance)
@@ -1187,12 +1292,9 @@ class MeshRenderer(object):
         texture_files = sorted(self.texture_files.items(), key=lambda x: x[1])
         texture_files = [item[0] for item in texture_files]
 
-        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = \
-            self.r.generateArrayTextures(texture_files,
-                                         cutoff,
-                                         shouldShrinkSmallTextures,
-                                         smallTexSize,
-                                         igibson.key_path)
+        self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(
+            texture_files, cutoff, shouldShrinkSmallTextures, smallTexSize, igibson.key_path
+        )
         print(self.tex_id_layer_mapping)
         print(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)
@@ -1226,16 +1328,11 @@ class MeshRenderer(object):
                 duplicate_vao_ids.extend(ids)
                 or_buffer_idx_end = len(duplicate_vao_ids)
                 # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
-                instance.or_buffer_indices = list(
-                    np.arange(or_buffer_idx_start, or_buffer_idx_end))
-                class_id_array.extend(
-                    [float(instance.class_id) / 255.0] * len(ids))
-                instance_id_array.extend(
-                    [float(instance.id) / 255.0] * len(ids))
-                pbr_data_array.extend(
-                    [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
-                hidden_array.extend(
-                    [[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
+                instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end))
+                class_id_array.extend([float(instance.class_id) / 255.0] * len(ids))
+                instance_id_array.extend([float(instance.id) / 255.0] * len(ids))
+                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
                 # Collect OR buffer indices over all visual objects in this group
@@ -1246,18 +1343,13 @@ class MeshRenderer(object):
                     duplicate_vao_ids.extend(ids)
                     or_buffer_idx_end = len(duplicate_vao_ids)
                     # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
-                    temp_or_buffer_indices.extend(
-                        list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
+                    temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
-                class_id_array.extend(
-                    [float(instance.class_id) / 255.0] * id_sum)
-                instance_id_array.extend(
-                    [float(instance.id) / 255.0] * id_sum)
-                pbr_data_array.extend(
-                    [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
-                hidden_array.extend(
-                    [[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
+                class_id_array.extend([float(instance.class_id) / 255.0] * id_sum)
+                instance_id_array.extend([float(instance.id) / 255.0] * id_sum)
+                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
         self.or_buffer_shape_num = len(duplicate_vao_ids)
@@ -1329,19 +1421,16 @@ class MeshRenderer(object):
 
             # List of 3 floats
             transform_param = id_material.transform_param
-            transform_param_array.append(
-                [transform_param[0], transform_param[1], transform_param[2], 1.0])
+            transform_param_array.append([transform_param[0], transform_param[1], transform_param[2], 1.0])
 
             kd = np.asarray(id_material.kd, dtype=np.float32)
             # Add padding so can store diffuse color as vec4
             # The 4th element is set to 1 as that is what is used by the fragment shader
             kd_vec_4 = [kd[0], kd[1], kd[2], 1.0]
-            diffuse_color_array.append(
-                np.ascontiguousarray(kd_vec_4, dtype=np.float32))
+            diffuse_color_array.append(np.ascontiguousarray(kd_vec_4, dtype=np.float32))
 
         # Convert data into numpy arrays for easy use in pybind
-        index_ptr_offsets = np.ascontiguousarray(
-            index_ptr_offsets, dtype=np.int32)
+        index_ptr_offsets = np.ascontiguousarray(index_ptr_offsets, dtype=np.int32)
         index_counts = np.ascontiguousarray(index_counts, dtype=np.int32)
         indices = np.ascontiguousarray(indices, dtype=np.int32)
 
@@ -1354,45 +1443,34 @@ class MeshRenderer(object):
         frag_shader_normal_data = []
 
         for i in range(len(duplicate_vao_ids)):
-            data_list = [float(tex_num_array[i]), float(
-                tex_layer_array[i]), class_id_array[i], instance_id_array[i]]
-            frag_shader_data.append(
-                np.ascontiguousarray(data_list, dtype=np.float32))
-            pbr_data.append(
-                np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
-            hidden_data.append(
-                np.ascontiguousarray(hidden_array[i], dtype=np.float32))
-            roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
-                                            float(
-                                                roughness_tex_layer_array[i]),
-                                            float(metallic_tex_num_array[i]),
-                                            float(metallic_tex_layer_array[i]),
-                                            ]
+            data_list = [float(tex_num_array[i]), float(tex_layer_array[i]), class_id_array[i], instance_id_array[i]]
+            frag_shader_data.append(np.ascontiguousarray(data_list, dtype=np.float32))
+            pbr_data.append(np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
+            hidden_data.append(np.ascontiguousarray(hidden_array[i], dtype=np.float32))
+            roughness_metallic_data_list = [
+                float(roughness_tex_num_array[i]),
+                float(roughness_tex_layer_array[i]),
+                float(metallic_tex_num_array[i]),
+                float(metallic_tex_layer_array[i]),
+            ]
             frag_shader_roughness_metallic_data.append(
-                np.ascontiguousarray(roughness_metallic_data_list, dtype=np.float32))
-            normal_data_list = [float(normal_tex_num_array[i]),
-                                float(normal_tex_layer_array[i]),
-                                0.0, 0.0
-                                ]
-            frag_shader_normal_data.append(
-                np.ascontiguousarray(normal_data_list, dtype=np.float32))
-            uv_data.append(
-                np.ascontiguousarray(transform_param_array[i], dtype=np.float32))
+                np.ascontiguousarray(roughness_metallic_data_list, dtype=np.float32)
+            )
+            normal_data_list = [float(normal_tex_num_array[i]), float(normal_tex_layer_array[i]), 0.0, 0.0]
+            frag_shader_normal_data.append(np.ascontiguousarray(normal_data_list, dtype=np.float32))
+            uv_data.append(np.ascontiguousarray(transform_param_array[i], dtype=np.float32))
 
-        merged_frag_shader_data = np.ascontiguousarray(
-            np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_frag_shader_data = np.ascontiguousarray(np.concatenate(frag_shader_data, axis=0), np.float32)
         merged_frag_shader_roughness_metallic_data = np.ascontiguousarray(
-            np.concatenate(frag_shader_roughness_metallic_data, axis=0), np.float32)
+            np.concatenate(frag_shader_roughness_metallic_data, axis=0), np.float32
+        )
         merged_frag_shader_normal_data = np.ascontiguousarray(
-            np.concatenate(frag_shader_normal_data, axis=0), np.float32)
-        merged_diffuse_color_array = np.ascontiguousarray(
-            np.concatenate(diffuse_color_array, axis=0), np.float32)
-        merged_pbr_data = np.ascontiguousarray(
-            np.concatenate(pbr_data, axis=0), np.float32)
-        self.merged_hidden_data = np.ascontiguousarray(
-            np.concatenate(hidden_data, axis=0), np.float32)
-        self.merged_uv_data = np.ascontiguousarray(
-            np.concatenate(uv_data, axis=0), np.float32)
+            np.concatenate(frag_shader_normal_data, axis=0), np.float32
+        )
+        merged_diffuse_color_array = np.ascontiguousarray(np.concatenate(diffuse_color_array, axis=0), np.float32)
+        merged_pbr_data = np.ascontiguousarray(np.concatenate(pbr_data, axis=0), np.float32)
+        self.merged_hidden_data = np.ascontiguousarray(np.concatenate(hidden_data, axis=0), np.float32)
+        self.merged_uv_data = np.ascontiguousarray(np.concatenate(uv_data, axis=0), np.float32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
         print("Merged vertex data shape:")
@@ -1404,25 +1482,29 @@ class MeshRenderer(object):
         else:
             buffer = self.fbo
 
-        self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = \
-            self.r.renderSetup(self.shaderProgram, self.V,
-                               self.P, self.lightpos,
-                               self.lightcolor,
-                               merged_vertex_data,
-                               index_ptr_offsets, index_counts,
-                               indices,
-                               merged_frag_shader_data,
-                               merged_frag_shader_roughness_metallic_data,
-                               merged_frag_shader_normal_data,
-                               merged_diffuse_color_array,
-                               merged_pbr_data,
-                               self.merged_hidden_data,
-                               self.merged_uv_data,
-                               self.tex_id_1, self.tex_id_2,
-                               buffer,
-                               float(
-                                   self.rendering_settings.enable_pbr),
-                               self.depth_tex_shadow)
+        self.optimized_VAO, self.optimized_VBO, self.optimized_EBO = self.r.renderSetup(
+            self.shaderProgram,
+            self.V,
+            self.P,
+            self.lightpos,
+            self.lightcolor,
+            merged_vertex_data,
+            index_ptr_offsets,
+            index_counts,
+            indices,
+            merged_frag_shader_data,
+            merged_frag_shader_roughness_metallic_data,
+            merged_frag_shader_normal_data,
+            merged_diffuse_color_array,
+            merged_pbr_data,
+            self.merged_hidden_data,
+            self.merged_uv_data,
+            self.tex_id_1,
+            self.tex_id_2,
+            buffer,
+            float(self.rendering_settings.enable_pbr),
+            self.depth_tex_shadow,
+        )
         self.optimization_process_executed = True
 
     def update_optimized_texture_internal(self):
@@ -1447,16 +1529,11 @@ class MeshRenderer(object):
                 duplicate_vao_ids.extend(ids)
                 or_buffer_idx_end = len(duplicate_vao_ids)
                 # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
-                instance.or_buffer_indices = list(
-                    np.arange(or_buffer_idx_start, or_buffer_idx_end))
-                class_id_array.extend(
-                    [float(instance.class_id) / 255.0] * len(ids))
-                instance_id_array.extend(
-                    [float(instance.id) / 255.0] * len(ids))
-                pbr_data_array.extend(
-                    [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
-                hidden_array.extend(
-                    [[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
+                instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end))
+                class_id_array.extend([float(instance.class_id) / 255.0] * len(ids))
+                instance_id_array.extend([float(instance.id) / 255.0] * len(ids))
+                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
                 id_sum = 0
                 # Collect OR buffer indices over all visual objects in this group
@@ -1467,18 +1544,13 @@ class MeshRenderer(object):
                     duplicate_vao_ids.extend(ids)
                     or_buffer_idx_end = len(duplicate_vao_ids)
                     # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
-                    temp_or_buffer_indices.extend(
-                        list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
+                    temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
-                class_id_array.extend(
-                    [float(instance.class_id) / 255.0] * id_sum)
-                instance_id_array.extend(
-                    [float(instance.id) / 255.0] * id_sum)
-                pbr_data_array.extend(
-                    [[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
-                hidden_array.extend(
-                    [[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
+                class_id_array.extend([float(instance.class_id) / 255.0] * id_sum)
+                instance_id_array.extend([float(instance.id) / 255.0] * id_sum)
+                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
+                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Variables needed for multi draw elements call
         index_ptr_offsets = []
@@ -1536,15 +1608,13 @@ class MeshRenderer(object):
 
             # List of 3 floats
             transform_param = id_material.transform_param
-            transform_param_array.append(
-                [transform_param[0], transform_param[1], transform_param[2], 1.0])
+            transform_param_array.append([transform_param[0], transform_param[1], transform_param[2], 1.0])
 
             kd = np.asarray(id_material.kd, dtype=np.float32)
             # Add padding so can store diffuse color as vec4
             # The 4th element is set to 1 as that is what is used by the fragment shader
             kd_vec_4 = [kd[0], kd[1], kd[2], 1.0]
-            diffuse_color_array.append(
-                np.ascontiguousarray(kd_vec_4, dtype=np.float32))
+            diffuse_color_array.append(np.ascontiguousarray(kd_vec_4, dtype=np.float32))
 
         # Convert frag shader data to list of vec4 for use in uniform buffer objects
         frag_shader_data = []
@@ -1555,54 +1625,44 @@ class MeshRenderer(object):
         frag_shader_normal_data = []
 
         for i in range(len(duplicate_vao_ids)):
-            data_list = [float(tex_num_array[i]), float(
-                tex_layer_array[i]), class_id_array[i], instance_id_array[i]]
-            frag_shader_data.append(
-                np.ascontiguousarray(data_list, dtype=np.float32))
-            pbr_data.append(
-                np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
-            hidden_data.append(
-                np.ascontiguousarray(hidden_array[i], dtype=np.float32))
-            roughness_metallic_data_list = [float(roughness_tex_num_array[i]),
-                                            float(
-                                                roughness_tex_layer_array[i]),
-                                            float(metallic_tex_num_array[i]),
-                                            float(metallic_tex_layer_array[i]),
-                                            ]
+            data_list = [float(tex_num_array[i]), float(tex_layer_array[i]), class_id_array[i], instance_id_array[i]]
+            frag_shader_data.append(np.ascontiguousarray(data_list, dtype=np.float32))
+            pbr_data.append(np.ascontiguousarray(pbr_data_array[i], dtype=np.float32))
+            hidden_data.append(np.ascontiguousarray(hidden_array[i], dtype=np.float32))
+            roughness_metallic_data_list = [
+                float(roughness_tex_num_array[i]),
+                float(roughness_tex_layer_array[i]),
+                float(metallic_tex_num_array[i]),
+                float(metallic_tex_layer_array[i]),
+            ]
             frag_shader_roughness_metallic_data.append(
-                np.ascontiguousarray(roughness_metallic_data_list, dtype=np.float32))
-            normal_data_list = [float(normal_tex_num_array[i]),
-                                float(normal_tex_layer_array[i]),
-                                0.0, 0.0
-                                ]
-            frag_shader_normal_data.append(
-                np.ascontiguousarray(normal_data_list, dtype=np.float32))
-            uv_data.append(
-                np.ascontiguousarray(transform_param_array[i], dtype=np.float32))
+                np.ascontiguousarray(roughness_metallic_data_list, dtype=np.float32)
+            )
+            normal_data_list = [float(normal_tex_num_array[i]), float(normal_tex_layer_array[i]), 0.0, 0.0]
+            frag_shader_normal_data.append(np.ascontiguousarray(normal_data_list, dtype=np.float32))
+            uv_data.append(np.ascontiguousarray(transform_param_array[i], dtype=np.float32))
 
-        merged_frag_shader_data = np.ascontiguousarray(
-            np.concatenate(frag_shader_data, axis=0), np.float32)
+        merged_frag_shader_data = np.ascontiguousarray(np.concatenate(frag_shader_data, axis=0), np.float32)
         merged_frag_shader_roughness_metallic_data = np.ascontiguousarray(
-            np.concatenate(frag_shader_roughness_metallic_data, axis=0), np.float32)
+            np.concatenate(frag_shader_roughness_metallic_data, axis=0), np.float32
+        )
         merged_frag_shader_normal_data = np.ascontiguousarray(
-            np.concatenate(frag_shader_normal_data, axis=0), np.float32)
-        merged_diffuse_color_array = np.ascontiguousarray(
-            np.concatenate(diffuse_color_array, axis=0), np.float32)
-        merged_pbr_data = np.ascontiguousarray(
-            np.concatenate(pbr_data, axis=0), np.float32)
-        self.merged_hidden_data = np.ascontiguousarray(
-            np.concatenate(hidden_data, axis=0), np.float32)
-        self.merged_uv_data = np.ascontiguousarray(
-            np.concatenate(uv_data, axis=0), np.float32)
-        self.r.updateTextureIdArrays(self.shaderProgram,
-                                     merged_frag_shader_data,
-                                     merged_frag_shader_roughness_metallic_data,
-                                     merged_frag_shader_normal_data,
-                                     merged_diffuse_color_array,
-                                     merged_pbr_data,
-                                     self.merged_hidden_data,
-                                     self.merged_uv_data
-                                     )
+            np.concatenate(frag_shader_normal_data, axis=0), np.float32
+        )
+        merged_diffuse_color_array = np.ascontiguousarray(np.concatenate(diffuse_color_array, axis=0), np.float32)
+        merged_pbr_data = np.ascontiguousarray(np.concatenate(pbr_data, axis=0), np.float32)
+        self.merged_hidden_data = np.ascontiguousarray(np.concatenate(hidden_data, axis=0), np.float32)
+        self.merged_uv_data = np.ascontiguousarray(np.concatenate(uv_data, axis=0), np.float32)
+        self.r.updateTextureIdArrays(
+            self.shaderProgram,
+            merged_frag_shader_data,
+            merged_frag_shader_roughness_metallic_data,
+            merged_frag_shader_normal_data,
+            merged_diffuse_color_array,
+            merged_pbr_data,
+            self.merged_hidden_data,
+            self.merged_uv_data,
+        )
 
     def update_hidden_highlight_state(self, instances):
         """
@@ -1615,19 +1675,17 @@ class MeshRenderer(object):
             return
         for instance in instances:
             buf_idxs = instance.or_buffer_indices
-            #if not buf_idxs:
+            # if not buf_idxs:
             #    print(
             #        'ERROR: trying to set hidden state of an instance that has no visual objects!')
             # Need to multiply buf_idxs by four so we index into the first element of the vec4 corresponding to each buffer index
             vec4_buf_idxs = [idx * 4 for idx in buf_idxs]
-            vec4_buf_idxs_highlight = [idx * 4+1 for idx in buf_idxs]
+            vec4_buf_idxs_highlight = [idx * 4 + 1 for idx in buf_idxs]
 
             self.merged_hidden_data[vec4_buf_idxs] = float(instance.hidden)
             # highlight data stored in 4n + 1
-            self.merged_hidden_data[vec4_buf_idxs_highlight] = float(
-                instance.highlight)
-        self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(
-            self.merged_hidden_data, dtype=np.float32))
+            self.merged_hidden_data[vec4_buf_idxs_highlight] = float(instance.highlight)
+        self.r.updateHiddenData(self.shaderProgram, np.ascontiguousarray(self.merged_hidden_data, dtype=np.float32))
 
     def update_dynamic_positions(self, need_flow_info=False):
         """
@@ -1657,13 +1715,11 @@ class MeshRenderer(object):
             if self.pose_trans_array is not None:
                 self.last_trans_array = np.copy(self.pose_trans_array)
             else:
-                self.last_trans_array = np.ascontiguousarray(
-                    np.concatenate(self.trans_data, axis=0))
+                self.last_trans_array = np.ascontiguousarray(np.concatenate(self.trans_data, axis=0))
             if self.pose_rot_array is not None:
                 self.last_rot_array = np.copy(self.pose_rot_array)
             else:
-                self.last_rot_array = np.ascontiguousarray(
-                    np.concatenate(self.rot_data, axis=0))
+                self.last_rot_array = np.ascontiguousarray(np.concatenate(self.rot_data, axis=0))
         else:
             # dummy pose for zero flow
             self.last_rot_array = self.pose_rot_array
@@ -1687,28 +1743,30 @@ class MeshRenderer(object):
         """
         Set up LiDAR params
         """
-        lidar_vertical_low = -15 / 180. * np.pi
-        lidar_vertical_high = 15 / 180. * np.pi
+        lidar_vertical_low = -15 / 180.0 * np.pi
+        lidar_vertical_high = 15 / 180.0 * np.pi
         lidar_vertical_n_beams = 16
-        lidar_vertical_beams = np.arange(lidar_vertical_low, lidar_vertical_high +
-                                         (lidar_vertical_high - lidar_vertical_low) /
-                                         (lidar_vertical_n_beams-1),
-                                         (lidar_vertical_high - lidar_vertical_low) / (lidar_vertical_n_beams-1))
+        lidar_vertical_beams = np.arange(
+            lidar_vertical_low,
+            lidar_vertical_high + (lidar_vertical_high - lidar_vertical_low) / (lidar_vertical_n_beams - 1),
+            (lidar_vertical_high - lidar_vertical_low) / (lidar_vertical_n_beams - 1),
+        )
 
-        lidar_horizontal_low = -45 / 180. * np.pi
-        lidar_horizontal_high = 45 / 180. * np.pi
+        lidar_horizontal_low = -45 / 180.0 * np.pi
+        lidar_horizontal_high = 45 / 180.0 * np.pi
         lidar_horizontal_n_beams = 468
-        lidar_horizontal_beams = np.arange(lidar_horizontal_low, lidar_horizontal_high,
-                                           (lidar_horizontal_high - lidar_horizontal_low) / (lidar_horizontal_n_beams))
+        lidar_horizontal_beams = np.arange(
+            lidar_horizontal_low,
+            lidar_horizontal_high,
+            (lidar_horizontal_high - lidar_horizontal_low) / (lidar_horizontal_n_beams),
+        )
 
         xx, yy = np.meshgrid(lidar_vertical_beams, lidar_horizontal_beams)
         xx = xx.flatten()
         yy = yy.flatten()
 
-        x_samples = (np.tan(xx) / np.cos(yy) * self.height //
-                     2 + self.height//2).astype(np.int)
-        y_samples = (np.tan(yy) * self.height//2 +
-                     self.height//2).astype(np.int)
+        x_samples = (np.tan(xx) / np.cos(yy) * self.height // 2 + self.height // 2).astype(np.int)
+        y_samples = (np.tan(yy) * self.height // 2 + self.height // 2).astype(np.int)
 
         self.x_samples = x_samples.flatten()
         self.y_samples = y_samples.flatten()
@@ -1719,7 +1777,7 @@ class MeshRenderer(object):
 
         :return: partial LiDAR readings with limited FOV
         """
-        lidar_readings = self.render(modes=('3d'))[0]
+        lidar_readings = self.render(modes=("3d"))[0]
         lidar_readings = lidar_readings[self.x_samples, self.y_samples, :3]
         dist = np.linalg.norm(lidar_readings, axis=1)
         lidar_readings = lidar_readings[dist > 0]
@@ -1737,22 +1795,26 @@ class MeshRenderer(object):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos +
-                                view_direction, [0, 0, 1])
+                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
 
         original_fov = self.vertical_fov
         self.set_fov(90)
         lidar_readings = []
         view_direction = np.array([1, 0, 0])
         r2 = np.array(
-            [[np.cos(-np.pi / 2), -np.sin(-np.pi / 2), 0], [np.sin(-np.pi / 2), np.cos(-np.pi / 2), 0], [0, 0, 1]])
+            [[np.cos(-np.pi / 2), -np.sin(-np.pi / 2), 0], [np.sin(-np.pi / 2), np.cos(-np.pi / 2), 0], [0, 0, 1]]
+        )
         r3 = np.array(
-            [[np.cos(-np.pi / 2), 0, -np.sin(-np.pi / 2)], [0, 1, 0],  [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2)]])
+            [[np.cos(-np.pi / 2), 0, -np.sin(-np.pi / 2)], [0, 1, 0], [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2)]]
+        )
         transformatiom_matrix = np.eye(3)
 
         for i in range(4):
-            self.set_camera(np.array(self.camera) + offset_with_camera,
-                            np.array(self.camera) + offset_with_camera + view_direction, [0, 0, 1])
+            self.set_camera(
+                np.array(self.camera) + offset_with_camera,
+                np.array(self.camera) + offset_with_camera + view_direction,
+                [0, 0, 1],
+            )
             lidar_one_view = self.get_lidar_from_depth()
             lidar_readings.append(lidar_one_view.dot(transformatiom_matrix))
             view_direction = r2.dot(view_direction)

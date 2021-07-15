@@ -1,5 +1,6 @@
-from igibson.objects.object_base import Object
 import pybullet as p
+
+from igibson.objects.object_base import Object
 
 
 class VisualShape(Object):
@@ -7,9 +8,7 @@ class VisualShape(Object):
     Visual shape created with mesh file
     """
 
-    def __init__(self,
-                 filename,
-                 scale=1.0):
+    def __init__(self, filename, scale=1.0):
         """
         Create a visual shape to show in pybullet and MeshRenderer
 
@@ -24,9 +23,6 @@ class VisualShape(Object):
         """
         Load the object into pybullet
         """
-        visual_id = p.createVisualShape(p.GEOM_MESH,
-                                        fileName=self.filename,
-                                        meshScale=[self.scale] * 3)
-        body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                    baseVisualShapeIndex=visual_id)
+        visual_id = p.createVisualShape(p.GEOM_MESH, fileName=self.filename, meshScale=[self.scale] * 3)
+        body_id = p.createMultiBody(baseCollisionShapeIndex=-1, baseVisualShapeIndex=visual_id)
         return body_id

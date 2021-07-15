@@ -1,29 +1,27 @@
-import pybullet as p
-import uuid
-import time
 import atexit
-import traceback
-import multiprocessing
-from io import BytesIO
-from PIL import Image
-import numpy as np
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.utils.utils import parse_config
-import os
-import igibson
-from igibson.task.task_base import iGBEHAVIORActivityInstance
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.simulator import Simulator
-from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
-from bddl.parsing import construct_full_bddl
-import bddl
 import json
+import multiprocessing
+import os
 import sys
+import time
+import traceback
+import uuid
+
+import bddl
+import numpy as np
+import pybullet as p
+from bddl.parsing import construct_full_bddl
+from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
+from flask import Flask, render_template, Response, request
 from flask_apscheduler import APScheduler
 from flask_cors import CORS
-from flask import Flask, render_template, Response, request, session
 
+import igibson
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.simulator import Simulator
+from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.utils.utils import parse_config
 
 interactive = True
 NUM_REQUIRED_SUCCESSFUL_SCENES = 3
@@ -50,8 +48,7 @@ class ProcessPyEnvironment(object):
     def start(self):
         """Start the process."""
         self._conn, conn = multiprocessing.Pipe()
-        self._process = multiprocessing.Process(target=self._worker,
-                                                args=(conn, self._env_constructor))
+        self._process = multiprocessing.Process(target=self._worker, args=(conn, self._env_constructor))
         atexit.register(self.close)
         self.last_active_time = time.time()
         self._process.start()
@@ -71,7 +68,7 @@ class ProcessPyEnvironment(object):
         :param name: attribute to access.
         :return: value of the attribute.
         """
-        print('gettinng', name)
+        print("gettinng", name)
         self._conn.send((self._ACCESS, name))
         return self._receive()
 
@@ -104,7 +101,7 @@ class ProcessPyEnvironment(object):
         :param blocking: whether to wait for the result.
         :return: (next_obs, reward, done, info) tuple when blocking, otherwise callable that returns that tuple
         """
-        promise = self.call('step', action)
+        promise = self.call("step", action)
         if blocking:
             return promise()
         else:
@@ -116,7 +113,7 @@ class ProcessPyEnvironment(object):
         :param blocking: whether to wait for the result.
         :return: next_obs when blocking, otherwise callable that returns next_obs
         """
-        promise = self.call('reset')
+        promise = self.call("reset")
         if blocking:
             return promise()
         else:
@@ -153,8 +150,7 @@ class ProcessPyEnvironment(object):
         if message == self._RESULT:
             return payload
         self.close()
-        raise KeyError(
-            'Received message of unexpected type {}'.format(message))
+        raise KeyError("Received message of unexpected type {}".format(message))
 
     def _worker(self, conn, env_constructor):
         """The process waits for actions and sends back environment results.
@@ -168,7 +164,7 @@ class ProcessPyEnvironment(object):
         try:
             np.random.seed()
             env = env_constructor()
-            conn.send(self._READY)    # Ready.
+            conn.send(self._READY)  # Ready.
             while True:
                 try:
                     # Only block for short times to have keyboard exceptions be raised.
@@ -184,20 +180,19 @@ class ProcessPyEnvironment(object):
                     continue
                 if message == self._CALL:
                     name, args, kwargs = payload
-                    if name == 'step' or name == 'reset' or name == "sample":
+                    if name == "step" or name == "reset" or name == "sample":
                         result = getattr(env, name)(*args, **kwargs)
                     conn.send((self._RESULT, result))
                     continue
                 if message == self._CLOSE:
-                    getattr(env, 'close')()
+                    getattr(env, "close")()
                     assert payload is None
                     break
-                raise KeyError(
-                    'Received message of unknown type {}'.format(message))
-        except Exception:    # pylint: disable=broad-except
+                raise KeyError("Received message of unknown type {}".format(message))
+        except Exception:  # pylint: disable=broad-except
             etype, evalue, tb = sys.exc_info()
-            stacktrace = ''.join(traceback.format_exception(etype, evalue, tb))
-            message = 'Error in environment process: {}'.format(stacktrace)
+            stacktrace = "".join(traceback.format_exception(etype, evalue, tb))
+            message = "Error in environment process: {}".format(stacktrace)
             conn.send((self._EXCEPTION, stacktrace))
         finally:
             conn.close()
@@ -205,28 +200,24 @@ class ProcessPyEnvironment(object):
 
 class ToyEnv(object):
     def __init__(self):
-        config = parse_config(os.path.join(
-            igibson.example_config_path, 'turtlebot_demo.yaml'))
-        hdr_texture = os.path.join(
-            igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
-        hdr_texture2 = os.path.join(
-            igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+        config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_demo.yaml"))
+        hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
+        hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
         light_modulation_map_filename = os.path.join(
-            igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
-        background_texture = os.path.join(
-            igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+            igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+        )
+        background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
         settings = MeshRendererSettings(enable_shadow=False, enable_pbr=False)
 
-        self.s = Simulator(mode='headless', image_width=400,
-                           image_height=400, rendering_settings=settings)
-        scene = StaticIndoorScene('Rs')
+        self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
+        scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
         # self.s.import_ig_scene(scene)
 
     def step(self, a):
         self.s.step()
-        frame = self.s.renderer.render_robot_cameras(modes=('rgb'))[0]
+        frame = self.s.renderer.render_robot_cameras(modes=("rgb"))[0]
         return frame
 
     def close(self):
@@ -234,17 +225,16 @@ class ToyEnv(object):
 
 
 class ToyEnvInt(object):
-    def __init__(self, scene='Rs_int'):
+    def __init__(self, scene="Rs_int"):
         bddl.set_backend("iGibson")
-        self.task = iGBEHAVIORActivityInstance('trivial', activity_definition=0)
+        self.task = iGBEHAVIORActivityInstance("trivial", activity_definition=0)
 
         settings = MeshRendererSettings(texture_scale=0.01)
-        simulator = Simulator(mode='headless', image_width=400,
-                              image_height=400, rendering_settings=settings)
+        simulator = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
         self.task.initialize_simulator(
             simulator=simulator,
             scene_id=scene,
-            mode='headless',
+            mode="headless",
             load_clutter=False,
             should_debug_sampling=False,
             scene_kwargs={},
@@ -261,8 +251,7 @@ class ToyEnvInt(object):
         for sim_obj in self.task.newly_added_objects:
             self.task.scene.remove_object(sim_obj)
 
-        self.task.simulator.particle_systems = \
-            self.task.simulator.particle_systems[:self.num_particle_systems]
+        self.task.simulator.particle_systems = self.task.simulator.particle_systems[: self.num_particle_systems]
 
         for body_id in range(self.num_body_ids, p.getNumBodies()):
             p.removeBody(body_id)
@@ -271,16 +260,15 @@ class ToyEnvInt(object):
 
     def sample(self, behavior_activity, bddl):
         try:
-            self.task.update_problem(
-                behavior_activity, "tester", predefined_problem=bddl)
-            self.task.object_scope['agent.n.01_1'] = self.task.agent.parts['body']
+            self.task.update_problem(behavior_activity, "tester", predefined_problem=bddl)
+            self.task.object_scope["agent.n.01_1"] = self.task.agent.parts["body"]
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = {
-                'init_success': 'no',
-                'goal_success': 'no',
-                'init_feedback': 'Cannot check until goal state is fixed.',
-                'goal_feedback': 'Goal state has uncontrolled categories.'
+                "init_success": "no",
+                "goal_success": "no",
+                "init_feedback": "Cannot check until goal state is fixed.",
+                "goal_feedback": "Goal state has uncontrolled categories.",
             }
             return accept_scene, feedback
         except UnsupportedPredicateError as e:
@@ -289,7 +277,7 @@ class ToyEnvInt(object):
                 "init_success": "no",
                 "goal_success": "no",
                 "init_feedback": f"We don't yet support the [{e.predicate}] adjective for any objects. We will soon!",
-                "goal_feedback": ""
+                "goal_feedback": "",
             }
             return accept_scene, feedback
         except AssertionError as message:
@@ -299,15 +287,15 @@ class ToyEnvInt(object):
                     "init_success": "no",
                     "goal_success": "no",
                     "init_feedback": "",
-                    "goal_feedback": "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time)."
-                } 
+                    "goal_feedback": "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time).",
+                }
             else:
                 accept_scene = False
                 feedback = {
                     "init_success": "no",
                     "goal_success": "no",
                     "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during problem update.",
-                    "goal_feedback": ""
+                    "goal_feedback": "",
                 }
             return accept_scene, feedback
 
@@ -320,7 +308,7 @@ class ToyEnvInt(object):
                     "init_success": "no",
                     "goal_success": "no",
                     "init_feedback": f"We do not currently support {str(message).split(' ')[3]}. Please try a different object!",
-                    "goal_feedback": ""
+                    "goal_feedback": "",
                 }
             else:
                 accept_scene = False
@@ -328,7 +316,7 @@ class ToyEnvInt(object):
                     "init_success": "no",
                     "goal_success": "no",
                     "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during scene checking.",
-                    "goal_feedback": ""
+                    "goal_feedback": "",
                 }
             return accept_scene, feedback
 
@@ -372,6 +360,7 @@ class iGFlask(Flask):
                 return ToyEnvInt(scene=scene)
             else:
                 return ToyEnv()
+
         self.envs[uuid] = ProcessPyEnvironment(env_constructor)
         self.envs[uuid].start()
         self.envs_inception_time[uuid] = time.time()
@@ -381,8 +370,7 @@ class iGFlask(Flask):
         stale_uids = []
         for uid, env in self.envs.items():
             last_active_time = env.last_active_time
-            print(
-                f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
+            print(f"uuid: {uid}, time since last use: {int(time.time() - last_active_time)}")
             if time.time() - last_active_time > periodic_cleanup_interval:
                 print("stale uuid:", uid)
                 stale_uids.append(uid)
@@ -408,16 +396,17 @@ scheduler.start()
 
 ########### REQUEST HANDLERS ###########
 
-@app.route('/', methods=["POST"])
+
+@app.route("/", methods=["POST"])
 def index():
     id = uuid.uuid4()
-    return render_template('index.html', uuid=id)
+    return render_template("index.html", uuid=id)
 
 
 @app.route("/setup", methods=["POST"])
 def setup():
     """Set up the three environments when requested by annotation React app"""
-    scenes = json.loads(request.data)       # TODO check what this looks like
+    scenes = json.loads(request.data)  # TODO check what this looks like
     ids = [str(uuid.uuid4()) for __ in range(len(scenes))]
     scenes_ids = list(zip(scenes, ids))
     for scene, unique_id in scenes_ids:
@@ -432,10 +421,10 @@ def setup():
 
 @app.route("/check_sampling", methods=["POST"])
 def check_sampling():
-    """Check BDDL sent by React app in all three relevant scenes 
+    """Check BDDL sent by React app in all three relevant scenes
 
-    :return (Response): response indicating success of sampling in all three 
-                         scenes, feedback given from each 
+    :return (Response): response indicating success of sampling in all three
+                         scenes, feedback given from each
     """
     # Prepare data
     data = json.loads(request.data)
@@ -444,12 +433,7 @@ def check_sampling():
     goal_state = data["goalConditions"]
     object_list = data["objectList"]
     # bddl = init_state + goal_state + object_list        # TODO fix using existing utils
-    bddl = construct_full_bddl(
-        behavior_activity,
-        "feasibility_check",
-        object_list,
-        init_state,
-        goal_state)
+    bddl = construct_full_bddl(behavior_activity, "feasibility_check", object_list, init_state, goal_state)
     scenes_ids = data["scenes_ids"]
     ids = [unique_id for scene, unique_id in scenes_ids]
     scenes = [scene for scene, unique_id in scenes_ids]
@@ -466,32 +450,25 @@ def check_sampling():
             new_scenes_ids[i] = (scene, new_unique_id)
             # TODO is this asynchronous with the sample call?
             app.prepare_env(new_unique_id, scene)
-            print(
-                f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
+            print(f"Instantiated {scene} with {new_unique_id} because previous version was cleaned up")
         else:
             new_unique_id = unique_id
         success, feedback = app.envs[new_unique_id].sample(behavior_activity, bddl)
         if success:
             num_successful_scenes += 1
-            '''
+            """
             init_success, goal_success: one of the three values ['yes', 'no', 'untested']
             init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
             if the conditions are not tested or the conditions are sampled successfully.
-            '''
+            """
         feedback_instances.append(
-            (feedback["init_success"], feedback["goal_success"],
-             feedback["init_feedback"], feedback["goal_feedback"])
+            (feedback["init_success"], feedback["goal_success"], feedback["init_feedback"], feedback["goal_feedback"])
         )
 
-    success = num_successful_scenes >= min(
-        NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
+    success = num_successful_scenes >= min(NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
     full_feedback = feedback_instances
 
-    return Response(json.dumps({
-        "success": success,
-        "feedback": full_feedback,
-        "scenes_ids": new_scenes_ids
-    }))
+    return Response(json.dumps({"success": success, "feedback": full_feedback, "scenes_ids": new_scenes_ids}))
 
 
 @app.route("/teardown", methods=["POST"])
@@ -510,19 +487,15 @@ def teardown():
 
 ########### PERIODIC CLEANUP ###########
 
+
 def periodic_cleanup():
     app.periodic_cleanup()
 
 
-scheduler.add_job(
-    id=PERIODIC_CLEANUP_TASK_ID,
-    func=periodic_cleanup,
-    seconds=5,
-    trigger="interval"
-)
+scheduler.add_job(id=PERIODIC_CLEANUP_TASK_ID, func=periodic_cleanup, seconds=5, trigger="interval")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = int(sys.argv[1])
     # app.run(host="0.0.0.0", port=port, debug=True)
     app.run(host="0.0.0.0", port=port)

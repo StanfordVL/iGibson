@@ -14,9 +14,8 @@ class Profiler(object):
         self.enable = enable
 
     def step(self, name):
-        """ Returns the duration since last step/start """
-        duration = self.summarize_step(
-            start=self.step_start, step_name=name, level=self.level)
+        """Returns the duration since last step/start"""
+        duration = self.summarize_step(start=self.step_start, step_name=name, level=self.level)
         now = time.time()
         self.step_start = now
         return duration
@@ -37,12 +36,16 @@ class Profiler(object):
         duration = time.time() - start
         if self.logger:
             level = level or self.level
-            self.logger.log(self.level,
-                            "{name}: {fps:.2f} fps, {duration:.5f} seconds".format(name=self.name,
-                                                                                   fps=1 / duration,
-                                                                                   duration=duration))
+            self.logger.log(
+                self.level,
+                "{name}: {fps:.2f} fps, {duration:.5f} seconds".format(
+                    name=self.name, fps=1 / duration, duration=duration
+                ),
+            )
         else:
-            print("{name}: {fps:.2f} fps, {duration:.5f} seconds".format(name=self.name,
-                                                                         fps=1 / duration,
-                                                                         duration=duration))
+            print(
+                "{name}: {fps:.2f} fps, {duration:.5f} seconds".format(
+                    name=self.name, fps=1 / duration, duration=duration
+                )
+            )
         return duration

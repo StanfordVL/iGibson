@@ -1,8 +1,8 @@
 import numpy as np
 
-from igibson.object_states.room_states import InsideRoomTypes
-from igibson.object_states.pose import Pose
 from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.object_states.pose import Pose
+from igibson.object_states.room_states import InsideRoomTypes
 from igibson.utils.constants import MAX_INSTANCE_COUNT
 
 _IN_REACH_DISTANCE_THRESHOLD = 2.0
@@ -86,6 +86,7 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
             return False
 
         from igibson.robots.behavior_robot import BRHand
+
         robot_hands = [part for part in robot.parts.values() if isinstance(part, BRHand)]
         robot_objects_in_hand = [hand.object_in_hand for hand in robot_hands]
 
@@ -104,11 +105,11 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
 
 class InFOVOfRobot(CachingEnabledObjectState, BooleanState):
     def _compute_value(self):
-        seg = self.simulator.renderer.render_robot_cameras(modes='ins_seg')[0][:, :, 0]
+        seg = self.simulator.renderer.render_robot_cameras(modes="ins_seg")[0][:, :, 0]
         seg = np.round(seg * MAX_INSTANCE_COUNT)
         main_body_instances = [
-            inst.id for inst in self.obj.renderer_instances
-            if inst.pybullet_uuid == self.obj.get_body_id()]
+            inst.id for inst in self.obj.renderer_instances if inst.pybullet_uuid == self.obj.get_body_id()
+        ]
         return np.any(np.isin(seg, main_body_instances))
 
     def _set_value(self, new_value):

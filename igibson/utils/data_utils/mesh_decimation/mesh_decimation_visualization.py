@@ -6,14 +6,14 @@
     Run as:
         blender -b --python mesh_decimation_visualization.py -- --ig_dataset $(pwd)/../../../data/ig_dataset
 """
-import bpy
-import math
-import subprocess
-import os
+import argparse
 import csv
+import math
+import os
+import subprocess
 import sys
 
-import argparse
+import bpy
 
 
 def collision_filter(x):
@@ -139,12 +139,12 @@ def render_frame(
 
 
 def main():
-    
+
     argv = sys.argv
     if "--" not in argv:
         argv = []  # as if no args are passed
     else:
-        argv = argv[argv.index("--") + 1:]  # get all args after "--"
+        argv = argv[argv.index("--") + 1 :]  # get all args after "--"
 
     parser = argparse.ArgumentParser(description="Process some integers.")
     parser.add_argument(
@@ -154,7 +154,7 @@ def main():
         help="path to ig_dataset (typically /path/to/iGibson/igibson/data/ig_dataset)",
     )
     args = parser.parse_args(argv)
-    basedir = os.path.join(args.ig_dataset, 'objects')
+    basedir = os.path.join(args.ig_dataset, "objects")
 
     # Set up scene for eevee, this is faster than cycles with CUDA
     scene = bpy.data.scenes[0]
@@ -201,9 +201,7 @@ def main():
         for mesh in visual_meshes:
             visual_mesh_paths.append(os.path.join(visual_dir, mesh))
 
-        collision_meshes = [
-            item for item in os.listdir(collision_dir) if collision_filter(item)
-        ]
+        collision_meshes = [item for item in os.listdir(collision_dir) if collision_filter(item)]
         collision_mesh_paths = []
         for mesh in collision_meshes:
             collision_mesh_paths.append(os.path.join(collision_dir, mesh))
@@ -214,9 +212,7 @@ def main():
 
         # Render each set of frames into a video, and then process this into a side by side video
         try:
-            render_frame(
-                visual_meshes=visual_mesh_paths, collision_meshes=collision_mesh_paths
-            )
+            render_frame(visual_meshes=visual_mesh_paths, collision_meshes=collision_mesh_paths)
             subprocess.run(
                 [
                     "ffmpeg",

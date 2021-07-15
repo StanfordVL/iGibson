@@ -1,8 +1,10 @@
 import os
-import igibson
+
 import numpy as np
 import open3d as o3d
 import pandas as pd
+
+import igibson
 
 base_dir = os.path.join(igibson.ig_dataset_path, "objects")
 
@@ -27,9 +29,7 @@ for category in categories:
                     }
                 )
             else:
-                print(
-                    "Warning: collision mesh missing for {}/{}".format(category, obj_id)
-                )
+                print("Warning: collision mesh missing for {}/{}".format(category, obj_id))
 
 vals = []
 names = []
@@ -48,9 +48,7 @@ for obj in object_models:
     compressed_triangles = 0
 
     for model_file in obj["model_files"]:
-        original_mesh = o3d.io.read_triangle_mesh(
-            os.path.splitext(model_file)[0] + "_original.obj"
-        )
+        original_mesh = o3d.io.read_triangle_mesh(os.path.splitext(model_file)[0] + "_original.obj")
         mesh = o3d.io.read_triangle_mesh(str(model_file))
         original_vertices += np.asarray(original_mesh.vertices).shape[0]
         original_triangles += np.asarray(original_mesh.triangles).shape[0]

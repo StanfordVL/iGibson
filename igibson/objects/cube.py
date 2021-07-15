@@ -1,7 +1,6 @@
-import math
+import pybullet as p
 
 from igibson.objects.stateful_object import StatefulObject
-import pybullet as p
 
 
 class Cube(StatefulObject):
@@ -22,19 +21,15 @@ class Cube(StatefulObject):
         Load the object into pybullet
         """
         baseOrientation = [0, 0, 0, 1]
-        colBoxId = p.createCollisionShape(
-            p.GEOM_BOX, halfExtents=self.dimension)
-        visualShapeId = p.createVisualShape(
-            p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
+        visualShapeId = p.createVisualShape(p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
         if self.visual_only:
-            body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                        baseVisualShapeIndex=visualShapeId)
+            body_id = p.createMultiBody(baseCollisionShapeIndex=-1, baseVisualShapeIndex=visualShapeId)
         else:
-            body_id = p.createMultiBody(baseMass=self.mass,
-                                        baseCollisionShapeIndex=colBoxId,
-                                        baseVisualShapeIndex=visualShapeId)
+            body_id = p.createMultiBody(
+                baseMass=self.mass, baseCollisionShapeIndex=colBoxId, baseVisualShapeIndex=visualShapeId
+            )
 
-        p.resetBasePositionAndOrientation(
-            body_id, self.basePos, baseOrientation)
+        p.resetBasePositionAndOrientation(body_id, self.basePos, baseOrientation)
 
         return body_id

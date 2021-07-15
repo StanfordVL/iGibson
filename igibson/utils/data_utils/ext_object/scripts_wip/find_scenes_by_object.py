@@ -1,35 +1,22 @@
 import csv
 import glob
-import json
 import os
-import time
 import xml.etree.ElementTree as ET
-from collections import Counter
-
-import numpy as np
-import pybullet as p
-from pynput import keyboard
-from bddl.object_taxonomy import ObjectTaxonomy
 
 import igibson
-from igibson.external.pybullet_tools import utils
-import igibson.object_states.open as open_state
 from igibson.objects.articulated_object import URDFObject
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.simulator import Simulator
-from igibson.utils import urdf_utils
 from igibson.utils.assets_utils import download_assets
 
 download_assets()
 
 
 def get_categories():
-    dir = os.path.join(igibson.ig_dataset_path, 'objects')
+    dir = os.path.join(igibson.ig_dataset_path, "objects")
     return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
 
 
 def get_category_directory(category):
-    return os.path.join(igibson.ig_dataset_path, 'objects', category)
+    return os.path.join(igibson.ig_dataset_path, "objects", category)
 
 
 def get_urdf(objdir):
@@ -55,8 +42,7 @@ def main():
         for obj in os.listdir(cd):
             objects.append((cat, obj))
 
-    scene_files = list(glob.glob(
-        os.path.join(igibson.ig_dataset_path, "scenes", "**", "*task*.urdf"), recursive=True))
+    scene_files = list(glob.glob(os.path.join(igibson.ig_dataset_path, "scenes", "**", "*task*.urdf"), recursive=True))
 
     by_scene = {}
     by_object = {x: [] for x in objects}
@@ -83,6 +69,7 @@ def main():
     with open("by_scene.csv", "w") as f:
         w = csv.writer(f)
         w.writerows([scene] + ["%s/%s" % pair for pair in objects] for scene, objects in sorted(by_scene.items()))
+
 
 if __name__ == "__main__":
     main()
