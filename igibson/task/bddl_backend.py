@@ -1,5 +1,5 @@
 from bddl.backend_abc import BDDLBackend
-from bddl.logic_base import UnaryAtomicFormula, BinaryAtomicFormula
+from bddl.logic_base import BinaryAtomicFormula, UnaryAtomicFormula
 
 from igibson import object_states
 

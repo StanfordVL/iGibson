@@ -2,7 +2,7 @@ import os
 import time
 
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from igibson.utils.utils import parse_config, parse_str_config, dump_config
+from igibson.utils.utils import dump_config, parse_config, parse_str_config
 
 
 class VrOverlayBase(object):

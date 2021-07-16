@@ -12,7 +12,7 @@ from igibson.termination_conditions.max_collision import MaxCollision
 from igibson.termination_conditions.out_of_bound import OutOfBound
 from igibson.termination_conditions.point_goal import PointGoal
 from igibson.termination_conditions.timeout import Timeout
-from igibson.utils.utils import l2_distance, rotate_vector_3d, cartesian_to_polar
+from igibson.utils.utils import cartesian_to_polar, l2_distance, rotate_vector_3d
 
 
 class PointNavFixedTask(BaseTask):

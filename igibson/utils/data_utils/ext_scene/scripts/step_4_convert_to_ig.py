@@ -12,10 +12,10 @@ import numpy as np
 import igibson
 from igibson.scenes.igibson_indoor_scene import SCENE_SOURCE
 from igibson.utils.assets_utils import (
-    get_ig_scene_path,
-    get_cubicasa_scene_path,
     get_3dfront_scene_path,
+    get_cubicasa_scene_path,
     get_ig_category_path,
+    get_ig_scene_path,
 )
 from igibson.utils.utils import parse_config
 

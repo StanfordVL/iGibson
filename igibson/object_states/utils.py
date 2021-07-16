@@ -6,12 +6,12 @@ from scipy.spatial.transform import Rotation as R
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
-    get_link_pose,
-    matrix_from_quat,
+    get_aabb,
     get_aabb_center,
     get_aabb_extent,
+    get_link_pose,
+    matrix_from_quat,
     stable_z_on_aabb,
-    get_aabb,
 )
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState

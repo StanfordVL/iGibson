@@ -18,7 +18,6 @@ from geometry_msgs.msg import PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import Marker
 
-
 # hacky matrix inverse because BLAS has an issue that makes it use all GPUs!!
 # see bug here:
 # https://github.com/numpy/numpy/issues/8120

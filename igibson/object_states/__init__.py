@@ -16,6 +16,10 @@ from igibson.object_states.open import Open
 from igibson.object_states.pose import Pose
 from igibson.object_states.robot_related_states import InFOVOfRobot, InHandOfRobot, InReachOfRobot, InSameRoomAsRobot
 from igibson.object_states.room_states import (
+    ROOM_STATES,
+    InsideRoomTypes,
+    IsInAuditorium,
+    IsInBalcony,
     IsInBathroom,
     IsInBedroom,
     IsInChildsRoom,
@@ -27,6 +31,7 @@ from igibson.object_states.room_states import (
     IsInGarage,
     IsInHomeOffice,
     IsInKitchen,
+    IsInLibrary,
     IsInLivingRoom,
     IsInLobby,
     IsInPantryRoom,
@@ -34,13 +39,8 @@ from igibson.object_states.room_states import (
     IsInStaircase,
     IsInStorageRoom,
     IsInTelevisionRoom,
-    IsInUtilityRoom,
-    IsInBalcony,
-    IsInLibrary,
-    IsInAuditorium,
     IsInUndefined,
-    InsideRoomTypes,
-    ROOM_STATES,
+    IsInUtilityRoom,
 )
 from igibson.object_states.sliced import Sliced
 from igibson.object_states.slicer import Slicer

@@ -4,12 +4,12 @@ from IPython import embed
 import igibson
 from igibson.external.pybullet_tools.utils import aabb_contains_point
 from igibson.object_states.aabb import AABB
-from igibson.object_states.adjacency import VerticalAdjacency, HorizontalAdjacency, flatten_planes
+from igibson.object_states.adjacency import HorizontalAdjacency, VerticalAdjacency, flatten_planes
 from igibson.object_states.kinematics import KinematicsMixin
 from igibson.object_states.memoization import PositionalValidationMemoizedObjectStateMixin
 from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
 from igibson.object_states.pose import Pose
-from igibson.object_states.utils import sample_kinematics, clear_cached_states
+from igibson.object_states.utils import clear_cached_states, sample_kinematics
 
 
 class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, RelativeObjectState, BooleanState):

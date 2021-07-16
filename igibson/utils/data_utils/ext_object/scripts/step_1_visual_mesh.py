@@ -7,7 +7,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 utils_dir = os.path.join(script_dir, "../../blender_utils")
 sys.path.append(utils_dir)
 
-from utils import import_obj_folder, export_ig_object, bake_model, clean_unused
+from utils import bake_model, clean_unused, export_ig_object, import_obj_folder
 
 #############################################
 # Parse command line arguments

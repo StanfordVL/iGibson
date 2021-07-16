@@ -1,6 +1,5 @@
 from igibson.object_states import AABB
-from igibson.object_states.object_state_base import AbsoluteObjectState
-from igibson.object_states.object_state_base import BooleanState
+from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.objects.particles import Dust, Stain
 
 CLEAN_THRESHOLD = 0.5

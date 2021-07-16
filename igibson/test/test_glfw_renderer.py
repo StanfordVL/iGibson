@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+
 from igibson.core.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 
 renderer = MeshRenderer(width=512, height=512)

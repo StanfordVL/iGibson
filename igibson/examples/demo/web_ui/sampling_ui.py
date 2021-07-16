@@ -12,7 +12,7 @@ import numpy as np
 import pybullet as p
 from bddl.parsing import construct_full_bddl
 from bddl.utils import UncontrolledCategoryError, UnsupportedPredicateError
-from flask import Flask, render_template, Response, request
+from flask import Flask, Response, render_template, request
 from flask_apscheduler import APScheduler
 from flask_cors import CORS
 

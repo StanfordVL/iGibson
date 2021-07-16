@@ -3,12 +3,12 @@ import pybullet as p
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
-    set_joint_positions,
-    joints_from_names,
     get_joint_positions,
     get_max_limits,
     get_min_limits,
     get_sample_fn,
+    joints_from_names,
+    set_joint_positions,
 )
 from igibson.render.profiler import Profiler
 from igibson.robots.fetch_robot import Fetch

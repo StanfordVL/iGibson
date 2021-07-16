@@ -6,15 +6,13 @@ import pybullet as p
 
 import igibson
 from igibson import object_states
-from igibson.external.pybullet_tools.utils import quat_from_euler, Euler
+from igibson.external.pybullet_tools.utils import Euler, quat_from_euler
 from igibson.object_states.factory import get_state_dependency_graph, get_states_by_dependency_order
-from igibson.objects.articulated_object import ArticulatedObject
-from igibson.objects.articulated_object import URDFObject
+from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.objects.ycb_object import YCBObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
-from igibson.utils.assets_utils import download_assets
-from igibson.utils.assets_utils import get_ig_model_path
+from igibson.utils.assets_utils import download_assets, get_ig_model_path
 
 download_assets()
 

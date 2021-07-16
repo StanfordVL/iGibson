@@ -1,7 +1,7 @@
 import os
 
 import igibson
-from igibson.objects.articulated_object import RBOObject, ArticulatedObject
+from igibson.objects.articulated_object import ArticulatedObject, RBOObject
 from igibson.objects.cube import Cube
 from igibson.objects.ycb_object import YCBObject
 from igibson.robots.turtlebot_robot import Turtlebot
