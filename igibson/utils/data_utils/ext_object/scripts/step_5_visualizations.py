@@ -14,8 +14,7 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.render.profiler import Profiler
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
-from igibson.utils.utils import quatToXYZW
-from igibson.utils.utils import rotate_vector_2d
+from igibson.utils.utils import quatToXYZW, rotate_vector_2d
 
 parser = argparse.ArgumentParser("Generate visulization for iGibson object")
 parser.add_argument("--input_dir", dest="input_dir")

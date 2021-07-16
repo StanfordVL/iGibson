@@ -15,9 +15,9 @@ from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplex
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.assets_utils import get_ig_category_path, get_ig_model_path, get_ig_avg_category_specs
-from igibson.utils.checkpoint_utils import save_internal_states, load_internal_states
-from igibson.utils.constants import NON_SAMPLEABLE_OBJECTS, FLOOR_SYNSET
+from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
+from igibson.utils.checkpoint_utils import load_internal_states, save_internal_states
+from igibson.utils.constants import FLOOR_SYNSET, NON_SAMPLEABLE_OBJECTS
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 

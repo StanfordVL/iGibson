@@ -11,8 +11,7 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.assets_utils import get_ig_scene_path, get_cubicasa_scene_path, get_3dfront_scene_path
-
+from igibson.utils.assets_utils import get_3dfront_scene_path, get_cubicasa_scene_path, get_ig_scene_path
 
 # human interaction demo
 

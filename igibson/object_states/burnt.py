@@ -3,7 +3,6 @@ from igibson.object_states.object_state_base import AbsoluteObjectState, Boolean
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.utils.utils import transform_texture
 
-
 _DEFAULT_BURN_TEMPERATURE = 200
 
 

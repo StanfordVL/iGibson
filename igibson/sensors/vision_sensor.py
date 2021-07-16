@@ -32,9 +32,10 @@ class VisionSensor(BaseSensor):
 
         if "rgb_filled" in modalities:
             try:
-                import torch.nn as nn
                 import torch
+                import torch.nn as nn
                 from torchvision import transforms
+
                 from igibson.learn.completion import CompletionNet
             except ImportError:
                 raise Exception(

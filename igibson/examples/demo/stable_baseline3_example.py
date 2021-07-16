@@ -5,11 +5,10 @@ import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 
 try:
-    from stable_baselines3.common.vec_env import SubprocVecEnv
     from stable_baselines3 import PPO
-    from stable_baselines3.common.utils import set_random_seed
     from stable_baselines3.common.evaluation import evaluate_policy
-    from stable_baselines3.common.vec_env import VecMonitor
+    from stable_baselines3.common.utils import set_random_seed
+    from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor
 except ModuleNotFoundError:
     print("stable-baselines3 is not installed. You would need to do: pip install stable-baselines3")
     exit(1)

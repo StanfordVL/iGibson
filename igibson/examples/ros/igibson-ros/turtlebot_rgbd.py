@@ -9,8 +9,9 @@ from cv_bridge import CvBridge
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from sensor_msgs import point_cloud2 as pc2
-from sensor_msgs.msg import CameraInfo, PointCloud2
+from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image as ImageMsg
+from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import Header
 
 from igibson.envs.igibson_env import iGibsonEnv

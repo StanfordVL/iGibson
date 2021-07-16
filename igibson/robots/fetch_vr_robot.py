@@ -1,19 +1,18 @@
-import numpy as np
 import os
 
 import numpy as np
 import pybullet as p
-from igibson.objects.vr_objects import VrGazeMarker
 
 from igibson import assets_path
 from igibson.external.pybullet_tools.utils import (
-    joints_from_names,
     get_joint_positions,
-    set_joint_positions,
     get_max_limits,
     get_min_limits,
+    joints_from_names,
+    set_joint_positions,
 )
 from igibson.objects.visual_marker import VisualMarker
+from igibson.objects.vr_objects import VrGazeMarker
 from igibson.robots.fetch_robot import Fetch
 from igibson.robots.robot_locomotor import LocomotorRobot
 from igibson.utils.utils import parse_config

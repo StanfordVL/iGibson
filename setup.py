@@ -1,20 +1,18 @@
-from setuptools import setup, find_packages
+import codecs
+import os.path
+import platform
+import re
+import shutil
+import subprocess
+import sys
+from distutils.command.build_py import build_py as _build_py
+from distutils.version import LooseVersion
+from subprocess import check_call
+
+from setuptools import Extension, find_packages, setup
+from setuptools.command.build_ext import build_ext
 from setuptools.command.develop import develop
 from setuptools.command.install import install
-from subprocess import check_call
-from distutils.command.build_py import build_py as _build_py
-import sys
-import os.path
-import re
-
-from setuptools import setup, Extension, find_packages
-from setuptools.command.build_ext import build_ext
-from distutils.version import LooseVersion
-import subprocess
-import platform
-import codecs
-import platform
-import shutil
 
 use_clang = False
 

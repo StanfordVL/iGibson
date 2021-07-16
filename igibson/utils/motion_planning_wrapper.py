@@ -1,28 +1,29 @@
-from time import time, sleep
+from time import sleep, time
 
 import numpy as np
 import pybullet as p
 from transforms3d import euler
 
-from igibson.external.pybullet_tools.utils import control_joints
-from igibson.external.pybullet_tools.utils import get_base_values
-from igibson.external.pybullet_tools.utils import get_joint_positions
-from igibson.external.pybullet_tools.utils import get_max_limits
-from igibson.external.pybullet_tools.utils import get_min_limits
-from igibson.external.pybullet_tools.utils import get_moving_links
-from igibson.external.pybullet_tools.utils import get_sample_fn
-from igibson.external.pybullet_tools.utils import is_collision_free
-from igibson.external.pybullet_tools.utils import joints_from_names
-from igibson.external.pybullet_tools.utils import link_from_name
-from igibson.external.pybullet_tools.utils import plan_base_motion_2d
-from igibson.external.pybullet_tools.utils import plan_joint_motion
-from igibson.external.pybullet_tools.utils import set_base_values_with_z
-from igibson.external.pybullet_tools.utils import set_joint_positions
+from igibson.external.pybullet_tools.utils import (
+    control_joints,
+    get_base_values,
+    get_joint_positions,
+    get_max_limits,
+    get_min_limits,
+    get_moving_links,
+    get_sample_fn,
+    is_collision_free,
+    joints_from_names,
+    link_from_name,
+    plan_base_motion_2d,
+    plan_joint_motion,
+    set_base_values_with_z,
+    set_joint_positions,
+)
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.utils import l2_distance, quatToXYZW
-from igibson.utils.utils import rotate_vector_2d
+from igibson.utils.utils import l2_distance, quatToXYZW, rotate_vector_2d
 
 
 class MotionPlanningWrapper(object):
