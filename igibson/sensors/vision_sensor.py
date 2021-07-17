@@ -54,7 +54,7 @@ class VisionSensor(BaseSensor):
         :return: raw modalities to query the renderer
         """
         raw_modalities = []
-        if "rgb" in modalities or "rgb_filled" in modalities:
+        if "rgb" in modalities or "rgb_filled" in modalities or "highlight" in modalities:
             raw_modalities.append("rgb")
         if "depth" in modalities or "3d" in modalities:
             raw_modalities.append("3d")
@@ -75,6 +75,12 @@ class VisionSensor(BaseSensor):
         :return: RGB sensor reading, normalized to [0.0, 1.0]
         """
         return raw_vision_obs["rgb"][:, :, :3]
+
+    def get_highlight(self, raw_vision_obs):
+        if not "rgb" in raw_vision_obs:
+            raise ValueError("highlight depends on rgb")
+
+        return (raw_vision_obs["rgb"][:, :, 3] > 0).astype(np.float32)
 
     def get_rgb_filled(self, raw_vision_obs):
         """
@@ -127,14 +133,14 @@ class VisionSensor(BaseSensor):
 
     def get_seg(self, raw_vision_obs):
         """
-        :return: semantic segmentation mask, normalized to [0.0, 1.0]
+        :return: semantic segmentation mask, between 0 and MAX_CLASS_COUNT
         """
         seg = (raw_vision_obs["seg"][:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int32)
         return seg
 
     def get_ins_seg(self, raw_vision_obs):
         """
-        :return: semantic segmentation mask, normalized to [0.0, 1.0]
+        :return: semantic segmentation mask, between 0 and MAX_INSTANCE_COUNT
         """
         seg = (raw_vision_obs["ins_seg"][:, :, 0:1] * MAX_INSTANCE_COUNT).astype(np.int32)
         return seg
@@ -171,4 +177,7 @@ class VisionSensor(BaseSensor):
             vision_obs["seg"] = self.get_seg(raw_vision_obs)
         if "ins_seg" in self.modalities:
             vision_obs["ins_seg"] = self.get_ins_seg(raw_vision_obs)
+        if "highlight" in self.modalities:
+            vision_obs["highlight"] = self.get_highlight(raw_vision_obs)
+
         return vision_obs

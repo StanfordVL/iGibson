@@ -4,7 +4,7 @@ import igibson
 from igibson.utils.constants import SemanticClass
 
 
-def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS):
+def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS + 1):
     """
     Get mapping from semantic class name to class id
 
