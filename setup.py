@@ -126,7 +126,7 @@ else:
 
 setup(
     name="igibson",
-    version="1.0.3",
+    version="2.0.0rc2",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
