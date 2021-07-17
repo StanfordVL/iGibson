@@ -31,7 +31,7 @@ class BehaviorEnv(iGibsonEnv):
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter="navigation",
+        action_filter="all",
         instance_id=0,
         episode_save_dir=None,
     ):
@@ -79,7 +79,7 @@ class BehaviorEnv(iGibsonEnv):
         elif self.action_filter == "tabletop_manipulation":
             self.action_space = gym.spaces.Box(shape=(7,), low=-1.0, high=1.0, dtype=np.float32)
         else:
-            self.action_space = gym.spaces.Box(shape=(28,), low=-1.0, high=1.0, dtype=np.float32)
+            self.action_space = gym.spaces.Box(shape=(26,), low=-1.0, high=1.0, dtype=np.float32)
 
     def load_behavior_task_setup(self):
         """
@@ -95,9 +95,7 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                "urdf_file": "{}_neurips_task_{}_{}_{}_fixed_furniture".format(
-                    scene_id, task, task_id, self.instance_id
-                ),
+                "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene_id, task, task_id, self.instance_id),
             }
         bddl.set_backend("iGibson")
         self.task = iGBEHAVIORActivityInstance(task, task_id)
@@ -108,6 +106,12 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs=scene_kwargs,
             online_sampling=online_sampling,
         )
+
+        for obj_name, obj in self.task.object_scope.items():
+            if obj.category in ["agent", "room_floor"]:
+                continue
+            obj.highlight()
+
         self.scene = self.task.scene
         self.robots = [self.task.agent]
 
@@ -171,13 +175,10 @@ class BehaviorEnv(iGibsonEnv):
         self.current_step += 1
 
         if self.action_filter == "navigation":
-            action = action * 0.05
             new_action = np.zeros((28,))
             new_action[:2] = action[:2]
             new_action[5] = action[2]
         elif self.action_filter == "mobile_manipulation":
-            self.robots[0].hand_thresh = 0.8
-            action = action * 0.05
             new_action = np.zeros((28,))
             # body x,y,yaw
             new_action[:2] = action[:2]
@@ -187,13 +188,17 @@ class BehaviorEnv(iGibsonEnv):
             # right hand 7d
             new_action[20:27] = action[10:17]
         elif self.action_filter == "tabletop_manipulation":
-            # Note: only using right hand
-            self.robots[0].hand_thresh = 0.8
-            action = action * 0.05
+            # only using right hand
             new_action = np.zeros((28,))
             new_action[20:27] = action[:7]
         else:
-            new_action = action
+            # all action dims except hand reset
+            new_action = np.zeros((28,))
+            new_action[:19] = action[:19]
+            new_action[20:27] = action[19:]
+
+        # The original action space for BehaviorRobot is too wide for random exploration
+        new_action *= 0.05
 
         self.robots[0].update(new_action)
         if self.log_writer is not None:
@@ -224,7 +229,7 @@ class BehaviorEnv(iGibsonEnv):
     def get_potential(self, satisfied_predicates):
         potential = 0.0
 
-        # Evaluate the first ground predicate
+        # Evaluate the first ground goal state option as the potential
         _, satisfied_predicates = evaluate_state(self.task.ground_goal_state_options[0])
         success_score = len(satisfied_predicates["satisfied"]) / (
             len(satisfied_predicates["satisfied"]) + len(satisfied_predicates["unsatisfied"])
@@ -347,10 +352,10 @@ if __name__ == "__main__":
         action_timestep=1.0 / 10.0,
         physics_timestep=1.0 / 240.0,
         action_filter=args.action_filter,
-        episode_save_dir="test",
+        episode_save_dir=None,
     )
     step_time_list = []
-    for episode in range(1):
+    for episode in range(100):
         print("Episode: {}".format(episode))
         start = time.time()
         env.reset()

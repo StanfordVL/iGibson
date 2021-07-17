@@ -228,6 +228,8 @@ void main() {
     }
     outputColour = outputColour *  (1 - shadow * 0.5);
     outputColour = outputColour * (1-highlight * 0.5) + vec4(1,0,1,1) * highlight * 0.5;
+    outputColour.w = highlight; // put highlight into alpha channel
+
     SceneFlowColour =  vec4(Pos_cam - Pos_cam_prev,1);
     OpticalFlowColour =  vec4(Optical_flow,0,1);
 }

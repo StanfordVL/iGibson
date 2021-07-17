@@ -10,6 +10,7 @@ layout (location = 3) out vec4 PCColour;
 
 void main (void) {
     outputColour = texture(envTexture, texCoord);
+    outputColour.w = 0;
     NormalColour = vec4(0,0,0,1);
     InstanceColour = vec4(0,0,0,1);
     PCColour = vec4(0,0,0,1);
