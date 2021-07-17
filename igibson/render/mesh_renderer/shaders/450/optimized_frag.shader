@@ -6,6 +6,7 @@ uniform sampler2DArray bigTex;
 uniform sampler2DArray smallTex;
 
 uniform float use_two_light_probes;
+uniform float blend_highlight;
 
 uniform samplerCube specularTexture;
 uniform samplerCube irradianceTexture;
@@ -227,7 +228,10 @@ void main() {
         PCColour = vec4(Pos_cam, 1);
     }
     outputColour = outputColour *  (1 - shadow * 0.5);
-    outputColour = outputColour * (1-highlight * 0.5) + vec4(1,0,1,1) * highlight * 0.5;
+
+    if (blend_highlight == 1) {
+        outputColour = outputColour * (1-highlight * 0.5) + vec4(1, 0, 1, 1) * highlight * 0.5;
+    }
     outputColour.w = highlight; // put highlight into alpha channel
 
     SceneFlowColour =  vec4(Pos_cam - Pos_cam_prev,1);
