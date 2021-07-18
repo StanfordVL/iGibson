@@ -1357,7 +1357,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<float> mergedHiddenData,
 		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
-		float use_pbr, int depth_tex_id) {
+		float use_pbr,
+		float blend_highlight,
+		int depth_tex_id) {
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
@@ -1435,6 +1437,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
 		glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
+		glUniform1f(glGetUniformLocation(shaderProgram, "blend_highlight"), (float)blend_highlight);
 
 		printf("multidrawcount %d\n", multidrawCount);
 

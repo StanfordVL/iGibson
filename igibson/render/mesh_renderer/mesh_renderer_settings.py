@@ -23,6 +23,7 @@ class MeshRendererSettings(object):
         texture_scale=1.0,
         hide_robot=True,
         show_glfw_window=False,
+        blend_highlight=False,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
@@ -41,6 +42,7 @@ class MeshRendererSettings(object):
         :param texture_scale: texture scale
         :param hide_robot: whether to hide robot when rendering
         :param show_glfw_window: whether to show glfw window (default false)
+        :param blend_highlight: blend highlight of objects into RGB image
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
@@ -57,6 +59,7 @@ class MeshRendererSettings(object):
         self.texture_scale = texture_scale
         self.hide_robot = hide_robot
         self.show_glfw_window = show_glfw_window
+        self.blend_highlight = blend_highlight
 
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
