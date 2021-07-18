@@ -24,10 +24,6 @@ class AgentMetric(MetricBase):
         self.delta_agent_distance = {part: [] for part in ["left_hand", "right_hand", "body"]}
         self.delta_agent_grasp_distance = {part: [] for part in ["left_hand", "right_hand"]}
 
-        self.integrated_agent_work = {part: 0 for part in ["left_hand", "right_hand", "body"]}
-        self.integrated_agent_distance = {part: 0 for part in ["left_hand", "right_hand", "body"]}
-        self.integrated_agent_grasp_distance = {part: 0 for part in ["left_hand", "right_hand"]}
-
         self.clip = 0.2
 
     def step_callback(self, igbhvr_act_inst, _):
@@ -79,7 +75,6 @@ class AgentMetric(MetricBase):
             if part in ["left_hand", "right_hand"] and (
                 len(p.getContactPoints(robot.parts[part].body_id)) > 0 or robot.parts[part].object_in_hand is not None
             ):
-                self.integrated_agent_grasp_distance[part] += distance
                 self.delta_agent_grasp_distance[part].append(distance)
                 self.agent_grasping[part].append(True)
             elif part in ["left_hand", "right_hand"]:
@@ -92,33 +87,29 @@ class AgentMetric(MetricBase):
             self.delta_agent_work[part].append(work)
             self.delta_agent_distance[part].append(distance)
 
-            self.integrated_agent_work[part] += work
-            self.integrated_agent_distance[part] += distance
-
         self.state_cache = copy.deepcopy(self.next_state_cache)
 
     def gather_results(self):
         return {
-            "distance": {
-                "delta": self.delta_agent_distance,
-                "integrated": self.integrated_agent_distance,
+            "agent_distance": {
+                "timestep": self.delta_agent_distance,
             },
             "grasp_distance": {
-                "delta": self.delta_agent_grasp_distance,
-                "integrated": self.integrated_agent_grasp_distance,
+                "timestep": self.delta_agent_grasp_distance,
             },
             "work": {
-                "delta": self.delta_agent_work,
-                "integrated": self.integrated_agent_work,
+                "timestep": self.delta_agent_work,
             },
             "pos": {
-                "absolute": self.agent_pos,
-                "local": self.agent_local_pos,
+                "timestep": self.agent_pos,
+            },
+            "local_pos": {
+                "timestep": self.agent_local_pos,
             },
             "grasping": {
-                "absolute": self.agent_grasping,
+                "timestep": self.agent_grasping,
             },
             "reset": {
-                "absolute": self.agent_reset,
+                "timestep": self.agent_reset,
             },
         }
