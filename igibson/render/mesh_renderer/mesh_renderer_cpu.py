@@ -1494,6 +1494,7 @@ class MeshRenderer(object):
             self.tex_id_2,
             buffer,
             float(self.rendering_settings.enable_pbr),
+            float(self.rendering_settings.blend_highlight),
             self.depth_tex_shadow,
         )
         self.optimization_process_executed = True
