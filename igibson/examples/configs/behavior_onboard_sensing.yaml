@@ -1,0 +1,65 @@
+# scene
+scene_id: Beechwood_1_int
+clutter: false
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+should_open_all_doors: true
+
+# Ignore task, use EmptyScene instead
+debug: False
+
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
+# task
+task: cleaning_cupboards
+task_id: 0
+online_sampling: false
+target_dist_min: 1.0
+target_dist_max: 10.0
+goal_format: polar
+task_obs_dim: 4
+
+# reward
+reward_type: l2
+success_reward: 10.0
+potential_reward_weight: 1.0
+collision_reward_weight: -0.1
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition
+dist_tol: 0.36  # body width
+max_step: 500
+max_collisions_allowed: 500
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
+
+# sensor spec
+output: [proprioception, rgb, highlight, depth, seg, ins_seg]
+# image
+fisheye: false
+image_width: 128
+image_height: 128
+vertical_fov: 120
+# depth
+depth_low: 0.0
+depth_high: 10.0
+
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: false
+
+# speed limit
+hand_threshold: 0.4
+hand_speed: 0.3
+body_speed: 0.3

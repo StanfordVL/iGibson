@@ -41,7 +41,7 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [rgb, depth, proprioception]
+output: [proprioception, rgb, highlight, depth, seg, ins_seg, task_obs]
 # image
 fisheye: false
 image_width: 128
