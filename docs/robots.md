@@ -16,7 +16,7 @@ We provide a wide variety of **Robots** that can be imported into the **Simulato
 | JackRabbot      | 2 & 7 | [Stanford Project Link](http://cvgl.stanford.edu/projects/jackrabbot/) | Torque, Velocity, Position, Differential Drive |
 | LocoBot         | 2     | [ROS](http://wiki.ros.org/locobot), [Manufacturer](https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx) | Torque, Velocity, Position, Differential Drive |
 
-Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in `gibson2.assets_path`) and provide a `load` function that be invoked externally (usually by `import_robot` of `Simulator`). The `load` function imports the robot into PyBullet.
+Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in `igibson.assets_path`) and provide a `load` function that be invoked externally (usually by `import_robot` of `Simulator`). The `load` function imports the robot into PyBullet.
 
 All robot clases inherit `LocomotorRobot`. Some useful functions are worth pointing out:
 - `{get/set}_{position/orientation/rpy/linear_velocity/angular_velocity}`: get and set the physical states of the robot base
@@ -38,23 +38,23 @@ def apply_robot_action(action):
 ```
 Note that `robot_action` is a normalized joint velocity, i.e. `robot_action[n] == 1.0` means executing the maximum joint velocity for the nth joint. The limits of joint position, velocity and torque are extracted from the URDF file of the robot.
 
-Most of the code can be found here: [gibson2/robots](https://github.com/StanfordVL/iGibson/blob/master/gibson2/robots).
+Most of the code can be found here: [igibson/robots](https://github.com/StanfordVL/iGibson/blob/master/igibson/robots).
 
 ### Examples
-In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [gibson2/examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/gibson2/examples/demo/robot_example.py).
+In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [igibson/examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/robot_example.py).
 
 ```python
-from gibson2.robots.locobot_robot import Locobot
-from gibson2.robots.turtlebot_robot import Turtlebot
-from gibson2.robots.jr2_kinova_robot import JR2_Kinova
-from gibson2.robots.fetch_robot import Fetch
-from gibson2.utils.utils import parse_config
+from igibson.robots.locobot_robot import Locobot
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.fetch_robot import Fetch
+from igibson.utils.utils import parse_config
 import os
 import time
 import numpy as np
 import pybullet as p
 import pybullet_data
-import gibson2
+import igibson
 
 def main():
     p.connect(p.GUI)
@@ -65,19 +65,19 @@ def main():
     p.loadMJCF(floor)
 
     robots = []
-    config = parse_config(os.path.join(gibson2.example_config_path, 'fetch_reaching.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'fetch_reaching.yaml'))
     fetch = Fetch(config)
     robots.append(fetch)
 
-    config = parse_config(os.path.join(gibson2.example_config_path,'jr_reaching.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path,'jr_reaching.yaml'))
     jr = JR2_Kinova(config)
     robots.append(jr)
 
-    config = parse_config(os.path.join(gibson2.example_config_path, 'locobot_point_nav.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'locobot_point_nav.yaml'))
     locobot = Locobot(config)
     robots.append(locobot)
 
-    config = parse_config(os.path.join(gibson2.example_config_path, 'turtlebot_point_nav.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'turtlebot_point_nav.yaml'))
     turtlebot = Turtlebot(config)
     robots.append(turtlebot)
 

@@ -58,7 +58,7 @@ There are other datasets we link to iGibson. We include support to use CubiCasa5
 We also maintain compatibility with datasets of 3D reconstructed large real-world scenes (homes and offices) that you can download and use with iGibson, for example from our previous simulator, Gibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
 
 ### Contributing
-This is the github repository for iGibson (pip package `gibson2`) 1.0 release. Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated. Please, consider creating an issue or sending us an email. 
+This is the github repository for iGibson (pip package `igibson`) 1.0 release. Bug reports, suggestions for improvement, as well as community developments are encouraged and appreciated. Please, consider creating an issue or sending us an email. 
 
 The support for our previous version of the environment, Gibson, can be found in the [following repository](http://github.com/StanfordVL/GibsonEnv/).
 
@@ -68,7 +68,7 @@ Instructions for installing Gibson and VR integration on Windows 10.
 Assuming a fresh install of Windows.
 
 These instructions partially overlap with installing Gibson
-http://svl.stanford.edu/gibson2/docs/installation.html#installation-method 
+http://svl.stanford.edu/igibson/docs/installation.html#installation-method 
 but are tailored to run the VR components in Windows.
 
 
@@ -165,7 +165,7 @@ Now, with your conda environment activate, run the following two commands:
 
 Important - VR functionality and where to find it:
 
-You can find all the VR demos in iGibson/gibson2/examples/demo/vr_demos, which has the following structure:
+You can find all the VR demos in iGibson/igibson/examples/demo/vr_demos, which has the following structure:
 
 - vr demo files for normal VR
 
@@ -184,16 +184,16 @@ such as putting objects away into specific containers/cabinets. Please see the c
 
 VR settings and button mapping:
 
-You can find the global vr settings in the vr_config.yaml in the gibson2 folder. Please change all VR settings from here. Within the settings, you will also find the button mapping from actions to buttons.
+You can find the global vr settings in the vr_config.yaml in the igibson folder. Please change all VR settings from here. Within the settings, you will also find the button mapping from actions to buttons.
 Please run vr_demos/vr_button_mapping.py to figure out which physical controller buttons correspond to which indices in OpenVR. It is only necessary to do this if you are remapping an existing controller,
 or adding in a mapping for a new controller.
 
 Additional information:
-1) Most VR functions can be found in the gibson2/simulator.py
-2) The VrAgent and its associated VR objects can be found in gibson2/objects/vr_objects.py
-3) VR utility functions are found in gibson2/utils/vr_utils.py
-4) The VR renderer can be found in gibson2/render/mesh_renderer.py
-5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in gibson2/render/cpp
+1) Most VR functions can be found in the igibson/simulator.py
+2) The VrAgent and its associated VR objects can be found in igibson/objects/vr_objects.py
+3) VR utility functions are found in igibson/utils/vr_utils.py
+4) The VR renderer can be found in igibson/render/mesh_renderer.py
+5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in igibson/render/cpp
 
 To get started with the iGibson VR experience run:
 
@@ -201,7 +201,7 @@ $ python vr_playground.py
 
 By default the LOAD_PARTIAL boolean is set to false to speed up loading (loads first 10 objects into the scene as well as some objects to interact with). Please edit this variable to True if you wish to load the entire Rs_int scene.
 
-Note: we recommend looking at gibson2/render/mesh_renderer/mesh_renderer_vr.py to see the VrSettings class. A single VrSettings object is created and passed in to the Simulator constructor at the start of every demo, and you can modify it to change your experience. Here is a list of the things you can set, along with their default values:
+Note: we recommend looking at igibson/render/mesh_renderer/mesh_renderer_vr.py to see the VrSettings class. A single VrSettings object is created and passed in to the Simulator constructor at the start of every demo, and you can modify it to change your experience. Here is a list of the things you can set, along with their default values:
 
   1) use_vr (default True) - whether to render to the HMD and use VR system or just render to screen (used for debugging)
   2) eye_tracking (default True) - whether to use eye tracking. Turn this off if your headset does not support eye tracking (only the HTC Vive Pro Eye does)

@@ -9,6 +9,7 @@ src/
 pw
 *.o
 *.ipynb
+*.ipynb_checkpoints/
 *.out
 npz/
 *.npy
@@ -72,3 +73,10 @@ notebook
 build
 dist
 
+# Directories used for QC pipeline
+igibson/utils/data_utils/mesh_decimation/collision
+igibson/utils/data_utils/mesh_decimation/visual
+igibson/utils/data_utils/mesh_decimation/final_videos
+
+# libcryptopp
+igibson/render/mesh_renderer/libcryptopp.so.8.6

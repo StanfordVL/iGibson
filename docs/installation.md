@@ -13,15 +13,64 @@ The minimum system requirements are the following:
     - Nvidia driver >= 384
     - CUDA >= 9.0, CuDNN >= v7
     - CMake >= 2.8.12 (can install with `pip install cmake`)
-    - OpenGL|ES 2.x API development files (libgles2-mesa-dev)
+    - g++ (GNU C++ compiler)
+    - libegl1 (Debian/Ubuntu: vendor neutral GL dispatch library -- EGL support)
+- Windows
+    - Windows 10
+    - Nvidia GPU with VRAM > 6.0GB
+    - Nvidia driver >= 384
+    - CUDA >= 9.0, CuDNN >= v7
+    - CMake >= 2.8.12 (can install with `pip install cmake`)
+    - Microsoft Visual Studio 2017 with visual C++ tool and latest Windows 10 SDK
 - Mac OS X
     - Tested on 10.15
     - PBR features not supported
     - CMake >= 2.8.12 (can install with `pip install cmake`)
-- Windows
-    - Coming soon
 
 Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
+
+## Installing dependencies
+
+Beginning with a clean ubuntu 20.04 installation, the following script will install all needed dependencies to build and run iGibson with CUDA 11.1:
+
+```bash
+# Add the nvidia ubuntu repositories
+apt-get update && apt-get install -y --no-install-recommends \
+    gnupg2 curl ca-certificates && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub | apt-key add - && \
+    echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
+    echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
+
+# The following cuda libraries are required to compile igibson
+apt-get install -y --no-install-recommends \
+    cuda-cudart-11-1=11.1.74-1 \
+    cuda-compat-11-1 \
+    cuda-command-line-tools-11-1=11.1.1-1 \
+    cuda-libraries-dev-11-1=11.1.1-1 \
+
+# Set CUDA 11.1 as the default cuda installation (for pytorch or tensorflow, not required if you modify LD_LIBRARY_PATH)
+ln -s cuda-11.1 /usr/local/cuda
+
+# For building and running igibson
+apt-get install -y --no-install-recommends \
+    cmake \
+    git \
+    g++ \
+    libegl1
+
+# Install miniconda
+curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+bash Miniconda-latest-Linux-x86_64.sh
+rm Miniconda-latest-Linux-x86_64.sh
+
+# Add conda to your PATH
+echo "export PATH=$HOME/.miniconda/bin:$PATH" >> .bashrc 
+
+# Update conda and create a virtual environment for iGibson
+conda update -y conda
+conda create -y -n igibson python=3.8
+conda activate igibson
+```
 
 ## Installing the Environment
 
@@ -32,9 +81,9 @@ We provide 3 methods to install the simulator.
 iGibson's simulator can be installed as a python package using pip:
 
 ```bash
-pip install gibson2  # This step takes about 4 minutes
+pip install igibson  # This step takes about 4 minutes
 # run the demo
-python -m gibson2.examples.demo.demo_static
+python -m igibson.examples.demo.demo_static
 ```
 
 Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
@@ -95,61 +144,62 @@ pip install https://github.com/StanfordVL/bullet3/archive/master.zip
 
 We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
+Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
 
 ## Downloading the Assets
 
-First, configure where iGibson's assets (robotic agents, objects, 3D environments, etc.) is going to be stored. It is configured in `your_installation_path/gibson2/global_config.yaml`
+First, configure where iGibson's assets (robotic agents, objects, 3D environments, etc.) is going to be stored. It is configured in `your_installation_path/igibson/global_config.yaml`
 
 To make things easier, the default place to store the data is:
 ```bash
-assets_path: your_installation_path/gibson2/data/assets 
-g_dataset_path: your_installation_path/gibson2/data/g_dataset
-ig_dataset_path: your_installation_path/gibson2/data/ig_dataset
-threedfront_dataset_path: your_installation_path/gibson2/data/threedfront_dataset 
-cubicasa_dataset_path: your_installation_path/gibson2/data/assetscubicasa_dataset 
+assets_path: your_installation_path/igibson/data/assets 
+g_dataset_path: your_installation_path/igibson/data/g_dataset
+ig_dataset_path: your_installation_path/igibson/data/ig_dataset
+threedfront_dataset_path: your_installation_path/igibson/data/threedfront_dataset 
+cubicasa_dataset_path: your_installation_path/igibson/data/assetscubicasa_dataset 
 ```
 
 If you are happy with the default path, you don't have to do anything, otherwise you can run this script:
 ```bash
-python -m gibson2.utils.assets_utils --change_data_path
+python -m igibson.utils.assets_utils --change_data_path
 ```
 
 Second, you can download our robot models and objects from [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder, or simply run this download script:
 
 ```bash
-python -m gibson2.utils.assets_utils --download_assets
+python -m igibson.utils.assets_utils --download_assets
 ```
 
 
-Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `your_installation_path/gibson2/data/g_dataset` and `your_installation_path/gibson2/data/ig_dataset`). You can get access and download the Gibson dataset (after filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A)) and the iGibson dataset (following the guide [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-instruction) or following the instructions below). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
+Third, you need to download some large 3D reconstructed real-world environments (e.g. houses and offices) from [our dataset](dataset.md) for your agents to be trained in. Create a new folder for those environments and set the path in `your_installation_path/igibson/global_config.yaml` (default and recommended: `your_installation_path/igibson/data/g_dataset` and `your_installation_path/igibson/data/ig_dataset`). You can get access and download the Gibson dataset (after filling up the following [license agreement](https://forms.gle/36TW9uVpjrE1Mkf9A)) and the iGibson dataset (following the guide [here](http://svl.stanford.edu/igibson/docs/dataset.html#download-instruction) or following the instructions below). In addition, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo purposes.
 
 To download the demo data, run:
 
 ```bash
-python -m gibson2.utils.assets_utils --download_demo_data
+python -m igibson.utils.assets_utils --download_demo_data
 ```
 
 The full Gibson and iGibson dataset can be downloaded using the following command, this script automatically downloads, decompresses, and puts the dataset to correct place. You will get `URL` after filling in the agreement form.
 
 Download iGibson dataset
 ```bash
-python -m gibson2.utils.assets_utils --download_ig_dataset
+python -m igibson.utils.assets_utils --download_ig_dataset
 ```
 
 Download Gibson dataset ([agreement signing](https://forms.gle/36TW9uVpjrE1Mkf9A) required to get `URL`)
 ```bash
-python -m gibson2.utils.assets_utils --download_dataset URL
+python -m igibson.utils.assets_utils --download_dataset URL
 ```
 
 ## Testing 
 
-To test gibson2 is properly installed, you can run 
+To test igibson is properly installed, you can run 
 ```bash
 python
->> import gibson2
+>> import igibson
 ```
 
 For a full suite of tests and benchmarks, you can refer to [tests](tests.md) for more details. 
 
 ## Uninstalling
-Uninstalling iGibson is easy: `pip uninstall gibson2`
+Uninstalling iGibson is easy: `pip uninstall igibson`
