@@ -130,7 +130,7 @@ class KinematicDisarrangement(MetricBase):
         return {
             "kinematic_disarrangement": {
                 "relative": self.relative_disarrangement,
-                "delta": self.delta_disarrangement,
+                "timestep": self.delta_disarrangement,
                 "integrated": self.integrated_disarrangement,
             }
         }
