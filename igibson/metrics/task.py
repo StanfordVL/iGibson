@@ -7,8 +7,13 @@ class TaskMetric(MetricBase):
     def __init__(self):
         self.satisfied_predicates = []
         self.q_score = []
+        self.timesteps = 0
+
+    def start_callback(self, igbhvr_act_instance, _):
+        self.physics_timestep = igbhvr_act_instance.simulator.physics_timestep
 
     def step_callback(self, igbhvr_act_inst, _):
+        self.timesteps += 1
         self.satisfied_predicates.append(igbhvr_act_inst.current_goal_status)
         candidate_q_score = []
         for option in igbhvr_act_inst.ground_goal_state_options:
@@ -21,9 +26,13 @@ class TaskMetric(MetricBase):
     def gather_results(self):
         return {
             "satisfied_predicates": {
-                "absolute": self.satisfied_predicates,
+                "timestep": self.satisfied_predicates,
             },
             "q_score": {
-                "absolute": self.q_score,
+                "timestep": self.q_score,
+            },
+            "time": {
+                "simulator_steps": self.timesteps,
+                "simulator_time": self.timesteps * self.render_timestep,
             },
         }
