@@ -17,7 +17,7 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
 from igibson.utils.checkpoint_utils import load_internal_states, save_internal_states
-from igibson.utils.constants import FLOOR_SYNSET, NON_SAMPLEABLE_OBJECTS
+from igibson.utils.constants import FLOOR_SYNSET, MAX_TASK_RELEVANT_OBJS, NON_SAMPLEABLE_OBJECTS
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
@@ -73,7 +73,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             online_sampling=online_sampling,
         )
         self.initial_state = self.save_scene()
-        self.task_obs_dim = len(self.object_scope) * 8 + 6
+        self.task_obs_dim = MAX_TASK_RELEVANT_OBJS * 9 + 6
         return result
 
     def save_scene(self):
@@ -1063,24 +1063,26 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
     def get_task_obs(self, env):
         state = np.zeros((self.task_obs_dim))
-        i = 0
+        state[0:3] = np.array(env.robots[0].get_position())
+        state[3:6] = np.array(env.robots[0].get_rpy())
 
-        dim_per_obj = 8
+        i = 0
+        next_idx = 6
         for k, v in self.object_scope.items():
             if isinstance(v, URDFObject):
-                state[i * dim_per_obj : i * dim_per_obj + 3] = np.array(v.get_position())
-                state[i * dim_per_obj + 3 : i * dim_per_obj + 6] = np.array(
-                    p.getEulerFromQuaternion(v.get_orientation())
-                )
+                # valid object
+                state[next_idx] = 1.0
+                next_idx += 1
+                state[next_idx : next_idx + 3] = np.array(v.get_position())
+                next_idx += 3
+                state[next_idx : next_idx + 3] = np.array(v.get_rpy())
+                next_idx += 3
                 if env.robots[0].parts["left_hand"].object_in_hand == v.get_body_id():
-                    state[i * dim_per_obj + 6] = 1.0
+                    state[next_idx] = 1.0
+                next_idx += 1
                 if env.robots[0].parts["right_hand"].object_in_hand == v.get_body_id():
-                    state[i * dim_per_obj + 7] = 1.0
-            i += 1
-        state[i * dim_per_obj : i * dim_per_obj + 3] = env.robots[0].get_position()
-        state[i * dim_per_obj + 3 : i * dim_per_obj + 6] = np.array(
-            p.getEulerFromQuaternion(env.robots[0].get_orientation())
-        )
+                    state[next_idx] = 1.0
+                next_idx += 1
 
         return state
 
