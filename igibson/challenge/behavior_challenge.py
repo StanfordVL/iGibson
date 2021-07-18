@@ -33,10 +33,8 @@ def get_metrics_callbacks():
 
 class BehaviorChallenge(object):
     def __init__(self):
-        self.config_file = "/cvgl2/u/chengshu/gibsonv2/igibson/examples/configs/behavior_onboard_sensing.yaml"
-        self.phase = "minival"
-        # self.config_file = os.environ["CONFIG_FILE"]
-        # self.phase = os.environ["PHASE"]
+        self.config_file = os.environ["CONFIG_FILE"]
+        self.phase = os.environ["PHASE"]
 
     def submit(self, agent):
         env_config = parse_config(self.config_file)
