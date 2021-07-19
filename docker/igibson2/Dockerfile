@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	cmake \
 	git \
 	wget \
+	curl \
 	python3-dev \
 	python3-opencv \
 	python3-pip && \
@@ -21,7 +22,7 @@ RUN conda create -y -n igibson python=3.8.0
 ENV PATH /miniconda/envs/igibson/bin:$PATH
 
 RUN pip install --no-cache-dir https://github.com/StanfordVL/bullet3/archive/master.zip
-RUN pip install torch pytest ray[default,rllib], stable-baselines3
+RUN pip install torch pytest ray[default,rllib] stable-baselines3
 
 RUN git clone --branch master https://github.com/StanfordVL/iGibson /opt/igibson --recursive
 WORKDIR /opt/igibson

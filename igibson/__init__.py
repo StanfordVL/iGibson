@@ -41,6 +41,12 @@ else:
     cubicasa_dataset_path = global_config["cubicasa_dataset_path"]
 cubicasa_dataset_path = os.path.expanduser(cubicasa_dataset_path)
 
+if "KEY_PATH" in os.environ:
+    key_path = os.environ["KEY_PATH"]
+else:
+    key_path = global_config["key_path"]
+key_path = os.path.expanduser(key_path)
+
 root_path = os.path.dirname(os.path.realpath(__file__))
 
 if not os.path.isabs(assets_path):
@@ -53,6 +59,8 @@ if not os.path.isabs(threedfront_dataset_path):
     threedfront_dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), threedfront_dataset_path)
 if not os.path.isabs(cubicasa_dataset_path):
     cubicasa_dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), cubicasa_dataset_path)
+if not os.path.isabs(key_path):
+    key_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), key_path)
 
 logging.info("Importing iGibson (igibson module)")
 logging.info("Assets path: {}".format(assets_path))
@@ -60,6 +68,7 @@ logging.info("Gibson Dataset path: {}".format(g_dataset_path))
 logging.info("iG Dataset path: {}".format(ig_dataset_path))
 logging.info("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
 logging.info("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
+logging.info("iGibson Key path: {}".format(key_path))
 
 example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
 example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples", "configs")
@@ -68,4 +77,3 @@ logging.info("Example path: {}".format(example_path))
 logging.info("Example config path: {}".format(example_config_path))
 
 debug_sampling = False
-key_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "igibson.key")
