@@ -2,6 +2,7 @@ import os
 from typing import Callable
 
 import igibson
+from igibson.envs.behavior_env import BehaviorEnv
 from igibson.envs.igibson_env import iGibsonEnv
 
 try:
@@ -90,16 +91,16 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
 
 def main():
-    config_file = "turtlebot_point_nav.yaml"
+    config_file = "behavior_onboard_sensing.yaml"
     tensorboard_log_dir = "log_dir"
     num_cpu = 8
 
     def make_env(rank: int, seed: int = 0) -> Callable:
-        def _init() -> iGibsonEnv:
-            env = iGibsonEnv(
+        def _init() -> BehaviorEnv:
+            env = BehaviorEnv(
                 config_file=os.path.join(igibson.example_config_path, config_file),
                 mode="headless",
-                action_timestep=1 / 10.0,
+                action_timestep=1 / 30.0,
                 physics_timestep=1 / 120.0,
             )
             env.seed(seed + rank)
@@ -111,10 +112,10 @@ def main():
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
     env = VecMonitor(env)
 
-    eval_env = iGibsonEnv(
+    eval_env = BehaviorEnv(
         config_file=os.path.join(igibson.example_config_path, config_file),
         mode="headless",
-        action_timestep=1 / 10.0,
+        action_timestep=1 / 30.0,
         physics_timestep=1 / 120.0,
     )
 
