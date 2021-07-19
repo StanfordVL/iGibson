@@ -80,7 +80,7 @@ class VisionSensor(BaseSensor):
         if not "rgb" in raw_vision_obs:
             raise ValueError("highlight depends on rgb")
 
-        return (raw_vision_obs["rgb"][:, :, 3] > 0).astype(np.float32)
+        return (raw_vision_obs["rgb"][:, :, 3:4] > 0).astype(np.float32)
 
     def get_rgb_filled(self, raw_vision_obs):
         """

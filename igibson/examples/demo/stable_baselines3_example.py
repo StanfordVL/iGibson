@@ -20,6 +20,11 @@ except ModuleNotFoundError:
     exit(1)
 
 
+"""
+Example training code using stable-baselines3 PPO for PointNav task.
+"""
+
+
 class CustomCombinedExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
         # We do not know features-dim here before going over all the items,
