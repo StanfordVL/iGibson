@@ -1,4 +1,5 @@
 import logging
+from collections import OrderedDict
 
 import cv2
 import networkx as nx
@@ -17,7 +18,13 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
 from igibson.utils.checkpoint_utils import load_internal_states, save_internal_states
-from igibson.utils.constants import FLOOR_SYNSET, MAX_TASK_RELEVANT_OBJS, NON_SAMPLEABLE_OBJECTS
+from igibson.utils.constants import (
+    AGENT_POSE_DIM,
+    FLOOR_SYNSET,
+    MAX_TASK_RELEVANT_OBJS,
+    NON_SAMPLEABLE_OBJECTS,
+    TASK_RELEVANT_OBJS_OBS_DIM,
+)
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
@@ -73,7 +80,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             online_sampling=online_sampling,
         )
         self.initial_state = self.save_scene()
-        self.task_obs_dim = MAX_TASK_RELEVANT_OBJS * 9 + 6
+        self.task_obs_dim = MAX_TASK_RELEVANT_OBJS * TASK_RELEVANT_OBJS_OBS_DIM + AGENT_POSE_DIM
         return result
 
     def save_scene(self):
@@ -1049,42 +1056,43 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         else:
             return False
 
-    def sampleInside(self, objA, objB):
-        return self.sampleOnTopOrInside(objA, objB, "inside")
-
-    def sampleNextTo(self, objA, objB):
-        pass
-
-    def sampleUnder(self, objA, objB):
-        pass
-
-    def sampleTouching(self, objA, objB):
-        pass
-
     def get_task_obs(self, env):
-        state = np.zeros((self.task_obs_dim))
-        state[0:3] = np.array(env.robots[0].get_position())
-        state[3:6] = np.array(env.robots[0].get_rpy())
+        state = OrderedDict()
+        task_obs = np.zeros((self.task_obs_dim))
+        state["robot_pos"] = np.array(env.robots[0].get_position())
+        state["robot_orn"] = np.array(env.robots[0].get_rpy())
 
         i = 0
-        next_idx = 6
-        for k, v in self.object_scope.items():
+        for _, v in self.object_scope.items():
             if isinstance(v, URDFObject):
-                # valid object
-                state[next_idx] = 1.0
-                next_idx += 1
-                state[next_idx : next_idx + 3] = np.array(v.get_position())
-                next_idx += 3
-                state[next_idx : next_idx + 3] = np.array(v.get_rpy())
-                next_idx += 3
-                if env.robots[0].parts["left_hand"].object_in_hand == v.get_body_id():
-                    state[next_idx] = 1.0
-                next_idx += 1
-                if env.robots[0].parts["right_hand"].object_in_hand == v.get_body_id():
-                    state[next_idx] = 1.0
-                next_idx += 1
+                state["obj_{}_valid".format(i)] = 1.0
+                state["obj_{}_pos".format(i)] = np.array(v.get_position())
+                state["obj_{}_orn".format(i)] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
+                state["obj_{}_in_left_hand".format(i)] = float(
+                    env.robots[0].parts["left_hand"].object_in_hand == v.get_body_id()
+                )
+                state["obj_{}_in_right_hand".format(i)] = float(
+                    env.robots[0].parts["right_hand"].object_in_hand == v.get_body_id()
+                )
+                i += 1
 
-        return state
+        state_list = []
+        for k, v in state.items():
+            if isinstance(v, list):
+                state_list.extend(v)
+            elif isinstance(v, tuple):
+                state_list.extend(list(v))
+            elif isinstance(v, np.ndarray):
+                state_list.extend(list(v))
+            elif isinstance(v, (float, int)):
+                state_list.append(v)
+            else:
+                raise ValueError("cannot serialize task obs")
+
+        assert len(state_list) <= len(task_obs)
+        task_obs[: len(state_list)] = state_list
+
+        return task_obs
 
 
 def main():
