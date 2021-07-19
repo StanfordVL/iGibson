@@ -71,7 +71,7 @@ class AgentMetric(MetricBase):
 
             distance = np.abs(delta_pos)
             if part in ["left_hand", "right_hand"]:
-                self.agent_local_pos[part].append(robot.parts[part].local_pos)
+                self.agent_local_pos[part].append(list(robot.parts[part].local_pos))
             if part in ["left_hand", "right_hand"] and (
                 len(p.getContactPoints(robot.parts[part].body_id)) > 0 or robot.parts[part].object_in_hand is not None
             ):
