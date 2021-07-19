@@ -8,7 +8,17 @@ import igibson
 from igibson.envs.behavior_mp_env import ActionPrimitives, BehaviorMPEnv
 
 
+def get_empty_hand(current_hands):
+    if len(current_hands) == 0:
+        return "right_hand"
+    elif len(current_hands) == 1:
+        return "left_hand" if next(current_hands.values()) == "right_hand" else "right_hand"
+
+    raise ValueError("Both hands are full but you are trying to execute a grasp.")
+
+
 def get_actions_from_segmentation(env, demo_data):
+    hand_by_object = {}
     actions = []
     segmentation = demo_data["segmentations"]["flat"]["sub_segments"]
     for segment in segmentation:
@@ -35,28 +45,37 @@ def get_actions_from_segmentation(env, demo_data):
 
         if state_name == "Open" and state_value == True:
             primitive = ActionPrimitives.OPEN
-            object_in_position = 0
+            target_object = object_idxes[0]
         elif state_name == "Open" and state_value == False:
             primitive = ActionPrimitives.CLOSE
-            object_in_position = 0
+            target_object = object_idxes[0]
+        # We will support automatic navigation to relevant objects.
         elif state_name == "InReachOfRobot" and state_value == True:
-            primitive = ActionPrimitives.NAVIGATE_TO
-            object_in_position = 0
+            pass
+        #     primitive = ActionPrimitives.NAVIGATE_TO
+        #     object_in_position = 0
         elif state_name == "InHandOfRobot" and state_value == True:
-            primitive = ActionPrimitives.GRASP
-            object_in_position = 0
+            target_object = object_idxes[0]
+            hand = get_empty_hand(hand_by_object)
+            hand_by_object[target_object] = hand
+            primitive = ActionPrimitives.LEFT_GRASP if hand == "left_hand" else ActionPrimitives.RIGHT_GRASP
         elif state_name == "Inside" and state_value == True:
-            primitive = ActionPrimitives.PLACE_INSIDE
-            object_in_position = 1
+            target_object = object_idxes[1]
+            assert target_object in hand_by_object, "Placed object not currently grasped."
+            hand = hand_by_object[target_object]
+            primitive = (
+                ActionPrimitives.LEFT_PLACE_INSIDE if hand == "left_hand" else ActionPrimitives.RIGHT_PLACE_INSIDE
+            )
         elif state_name == "OnTop" and state_value == True:
-            primitive = ActionPrimitives.PLACE_ONTOP
-            object_in_position = 1
+            target_object = object_idxes[1]
+            assert target_object in hand_by_object, "Placed object not currently grasped."
+            hand = hand_by_object[target_object]
+            primitive = ActionPrimitives.LEFT_PLACE_ONTOP if hand == "left_hand" else ActionPrimitives.RIGHT_PLACE_ONTOP
         else:
             raise ValueError("Found a state change we can't process: %r" % state_change)
 
         # Append the action.
-        object_idx = object_idxes[object_in_position]
-        action = int(primitive) * env.num_objects + object_idx
+        action = int(primitive) * env.num_objects + target_object
         actions.append(action)
 
     return actions
