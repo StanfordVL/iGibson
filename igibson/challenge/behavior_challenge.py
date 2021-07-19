@@ -4,7 +4,6 @@ import os
 
 import bddl
 import numpy as np
-from IPython import embed
 
 from igibson.envs.behavior_env import BehaviorEnv
 from igibson.metrics.agent import AgentMetric
@@ -108,7 +107,6 @@ class BehaviorChallenge(object):
                     episode += 1
                     env.close()
 
-        embed()
         log_path = "eval.json"
         with open(log_path, "w+") as f:
             json.dump(per_episode_metrics, f)
