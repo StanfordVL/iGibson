@@ -1,5 +1,0 @@
-include LICENSE
-
-recursive-include igibson *
-
-include igibson/global_config.yaml

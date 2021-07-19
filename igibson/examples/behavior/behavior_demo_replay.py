@@ -7,9 +7,13 @@ import datetime
 import os
 import pprint
 
+import types
+from igibson.sensors.vision_sensor import VisionSensor
 import bddl
 import h5py
 import numpy as np
+import pybullet as p
+import copy
 
 import igibson
 from igibson.activity.activity_base import iGBEHAVIORActivityInstance
@@ -122,8 +126,8 @@ def replay_demo(
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))
     vr_settings.set_frame_save_path(frame_save_path)
 
-    task = IGLogReader.read_metadata_attr(in_log_path, "/metadata/atus_activity")
-    task_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/activity_definition")
+    activity = IGLogReader.read_metadata_attr(in_log_path, "/metadata/atus_activity")
+    activity_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/activity_definition")
     scene = IGLogReader.read_metadata_attr(in_log_path, "/metadata/scene_id")
     physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
     render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
@@ -132,7 +136,7 @@ def replay_demo(
     urdf_file = IGLogReader.read_metadata_attr(in_log_path, "/metadata/urdf_file")
 
     if urdf_file is None:
-        urdf_file = ("{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),)
+        urdf_file = ("{}_task_{}_{}_0_fixed_furniture".format(scene, activity, activity_id))
 
     if instance_id is None:
         instance_id = 0
@@ -166,11 +170,11 @@ def replay_demo(
         render_timestep=render_timestep,
         rendering_settings=vr_rendering_settings,
         vr_settings=vr_settings,
-        image_width=1280,
-        image_height=720,
+        image_width=128,
+        image_height=128,
     )
 
-    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
+    igbhvr_act_inst = iGBEHAVIORActivityInstance(activity, activity_id)
     igbhvr_act_inst.initialize_simulator(
         simulator=s,
         scene_id=scene,
@@ -187,7 +191,7 @@ def replay_demo(
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         if out_log_path == None:
-            out_log_path = "{}_{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, instance_id, timestamp)
+            out_log_path = "{}_{}_{}_{}_{}_replay.hdf5".format(activity, activity_id, scene, instance_id, timestamp)
 
         log_writer = IGLogWriter(
             s,
@@ -203,8 +207,40 @@ def replay_demo(
     for callback in start_callbacks:
         callback(igbhvr_act_inst, log_reader)
 
+    env = types.SimpleNamespace()
+    env.simulator = igbhvr_act_inst.simulator
+    env.robots = igbhvr_act_inst.simulator.robots
+    env.config = {}
+    vision_sensor = VisionSensor(env, ['rgb', 'highlight', 'depth', 'seg', 'ins_seg'])
+
+        
+    episode_identifier = "_".join(os.path.splitext(in_log_path)[0].split("_")[-2:])
+    episode_out_log_path = "processed_hdf5s/{}_{}_{}_{}_episode.hdf5".format(activity, activity_id, scene, episode_identifier)
+    hf = h5py.File(episode_out_log_path, "w")
+    # hf.attrs["/metadata/collection_date"] = IGLogReader.read_metadata_attr(in_log_path, "/metadata/start_time")
+    hf.attrs["/metadata/physics_timestep"] = physics_timestep
+    hf.attrs["/metadata/render_timestep"] = render_timestep
+    hf.attrs["/metadata/activity"] = activity
+    hf.attrs["/metadata/activity_id"] = activity_id
+    hf.attrs["/metadata/scene_id"] = scene
+    hf.attrs["/metadata/vr_settings"] = igbhvr_act_inst.simulator.vr_settings.dump_vr_settings()
+
+    state_history = {}
     task_done = False
+
+    for _, obj in igbhvr_act_inst.object_scope.items():
+        if obj.category in ["agent", "room_floor"]:
+            continue
+        obj.highlight()
+
     while log_reader.get_data_left_to_read():
+        state = {}
+        state.update(vision_sensor.get_obs(env))
+        state["task_obs"] = igbhvr_act_inst.get_task_obs(env)
+        state["proprioception"] = np.array(env.robots[0].get_proprioception())
+        state["action"] = log_reader.read_value('agent_actions/vr_robot')
+        if np.max(state['seg']) > 400: 
+            import pdb; pdb.set_trace()
 
         igbhvr_act_inst.simulator.step(print_stats=profile)
         task_done, _ = igbhvr_act_inst.check_success()
@@ -219,10 +255,25 @@ def replay_demo(
         # Get relevant VR action data and update VR agent
         vr_agent.update(log_reader.get_agent_action("vr_robot"))
 
+        for key, value in state.items():
+            if key not in state_history:
+                state_history[key] = []
+            state_history[key].append(value)
+        
+
         if not disable_save:
             log_writer.process_frame()
 
     print("Demo was succesfully completed: ", task_done)
+
+    print("Compressing demo data")
+    for key, value in state_history.items():
+        if key == "action":
+            dtype = np.float64
+        else:
+            dtype = np.float32
+        hf.create_dataset(key, data=np.stack(value), dtype=dtype, compression="lzf")
+    print("Compression complete")
 
     demo_statistics = {}
     for callback in end_callbacks:
@@ -238,12 +289,13 @@ def replay_demo(
 
     demo_statistics = {
         "deterministic": is_deterministic,
-        "task": task,
-        "task_id": int(task_id),
+        "task": activity,
+        "task_id": int(activity_id),
         "scene": scene,
         "task_done": task_done,
         "total_frame_num": log_reader.total_frame_num,
     }
+    hf.close()
     return demo_statistics
 
 

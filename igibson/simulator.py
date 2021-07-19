@@ -52,6 +52,7 @@ class Simulator:
         vertical_fov=90,
         device_idx=0,
         render_to_tensor=False,
+        use_new_robot=False,
         rendering_settings=MeshRendererSettings(),
         vr_settings=VrSettings(),
     ):
@@ -102,6 +103,7 @@ class Simulator:
             winmm = ctypes.WinDLL("winmm")
             winmm.timeBeginPeriod(1)
 
+        self.use_new_robot = use_new_robot
         self.use_pb_renderer = False
         self.use_ig_renderer = False
         self.use_vr_renderer = False
