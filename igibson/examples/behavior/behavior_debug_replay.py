@@ -165,6 +165,7 @@ def replay_demo(
             log_writer.process_frame()
 
     demo_statistics = {}
+    import pdb; pdb.set_trace()
     for callback in end_callbacks:
         callback(vr_agent, log_reader)
 
