@@ -32,11 +32,13 @@ class PyBulletSleepState(IntEnum):
     AWAKE = 1
 
 
-# iGATUS-related
+# BEHAVIOR-related
 FLOOR_SYNSET = "floor.n.01"
 with open(os.path.join(igibson.ig_dataset_path, "metadata/non_sampleable_categories.txt")) as f:
     NON_SAMPLEABLE_OBJECTS = [FLOOR_SYNSET] + [line.strip() for line in f.readlines()]
-
+MAX_TASK_RELEVANT_OBJS = 50
+TASK_RELEVANT_OBJS_OBS_DIM = 9
+AGENT_POSE_DIM = 6
 
 UNDER_OBJECTS = [
     "breakfast_table",
