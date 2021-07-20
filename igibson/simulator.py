@@ -115,7 +115,7 @@ class Simulator:
 
         if self.mode in ["vr"]:
             self.use_vr_renderer = True
-            self.rendering_settings.blend_highlight = True
+            rendering_settings.blend_highlight = True
 
         if self.mode in ["simple"]:
             self.use_simple_viewer = True
