@@ -22,6 +22,7 @@ from igibson.external.pybullet_tools.utils import (
     set_joint_position,
 )
 from igibson.object_states.factory import prepare_object_states
+from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.object_states.utils import clear_cached_states
 from igibson.objects.stateful_object import StatefulObject
@@ -314,16 +315,21 @@ class URDFObject(StatefulObject):
         self.avg_obj_dims = avg_obj_dims
 
         self.rename_urdf()
-
-        self.meta_links = {}
         self.add_meta_links(meta_links)
-
         self.scale_object()
         self.compute_object_pose()
         self.remove_floating_joints(self.scene_instance_folder)
 
         prepare_object_states(self, abilities, online=True)
         self.prepare_visual_mesh_to_material()
+
+        # Currently a subset of states require access fixed links that will be merged into
+        # the world when using p.URDF_MERGE_FIXED_LINKS. Skip merging these for now.
+        if self.merge_fixed_links:
+            for state in self.states:
+                if issubclass(state, LinkBasedStateMixin):
+                    self.merge_fixed_links = False
+                    break
 
     def set_ignore_visual_shape(self, value):
         self.ignore_visual_shape = value
@@ -1089,14 +1095,7 @@ class URDFObject(StatefulObject):
         :return: None.
         """
         for meta_link_name, link_info in meta_links.items():
-            if link_info["geometry"] is not None:
-                # Objects with geometry actually need to be added into the URDF for collision purposes.
-                # These objects cannot be imported with fixed links.
-                self.merge_fixed_links = False
-                add_fixed_link(self.object_tree, meta_link_name, link_info)
-            else:
-                # Otherwise, the "link" is just an offset, so we save its position.
-                self.meta_links[meta_link_name] = np.array(link_info["xyz"])
+            add_fixed_link(self.object_tree, meta_link_name, link_info)
 
     # TODO: remove after split floors
     def set_room_floor(self, room_floor):
