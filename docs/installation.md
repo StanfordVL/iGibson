@@ -14,7 +14,7 @@ The minimum system requirements are the following:
     - CUDA >= 9.0, CuDNN >= v7
     - CMake >= 2.8.12 (can install with `pip install cmake`)
     - g++ (GNU C++ compiler)
-    - libegl1 (Debian/Ubuntu: vendor neutral GL dispatch library -- EGL support)
+    - libegl-dev (Debian/Ubuntu: vendor neutral GL dispatch library -- EGL support)
 - Windows
     - Windows 10
     - Nvidia GPU with VRAM > 6.0GB
@@ -31,7 +31,7 @@ Other system configurations may work, but we haven't tested them extensively and
 
 ## Installing dependencies
 
-Beginning with a clean ubuntu 20.04 installation, the following script will install all needed dependencies to build and run iGibson with CUDA 11.1:
+Beginning with a clean ubuntu 20.04 installation, you **must run the following script as root/superuser** (`sudo su`) which will install all needed dependencies to build and run iGibson with CUDA 11.1:
 
 ```bash
 # Add the nvidia ubuntu repositories
@@ -42,22 +42,26 @@ apt-get update && apt-get install -y --no-install-recommends \
     echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list
 
 # The following cuda libraries are required to compile igibson
-apt-get install -y --no-install-recommends \
+# Note: the following assumes you will be using nvidia drivers on a headless node
+# please use xserver-xorg-video-nvidia-470 if you are on a desktop
+apt-get update && apt-get update && apt-get install -y --no-install-recommends \
+    nvidia-headless-470 \
     cuda-cudart-11-1=11.1.74-1 \
     cuda-compat-11-1 \
     cuda-command-line-tools-11-1=11.1.1-1 \
     cuda-libraries-dev-11-1=11.1.1-1 \
 
-# Set CUDA 11.1 as the default cuda installation (for pytorch or tensorflow, not required if you modify LD_LIBRARY_PATH)
-ln -s cuda-11.1 /usr/local/cuda
-
 # For building and running igibson
-apt-get install -y --no-install-recommends \
+apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     git \
     g++ \
-    libegl1
+    libegl-dev
+```
 
+Conda is recommended over standard virtual environments. To setup anaconda with the requisite dependencies, run the following as your user account (**not as root/superuser**):
+
+```bash
 # Install miniconda
 curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
 bash Miniconda-latest-Linux-x86_64.sh
@@ -84,13 +88,6 @@ iGibson's simulator can be installed as a python package using pip:
 pip install igibson  # This step takes about 4 minutes
 # run the demo
 python -m igibson.examples.demo.demo_static
-```
-
-Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
-
-```bash
-pip uninstall pybullet
-pip install https://github.com/StanfordVL/bullet3/archive/master.zip
 ```
 
 ### 2. Docker image
@@ -127,24 +124,25 @@ cd iGibson/docker/headless-gui
 Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). 
 
 ```bash
-git clone https://github.com/StanfordVL/iGibson --recursive
+git clone https://github.com/StanfordVL/iGibson --recursive --branch ig-develop
 cd iGibson
 
-conda create -n py3-igibson python=3.6 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
+conda create -n py3-igibson python=3.8 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
 source activate py3-igibson
 pip install -e . # This step takes about 4 minutes
-```
-
-Note: we support using a custom pybullet version to speed up the physics in iGibson, if you want to have the speed up, you would need to do the following steps after installation:
-
-```bash
-pip uninstall pybullet
-pip install https://github.com/StanfordVL/bullet3/archive/master.zip
 ```
 
 We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
 Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
+
+## The SVL pybullet fork
+Note: we support using a custom pybullet version to speed up the physics in iGibson. This is installed automatically if you install iGibson. If you already have pybullet installed in your conda environment, you can replace it with our fork as follows:
+
+```bash
+pip uninstall pybullet
+pip install pybullet-svl
+```
 
 ## Downloading the Assets
 
