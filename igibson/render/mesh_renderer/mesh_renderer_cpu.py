@@ -1522,8 +1522,8 @@ class MeshRenderer(object):
                 or_buffer_idx_end = len(duplicate_vao_ids)
                 # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
                 instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end))
-                class_id_array.extend([float(instance.class_id) / 255.0] * len(ids))
-                instance_id_array.extend([float(instance.id) / 255.0] * len(ids))
+                class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * len(ids))
+                instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * len(ids))
                 pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
                 hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
             elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
@@ -1539,8 +1539,8 @@ class MeshRenderer(object):
                     temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
                     id_sum += len(ids)
                 instance.or_buffer_indices = list(temp_or_buffer_indices)
-                class_id_array.extend([float(instance.class_id) / 255.0] * id_sum)
-                instance_id_array.extend([float(instance.id) / 255.0] * id_sum)
+                class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * id_sum)
+                instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * id_sum)
                 pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
                 hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
