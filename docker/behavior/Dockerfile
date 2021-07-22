@@ -24,7 +24,7 @@ ENV PATH /miniconda/envs/igibson/bin:$PATH
 
 RUN pip install torch pytest ray[default,rllib] stable-baselines3
 
-RUN git clone --branch behavior_docker https://github.com/StanfordVL/iGibson /opt/iGibson --recursive
+RUN git clone --branch ig-develop https://github.com/StanfordVL/iGibson /opt/iGibson --recursive
 WORKDIR /opt/iGibson
 RUN pip install -e .
 
