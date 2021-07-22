@@ -10,7 +10,7 @@ class TaskMetric(MetricBase):
         self.timesteps = 0
 
     def start_callback(self, igbhvr_act_instance, _):
-        self.physics_timestep = igbhvr_act_instance.simulator.physics_timestep
+        self.render_timestep = igbhvr_act_instance.simulator.render_timestep
 
     def step_callback(self, igbhvr_act_inst, _):
         self.timesteps += 1
