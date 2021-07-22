@@ -1205,7 +1205,7 @@ class MeshRenderer(object):
         self.vertex_data = []
         self.shapes = []
         save_path = os.path.join(igibson.ig_dataset_path, "tmp")
-        if os.path.exists(save_path):
+        if os.path.isdir(save_path):
             shutil.rmtree(save_path)
 
     def transform_vector(self, vec):
