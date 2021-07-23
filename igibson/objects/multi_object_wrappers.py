@@ -131,7 +131,7 @@ class ObjectGrouper(StatefulObject):
 
         # These attributes are used during object import and should return
         # the concatenation results of all objects in self.objects
-        if item in ["visual_mesh_to_material", "body_ids", "is_fixed"]:
+        if item in ["visual_mesh_to_material", "link_name_to_vm", "body_ids", "is_fixed"]:
             return list(itertools.chain.from_iterable(attrs))
 
         # Otherwise, check that it's the same for everyone and then just return the value.
@@ -202,7 +202,7 @@ class ObjectMultiplexer(StatefulObject):
     def __getattr__(self, item):
         # This attribute is used during object import and should return
         # the concatenation results of all objects in self._multiplexed_objects
-        if item in ["visual_mesh_to_material"]:
+        if item in ["visual_mesh_to_material", "link_name_to_vm"]:
             attrs = [getattr(obj, item) for obj in self._multiplexed_objects]
             return list(itertools.chain.from_iterable(attrs))
 

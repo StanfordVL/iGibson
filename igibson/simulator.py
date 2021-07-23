@@ -349,25 +349,28 @@ class Simulator:
         new_object_ids = scene.load()
         self.objects += new_object_ids
 
-        for body_id, visual_mesh_to_material in zip(new_object_ids, scene.visual_mesh_to_material):
+        for body_id, visual_mesh_to_material, link_name_to_vm in zip(
+            new_object_ids, scene.visual_mesh_to_material, scene.link_name_to_vm
+        ):
             use_pbr = True
             use_pbr_mapping = True
             shadow_caster = True
-            if scene.scene_source == "IG":
-                if scene.objects_by_id[body_id].category in ["walls", "floors", "ceilings"]:
-                    use_pbr = False
-                    use_pbr_mapping = False
-                if scene.objects_by_id[body_id].category == "ceilings":
-                    shadow_caster = False
-            class_id = self.class_name_to_class_id.get(scene.objects_by_id[body_id].category, SemanticClass.SCENE_OBJS)
+            physical_object = scene.objects_by_id[body_id]
+            if physical_object.category in ["walls", "floors", "ceilings"]:
+                use_pbr = False
+                use_pbr_mapping = False
+            if physical_object.category == "ceilings":
+                shadow_caster = False
+            class_id = self.class_name_to_class_id.get(physical_object.category, SemanticClass.SCENE_OBJS)
             self.load_articulated_object_in_renderer(
                 body_id,
                 class_id=class_id,
                 visual_mesh_to_material=visual_mesh_to_material,
+                link_name_to_vm=link_name_to_vm,
                 use_pbr=use_pbr,
                 use_pbr_mapping=use_pbr_mapping,
                 shadow_caster=shadow_caster,
-                physical_object=scene.objects_by_id[body_id],
+                physical_object=physical_object,
             )
 
         self.scene = scene
@@ -442,12 +445,14 @@ class Simulator:
                     visual_mesh_to_material = None
                 else:
                     visual_mesh_to_material = obj.visual_mesh_to_material[i]
+                link_name_to_vm = obj.link_name_to_vm[i]
                 self.load_articulated_object_in_renderer(
                     new_object_pb_id,
                     class_id=class_id,
                     use_pbr=use_pbr,
                     use_pbr_mapping=use_pbr_mapping,
                     visual_mesh_to_material=visual_mesh_to_material,
+                    link_name_to_vm=link_name_to_vm,
                     shadow_caster=shadow_caster,
                     physical_object=obj,
                 )
@@ -634,6 +639,7 @@ class Simulator:
         physical_object,
         class_id=None,
         visual_mesh_to_material=None,
+        link_name_to_vm=None,
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
@@ -644,12 +650,12 @@ class Simulator:
         :param object_pb_id: pybullet body id
         :param class_id: Class id for rendering semantic segmentation
         :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
+        :param link_name_to_vm: mapping from link name to a list of visual mesh file paths
         :param use_pbr: Whether to use pbr
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         :param physical_object: The reference to Object class
         """
-
         # Load object in renderer, use visual shape from physical_object class
         # using CoM frame
         # only load URDFObject or ArticulatedObject with this function
@@ -666,14 +672,10 @@ class Simulator:
         poses_trans = []
         color = [0, 0, 0]
         for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:
-            link_name = None
-            try:
-                if link_id == -1:
-                    link_name = p.getBodyInfo(object_pb_id)[0].decode("utf-8")
-                else:
-                    link_name = p.getJointInfo(object_pb_id, link_id)[12].decode("utf-8")
-            except:
-                pass
+            if link_id == -1:
+                link_name = p.getBodyInfo(object_pb_id)[0].decode("utf-8")
+            else:
+                link_name = p.getJointInfo(object_pb_id, link_id)[12].decode("utf-8")
 
             collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
             collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
@@ -685,43 +687,42 @@ class Simulator:
             else:
                 _, _, type, dimensions, filename, rel_pos, rel_orn = collision_shapes[0]
 
-            if link_name is not None and link_name in physical_object.link_name_to_vm:
-                filenames = physical_object.link_name_to_vm[link_name]
-                for filename in filenames:
-                    overwrite_material = None
-                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
-                        overwrite_material = visual_mesh_to_material[filename]
+            filenames = link_name_to_vm[link_name]
+            for filename in filenames:
+                overwrite_material = None
+                if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                    overwrite_material = visual_mesh_to_material[filename]
 
-                    if (
+                if (
+                    filename,
+                    tuple(dimensions),
+                    tuple(rel_pos),
+                    tuple(rel_orn),
+                ) not in self.visual_objects.keys() or overwrite_material is not None:
+                    # if the object has an overwrite material, always create a
+                    # new visual object even if the same visual shape exsits
+                    self.renderer.load_object(
                         filename,
-                        tuple(dimensions),
-                        tuple(rel_pos),
-                        tuple(rel_orn),
-                    ) not in self.visual_objects.keys() or overwrite_material is not None:
-                        # if the object has an overwrite material, always create a
-                        # new visual object even if the same visual shape exsits
-                        self.renderer.load_object(
-                            filename,
-                            transform_orn=rel_orn,
-                            transform_pos=rel_pos,
-                            input_kd=color[:3],
-                            scale=np.array(dimensions),
-                            overwrite_material=overwrite_material,
-                        )
-                        self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
-                            len(self.renderer.visual_objects) - 1
-                        )
-                    visual_objects.append(
-                        self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+                        transform_orn=rel_orn,
+                        transform_pos=rel_pos,
+                        input_kd=color[:3],
+                        scale=np.array(dimensions),
+                        overwrite_material=overwrite_material,
                     )
-                    link_ids.append(link_id)
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
+                        len(self.renderer.visual_objects) - 1
+                    )
+                visual_objects.append(
+                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+                )
+                link_ids.append(link_id)
 
-                    if link_id == -1:
-                        pos, orn = p.getBasePositionAndOrientation(object_pb_id)
-                    else:
-                        pos, orn = p.getLinkState(object_pb_id, link_id)[:2]
-                    poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-                    poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
+                if link_id == -1:
+                    pos, orn = p.getBasePositionAndOrientation(object_pb_id)
+                else:
+                    pos, orn = p.getLinkState(object_pb_id, link_id)[:2]
+                poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
+                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
         self.renderer.add_instance_group(
             object_ids=visual_objects,
