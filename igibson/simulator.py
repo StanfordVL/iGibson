@@ -1343,7 +1343,7 @@ class Simulator:
             # Process local transform adjustments
             prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
             prev_local_pos, prev_local_orn = vr_part.local_pos, vr_part.local_orn
-            inv_prev_local_pos, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
+            _, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
             if part_name == "eye":
                 valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
             else:
@@ -1360,10 +1360,17 @@ class Simulator:
                 inv_new_body_pos, inv_new_body_orn, world_pos, world_orn
             )
 
-            delta_local_pos, delta_local_orn = p.multiplyTransforms(
-                inv_prev_local_pos, inv_prev_local_orn, des_local_pos, des_local_orn
+            # Get the delta local orientation in the reference frame of the body
+            _, delta_local_orn = p.multiplyTransforms(
+                [0, 0, 0],
+                des_local_orn,
+                [0, 0, 0],
+                inv_prev_local_orn,
             )
             delta_local_orn = p.getEulerFromQuaternion(delta_local_orn)
+
+            # Get the delta local position in the reference frame of the body
+            delta_local_pos = np.array(des_local_pos) - np.array(prev_local_pos)
 
             if part_name == "eye":
                 action[6:9] = np.array(delta_local_pos)
