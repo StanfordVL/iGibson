@@ -76,6 +76,23 @@ conda create -y -n igibson python=3.8
 conda activate igibson
 ```
 
+By default, iGibson builds with CUDA support which requires that `nvcc` is on your path (or CUDA 11 is symlinked to `/usr/local/cuda` from `/usr/local/cuda-11.1`). Cmake uses `nvcc` to find the CUDA libraries and headers when building iGibson. Add the following to your shell rc (`.bashrc`, `.zshrc`, etc.) and re-login to your shell (`exec bash`, `exec zsh`, etc.):
+```bash
+export PATH=/usr/local/cuda-11.1/bin:$PATH
+```
+
+Then verify nvcc is on your PATH:
+```bash
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2020 NVIDIA Corporation
+Built on Mon_Oct_12_20:09:46_PDT_2020
+Cuda compilation tools, release 11.1, V11.1.105
+Build cuda_11.1.TC455_06.29190527_0
+```
+
+To build without CUDA support (used for the "rendering to GPU tensor" feature), you will have to set `USE_CUDA` to `False` in `iGibson/igibson/render/CMakeLists.txt`.
+
 ## Installing the Environment
 
 We provide 3 methods to install the simulator.
