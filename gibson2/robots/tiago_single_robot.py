@@ -18,9 +18,10 @@ class Tiago_Single(LocomotorRobot):
         self.head_dim = 2
         self.arm_dim = 7
         self.gripper_dim = 2
-        self.rest_position = [0, 0, 0, 0, 0,
-                0, np.pi, -np.pi/2, 0, np.pi/2, 0, 0, 0,
-                0, 0]
+        self.rest_position = [0, 0, 0, 0, 0,  # wheels, torso, head
+                0, np.pi, -np.pi/2, 0, np.pi/2, 0, 0, # arm
+                0.01, 0.01  # gripper
+                ]
 
         self.problem_parts = []  # filled on load
         self.joint_mask = []  # filled on load
@@ -76,7 +77,7 @@ class Tiago_Single(LocomotorRobot):
     def get_end_effector_position(self):
         return self.parts['gripper_grasping_frame'].get_position()
 
-    def get_end_effector_index(self):
+    def end_effector_part_index(self):
         return self.parts['gripper_grasping_frame'].body_part_index
 
     def load(self):
