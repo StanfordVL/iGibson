@@ -823,6 +823,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         body_ids = []
         fixed_body_ids = []
         visual_mesh_to_material = []
+        link_name_to_vm = []
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
             new_ids = obj.load()
@@ -830,8 +831,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 self.objects_by_id[id] = obj
             body_ids += new_ids
             visual_mesh_to_material += obj.visual_mesh_to_material
+            link_name_to_vm += obj.link_name_to_vm
             fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.body_ids, obj.is_fixed) if is_fixed]
         assert len(visual_mesh_to_material) == len(body_ids)
+        assert len(link_name_to_vm) == len(body_ids)
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -846,6 +849,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             self.load_trav_map(maps_path)
 
         self.visual_mesh_to_material = visual_mesh_to_material
+        self.link_name_to_vm = link_name_to_vm
         self.check_scene_quality(body_ids, fixed_body_ids)
 
         # force wake up each body once
