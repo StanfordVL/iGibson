@@ -40,14 +40,15 @@ def main():
                                                'arm_7_joint',
                                                ])
 
-    fix_joints = joints_from_names(robot_id, [ 'head_1_joint',
+    fixed_joints = joints_from_names(robot_id, ['head_1_joint',
                                                'head_2_joint',
                                                'gripper_right_finger_joint',
                                                'gripper_left_finger_joint'])
 
     tiago.robot_body.reset_position([0, 0, 0])
     tiago.robot_body.reset_orientation([0, 0, 1, 0])
-    x, y, z = [-0.5, 0.38, 0.5]
+    x, y, z = [-0.9, 0.38, 0.6]
+    fixed_jointPoses = [0, 0, 0.01, 0.01]
 
     visual_marker = p.createVisualShape(p.GEOM_SPHERE, radius=0.02)
     marker = p.createMultiBody(baseVisualShapeIndex=visual_marker)
@@ -69,6 +70,10 @@ def main():
             joint_mask += [False]
 
     def accurateCalculateInverseKinematics(robotid, endEffectorId, targetPos, threshold, maxIter):
+        # set positions for fixed joints
+        set_joint_positions(robotid, fixed_joints, fixed_jointPoses)
+
+        # set positions for movable joints
         it = 0
         while it < maxIter:
             jointPoses = p.calculateInverseKinematics(
@@ -80,14 +85,11 @@ def main():
                 jointRanges=joint_range,
                 restPoses=rest_position,
                 jointDamping=jd)
-            # add fix joints to calculated joints
+            
             jointPoses = np.asarray(jointPoses)
             jointPoses = jointPoses[joint_mask]
-            tmp = movable_joints
-            tmp += fix_joints
-            jointPoses = list(jointPoses) + [0, 0, 0.01, 0.01]
             
-            set_joint_positions(robotid, tmp, jointPoses)
+            set_joint_positions(robotid, movable_joints, jointPoses)
             ls = p.getLinkState(robotid, endEffectorId)
             newPos = ls[4]
 
