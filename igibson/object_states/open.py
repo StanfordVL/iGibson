@@ -72,13 +72,13 @@ class Open(CachingEnabledObjectState, BooleanState):
         # Return open if any joint is open, false otherwise.
         return any(joint_openness)
 
-    def _set_value(self, new_value):
+    def _set_value(self, new_value, fully_open=False):
         relevant_joint_infos = _get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
 
         # All joints are relevant if we are closing, but if we are opening let's sample a subset.
-        if new_value:
+        if new_value and not fully_open:
             num_to_open = random.randint(1, len(relevant_joint_infos))
             relevant_joint_infos = random.sample(relevant_joint_infos, num_to_open)
 
@@ -88,7 +88,10 @@ class Open(CachingEnabledObjectState, BooleanState):
 
             if new_value:
                 # Sample an open position.
-                joint_pos = random.uniform(joint_threshold, joint_info.jointUpperLimit)
+                if fully_open:
+                    joint_pos = joint_info.jointUpperLimit
+                else:
+                    joint_pos = random.uniform(joint_threshold, joint_info.jointUpperLimit)
             else:
                 # Sample a closed position.
                 joint_pos = random.uniform(joint_info.jointLowerLimit, joint_threshold)

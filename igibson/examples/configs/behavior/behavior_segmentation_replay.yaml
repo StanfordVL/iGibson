@@ -1,5 +1,5 @@
 # scene
-scene_id: Rs_int
+scene_id: REPLACE_ME
 clutter: false
 build_graph: true
 load_texture: true
@@ -14,8 +14,8 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # task
-task: re-shelving_library_books
-task_id: 0
+task: REPLACE_ME
+task_id: REPLACE_ME
 online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0

@@ -1,3 +1,5 @@
+import random
+
 import cv2
 import numpy as np
 import pybullet as p
@@ -74,7 +76,15 @@ def detect_collision(bodyA):
 
 
 def sample_kinematics(
-    predicate, objA, objB, binary_state, use_ray_casting_method=False, max_trials=100, z_offset=0.05, skip_falling=False
+    predicate,
+    objA,
+    objB,
+    binary_state,
+    use_ray_casting_method=False,
+    max_trials=100,
+    z_offset=0.05,
+    skip_falling=False,
+    allow_non_default_orientation=False,
 ):
     if not binary_state:
         raise NotImplementedError()
@@ -118,6 +128,17 @@ def sample_kinematics(
 
                 aabb = get_aabb(objA.get_body_id())
                 aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
+                aabb_rotation = R.identity()
+
+                # Rotate the AABB as needed.
+                if allow_non_default_orientation:
+                    # Rotate the AABB in one direction by 90 or -90 degrees.
+                    axis = np.array(random.choice([[1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0]]))
+                    rotvec = axis * np.pi / 4  # Rotation vector's norm is the amount of rotation around axis
+                    aabb_rotation = R.from_rotvec(rotvec)
+
+                # Rotate the AABB
+                aabb_extent = aabb_rotation.apply(aabb_extent)
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
@@ -138,7 +159,7 @@ def sample_kinematics(
                     diff = old_pos - aabb_center
 
                     sample_rotation = R.from_quat(sampled_quaternion)
-                    original_rotation = R.from_quat(orientation)
+                    original_rotation = R.from_quat(orientation) * aabb_rotation
                     combined_rotation = sample_rotation * original_rotation
 
                     # Rotate it using the quaternion

@@ -3,17 +3,27 @@ import collections
 import datetime
 import os
 import time
+import types
 from collections import OrderedDict
 
 import bddl
 import gym.spaces
 import numpy as np
+import pybullet as p
 from bddl.condition_evaluation import evaluate_state
 
+from igibson import object_states
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.object_states.factory import get_state_from_name
+from igibson.robots.behavior_robot import PALM_LINK_INDEX, BehaviorRobot
+from igibson.scenes.empty_scene import EmptyScene
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.task.task_base import iGBEHAVIORActivityInstance
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
+from igibson.utils.utils import l2_distance
 
 Episode = collections.namedtuple("Episode", ["success", "success_score"])
 from igibson.object_states import HeatSourceOrSink, Stained, WaterSource
@@ -375,7 +385,7 @@ class BehaviorEnv(iGibsonEnv):
         if self.magic_grasping_cid is not None:
             return
         target_obj = self.task.object_scope[self.reward_shaping_relevant_objs[0]]
-        if self.robots[0].parts["right_hand"].states[Touching].get_value(target_obj):
+        if self.robots[0].parts["right_hand"].states[object_states.Touching].get_value(target_obj):
             child_frame_pos, child_frame_orn = self.get_child_frame_pose(target_obj.get_body_id(), -1)
             self.magic_grasping_cid = p.createConstraint(
                 parentBodyUniqueId=self.robots[0].parts["right_hand"].get_body_id(),
