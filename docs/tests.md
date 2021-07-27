@@ -1,8 +1,8 @@
 # Tests
 ### Overview
-We provide tests in [test](https://github.com/StanfordVL/iGibson/tree/master/gibson2/test). You can run them by this:
+We provide tests in [test](https://github.com/StanfordVL/iGibson/tree/master/igibson/test). You can run them by this:
 ```bash
-cd gibson2/test
+cd igibson/test
 pytest --ignore disabled --ignore benchmark
 ```
 It will take a few minutes. If all tests pass, you will see something like this
