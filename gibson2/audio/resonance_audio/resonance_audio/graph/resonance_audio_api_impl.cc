@@ -225,6 +225,8 @@ int ResonanceAudioApiImpl::CreateSoundObjectSource(
     source_parameters->enable_hrtf = config.enable_hrtf;
   };
   task_queue_.Post(task);
+  //Execute to ensure source is initialized immediately
+  task_queue_.Execute();
   return sound_object_source_id;
 }
 

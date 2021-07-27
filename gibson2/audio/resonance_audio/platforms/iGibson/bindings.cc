@@ -191,7 +191,7 @@ namespace igibson {
     void LoadMesh(int num_vertices, int num_triangles,
         py::array_t<float> vertices, py::array_t<int> triangles,
         py::array_t<int> material_indices,
-        float scattering_coefficient, py::array_t<float> sample_pos) {
+        float scattering_coefficient) {
         py::print("Entering LoadMesh");
 
         py::buffer_info mi_buf = material_indices.request();
@@ -253,6 +253,11 @@ namespace igibson {
         py::print("Reverb and reflection proeprties for room [", room, "] computed in ", elapsed_t.count(), "ms");
     }
 
+    void SetRoomPropertiesFromProbe(const std::string &room) {
+        const auto reflection_and_reverb = resonance_audio->room_to_reflection_and_reverb[room];
+        SetRoomReflectionAndReverb(reflection_and_reverb.first, reflection_and_reverb.second);
+    }
+
     int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance) {
 
         ResonanceAudioApi::SourceId source_id = CreateSoundObject(RenderingMode::kBinauralHighQuality, min_distance, max_distance);
@@ -290,23 +295,42 @@ namespace igibson {
         SetListenerTransform(head_pos_arr[0], head_pos_arr[1], head_pos_arr[2], head_rot_arr[0], head_rot_arr[1], head_rot_arr[2], head_rot_arr[3]);
     }
 
-    py::array_t<int16> ProcessSourceAndListener(int source_id, size_t num_frames, py::array_t<int16> input_arr) {
+
+
+    void SetSourceOcclusion(int source_id, float occl) {
+        if (occl != resonance_audio->api->GetSoundObjectOcclusionIntensity(source_id)) {
+            py::print("Changing occlusion to ", occl);
+        }
+        resonance_audio->api->SetSoundObjectOcclusionIntensity(source_id, occl);
+    }
+    
+
+    void ProcessSourceBind(int source_id, size_t num_frames, py::array_t<int16> input_arr) {
 
         py::buffer_info in_buf = input_arr.request();
         int16* input = static_cast<int16*>(in_buf.ptr);
 
         // Process the next buffer.
         ProcessSource(source_id, 1, num_frames, input);
+    }
+
+    py::array_t<int16> ProcessListenerBind(size_t num_frames) {
 
         py::array_t<int16> output_py = py::array_t<int16>(kNumOutputChannels * num_frames);
         py::buffer_info out_buf = output_py.request();
         int16* output = static_cast<int16*>(out_buf.ptr);
 
-        EstimateAndUpdateOcclusion(source_id);
-
         ProcessListener(num_frames, output);
 
         return output_py; 
+    }
+
+    py::array_t<int16> ProcessSourceAndListener(int source_id, size_t num_frames, py::array_t<int16> input_arr) {
+        
+        ProcessSourceBind(source_id, num_frames, input_arr);
+        EstimateAndUpdateOcclusion(source_id);
+
+        return ProcessListenerBind(num_frames);
     }
 
     PYBIND11_MODULE(audio, m) {
@@ -333,6 +357,17 @@ namespace igibson {
                 py::scoped_estream_redirect>());
         
         m.def("SetListenerPositionAndRotation", &SetListenerPositionAndRotation, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("ProcessSource", &ProcessSourceBind, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+
+        m.def("ProcessListener", &ProcessListenerBind, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("SetSourceOcclusion", &SetSourceOcclusion, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("RegisterReverbProbe", &RegisterReverbProbe, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("SetRoomPropertiesFromProbe", &SetRoomPropertiesFromProbe, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
         m.def("ProcessSourceAndListener", &ProcessSourceAndListener, py::call_guard<py::scoped_ostream_redirect,
