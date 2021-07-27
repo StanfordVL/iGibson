@@ -7,6 +7,7 @@ from gibson2.render.mesh_renderer.instances import InstanceGroup, Instance, Robo
 from gibson2.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from gibson2.render.viewer import Viewer
 from gibson2.objects.articulated_object import ArticulatedObject, URDFObject
+from gibson2.audio.audio_system import AudioSystem
 from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from gibson2.scenes.scene_base import Scene
 from gibson2.robots.robot_base import BaseRobot
@@ -83,6 +84,10 @@ class Simulator:
         self.optimized_renderer = rendering_settings.optimized
         self.rendering_settings = rendering_settings
         self.viewer = None
+
+        # audio is disabled on initialization
+        self.audio_system = None
+
         self.load()
 
         self.class_name_to_class_id = get_class_name_to_class_id()
@@ -117,6 +122,7 @@ class Simulator:
     def load(self):
         """
         Set up MeshRenderer and physics simulation client. Initialize the list of objects.
+        Also initializes the audio system if enabled
         """
         if self.render_to_tensor:
             self.renderer = MeshRendererG2G(width=self.image_width,
@@ -130,7 +136,6 @@ class Simulator:
                                          vertical_fov=self.vertical_fov,
                                          device_idx=self.device_idx,
                                          rendering_settings=self.rendering_settings)
-
         print("******************PyBullet Logging Information:")
         if self.use_pb_renderer:
             self.cid = p.connect(p.GUI)
@@ -564,6 +569,10 @@ class Simulator:
 
         return ids
 
+    def attachAudioSystem(self, audio_system):
+        assert isinstance(audio_system, AudioSystem), 'attachAudioSystem called with incorrect object'
+        self.audio_system = audio_system
+
     def _step_simulation(self):
         """
         Step the simulation for one step and update positions in renderer
@@ -579,6 +588,10 @@ class Simulator:
         """
         for _ in range(int(self.render_timestep / self.physics_timestep)):
             p.stepSimulation()
+
+        if self.audio_system is not None:
+            self.audio_system.step()
+
         self.sync()
 
     def sync(self):

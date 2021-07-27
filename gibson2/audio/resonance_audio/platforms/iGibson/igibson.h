@@ -153,6 +153,8 @@ void EXPORT_API SetListenerStereoSpeakerMode(bool enable_stereo_speaker_mode);
 // Updates the properties of the room.
 void EXPORT_API SetRoomProperties(RoomProperties* room_properties,
                                   float* rt60s);
+void EXPORT_API SetRoomReflectionAndReverb(const ReflectionProperties& reflection_properties, const ReverbProperties& reverb_properties);
+
 
 }  // extern C
 

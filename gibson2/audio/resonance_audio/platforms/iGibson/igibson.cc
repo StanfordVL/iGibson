@@ -241,6 +241,15 @@ void SetRoomProperties(RoomProperties* room_properties, float* rt60s) {
   resonance_audio_copy->api->SetReverbProperties(reverb_properties);
 }
 
+void SetRoomReflectionAndReverb(const ReflectionProperties& reflection_properties, const ReverbProperties& reverb_properties) {
+  auto resonance_audio_copy = resonance_audio;
+  if (resonance_audio_copy == nullptr) {
+    return;
+  }
+  resonance_audio_copy->api->SetReflectionProperties(reflection_properties);
+  resonance_audio_copy->api->SetReverbProperties(reverb_properties);
+}
+
 void EstimateAndUpdateOcclusion(int id) {
     auto resonance_audio_copy = resonance_audio;
     const auto& listener_position = resonance_audio_copy->api->GetHeadPosition();

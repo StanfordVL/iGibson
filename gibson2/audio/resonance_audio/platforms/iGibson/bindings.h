@@ -24,13 +24,6 @@ py::array_t<int16> InitializeFromMeshAndTest(int num_vertices, int num_triangles
 
 void InitializeSystem(int frames_per_buffer, int sample_rate);
 
-
-void LoadMesh(int num_vertices, int num_triangles,
-    py::array_t<float> vertices, py::array_t<int> triangles,
-    py::array_t<int> material_indices,
-    float scattering_coefficient, py::array_t<float> sample_pos);
-
-
 int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance);
 
 void SetSourcePosition(int source_id, py::array_t<float> source_pos); 
