@@ -152,7 +152,7 @@ setup(
             'gym>=0.12',
             'numpy>=1.16.0',
             'scipy>=1.2.1',
-            'pybullet>=2.6.4',
+            'pybullet-svl',
             'transforms3d>=0.3.1',
             'opencv-python>=3.4.8',
             'Pillow>=5.4.0',
