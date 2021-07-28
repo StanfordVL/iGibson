@@ -6,7 +6,6 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.viewer import Viewer
-from igibson.audio.audio_system import AudioSystem
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.scene_base import Scene
@@ -570,9 +569,11 @@ class Simulator:
 
         return ids
 
-    def attachAudioSystem(self, audio_system):
-        assert isinstance(audio_system, AudioSystem), 'attachAudioSystem called with incorrect object'
-        self.audio_system = audio_system
+    def attachAudioSystem(self, audioSystem):
+        """
+        Ensures audioSystem.step() is called in self.step()
+        """
+        self.audio_system = audioSystem
 
     def _step_simulation(self):
         """
