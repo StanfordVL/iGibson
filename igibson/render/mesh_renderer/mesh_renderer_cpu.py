@@ -5,6 +5,7 @@ import shutil
 import sys
 
 import numpy as np
+import py360convert
 from PIL import Image
 
 import igibson
@@ -1816,3 +1817,64 @@ class MeshRenderer(object):
 
         self.set_fov(original_fov)
         return lidar_readings
+
+    def get_cube(self):
+        """
+        :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
+        """
+        orig_fov = self.vertical_fov
+        self.set_fov(90)
+        org_V = np.copy(self.V)
+
+        def render_cube():
+            frames = []
+            view_direction = np.array(self.target) - np.array(self.camera)
+            r = np.array(
+                [
+                    [
+                        np.cos(-np.pi / 2),
+                        0,
+                        -np.sin(-np.pi / 2),
+                        0,
+                    ],
+                    [0, 1, 0, 0],
+                    [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2), 0],
+                    [0, 0, 0, 1],
+                ]
+            )
+
+            for i in range(4):
+                self.V = r.dot(self.V)
+                frames.append(self.render(modes=("rgb"))[0])
+
+            # Up
+            r_up = np.array([[0, 0, 1, 0], [-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
+
+            self.V = r_up.dot(org_V)
+            frames.append(self.render(modes=("rgb"))[0])
+
+            r_down = np.array([[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+
+            # Down
+            self.V = r_down.dot(org_V)
+            frames.append(self.render(modes=("rgb"))[0])
+
+            return frames
+
+        frames = render_cube()
+        self.V = org_V
+        self.set_fov(orig_fov)
+        return frames
+
+    def get_equi(self):
+        """
+        :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param fixed_orientation: Whether to use a fixed orientation when rendering
+        :param use_robot_camera: Whether to use camera from a robot
+        :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
+        """
+        frames = self.get_cube()
+        frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4][::-1], frames[5]]
+        equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+
+        return equi
