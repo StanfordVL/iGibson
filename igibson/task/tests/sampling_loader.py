@@ -2,8 +2,8 @@ from igibson.task.task_base import iGTNTask
 from IPython import embed
 from igibson.simulator import Simulator
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 task_choices = [
     "packing_lunches_filtered",

@@ -1,13 +1,13 @@
 """Save checkpoints from a BEHAVIOR demo."""
 import os
 
-import tasknet
+import bddl
 
 import igibson
 from igibson.examples.demo.vr_demos.atus.behavior_demo_replay import safe_replay_demo
 from igibson.utils.checkpoint_utils import save_checkpoint
 
-tasknet.set_backend("iGibson")
+bddl.set_backend("iGibson")
 
 
 def create_checkpoints(demo_file, checkpoint_directory, checkpoint_every_n_steps):

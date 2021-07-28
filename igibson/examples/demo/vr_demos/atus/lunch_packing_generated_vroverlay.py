@@ -12,7 +12,7 @@ Important - VR functionality and where to find it:
 
 import numpy as np
 import os
-import tasknet
+import bddl
 
 import igibson
 from igibson.robots.behavior_robot import BehaviorRobot
@@ -34,7 +34,7 @@ def info(type, value, tb):
         pdb.post_mortem(tb)
         
 
-tasknet.set_backend("iGibson")
+bddl.set_backend("iGibson")
 
 # Set to true to print out render, physics and overall frame FPS
 PRINT_FPS = False

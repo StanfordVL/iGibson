@@ -3,8 +3,8 @@ from IPython import embed
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.simulator import Simulator
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 activity = 'assembling_gift_baskets'
 scene_id = 'Rs_int'

@@ -1,10 +1,10 @@
 import tempfile
-import tasknet
+import bddl
 from igibson.examples.demo.vr_demos.atus import behavior_demo_collection, behavior_demo_replay
 import igibson
 import os
 
-tasknet.set_backend("iGibson")
+bddl.set_backend("iGibson")
 
 
 def test_determinism_with_new_demo():

@@ -7,7 +7,7 @@ import datetime
 import os
 
 import numpy as np
-import tasknet
+import bddl
 
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -40,7 +40,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Run and collect an ATUS demo')
     parser.add_argument('--task', type=str, required=True,
-                        nargs='?', help='Name of ATUS task matching PDDL parent folder in tasknet.')
+                        nargs='?', help='Name of ATUS task matching PDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int, required=True, choices=task_id_choices,
                         nargs='?', help='PDDL integer ID, matching suffix of pddl.')
     parser.add_argument('--vr_log_path', type=str,
@@ -62,7 +62,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     collect_demo(args.task, args.task_id, args.scene, args.vr_log_path, args.disable_save, args.max_steps, args.no_vr,
                  args.disable_scene_cache, args.profile)
 

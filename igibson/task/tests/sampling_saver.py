@@ -1,5 +1,5 @@
 import argparse
-import tasknet
+import bddl
 from igibson.task.task_base import iGTNTask
 from igibson.simulator import Simulator
 import logging
@@ -16,7 +16,7 @@ PARTIAL_RECACHE = {
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, required=True,
-                        help='Name of ATUS task matching PDDL parent folder in tasknet.')
+                        help='Name of ATUS task matching PDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int, required=True,
                         help='PDDL integer ID, matching suffix of pddl.')
     parser.add_argument('--max_trials', type=int, default=1,
@@ -36,14 +36,14 @@ def remove_newly_added_objects(igtn_task, state_id):
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     task = args.task
     task_id = args.task_id
     logging.warning('TASK: {}'.format(task))
     logging.warning('TASK ID: {}'.format(task_id))
 
     scene_json = os.path.join(os.path.dirname(
-        tasknet.__file__), '../utils', 'activity_to_preselected_scenes.json')
+        bddl.__file__), '../utils', 'activity_to_preselected_scenes.json')
 
     with open(scene_json) as f:
         activity_to_scenes = json.load(f)

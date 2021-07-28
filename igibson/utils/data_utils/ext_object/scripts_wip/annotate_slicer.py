@@ -2,7 +2,7 @@ import os
 import json
 from IPython import embed
 import pybullet as p
-from tasknet.object_taxonomy import ObjectTaxonomy
+from bddl.object_taxonomy import ObjectTaxonomy
 import xml.etree.ElementTree as ET
 import numpy as np
 from xml.dom import minidom

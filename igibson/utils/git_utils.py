@@ -1,7 +1,7 @@
 import git
 import igibson
 from pathlib import Path
-import tasknet
+import bddl
 
 def git_info(directory):
     repo = git.Repo(directory)
@@ -20,7 +20,7 @@ def git_info(directory):
 def project_git_info():
     return { 
         "iGibson": git_info(Path(igibson.root_path).parent),
-        "tasknet": git_info(Path(tasknet.__file__).parent.parent),
+        "bddl": git_info(Path(bddl.__file__).parent.parent),
         "ig_assets": git_info(igibson.assets_path),
         "ig_dataset": git_info(igibson.ig_dataset_path),
     }

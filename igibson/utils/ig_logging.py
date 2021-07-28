@@ -243,9 +243,10 @@ class IGLogWriter(object):
         self.hf.attrs['/metadata/git_info'] = dump_config(project_git_info())
 
         if self.task:
-            self.hf.attrs['/metadata/task_name'] =  self.task.atus_activity
+            # TODO FIX ME FIX ME PLEASE DON'T FORGET MICHAEL 7_27
+            # self.hf.attrs['/metadata/task_name'] =  self.task.atus_activity
             self.hf.attrs['/metadata/filter_objects'] =  self.filter_objects
-            self.hf.attrs['/metadata/task_instance'] = self.task.task_instance
+            # self.hf.attrs['/metadata/task_instance'] = self.task.task_instance
             self.hf.attrs['/metadata/scene_id'] = self.task.scene.scene_id
             self.hf.attrs['/metadata/obj_body_id_to_name'] = self.obj_body_id_to_name_str
         # VR config YML is stored as a string in metadata

@@ -284,7 +284,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                      if joint.find("child").attrib["link"]
                      == object_name][0]
 
-                tasknet_object_scope = link.attrib.get('object_scope', None)
+                bddl_object_scope = link.attrib.get('object_scope', None)
                 joint_positions = (json.loads(link.attrib["joint_positions"])
                                    if "joint_positions" in link.keys() else None)
                 obj = URDFObject(
@@ -300,7 +300,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     texture_randomization=texture_randomization,
                     overwrite_inertial=True,
                     scene_instance_folder=self.scene_instance_folder,
-                    tasknet_object_scope=tasknet_object_scope,
+                    bddl_object_scope=bddl_object_scope,
                     joint_positions=joint_positions,
                     merge_fixed_links=self.merge_fixed_links,
                     ignore_visual_shape=ignore_visual_shape

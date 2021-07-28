@@ -16,7 +16,7 @@ from igibson.task.task_base import iGTNTask
 from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 from igibson.utils.git_utils import project_git_info
 from igibson.utils.utils import parse_str_config
-import tasknet
+import bddl
 
 import numpy as np
 import pybullet as p
@@ -45,7 +45,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     replay_demo(args.vr_log_path, args.vr_replay_log_path, args.disable_save, args.frame_save_path, args.highlight_gaze,
                 args.no_vr, profile=args.profile)
 
@@ -114,20 +114,20 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     else:
         filter_objects = True
 
-    if IGLogReader.has_metadata_attr(in_log_path, '/metadata/git_info'):
-        logged_git_info = IGLogReader.read_metadata_attr(in_log_path, '/metadata/git_info')
-        logged_git_info = parse_str_config(logged_git_info)
-        git_info = project_git_info()
-        for key in logged_git_info.keys():
-            logged_git_info[key].pop('directory', None)
-            git_info[key].pop('directory', None)
-            if logged_git_info[key] != git_info[key]:
-                print(
-                    "Warning, difference in git commits for repo: {}. This may impact deterministic replay".format(key))
-                print("Logged git info:\n")
-                pp.pprint(logged_git_info[key])
-                print("Current git info:\n")
-                pp.pprint(git_info[key])
+    # if IGLogReader.has_metadata_attr(in_log_path, '/metadata/git_info'):
+    #     logged_git_info = IGLogReader.read_metadata_attr(in_log_path, '/metadata/git_info')
+    #     logged_git_info = parse_str_config(logged_git_info)
+    #     git_info = project_git_info()
+    #     for key in logged_git_info.keys():
+    #         logged_git_info[key].pop('directory', None)
+    #         git_info[key].pop('directory', None)
+    #         if logged_git_info[key] != git_info[key]:
+    #             print(
+    #                 "Warning, difference in git commits for repo: {}. This may impact deterministic replay".format(key))
+    #             print("Logged git info:\n")
+    #             pp.pprint(logged_git_info[key])
+    #             print("Current git info:\n")
+    #             pp.pprint(git_info[key])
 
     # Get dictionary mapping object body id to name, also check it is a dictionary
     obj_body_id_to_name = IGLogReader.get_obj_body_id_to_name(in_log_path)
@@ -148,7 +148,7 @@ def replay_demo(in_log_path, out_log_path=None, disable_save=False, frame_save_p
     igtn_task.initialize_simulator(simulator=s,
                                    scene_id=scene,
                                    scene_kwargs={
-                                       'urdf_file': '{}_neurips_task_{}_{}_0_fixed_furniture'.format(scene, task,
+                                       'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene, task,
                                                                                                      task_id),
                                    },
                                    load_clutter=True,

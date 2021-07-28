@@ -1,5 +1,5 @@
 import argparse
-import tasknet
+import bddl
 from igibson.task.task_base import iGTNTask
 from igibson.simulator import Simulator
 import logging
@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument('--scene_id', type=str, choices=scene_choices, required=True,
                         help='Scene id')
     parser.add_argument('--task', type=str,
-                        help='Name of ATUS task matching PDDL parent folder in tasknet.')
+                        help='Name of ATUS task matching PDDL parent folder in bddl.')
     parser.add_argument('--task_id', type=int,
                         help='PDDL integer ID, matching suffix of pddl.')
     parser.add_argument('--max_trials', type=int, default=1,
@@ -57,7 +57,7 @@ def restore_scene(igtn_task, state_id, num_body_ids, num_particle_systems):
 
 
 def main():
-    tasknet.set_backend("iGibson")
+    bddl.set_backend("iGibson")
     args = parse_args()
     scene_id = args.scene_id
     if args.task is not None and args.task_id is not None:
@@ -67,7 +67,7 @@ def main():
         all_tasks = []
         all_task_ids = []
         condition_dir = os.path.join(os.path.dirname(
-            tasknet.__file__), 'task_conditions')
+            bddl.__file__), 'task_conditions')
         for task in sorted(os.listdir(condition_dir)):
             task_dir = os.path.join(condition_dir, task)
             if os.path.isdir(task_dir):
@@ -79,7 +79,7 @@ def main():
                     all_task_ids.append(task_id)
 
         scene_json = os.path.join(os.path.dirname(
-            tasknet.__file__), '../utils', 'activity_to_preselected_scenes.json')
+            bddl.__file__), '../utils', 'activity_to_preselected_scenes.json')
         with open(scene_json) as f:
             activity_to_scenes = json.load(f)
 

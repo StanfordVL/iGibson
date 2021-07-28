@@ -1,7 +1,7 @@
 from igibson.task.task_base import iGTNTask
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 
 igtn_task = iGTNTask('sampling_test', task_instance=4)

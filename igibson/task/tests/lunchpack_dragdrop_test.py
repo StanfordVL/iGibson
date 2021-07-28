@@ -27,8 +27,8 @@ from igibson import assets_path
 import signal
 import sys
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 # def signal_handler(sig, frame):
 #         print('You pressed Ctrl+C!')

@@ -4,7 +4,7 @@ from igibson.utils.utils import parse_config
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.task.task_base import iGTNTask
 from igibson.objects.articulated_object import ArticulatedObject
-# from tasknet.object import BaseObject
+# from bddl.object import BaseObject
 import os
 import igibson
 import time
@@ -13,8 +13,8 @@ import sys
 import numpy as np
 import pybullet as p
 
-import tasknet
-tasknet.set_backend("iGibson")
+import bddl
+bddl.set_backend("iGibson")
 
 
 scene_name = 'Beechwood_0_int'

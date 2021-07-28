@@ -5,7 +5,7 @@ from igibson.scenes.empty_scene import EmptyScene
 import argparse
 import numpy as np
 import time
-import tasknet
+import bddl
 import types
 import gym.spaces
 import pybullet as p
@@ -98,7 +98,7 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {
                     'urdf_file': '{}_task_{}_{}_0_fixed_furniture'.format(scene_id, task, task_id),
             }
-        tasknet.set_backend("iGibson")
+        bddl.set_backend("iGibson")
         self.task = iGTNTask(task, task_id)
         self.task.initialize_simulator(
                 simulator=self.simulator, 
