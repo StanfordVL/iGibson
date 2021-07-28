@@ -1,10 +1,8 @@
-from gibson2.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from gibson2.simulator import Simulator
-from gibson2.render.mesh_renderer.instances import InstanceGroup
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.render.mesh_renderer.instances import InstanceGroup
 
 import audio
 
-import pyaudio
 import wave
 import numpy as np
 import pybullet as p
