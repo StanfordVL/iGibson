@@ -3,10 +3,10 @@ from igibson.simulator import Simulator
 
 
 def main():
-    s = Simulator(mode='gui', image_width=512,
-                  image_height=512, device_idx=0)
+    s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
-        'Rs_int', texture_randomization=True, object_randomization=False)
+        "Rs_int", texture_randomization=True, object_randomization=False
+    )
     s.import_ig_scene(scene)
 
     for i in range(10000):
@@ -16,5 +16,5 @@ def main():
     s.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

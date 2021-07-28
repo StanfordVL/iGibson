@@ -1,12 +1,22 @@
 import random
 from collections import namedtuple
 
-from ..utils import matrix_from_quat, point_from_pose, quat_from_pose, quat_from_matrix, \
-    get_joint_limits, get_joint_position, get_joint_positions, get_distance
+from ..utils import (
+    matrix_from_quat,
+    point_from_pose,
+    quat_from_pose,
+    quat_from_matrix,
+    get_joint_limits,
+    get_joint_position,
+    get_joint_positions,
+    get_distance,
+)
 
 # TODO: lookup robot & tool in dictionary and use if exists
 
-IKFastInfo = namedtuple('IKFastInfo', ['module_name', 'base_link', 'ee_link', 'free_joints'])
+IKFastInfo = namedtuple(
+    "IKFastInfo", ["module_name", "base_link", "ee_link", "free_joints"]
+)
 
 USE_ALL = False
 USE_CURRENT = None
@@ -15,7 +25,7 @@ USE_CURRENT = None
 def compute_forward_kinematics(fk_fn, conf):
     pose = fk_fn(list(conf))
     pos, rot = pose
-    quat = quat_from_matrix(rot) # [X,Y,Z,W]
+    quat = quat_from_matrix(rot)  # [X,Y,Z,W]
     return pos, quat
 
 

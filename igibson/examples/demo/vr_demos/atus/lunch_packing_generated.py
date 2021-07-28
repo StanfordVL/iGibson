@@ -31,33 +31,39 @@ PRINT_FPS = False
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr"
+)
 hdr_texture2 = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr"
+)
 light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+)
 background_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg"
+)
 
 # VR rendering settings
-vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                             fullscreen=False,
-                                             env_texture_filename=hdr_texture,
-                                             env_texture_filename2=hdr_texture2,
-                                             env_texture_filename3=background_texture,
-                                             light_modulation_map_filename=light_modulation_map_filename,
-                                             enable_shadow=True,
-                                             enable_pbr=True,
-                                             msaa=True,
-                                             light_dimming_factor=1.0)
+vr_rendering_settings = MeshRendererSettings(
+    optimized=True,
+    fullscreen=False,
+    env_texture_filename=hdr_texture,
+    env_texture_filename2=hdr_texture2,
+    env_texture_filename3=background_texture,
+    light_modulation_map_filename=light_modulation_map_filename,
+    enable_shadow=True,
+    enable_pbr=True,
+    msaa=True,
+    light_dimming_factor=1.0,
+)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
 vr_settings = VrSettings()
-s = Simulator(mode='vr',
-              rendering_settings=vr_rendering_settings,
-              vr_settings=vr_settings)
+s = Simulator(
+    mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings
+)
 
-igtn_task = iGTNTask('assembling_gift_baskets_filtered', 1)
+igtn_task = iGTNTask("assembling_gift_baskets_filtered", 1)
 # igtn_task = iGTNTask('packing_lunches_filtered', 1)
 # igtn_task = iGTNTask('sorting_books_filtered', 0)
 # igtn_task.initialize_simulator(simulator=s, scene_id='Beechwood_0_int')
@@ -81,13 +87,14 @@ if vr_settings.use_vr:
     s.set_vr_start_pos(kitchen_middle, vr_height_offset=-0.1)
 
 
-mode = 'save'
+mode = "save"
 
-if mode == 'save':
+if mode == "save":
     # Saves every 2 seconds or so (200 / 90fps is approx 2 seconds)
     vr_log_path = "./log.hdf5"
-    vr_writer = VRLogWriter(frames_before_write=200,
-                            log_filepath=vr_log_path, profiling_mode=True)
+    vr_writer = VRLogWriter(
+        frames_before_write=200, log_filepath=vr_log_path, profiling_mode=True
+    )
 
     # Call set_up_data_storage once all actions have been registered (in this demo we only save states so there are none)
     # Despite having no actions, we need to call this function
@@ -106,7 +113,7 @@ while True:
         vr_agent.update()
 
     # Update VR objects
-    if mode == 'save':
+    if mode == "save":
         vr_writer.process_frame(s)
 
 s.disconnect()

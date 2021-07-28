@@ -2,7 +2,7 @@ from random import shuffle
 from itertools import islice
 import time
 
-INF = float('inf')
+INF = float("inf")
 
 RRT_ITERATIONS = 20
 RRT_RESTARTS = 2
@@ -55,8 +55,8 @@ def take(iterable, n=INF):
 
 def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
-    enums['names'] = sorted(enums.keys(), key=lambda k: enums[k])
-    return type('Enum', (), enums)
+    enums["names"] = sorted(enums.keys(), key=lambda k: enums[k])
+    return type("Enum", (), enums)
 
 
 def elapsed_time(start_time):

@@ -1,4 +1,6 @@
-from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
+from igibson.termination_conditions.termination_condition_base import (
+    BaseTerminationCondition,
+)
 
 
 class Timeout(BaseTerminationCondition):
@@ -9,7 +11,7 @@ class Timeout(BaseTerminationCondition):
 
     def __init__(self, config):
         super(Timeout, self).__init__(config)
-        self.max_step = self.config.get('max_step', 500)
+        self.max_step = self.config.get("max_step", 500)
 
     def get_termination(self, task, env):
         """

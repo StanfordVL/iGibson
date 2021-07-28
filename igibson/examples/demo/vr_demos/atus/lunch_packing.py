@@ -35,32 +35,37 @@ PRINT_STATS = True
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_02.hdr')
+    igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr"
+)
 hdr_texture2 = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'probe_03.hdr')
+    igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr"
+)
 light_modulation_map_filename = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'Rs_int', 'layout', 'floor_lighttype_0.png')
+    igibson.ig_dataset_path, "scenes", "Rs_int", "layout", "floor_lighttype_0.png"
+)
 background_texture = os.path.join(
-    igibson.ig_dataset_path, 'scenes', 'background', 'urban_street_01.jpg')
+    igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg"
+)
 
 # VR rendering settings
-vr_rendering_settings = MeshRendererSettings(optimized=True,
-                                            fullscreen=False,
-                                            env_texture_filename=hdr_texture,
-                                            env_texture_filename2=hdr_texture2,
-                                            env_texture_filename3=background_texture,
-                                            light_modulation_map_filename=light_modulation_map_filename,
-                                            enable_shadow=True, 
-                                            enable_pbr=True,
-                                            msaa=True,
-                                            light_dimming_factor=1.0)
+vr_rendering_settings = MeshRendererSettings(
+    optimized=True,
+    fullscreen=False,
+    env_texture_filename=hdr_texture,
+    env_texture_filename2=hdr_texture2,
+    env_texture_filename3=background_texture,
+    light_modulation_map_filename=light_modulation_map_filename,
+    enable_shadow=True,
+    enable_pbr=True,
+    msaa=True,
+    light_dimming_factor=1.0,
+)
 # VR system settings
 # Change use_vr to toggle VR mode on/off
 # IMPORTANT: Change the vr_fps settings
 
-s = Simulator(mode='vr', 
-            rendering_settings=vr_rendering_settings)
-scene = InteractiveIndoorScene('Beechwood_0_int')
+s = Simulator(mode="vr", rendering_settings=vr_rendering_settings)
+scene = InteractiveIndoorScene("Beechwood_0_int")
 
 # Turn this on when debugging to speed up loading
 if LOAD_PARTIAL:
@@ -81,80 +86,103 @@ s.renderer.set_fov(90)
 vr_agent = BehaviorRobot(s, use_gripper=False)
 
 # List of object names to filename mapping
-lunch_pack_folder = os.path.join(igibson.assets_path, 'models', 'pack_lunch')
+lunch_pack_folder = os.path.join(igibson.assets_path, "models", "pack_lunch")
 
 lunch_pack_files = {
-    'sandwich': os.path.join(lunch_pack_folder, 'cereal', 'cereal01', 'rigid_body.urdf'),
-    'chip': os.path.join(lunch_pack_folder, 'food', 'snack', 'chips', 'chips0', 'rigid_body.urdf'),
-    'fruit': os.path.join(lunch_pack_folder, 'food', 'fruit', 'pear', 'pear00', 'rigid_body.urdf'),
-    'bread': os.path.join(lunch_pack_folder, 'granola', 'granola00', 'rigid_body.urdf'),
-    'yogurt': os.path.join(lunch_pack_folder, 'food', 'dairy', 'yogurt', 'yogurt00_dannonbananacarton', 'rigid_body.urdf'),
-    'water': os.path.join(lunch_pack_folder, 'drink', 'soda', 'soda23_mountaindew710mL', 'rigid_body.urdf'),
-    'eggs': os.path.join(lunch_pack_folder, 'eggs', 'eggs00_eggland', 'rigid_body.urdf'),
-    'container': os.path.join(lunch_pack_folder, 'dish', 'casserole_dish', 'casserole_dish00', 'rigid_body.urdf')
+    "sandwich": os.path.join(
+        lunch_pack_folder, "cereal", "cereal01", "rigid_body.urdf"
+    ),
+    "chip": os.path.join(
+        lunch_pack_folder, "food", "snack", "chips", "chips0", "rigid_body.urdf"
+    ),
+    "fruit": os.path.join(
+        lunch_pack_folder, "food", "fruit", "pear", "pear00", "rigid_body.urdf"
+    ),
+    "bread": os.path.join(lunch_pack_folder, "granola", "granola00", "rigid_body.urdf"),
+    "yogurt": os.path.join(
+        lunch_pack_folder,
+        "food",
+        "dairy",
+        "yogurt",
+        "yogurt00_dannonbananacarton",
+        "rigid_body.urdf",
+    ),
+    "water": os.path.join(
+        lunch_pack_folder, "drink", "soda", "soda23_mountaindew710mL", "rigid_body.urdf"
+    ),
+    "eggs": os.path.join(
+        lunch_pack_folder, "eggs", "eggs00_eggland", "rigid_body.urdf"
+    ),
+    "container": os.path.join(
+        lunch_pack_folder,
+        "dish",
+        "casserole_dish",
+        "casserole_dish00",
+        "rigid_body.urdf",
+    ),
 }
 
 item_scales = {
-    'sandwich': 0.7,
-    'chip': 1,
-    'fruit': 0.9,
-    'bread': 0.7,
-    'yogurt': 1,
-    'water': 0.8,
-    'eggs': 0.5,
-    'container': 0.3
+    "sandwich": 0.7,
+    "chip": 1,
+    "fruit": 0.9,
+    "bread": 0.7,
+    "yogurt": 1,
+    "water": 0.8,
+    "eggs": 0.5,
+    "container": 0.3,
 }
 
 # A list of start positions and orientations for the objects - determined by placing objects in VR
 item_start_pos_orn = {
-    'sandwich': [
+    "sandwich": [
         [(-5.24, -1.6, 0.97), (0, 0.71, 0.71, 0)],
         [(-5.24, -1.7, 0.97), (0, 0.71, 0.71, 0)],
         [(-5.24, -1.8, 0.97), (0, 0.71, 0.71, 0)],
         [(-5.24, -1.9, 0.97), (0, 0.71, 0.71, 0)],
     ],
-    'chip': [
+    "chip": [
         [(-5.39, -1.62, 1.42), (-0.14, -0.06, 0.71, 0.69)],
         [(-5.39, -1.62, 1.49), (-0.14, -0.06, 0.71, 0.69)],
         [(-5.12, -1.62, 1.42), (-0.14, -0.06, 0.71, 0.69)],
         [(-5.12, -1.62, 1.49), (-0.14, -0.06, 0.71, 0.69)],
     ],
-    'fruit': [
+    "fruit": [
         [(-4.8, -3.55, 0.97), (0, 0, 0, 1)],
         [(-4.8, -3.7, 0.97), (0, 0, 0, 1)],
         [(-4.8, -3.85, 0.97), (0, 0, 0, 1)],
         [(-4.8, -4.0, 0.97), (0, 0, 0, 1)],
     ],
-    'bread': [
+    "bread": [
         [(-5.39, -1.6, 0.97), (0, 0.71, 0.71, 0)],
         [(-5.39, -1.7, 0.97), (0, 0.71, 0.71, 0)],
         [(-5.39, -1.8, 0.97), (0, 0.71, 0.71, 0)],
         [(-5.39, -1.9, 0.97), (0, 0.71, 0.71, 0)],
     ],
-    'yogurt': [
+    "yogurt": [
         [(-5.43, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
         [(-5.32, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
         [(-5.2, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
         [(-5.1, -1.64, 1.68), (0.57, 0.42, 0.42, 0.57)],
     ],
-    'water': [
+    "water": [
         [(-4.61, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
         [(-4.69, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
         [(-4.8, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
         [(-4.9, -1.69, 1.73), (0.68, -0.18, -0.18, 0.68)],
     ],
-    'eggs': [
+    "eggs": [
         [(-4.65, -1.58, 1.40), (0.72, 0, 0, 0.71)],
         [(-4.66, -1.58, 1.46), (0.72, 0, 0, 0.71)],
         [(-4.89, -1.58, 1.40), (0.72, 0, 0, 0.71)],
         [(-4.89, -1.58, 1.46), (0.72, 0, 0, 0.71)],
     ],
-    'container': [
+    "container": [
         [(-4.1, -1.82, 0.87), (0.71, 0, 0, 0.71)],
         [(-4.4, -1.82, 0.87), (0.71, 0, 0, 0.71)],
         [(-4.7, -1.82, 0.87), (0.71, 0, 0, 0.71)],
         [(-5.0, -1.82, 0.87), (0.71, 0, 0, 0.71)],
-    ]
+    ],
 }
 
 # Import all objects and put them in the correct positions

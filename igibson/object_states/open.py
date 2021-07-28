@@ -1,7 +1,10 @@
 import random
 
 from igibson.external.pybullet_tools import utils
-from igibson.object_states.object_state_base import CachingEnabledObjectState, BooleanState
+from igibson.object_states.object_state_base import (
+    CachingEnabledObjectState,
+    BooleanState,
+)
 import pybullet as p
 
 # Joint position threshold before a joint is considered open.
@@ -36,26 +39,37 @@ def _get_relevant_joints(obj):
     if not joint_names:
         print("No openable joint was listed in metadata for object %s" % obj.name)
         return None
-    joint_names = set(obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8")
-                      for joint_name in joint_names)
+    joint_names = set(
+        obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8")
+        for joint_name in joint_names
+    )
 
     # Get joint infos and compute openness thresholds.
     body_id = obj.get_body_id()
     all_joint_ids = utils.get_joints(body_id)
-    all_joint_infos = [utils.get_joint_info(body_id, joint_id) for joint_id in all_joint_ids]
-    relevant_joint_infos = [joint_info for joint_info in all_joint_infos if joint_info.jointName in joint_names]
+    all_joint_infos = [
+        utils.get_joint_info(body_id, joint_id) for joint_id in all_joint_ids
+    ]
+    relevant_joint_infos = [
+        joint_info
+        for joint_info in all_joint_infos
+        if joint_info.jointName in joint_names
+    ]
 
     # Assert that all of the joints' names match our expectations.
-    assert len(joint_names) == len(relevant_joint_infos), \
-        "Unexpected joints found during Open state joint checking. Expected %r, found %r." % (
-            joint_names, relevant_joint_infos)
-    assert all(joint_info.jointType in _JOINT_THRESHOLD_BY_TYPE.keys() for joint_info in relevant_joint_infos)
+    assert len(joint_names) == len(relevant_joint_infos), (
+        "Unexpected joints found during Open state joint checking. Expected %r, found %r."
+        % (joint_names, relevant_joint_infos)
+    )
+    assert all(
+        joint_info.jointType in _JOINT_THRESHOLD_BY_TYPE.keys()
+        for joint_info in relevant_joint_infos
+    )
 
     return relevant_joint_infos
 
 
 class Open(CachingEnabledObjectState, BooleanState):
-
     def _compute_value(self):
         relevant_joint_infos = _get_relevant_joints(self.obj)
         if not relevant_joint_infos:
@@ -63,9 +77,14 @@ class Open(CachingEnabledObjectState, BooleanState):
 
         # Compute a boolean openness state for each joint by comparing positions to thresholds.
         joint_ids = [joint_info.jointIndex for joint_info in relevant_joint_infos]
-        joint_thresholds = (_compute_joint_threshold(joint_info) for joint_info in relevant_joint_infos)
+        joint_thresholds = (
+            _compute_joint_threshold(joint_info) for joint_info in relevant_joint_infos
+        )
         joint_positions = utils.get_joint_positions(self.obj.get_body_id(), joint_ids)
-        joint_openness = (position > threshold for position, threshold in zip(joint_positions, joint_thresholds))
+        joint_openness = (
+            position > threshold
+            for position, threshold in zip(joint_positions, joint_thresholds)
+        )
 
         # Return open if any joint is open, false otherwise.
         return any(joint_openness)
@@ -92,7 +111,9 @@ class Open(CachingEnabledObjectState, BooleanState):
                 joint_pos = random.uniform(joint_info.jointLowerLimit, joint_threshold)
 
             # Save sampled position.
-            utils.set_joint_position(self.obj.get_body_id(), joint_info.jointIndex, joint_pos)
+            utils.set_joint_position(
+                self.obj.get_body_id(), joint_info.jointIndex, joint_pos
+            )
 
         return True
 

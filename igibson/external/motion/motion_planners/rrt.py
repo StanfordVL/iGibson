@@ -4,12 +4,11 @@ from .utils import irange, argmin, RRT_ITERATIONS
 
 
 class TreeNode(object):
-
     def __init__(self, config, parent=None):
         self.config = config
         self.parent = parent
 
-    #def retrace(self):
+    # def retrace(self):
     #    if self.parent is None:
     #        return [self]
     #    return self.parent.retrace() + [self]
@@ -26,15 +25,18 @@ class TreeNode(object):
         self.node_handle = None
         self.edge_handle = None
 
-    def draw(self, env, color=(1, 0, 0, .5)):
+    def draw(self, env, color=(1, 0, 0, 0.5)):
         from manipulation.primitives.display import draw_node, draw_edge
+
         self.node_handle = draw_node(env, self.config, color=color)
         if self.parent is not None:
             self.edge_handle = draw_edge(
-                env, self.config, self.parent.config, color=color)
+                env, self.config, self.parent.config, color=color
+            )
 
     def __str__(self):
-        return 'TreeNode(' + str(self.config) + ')'
+        return "TreeNode(" + str(self.config) + ")"
+
     __repr__ = __str__
 
 
@@ -44,8 +46,18 @@ def configs(nodes):
     return list(map(lambda n: n.config, nodes))
 
 
-def rrt(start, goal_sample, distance, sample, extend, collision, goal_test=lambda q: False, iterations=RRT_ITERATIONS, goal_probability=.2):
-    #goal_test = lambda q: np.linalg.norm(q - goal_sample) < 0.5
+def rrt(
+    start,
+    goal_sample,
+    distance,
+    sample,
+    extend,
+    collision,
+    goal_test=lambda q: False,
+    iterations=RRT_ITERATIONS,
+    goal_probability=0.2,
+):
+    # goal_test = lambda q: np.linalg.norm(q - goal_sample) < 0.5
     if collision(start):
         return None
     if not callable(goal_sample):
@@ -62,7 +74,9 @@ def rrt(start, goal_sample, distance, sample, extend, collision, goal_test=lambd
                 break
             last = TreeNode(q, parent=last)
             nodes.append(last)
-            if np.linalg.norm(np.array(last.config) - goal_sample()) < 0.5:#goal_test(last.config):
+            if (
+                np.linalg.norm(np.array(last.config) - goal_sample()) < 0.5
+            ):  # goal_test(last.config):
                 return configs(last.retrace())
         else:
             if goal:

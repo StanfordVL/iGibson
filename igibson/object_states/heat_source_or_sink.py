@@ -35,14 +35,16 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     on a microwave object, True and None will be returned.
     """
 
-    def __init__(self,
-                 obj,
-                 temperature=_DEFAULT_TEMPERATURE,
-                 heating_rate=_DEFAULT_HEATING_RATE,
-                 distance_threshold=_DEFAULT_DISTANCE_THRESHOLD,
-                 requires_toggled_on=False,
-                 requires_closed=False,
-                 requires_inside=False):
+    def __init__(
+        self,
+        obj,
+        temperature=_DEFAULT_TEMPERATURE,
+        heating_rate=_DEFAULT_HEATING_RATE,
+        distance_threshold=_DEFAULT_DISTANCE_THRESHOLD,
+        requires_toggled_on=False,
+        requires_closed=False,
+        requires_inside=False,
+    ):
         """
         Initialize a heat source state.
 
@@ -121,9 +123,9 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         super(HeatSourceOrSink, self)._initialize()
         self.initialize_link_mixin()
         self.marker = VisualShape(
-            _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
-        self.simulator.import_object(
-            self.marker, use_pbr=False, use_pbr_mapping=False)
+            _HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE
+        )
+        self.simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
         self.marker.set_position([0, 0, -100])
 
     def _update(self):
@@ -139,8 +141,7 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         return self.status, self.position
 
     def _set_value(self, new_value):
-        raise NotImplementedError(
-            "Setting heat source capability is not supported.")
+        raise NotImplementedError("Setting heat source capability is not supported.")
 
     # Nothing needs to be done to save/load HeatSource since it's stateless except for
     # the marker.

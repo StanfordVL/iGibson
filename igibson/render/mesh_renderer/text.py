@@ -10,6 +10,7 @@ class Character(object):
     """
     Manages data for a single character.
     """
+
     def __init__(self, tex_id, size, bearing, advance, buffer):
         """
         :param tex_id: OpenGL texture id for this character
@@ -30,7 +31,7 @@ class Character(object):
         """
         img_data = np.array(self.buffer)
         img_data = img_data.reshape((self.size[1], self.size[0]))
-        plt.imshow(img_data, cmap='gray', vmin=0, vmax=255)
+        plt.imshow(img_data, cmap="gray", vmin=0, vmax=255)
         plt.show()
 
 
@@ -38,16 +39,17 @@ class TextManager(object):
     """
     Manages character information and other centralized text info.
     """
+
     def __init__(self, renderer):
         """
         :param renderer: the renderer that will render the fonts
         """
         self.renderer = renderer
         if not self.renderer:
-            raise ValueError('A renderer is required to render text')
-        self.supported_fonts = ['OpenSans', 'SourceSansPro']
-        self.supported_styles = ['Bold', 'Italic', 'Regular']
-        self.font_folder = os.path.join(assets_path, 'fonts')
+            raise ValueError("A renderer is required to render text")
+        self.supported_fonts = ["OpenSans", "SourceSansPro"]
+        self.supported_styles = ["Bold", "Italic", "Regular"]
+        self.font_folder = os.path.join(assets_path, "fonts")
         # Font data is stored in dictionary - TODO: Keep this here? Change data type based on what is stored?
         self.font_data = {}
         # List of all texture ids - used when cleaning up text manager
@@ -80,10 +82,12 @@ class TextManager(object):
             return self.font_data[key]
 
         if font_name not in self.supported_fonts:
-            raise ValueError('Font {} not supported'.format(font_name))
+            raise ValueError("Font {} not supported".format(font_name))
         if font_style not in self.supported_styles:
-            raise ValueError('Font style {} not supported'.format(font_style))
-        font_path = os.path.join(self.font_folder, font_name, '{}-{}.ttf'.format(font_name, font_style))
+            raise ValueError("Font style {} not supported".format(font_style))
+        font_path = os.path.join(
+            self.font_folder, font_name, "{}-{}.ttf".format(font_name, font_style)
+        )
         face = ft.Face(font_path)
         face.set_pixel_sizes(0, font_size)
         # Store fonts in dictionary mapping character code to Character object
@@ -99,10 +103,15 @@ class TextManager(object):
             buffer_data = np.ascontiguousarray(bmap.buffer, dtype=np.int32)
             tex_id = self.renderer.r.loadCharTexture(bmap.rows, bmap.width, buffer_data)
             self.tex_ids.append(tex_id)
-            next_c = Character(tex_id, [bmap.width, bmap.rows], [g.bitmap_left, g.bitmap_top], 
-                               g.advance.x, bmap.buffer)
+            next_c = Character(
+                tex_id,
+                [bmap.width, bmap.rows],
+                [g.bitmap_left, g.bitmap_top],
+                g.advance.x,
+                bmap.buffer,
+            )
             font_chars[code] = next_c
-        
+
         # Store font character dictionary in main font_data dictionary, under current font
         self.font_data[(font_name, font_style, font_size)] = font_chars
         return font_chars
@@ -112,19 +121,22 @@ class Text(object):
     """
     Text objects store information required to render a block of text.
     """
-    def __init__(self,
-                 text_data='PLACEHOLDER: PLEASE REPLACE!',
-                 font_name='OpenSans',
-                 font_style='Regular',
-                 font_size=48,
-                 color=[0, 0, 0],
-                 pos=[0, 0],
-                 scale=1.0,
-                 tbox_height=500,
-                 tbox_width=500,
-                 render_to_tex=False,
-                 background_color=None,
-                 text_manager=None):
+
+    def __init__(
+        self,
+        text_data="PLACEHOLDER: PLEASE REPLACE!",
+        font_name="OpenSans",
+        font_style="Regular",
+        font_size=48,
+        color=[0, 0, 0],
+        pos=[0, 0],
+        scale=1.0,
+        tbox_height=500,
+        tbox_width=500,
+        render_to_tex=False,
+        background_color=None,
+        text_manager=None,
+    ):
         """
         :param text_data: starting text to display (can be changed at a later time by set_text)
         :param font_name: name of font to render - same as font folder in iGibson assets
@@ -140,11 +152,11 @@ class Text(object):
         :param text_manager: TextManager object that handles raw character data for fonts
         """
         if not text_manager:
-            raise ValueError('Each Text object requires a TextManager reference')
+            raise ValueError("Each Text object requires a TextManager reference")
         self.font_name = font_name
         self.font_style = font_style
         # Padding that appears at start and end of text
-        self.text_pad = '-----'
+        self.text_pad = "-----"
         # Note: font size is in pixels
         self.font_size = font_size
         self.render_to_tex = render_to_tex
@@ -162,7 +174,9 @@ class Text(object):
         # Text manager stores data for characters in a font
         self.tm = text_manager
         # Load font and extract character data
-        self.char_data = self.tm.load_font(self.font_name, self.font_style, self.font_size)
+        self.char_data = self.tm.load_font(
+            self.font_name, self.font_style, self.font_size
+        )
         self.VAO, self.VBO = self.tm.renderer.r.setupTextRender()
         # Text shows by default after it is first created
         self.show_text = True
@@ -236,21 +250,23 @@ class Text(object):
                 ypos = next_y - (c_data.size[1] - c_data.bearing[1]) * self.scale
                 w = c_data.size[0] * self.scale
                 h = c_data.size[1] * self.scale
-                is_over_margin = xpos + w > self.pos[0] + self.tbox_width - self.background_margin
+                is_over_margin = (
+                    xpos + w > self.pos[0] + self.tbox_width - self.background_margin
+                )
 
                 if i == 0:
                     self.char_render_data.append((xpos, ypos, w, h, c_data.tex_id))
                 else:
                     if is_over_margin:
-                        remaining_line = '-' + line[i:]
+                        remaining_line = "-" + line[i:]
                         text_render_q.appendleft(remaining_line)
                         break
                     else:
                         self.char_render_data.append((xpos, ypos, w, h, c_data.tex_id))
 
                 # Advance x position to next glyph - advance is stored in units of 1/64 pixels, so we need to divide by 64
-                next_x += ((c_data.advance / 64.0) * self.scale)
-                
+                next_x += (c_data.advance / 64.0) * self.scale
+
             line_num += 1
 
     def scroll_text(self, up=True):
@@ -262,17 +278,25 @@ class Text(object):
         """
         if up:
             # Check if first line is on screen
-            highest_char = sorted(self.char_render_data, key=lambda x: x[1] + x[3])[::-1][0]
+            highest_char = sorted(self.char_render_data, key=lambda x: x[1] + x[3])[
+                ::-1
+            ][0]
             highest_y_pos = highest_char[1] + highest_char[3]
             if highest_y_pos > self.pos[1] - self.background_margin:
                 # Only scroll up if highest line is not displayed
-                self.char_render_data = [(t[0], t[1] - self.line_sep, t[2], t[3], t[4]) for t in self.char_render_data]
+                self.char_render_data = [
+                    (t[0], t[1] - self.line_sep, t[2], t[3], t[4])
+                    for t in self.char_render_data
+                ]
         else:
             # Check if last line is on screen
             lowest_y_pos = sorted(self.char_render_data, key=lambda x: x[1])[0][1]
             if lowest_y_pos < self.pos[1] - self.tbox_height + self.background_margin:
                 # Only scroll down if lowest line is not displayed
-                self.char_render_data = [(t[0], t[1] + self.line_sep, t[2], t[3], t[4]) for t in self.char_render_data]
+                self.char_render_data = [
+                    (t[0], t[1] + self.line_sep, t[2], t[3], t[4])
+                    for t in self.char_render_data
+                ]
 
     def render(self):
         """
@@ -287,7 +311,14 @@ class Text(object):
             return
 
         # Pass in -1 if we want to render to the screen
-        self.tm.renderer.r.preRenderText(self.tm.renderer.textShaderProgram, self.tm.FBO if self.render_to_tex else -1, self.VAO, self.color[0], self.color[1], self.color[2])
+        self.tm.renderer.r.preRenderText(
+            self.tm.renderer.textShaderProgram,
+            self.tm.FBO if self.render_to_tex else -1,
+            self.VAO,
+            self.color[0],
+            self.color[1],
+            self.color[2],
+        )
 
         # Optionally render background first so alpha blending works correctly
         if self.background_color:
@@ -299,13 +330,26 @@ class Text(object):
             # Unpack color data
             b_r, b_g, b_b, b_a = self.background_color
             # Render background
-            self.tm.renderer.r.renderBackgroundQuad(bottom_left_x, bottom_left_y, b_w, b_h, self.VBO, 
-                                                    self.tm.renderer.textShaderProgram, b_a, b_r, b_g, b_b)
+            self.tm.renderer.r.renderBackgroundQuad(
+                bottom_left_x,
+                bottom_left_y,
+                b_w,
+                b_h,
+                self.VBO,
+                self.tm.renderer.textShaderProgram,
+                b_a,
+                b_r,
+                b_g,
+                b_b,
+            )
 
         # Finally render characters - but only those within the text box
         for r_data in self.char_render_data:
             xpos, ypos, w, h, tex_id = r_data
-            if ypos + h <= self.pos[1] - self.background_margin and ypos >= self.pos[1] - self.tbox_height + self.background_margin:
+            if (
+                ypos + h <= self.pos[1] - self.background_margin
+                and ypos >= self.pos[1] - self.tbox_height + self.background_margin
+            ):
                 self.tm.renderer.r.renderChar(xpos, ypos, w, h, tex_id, self.VBO)
 
         # Perform render clean-up

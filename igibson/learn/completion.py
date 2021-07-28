@@ -55,24 +55,19 @@ class CompletionNet(nn.Module):
             nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, padding=1),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
-                      stride=1, dilation=2, padding=2),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=2, padding=2),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
-                      stride=1, dilation=4, padding=4),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=4, padding=4),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
-                      stride=1, dilation=8, padding=8),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=8, padding=8),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
-                      stride=1, dilation=16, padding=16),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=16, padding=16),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.Conv2d(nf * 4, nf * 4, kernel_size=3,
-                      stride=1, dilation=32, padding=32),
+            nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, dilation=32, padding=32),
             norm(nf * 4, momentum=alpha),
             nn.LeakyReLU(0.1),
             nn.Conv2d(nf * 4, nf * 4, kernel_size=3, stride=1, padding=1),
@@ -87,8 +82,7 @@ class CompletionNet(nn.Module):
             nn.Conv2d(nf, nf, kernel_size=3, stride=1, padding=1),
             norm(nf, momentum=alpha),
             nn.LeakyReLU(0.1),
-            nn.ConvTranspose2d(nf, nf // 4, kernel_size=4,
-                               stride=2, padding=1),
+            nn.ConvTranspose2d(nf, nf // 4, kernel_size=4, stride=2, padding=1),
             norm(nf // 4, momentum=alpha),
             nn.LeakyReLU(0.1),
             nn.Conv2d(nf // 4, nf // 4, kernel_size=3, stride=1, padding=1),
@@ -103,7 +97,7 @@ class CompletionNet(nn.Module):
 
 def identity_init(m):
     classname = m.__class__.__name__
-    if classname.find('Conv2d') != -1:
+    if classname.find("Conv2d") != -1:
         m.weight.data.fill_(0)
         o, i, k1, k2 = m.weight.data.size()
         cx, cy = k1 // 2, k2 // 2
@@ -119,7 +113,7 @@ def identity_init(m):
                 m.weight.data[i + nc * 2, i, cx, cy + 1] = 1
                 m.weight.data[i + nc * 3, i, cx + 1, cy + 1] = 1
 
-    elif classname.find('ConvTranspose2d') != -1:
+    elif classname.find("ConvTranspose2d") != -1:
         o, i, k1, k2 = m.weight.data.size()
         nc = min(o, i)
         cx, cy = k1 // 2 - 1, k2 // 2 - 1
@@ -131,7 +125,7 @@ def identity_init(m):
             m.weight.data[i + nc * 3, i, cx + 1, cy + 1] = 1
         m.bias.data.fill_(0)
 
-    elif classname.find('BatchNorm') != -1:
+    elif classname.find("BatchNorm") != -1:
         m.weight.data.fill_(1)
         m.bias.data.fill_(0)
 

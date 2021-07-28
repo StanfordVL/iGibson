@@ -4,7 +4,9 @@ class VisualObject(object):
     A wavefront obj file is loaded into openGL and managed by a VisualObject
     """
 
-    def __init__(self, filename, VAO_ids, vertex_data_indices, face_indices, id, renderer):
+    def __init__(
+        self, filename, VAO_ids, vertex_data_indices, face_indices, id, renderer
+    ):
         """
         :param filename: filename of the obj file
         :param VAO_ids: VAO_ids in OpenGL

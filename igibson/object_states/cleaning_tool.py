@@ -12,7 +12,6 @@ _LINK_NAME = "cleaning_tool_area"
 
 
 class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
-
     def __init__(self, obj):
         super(CleaningTool, self).__init__(obj)
 
@@ -38,18 +37,24 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
 
             # We need to be soaked to clean stains.
             if isinstance(particle_system, Stain):
-                if Soaked not in self.obj.states or not self.obj.states[Soaked].get_value():
+                if (
+                    Soaked not in self.obj.states
+                    or not self.obj.states[Soaked].get_value()
+                ):
                     continue
 
             # Check if we're touching the parent of the particle system through our
             # cleaning link.
             contact_bodies = self.obj.states[ContactBodies].get_value()
             touching_body = [
-                cb for cb in contact_bodies
-                if cb.bodyUniqueIdB == particle_system.parent_obj.get_body_id()]
+                cb
+                for cb in contact_bodies
+                if cb.bodyUniqueIdB == particle_system.parent_obj.get_body_id()
+            ]
             touching_link = any(
                 self.link_id is None or cb.linkIndexA == self.link_id
-                for cb in touching_body)
+                for cb in touching_body
+            )
             if not touching_link:
                 continue
 
@@ -85,5 +90,10 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
 
     @staticmethod
     def get_optional_dependencies():
-        return AbsoluteObjectState.get_optional_dependencies() + \
-               [Dusty, Stained, Soaked, ToggledOn, ContactBodies]
+        return AbsoluteObjectState.get_optional_dependencies() + [
+            Dusty,
+            Stained,
+            Soaked,
+            ToggledOn,
+            ContactBodies,
+        ]

@@ -1,4 +1,6 @@
-from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
+from igibson.termination_conditions.termination_condition_base import (
+    BaseTerminationCondition,
+)
 
 
 class MaxCollision(BaseTerminationCondition):
@@ -10,8 +12,7 @@ class MaxCollision(BaseTerminationCondition):
 
     def __init__(self, config):
         super(MaxCollision, self).__init__(config)
-        self.max_collisions_allowed = self.config.get(
-            'max_collisions_allowed', 500)
+        self.max_collisions_allowed = self.config.get("max_collisions_allowed", 500)
 
     def get_termination(self, task, env):
         """

@@ -2,34 +2,36 @@ import networkx as nx
 from igibson.object_states import *
 from igibson.object_states.object_state_base import BaseObjectState
 
-_ALL_STATES = frozenset([
-    AABB,
-    Burnt,
-    CleaningTool,
-    ContactBodies,
-    Cooked,
-    Dusty,
-    Frozen,
-    HeatSourceOrSink,
-    HorizontalAdjacency,
-    Inside,
-    MaxTemperature,
-    NextTo,
-    OnFloor,
-    OnTop,
-    Open,
-    Pose,
-    Sliced,
-    Slicer,
-    Soaked,
-    Stained,
-    Temperature,
-    ToggledOn,
-    Touching,
-    Under,
-    VerticalAdjacency,
-    WaterSource,
-])
+_ALL_STATES = frozenset(
+    [
+        AABB,
+        Burnt,
+        CleaningTool,
+        ContactBodies,
+        Cooked,
+        Dusty,
+        Frozen,
+        HeatSourceOrSink,
+        HorizontalAdjacency,
+        Inside,
+        MaxTemperature,
+        NextTo,
+        OnFloor,
+        OnTop,
+        Open,
+        Pose,
+        Sliced,
+        Slicer,
+        Soaked,
+        Stained,
+        Temperature,
+        ToggledOn,
+        Touching,
+        Under,
+        VerticalAdjacency,
+        WaterSource,
+    ]
+)
 
 _ABILITY_TO_STATE_MAPPING = {
     "burnable": [Burnt],
@@ -48,14 +50,16 @@ _ABILITY_TO_STATE_MAPPING = {
     "waterSource": [WaterSource],
 }
 
-_DEFAULT_STATE_SET = frozenset([
-    Inside,
-    NextTo,
-    OnFloor,
-    OnTop,
-    Touching,
-    Under,
-])
+_DEFAULT_STATE_SET = frozenset(
+    [
+        Inside,
+        NextTo,
+        OnFloor,
+        OnTop,
+        Touching,
+        Under,
+    ]
+)
 
 TEXTURE_CHANGE_PRIORITY = {
     Frozen: 4,
@@ -103,7 +107,7 @@ def get_object_state_instance(state_class, obj, params=None):
         BaseObjectState.
     """
     if not issubclass(state_class, BaseObjectState):
-        assert False, 'unknown state class: {}'.format(state_class)
+        assert False, "unknown state class: {}".format(state_class)
 
     if params is None:
         params = {}
@@ -134,20 +138,22 @@ def prepare_object_states(obj, abilities=None, online=True):
     # Map the ability params to the states immediately imported by the abilities
     for ability, params in abilities.items():
         state_types_and_params.extend(
-            (state_name, params) for state_name in get_states_for_ability(ability))
+            (state_name, params) for state_name in get_states_for_ability(ability)
+        )
 
     # Add the dependencies into the list, too.
     for state_type, _ in state_types_and_params:
         # Add each state's dependencies, too. Note that only required dependencies are added.
         for dependency in state_type.get_dependencies():
-            if all(other_state != dependency for other_state, _ in state_types_and_params):
+            if all(
+                other_state != dependency for other_state, _ in state_types_and_params
+            ):
                 state_types_and_params.append((dependency, {}))
 
     # Now generate the states in topological order.
     obj.states = dict()
     for state_type, params in reversed(state_types_and_params):
-        obj.states[state_type] = get_object_state_instance(
-            state_type, obj, params)
+        obj.states[state_type] = get_object_state_instance(state_type, obj, params)
 
 
 def get_state_dependency_graph():
@@ -156,7 +162,8 @@ def get_state_dependency_graph():
     """
     dependencies = {
         state: state.get_dependencies() + state.get_optional_dependencies()
-        for state in get_all_states()}
+        for state in get_all_states()
+    }
     return nx.DiGraph(dependencies)
 
 
@@ -164,4 +171,6 @@ def get_states_by_dependency_order():
     """
     Produce a list of all states in topological order of dependency.
     """
-    return list(reversed(list(nx.algorithms.topological_sort(get_state_dependency_graph()))))
+    return list(
+        reversed(list(nx.algorithms.topological_sort(get_state_dependency_graph())))
+    )

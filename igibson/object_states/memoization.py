@@ -30,7 +30,9 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
 
         # If we have a valid memoized result, return it directly.
         if key in self._memo:
-            if self.validate_validation_cache(self._validation_caches[key], *args, **kwargs):
+            if self.validate_validation_cache(
+                self._validation_caches[key], *args, **kwargs
+            ):
                 return self._memo[key]
 
         # Otherwise, recompute the result & memoize.
@@ -46,8 +48,10 @@ class MemoizedObjectStateMixin(with_metaclass(ABCMeta, object)):
 class PositionalValidationMemoizedObjectStateMixin(MemoizedObjectStateMixin):
     def get_validation_cache(self, *args, **kwargs):
         # Assume that args contains objects for relative states (and is empty for others).
-        return tuple(obj.states[Pose].get_value()[0]
-                     for obj in itertools.chain((self.obj,), args))
+        return tuple(
+            obj.states[Pose].get_value()[0]
+            for obj in itertools.chain((self.obj,), args)
+        )
 
     def validate_validation_cache(self, cache, *args, **kwargs):
         # Assume that args contains objects for relative states (and is empty for others).

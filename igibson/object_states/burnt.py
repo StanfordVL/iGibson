@@ -17,10 +17,13 @@ class Burnt(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
         return AbsoluteObjectState.get_dependencies() + [MaxTemperature]
 
     @staticmethod
-    def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
+    def create_transformed_texture(
+        diffuse_tex_filename, diffuse_tex_filename_transformed
+    ):
         # 0.8 mixture with black
-        transform_texture(diffuse_tex_filename,
-                          diffuse_tex_filename_transformed, 0.8, (0, 0, 0))
+        transform_texture(
+            diffuse_tex_filename, diffuse_tex_filename_transformed, 0.8, (0, 0, 0)
+        )
 
     def _set_value(self, new_value):
         current_max_temp = self.obj.states[MaxTemperature].get_value()
@@ -29,8 +32,7 @@ class Burnt(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
             desired_max_temp = max(current_max_temp, self.burn_temperature)
         else:
             # Set at exactly one below burnt temperature (or lower if in history).
-            desired_max_temp = min(
-                current_max_temp, self.burn_temperature - 1.0)
+            desired_max_temp = min(current_max_temp, self.burn_temperature - 1.0)
 
         return self.obj.states[MaxTemperature].set_value(desired_max_temp)
 

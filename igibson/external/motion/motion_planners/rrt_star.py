@@ -5,7 +5,6 @@ from .utils import INF, argmin
 
 
 class OptimalNode(object):
-
     def __init__(self, config, parent=None, d=0, path=[], iteration=None):
         self.config = config
         self.parent = parent
@@ -57,14 +56,17 @@ class OptimalNode(object):
 
     def draw(self, env):
         from manipulation.primitives.display import draw_node, draw_edge
-        color = (0, 0, 1, .5) if self.solution else (1, 0, 0, .5)
+
+        color = (0, 0, 1, 0.5) if self.solution else (1, 0, 0, 0.5)
         self.node_handle = draw_node(env, self.config, color=color)
         if self.parent is not None:
             self.edge_handle = draw_edge(
-                env, self.config, self.parent.config, color=color)
+                env, self.config, self.parent.config, color=color
+            )
 
     def __str__(self):
-        return self.__class__.__name__ + '(' + str(self.config) + ')'
+        return self.__class__.__name__ + "(" + str(self.config) + ")"
+
     __repr__ = __str__
 
 
@@ -77,7 +79,19 @@ def safe_path(sequence, collision):
     return path
 
 
-def rrt_star(start, goal, distance, sample, extend, collision, radius=0.5, max_time=INF, max_iterations=INF, goal_probability=.2, informed=True):
+def rrt_star(
+    start,
+    goal,
+    distance,
+    sample,
+    extend,
+    collision,
+    radius=0.5,
+    max_time=INF,
+    max_iterations=INF,
+    goal_probability=0.2,
+    informed=True,
+):
     if collision(start) or collision(goal):
         return None
     nodes = [OptimalNode(start)]
@@ -88,10 +102,20 @@ def rrt_star(start, goal, distance, sample, extend, collision, radius=0.5, max_t
         do_goal = goal_n is None and (it == 0 or random() < goal_probability)
         s = goal if do_goal else sample()
         # Informed RRT*
-        if informed and goal_n is not None and distance(start, s) + distance(s, goal) >= goal_n.cost:
+        if (
+            informed
+            and goal_n is not None
+            and distance(start, s) + distance(s, goal) >= goal_n.cost
+        ):
             continue
         if it % 100 == 0:
-            print(it, time() - t0, goal_n is not None, do_goal, (goal_n.cost if goal_n is not None else INF))
+            print(
+                it,
+                time() - t0,
+                goal_n is not None,
+                do_goal,
+                (goal_n.cost if goal_n is not None else INF),
+            )
         it += 1
         print(it, len(nodes))
 
@@ -99,8 +123,13 @@ def rrt_star(start, goal, distance, sample, extend, collision, radius=0.5, max_t
         path = safe_path(extend(nearest.config, s), collision)
         if len(path) == 0:
             continue
-        new = OptimalNode(path[-1], parent=nearest, d=distance(
-            nearest.config, path[-1]), path=path[:-1], iteration=it)
+        new = OptimalNode(
+            path[-1],
+            parent=nearest,
+            d=distance(nearest.config, path[-1]),
+            path=path[:-1],
+            iteration=it,
+        )
         # if safe and do_goal:
         if do_goal and distance(new.config, goal) < 1e-6:
             goal_n = new
@@ -114,7 +143,7 @@ def rrt_star(start, goal, distance, sample, extend, collision, radius=0.5, max_t
         k = np.min([k, len(nodes)])
         dists = [distance(n.config, new.config) for n in nodes]
         neighbors = [nodes[i] for i in np.argsort(dists)[:k]]
-        #print(neighbors)
+        # print(neighbors)
 
         nodes.append(new)
 

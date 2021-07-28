@@ -26,7 +26,7 @@ def frustum(left, right, bottom, top, znear, zfar):
     M[2, 0] = (right + left) / (right - left)
     M[1, 1] = +2.0 * znear / (top - bottom)
     # TODO: Put this back to 3,1
-    #M[3, 1] = (top + bottom) / (top - bottom)
+    # M[3, 1] = (top + bottom) / (top - bottom)
     M[2, 1] = (top + bottom) / (top - bottom)
     M[2, 2] = -(zfar + znear) / (zfar - znear)
     M[3, 2] = -2.0 * znear * zfar / (zfar - znear)
@@ -44,9 +44,9 @@ def ortho(left, right, bottom, top, znear, zfar):
     M[0, 0] = 2.0 / (right - left)
     M[1, 1] = 2.0 / (top - bottom)
     M[2, 2] = -2.0 / (zfar - znear)
-    M[3, 0] = - (right + left) / (right - left)
-    M[3, 1] = - (top + bottom) / (top - bottom)
-    M[3, 2] = - (zfar + znear) / (zfar - znear)
+    M[3, 0] = -(right + left) / (right - left)
+    M[3, 1] = -(top + bottom) / (top - bottom)
+    M[3, 2] = -(zfar + znear) / (zfar - znear)
     M[3, 3] = 1.0
     return M
 
@@ -108,7 +108,7 @@ def homotrans(M, p):
 def _parse_vertex_tuple(s):
     """Parse vertex indices in '/' separated form (like 'i/j/k', 'i//k' ...)."""
     vt = [0, 0, 0]
-    for i, c in enumerate(s.split('/')):
+    for i, c in enumerate(s.split("/")):
         if c:
             vt[i] = int(c)
     return tuple(vt)
@@ -120,7 +120,7 @@ def _unify_rows(a):
     if not (lens[0] == lens).all():
         out = np.zeros((len(a), lens.max()), np.float32)
         for i, row in enumerate(a):
-            out[i, :lens[i]] = row
+            out[i, : lens[i]] = row
     else:
         out = np.float32(a)
     return out
@@ -149,26 +149,26 @@ def load_obj(fn):
     input_file = open(fn) if isinstance(fn, str) else fn
     for line in input_file:
         line = line.strip()
-        if not line or line[0] == '#':
+        if not line or line[0] == "#":
             continue
-        line = line.split(' ', 1)
+        line = line.split(" ", 1)
         tag = line[0]
         if len(line) > 1:
             line = line[1]
         else:
-            line = ''
-        if tag == 'v':
-            position.append(np.fromstring(line, sep=' '))
-        elif tag == 'vt':
-            uv.append(np.fromstring(line, sep=' '))
-        elif tag == 'vn':
-            normal.append(np.fromstring(line, sep=' '))
-        elif tag == 'f':
+            line = ""
+        if tag == "v":
+            position.append(np.fromstring(line, sep=" "))
+        elif tag == "vt":
+            uv.append(np.fromstring(line, sep=" "))
+        elif tag == "vn":
+            normal.append(np.fromstring(line, sep=" "))
+        elif tag == "f":
             output_face_indices = []
             for chunk in line.split():
                 # tuple order: pos_idx, uv_idx, normal_idx
                 vt = _parse_vertex_tuple(chunk)
-                if vt not in tuple2idx:    # create a new output vertex?
+                if vt not in tuple2idx:  # create a new output vertex?
                     tuple2idx[vt] = len(tuple2idx)
                 output_face_indices.append(tuple2idx[vt])
             # generate face triangles
@@ -177,24 +177,23 @@ def load_obj(fn):
                     trinagle_indices.append(output_face_indices[vi])
 
     outputs = {}
-    outputs['face'] = np.int32(trinagle_indices)
+    outputs["face"] = np.int32(trinagle_indices)
     pos_idx, uv_idx, normal_idx = np.int32(list(tuple2idx)).T
     if np.any(pos_idx):
-        outputs['position'] = _unify_rows(position)[pos_idx]
+        outputs["position"] = _unify_rows(position)[pos_idx]
     if np.any(uv_idx):
-        outputs['uv'] = _unify_rows(uv)[uv_idx]
+        outputs["uv"] = _unify_rows(uv)[uv_idx]
     if np.any(normal_idx):
-        outputs['normal'] = _unify_rows(normal)[normal_idx]
+        outputs["normal"] = _unify_rows(normal)[normal_idx]
     return outputs
 
 
 def save_obj(vertices_info, faces_info, fn):
-    with open(fn, 'w') as f:
+    with open(fn, "w") as f:
         for v in vertices_info:
-            f.write('v {} {} {}\n'.format(v[0], v[1], v[2]))
+            f.write("v {} {} {}\n".format(v[0], v[1], v[2]))
         for face in faces_info:
-            f.write('f {} {} {}\n'.format(
-                face[0] + 1, face[1] + 1, face[2] + 1))
+            f.write("f {} {} {}\n".format(face[0] + 1, face[1] + 1, face[2] + 1))
 
 
 def transform_vertex(vertices, pose_rot, pose_trans):
@@ -207,10 +206,10 @@ def transform_vertex(vertices, pose_rot, pose_trans):
 def normalize_mesh(mesh):
     """Scale mesh to fit into -1..1 cube"""
     mesh = dict(mesh)
-    pos = mesh['position'][:, :3].copy()
+    pos = mesh["position"][:, :3].copy()
     pos -= (pos.max(0) + pos.min(0)) / 2.0
     pos /= np.abs(pos).max()
-    mesh['position'] = pos
+    mesh["position"] = pos
     return mesh
 
 

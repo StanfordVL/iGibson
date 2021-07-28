@@ -11,7 +11,8 @@ class LinkBasedStateMixin(object):
     @staticmethod
     def get_state_link_name():
         raise ValueError(
-            "LinkBasedState child should specify link name by overriding get_state_link_name.")
+            "LinkBasedState child should specify link name by overriding get_state_link_name."
+        )
 
     def initialize_link_mixin(self):
         assert not self._initialized
@@ -20,8 +21,7 @@ class LinkBasedStateMixin(object):
         self.body_id = self.obj.get_body_id()
 
         try:
-            self.link_id = link_from_name(
-                self.body_id, self.get_state_link_name())
+            self.link_id = link_from_name(self.body_id, self.get_state_link_name())
         except ValueError:
             pass
 

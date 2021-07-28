@@ -14,7 +14,9 @@ class Scene(with_metaclass(ABCMeta)):
 
     def __init__(self):
         self.loaded = False
-        self.build_graph = False  # Indicates if a graph for shortest path has been built
+        self.build_graph = (
+            False  # Indicates if a graph for shortest path has been built
+        )
         self.floor_body_ids = []  # List of ids of the floor_heights
 
     @abstractmethod
@@ -45,7 +47,11 @@ class Scene(with_metaclass(ABCMeta)):
         raise NotImplementedError()
 
     def get_objects_with_state(self, state):
-        return [item for item in self.get_objects() if hasattr(item, 'states') and state in item.states]
+        return [
+            item
+            for item in self.get_objects()
+            if hasattr(item, "states") and state in item.states
+        ]
 
     @abstractmethod
     def _add_object(self, obj):
@@ -74,11 +80,17 @@ class Scene(with_metaclass(ABCMeta)):
         """
         if self.loaded and not _is_call_from_simulator:
             raise ValueError(
-                "To add an object to an already-loaded scene, use the Simulator's import_object function.")
+                "To add an object to an already-loaded scene, use the Simulator's import_object function."
+            )
 
-        if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
+        if (
+            isinstance(obj, VisualMarker)
+            or isinstance(obj, VisualShape)
+            or isinstance(obj, Particle)
+        ):
             raise ValueError(
-                "VisualMarker, VisualShape and Particle objects and subclasses should be added directly to simulator.")
+                "VisualMarker, VisualShape and Particle objects and subclasses should be added directly to simulator."
+            )
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
         # let scene._load() load the object when called later on.

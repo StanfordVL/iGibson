@@ -1,8 +1,7 @@
 from collections import Mapping
 
-#class StarRoadmap(Mapping, object):
+# class StarRoadmap(Mapping, object):
 class StarRoadmap(Mapping, object):
-
     def __init__(self, center, planner):
         self.center = center
         self.planner = planner

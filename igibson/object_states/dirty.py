@@ -13,6 +13,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
     This class represents common logic between particle-based dirtyness states like
     dusty and stained. It should not be directly instantiated - use subclasses instead.
     """
+
     @staticmethod
     def get_dependencies():
         return AbsoluteObjectState.get_dependencies() + [AABB]
@@ -29,10 +30,12 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         self.simulator.import_particle_system(self.dirt)
 
     def _get_value(self):
-        clean_threshold = FLOOR_CLEAN_THRESHOLD if \
-            self.obj.category == 'floors' else CLEAN_THRESHOLD
+        clean_threshold = (
+            FLOOR_CLEAN_THRESHOLD if self.obj.category == "floors" else CLEAN_THRESHOLD
+        )
         max_particles_for_clean = (
-                self.dirt.get_num_particles_activated_at_any_time() * clean_threshold)
+            self.dirt.get_num_particles_activated_at_any_time() * clean_threshold
+        )
         return self.dirt.get_num_active() > max_particles_for_clean
 
     def _set_value(self, new_value):
@@ -43,7 +46,10 @@ class _Dirty(AbsoluteObjectState, BooleanState):
             self.dirt.randomize()
 
             # If after randomization we have too few particles, stash them and return False.
-            if self.dirt.get_num_particles_activated_at_any_time() < MIN_PARTICLES_FOR_SAMPLING_SUCCESS:
+            if (
+                self.dirt.get_num_particles_activated_at_any_time()
+                < MIN_PARTICLES_FOR_SAMPLING_SUCCESS
+            ):
                 for particle in self.dirt.get_active_particles():
                     self.dirt.stash_particle(particle)
 
@@ -65,7 +71,6 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         else:
             # Otherwise, let the particle system know it needs to reset.
             self.dirt.reset_to_dump(data["particles"])
-
 
 
 class Dusty(_Dirty):

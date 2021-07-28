@@ -6,7 +6,11 @@ import numpy as np
 import pybullet as p
 
 from igibson.external.pybullet_tools import utils
-from igibson.external.pybullet_tools.utils import link_from_name, get_link_name, get_aabb_extent
+from igibson.external.pybullet_tools.utils import (
+    link_from_name,
+    get_link_name,
+    get_aabb_extent,
+)
 from igibson.objects.object_base import Object
 from igibson.utils import sampling_utils
 from igibson.utils.constants import SemanticClass, PyBulletSleepState
@@ -19,8 +23,17 @@ class Particle(Object):
     A particle object, used to simulate water stream and dust/stain
     """
 
-    def __init__(self, size, pos, visual_only=False, mass=0.0, color=(1, 1, 1, 1),
-                 base_shape="sphere", mesh_filename=None, mesh_bounding_box=None):
+    def __init__(
+        self,
+        size,
+        pos,
+        visual_only=False,
+        mass=0.0,
+        color=(1, 1, 1, 1),
+        base_shape="sphere",
+        mesh_filename=None,
+        mesh_bounding_box=None,
+    ):
         """
         Create a particle.
 
@@ -43,7 +56,7 @@ class Particle(Object):
         self.bounding_box = np.array(self.size)
         assert len(self.size) == 3
 
-        if self.base_shape == 'mesh':
+        if self.base_shape == "mesh":
             assert mesh_filename is not None and mesh_bounding_box is not None
             self.mesh_filename = mesh_filename
             self.mesh_scale = np.array(size) / np.array(mesh_bounding_box)
@@ -56,34 +69,45 @@ class Particle(Object):
 
         if self.base_shape == "box":
             colBoxId = p.createCollisionShape(
-                p.GEOM_BOX, halfExtents=self.bounding_box / 2.)
+                p.GEOM_BOX, halfExtents=self.bounding_box / 2.0
+            )
             visualShapeId = p.createVisualShape(
-                p.GEOM_BOX, halfExtents=self.bounding_box / 2., rgbaColor=self.color)
-        elif self.base_shape == 'sphere':
+                p.GEOM_BOX, halfExtents=self.bounding_box / 2.0, rgbaColor=self.color
+            )
+        elif self.base_shape == "sphere":
             colBoxId = p.createCollisionShape(
-                p.GEOM_SPHERE, radius=self.bounding_box[0] / 2.)
+                p.GEOM_SPHERE, radius=self.bounding_box[0] / 2.0
+            )
             visualShapeId = p.createVisualShape(
-                p.GEOM_SPHERE, radius=self.bounding_box[0] / 2., rgbaColor=self.color)
-        elif self.base_shape == 'mesh':
+                p.GEOM_SPHERE, radius=self.bounding_box[0] / 2.0, rgbaColor=self.color
+            )
+        elif self.base_shape == "mesh":
             colBoxId = p.createCollisionShape(
-                p.GEOM_MESH, fileName=self.mesh_filename, meshScale=self.mesh_scale)
+                p.GEOM_MESH, fileName=self.mesh_filename, meshScale=self.mesh_scale
+            )
             visualShapeId = p.createVisualShape(
-                p.GEOM_MESH, fileName=self.mesh_filename, meshScale=self.mesh_scale)
+                p.GEOM_MESH, fileName=self.mesh_filename, meshScale=self.mesh_scale
+            )
         else:
             raise ValueError("Unsupported particle base shape.")
 
         if self.visual_only:
-            body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                        baseVisualShapeIndex=visualShapeId,
-                                        flags=p.URDF_ENABLE_SLEEPING)
+            body_id = p.createMultiBody(
+                baseCollisionShapeIndex=-1,
+                baseVisualShapeIndex=visualShapeId,
+                flags=p.URDF_ENABLE_SLEEPING,
+            )
         else:
-            body_id = p.createMultiBody(baseMass=self.mass,
-                                        baseCollisionShapeIndex=colBoxId,
-                                        baseVisualShapeIndex=visualShapeId,
-                                        flags=p.URDF_ENABLE_SLEEPING)
+            body_id = p.createMultiBody(
+                baseMass=self.mass,
+                baseCollisionShapeIndex=colBoxId,
+                baseVisualShapeIndex=visualShapeId,
+                flags=p.URDF_ENABLE_SLEEPING,
+            )
 
         p.resetBasePositionAndOrientation(
-            body_id, np.array(self.base_pos), base_orientation)
+            body_id, np.array(self.base_pos), base_orientation
+        )
 
         self.force_sleep(body_id)
 
@@ -102,8 +126,17 @@ class Particle(Object):
 
 
 class ParticleSystem(object):
-    def __init__(self, num, size, color=(1, 1, 1, 1), class_id=SemanticClass.USER_ADDED_OBJS, use_pbr=False,
-                 use_pbr_mapping=False, shadow_caster=True, **kwargs):
+    def __init__(
+        self,
+        num,
+        size,
+        color=(1, 1, 1, 1),
+        class_id=SemanticClass.USER_ADDED_OBJS,
+        use_pbr=False,
+        use_pbr_mapping=False,
+        shadow_caster=True,
+        **kwargs
+    ):
         size = np.array(size)
         if size.ndim == 2:
             assert size.shape[0] == num
@@ -130,15 +163,17 @@ class ParticleSystem(object):
             this_size = size if size.ndim == 1 else size[i]
             this_color = color if color.ndim == 1 else color[i]
 
-            particle = Particle(this_size, _STASH_POSITION,
-                                color=this_color, **kwargs)
+            particle = Particle(this_size, _STASH_POSITION, color=this_color, **kwargs)
             self._all_particles.append(particle)
             self._stashed_particles.append(particle)
 
     def dump(self):
         return [
-            particle.get_position_orientation() if particle in self.get_active_particles() else None
-            for particle in self.get_particles()]
+            particle.get_position_orientation()
+            if particle in self.get_active_particles()
+            else None
+            for particle in self.get_particles()
+        ]
 
     def reset_to_dump(self, dump):
         # First, stash all particles
@@ -148,8 +183,7 @@ class ParticleSystem(object):
             # particle_data will be None for stashed particles
             if particle_pose is not None:
                 particle = self.get_particles()[i]
-                self.unstash_particle(
-                    particle_pose[0], particle_pose[1], particle)
+                self.unstash_particle(particle_pose[0], particle_pose[1], particle)
 
     def initialize(self, simulator):
         # Keep a handle to the simulator for lazy loads later.
@@ -195,8 +229,7 @@ class ParticleSystem(object):
             particle.force_sleep()
 
     def _load_particle(self, particle):
-        body_id = self._simulator.import_object(
-            particle, **self._import_params)
+        body_id = self._simulator.import_object(particle, **self._import_params)
         # Put loaded particles at the stash position initially.
         particle.set_position(_STASH_POSITION)
         return body_id
@@ -262,13 +295,18 @@ class AttachedParticleSystem(ParticleSystem):
                 if particle_attached_link_name is not None:
                     try:
                         particle_attached_link_id = link_from_name(
-                            self.parent_obj.get_body_id(), particle_attached_link_name)
+                            self.parent_obj.get_body_id(), particle_attached_link_name
+                        )
                     except ValueError:
                         pass
 
                 particle = self.get_particles()[i]
-                self.unstash_particle(particle_pos, particle_orn, link_id=particle_attached_link_id,
-                                      particle=particle)
+                self.unstash_particle(
+                    particle_pos,
+                    particle_orn,
+                    link_id=particle_attached_link_id,
+                    particle=particle,
+                )
 
     def initialize(self, simulator):
         super(AttachedParticleSystem, self).initialize(simulator)
@@ -280,22 +318,22 @@ class AttachedParticleSystem(ParticleSystem):
 
     def unstash_particle(self, position, orientation, link_id=-1, **kwargs):
         particle = super(AttachedParticleSystem, self).unstash_particle(
-            position, orientation, **kwargs)
+            position, orientation, **kwargs
+        )
 
         # Compute the offset for this particle.
         if link_id == -1:
             attachment_source_pos = self.parent_obj.get_position()
             attachment_source_orn = self.parent_obj.get_orientation()
         else:
-            link_state = utils.get_link_state(
-                self.parent_obj.get_body_id(), link_id)
+            link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
             attachment_source_pos = link_state.linkWorldPosition
             attachment_source_orn = link_state.linkWorldOrientation
 
         base_pos, base_orn = p.invertTransform(
-            attachment_source_pos, attachment_source_orn)
-        offsets = p.multiplyTransforms(
-            base_pos, base_orn, position, orientation)
+            attachment_source_pos, attachment_source_orn
+        )
+        offsets = p.multiplyTransforms(base_pos, base_orn, position, orientation)
         self._attachment_offsets[particle] = (link_id, offsets)
 
         return particle
@@ -309,11 +347,9 @@ class AttachedParticleSystem(ParticleSystem):
 
         # Move every particle to their known parent object offsets.
         for particle in self.get_active_particles():
-            link_id, (pos_offset,
-                      orn_offset) = self._attachment_offsets[particle]
+            link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
 
-            dynamics_info = p.getDynamicsInfo(
-                self.parent_obj.get_body_id(), link_id)
+            dynamics_info = p.getDynamicsInfo(self.parent_obj.get_body_id(), link_id)
 
             if len(dynamics_info) == 13:
                 activation_state = dynamics_info[12]
@@ -329,12 +365,14 @@ class AttachedParticleSystem(ParticleSystem):
                 attachment_source_orn = self.parent_obj.get_orientation()
             else:
                 link_state = utils.get_link_state(
-                    self.parent_obj.get_body_id(), link_id)
+                    self.parent_obj.get_body_id(), link_id
+                )
                 attachment_source_pos = link_state.linkWorldPosition
                 attachment_source_orn = link_state.linkWorldOrientation
 
             position, orientation = p.multiplyTransforms(
-                attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
+                attachment_source_pos, attachment_source_orn, pos_offset, orn_offset
+            )
             particle.set_position_orientation(position, orientation)
             particle.force_wakeup()
 
@@ -344,23 +382,23 @@ class AttachedParticleSystem(ParticleSystem):
             if particle in self.get_stashed_particles():
                 data.append(None)
             else:
-                link_id, (pos_offset,
-                          orn_offset) = self._attachment_offsets[particle]
+                link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
 
                 if link_id == -1:
                     link_name = None
                     attachment_source_pos = self.parent_obj.get_position()
                     attachment_source_orn = self.parent_obj.get_orientation()
                 else:
-                    link_name = get_link_name(
-                        self.parent_obj.get_body_id(), link_id)
+                    link_name = get_link_name(self.parent_obj.get_body_id(), link_id)
                     link_state = utils.get_link_state(
-                        self.parent_obj.get_body_id(), link_id)
+                        self.parent_obj.get_body_id(), link_id
+                    )
                     attachment_source_pos = link_state.linkWorldPosition
                     attachment_source_orn = link_state.linkWorldOrientation
 
                 position, orientation = p.multiplyTransforms(
-                    attachment_source_pos, attachment_source_orn, pos_offset, orn_offset)
+                    attachment_source_pos, attachment_source_orn, pos_offset, orn_offset
+                )
                 data.append((link_name, position, orientation))
 
         return data
@@ -368,27 +406,24 @@ class AttachedParticleSystem(ParticleSystem):
 
 class WaterStream(ParticleSystem):
     _DROP_PERIOD = 0.1  # new water every this many seconds.
-    _SIZE_OPTIONS = np.array([
-        [0.02] * 3,
-        [0.018] * 3,
-        [0.016] * 3,
-    ])
-    _COLOR_OPTIONS = np.array([
-        (0.61, 0.82, 0.86, 1),
-        (0.5, 0.77, 0.87, 1)
-    ])
+    _SIZE_OPTIONS = np.array(
+        [
+            [0.02] * 3,
+            [0.018] * 3,
+            [0.016] * 3,
+        ]
+    )
+    _COLOR_OPTIONS = np.array([(0.61, 0.82, 0.86, 1), (0.5, 0.77, 0.87, 1)])
 
     def __init__(self, water_source_pos, num, initial_dump=None, **kwargs):
         if initial_dump is not None:
             self.sizes = np.array(initial_dump["sizes"])
             self.colors = np.array(initial_dump["colors"])
         else:
-            size_idxs = np.random.choice(
-                len(self._SIZE_OPTIONS), num, replace=True)
+            size_idxs = np.random.choice(len(self._SIZE_OPTIONS), num, replace=True)
             self.sizes = self._SIZE_OPTIONS[size_idxs]
 
-            color_idxs = np.random.choice(
-                len(self._COLOR_OPTIONS), num, replace=True)
+            color_idxs = np.random.choice(len(self._COLOR_OPTIONS), num, replace=True)
             self.colors = self._COLOR_OPTIONS[color_idxs]
 
         super(WaterStream, self).__init__(
@@ -401,15 +436,19 @@ class WaterStream(ParticleSystem):
             **kwargs
         )
 
-        self.steps_since_last_drop_step = float('inf')
+        self.steps_since_last_drop_step = float("inf")
         self.water_source_pos = water_source_pos
         self.on = False
         self.initial_dump = initial_dump
 
     def reset_to_dump(self, dump):
         # Assert that the dump is compatible with the particle system state.
-        assert np.all(self.sizes == np.array(dump["sizes"])), "Incompatible WaterStream dump."
-        assert np.all(self.colors == np.array(dump["colors"])), "Incompatible WaterStream dump."
+        assert np.all(
+            self.sizes == np.array(dump["sizes"])
+        ), "Incompatible WaterStream dump."
+        assert np.all(
+            self.colors == np.array(dump["colors"])
+        ), "Incompatible WaterStream dump."
 
         self.steps_since_last_drop_step = dump["steps_since_last_drop_step"]
 
@@ -455,7 +494,10 @@ class WaterStream(ParticleSystem):
             return
 
         # If enough time hasn't passed since last drop, return.
-        if self.steps_since_last_drop_step < self._DROP_PERIOD / simulator.render_timestep:
+        if (
+            self.steps_since_last_drop_step
+            < self._DROP_PERIOD / simulator.render_timestep
+        ):
             self.steps_since_last_drop_step += 1
             return
 
@@ -468,7 +510,7 @@ class WaterStream(ParticleSystem):
             "sizes": [tuple(size) for size in self.sizes],
             "colors": [tuple(color) for color in self.colors],
             "steps_since_last_drop_step": self.steps_since_last_drop_step,
-            "particle_poses": super(WaterStream, self).dump()
+            "particle_poses": super(WaterStream, self).dump(),
         }
 
         return data
@@ -496,22 +538,31 @@ class _Dirt(AttachedParticleSystem):
         self._clip_into_object = clip_into_object
 
     def randomize(self):
-        assert self.get_num_stashed() == self.get_num(), "All particles should be stashed before sampling."
+        assert (
+            self.get_num_stashed() == self.get_num()
+        ), "All particles should be stashed before sampling."
 
         bbox_sizes = [
-            particle.bounding_box for particle in self.get_stashed_particles()]
+            particle.bounding_box for particle in self.get_stashed_particles()
+        ]
 
         # If we are going to clip into object we need half the height.
         if self._clip_into_object:
-            bbox_sizes = [bbox_size * np.array([1, 1, 0.5])
-                          for bbox_size in bbox_sizes]
+            bbox_sizes = [bbox_size * np.array([1, 1, 0.5]) for bbox_size in bbox_sizes]
 
         results = sampling_utils.sample_cuboid_on_object(
-            self.parent_obj, self.get_num_stashed(
-            ), [list(x) for x in bbox_sizes],
-            self._SAMPLING_BIMODAL_MEAN_FRACTION, self._SAMPLING_BIMODAL_STDEV_FRACTION,
-            self._SAMPLING_AXIS_PROBABILITIES, max_sampling_attempts=self._SAMPLING_MAX_ATTEMPTS, undo_padding=True,
-            aabb_offset=self._SAMPLING_AABB_OFFSET, refuse_downwards=True,  **self._sampling_kwargs)
+            self.parent_obj,
+            self.get_num_stashed(),
+            [list(x) for x in bbox_sizes],
+            self._SAMPLING_BIMODAL_MEAN_FRACTION,
+            self._SAMPLING_BIMODAL_STDEV_FRACTION,
+            self._SAMPLING_AXIS_PROBABILITIES,
+            max_sampling_attempts=self._SAMPLING_MAX_ATTEMPTS,
+            undo_padding=True,
+            aabb_offset=self._SAMPLING_AABB_OFFSET,
+            refuse_downwards=True,
+            **self._sampling_kwargs
+        )
 
         # Reset the activated particle history
         self.reset_particles_activated_at_any_time()
@@ -525,12 +576,16 @@ class _Dirt(AttachedParticleSystem):
                 surface_point = position
                 if self._clip_into_object:
                     # Shift the object halfway down.
-                    cuboid_base_to_center = bbox_sizes[2] / 2.
+                    cuboid_base_to_center = bbox_sizes[2] / 2.0
                     surface_point -= normal * cuboid_base_to_center
 
                 # Unstash the particle (and make sure we get the correct one!)
-                assert self.unstash_particle(
-                    surface_point, quaternion, link_id=hit_link, particle=particle) == particle
+                assert (
+                    self.unstash_particle(
+                        surface_point, quaternion, link_id=hit_link, particle=particle
+                    )
+                    == particle
+                )
 
 
 class Dust(_Dirt):
@@ -558,8 +613,7 @@ class Stain(_Dirt):
     _BOUNDING_BOX_UPPER_LIMIT_MIN = 0.02
     _BOUNDING_BOX_UPPER_LIMIT_MAX = 0.1
 
-    _MESH_FILENAME = os.path.join(
-        igibson.assets_path, "models/stain/stain.obj")
+    _MESH_FILENAME = os.path.join(igibson.assets_path, "models/stain/stain.obj")
     _MESH_BOUNDING_BOX = np.array([0.0368579992, 0.03716399827, 0.004])
 
     def __init__(self, parent_obj, initial_dump=None, **kwargs):
@@ -568,27 +622,44 @@ class Stain(_Dirt):
         else:
             # Particle size range changes based on parent object size.
             from igibson.object_states import AABB
+
             median_aabb_dim = np.median(
                 parent_obj.bounding_box
-                if hasattr(parent_obj, "bounding_box") and parent_obj.bounding_box is not None else
-                get_aabb_extent(parent_obj.states[AABB].get_value()))
+                if hasattr(parent_obj, "bounding_box")
+                and parent_obj.bounding_box is not None
+                else get_aabb_extent(parent_obj.states[AABB].get_value())
+            )
 
-            bounding_box_lower_limit_from_aabb = self._BOUNDING_BOX_LOWER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
+            bounding_box_lower_limit_from_aabb = (
+                self._BOUNDING_BOX_LOWER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
+            )
             bounding_box_lower_limit = np.clip(
                 bounding_box_lower_limit_from_aabb,
-                self._BOUNDING_BOX_LOWER_LIMIT_MIN, self._BOUNDING_BOX_LOWER_LIMIT_MAX)
+                self._BOUNDING_BOX_LOWER_LIMIT_MIN,
+                self._BOUNDING_BOX_LOWER_LIMIT_MAX,
+            )
 
-            bounding_box_upper_limit_from_aabb = self._BOUNDING_BOX_UPPER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
+            bounding_box_upper_limit_from_aabb = (
+                self._BOUNDING_BOX_UPPER_LIMIT_FRACTION_OF_AABB * median_aabb_dim
+            )
             bounding_box_upper_limit = np.clip(
                 bounding_box_upper_limit_from_aabb,
-                self._BOUNDING_BOX_UPPER_LIMIT_MIN, self._BOUNDING_BOX_UPPER_LIMIT_MAX)
+                self._BOUNDING_BOX_UPPER_LIMIT_MIN,
+                self._BOUNDING_BOX_UPPER_LIMIT_MAX,
+            )
 
             # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
             random_bbox_base_size = np.random.uniform(
-                bounding_box_lower_limit, bounding_box_upper_limit, self._PARTICLE_COUNT)
+                bounding_box_lower_limit, bounding_box_upper_limit, self._PARTICLE_COUNT
+            )
             self.random_bbox_dims = np.stack(
-                [random_bbox_base_size, random_bbox_base_size,
-                 np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2])], axis=-1)
+                [
+                    random_bbox_base_size,
+                    random_bbox_base_size,
+                    np.full_like(random_bbox_base_size, self._MESH_BOUNDING_BOX[2]),
+                ],
+                axis=-1,
+            )
 
         super(Stain, self).__init__(
             parent_obj,
@@ -613,5 +684,5 @@ class Stain(_Dirt):
     def dump(self):
         return {
             "dirt_dump": super(Stain, self).dump(),
-            "random_bbox_dims": [tuple(bbox) for bbox in self.random_bbox_dims]
+            "random_bbox_dims": [tuple(bbox) for bbox in self.random_bbox_dims],
         }

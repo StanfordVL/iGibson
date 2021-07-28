@@ -9,9 +9,7 @@ class CollisionReward(BaseRewardFunction):
 
     def __init__(self, config):
         super(CollisionReward, self).__init__(config)
-        self.collision_reward_weight = self.config.get(
-            'collision_reward_weight', -0.1
-        )
+        self.collision_reward_weight = self.config.get("collision_reward_weight", -0.1)
 
     def get_reward(self, task, env):
         """

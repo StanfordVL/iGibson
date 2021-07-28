@@ -9,7 +9,14 @@ class Cube(StatefulObject):
     Cube shape primitive
     """
 
-    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
+    def __init__(
+        self,
+        pos=[1, 2, 3],
+        dim=[1, 2, 3],
+        visual_only=False,
+        mass=1000,
+        color=[1, 1, 1, 1],
+    ):
         super(Cube, self).__init__()
         self.basePos = pos
         self.dimension = dim
@@ -22,19 +29,21 @@ class Cube(StatefulObject):
         Load the object into pybullet
         """
         baseOrientation = [0, 0, 0, 1]
-        colBoxId = p.createCollisionShape(
-            p.GEOM_BOX, halfExtents=self.dimension)
+        colBoxId = p.createCollisionShape(p.GEOM_BOX, halfExtents=self.dimension)
         visualShapeId = p.createVisualShape(
-            p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color)
+            p.GEOM_BOX, halfExtents=self.dimension, rgbaColor=self.color
+        )
         if self.visual_only:
-            body_id = p.createMultiBody(baseCollisionShapeIndex=-1,
-                                        baseVisualShapeIndex=visualShapeId)
+            body_id = p.createMultiBody(
+                baseCollisionShapeIndex=-1, baseVisualShapeIndex=visualShapeId
+            )
         else:
-            body_id = p.createMultiBody(baseMass=self.mass,
-                                        baseCollisionShapeIndex=colBoxId,
-                                        baseVisualShapeIndex=visualShapeId)
+            body_id = p.createMultiBody(
+                baseMass=self.mass,
+                baseCollisionShapeIndex=colBoxId,
+                baseVisualShapeIndex=visualShapeId,
+            )
 
-        p.resetBasePositionAndOrientation(
-            body_id, self.basePos, baseOrientation)
+        p.resetBasePositionAndOrientation(body_id, self.basePos, baseOrientation)
 
         return body_id

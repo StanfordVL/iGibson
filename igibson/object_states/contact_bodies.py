@@ -10,7 +10,8 @@ class ContactBodies(CachingEnabledObjectState):
 
     def _set_value(self, new_value):
         raise NotImplementedError(
-            "ContactBodies state currently does not support setting.")
+            "ContactBodies state currently does not support setting."
+        )
 
     # Nothing needs to be done to save/load ContactBodies since it will happen due to pose caching.
     def _dump(self):

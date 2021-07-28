@@ -1,4 +1,6 @@
-from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
+from igibson.termination_conditions.termination_condition_base import (
+    BaseTerminationCondition,
+)
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 
 
@@ -10,8 +12,7 @@ class OutOfBound(BaseTerminationCondition):
 
     def __init__(self, config):
         super(OutOfBound, self).__init__(config)
-        self.fall_off_thresh = self.config.get(
-            'fall_off_thresh', 0.03)
+        self.fall_off_thresh = self.config.get("fall_off_thresh", 0.03)
 
     def get_termination(self, task, env):
         """

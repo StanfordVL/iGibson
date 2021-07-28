@@ -7,7 +7,6 @@ from igibson.utils.utils import transform_texture
 
 
 class Soaked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
-
     def __init__(self, obj):
         super(Soaked, self).__init__(obj)
         self.value = False
@@ -22,9 +21,13 @@ class Soaked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
     def _update(self):
         water_source_objs = self.simulator.scene.get_objects_with_state(WaterSource)
         for water_source_obj in water_source_objs:
-            contacted_water_body_ids = set(item.bodyUniqueIdB for item in list(
-                self.obj.states[ContactBodies].get_value()))
-            for particle in water_source_obj.states[WaterSource].water_stream.get_active_particles():
+            contacted_water_body_ids = set(
+                item.bodyUniqueIdB
+                for item in list(self.obj.states[ContactBodies].get_value())
+            )
+            for particle in water_source_obj.states[
+                WaterSource
+            ].water_stream.get_active_particles():
                 if particle.body_id in contacted_water_body_ids:
                     self.value = True
         self.update_texture()
@@ -41,6 +44,10 @@ class Soaked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
         return [WaterSource]
 
     @staticmethod
-    def create_transformed_texture(diffuse_tex_filename, diffuse_tex_filename_transformed):
+    def create_transformed_texture(
+        diffuse_tex_filename, diffuse_tex_filename_transformed
+    ):
         # 0.5 mixture with blue
-        transform_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200))
+        transform_texture(
+            diffuse_tex_filename, diffuse_tex_filename_transformed, 0.5, (0, 0, 200)
+        )

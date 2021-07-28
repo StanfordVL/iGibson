@@ -22,16 +22,19 @@ from distutils.core import setup, Extension
 # https://github.com/yijiangh/conrob_pybullet/tree/master/utils/ikfast
 # https://github.com/yijiangh/choreo/blob/bc777069b8eb7283c74af26e5461532aec3d9e8a/framefab_robot/abb/framefab_irb6600/framefab_irb6600_support/doc/ikfast_tutorial.rst
 
+
 def main(robot_name, remove_build=True):
     # lib name template: 'ikfast_<robot name>'
-    module_name = 'ikfast_{}'.format(robot_name)
-    cpp_filename = 'ikfast_{}.cpp'.format(robot_name)
+    module_name = "ikfast_{}".format(robot_name)
+    cpp_filename = "ikfast_{}.cpp".format(robot_name)
 
     ikfast_module = Extension(module_name, sources=[cpp_filename])
-    setup(name=module_name,
-          version='1.0',
-          description="ikfast module for {}.".format(robot_name),
-          ext_modules=[ikfast_module])
+    setup(
+        name=module_name,
+        version="1.0",
+        description="ikfast module for {}.".format(robot_name),
+        ext_modules=[ikfast_module],
+    )
 
     build_lib_path = None
     for root, dirnames, filenames in os.walk(os.getcwd()):
@@ -42,14 +45,15 @@ def main(robot_name, remove_build=True):
 
     copy_tree(build_lib_path, os.getcwd())
     if remove_build:
-        shutil.rmtree(os.path.join(os.getcwd(), 'build'))
+        shutil.rmtree(os.path.join(os.getcwd(), "build"))
 
     try:
         importlib.import_module(module_name)
-        print('\nikfast module {} imported successful'.format(module_name))
+        print("\nikfast module {} imported successful".format(module_name))
     except ImportError as e:
-        print('\nikfast module {} imported failed'.format(module_name))
+        print("\nikfast module {} imported failed".format(module_name))
         raise e
 
-if __name__ == '__main__':
-    main(robot_name='panda_arm')
+
+if __name__ == "__main__":
+    main(robot_name="panda_arm")

@@ -3,17 +3,15 @@ from heapq import heappush, heappop
 
 
 class Vertex(object):
-
     def __init__(self, value):
         self.value = value
         self.edges = []
 
     def __repr__(self):
-        return self.__class__.__name__ + '(' + str(self.value) + ')'
+        return self.__class__.__name__ + "(" + str(self.value) + ")"
 
 
 class Edge(object):
-
     def __init__(self, v1, v2, value, cost):
         self.v1, self.v2 = v1, v2
         self.v1.edges.append(self)
@@ -21,13 +19,20 @@ class Edge(object):
         self.cost = cost
 
     def __repr__(self):
-        return self.__class__.__name__ + '(' + str(self.v1.value) + ' -> ' + str(self.v2.value) + ')'
+        return (
+            self.__class__.__name__
+            + "("
+            + str(self.v1.value)
+            + " -> "
+            + str(self.v2.value)
+            + ")"
+        )
 
-SearchNode = namedtuple('SearchNode', ['cost', 'edge'])
+
+SearchNode = namedtuple("SearchNode", ["cost", "edge"])
 
 
 class Graph(Mapping, object):
-
     def __init__(self):
         self.vertices = {}
         self.edges = []

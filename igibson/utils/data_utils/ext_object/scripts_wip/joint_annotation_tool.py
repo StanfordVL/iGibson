@@ -29,12 +29,14 @@ OBJECT_TAXONOMY = ObjectTaxonomy()
 
 
 def get_categories():
-    dir = os.path.join(igibson.ig_dataset_path, 'objects')
-    return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
+    dir = os.path.join(igibson.ig_dataset_path, "objects")
+    return [
+        cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))
+    ]
 
 
 def get_category_directory(category):
-    return os.path.join(igibson.ig_dataset_path, 'objects', category)
+    return os.path.join(igibson.ig_dataset_path, "objects", category)
 
 
 def get_urdf(objdir):
@@ -53,16 +55,24 @@ def get_joint_selection(s, objdirfull, offline_joints):
     print("Starting %s" % objdirfull)
     obj = get_obj(objdirfull)
     s.import_object(obj)
-    obj_pos = np.array([0., 0., 1.])
+    obj_pos = np.array([0.0, 0.0, 1.0])
     obj.set_position(obj_pos)
 
     bid = obj.get_body_id()
     joints = utils.get_joints(bid)
     joint_infos = [utils.get_joint_info(bid, j) for j in joints]
-    relevant_joints = [ji for ji in joint_infos if ji.jointType in open_state._JOINT_THRESHOLD_BY_TYPE.keys()]
+    relevant_joints = [
+        ji
+        for ji in joint_infos
+        if ji.jointType in open_state._JOINT_THRESHOLD_BY_TYPE.keys()
+    ]
     relevant_joint_names = [ji.jointName for ji in relevant_joints]
-    assert set(offline_joints) == set(relevant_joint_names), "Offline IDs mismatched with Online IDs: %r vs %r" % (
-        offline_joints, relevant_joint_names)
+    assert set(offline_joints) == set(
+        relevant_joint_names
+    ), "Offline IDs mismatched with Online IDs: %r vs %r" % (
+        offline_joints,
+        relevant_joint_names,
+    )
 
     accepted_joint_infos = []
     for joint in relevant_joints:
@@ -78,12 +88,18 @@ def get_joint_selection(s, objdirfull, offline_joints):
                 toggle_time = time.time()
                 i += 1
                 percentage = percentages[i % len(percentages)]
-                pos = (1 - percentage) * joint.jointLowerLimit + percentage * joint.jointUpperLimit
+                pos = (
+                    1 - percentage
+                ) * joint.jointLowerLimit + percentage * joint.jointUpperLimit
                 p.resetJointState(bid, joint.jointIndex, pos)
 
             with keyboard.Events() as events:
                 event = events.get(0.5)
-                if event is None or not isinstance(event, keyboard.Events.Press) or not hasattr(event.key, "char"):
+                if (
+                    event is None
+                    or not isinstance(event, keyboard.Events.Press)
+                    or not hasattr(event.key, "char")
+                ):
                     continue
 
                 elif event.key.char == "y":
@@ -111,7 +127,10 @@ def main():
 
         categories.append(cat)
 
-    print("%d categories with ability %s: %s" % (len(categories), ABILITY_NAME, ", ".join(categories)))
+    print(
+        "%d categories with ability %s: %s"
+        % (len(categories), ABILITY_NAME, ", ".join(categories))
+    )
 
     # Now collect the actual objects.
     objects = []
@@ -139,8 +158,11 @@ def main():
         joint_types_by_name = {key: info[2] for key, info in joint_map.items()}
 
         # Filter out the joints that are not relevant to our use case.
-        joint_names = [name for name, joint_type in joint_types_by_name.items()
-                       if joint_type in ALLOWED_JOINT_TYPES]
+        joint_names = [
+            name
+            for name, joint_type in joint_types_by_name.items()
+            if joint_type in ALLOWED_JOINT_TYPES
+        ]
 
         objects_and_joints[objdirfull] = joint_names
 
@@ -153,8 +175,9 @@ def main():
     fully_jointed = []
     for cat in categories:
         num_objects = len(objects_by_category[cat])
-        num_jointless_objects = sum(1 for obj in objects_by_category[cat]
-                                    if len(objects_and_joints[obj]) == 0)
+        num_jointless_objects = sum(
+            1 for obj in objects_by_category[cat] if len(objects_and_joints[obj]) == 0
+        )
 
         if num_jointless_objects == 0:
             fully_jointed.append(cat)
@@ -164,28 +187,47 @@ def main():
             partially_jointless.append(cat)
 
     print("Category statistics:")
-    print("%d fully jointless categories: %s" % (len(fully_jointless), ", ".join(fully_jointless)))
-    print("%d partially jointless categories: %s" % (len(partially_jointless), ", ".join(partially_jointless)))
-    print("%d fully jointed categories: %s\n" % (len(fully_jointed), ", ".join(fully_jointed)))
+    print(
+        "%d fully jointless categories: %s"
+        % (len(fully_jointless), ", ".join(fully_jointless))
+    )
+    print(
+        "%d partially jointless categories: %s"
+        % (len(partially_jointless), ", ".join(partially_jointless))
+    )
+    print(
+        "%d fully jointed categories: %s\n"
+        % (len(fully_jointed), ", ".join(fully_jointed))
+    )
 
     print("Object statistics:")
-    print("%d objects have unusable joints: %s" % (
-        len(objects_with_unusable_joints), ", ".join(objects_with_unusable_joints)))
-    print("%d objects have 0 relevant joints. Consider disabling ability." %
-          sum(1 for obj, joints in objects_and_joints.items() if len(joints) == 0))
-    print("%d objects have 1 relevant joint. Presuming these are correct." %
-          sum(1 for obj, joints in objects_and_joints.items() if len(joints) == 1))
-    print("%d objects have multiple relevant joints. Will annotate.\n" %
-          sum(1 for obj, joints in objects_and_joints.items() if len(joints) > 1))
+    print(
+        "%d objects have unusable joints: %s"
+        % (len(objects_with_unusable_joints), ", ".join(objects_with_unusable_joints))
+    )
+    print(
+        "%d objects have 0 relevant joints. Consider disabling ability."
+        % sum(1 for obj, joints in objects_and_joints.items() if len(joints) == 0)
+    )
+    print(
+        "%d objects have 1 relevant joint. Presuming these are correct."
+        % sum(1 for obj, joints in objects_and_joints.items() if len(joints) == 1)
+    )
+    print(
+        "%d objects have multiple relevant joints. Will annotate.\n"
+        % sum(1 for obj, joints in objects_and_joints.items() if len(joints) > 1)
+    )
 
     relevant_joint_counts = Counter()
     for obj, joints in objects_and_joints.items():
         relevant_joint_counts[len(joints)] += 1
     sorted_joint_counts = sorted(relevant_joint_counts.items(), key=lambda x: x[0])
-    print("Objects per joint count:\n%s" % "\n".join(
-        ["%d joints: %d" % pair for pair in sorted_joint_counts]))
+    print(
+        "Objects per joint count:\n%s"
+        % "\n".join(["%d joints: %d" % pair for pair in sorted_joint_counts])
+    )
 
-    s = Simulator(mode='gui')
+    s = Simulator(mode="gui")
     scene = EmptyScene()
     s.import_scene(scene)
     i = 0
@@ -206,11 +248,16 @@ def main():
         if not existing or not SKIP_EXISTING:
             joint_names_matching = [bytes("obj_" + j, encoding="utf-8") for j in joints]
             allowed_joints = get_joint_selection(s, objdirfull, joint_names_matching)
-            processed_allowed_joints = [(ji.jointIndex, str(ji.jointName[4:], encoding="utf-8")) for ji in allowed_joints]
+            processed_allowed_joints = [
+                (ji.jointIndex, str(ji.jointName[4:], encoding="utf-8"))
+                for ji in allowed_joints
+            ]
 
         # Do some final validation
         if len(processed_allowed_joints) == 0:
-            print("Object %s has joints but none were useful for openable." % objdirfull)
+            print(
+                "Object %s has joints but none were useful for openable." % objdirfull
+            )
 
         meta[META_FIELD] = processed_allowed_joints
 
@@ -219,8 +266,10 @@ def main():
             i += 1
             print("%s saved." % mfn)
 
-    print("%d out of %d non-jointless objects now have annotations." % (
-        i, sum(1 for obj, joints in objects_and_joints.items() if len(joints) >= 1)))
+    print(
+        "%d out of %d non-jointless objects now have annotations."
+        % (i, sum(1 for obj, joints in objects_and_joints.items() if len(joints) >= 1))
+    )
 
 
 if __name__ == "__main__":
