@@ -1828,7 +1828,6 @@ class MeshRenderer(object):
 
         def render_cube():
             frames = []
-            view_direction = np.array(self.target) - np.array(self.camera)
             r = np.array(
                 [
                     [
@@ -1844,16 +1843,16 @@ class MeshRenderer(object):
             )
 
             for i in range(4):
-                self.V = r.dot(self.V)
                 frames.append(self.render(modes=("rgb"))[0])
+                self.V = r.dot(self.V)
 
             # Up
-            r_up = np.array([[0, 0, 1, 0], [-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
+            r_up = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
 
             self.V = r_up.dot(org_V)
             frames.append(self.render(modes=("rgb"))[0])
 
-            r_down = np.array([[0, 0, 1, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+            r_down = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
             # Down
             self.V = r_down.dot(org_V)
@@ -1874,7 +1873,7 @@ class MeshRenderer(object):
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
         frames = self.get_cube()
-        frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4][::-1], frames[5]]
+        frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4], frames[5]]
         equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
 
         return equi
