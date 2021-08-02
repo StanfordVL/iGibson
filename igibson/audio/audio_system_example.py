@@ -9,6 +9,8 @@ from igibson.simulator import Simulator
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.objects import cube
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.utils.assets_utils import get_ig_model_path
 import pyaudio
 import audio
 import wave
@@ -20,14 +22,19 @@ import pyaudio
 
 
 def main():
-    s = Simulator(mode='gui', image_width=512, image_height=512, device_idx=0)
+    s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
     scene = InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)
     s.import_ig_scene(scene)
 
-    _,source_location = scene.get_random_point_by_room_type("living_room")
-    source_location[2] = 1.7
-    obj = cube.Cube(pos=source_location, dim=[0.2, 0.2, 0.2], visual_only=False, mass=0.5, color=[255, 0, 0, 1])
-    obj_id = s.import_object(obj)
+    obj_id = (scene.objects_by_category["loudspeaker"][0]).body_ids[0]
+    #_,source_location = scene.get_random_point_by_room_type("living_room")
+    #source_location[2] = 1.7
+    #model = "fe613d2a63582e126e5a8ef1ff6470a3"
+    #model_path = get_ig_model_path("loudspeaker","fe613d2a63582e126e5a8ef1ff6470a3")
+    #filename = os.path.join(model_path, model + ".urdf")
+    #obj = ArticulatedObject(filename)
+    #obj = cube.Cube(pos=source_location, dim=[0.2, 0.2, 0.2], visual_only=False, mass=0.5, color=[255, 0, 0, 1])
+    #obj_id = s.import_object(obj)
 
     # Audio System Initialization!
     audioSystem = AudioSystem(s, s.viewer, is_Viewer=True, writeToFile=True, SR = 44100)
@@ -45,9 +52,8 @@ def main():
     stream = pyaud.open(rate=audioSystem.SR, frames_per_buffer=audioSystem.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudCallback)
 
     # Runs for 30 seconds, then saves output audio to file. 
-    for i in range(1000):
+    for i in range(4000):
         s.step()
-        audioSystem.step()
     audioSystem.disconnect()
     s.disconnect()
     
