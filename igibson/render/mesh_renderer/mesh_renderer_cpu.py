@@ -1824,14 +1824,26 @@ class MeshRenderer(object):
         self.set_fov(original_fov)
         return lidar_readings
 
-    def get_cube(self, mode="rgb"):
+    def get_cube(self, mode="rgb", use_robot_camera=False):
         """
         :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param use_robot_camera: use the camera pose from robot
+
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
+
         orig_fov = self.vertical_fov
         self.set_fov(90)
         org_V = np.copy(self.V)
+
+        if use_robot_camera:
+            for instance in self.instances:
+                if isinstance(instance, Robot):
+                    camera_pos = instance.robot.eyes.get_position()
+                    orn = instance.robot.eyes.get_orientation()
+                    mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                    view_direction = mat.dot(np.array([1, 0, 0]))
+                    self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
 
         def render_cube():
             frames = []
@@ -1872,12 +1884,13 @@ class MeshRenderer(object):
         self.set_fov(orig_fov)
         return frames
 
-    def get_equi(self, mode="rgb"):
+    def get_equi(self, mode="rgb", use_robot_camera=False):
         """
         :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param use_robot_camera: use the camera pose from robot
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D]
         """
-        frames = self.get_cube(mode=mode)
+        frames = self.get_cube(mode=mode, use_robot_camera=use_robot_camera)
         frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4], frames[5]]
         equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
 
