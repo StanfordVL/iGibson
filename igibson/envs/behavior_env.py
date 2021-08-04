@@ -26,7 +26,7 @@ class BehaviorEnv(iGibsonEnv):
         scene_id=None,
         mode="headless",
         action_timestep=1 / 30.0,
-        physics_timestep=1 / 120.0,
+        physics_timestep=1 / 300.0,
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
@@ -350,7 +350,7 @@ if __name__ == "__main__":
         config_file=args.config,
         mode=args.mode,
         action_timestep=1.0 / 30.0,
-        physics_timestep=1.0 / 120.0,
+        physics_timestep=1.0 / 300.0,
         action_filter=args.action_filter,
         episode_save_dir=None,
     )
