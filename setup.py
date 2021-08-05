@@ -159,6 +159,7 @@ setup(
         "sphinx_rtd_theme",
         "h5py",
         "gitpython",
+        "py360convert",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),

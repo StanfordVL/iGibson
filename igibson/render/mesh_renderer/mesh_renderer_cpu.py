@@ -5,6 +5,7 @@ import shutil
 import sys
 
 import numpy as np
+import py360convert
 from PIL import Image
 
 import igibson
@@ -1773,17 +1774,19 @@ class MeshRenderer(object):
         lidar_readings = lidar_readings[self.x_samples, self.y_samples, :3]
         dist = np.linalg.norm(lidar_readings, axis=1)
         lidar_readings = lidar_readings[dist > 0]
+        lidar_readings[:, 2] = -lidar_readings[:, 2]  # make z pointing out
         return lidar_readings
 
     def get_lidar_all(self, offset_with_camera=np.array([0, 0, 0])):
         """
         Get complete LiDAR readings by patching together partial ones
-
+        :param offset_with_camera: optionally place the lidar scanner
+        with an offset to the camera
         :return: complete 360 degree LiDAR readings
         """
         for instance in self.instances:
             if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
+                camera_pos = instance.robot.eyes.get_position() + offset_with_camera
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
@@ -1792,27 +1795,103 @@ class MeshRenderer(object):
         original_fov = self.vertical_fov
         self.set_fov(90)
         lidar_readings = []
-        view_direction = np.array([1, 0, 0])
-        r2 = np.array(
-            [[np.cos(-np.pi / 2), -np.sin(-np.pi / 2), 0], [np.sin(-np.pi / 2), np.cos(-np.pi / 2), 0], [0, 0, 1]]
+        r = np.array(
+            [
+                [
+                    np.cos(-np.pi / 2),
+                    0,
+                    -np.sin(-np.pi / 2),
+                    0,
+                ],
+                [0, 1, 0, 0],
+                [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2), 0],
+                [0, 0, 0, 1],
+            ]
         )
-        r3 = np.array(
-            [[np.cos(-np.pi / 2), 0, -np.sin(-np.pi / 2)], [0, 1, 0], [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2)]]
-        )
-        transformatiom_matrix = np.eye(3)
 
+        transformation_matrix = np.eye(4)
         for i in range(4):
-            self.set_camera(
-                np.array(self.camera) + offset_with_camera,
-                np.array(self.camera) + offset_with_camera + view_direction,
-                [0, 0, 1],
-            )
             lidar_one_view = self.get_lidar_from_depth()
-            lidar_readings.append(lidar_one_view.dot(transformatiom_matrix))
-            view_direction = r2.dot(view_direction)
-            transformatiom_matrix = r3.dot(transformatiom_matrix)
+            lidar_readings.append(lidar_one_view.dot(transformation_matrix[:3, :3]))
+            self.V = r.dot(self.V)
+            transformation_matrix = np.linalg.inv(r).dot(transformation_matrix)
 
         lidar_readings = np.concatenate(lidar_readings, axis=0)
+        # currently, the lidar scan is in camera frame (z forward, x right, y up)
+        # it seems more intuitive to change it to (z up, x right, y forward)
+        lidar_readings = lidar_readings.dot(np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]))
 
         self.set_fov(original_fov)
         return lidar_readings
+
+    def get_cube(self, mode="rgb", use_robot_camera=False):
+        """
+        :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param use_robot_camera: use the camera pose from robot
+
+        :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
+        """
+
+        orig_fov = self.vertical_fov
+        self.set_fov(90)
+        org_V = np.copy(self.V)
+
+        if use_robot_camera:
+            for instance in self.instances:
+                if isinstance(instance, Robot):
+                    camera_pos = instance.robot.eyes.get_position()
+                    orn = instance.robot.eyes.get_orientation()
+                    mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+                    view_direction = mat.dot(np.array([1, 0, 0]))
+                    self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+
+        def render_cube():
+            frames = []
+            r = np.array(
+                [
+                    [
+                        np.cos(-np.pi / 2),
+                        0,
+                        -np.sin(-np.pi / 2),
+                        0,
+                    ],
+                    [0, 1, 0, 0],
+                    [np.sin(-np.pi / 2), 0, np.cos(-np.pi / 2), 0],
+                    [0, 0, 0, 1],
+                ]
+            )
+
+            for i in range(4):
+                frames.append(self.render(modes=(mode))[0])
+                self.V = r.dot(self.V)
+
+            # Up
+            r_up = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
+
+            self.V = r_up.dot(org_V)
+            frames.append(self.render(modes=(mode))[0])
+
+            r_down = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+
+            # Down
+            self.V = r_down.dot(org_V)
+            frames.append(self.render(modes=(mode))[0])
+
+            return frames
+
+        frames = render_cube()
+        self.V = org_V
+        self.set_fov(orig_fov)
+        return frames
+
+    def get_equi(self, mode="rgb", use_robot_camera=False):
+        """
+        :param mode: simulator rendering mode, 'rgb' or '3d'
+        :param use_robot_camera: use the camera pose from robot
+        :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D]
+        """
+        frames = self.get_cube(mode=mode, use_robot_camera=use_robot_camera)
+        frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4], frames[5]]
+        equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+
+        return equi
