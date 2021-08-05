@@ -144,7 +144,8 @@ setup(
             'sphinx_markdown_tables',
             'sphinx>=1.8.0',
             'recommonmark',
-            'sphinx_rtd_theme'
+            'sphinx_rtd_theme',
+            'py360convert'
     ],
     ext_modules=[CMakeExtension('MeshRendererContext', sourcedir='igibson/render')],
     cmdclass=dict(build_ext=CMakeBuild),
