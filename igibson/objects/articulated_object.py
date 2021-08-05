@@ -648,14 +648,17 @@ class URDFObject(StatefulObject):
                             link_trimesh.density *= 10.0
 
                     if link_trimesh.is_watertight:
-                        center = link_trimesh.center_mass
+                        center = np.copy(link_trimesh.center_mass)
                     else:
-                        center = link_trimesh.centroid
+                        center = np.copy(link_trimesh.centroid)
+
+                    collision_mesh_origin = link.find("collision/origin")
+                    if collision_mesh_origin is not None:
+                        offset = np.array([float(val) for val in collision_mesh_origin.attrib["xyz"].split(" ")])
+                        center += offset
 
                     # The inertial frame origin will be scaled down below.
                     # Here, it has the value BEFORE scaling
-                    # TODO: this is not 100% correct. This assumes collision
-                    # mesh has zero origin, which is not always true.
                     origin.attrib["xyz"] = " ".join(map(str, center))
                     origin.attrib["rpy"] = " ".join(map(str, [0.0, 0.0, 0.0]))
 
