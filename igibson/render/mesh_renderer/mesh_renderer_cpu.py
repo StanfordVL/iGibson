@@ -1892,6 +1892,9 @@ class MeshRenderer(object):
         """
         frames = self.get_cube(mode=mode, use_robot_camera=use_robot_camera)
         frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4], frames[5]]
-        equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+        try:
+            equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+        except AssertionError:
+            raise ValueError("Something went wrong during getting cubemap. Is the image size not a square?")
 
         return equi

@@ -14,7 +14,13 @@ from igibson.examples.behavior.behavior_demo_replay import replay_demo
 
 
 def behavior_demo_batch(
-    demo_root, log_manifest, out_dir, get_callbacks_callback, skip_existing=True, save_frames=False
+    demo_root,
+    log_manifest,
+    out_dir,
+    get_callbacks_callback,
+    skip_existing=True,
+    save_frames=False,
+    image_size=(1280, 720),
 ):
     """
     Execute replay analysis functions (provided through callbacks) on a batch of BEHAVIOR demos.
@@ -30,6 +36,7 @@ def behavior_demo_batch(
         be saved in the end.
     @param skip_existing: Whether demos with existing output logs should be skipped.
     @param save_frames: Whether the demo's frames should be saved alongside statistics.
+    @param image_size: The image size that should be used by the renderer.
     """
     logger = logging.getLogger()
     logger.disabled = True
@@ -68,6 +75,7 @@ def behavior_demo_batch(
                 end_callbacks=end_callbacks,
                 mode="headless",
                 verbose=False,
+                image_size=image_size,
             )
             demo_information["failed"] = False
             demo_information["filename"] = Path(demo).name

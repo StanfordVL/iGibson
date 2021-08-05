@@ -126,13 +126,13 @@ class BBox3DExtractor(MetricBase):
                 continue
 
             # Get the center and extent
-            center, extent = get_center_extent(obj.states[object_states.AABB].get_value())
+            center, extent = get_center_extent(obj.states)
 
             # Assume that the extent is when the object is axis-aligned.
             # Convert that pose to the camera frame too.
             # TODO: This is in camera frame, not upright camera frame. Easy fix - but should we do it here?
             pose = np.concatenate([center, np.array([0, 0, 0, 1])])
-            transformed_pose = renderer.transform_point(pose)
+            transformed_pose = renderer.transform_pose(pose)
             center_cam = transformed_pose[:3]
             orientation_cam = transformed_pose[3:]
 
@@ -160,7 +160,7 @@ def main():
         )
 
     # TODO: Set resolution to match model.
-    behavior_demo_batch(args.demo_root, args.log_manifest, args.out_dir, get_imvotenet_callbacks)
+    behavior_demo_batch(args.demo_root, args.log_manifest, args.out_dir, get_imvotenet_callbacks, image_size=(720, 720))
 
 
 if __name__ == "__main__":
