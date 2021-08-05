@@ -1,17 +1,11 @@
-import argparse
-import sys
-from multiprocessing import Pool
+import os
 
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from tqdm import tqdm
 
+import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.objects.ycb_object import YCBObject
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
 
 
 def get_lidar_sampling_pattern():
@@ -104,7 +98,7 @@ def generate_data_lidar(nav_env, num_samples=3):
 def generate_data_from_scene(scene_id):
 
     mode = "headless"
-    config = "/home/fei/Development/gibsonv2/igibson/examples/configs/fetch_room_rearrangement.yaml"
+    config = os.path.join(igibson.example_path, "configs/fetch_room_rearrangement.yaml")
     nav_env = iGibsonEnv(
         config_file=config, mode=mode, scene_id=scene_id, action_timestep=1.0 / 120.0, physics_timestep=1.0 / 120.0
     )
@@ -126,7 +120,8 @@ def generate_data_from_scene(scene_id):
     # np.savez('/data2/point_cloud/data10_v2_{}.npz'.format(scene_id), lidar=lidar_all, direction=direction, rgb=rgb_all, label=label_all)
 
 
-generate_data_from_scene("Rs_int")
+if __name__ == "__main__":
+    generate_data_from_scene("Rs_int")
 
 # scenes = []
 # with open('scene_list', 'r') as f:

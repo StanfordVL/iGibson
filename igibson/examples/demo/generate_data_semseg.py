@@ -1,19 +1,15 @@
-import argparse
-import sys
+import os
 
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d import Axes3D
-from tqdm import tqdm
 
+import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.objects.ycb_object import YCBObject
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 
 mode = "headless"
-config = "/home/fei/Development/gibsonv2/igibson/examples/configs/fetch_room_rearrangement.yaml"
-scene_id = sys.argv[1]
+config = os.path.join(igibson.example_path, "configs/fetch_room_rearrangement.yaml")
+scene_id = "Rs_int"
 nav_env = iGibsonEnv(
     config_file=config, mode=mode, scene_id=scene_id, action_timestep=1.0 / 120.0, physics_timestep=1.0 / 120.0
 )
@@ -44,8 +40,9 @@ def generate_data(nav_env):
     return pts, color, label
 
 
-pts, color, label = generate_data(nav_env)
-fig = plt.figure()
-ax = Axes3D(fig)
-ax.scatter(pts[:, 0], pts[:, 2], pts[:, 1], s=3, c=color[:, :3])
-plt.show()
+if __name__ == "__main__":
+    pts, color, label = generate_data(nav_env)
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    ax.scatter(pts[:, 0], pts[:, 2], pts[:, 1], s=3, c=color[:, :3])
+    plt.show()
