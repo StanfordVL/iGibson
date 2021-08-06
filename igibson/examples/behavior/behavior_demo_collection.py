@@ -11,10 +11,10 @@ import bddl
 import numpy as np
 
 import igibson
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.utils.ig_logging import IGLogWriter
 
 POST_TASK_STEPS = 200
