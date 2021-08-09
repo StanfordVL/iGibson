@@ -5,10 +5,11 @@ import h5py
 import numpy as np
 
 import igibson
-from igibson import object_states
 from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
 from igibson.object_states.utils import get_center_extent
 from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
+
+FRAME_BATCH_SIZE = 200
 
 
 def parse_args():
@@ -52,6 +53,31 @@ class PointCloudExtractor(object):
             "/pointcloud/instances", (n_frames, h, w), dtype=np.int32, compression="gzip", compression_opts=9
         )
 
+        self.create_caches(renderer)
+
+    def create_caches(self, renderer):
+        w = renderer.width
+        h = renderer.height
+
+        self.points_cache = np.zeros((FRAME_BATCH_SIZE, h, w, 4), dtype=np.float32)
+        self.colors_cache = np.zeros((FRAME_BATCH_SIZE, h, w, 3), dtype=np.float32)
+        self.categories_cache = np.zeros((FRAME_BATCH_SIZE, h, w), dtype=np.int32)
+        self.instances_cache = np.zeros((FRAME_BATCH_SIZE, h, w), dtype=np.int32)
+
+    def write_to_file(self, igbhvr_act_inst):
+        frame_count = igbhvr_act_inst.simulator.frame_count
+        new_lines = frame_count % FRAME_BATCH_SIZE
+        if new_lines == 0:
+            return
+
+        start_pos = frame_count - new_lines
+        self.points[start_pos:frame_count] = self.points_cache[:new_lines]
+        self.colors[start_pos:frame_count] = self.colors_cache[:new_lines]
+        self.categories[start_pos:frame_count] = self.categories_cache[:new_lines]
+        self.instances[start_pos:frame_count] = self.instances_cache[:new_lines]
+
+        self.create_caches(igbhvr_act_inst.simulator.renderer)
+
     def step_callback(self, igbhvr_act_inst, _):
         # TODO: Check how this compares to the outputs of SUNRGBD. Currently we're just taking the robot FOV.
         renderer = igbhvr_act_inst.simulator.renderer
@@ -62,13 +88,20 @@ class PointCloudExtractor(object):
         ins_seg = np.round(ins_seg[:, :, 0] * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
-        self.points[igbhvr_act_inst.simulator.frame_count] = threed.astype(np.float32)
-        self.colors[igbhvr_act_inst.simulator.frame_count] = rgb[:, :, :3].astype(np.float32)
-        self.categories[igbhvr_act_inst.simulator.frame_count] = seg.astype(np.int32)
-        self.instances[igbhvr_act_inst.simulator.frame_count] = id_seg.astype(np.int32)
+        frame_idx = igbhvr_act_inst.simulator.frame_count % FRAME_BATCH_SIZE
+        self.points_cache[frame_idx] = threed.astype(np.float32)
+        self.colors_cache[frame_idx] = rgb[:, :, :3].astype(np.float32)
+        self.categories_cache[frame_idx] = seg.astype(np.int32)
+        self.instances_cache[frame_idx] = id_seg.astype(np.int32)
+
+        if frame_idx == FRAME_BATCH_SIZE - 1:
+            self.write_to_file(igbhvr_act_inst)
+
+    def end_callback(self, igbhvr_act_inst, _):
+        self.write_to_file(igbhvr_act_inst)
 
 
-class BBox2DExtractor(object):
+class BBoxExtractor(object):
     def __init__(self, h5py_file):
         self.h5py_file = h5py_file
         self.bboxes = None
@@ -78,10 +111,30 @@ class BBox2DExtractor(object):
     def start_callback(self, _, log_reader):
         # Create the dataset
         n_frames = log_reader.total_frame_num
-        # body id, category id, 2d top left, 2d extent
-        self.bboxes = self.h5py_file.create_dataset("/bbox2d", (n_frames, MAX_INSTANCE_COUNT, 6), dtype=np.float32)
+        # body id, category id, 2d top left, 2d extent, 3d center, 4d orientation quat, 3d extent
+        self.bboxes = self.h5py_file.create_dataset("/bbox2d", (n_frames, MAX_INSTANCE_COUNT, 16), dtype=np.float32)
         self.cameraV = self.h5py_file.create_dataset("/cameraV", (n_frames, 4, 4), dtype=np.float32)
         self.cameraP = self.h5py_file.create_dataset("/cameraP", (n_frames, 4, 4), dtype=np.float32)
+
+        self.create_caches()
+
+    def create_caches(self):
+        self.bboxes_cache = np.full((FRAME_BATCH_SIZE, MAX_INSTANCE_COUNT, 16), -1, dtype=np.float32)
+        self.cameraV_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
+        self.cameraP_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.int32)
+
+    def write_to_file(self, igbhvr_act_inst):
+        frame_count = igbhvr_act_inst.simulator.frame_count
+        new_lines = frame_count % FRAME_BATCH_SIZE
+        if new_lines == 0:
+            return
+
+        start_pos = frame_count - new_lines
+        self.bboxes[start_pos:frame_count] = self.bboxes_cache[:new_lines]
+        self.cameraV[start_pos:frame_count] = self.cameraV_cache[:new_lines]
+        self.cameraP[start_pos:frame_count] = self.cameraP_cache[:new_lines]
+
+        self.create_caches()
 
     def step_callback(self, igbhvr_act_inst, _):
         renderer = igbhvr_act_inst.simulator.renderer
@@ -89,33 +142,46 @@ class BBox2DExtractor(object):
         ins_seg = np.round(ins_seg * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
-        out = np.full((MAX_INSTANCE_COUNT, 6), -1, dtype=np.float32)
+        frame_idx = igbhvr_act_inst.simulator.frame_count % FRAME_BATCH_SIZE
         filled_obj_idx = 0
 
         for body_id in np.unique(id_seg):
             if body_id == -1 or body_id not in igbhvr_act_inst.simulator.scene.objects_by_id:
                 continue
 
-            this_object_pixels_positions = np.argwhere(id_seg == body_id)
-
-            bb_top_left = np.min(this_object_pixels_positions, axis=0)
-            bb_bottom_right = np.max(this_object_pixels_positions, axis=0)
-
             # Get the object semantic class ID
             obj = igbhvr_act_inst.simulator.scene.objects_by_id[body_id]
             class_id = igbhvr_act_inst.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
 
+            # 2D bounding box
+            this_object_pixels_positions = np.argwhere(id_seg == body_id)
+            bb_top_left = np.min(this_object_pixels_positions, axis=0)
+            bb_bottom_right = np.max(this_object_pixels_positions, axis=0)
+
+            # 3D bounding box
+            # TODO: This is in camera frame, not upright camera frame. Easy fix - but should we do it here?
+            center, extent = get_center_extent(obj.states)
+            # Assume that the extent is when the object is in the trivial axis-aligned orientation.
+            pose = np.concatenate([center, np.array([0, 0, 0, 1])])
+            transformed_pose = igbhvr_act_inst.simulator.renderer.transform_pose(pose)
+            center_cam = transformed_pose[:3]
+            orientation_cam = transformed_pose[3:]
+
             # Record the results.
-            out[filled_obj_idx, 0] = body_id
-            out[filled_obj_idx, 1] = class_id
-            out[filled_obj_idx, 2:4] = bb_top_left
-            out[filled_obj_idx, 4:6] = bb_bottom_right - bb_top_left
+            self.bboxes_cache[frame_idx, filled_obj_idx, 0] = body_id
+            self.bboxes_cache[frame_idx, filled_obj_idx, 1] = class_id
+            self.bboxes_cache[frame_idx, filled_obj_idx, 2:4] = bb_top_left
+            self.bboxes_cache[frame_idx, filled_obj_idx, 4:6] = bb_bottom_right - bb_top_left
+            self.bboxes_cache[frame_idx, filled_obj_idx, 6:9] = center_cam
+            self.bboxes_cache[frame_idx, filled_obj_idx, 9:13] = orientation_cam
+            self.bboxes_cache[frame_idx, filled_obj_idx, 13:16] = extent
             filled_obj_idx += 1
 
-        # Add this frame's results to the overall results.
-        self.bboxes[igbhvr_act_inst.simulator.frame_count] = out
-        self.cameraV[igbhvr_act_inst.simulator.frame_count] = renderer.V
-        self.cameraP[igbhvr_act_inst.simulator.frame_count] = renderer.P
+        self.cameraV_cache[frame_idx] = renderer.V
+        self.cameraP_cache[frame_idx] = renderer.P
+
+        if frame_idx == FRAME_BATCH_SIZE - 1:
+            self.write_to_file(igbhvr_act_inst)
 
         # Uncomment this to debug the 2d bounding box setup (set a breakpoint on plt.show())
         # img = igbhvr_act_inst.simulator.renderer.render_robot_cameras(modes=("rgb"))[0]
@@ -128,51 +194,8 @@ class BBox2DExtractor(object):
         #                                   lw=4))
         # plt.show()
 
-
-class BBox3DExtractor(object):
-    def __init__(self, h5py_file):
-        self.h5py_file = h5py_file
-        self.bboxes = None
-
-    def start_callback(self, _, log_reader):
-        # Create the dataset
-        n_frames = log_reader.total_frame_num
-        # body id, category id, 3d center, quat(4) orientation, 3d extent
-        self.bboxes = self.h5py_file.create_dataset("/bbox3d", (n_frames, MAX_INSTANCE_COUNT, 12), dtype=np.float32)
-
-    def step_callback(self, igbhvr_act_inst, _):
-        out = np.full((MAX_INSTANCE_COUNT, 12), -1, dtype=np.float32)
-        filled_obj_idx = 0
-
-        for obj in igbhvr_act_inst.simulator.scene.get_objects():
-            # Check if the object is in sight.
-            # TODO: What do we need to do if the bbox is partially in the robot FOV? truncate?
-            if not obj.states[object_states.InFOVOfRobot].get_value():
-                continue
-
-            # Get the center and extent
-            center, extent = get_center_extent(obj.states)
-
-            # Assume that the extent is when the object is axis-aligned.
-            # Convert that pose to the camera frame too.
-            # TODO: This is in camera frame, not upright camera frame. Easy fix - but should we do it here?
-            pose = np.concatenate([center, np.array([0, 0, 0, 1])])
-            transformed_pose = igbhvr_act_inst.simulator.renderer.transform_pose(pose)
-            center_cam = transformed_pose[:3]
-            orientation_cam = transformed_pose[3:]
-
-            # Get the object semantic class ID
-            class_id = igbhvr_act_inst.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
-
-            # Record the results.
-            out[filled_obj_idx, 0] = obj.get_body_id()
-            out[filled_obj_idx, 1] = class_id
-            out[filled_obj_idx, 2:5] = center_cam
-            out[filled_obj_idx, 5:9] = orientation_cam
-            out[filled_obj_idx, 9:12] = extent
-            filled_obj_idx += 1
-
-        self.bboxes[igbhvr_act_inst.simulator.frame_count] = out
+    def end_callback(self, igbhvr_act_inst, _):
+        self.write_to_file(igbhvr_act_inst)
 
 
 def main():
@@ -181,12 +204,12 @@ def main():
     def get_imvotenet_callbacks(demo_name, out_dir):
         path = os.path.join(out_dir, demo_name + "_data.h5py")
         h5py_file = h5py.File(path, "w")
-        extractors = [PointCloudExtractor(h5py_file), BBox3DExtractor(h5py_file), BBox2DExtractor(h5py_file)]
+        extractors = [PointCloudExtractor(h5py_file), BBoxExtractor(h5py_file)]
 
         return (
             [extractor.start_callback for extractor in extractors],
             [extractor.step_callback for extractor in extractors],
-            [lambda a, b: h5py_file.close()],  # Close the file once we're done.
+            [extractor.end_callback for extractor in extractors] + [lambda a, b: h5py_file.close()],
             [],
         )
 
