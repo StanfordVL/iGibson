@@ -19,6 +19,7 @@ def behavior_demo_batch(
     out_dir,
     get_callbacks_callback,
     skip_existing=True,
+    ignore_errors=True,
     save_frames=False,
     image_size=(1280, 720),
 ):
@@ -34,6 +35,8 @@ def behavior_demo_batch(
         API and will be used for this purpose for that particular demo. The data callbacks should
         take no arguments and return a dictionary to be included in the demo's replay data that will
         be saved in the end.
+    @param ignore_errors: If an Error is raised, the batch will continue if this is True (with the error saved to the
+        log file). If False, the error will be propagated.
     @param skip_existing: Whether demos with existing output logs should be skipped.
     @param save_frames: Whether the demo's frames should be saved alongside statistics.
     @param image_size: The image size that should be used by the renderer.
@@ -65,7 +68,9 @@ def behavior_demo_batch(
             curr_frame_save_path = os.path.join(out_dir, demo_name + ".mp4")
 
         try:
-            start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_callbacks_callback()
+            start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_callbacks_callback(
+                demo_name=demo_name, out_dir=out_dir
+            )
             demo_information = replay_demo(
                 in_log_path=demo_path,
                 out_log_path=replay_path,
@@ -84,8 +89,11 @@ def behavior_demo_batch(
                 demo_information.update(callback())
 
         except Exception as e:
-            print("Demo failed withe error: ", e)
-            demo_information = {"demo_id": Path(demo).name, "failed": True, "failure_reason": str(e)}
+            if ignore_errors:
+                print("Demo failed with the error: ", e)
+                demo_information = {"demo_id": Path(demo).name, "failed": True, "failure_reason": str(e)}
+            else:
+                raise
 
         with open(log_path, "w") as file:
             json.dump(demo_information, file)
