@@ -28,7 +28,7 @@ If you use iGibson or its assets and models, consider citing the following publi
 
 ```
 @misc{shen2021igibson,
-      title={IGibson 1.0: a Simulation Environment for Interactive Tasks in Large Realistic Scenes}, 
+      title={iGibson 1.0: a Simulation Environment for Interactive Tasks in Large Realistic Scenes}, 
       author={Bokui Shen and Fei Xia and Chengshu Li and Roberto Martín-Martín and Linxi Fan and Guanzhi Wang and Claudia Pérez-D'Arpino and Shyamal Buch and Sanjana Srivastava and Lyne P. Tchapmi and Micael E. Tchapmi and Kent Vainio and Josiah Wong and Li Fei-Fei and Silvio Savarese},
       year={2021},
       eprint={2012.02924},
@@ -39,7 +39,7 @@ If you use iGibson or its assets and models, consider citing the following publi
 
 ```
 @misc{li2021igibson,
-      title={IGibson 2.0: Object-Centric Simulation for Robot Learning of Everyday Household Tasks}, 
+      title={iGibson 2.0: Object-Centric Simulation for Robot Learning of Everyday Household Tasks}, 
       author={Chengshu Li and Fei Xia and Roberto Martín-Martín and Michael Lingelbach and Sanjana Srivastava and Bokui Shen and Kent Vainio and Cem Gokmen and Gokul Dharan and Tanish Jain and Andrey Kurenkov and Karen Liu and Hyowon Gweon and Jiajun Wu and Li Fei-Fei and Silvio Savarese},
       year={2021},
       eprint={2108.03272},
