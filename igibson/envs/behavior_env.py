@@ -9,8 +9,8 @@ import gym.spaces
 import numpy as np
 from bddl.condition_evaluation import evaluate_state
 
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
 

@@ -10,12 +10,12 @@ import pyinstrument
 
 import igibson
 from igibson import object_states
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
+from igibson.activity.bddl_backend import ObjectStateBinaryPredicate, ObjectStateUnaryPredicate
 from igibson.examples.behavior import behavior_demo_replay
 from igibson.object_states import ROOM_STATES, factory
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState, RelativeObjectState
 from igibson.robots.behavior_robot import BRBody
-from igibson.task.bddl_backend import ObjectStateBinaryPredicate, ObjectStateUnaryPredicate
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 StateRecord = namedtuple("StateRecord", ["state_type", "objects", "value"])
 StateEntry = namedtuple("StateEntry", ["frame_count", "state_records"])
