@@ -3,7 +3,7 @@ import os
 
 import yaml
 
-__version__ = "2.0.0rc2"
+__version__ = "2.0.0"
 
 logging.getLogger().setLevel(logging.INFO)
 
