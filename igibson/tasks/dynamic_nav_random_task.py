@@ -1,7 +1,8 @@
-from igibson.tasks.point_nav_random_task import PointNavRandomTask
-import pybullet as p
-from igibson.robots.turtlebot_robot import Turtlebot
 import numpy as np
+import pybullet as p
+
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
 
 
 class DynamicNavRandomTask(PointNavRandomTask):
@@ -12,14 +13,12 @@ class DynamicNavRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         super(DynamicNavRandomTask, self).__init__(env)
-        self.num_dynamic_objects = self.config.get('num_dynamic_objects', 1)
+        self.num_dynamic_objects = self.config.get("num_dynamic_objects", 1)
         # dynamic objects will repeat their actions for 10 action timesteps
-        self.dynamic_objects_action_repeat = self.config.get(
-            'dynamic_objects_action_repeat', 10)
+        self.dynamic_objects_action_repeat = self.config.get("dynamic_objects_action_repeat", 10)
 
         self.dynamic_objects = self.load_dynamic_objects(env)
-        self.dynamic_objects_last_actions = [
-            robot.action_space.sample() for robot in self.dynamic_objects]
+        self.dynamic_objects_last_actions = [robot.action_space.sample() for robot in self.dynamic_objects]
 
     def load_dynamic_objects(self, env):
         """
@@ -77,8 +76,6 @@ class DynamicNavRandomTask(PointNavRandomTask):
         """
         super(DynamicNavRandomTask, self).step(env)
         if env.current_step % self.dynamic_objects_action_repeat == 0:
-            self.dynamic_objects_last_actions = [
-                robot.action_space.sample() for robot in self.dynamic_objects]
-        for robot, action in \
-                zip(self.dynamic_objects, self.dynamic_objects_last_actions):
+            self.dynamic_objects_last_actions = [robot.action_space.sample() for robot in self.dynamic_objects]
+        for robot, action in zip(self.dynamic_objects, self.dynamic_objects_last_actions):
             robot.apply_action(action)

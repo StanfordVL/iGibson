@@ -81,6 +81,10 @@ public:
 	GLuint m_skybox_vao;
 	GLuint m_skybox_vbo;
 
+	// Text data
+	bool restore_prev_FBO = false;
+	GLint m_prevFBO;
+
 #ifdef USE_CUDA
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
 #endif
@@ -124,7 +128,8 @@ public:
 
     void render_softbody_instance(int vao, int vbo, py::array_t<float> vertexData);
 
-    void init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
+    void init_material_instance(int shaderProgram, float semantic_seg_color, float instance_seg_color,
+                                py::array_t<float> diffuse_color,
                                 float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
                                 float roughness, py::array_t<float> transform_param);
 
@@ -143,7 +148,7 @@ public:
 
     void cglUseProgram(int shaderProgram);
 
-    int loadTexture(std::string filename, float texture_scale);
+    int loadTexture(std::string filename, float texture_scale, std::string keyfilename);
 
     void setup_pbr(std::string shader_path,
     std::string env_texture_filename,
@@ -187,7 +192,7 @@ public:
 
     // Generates large and small array textures and returns handles to the user (cutoff based on user variable), as well as index - tex num/layer mapping
 	py::list generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures,
-	int smallTexBucketSize);
+	int smallTexBucketSize, std::string keyfilename);
 
 	py::list renderSetup(int shaderProgram, py::array_t<float> V, py::array_t<float> P, py::array_t<float> lightpos, py::array_t<float> lightcolor,
 		py::array_t<float> mergedVertexData, py::array_t<int> index_ptr_offsets, py::array_t<int> index_counts,
@@ -199,7 +204,17 @@ public:
 		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
 		float use_pbr,
+		float blend_highlight,
 		int depth_tex_id);
+
+    void updateTextureIdArrays(int shaderProgram,
+        py::array_t<float> mergedFragData,
+        py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		py::array_t<float> mergedPBRData,
+		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData);
 
 	void updateHiddenData(int shaderProgram, py::array_t<float> hidden_array);
 
@@ -216,6 +231,26 @@ public:
 
 	void loadSkyBox(int shaderProgram, float skybox_size);
 	void renderSkyBox(int shaderProgram, py::array_t<float> V, py::array_t<float> P);
+
+	// Text rendering methods
+
+	GLuint loadCharTexture(int rows, int width, py::array_t<int> buffer);
+
+	py::list setupTextRender();
+
+	void preRenderTextFramebufferSetup(int FBO);
+
+	void preRenderText(int shaderProgram, int FBO, int VAO, float color_x, float color_y, float color_z);
+
+	void renderChar(float xpos, float ypos, float w, float h, GLuint tex_id, int VBO);
+
+	void renderBackgroundQuad(float xpos, float ypos, float w, float h, int VBO, int shaderProgram, float alpha, float color_x, float color_y, float color_z);
+
+	void postRenderText();
+
+	py::list genTextFramebuffer();
+
+	py::array_t<float> read_fbo_color_tex_to_numpy(GLuint fbo);
 };
 
 

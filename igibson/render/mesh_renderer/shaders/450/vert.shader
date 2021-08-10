@@ -8,7 +8,8 @@ uniform mat4 pose_rot;
 uniform mat4 pose_trans;
 uniform mat4 last_rot;
 uniform mat4 last_trans;
-uniform vec3 instance_color;
+uniform vec3 semantic_seg_color;
+uniform vec3 instance_seg_color;
 uniform vec3 diffuse_color;
 uniform vec3 uv_transform_param;
 uniform int shadow_pass;
@@ -23,7 +24,8 @@ out vec2 theCoords;
 out vec3 Normal_world;
 out vec3 FragPos;
 out vec3 Normal_cam;
-out vec3 Instance_color;
+out vec3 Semantic_seg_color;
+out vec3 Instance_seg_color;
 out vec3 Pos_cam;
 out vec3 Pos_cam_projected;
 out vec3 Diffuse_color;
@@ -72,7 +74,8 @@ void main() {
     theCoords.y = (sin(uv_transform_param[2]) * texCoords.x * uv_transform_param[0])
                    + (cos(uv_transform_param[2]) * texCoords.y * uv_transform_param[1]);
 
-    Instance_color = instance_color;
+    Semantic_seg_color = semantic_seg_color;
+    Instance_seg_color = instance_seg_color;
     Diffuse_color = diffuse_color;
     vec3 T = normalize(vec3(pose_trans * pose_rot * vec4(tangent,   0.0)));
     vec3 B = normalize(vec3(pose_trans * pose_rot * vec4(bitangent, 0.0)));

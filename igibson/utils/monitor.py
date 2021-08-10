@@ -1,12 +1,13 @@
-__all__ = ['Monitor', 'get_monitor_files', 'load_results']
+__all__ = ["Monitor", "get_monitor_files", "load_results"]
+
+import csv
+import json
+import os.path as osp
+import time
+from glob import glob
 
 import gym
 from gym.core import Wrapper
-import time
-from glob import glob
-import csv
-import os.path as osp
-import json
 
 
 class Monitor(Wrapper):
@@ -26,12 +27,17 @@ class Monitor(Wrapper):
                 else:
                     filename = filename + "." + Monitor.EXT
             self.f = open(filename, "wt")
-            self.f.write('#%s\n' % json.dumps({
-                "t_start": self.tstart,
-                "gym_version": gym.__version__,
-                "env_id": env.spec.id if env.spec else 'Unknown'
-            }))
-            self.logger = csv.DictWriter(self.f, fieldnames=('r', 'l', 't') + reset_keywords)
+            self.f.write(
+                "#%s\n"
+                % json.dumps(
+                    {
+                        "t_start": self.tstart,
+                        "gym_version": gym.__version__,
+                        "env_id": env.spec.id if env.spec else "Unknown",
+                    }
+                )
+            )
+            self.logger = csv.DictWriter(self.f, fieldnames=("r", "l", "t") + reset_keywords)
             self.logger.writeheader()
 
         self.reset_keywords = reset_keywords
@@ -41,8 +47,7 @@ class Monitor(Wrapper):
         self.episode_rewards = []
         self.episode_lengths = []
         self.total_steps = 0
-        self.current_reset_info = {
-        }    # extra info about the current episode, that was passed in during reset()
+        self.current_reset_info = {}  # extra info about the current episode, that was passed in during reset()
 
         ## Cambria specific
         self.sensor_space = env.sensor_space
@@ -57,7 +62,7 @@ class Monitor(Wrapper):
         for k in self.reset_keywords:
             v = kwargs.get(k)
             if v is None:
-                raise ValueError('Expected you to pass kwarg %s into reset' % k)
+                raise ValueError("Expected you to pass kwarg %s into reset" % k)
             self.current_reset_info[k] = v
         return self.env.reset(**kwargs)
 
@@ -77,7 +82,7 @@ class Monitor(Wrapper):
                 self.f.flush()
             self.episode_rewards.append(eprew)
             self.episode_lengths.append(eplen)
-            info['episode'] = epinfo
+            info["episode"] = epinfo
         self.total_steps += 1
         return (ob, rew, done, info)
 
@@ -105,21 +110,21 @@ def get_monitor_files(dir):
 
 def load_results(dir):
     import pandas
-    monitor_files = glob(osp.join(dir, "*monitor.*"))    # get both csv and (old) json files
+
+    monitor_files = glob(osp.join(dir, "*monitor.*"))  # get both csv and (old) json files
     if not monitor_files:
-        raise LoadMonitorResultsError("no monitor files of the form *%s found in %s" %
-                                      (Monitor.EXT, dir))
+        raise LoadMonitorResultsError("no monitor files of the form *%s found in %s" % (Monitor.EXT, dir))
     dfs = []
     headers = []
     for fname in monitor_files:
-        with open(fname, 'rt') as fh:
-            if fname.endswith('csv'):
+        with open(fname, "rt") as fh:
+            if fname.endswith("csv"):
                 firstline = fh.readline()
-                assert firstline[0] == '#'
+                assert firstline[0] == "#"
                 header = json.loads(firstline[1:])
                 df = pandas.read_csv(fh, index_col=None)
                 headers.append(header)
-            elif fname.endswith('json'):    # Deprecated json format
+            elif fname.endswith("json"):  # Deprecated json format
                 episodes = []
                 lines = fh.readlines()
                 header = json.loads(lines[0])
@@ -128,10 +133,10 @@ def load_results(dir):
                     episode = json.loads(line)
                     episodes.append(episode)
                 df = pandas.DataFrame(episodes)
-        df['t'] += header['t_start']
+        df["t"] += header["t_start"]
         dfs.append(df)
     df = pandas.concat(dfs)
-    df.sort_values('t', inplace=True)
-    df['t'] -= min(header['t_start'] for header in headers)
-    df.headers = headers    # HACK to preserve backwards compatibility
+    df.sort_values("t", inplace=True)
+    df["t"] -= min(header["t_start"] for header in headers)
+    df.headers = headers  # HACK to preserve backwards compatibility
     return df

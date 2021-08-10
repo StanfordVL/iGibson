@@ -6,6 +6,7 @@ uniform sampler2DArray bigTex;
 uniform sampler2DArray smallTex;
 
 uniform float use_two_light_probes;
+uniform float blend_highlight;
 
 uniform samplerCube specularTexture;
 uniform samplerCube irradianceTexture;
@@ -34,6 +35,10 @@ layout (std140) uniform PBRData {
     vec4 pbr_data[MAX_ARRAY_SIZE];
 };
 
+layout (std140) uniform Hidden {
+    vec4 hidden_array[MAX_ARRAY_SIZE];
+};
+
 uniform sampler2D depthMap;
 uniform int shadow_pass;
 
@@ -41,7 +46,7 @@ in vec2 theCoords;
 in vec3 Normal_world;
 in vec3 Normal_cam;
 in vec3 FragPos;
-in vec3 Instance_color;
+in vec3 Semantic_seg_color;
 in vec3 Pos_cam;
 in vec3 Pos_cam_prev;
 in vec3 Pos_cam_projected;
@@ -56,10 +61,11 @@ const float Epsilon = 0.00001;
 
 layout (location = 0) out vec4 outputColour;
 layout (location = 1) out vec4 NormalColour;
-layout (location = 2) out vec4 InstanceColour;
-layout (location = 3) out vec4 PCColour;
-layout (location = 4) out vec4 SceneFlowColour;
-layout (location = 5) out vec4 OpticalFlowColour;
+layout (location = 2) out vec4 SemanticSegColour;
+layout (location = 3) out vec4 InstanceSegColour;
+layout (location = 4) out vec4 PCColour;
+layout (location = 5) out vec4 SceneFlowColour;
+layout (location = 6) out vec4 OpticalFlowColour;
 
 uniform vec3 light_position;  // in world coordinate
 uniform vec3 light_color; // light color
@@ -101,10 +107,13 @@ void main() {
     vec4 curr_tex_data = tex_data[Draw_id];
     int tex_num = int(curr_tex_data.x);
     int tex_layer = int(curr_tex_data.y);
-    float instance_color = curr_tex_data.z;
+    float semantic_seg_color = curr_tex_data.z;
+    float instance_seg_color = curr_tex_data.w;
     vec4 curr_pbr_data = pbr_data[Draw_id];
     int use_pbr = int(curr_pbr_data.x);
     vec2 texelSize = 1.0 / textureSize(depthMap, 0);
+    float hidden = hidden_array[Draw_id].x;
+    float highlight = hidden_array[Draw_id].y;
 
     float shadow = 0.0;
 
@@ -211,13 +220,20 @@ void main() {
         }
     }
     NormalColour =  vec4((Normal_cam + 1) / 2,1);
-    InstanceColour = vec4(Instance_color,1);
+    SemanticSegColour = vec4(semantic_seg_color, 0, 0, 1);
+    InstanceSegColour = vec4(instance_seg_color, 0, 0, 1);
     if (shadow_pass == 1) {
         PCColour = vec4(Pos_cam_projected, 1);
     } else {
         PCColour = vec4(Pos_cam, 1);
     }
     outputColour = outputColour *  (1 - shadow * 0.5);
+
+    if (blend_highlight == 1) {
+        outputColour = outputColour * (1-highlight * 0.5) + vec4(1, 0, 1, 1) * highlight * 0.5;
+    }
+    outputColour.w = highlight; // put highlight into alpha channel
+
     SceneFlowColour =  vec4(Pos_cam - Pos_cam_prev,1);
     OpticalFlowColour =  vec4(Optical_flow,0,1);
 }
