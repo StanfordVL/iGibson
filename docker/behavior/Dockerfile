@@ -5,6 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	cmake \
 	git \
+	vim \
 	wget \
 	curl \
 	python3-dev \
@@ -21,14 +22,17 @@ RUN conda create -y -n igibson python=3.8.0
 
 ENV PATH /miniconda/envs/igibson/bin:$PATH
 
-RUN pip install --no-cache-dir https://github.com/StanfordVL/bullet3/archive/master.zip
 RUN pip install torch pytest ray[default,rllib] stable-baselines3
 
-RUN git clone --branch master https://github.com/StanfordVL/iGibson /opt/igibson --recursive
-WORKDIR /opt/igibson
+RUN git clone --branch ig-develop https://github.com/StanfordVL/iGibson /opt/iGibson --recursive
+WORKDIR /opt/iGibson
+RUN pip install -e .
+
+RUN git clone --branch master https://github.com/StanfordVL/BDDL /opt/BDDL --recursive
+WORKDIR /opt/BDDL
 RUN pip install -e .
 
 RUN python3 -m igibson.utils.assets_utils --download_assets
 RUN python3 -m igibson.utils.assets_utils --download_demo_data
 
-WORKDIR /opt/igibson/igibson/examples/demo
+WORKDIR /opt/iGibson/igibson

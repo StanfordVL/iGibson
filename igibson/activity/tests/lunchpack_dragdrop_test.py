@@ -15,11 +15,11 @@ import bddl
 import pybullet as p
 
 import igibson
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 bddl.set_backend("iGibson")
 

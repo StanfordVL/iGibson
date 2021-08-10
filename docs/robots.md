@@ -40,6 +40,21 @@ Note that `robot_action` is a normalized joint velocity, i.e. `robot_action[n] =
 
 Most of the code can be found here: [igibson/robots](https://github.com/StanfordVL/iGibson/blob/master/igibson/robots).
 
+### BehaviorRobot
+The BehaviorRobot can be used in VR as an avatar, or as an autonomous agent to participate in the BEHAVIOR100 challenge. The embodiment is composed of two hands, a torso, and a head link. It largely follows the convention of previous "URDF" based robots, but contains multiple URDFs connected by floating joints(constraints).
+
+The BehaviorRobot has an action space of 26 DoF listed below.
+- Torso: 6 DoF delta pose - relative to torso frame from the previous frame
+- Head: 6 DoF delta pose - relative to torso frame (where the torso will be after applying this frame's action)
+- Left hand, right hand (in this order): 6 DoF delta pose - relative to torso frame (where the torso will be after applying this frame's action)
+- Grasping left hand, Grasping right hand (in this order): delta of change in the fraction of the grasping action (between 0=hand fully open, and 1=hand fully closed)
+
+The reference frame of each body part is shown below.
+
+
+![brobot](images/behavior_robot.jpg)
+
+
 ### Examples
 In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [igibson/examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/robot_example.py).
 
@@ -113,4 +128,6 @@ if __name__ == '__main__':
 ```
 The four robots will have a fun cocktail party like this:
 ![robot](images/robot.png)
+
+
 

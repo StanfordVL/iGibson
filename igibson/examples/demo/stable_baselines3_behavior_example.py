@@ -107,7 +107,7 @@ def main():
                 config_file=os.path.join(igibson.example_config_path, config_file),
                 mode="headless",
                 action_timestep=1 / 30.0,
-                physics_timestep=1 / 120.0,
+                physics_timestep=1 / 300.0,
             )
             env.seed(seed + rank)
             return env
@@ -122,7 +122,7 @@ def main():
         config_file=os.path.join(igibson.example_config_path, config_file),
         mode="headless",
         action_timestep=1 / 30.0,
-        physics_timestep=1 / 120.0,
+        physics_timestep=1 / 300.0,
     )
 
     policy_kwargs = dict(
