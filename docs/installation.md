@@ -141,7 +141,7 @@ cd iGibson/docker/headless-gui
 Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). 
 
 ```bash
-git clone https://github.com/StanfordVL/iGibson --recursive --branch ig-develop
+git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
 conda create -n py3-igibson python=3.8 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
