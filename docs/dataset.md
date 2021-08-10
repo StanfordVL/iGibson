@@ -4,10 +4,27 @@ Dataset
 In dataset we include two parts. First we introduce the new iGibson dataset in this release. Secondly, we introduce
  how to download previous Gibson dataset, which is updated and compatible with iGibson.
 
-- [Download iGibson Scenes](#download-igibson-scenes)
+- [Download iGibson 2.0 Scenes and Behavior Dataset of Objects](#download-igibson-2.0-scenes-and-behavior-dataset-of-objects)
+- [Download iGibson 1.0 Scenes](#download-igibson-1.0-scenes)
 - [Download Gibson Scenes](#download-gibson-scenes)
 
-Download iGibson Scenes
+Download iGibson 2.0 Scenes and Behavior Dataset of Objects
+-------------------------
+
+- iGibson 2.0 Dataset of Scenes: New versions of the fully interactive scenes, more densely populated with objects.
+- BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
+
+To download both in a bundle, you need to follow the following steps:
+Request access to the BEHAVIOR assets using this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform):
+- Fill out the license agreement as suggested in the [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
+- When done, copy the key you receive (igibson.key) into the repository subfolder folder iGibson/igibson/data
+- Download the behavior data bundle (ig_dataset) [here](https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip).
+- Unzip ig_dataset:
+  - `mkdir iGibson/igibson/data`
+  - `unzip behavior_data_bundle.zip -d iGibson/igibson/data`
+
+
+Download iGibson 1.0 Scenes
 ------------------------
 
 We annotate fifteen 3D reconstructions of real-world scans and convert them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 

@@ -1,6 +1,6 @@
-from igibson.sensors.sensor_noise_base import BaseSensorNoise
-
 import numpy as np
+
+from igibson.sensors.sensor_noise_base import BaseSensorNoise
 
 
 class DropoutSensorNoise(BaseSensorNoise):
@@ -41,10 +41,8 @@ class DropoutSensorNoise(BaseSensorNoise):
         if self.noise_rate <= 0.0:
             return obs
 
-        assert len(obs[(obs < 0.0) | (obs > 1.0)]) == 0,\
-            'sensor reading has to be between [0.0, 1.0]'
+        assert len(obs[(obs < 0.0) | (obs > 1.0)]) == 0, "sensor reading has to be between [0.0, 1.0]"
 
-        valid_mask = np.random.choice(2, obs.shape, p=[
-                                      self.noise_rate, 1.0 - self.noise_rate])
+        valid_mask = np.random.choice(2, obs.shape, p=[self.noise_rate, 1.0 - self.noise_rate])
         obs[valid_mask == 0] = self.noise_value
         return obs
