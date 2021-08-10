@@ -62,7 +62,7 @@ There are other datasets we link to iGibson. We include support to use CubiCasa5
 We also maintain compatibility with datasets of 3D reconstructed large real-world scenes (homes and offices) that you can download and use with iGibson, for example from our previous simulator, Gibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
 
 ### Using iGibson with VR
-If you want to use iGibson VR interface, please visit the [VR guide](VR_README.md).
+If you want to use iGibson VR interface, please visit the [VR guide (TBA)].
 
 
 ### Contributing
