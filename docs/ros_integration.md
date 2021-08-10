@@ -42,13 +42,13 @@ source deactivate # This step is important because we will NOT use <anaconda ins
 ```bash
 mkdir -p ~/catkin_ws
 ```
-5. Soft-link `gibson2-ros` folder to your `catkin_ws/src` and run `catkin_make` to index `gibson2-ros` package.
+5. Soft-link `igibson-ros` folder to your `catkin_ws/src` and run `catkin_make` to index `igibson-ros` package.
 ```bash
-cd <iGibson root>/gibson2
-ln -s $PWD/examples/ros/gibson2-ros/ ~/catkin_ws/src/
+cd <iGibson root>/igibson
+ln -s $PWD/examples/ros/igibson-ros/ ~/catkin_ws/src/
 cd ~/catkin_ws && catkin_make
 ```
-5. Install `gibson2-ros` dependencies:
+5. Install `igibson-ros` dependencies:
 ```bash
 cd ~/catkin_ws
 rosdep install --from-paths src --ignore-src -r -y
@@ -58,7 +58,7 @@ rosdep install --from-paths src --ignore-src -r -y
 
 ```bash
 which python # Should give /usr/bin/python, NOT <anaconda installation root>/envs/py2-igibson/bin/python
-python -c 'import gibson2, rospy, rospkg' # Should run without errors
+python -c 'import igibson, rospy, rospkg' # Should run without errors
 ```
 
 Running
@@ -74,11 +74,11 @@ source ~/catkin_ws/devel/setup.bash
 2. Repeat Step 3 from Preparation: sanitize `PATH` and `PYTHONPATH`
 3. Here are some of the examples that you can run, including gmapping, hector mapping and navigation.
 ```bash
-roslaunch gibson2-ros turtlebot_rgbd.launch # Bare minimal bringup example
-roslaunch gibson2-ros turtlebot_gmapping.launch # Run gmapping
-roslaunch gibson2-ros turtlebot_hector_mapping.launch # Run hector mapping
-roslaunch gibson2-ros turtlebot_navigation.launch # Run the navigation stack, we have provided the map
-roslaunch gibson2-ros turtlebot_gt_navigation.launch # Run the navigation stack with ground truth localization
+roslaunch igibson-ros turtlebot_rgbd.launch # Bare minimal bringup example
+roslaunch igibson-ros turtlebot_gmapping.launch # Run gmapping
+roslaunch igibson-ros turtlebot_hector_mapping.launch # Run hector mapping
+roslaunch igibson-ros turtlebot_navigation.launch # Run the navigation stack, we have provided the map
+roslaunch igibson-ros turtlebot_gt_navigation.launch # Run the navigation stack with ground truth localization
 ```
 
 

@@ -4,10 +4,27 @@ Dataset
 In dataset we include two parts. First we introduce the new iGibson dataset in this release. Secondly, we introduce
  how to download previous Gibson dataset, which is updated and compatible with iGibson.
 
-- [Download iGibson Scenes](#download-igibson-scenes)
+- [Download iGibson 2.0 Scenes and Behavior Dataset of Objects](#download-igibson-2.0-scenes-and-behavior-dataset-of-objects)
+- [Download iGibson 1.0 Scenes](#download-igibson-1.0-scenes)
 - [Download Gibson Scenes](#download-gibson-scenes)
 
-Download iGibson Scenes
+Download iGibson 2.0 Scenes and Behavior Dataset of Objects
+-------------------------
+
+- iGibson 2.0 Dataset of Scenes: New versions of the fully interactive scenes, more densely populated with objects.
+- BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
+
+To download both in a bundle, you need to follow the following steps:
+Request access to the BEHAVIOR assets using this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform):
+- Fill out the license agreement as suggested in the [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
+- When done, copy the key you receive (igibson.key) into the repository subfolder folder iGibson/igibson/data
+- Download the behavior data bundle (ig_dataset) [here](https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip).
+- Unzip ig_dataset:
+  - `mkdir iGibson/igibson/data`
+  - `unzip behavior_data_bundle.zip -d iGibson/igibson/data`
+
+
+Download iGibson 1.0 Scenes
 ------------------------
 
 We annotate fifteen 3D reconstructions of real-world scans and convert them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
@@ -17,18 +34,18 @@ The fifteen fully interactive models are visualized below.
 ![placeholder.jpg](images/ig_scene.png)
 
 #### Download Instruction
-To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/gibson2/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/gibson2/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
+To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/igibson/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/igibson/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
 
 ```bash
-python -m gibson2.utils.assets_utils --download_ig_dataset
+python -m igibson.utils.assets_utils --download_ig_dataset
 ```
 
-If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/gibson2/data/ig_dataset`.
+If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/igibson/data/ig_dataset`.
 #### Dataset Format
-The new dataset format can be found [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils). 
+The new dataset format can be found [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils). 
 
 #### Cubicasa / 3D Front Dataset
-We provide support for Cubicasa and 3D Front Dataset, to import them into iGibson, follow the guide [here](https://github.com/StanfordVL/iGibson/tree/master/gibson2/utils/data_utils/ext_scene). 
+We provide support for Cubicasa and 3D Front Dataset, to import them into iGibson, follow the guide [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene). 
 
 Download Gibson Scenes
 ------------------------
@@ -46,17 +63,17 @@ Files included in this distribution:
 3. Demo scene `Rs`
 
 To download 1 and 2, you need to fill in the agreement and get the download link `URL`, after which you can
- manually download and store them in the path set in `your_installation_path/gibson2/global_config.yaml` (default and
-  recommended: `dataset: your_installation_path/gibson2/data/g_dataset`). You can run a single command to download the dataset
+ manually download and store them in the path set in `your_installation_path/igibson/global_config.yaml` (default and
+  recommended: `dataset: your_installation_path/igibson/data/g_dataset`). You can run a single command to download the dataset
   , this script automatically download, decompress, and put the dataset to correct place.
 ```bash
-python -m gibson2.utils.assets_utils --download_dataset URL
+python -m igibson.utils.assets_utils --download_dataset URL
 ```
 
 To download 3, you can run:
 
 ```bash
-python -m gibson2.utils.assets_utils --download_demo_data
+python -m igibson.utils.assets_utils --download_demo_data
 ```
 
 

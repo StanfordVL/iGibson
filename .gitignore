@@ -1,4 +1,5 @@
 *.pyc
+*.pyd
 *.pkl
 *.so
 *.egg-info/
@@ -8,6 +9,7 @@ src/
 pw
 *.o
 *.ipynb
+*.ipynb_checkpoints/
 *.out
 npz/
 *.npy
@@ -32,6 +34,10 @@ physics/models
 
 */events*
 0_VRDemoSettings.txt
+
+# VR
+# This is the folder where the pyd files get put after setup.py builds gibson
+Release
 
 cnn_policy*
 *ppo_policy*
@@ -66,3 +72,11 @@ gibson/assets
 notebook
 build
 dist
+
+# Directories used for QC pipeline
+igibson/utils/data_utils/mesh_decimation/collision
+igibson/utils/data_utils/mesh_decimation/visual
+igibson/utils/data_utils/mesh_decimation/final_videos
+
+# libcryptopp
+igibson/render/mesh_renderer/libcryptopp.so.8.6
