@@ -7,8 +7,8 @@ import bddl
 import pybullet as p
 
 import igibson
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 PARTIAL_RECACHE = {
     # 'sorting_books': ['Ihlen_0_int'],
