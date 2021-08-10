@@ -19,8 +19,7 @@ Most of the code can be found here: [igibson/objects](https://github.com/Stanfor
 
 ### BEHAVIOR Dataset of Objects
 
-We use a new dataset of everyday objects, the BEHAVIOR Dataset of Objects. In total,
-892 we curate 1217 object models across 391 object categories, to support 100 BEHAVIOR activities. The categories range from food items to tableware, from home decorations to office supplies, and from apparel to cleaning tools.
+We use a new dataset of everyday objects, the BEHAVIOR Dataset of Objects. In total, we curate 1217 object models across 391 object categories, to support 100 BEHAVIOR activities. The categories range from food items to tableware, from home decorations to office supplies, and from apparel to cleaning tools.
 
 To maintain high visual realism, all object models include material information (metallic, roughness) that can be rendered by iGibson 2.0 renderer. To maintain high physics realism, object models are annotated with size, mass, center of mass, moment of inertia, and also stable orientations. The collision mesh is a simplified version of the visual mesh, obtained with a convex decomposition using the VHACD algorithm. Object models with a shape close to a box are annotated with a primitive box collision mesh, much more efficient and robust for collision checking.
 

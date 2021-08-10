@@ -12,7 +12,7 @@ Download iGibson 2.0 Scenes and Behavior Dataset of Objects
 -------------------------
 
 - iGibson 2.0 Dataset of Scenes: New versions of the fully interactive scenes, more densely populated with objects.
-- BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson2.0). You can download a bundle of the iGibson2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
+- BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
 
 To download both in a bundle, you need to follow the following steps:
 Request access to the BEHAVIOR assets using this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform):

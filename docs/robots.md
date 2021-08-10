@@ -43,7 +43,7 @@ Most of the code can be found here: [igibson/robots](https://github.com/Stanford
 ### BehaviorRobot
 The BehaviorRobot can be used in VR as an avatar, or as an autonomous agent to participate in the BEHAVIOR100 challenge. The embodiment is composed of two hands, a torso, and a head link. It largely follows the convention of previous "URDF" based robots, but contains multiple URDFs connected by floating joints(constraints).
 
-The BehaviorRobot has an action space of 28 DoF listed below.
+The BehaviorRobot has an action space of 26 DoF listed below.
 - Torso: 6 DoF delta pose - relative to torso frame from the previous frame
 - Head: 6 DoF delta pose - relative to torso frame (where the torso will be after applying this frame's action)
 - Left hand, right hand (in this order): 6 DoF delta pose - relative to torso frame (where the torso will be after applying this frame's action)
