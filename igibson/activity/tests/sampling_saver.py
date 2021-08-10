@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument(
         "--num_initializations", type=int, default=1, help="Number of initialization per BDDL per scene."
     )
+    parser.add_argument("--start_initialization", type=int, default=0, help="Starting idx for initialization")
     return parser.parse_args()
 
 
@@ -41,6 +42,7 @@ def main():
     bddl.set_backend("iGibson")
     task = args.task
     task_id = args.task_id
+    start_initialization = args.start_initialization
     logging.warning("TASK: {}".format(task))
     logging.warning("TASK ID: {}".format(task_id))
 
@@ -66,7 +68,7 @@ def main():
     for scene_id in scene_choices:
         logging.warning(("TRY SCENE:", scene_id))
 
-        for init_id in range(num_initializations):
+        for init_id in range(start_initialization, start_initialization + num_initializations):
             urdf_path = "{}_task_{}_{}_{}".format(scene_id, task, task_id, init_id)
             full_path = os.path.join(igibson.ig_dataset_path, "scenes", scene_id, "urdf", urdf_path + ".urdf")
             if os.path.isfile(full_path):

@@ -1074,12 +1074,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         else:
             body_id = obj.body_id
 
-        # TODO: This base link computation only works for floating objects
-        # Fixed objects (if not merged links) should call
-        # p.getDynamicsInfo(body_id, 0) instead because base_link (-1) is
-        # world and link 0 is the actual object base link.
-        # We can create a function get_base_link_position_orientation
-        # in ObjectBase class later.
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
         inertial_orn = dynamics_info[4]
