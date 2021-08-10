@@ -1767,7 +1767,6 @@ class MeshRenderer(object):
     def get_lidar_from_depth(self):
         """
         Get partial LiDAR readings from depth sensors with limited FOV
-
         :return: partial LiDAR readings with limited FOV
         """
         lidar_readings = self.render(modes=("3d"))[0]
