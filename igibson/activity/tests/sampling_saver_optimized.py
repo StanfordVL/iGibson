@@ -6,9 +6,9 @@ import os
 import bddl
 import pybullet as p
 
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 
 def parse_args():

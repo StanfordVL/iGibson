@@ -17,10 +17,10 @@ from flask_apscheduler import APScheduler
 from flask_cors import CORS
 
 import igibson
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.utils.utils import parse_config
 
 interactive = True
