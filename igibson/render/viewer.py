@@ -773,7 +773,6 @@ class Viewer:
             self.frame_idx += 1
 
         if self.renderer is not None:
-<<<<<<< HEAD:gibson2/render/viewer.py
             if self.is_robosuite:
                 frames = self.renderer.render_robosuite_cameras(modes=('rgb'))
                 names = self.renderer._get_names_active_cameras()
@@ -785,16 +784,9 @@ class Viewer:
             else:
                 frames = self.renderer.render_robot_cameras(modes=('rgb'))
                 if len(frames) > 0:
-                    frame = cv2.cvtColor(np.concatenate(
-                        frames, axis=1), cv2.COLOR_RGB2BGR)
+                    frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                     cv2.imshow('RobotView', frame)                
 
-=======
-            frames = self.renderer.render_robot_cameras(modes=("rgb"))
-            if len(frames) > 0:
-                frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
-                cv2.imshow("RobotView", frame)
->>>>>>> afe24c6aa95c8d4e74ce6d6b5eae2f479f2807ae:igibson/render/viewer.py
 
 
 if __name__ == "__main__":
