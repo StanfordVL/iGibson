@@ -248,7 +248,6 @@ class Instance(object):
     One visual object can have multiple instances to save memory.
     """
 
-<<<<<<< HEAD:gibson2/render/mesh_renderer/instances.py
     def __init__(self,
                  object,
                  id,
@@ -263,22 +262,6 @@ class Instance(object):
                  shadow_caster=True,
                  parent_body=None
                  ):
-=======
-    def __init__(
-        self,
-        object,
-        id,
-        pybullet_uuid,
-        class_id,
-        pose_trans,
-        pose_rot,
-        dynamic,
-        softbody,
-        use_pbr=True,
-        use_pbr_mapping=True,
-        shadow_caster=True,
-    ):
->>>>>>> afe24c6aa95c8d4e74ce6d6b5eae2f479f2807ae:igibson/render/mesh_renderer/instances.py
         """
         :param object: visual object
         :param id: id of this instance_group
@@ -314,14 +297,11 @@ class Instance(object):
         self.or_buffer_indices = None
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
-<<<<<<< HEAD:gibson2/render/mesh_renderer/instances.py
         self.parent_body = parent_body
-=======
         self.highlight = False
 
     def set_highlight(self, highlight):
         self.highlight = highlight
->>>>>>> afe24c6aa95c8d4e74ce6d6b5eae2f479f2807ae:igibson/render/mesh_renderer/instances.py
 
     def render(self, shadow_pass=0):
         """
