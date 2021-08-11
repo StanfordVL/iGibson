@@ -145,9 +145,6 @@ class ProceduralMaterial(Material):
         self.states.append(state)
 
     def lookup_or_create_transformed_texture(self):
-        save_path = os.path.join(igibson.ig_dataset_path, "tmp")
-        os.makedirs(save_path, exist_ok=True)
-
         has_encrypted_texture = os.path.exists(os.path.join(self.material_folder, "DIFFUSE.encrypted.png"))
 
         suffix = ".encrypted.png" if has_encrypted_texture else ".png"
@@ -162,6 +159,9 @@ class ProceduralMaterial(Material):
             else:
                 if has_encrypted_texture:
                     raise ValueError("cannot create transformed textures for encrypted texture")
+                save_path = os.path.join(igibson.ig_dataset_path, "tmp")
+                if not os.path.isdir(save_path):
+                    os.makedirs(save_path, exist_ok=True)
                 diffuse_tex_filename_transformed = os.path.join(save_path, str(uuid.uuid4()) + ".png")
                 state.create_transformed_texture(
                     diffuse_tex_filename=diffuse_tex_filename,

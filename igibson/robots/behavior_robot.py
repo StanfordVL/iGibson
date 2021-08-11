@@ -417,8 +417,6 @@ class BRBody(ArticulatedObject):
             [0, 0, 0],
             [0, 0, 0],
             self.get_position(),
-            [0, 0, 0, 1],
-            self.get_orientation(),
         )
 
     def set_body_collision_filters(self):
@@ -1207,17 +1205,6 @@ class BRHand(BRHandBase):
 
         if self.object_in_hand is not None:
             self.set_hand_coll_filter(self.object_in_hand, False)
-
-    def set_position_orientation(self, pos, orn):
-        original_pos, original_orn = self.get_position_orientation()
-        super(BRHand, self).set_position_orientation(pos, orn)
-        if self.object_in_hand is not None:
-            inv_original_pos, inv_original_orn = p.invertTransform(original_pos, original_orn)
-            local_pos, local_orn = p.multiplyTransforms(
-                inv_original_pos, inv_original_orn, *p.getBasePositionAndOrientation(self.object_in_hand)
-            )
-            new_pos, new_orn = p.multiplyTransforms(pos, orn, local_pos, local_orn)
-            p.resetBasePositionAndOrientation(self.object_in_hand, new_pos, new_orn)
 
 
 class BRGripper(BRHandBase):

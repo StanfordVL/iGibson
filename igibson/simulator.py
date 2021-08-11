@@ -358,11 +358,12 @@ class Simulator:
             use_pbr_mapping = True
             shadow_caster = True
             physical_object = scene.objects_by_id[body_id]
-            if physical_object.category in ["walls", "floors", "ceilings"]:
-                use_pbr = False
-                use_pbr_mapping = False
-            if physical_object.category == "ceilings":
-                shadow_caster = False
+            if scene.scene_source == "IG":
+                if physical_object.category in ["walls", "floors", "ceilings"]:
+                    use_pbr = False
+                    use_pbr_mapping = False
+                if physical_object.category == "ceilings":
+                    shadow_caster = False
             class_id = self.class_name_to_class_id.get(physical_object.category, SemanticClass.SCENE_OBJS)
             self.load_articulated_object_in_renderer(
                 body_id,
@@ -650,13 +651,14 @@ class Simulator:
         Load the articulated object into renderer
 
         :param object_pb_id: pybullet body id
+        :param physical_object: The reference to Object class
+        :param link_name_to_vm: mapping from link name to a list of visual mesh file paths
         :param class_id: Class id for rendering semantic segmentation
         :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
         :param link_name_to_vm: mapping from link name to a list of visual mesh file paths
         :param use_pbr: Whether to use pbr
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
-        :param physical_object: The reference to Object class
         """
         # Load object in renderer, use visual shape from physical_object class
         # using CoM frame
@@ -1346,7 +1348,7 @@ class Simulator:
             # Process local transform adjustments
             prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
             prev_local_pos, prev_local_orn = vr_part.local_pos, vr_part.local_orn
-            inv_prev_local_pos, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
+            _, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
             if part_name == "eye":
                 valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
             else:
@@ -1363,10 +1365,17 @@ class Simulator:
                 inv_new_body_pos, inv_new_body_orn, world_pos, world_orn
             )
 
-            delta_local_pos, delta_local_orn = p.multiplyTransforms(
-                inv_prev_local_pos, inv_prev_local_orn, des_local_pos, des_local_orn
+            # Get the delta local orientation in the reference frame of the body
+            _, delta_local_orn = p.multiplyTransforms(
+                [0, 0, 0],
+                des_local_orn,
+                [0, 0, 0],
+                inv_prev_local_orn,
             )
             delta_local_orn = p.getEulerFromQuaternion(delta_local_orn)
+
+            # Get the delta local position in the reference frame of the body
+            delta_local_pos = np.array(des_local_pos) - np.array(prev_local_pos)
 
             if part_name == "eye":
                 action[6:9] = np.array(delta_local_pos)

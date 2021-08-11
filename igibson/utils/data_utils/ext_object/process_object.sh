@@ -12,8 +12,7 @@ IGIBSON_DIR=$(python -c "import igibson; print(igibson.ig_dataset_path)" | tail 
 DIRECTORY=$1
 OBJECT_ID=$(basename "$1")
 CATEGORY=$2
-NAME=$3
-OBJECT_EXPORT_DIR=$IGIBSON_DIR/objects/$CATEGORY/$NAME/$OBJECT_ID
+OBJECT_EXPORT_DIR=$IGIBSON_DIR/objects/$CATEGORY/$OBJECT_ID
 
 echo "Step 1"
 cd scripts
