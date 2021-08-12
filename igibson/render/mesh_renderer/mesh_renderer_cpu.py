@@ -77,6 +77,7 @@ class MeshRenderer(object):
         self.pose_rot_array = None
         self.last_trans_array = None
         self.last_rot_array = None
+        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
         # Manages text data that is shared across multiple Text instances
         self.text_manager = TextManager(self)
         self.texts = []
@@ -315,7 +316,6 @@ class MeshRenderer(object):
         """
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
-        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
     def setup_framebuffer(self):
         """
@@ -480,6 +480,11 @@ class MeshRenderer(object):
         if overwrite_material is not None and len(materials) > 1:
             logging.warning("passed in one material ends up overwriting multiple materials")
 
+        # set the default values of variable before being modified later.
+        num_existing_mats = len(self.materials_mapping)  # Number of current Material elements
+        num_added_materials = 0
+
+        # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
         for i, item in enumerate(materials):
             if overwrite_material is not None:
                 if isinstance(overwrite_material, RandomizedMaterial):
@@ -501,13 +506,25 @@ class MeshRenderer(object):
                     normal_texture_id=texture_normal,
                 )
             else:
-                material = Material("color", kd=item.diffuse)
+                if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
+                    # Pink color for translucent objects.
+                    material = Material("color", kd=[1, 0, 1, 1])
+                else:
+                    material = Material("color", kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
+            num_added_materials = len(materials)
+
+        # Case when mesh obj is without mtl file but overwrite material is specified.
+        if len(materials) == 0 and overwrite_material is not None:
+            self.materials_mapping[num_existing_mats] = overwrite_material
+            num_added_materials = 1
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[len(materials) + material_count] = Material("color", kd=input_kd, texture_id=-1)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material(
+                "color", kd=input_kd, texture_id=-1
+            )
         else:
-            self.materials_mapping[len(materials) + material_count] = Material(
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material(
                 "color", kd=[0.5, 0.5, 0.5], texture_id=-1
             )
 
@@ -519,8 +536,11 @@ class MeshRenderer(object):
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            # assume one shape only has one material
-            material_id = shape.mesh.material_ids[0]
+            if len(shape.mesh.material_ids) == 0 and overwrite_material is not None:
+                material_id = 0
+            else:
+                material_id = shape.mesh.material_ids[0]
+
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
@@ -621,6 +641,7 @@ class MeshRenderer(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body=None,
     ):
         """
         Create instance for a visual object and link it to pybullet
@@ -635,6 +656,7 @@ class MeshRenderer(object):
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
+        :param parent_body: parent body name of current xml element (MuJoCo XML)
         """
         if self.optimization_process_executed and self.optimized:
             logging.error(
@@ -657,6 +679,7 @@ class MeshRenderer(object):
             use_pbr=use_pbr,
             use_pbr_mapping=use_pbr_mapping,
             shadow_caster=shadow_caster,
+            parent_body=parent_body,
         )
         self.instances.append(instance)
 
@@ -1242,6 +1265,31 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
+    def render_active_cameras(self, modes=("rgb")):
+        """
+        Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
+        where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB)
+
+        :return: a list of frames (number of modalities x number of robots)
+        """
+        frames = []
+        hide_robot = self.rendering_settings.hide_robot
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        camera_pose = camera.get_pose()
+                        camera_pos = camera_pose[:3]
+                        camera_ori = camera_pose[3:]
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[
+                            :3, :3
+                        ]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1]))  # Mujoco camera points in -z
+                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
+                            frames.append(item)
+        return frames
+
     def render_robot_cameras(self, modes=("rgb")):
         """
         Render robot camera images
@@ -1270,6 +1318,48 @@ class MeshRenderer(object):
             frames.extend(robot.render_camera_image(modes=modes))
 
         return frames
+
+    def _get_names_active_cameras(self):
+        """
+        Query the list of active cameras.
+        Applicable for integration with robosuite.
+
+        :return: a list of camera names
+        """
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        names.append(camera.camera_name)
+        return names
+
+    def _switch_camera(self, idx):
+        """
+        Switches the camera to particular index.
+        Applicable for integration with iGibson.
+        """
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                instance.robot.cameras[idx].switch()
+
+    def _is_camera_active(self, idx):
+        """
+        Checks if camera at given index is active.
+        Applicable for integration with iGibson.
+        """
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].is_active()
+
+    def _get_camera_name(self, idx):
+        """
+        Checks if camera at given index is active.
+        Applicable for integration with iGibson.
+        """
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].camera_name
 
     def optimize_vertex_and_texture(self):
         """

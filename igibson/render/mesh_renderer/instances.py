@@ -261,6 +261,7 @@ class Instance(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body=None,
     ):
         """
         :param object: visual object
@@ -274,6 +275,7 @@ class Instance(object):
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
+        :param parent_body: parent body name of current xml element (MuJoCo XML)
         """
         self.object = object
         self.pose_trans = pose_trans
@@ -296,6 +298,7 @@ class Instance(object):
         self.or_buffer_indices = None
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
+        self.parent_body = parent_body
         self.highlight = False
 
     def set_highlight(self, highlight):
