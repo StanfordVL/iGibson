@@ -316,7 +316,7 @@ class MeshRenderer(object):
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
         # If lightP is already set by an outside entity it will not override it.
-        if not hasattr(self, 'lightP'):
+        if not hasattr(self, "lightP"):
             self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
     def setup_framebuffer(self):
@@ -483,9 +483,9 @@ class MeshRenderer(object):
             logging.warning("passed in one material ends up overwriting multiple materials")
 
         # set the default values of variable before being modified later.
-        num_existing_mats = len(self.materials_mapping)    # Number of current Material elements 
+        num_existing_mats = len(self.materials_mapping)  # Number of current Material elements
         texuniform = False
-        num_added_materials = 0        
+        num_added_materials = 0
 
         # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
         for i, item in enumerate(materials):
@@ -511,9 +511,9 @@ class MeshRenderer(object):
             else:
                 if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
                     # Pink color for translucent objects.
-                    material = Material('color', kd=[1,0,1,1])
+                    material = Material("color", kd=[1, 0, 1, 1])
                 else:
-                    material = Material('color', kd=item.diffuse)
+                    material = Material("color", kd=item.diffuse)
             self.materials_mapping[i + material_count] = material
             num_added_materials = len(materials)
 
@@ -522,9 +522,11 @@ class MeshRenderer(object):
             texuniform = overwrite_material.texuniform
             self.materials_mapping[num_existing_mats] = overwrite_material
             num_added_materials = 1
-        
+
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material("color", kd=input_kd, texture_id=-1)
+            self.materials_mapping[num_existing_mats + num_added_materials] = Material(
+                "color", kd=input_kd, texture_id=-1
+            )
         else:
             self.materials_mapping[num_existing_mats + num_added_materials] = Material(
                 "color", kd=[0.5, 0.5, 0.5], texture_id=-1
@@ -543,8 +545,8 @@ class MeshRenderer(object):
                 material_id = shape.mesh.material_ids[0]
             else:
                 # This will makes us use the input_material at self.materials_mapping[num_existing_mats + material_id=0]
-                material_id = 0             
-            
+                material_id = 0
+
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
@@ -645,7 +647,7 @@ class MeshRenderer(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
-        parent_body=None
+        parent_body=None,
     ):
         """
         Create instance for a visual object and link it to pybullet
@@ -683,7 +685,7 @@ class MeshRenderer(object):
             use_pbr=use_pbr,
             use_pbr_mapping=use_pbr_mapping,
             shadow_caster=shadow_caster,
-            parent_body=parent_body
+            parent_body=parent_body,
         )
         self.instances.append(instance)
 
@@ -1269,7 +1271,7 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_active_cameras(self, modes=('rgb')):
+    def render_active_cameras(self, modes=("rgb")):
         """
         Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
         where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB)
@@ -1285,10 +1287,12 @@ class MeshRenderer(object):
                         camera_pose = camera.get_pose()
                         camera_pos = camera_pose[:3]
                         camera_ori = camera_pose[3:]
-                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[:3, :3]
-                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1])) #Mujoco camera points in -z
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[
+                            :3, :3
+                        ]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1]))  # Mujoco camera points in -z
                         self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
-                        for item in self.render(modes=modes, hidden=[[],[instance]][hide_robot]):
+                        for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
                             frames.append(item)
         return frames
 
@@ -1323,7 +1327,7 @@ class MeshRenderer(object):
 
     def _get_names_active_cameras(self):
         """
-        Query the list of active cameras. 
+        Query the list of active cameras.
         Applicable for integration with robosuite.
 
         :return: a list of camera names
@@ -1338,7 +1342,7 @@ class MeshRenderer(object):
 
     def _switch_camera(self, idx):
         """
-        Switches the camera to particular index. 
+        Switches the camera to particular index.
         Applicable for integration with iGibson.
         """
         for instance in self.instances:
@@ -1347,21 +1351,21 @@ class MeshRenderer(object):
 
     def _is_camera_active(self, idx):
         """
-        Checks if camera at given index is active. 
+        Checks if camera at given index is active.
         Applicable for integration with iGibson.
-        """        
+        """
         for instance in self.instances:
             if isinstance(instance, Robot):
                 return instance.robot.cameras[idx].is_active()
 
     def _get_camera_name(self, idx):
         """
-        Checks if camera at given index is active. 
+        Checks if camera at given index is active.
         Applicable for integration with iGibson.
-        """   
+        """
         for instance in self.instances:
             if isinstance(instance, Robot):
-                return instance.robot.cameras[idx].camera_name    
+                return instance.robot.cameras[idx].camera_name
 
     def optimize_vertex_and_texture(self):
         """
