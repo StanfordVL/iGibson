@@ -538,7 +538,7 @@ class MeshRenderer(object):
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            if overwrite_material is None:
+            if len(shape.mesh.material_ids) == 0 and overwrite_material is not None:
                 # assume one shape only has one material
                 material_id = shape.mesh.material_ids[0]
             else:
