@@ -774,7 +774,7 @@ class Viewer:
 
         if self.renderer is not None:
             if self.is_robosuite:
-                frames = self.renderer.render_robosuite_cameras(modes=('rgb'))
+                frames = self.renderer.render_active_cameras(modes=('rgb'))
                 names = self.renderer._get_names_active_cameras()
                 assert len(frames) == len(names)
                 if len(frames) > 0:

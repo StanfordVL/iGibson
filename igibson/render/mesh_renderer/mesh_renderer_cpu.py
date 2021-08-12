@@ -527,8 +527,8 @@ class MeshRenderer(object):
             self.materials_mapping[num_existing_mats + num_added_materials] = Material("color", kd=input_kd, texture_id=-1)
         else:
             self.materials_mapping[num_existing_mats + num_added_materials] = Material(
-		"color", kd=[0.5, 0.5, 0.5], texture_id=-1
-	    )
+                "color", kd=[0.5, 0.5, 0.5], texture_id=-1
+            )
 
         VAO_ids = []
 
@@ -1269,9 +1269,10 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_robosuite_cameras(self, modes=('rgb')):
+    def render_active_cameras(self, modes=('rgb')):
         """
-        Render robot camera images. This is applicable for robosuite integration with iGibson.
+        Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
+        where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB)
 
         :return: a list of frames (number of modalities x number of robots)
         """
