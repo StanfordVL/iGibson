@@ -11,25 +11,6 @@ from igibson.metrics.agent import AgentMetric
 from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
 from igibson.metrics.task import TaskMetric
 
-bddl.set_backend("iGibson")
-
-parser = argparse.ArgumentParser()
-
-parser.add_argument(
-    "--config",
-    "-c",
-    default=os.path.join(igibson.root_path, "examples", "configs", "behavior_full_observability.yaml"),
-    help="which config file to use [default: use yaml files in examples/configs]",
-)
-parser.add_argument(
-    "--mode",
-    "-m",
-    choices=["headless", "simple", "gui", "iggui", "pbgui"],
-    default="simple",
-    help="which mode for simulation (default: headless)",
-)
-args = parser.parse_args()
-
 
 def get_metrics_callbacks():
     metrics = [
@@ -47,42 +28,63 @@ def get_metrics_callbacks():
     )
 
 
-env = BehaviorEnv(
-    config_file=args.config,
-    mode=args.mode,
-    action_timestep=1.0 / 10.0,
-    physics_timestep=1.0 / 120.0,
-)
+if __name__ == "__main__":
 
-start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_metrics_callbacks()
+    bddl.set_backend("iGibson")
 
-per_episode_metrics = {}
-for callback in start_callbacks:
-    callback(env.task, None)
+    parser = argparse.ArgumentParser()
 
-for episode in range(10):
-    env.reset()
-    for i in range(1000):
-        action = env.action_space.sample()
-        state, reward, done, _ = env.step(action)
-        for callback in step_callbacks:
-            callback(env.task, None)
-        if done:
-            break
+    parser.add_argument(
+        "--config",
+        "-c",
+        default=os.path.join(igibson.root_path, "examples", "configs", "behavior_full_observability.yaml"),
+        help="which config file to use [default: use yaml files in examples/configs]",
+    )
+    parser.add_argument(
+        "--mode",
+        "-m",
+        choices=["headless", "simple", "gui", "iggui", "pbgui"],
+        default="simple",
+        help="which mode for simulation (default: headless)",
+    )
+    args = parser.parse_args()
 
-    for callback in end_callbacks:
+    env = BehaviorEnv(
+        config_file=args.config,
+        mode=args.mode,
+        action_timestep=1.0 / 10.0,
+        physics_timestep=1.0 / 120.0,
+    )
+
+    start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_metrics_callbacks()
+
+    per_episode_metrics = {}
+    for callback in start_callbacks:
         callback(env.task, None)
 
-    metrics_summary = {}
+    for episode in range(10):
+        env.reset()
+        for i in range(1000):
+            action = env.action_space.sample()
+            state, reward, done, _ = env.step(action)
+            for callback in step_callbacks:
+                callback(env.task, None)
+            if done:
+                break
 
-    for callback in data_callbacks:
-        metrics_summary.update(callback())
+        for callback in end_callbacks:
+            callback(env.task, None)
 
-    per_episode_metrics[episode] = metrics_summary
+        metrics_summary = {}
 
-log_path = "my_igibson_run.json"
+        for callback in data_callbacks:
+            metrics_summary.update(callback())
 
-with open(log_path, "w") as file:
-    json.dump(per_episode_metrics, file)
+        per_episode_metrics[episode] = metrics_summary
 
-env.close()
+    log_path = "my_igibson_run.json"
+
+    with open(log_path, "w") as file:
+        json.dump(per_episode_metrics, file)
+
+    env.close()

@@ -356,11 +356,12 @@ class Simulator:
             use_pbr_mapping = True
             shadow_caster = True
             physical_object = scene.objects_by_id[body_id]
-            if physical_object.category in ["walls", "floors", "ceilings"]:
-                use_pbr = False
-                use_pbr_mapping = False
-            if physical_object.category == "ceilings":
-                shadow_caster = False
+            if scene.scene_source == "IG":
+                if physical_object.category in ["walls", "floors", "ceilings"]:
+                    use_pbr = False
+                    use_pbr_mapping = False
+                if physical_object.category == "ceilings":
+                    shadow_caster = False
             class_id = self.class_name_to_class_id.get(physical_object.category, SemanticClass.SCENE_OBJS)
             self.load_articulated_object_in_renderer(
                 body_id,
@@ -637,9 +638,9 @@ class Simulator:
         self,
         object_pb_id,
         physical_object,
+        link_name_to_vm,
         class_id=None,
         visual_mesh_to_material=None,
-        link_name_to_vm=None,
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
@@ -648,13 +649,13 @@ class Simulator:
         Load the articulated object into renderer
 
         :param object_pb_id: pybullet body id
+        :param physical_object: The reference to Object class
+        :param link_name_to_vm: mapping from link name to a list of visual mesh file paths
         :param class_id: Class id for rendering semantic segmentation
         :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
-        :param link_name_to_vm: mapping from link name to a list of visual mesh file paths
         :param use_pbr: Whether to use pbr
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
-        :param physical_object: The reference to Object class
         """
         # Load object in renderer, use visual shape from physical_object class
         # using CoM frame

@@ -1,9 +1,9 @@
 import bddl
 from IPython import embed
 
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 
 bddl.set_backend("iGibson")
 
