@@ -248,20 +248,21 @@ class Instance(object):
     One visual object can have multiple instances to save memory.
     """
 
-    def __init__(self,
-                 object,
-                 id,
-                 pybullet_uuid,
-                 class_id,
-                 pose_trans,
-                 pose_rot,
-                 dynamic,
-                 softbody,
-                 use_pbr=True,
-                 use_pbr_mapping=True,
-                 shadow_caster=True,
-                 parent_body=None
-                 ):
+    def __init__(
+        self,
+        object,
+        id,
+        pybullet_uuid,
+        class_id,
+        pose_trans,
+        pose_rot,
+        dynamic,
+        softbody,
+        use_pbr=True,
+        use_pbr_mapping=True,
+        shadow_caster=True,
+        parent_body=None
+    ):
         """
         :param object: visual object
         :param id: id of this instance_group
