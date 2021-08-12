@@ -66,7 +66,7 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num=100, optimized=Tru
             i += 1
 
     print(renderer.visual_objects, renderer.instances)
-    print(renderer.materials_mapping, renderer.mesh_materials)
+    print(renderer.material_idx_to_material_instance_mapping, renderer.shape_to_material_idx_mapping)
 
     start = time.time()
     for i in range(n_frame):
