@@ -316,9 +316,6 @@ class MeshRenderer(object):
         """
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
-        # If lightP is already set by an outside entity it will not override it.
-        if not hasattr(self, "lightP"):
-            self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
     def setup_framebuffer(self):
         """
