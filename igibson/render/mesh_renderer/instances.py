@@ -261,7 +261,7 @@ class Instance(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
-        parent_body=None
+        parent_body=None,
     ):
         """
         :param object: visual object
