@@ -24,8 +24,6 @@ class Material(object):
         roughness_texture_id=None,
         normal_texture_id=None,
         transform_param=[1, 1, 0],
-        texuniform=False,
-        texture_type="2d",
     ):
         """
         :param material_type: color or texture
@@ -35,8 +33,6 @@ class Material(object):
         :param roughness_texture_id: roughness texture id
         :param normal_texture_id: normal texture id
         :param transform_param: x scale, y scale, rotation
-        :param texuniform: texture uniform or not (MuJoCo texture attribute)
-        :param texture_type: type of texture (MuJoCo texture attribute)
         """
         self.material_type = material_type
         self.kd = kd
@@ -45,8 +41,6 @@ class Material(object):
         self.roughness_texture_id = roughness_texture_id
         self.normal_texture_id = normal_texture_id
         self.transform_param = transform_param
-        self.texuniform = texuniform
-        self.texture_type = texture_type
 
     def is_texture(self):
         """

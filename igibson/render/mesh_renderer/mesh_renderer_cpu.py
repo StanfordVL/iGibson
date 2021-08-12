@@ -484,7 +484,6 @@ class MeshRenderer(object):
 
         # set the default values of variable before being modified later.
         num_existing_mats = len(self.materials_mapping)  # Number of current Material elements
-        texuniform = False
         num_added_materials = 0
 
         # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
@@ -519,7 +518,6 @@ class MeshRenderer(object):
 
         # Case when mesh obj is without mtl file but overwrite material is specified.
         if len(materials) == 0 and overwrite_material is not None:
-            texuniform = overwrite_material.texuniform
             self.materials_mapping[num_existing_mats] = overwrite_material
             num_added_materials = 1
 
