@@ -658,10 +658,7 @@ class URDFObject(StatefulObject):
                     else:
                         center = np.copy(link_trimesh.centroid)
 
-                    collision_mesh = [col for col in link.findall("collision") if col.find("geometry/mesh") is not None]
-                    assert len(collision_mesh) == 1, "more than one collision mesh in one link"
-                    collision_mesh = collision_mesh[0]
-                    collision_mesh_origin = collision_mesh.find("origin")
+                    collision_mesh_origin = link.find("collision/origin")
                     if collision_mesh_origin is not None:
                         offset = np.array([float(val) for val in collision_mesh_origin.attrib["xyz"].split(" ")])
                         center += offset
