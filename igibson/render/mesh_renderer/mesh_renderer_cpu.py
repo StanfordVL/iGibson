@@ -77,6 +77,7 @@ class MeshRenderer(object):
         self.pose_rot_array = None
         self.last_trans_array = None
         self.last_rot_array = None
+        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
         # Manages text data that is shared across multiple Text instances
         self.text_manager = TextManager(self)
         self.texts = []
@@ -539,11 +540,9 @@ class MeshRenderer(object):
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
             if len(shape.mesh.material_ids) == 0 and overwrite_material is not None:
-                # assume one shape only has one material
-                material_id = shape.mesh.material_ids[0]
-            else:
-                # This will makes us use the input_material at self.materials_mapping[num_existing_mats + material_id=0]
                 material_id = 0
+            else:
+                material_id = shape.mesh.material_ids[0]
 
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
