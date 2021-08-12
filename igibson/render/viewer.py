@@ -131,11 +131,11 @@ class Viewer:
         # Later use the numpad to activate additional cameras
         self.is_robosuite = self.renderer.rendering_settings.is_robosuite
 
-        cv2.namedWindow('ExternalView')
+        cv2.namedWindow("ExternalView")
         cv2.moveWindow("ExternalView", 0, 0)
         if not self.is_robosuite:
-            cv2.namedWindow('RobotView')
-        cv2.setMouseCallback('ExternalView', self.mouse_callback)
+            cv2.namedWindow("RobotView")
+        cv2.setMouseCallback("ExternalView", self.mouse_callback)
         self.create_visual_object()
         self.planner = None
         self.block_command = False
