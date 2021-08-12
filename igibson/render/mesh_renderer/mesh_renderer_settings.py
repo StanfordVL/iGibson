@@ -24,7 +24,7 @@ class MeshRendererSettings(object):
         hide_robot=True,
         show_glfw_window=False,
         blend_highlight=False,
-        is_robosuite=False
+        is_robosuite=False,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
