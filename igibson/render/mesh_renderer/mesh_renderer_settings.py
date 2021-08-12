@@ -24,6 +24,7 @@ class MeshRendererSettings(object):
         hide_robot=True,
         show_glfw_window=False,
         blend_highlight=False,
+        is_robosuite=False,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
@@ -43,6 +44,7 @@ class MeshRendererSettings(object):
         :param hide_robot: whether to hide robot when rendering
         :param show_glfw_window: whether to show glfw window (default false)
         :param blend_highlight: blend highlight of objects into RGB image
+        :param is_robosuite: whether the environment is of robosuite.
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
@@ -60,6 +62,7 @@ class MeshRendererSettings(object):
         self.hide_robot = hide_robot
         self.show_glfw_window = show_glfw_window
         self.blend_highlight = blend_highlight
+        self.is_robosuite = is_robosuite
 
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
