@@ -33,7 +33,9 @@ Other system configurations may work, but we haven't tested them extensively and
 
 ### Installing dependencies in Linux machines
 
-As most Python packages, we recommend to install iGibson in a virtual environment. We recommend Conda over standard virtual environments. To setup anaconda with the right dependencies, run the following as your user account (**not as root/superuser**):
+As most Python packages, we recommend to install iGibson in a virtual environment. 
+We suggest to use Conda instead of a standard virtual environment. 
+To setup anaconda with the right dependencies, run the following as your user account (**not as root/superuser**):
 
 ```bash
 # Install miniconda
@@ -50,17 +52,13 @@ conda create -y -n igibson python=3.8
 conda activate igibson
 ```
 
+<div class="admonition important">
+<p class="admonition-title">Careful, this may change your GPU drivers!</p>
 There are several system dependencies to correctly run iGibson on Linux, mostly related to Nvidia drivers and Cuda.
-In case your system is a clean **Ubuntu 20.04**, you can run the following script **as root/superuser** (`sudo su`) which will install all needed dependencies to build and run iGibson with CUDA 11.1. Careful, this will change your GPU drivers:
-
-
-```{admonition} This cell was hidden with the toggle class
-:class: toggle
-Wow, a hidden block! ✨✨
-```
+In case your system is a clean Ubuntu 20.04, you can run the following commands as root/superuser to install all required dependencies:
 
 <details>
-  <summary>Click to expand. To use the Nvidia drivers in headless mode, for example in a cluster:</summary>
+  <summary>Click to expand the code to install the dependencies including Nvidia drivers in headless mode to use for example in a cluster:</summary>
 <p>
 
 ```bash
@@ -86,12 +84,10 @@ apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     libegl-dev
 ```
-
 </p>
 </details>
-
 <details>
-  <summary>Click to expand. To use the Nvidia drivers in headless mode, for example in a cluster:</summary>
+  <summary>Click to expand the code to install the dependencies including Nvidia drivers to render on screen for example on a desktop computer:</summary>
 <p>
 
 ```bash
@@ -120,6 +116,8 @@ apt-get update && apt-get install -y --no-install-recommends \
 
 </p>
 </details>
+
+</div>
 
 By default, iGibson builds with CUDA support which requires that `nvcc` is on your path (or CUDA 11 is symlinked to `/usr/local/cuda` from `/usr/local/cuda-11.1`). Cmake uses `nvcc` to find the CUDA libraries and headers when building iGibson. Add the following to your shell rc (`.bashrc`, `.zshrc`, etc.) and re-login to your shell (`exec bash`, `exec zsh`, etc.):
 ```bash
@@ -189,8 +187,10 @@ Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https:
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py3-igibson python=3.8 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
-source activate py3-igibson
+# if you didn't create the conda environment before:
+conda create -y -n igibson python=3.8
+conda activate igibson
+
 pip install -e . # This step takes about 4 minutes
 ```
 
