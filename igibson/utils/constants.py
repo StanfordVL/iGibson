@@ -33,10 +33,10 @@ class PyBulletSleepState(IntEnum):
 
 
 # BEHAVIOR-related
+FLOOR_SYNSET = "floor.n.01"
 NON_SAMPLEABLE_OBJECTS = []
 non_sampleable_category_txt = os.path.join(igibson.ig_dataset_path, "metadata/non_sampleable_categories.txt")
 if os.path.isfile(non_sampleable_category_txt):
-    FLOOR_SYNSET = "floor.n.01"
     with open(non_sampleable_category_txt) as f:
         NON_SAMPLEABLE_OBJECTS = [FLOOR_SYNSET] + [line.strip() for line in f.readlines()]
 
