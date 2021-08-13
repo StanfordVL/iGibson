@@ -3,10 +3,18 @@ import os
 
 import h5py
 import numpy as np
+import pybullet as p
 
 import igibson
 from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
-from igibson.object_states.utils import get_center_extent
+from igibson.external.pybullet_tools.utils import (
+    aabb_union,
+    get_aabb,
+    get_aabb_center,
+    get_aabb_extent,
+    get_all_links,
+    get_center_extent,
+)
 from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
 
 FRAME_BATCH_SIZE = 200
@@ -41,16 +49,16 @@ class PointCloudExtractor(object):
         h = renderer.height
         n_frames = log_reader.total_frame_num
         self.points = self.h5py_file.create_dataset(
-            "/pointcloud/points", (n_frames, h, w, 4), dtype=np.float32, compression="gzip", compression_opts=9
+            "/pointcloud/points", (n_frames, h, w, 4), dtype=np.float32, compression="lzf"
         )
         self.colors = self.h5py_file.create_dataset(
-            "/pointcloud/colors", (n_frames, h, w, 3), dtype=np.float32, compression="gzip", compression_opts=9
+            "/pointcloud/colors", (n_frames, h, w, 3), dtype=np.float32, compression="lzf"
         )
         self.categories = self.h5py_file.create_dataset(
-            "/pointcloud/categories", (n_frames, h, w), dtype=np.int32, compression="gzip", compression_opts=9
+            "/pointcloud/categories", (n_frames, h, w), dtype=np.int32, compression="lzf"
         )
         self.instances = self.h5py_file.create_dataset(
-            "/pointcloud/instances", (n_frames, h, w), dtype=np.int32, compression="gzip", compression_opts=9
+            "/pointcloud/instances", (n_frames, h, w), dtype=np.int32, compression="lzf"
         )
 
         self.create_caches(renderer)
@@ -112,14 +120,16 @@ class BBoxExtractor(object):
         # Create the dataset
         n_frames = log_reader.total_frame_num
         # body id, category id, 2d top left, 2d extent, 3d center, 4d orientation quat, 3d extent
-        self.bboxes = self.h5py_file.create_dataset("/bbox2d", (n_frames, MAX_INSTANCE_COUNT, 16), dtype=np.float32)
-        self.cameraV = self.h5py_file.create_dataset("/cameraV", (n_frames, 4, 4), dtype=np.float32)
-        self.cameraP = self.h5py_file.create_dataset("/cameraP", (n_frames, 4, 4), dtype=np.float32)
+        self.bboxes = self.h5py_file.create_dataset(
+            "/bbox2d", (n_frames, p.getNumBodies(), 16), dtype=np.float32, compression="lzf"
+        )
+        self.cameraV = self.h5py_file.create_dataset("/cameraV", (n_frames, 4, 4), dtype=np.float32, compression="lzf")
+        self.cameraP = self.h5py_file.create_dataset("/cameraP", (n_frames, 4, 4), dtype=np.float32, compression="lzf")
 
         self.create_caches()
 
     def create_caches(self):
-        self.bboxes_cache = np.full((FRAME_BATCH_SIZE, MAX_INSTANCE_COUNT, 16), -1, dtype=np.float32)
+        self.bboxes_cache = np.full((FRAME_BATCH_SIZE, p.getNumBodies(), 16), -1, dtype=np.float32)
         self.cameraV_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
         self.cameraP_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.int32)
 
@@ -160,7 +170,12 @@ class BBoxExtractor(object):
 
             # 3D bounding box
             # TODO: This is in camera frame, not upright camera frame. Easy fix - but should we do it here?
-            center, extent = get_center_extent(obj.states)
+            all_links = get_all_links(body_id)
+            aabbs = [get_aabb(body_id, link=link) for link in all_links]
+            aabb = aabb_union(aabbs)
+            center = get_aabb_center(aabb)
+            extent = get_aabb_extent(aabb)
+
             # Assume that the extent is when the object is in the trivial axis-aligned orientation.
             pose = np.concatenate([center, np.array([0, 0, 0, 1])])
             transformed_pose = igbhvr_act_inst.simulator.renderer.transform_pose(pose)
