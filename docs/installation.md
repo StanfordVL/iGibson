@@ -54,6 +54,10 @@ There are several system dependencies to correctly run iGibson on Linux, mostly 
 In case your system is a clean **Ubuntu 20.04**, you can run the following script **as root/superuser** (`sudo su`) which will install all needed dependencies to build and run iGibson with CUDA 11.1. Careful, this will change your GPU drivers:
 
 
+```{admonition} This cell was hidden with the toggle class
+:class: toggle
+Wow, a hidden block! ✨✨
+```
 
 <details>
   <summary>Click to expand. To use the Nvidia drivers in headless mode, for example in a cluster:</summary>
