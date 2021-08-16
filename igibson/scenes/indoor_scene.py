@@ -170,6 +170,30 @@ class IndoorScene(Scene):
         z = self.floor_heights[floor]
         return floor, np.array([x, y, z])
 
+    def get_points_grid(self, num_points):
+        """
+        Get a grid of size num_points x num_points consisting of points in the traversible space
+
+        :param num_points: number of points along each axis
+        :return points_grid: sampled points in [xyz] mapped to their corresponding floors
+        """
+        points_grid = {floor:[] for floor in range(len(self.floor_heights))}
+        for floor in range(len(self.floor_heights)):
+            z = self.floor_heights[floor]
+
+            trav = self.floor_map[floor]
+            trav_space = np.where(trav == 255)
+
+            x_step = int(trav_space[0].shape[0] / (num_points-1))
+            y_step = int(trav_space[1].shape[0] / (num_points-1))
+
+            for i in range(0, trav_space[0].shape[0], x_step):
+                for j in range(0, trav_space[1].shape[0], y_step):
+                    xy_map = np.array([trav_space[0][i], trav_space[1][j]])
+                    x, y = self.map_to_world(xy_map)
+                    points_grid[floor].append(np.array([x, y, z]))
+        return points_grid
+
     def map_to_world(self, xy):
         """
         Transforms a 2D point in map reference frame into world (simulator) reference frame

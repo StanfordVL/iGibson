@@ -215,8 +215,6 @@ namespace igibson {
     }
 
     void RegisterReverbProbe(const std::string &room, py::array_t<float> sample_pos) {
-        auto time1 = std::chrono::high_resolution_clock::now();
-
         // Ray-tracing related fields.
         const int kSampleRate = 48000;
         const int kNumRays = 200000;//20000;
@@ -249,8 +247,7 @@ namespace igibson {
 
         resonance_audio->room_to_reflection_and_reverb[room] = std::make_pair(reflection_properties, reverb_properties);
 
-        auto elapsed_t = std::chrono::high_resolution_clock::now() - time1;
-        py::print("Reverb and reflection proeprties for room [", room, "] computed in ", elapsed_t.count(), "ms");
+        py::print("Reverb and reflection properties computed for probe [", room, "]");
     }
 
     void SetRoomPropertiesFromProbe(const std::string &room) {

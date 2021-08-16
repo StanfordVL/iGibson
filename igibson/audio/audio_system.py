@@ -1,5 +1,7 @@
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.render.mesh_renderer.instances import InstanceGroup
+from igibson.utils.utils import l2_distance
+from igibson.objects import cube
 
 import audio
 
@@ -113,21 +115,19 @@ class AudioSystem(object):
     It manages a set of audio objects and their corresponding audio buffers.
     It also interfaces with ResonanceAudio to perform the simulaiton to the listener.
     """
-    def __init__(self, simulator, listener, is_Viewer=False, writeToFile=False, SR=44100):
+    def __init__(self, simulator, listener, is_Viewer=False, writeToFile=False, SR=44100, num_probes=10):
         """
         :param scene: iGibson scene
         :param pybullet: pybullet client
         :param simulator: Simulator object
         :param listener: Audio receiver, either a Viewer object or any subclass of BaseRobot
         :param SR: ResonanceAudio sample rate
+        :param num_probes: Determines number of reverb/reflections probes in the scene. Actual number is num_probes ^ 2
         """
-        assert isinstance(simulator.scene, InteractiveIndoorScene), 'AudioSystem can only be called with InteractiveIndoorScene loaded in the Simulator'
-
         self.scene = simulator.scene
         self.SR = SR
         self.s = simulator
         self.listener = listener
-        #self.pyaud = pyaudio.PyAudio()
         self.writeToFile = writeToFile
 
         def getViewerOrientation():
@@ -156,20 +156,24 @@ class AudioSystem(object):
         #Load scene mesh without dynamic objects
         audio.LoadMesh(int(verts.size / 3), int(faces.size / 3), verts, faces, materials, 0.9) #Scattering coefficient needs tuning?
 
-        #Get reverb and reflection properties for each room
-        for room_ins in self.s.scene.room_ins_name_to_ins_id.keys():
-            #TODO: get a better sample position (center of room?)
-            _, sample_position = self.s.scene.get_random_point_by_room_instance(room_ins)
-            if is_Viewer:
-                #add arbitrary height
-                sample_position[2] += 1.7
-            else:
-                sample_position[2] += self.get_pos()[2]
+        #Get reverb and reflection properties at equally spaced point in grid along traversible map
+        self.probe_key_to_pos_by_floor = []
 
-            audio.RegisterReverbProbe(room_ins, sample_position)
+        points_grid = self.scene.get_points_grid(num_probes)
+        for floor in points_grid.keys():
+            self.probe_key_to_pos_by_floor.append({})
+            for i, sample_position in enumerate(points_grid[floor]):
+                key = "floor " + str(floor) + " probe " + str(i)
+                if is_Viewer:
+                    #add arbitrary height
+                    sample_position[2] += 1.7
+                else:
+                    sample_position[2] += self.get_pos()[2]
+                audio.RegisterReverbProbe(key, sample_position)
+                self.probe_key_to_pos_by_floor[floor][key] = sample_position[:2]
 
         print("Finished computing reverb probes")
-        self.room = self.s.scene.get_room_instance_by_point(np.array(self.get_pos())[:2])
+        self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
         self.alwaysCountCollisionIDs = set()
         #Since the walls are all assigned one obj_id, we need to make sure not to automatically skip counting duplicate collisions with these ids
         for category in ["walls", "floors", "ceilings"]:
@@ -179,6 +183,22 @@ class AudioSystem(object):
         self.sourceToEnabled, self.sourceToBuffer, self.sourceToRepeat,  self.sourceToResonanceID = {}, {}, {}, {}
         self.current_output, self.complete_output = [], []
 
+    def getClosestReverbProbe(self, pos):
+        floor = 0
+        for i in range(len(self.scene.floor_heights)):
+            if self.scene.floor_heights[i] > pos[2]:
+                floor = i - 1
+                break
+        if floor < 0:
+            print("Floor height error, cannot match closest reverb probe")
+        min_dist, min_probe = np.inf, None
+        #TODO: This is very inefficient
+        for probe_key, probe_pos in self.probe_key_to_pos_by_floor[floor].items():
+            dist = l2_distance(probe_pos, pos[:2])
+            if dist < min_dist:
+                min_dist = dist
+                min_probe = probe_key
+        return min_probe
 
     def registerSource(self, source_obj_id, audio_fname, enabled=False, repeat=True):
         print("Initializing source object " + str(source_obj_id) + " from file: " + audio_fname)
@@ -248,11 +268,11 @@ class AudioSystem(object):
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
 
         audio.SetListenerPositionAndRotation(listener_pos, self.get_ori())
-        curr_room = self.scene.get_room_instance_by_point(np.array(listener_pos[:2]))
-        if curr_room != self.room and curr_room != None:
-            print("Updating Room Properties to room " + curr_room)
-            audio.SetRoomPropertiesFromProbe(curr_room)
-            self.room = curr_room
+        closest_probe_key = self.getClosestReverbProbe(listener_pos)
+        if closest_probe_key != self.current_probe_key:
+            print("Updating Reverb/Reflection properties to probe " + closest_probe_key)
+            audio.SetRoomPropertiesFromProbe(closest_probe_key)
+            self.current_probe_key = closest_probe_key
 
         self.current_output = audio.ProcessListener(self.framesPerBuf)
 
