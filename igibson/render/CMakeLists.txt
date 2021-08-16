@@ -1,7 +1,10 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.8)
 project(CppMeshRenderer)
 
 set(USE_GLAD TRUE)
+
+include(CheckLanguage)
+check_language(CUDA)
 
 if (MAC_PLATFORM)
     set(USE_CUDA FALSE)
@@ -13,7 +16,15 @@ elseif (WIN32)
     # iGibson on Windows is always in VR mode
     set(USE_VR TRUE)
 else ()
-    set(USE_CUDA TRUE)
+    if (NOT CMAKE_CUDA_COMPILER)
+        message(WARNING "nvcc not detected in path.\ 
+iGibson will be built without CUDA support used for rendering to tensors.\
+If desired, please install cudatoolkit with your package manager or \
+cudatoolkit-dev with conda.")
+        set(USE_CUDA FALSE)
+    else ()
+        set(USE_CUDA TRUE)
+    endif ()
     set(USE_GLFW FALSE)
     set(USE_VR FALSE)
 endif ()
