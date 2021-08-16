@@ -269,7 +269,9 @@ class MeshRenderer(object):
 
         self.P = np.ascontiguousarray(P, np.float32)
         self.material_idx_to_material_instance_mapping = {}
-        self.shape_to_material_idx_mapping = []
+        self.shape_material_idx = []
+        # shape_material_idx is a list with the same length as self.shapes and self.VAOs, indicating the material_idx
+        # that each shape is mapped to.
         # Number of unique shapes comprising the optimized renderer buffer
         self.or_buffer_shape_num = 0
         # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
@@ -508,7 +510,8 @@ class MeshRenderer(object):
                     )
                 else:
                     if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
-                        # Pink color for translucent objects.
+                        # This applies to an object with RGBA channels in input k_d color.
+                        # Translucent object is not supported in iG renderer right now, it uses pink color instead.
                         material = Material("color", kd=[1, 0, 1, 1])
                     else:
                         material = Material("color", kd=item.diffuse)
@@ -618,11 +621,11 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                self.shape_to_material_idx_mapping.append(num_added_materials + num_existing_mats)
+                self.shape_material_idx.append(num_added_materials + num_existing_mats)
             else:
-                self.shape_to_material_idx_mapping.append(material_id + num_existing_mats)
+                self.shape_material_idx.append(material_id + num_existing_mats)
 
-            logging.debug("shape_to_material_idx_mapping: {}".format(self.shape_to_material_idx_mapping))
+            logging.debug("shape_material_idx: {}".format(self.shape_material_idx))
             VAO_ids.append(self.get_num_objects() - 1)
 
         new_obj = VisualObject(
@@ -1471,7 +1474,7 @@ class MeshRenderer(object):
             index_offset += index_count
 
             # Generate other rendering data, including diffuse color and texture layer
-            id_material = self.material_idx_to_material_instance_mapping[self.shape_to_material_idx_mapping[id]]
+            id_material = self.material_idx_to_material_instance_mapping[self.shape_material_idx[id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
@@ -1657,9 +1660,9 @@ class MeshRenderer(object):
         normal_tex_layer_array = []
         transform_param_array = []
 
-        for id in duplicate_vao_ids:
+        for vao_id in duplicate_vao_ids:
             # Generate other rendering data, including diffuse color and texture layer
-            id_material = self.material_idx_to_material_instance_mapping[self.shape_to_material_idx_mapping[id]]
+            id_material = self.material_idx_to_material_instance_mapping[self.shape_material_idx[vao_id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)

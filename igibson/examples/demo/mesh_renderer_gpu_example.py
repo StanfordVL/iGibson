@@ -20,7 +20,7 @@ def main():
     renderer.add_instance(0)
 
     print(renderer.visual_objects, renderer.instances)
-    print(renderer.material_idx_to_material_instance_mapping, renderer.shape_to_material_idx_mapping)
+    print(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)
     camera_pose = np.array([0, 0, 1.2])
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
