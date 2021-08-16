@@ -195,14 +195,14 @@ class MeshRenderer(object):
                         "".join(
                             open(
                                 os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__), "shaders", "450", "optimized_vert.shader"
+                                    os.path.dirname(mesh_renderer.__file__), "shaders", "460", "optimized_vert.shader"
                                 )
                             ).readlines()
                         ),
                         "".join(
                             open(
                                 os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__), "shaders", "450", "optimized_frag.shader"
+                                    os.path.dirname(mesh_renderer.__file__), "shaders", "460", "optimized_frag.shader"
                                 )
                             ).readlines()
                         ),
@@ -211,24 +211,24 @@ class MeshRenderer(object):
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(
                             open(
-                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "vert.shader")
+                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "460", "vert.shader")
                             ).readlines()
                         ),
                         "".join(
                             open(
-                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "frag.shader")
+                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "460", "frag.shader")
                             ).readlines()
                         ),
                     )
                 self.textShaderProgram = self.r.compile_shader_meshrenderer(
                     "".join(
                         open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "text_vert.shader")
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "460", "text_vert.shader")
                         ).readlines()
                     ),
                     "".join(
                         open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "text_frag.shader")
+                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "460", "text_frag.shader")
                         ).readlines()
                     ),
                 )
@@ -295,7 +295,7 @@ class MeshRenderer(object):
             or os.path.exists(self.rendering_settings.env_texture_filename3)
         ):
             self.r.setup_pbr(
-                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450"),
+                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "460"),
                 self.rendering_settings.env_texture_filename,
                 self.rendering_settings.env_texture_filename2,
                 self.rendering_settings.env_texture_filename3,

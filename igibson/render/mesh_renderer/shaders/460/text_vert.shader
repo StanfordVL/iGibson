@@ -1,4 +1,4 @@
-#version 450
+#version 460
 layout (location = 0) in vec4 vertex; // contains pos then tex as vec2
 out vec2 TexCoords;
 
