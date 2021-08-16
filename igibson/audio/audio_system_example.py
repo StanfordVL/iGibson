@@ -11,7 +11,6 @@ from igibson.scenes.stadium_scene import StadiumScene
 from igibson.objects import cube
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.utils.assets_utils import get_ig_model_path
-import pyaudio
 import audio
 import wave
 import pybullet as p
@@ -27,23 +26,22 @@ def main():
     s.import_ig_scene(scene)
 
     obj_id = (scene.objects_by_category["loudspeaker"][0]).body_ids[0]
-    #_,source_location = scene.get_random_point_by_room_type("living_room")
-    #source_location[2] = 1.7
-    #model = "fe613d2a63582e126e5a8ef1ff6470a3"
-    #model_path = get_ig_model_path("loudspeaker","fe613d2a63582e126e5a8ef1ff6470a3")
-    #filename = os.path.join(model_path, model + ".urdf")
-    #obj = ArticulatedObject(filename)
-    #obj = cube.Cube(pos=source_location, dim=[0.2, 0.2, 0.2], visual_only=False, mass=0.5, color=[255, 0, 0, 1])
-    #obj_id = s.import_object(obj)
-
     # Audio System Initialization!
-    audioSystem = AudioSystem(s, s.viewer, is_Viewer=True, writeToFile=True, SR = 44100)
+    audioSystem = AudioSystem(s, s.viewer, is_Viewer=True, writeToFile=True, SR = 44100, num_probes=5)
     # Attach wav file to imported cube obj
     audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id)
 
     s.attachAudioSystem(audioSystem)
+
+    # Visualize reverb probes!
+    for i in range(len(scene.floor_heights)):
+        for probe_pos in audioSystem.probe_key_to_pos_by_floor[i].values():
+            z = scene.floor_heights[i] + 1.7
+            pos = [probe_pos[0], probe_pos[1], z]
+            obj = cube.Cube(pos=pos, dim=[0.1, 0.1, 0.1], visual_only=True, mass=0, color=[255, 0, 0, 1])
+            s.import_object(obj)
 
     # This section is entirely optional - it simply tries to stream audio live
     def pyaudCallback(in_data, frame_count, time_info, status):
