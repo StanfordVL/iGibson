@@ -107,7 +107,7 @@ class InstanceGroup(object):
                     self.last_rot[i],
                 )
                 current_material = self.renderer.material_idx_to_material_instance_mapping[
-                    self.renderer.shape_to_material_idx_mapping[object_idx]
+                    self.renderer.shape_material_idx[object_idx]
                 ]
                 self.renderer.r.init_material_instance(
                     self.renderer.shaderProgram,
@@ -143,7 +143,7 @@ class InstanceGroup(object):
                         buffer = self.renderer.fbo
                     self.renderer.r.draw_elements_instance(
                         self.renderer.material_idx_to_material_instance_mapping[
-                            self.renderer.shape_to_material_idx_mapping[object_idx]
+                            self.renderer.shape_material_idx[object_idx]
                         ].is_texture(),
                         texture_id,
                         metallic_texture_id,
@@ -368,7 +368,7 @@ class Instance(object):
 
         for object_idx in self.object.VAO_ids:
             current_material = self.renderer.material_idx_to_material_instance_mapping[
-                self.renderer.shape_to_material_idx_mapping[object_idx]
+                self.renderer.shape_material_idx[object_idx]
             ]
             self.renderer.r.init_material_instance(
                 self.renderer.shaderProgram,
@@ -405,7 +405,7 @@ class Instance(object):
 
                 self.renderer.r.draw_elements_instance(
                     self.renderer.material_idx_to_material_instance_mapping[
-                        self.renderer.shape_to_material_idx_mapping[object_idx]
+                        self.renderer.shape_material_idx[object_idx]
                     ].is_texture(),
                     texture_id,
                     metallic_texture_id,

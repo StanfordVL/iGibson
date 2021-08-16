@@ -22,7 +22,7 @@ def main():
 
     renderer.add_instance(0)
     print(renderer.visual_objects, renderer.instances)
-    print(renderer.material_idx_to_material_instance_mapping, renderer.shape_to_material_idx_mapping)
+    print(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)
 
     px = 0
     py = 0.2
