@@ -89,9 +89,14 @@ class BehaviorEnv(iGibsonEnv):
         task = self.config["task"]
         task_id = self.config["task_id"]
         scene_id = self.config["scene_id"]
+        scene_urdf = self.config["scene_urdf"]
         clutter = self.config["clutter"]
         online_sampling = self.config["online_sampling"]
-        if online_sampling:
+        if scene_urdf:
+            scene_kwargs = {
+                "urdf_file": scene_urdf,
+            }
+        elif online_sampling:
             scene_kwargs = {}
         else:
             scene_kwargs = {
@@ -327,7 +332,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default="igibson/examples/configs/behavior.yaml",
+        default="igibson/examples/configs/behavior_onboard_sensing.yaml",
         help="which config file to use [default: use yaml files in examples/configs]",
     )
     parser.add_argument(
