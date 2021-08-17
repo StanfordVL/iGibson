@@ -268,8 +268,10 @@ class MeshRenderer(object):
         self.cache = np.copy(self.V)
 
         self.P = np.ascontiguousarray(P, np.float32)
-        self.materials_mapping = {}
-        self.mesh_materials = []
+        self.material_idx_to_material_instance_mapping = {}
+        self.shape_material_idx = []
+        # shape_material_idx is a list with the same length as self.shapes and self.VAOs, indicating the material_idx
+        # that each shape is mapped to.
         # Number of unique shapes comprising the optimized renderer buffer
         self.or_buffer_shape_num = 0
         # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
@@ -476,55 +478,60 @@ class MeshRenderer(object):
         shapes = reader.GetShapes()
         logging.debug("Num shapes: {}".format(len(shapes)))
 
-        material_count = len(self.materials_mapping)
         if overwrite_material is not None and len(materials) > 1:
             logging.warning("passed in one material ends up overwriting multiple materials")
 
         # set the default values of variable before being modified later.
-        num_existing_mats = len(self.materials_mapping)  # Number of current Material elements
-        num_added_materials = 0
+        num_existing_mats = len(self.material_idx_to_material_instance_mapping)  # Number of current Material elements
+        num_added_materials = len(materials)
 
-        # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a Material element for them
-        for i, item in enumerate(materials):
-            if overwrite_material is not None:
-                if isinstance(overwrite_material, RandomizedMaterial):
-                    self.load_randomized_material(overwrite_material)
-                elif isinstance(overwrite_material, ProceduralMaterial):
-                    self.load_procedural_material(overwrite_material)
-                material = overwrite_material
-            elif item.diffuse_texname != "" and load_texture:
-                obj_dir = os.path.dirname(obj_path)
-                texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname))
-                texture_metallic = self.load_texture_file(os.path.join(obj_dir, item.metallic_texname))
-                texture_roughness = self.load_texture_file(os.path.join(obj_dir, item.roughness_texname))
-                texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname))
-                material = Material(
-                    "texture",
-                    texture_id=texture,
-                    metallic_texture_id=texture_metallic,
-                    roughness_texture_id=texture_roughness,
-                    normal_texture_id=texture_normal,
-                )
-            else:
-                if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
-                    # Pink color for translucent objects.
-                    material = Material("color", kd=[1, 0, 1, 1])
+        if num_added_materials > 0:
+            # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a
+            # Material element for them
+            for i, item in enumerate(materials):
+                if overwrite_material is not None:
+                    if isinstance(overwrite_material, RandomizedMaterial):
+                        self.load_randomized_material(overwrite_material)
+                    elif isinstance(overwrite_material, ProceduralMaterial):
+                        self.load_procedural_material(overwrite_material)
+                    material = overwrite_material
+                elif item.diffuse_texname != "" and load_texture:
+                    obj_dir = os.path.dirname(obj_path)
+                    texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname))
+                    texture_metallic = self.load_texture_file(os.path.join(obj_dir, item.metallic_texname))
+                    texture_roughness = self.load_texture_file(os.path.join(obj_dir, item.roughness_texname))
+                    texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname))
+                    material = Material(
+                        "texture",
+                        texture_id=texture,
+                        metallic_texture_id=texture_metallic,
+                        roughness_texture_id=texture_roughness,
+                        normal_texture_id=texture_normal,
+                    )
                 else:
-                    material = Material("color", kd=item.diffuse)
-            self.materials_mapping[i + material_count] = material
-            num_added_materials = len(materials)
+                    if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
+                        # This applies to an object with RGBA channels in input k_d color.
+                        # Translucent object is not supported in iG renderer right now, it uses pink color instead.
+                        material = Material("color", kd=[1, 0, 1, 1])
+                    else:
+                        material = Material("color", kd=item.diffuse)
+                self.material_idx_to_material_instance_mapping[num_existing_mats + i] = material
+        else:
+            # Case when mesh obj is without mtl file but overwrite material is specified.
+            if overwrite_material is not None:
+                self.material_idx_to_material_instance_mapping[num_existing_mats] = overwrite_material
+                num_added_materials = 1
 
-        # Case when mesh obj is without mtl file but overwrite material is specified.
-        if len(materials) == 0 and overwrite_material is not None:
-            self.materials_mapping[num_existing_mats] = overwrite_material
-            num_added_materials = 1
+        # material index = num_existing_mats ... num_existing_mats + num_added_materials - 1 are using materials from mesh or
+        # from overwrite_material
+        # material index = num_existing_mats + num_added_materials is a fail-safe default material
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material(
+            self.material_idx_to_material_instance_mapping[num_existing_mats + num_added_materials] = Material(
                 "color", kd=input_kd, texture_id=-1
             )
         else:
-            self.materials_mapping[num_existing_mats + num_added_materials] = Material(
+            self.material_idx_to_material_instance_mapping[num_existing_mats + num_added_materials] = Material(
                 "color", kd=[0.5, 0.5, 0.5], texture_id=-1
             )
 
@@ -536,8 +543,11 @@ class MeshRenderer(object):
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            if len(shape.mesh.material_ids) == 0 and overwrite_material is not None:
-                material_id = 0
+            if len(shape.mesh.material_ids) == 0:
+                if overwrite_material is not None:
+                    material_id = 0
+                else:
+                    material_id = -1  # if no material and no overwrite material is supplied
             else:
                 material_id = shape.mesh.material_ids[0]
 
@@ -611,11 +621,11 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                self.mesh_materials.append(len(materials) + material_count)
+                self.shape_material_idx.append(num_added_materials + num_existing_mats)
             else:
-                self.mesh_materials.append(material_id + material_count)
+                self.shape_material_idx.append(material_id + num_existing_mats)
 
-            logging.debug("mesh_materials: {}".format(self.mesh_materials))
+            logging.debug("shape_material_idx: {}".format(self.shape_material_idx))
             VAO_ids.append(self.get_num_objects() - 1)
 
         new_obj = VisualObject(
@@ -942,13 +952,13 @@ class MeshRenderer(object):
 
     def update_optimized_texture(self):
         request_update = False
-        for material in self.materials_mapping:
+        for material in self.material_idx_to_material_instance_mapping:
             if (
-                isinstance(self.materials_mapping[material], ProceduralMaterial)
-                and self.materials_mapping[material].request_update
+                isinstance(self.material_idx_to_material_instance_mapping[material], ProceduralMaterial)
+                and self.material_idx_to_material_instance_mapping[material].request_update
             ):
                 request_update = True
-                self.materials_mapping[material].request_update = False
+                self.material_idx_to_material_instance_mapping[material].request_update = False
 
         if request_update:
             self.update_optimized_texture_internal()
@@ -1464,7 +1474,7 @@ class MeshRenderer(object):
             index_offset += index_count
 
             # Generate other rendering data, including diffuse color and texture layer
-            id_material = self.materials_mapping[self.mesh_materials[id]]
+            id_material = self.material_idx_to_material_instance_mapping[self.shape_material_idx[id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
@@ -1650,9 +1660,9 @@ class MeshRenderer(object):
         normal_tex_layer_array = []
         transform_param_array = []
 
-        for id in duplicate_vao_ids:
+        for vao_id in duplicate_vao_ids:
             # Generate other rendering data, including diffuse color and texture layer
-            id_material = self.materials_mapping[self.mesh_materials[id]]
+            id_material = self.material_idx_to_material_instance_mapping[self.shape_material_idx[vao_id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
