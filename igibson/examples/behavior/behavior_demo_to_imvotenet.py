@@ -1,20 +1,16 @@
 import argparse
+import itertools
 import os
 
 import h5py
 import numpy as np
 import pybullet as p
+import trimesh
 
 import igibson
 from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
-from igibson.external.pybullet_tools.utils import (
-    aabb_union,
-    get_aabb,
-    get_aabb_center,
-    get_aabb_extent,
-    get_all_links,
-    get_center_extent,
-)
+from igibson.objects.articulated_object import URDFObject
+from igibson.utils import utils
 from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
 
 FRAME_BATCH_SIZE = 100
@@ -195,6 +191,9 @@ class BBoxExtractor(object):
         if not is_subsampled_frame(igbhvr_act_inst.simulator.frame_count):
             return
 
+        # Clear debug drawings.
+        p.removeAllUserDebugItems()
+
         renderer = igbhvr_act_inst.simulator.renderer
         ins_seg = renderer.render_robot_cameras(modes="ins_seg")[0][:, :, 0]
         ins_seg = np.round(ins_seg * MAX_INSTANCE_COUNT).astype(int)
@@ -209,6 +208,10 @@ class BBoxExtractor(object):
 
             # Get the object semantic class ID
             obj = igbhvr_act_inst.simulator.scene.objects_by_id[body_id]
+            if not isinstance(obj, URDFObject):
+                # Ignore robots etc.
+                continue
+
             class_id = igbhvr_act_inst.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
 
             # 2D bounding box
@@ -217,27 +220,33 @@ class BBoxExtractor(object):
             bb_bottom_right = np.max(this_object_pixels_positions, axis=0)
 
             # 3D bounding box
-            # TODO: This is in camera frame, not upright camera frame. Easy fix - but should we do it here?
-            all_links = get_all_links(body_id)
-            aabbs = [get_aabb(body_id, link=link) for link in all_links]
-            aabb = aabb_union(aabbs)
-            center = get_aabb_center(aabb)
-            extent = get_aabb_extent(aabb)
+            world_frame_center, world_frame_orientation, base_frame_extent, _ = obj.get_base_aligned_bounding_box(
+                body_id=body_id, visual=True
+            )
+            world_frame_pose = np.concatenate([world_frame_center, world_frame_orientation])
+            camera_frame_pose = igbhvr_act_inst.simulator.renderer.transform_pose(world_frame_pose)
+            camera_frame_center = camera_frame_pose[:3]
+            camera_frame_orientation = camera_frame_pose[3:]
 
-            # Assume that the extent is when the object is in the trivial axis-aligned orientation.
-            pose = np.concatenate([center, np.array([0, 0, 0, 1])])
-            transformed_pose = igbhvr_act_inst.simulator.renderer.transform_pose(pose)
-            center_cam = transformed_pose[:3]
-            orientation_cam = transformed_pose[3:]
+            # Debug-mode drawing of the bounding box.
+            bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (base_frame_extent / 2)
+            bbox_transform = utils.quat_pos_to_mat(world_frame_center, world_frame_orientation)
+            world_frame_vertex_positions = trimesh.transformations.transform_points(
+                bbox_frame_vertex_positions, bbox_transform
+            )
+            for i, from_vertex in enumerate(world_frame_vertex_positions):
+                for j, to_vertex in enumerate(world_frame_vertex_positions):
+                    if j <= i:
+                        p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
 
             # Record the results.
             self.bboxes_cache[frame_idx, filled_obj_idx, 0] = body_id
             self.bboxes_cache[frame_idx, filled_obj_idx, 1] = class_id
             self.bboxes_cache[frame_idx, filled_obj_idx, 2:4] = bb_top_left
             self.bboxes_cache[frame_idx, filled_obj_idx, 4:6] = bb_bottom_right - bb_top_left
-            self.bboxes_cache[frame_idx, filled_obj_idx, 6:9] = center_cam
-            self.bboxes_cache[frame_idx, filled_obj_idx, 9:13] = orientation_cam
-            self.bboxes_cache[frame_idx, filled_obj_idx, 13:16] = extent
+            self.bboxes_cache[frame_idx, filled_obj_idx, 6:9] = camera_frame_center
+            self.bboxes_cache[frame_idx, filled_obj_idx, 9:13] = camera_frame_orientation
+            self.bboxes_cache[frame_idx, filled_obj_idx, 13:16] = base_frame_extent
             filled_obj_idx += 1
 
         self.cameraV_cache[frame_idx] = renderer.V
@@ -245,17 +254,6 @@ class BBoxExtractor(object):
 
         if frame_idx == FRAME_BATCH_SIZE - 1:
             self.write_to_file(igbhvr_act_inst)
-
-        # Uncomment this to debug the 2d bounding box setup (set a breakpoint on plt.show())
-        # img = igbhvr_act_inst.simulator.renderer.render_robot_cameras(modes=("rgb"))[0]
-        # plt.imshow(img[:, :, :3])
-        # for bb in bbs:
-        #     # Note that the Rectangle expects x, y coordinates but we have y, x
-        #     plt.gca().add_patch(Rectangle(tuple(np.flip(bb[1])), bb[2][1], bb[2][0],
-        #                                   edgecolor='red',
-        #                                   facecolor='none',
-        #                                   lw=4))
-        # plt.show()
 
     def end_callback(self, igbhvr_act_inst, _):
         self.write_to_file(igbhvr_act_inst)
@@ -283,7 +281,7 @@ def main():
         args.out_dir,
         get_imvotenet_callbacks,
         image_size=(480, 480),
-        ignore_errors=False,
+        ignore_errors=True,
     )
 
 
