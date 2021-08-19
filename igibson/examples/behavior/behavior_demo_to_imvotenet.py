@@ -17,7 +17,17 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
 
-FRAME_BATCH_SIZE = 200
+FRAME_BATCH_SIZE = 100
+START_FRAME = 500
+SUBSAMPLE_EVERY_N_FRAMES = 60
+
+
+def is_subsampled_frame(frame_count):
+    return frame_count >= START_FRAME and (frame_count - START_FRAME) % SUBSAMPLE_EVERY_N_FRAMES == 0
+
+
+def frame_to_entry_idx(frame_count):
+    return (frame_count - START_FRAME) // SUBSAMPLE_EVERY_N_FRAMES
 
 
 def parse_args():
@@ -47,18 +57,34 @@ class PointCloudExtractor(object):
         renderer = igbhvr_act_inst.simulator.renderer
         w = renderer.width
         h = renderer.height
-        n_frames = log_reader.total_frame_num
+        n_frames = frame_to_entry_idx(log_reader.total_frame_num)
         self.points = self.h5py_file.create_dataset(
-            "/pointcloud/points", (n_frames, h, w, 4), dtype=np.float32, compression="lzf"
+            "/pointcloud/points",
+            (n_frames, h, w, 4),
+            dtype=np.float32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), h, w, 4),
         )
         self.colors = self.h5py_file.create_dataset(
-            "/pointcloud/colors", (n_frames, h, w, 3), dtype=np.float32, compression="lzf"
+            "/pointcloud/colors",
+            (n_frames, h, w, 3),
+            dtype=np.float32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), h, w, 3),
         )
         self.categories = self.h5py_file.create_dataset(
-            "/pointcloud/categories", (n_frames, h, w), dtype=np.int32, compression="lzf"
+            "/pointcloud/categories",
+            (n_frames, h, w),
+            dtype=np.int32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), h, w),
         )
         self.instances = self.h5py_file.create_dataset(
-            "/pointcloud/instances", (n_frames, h, w), dtype=np.int32, compression="lzf"
+            "/pointcloud/instances",
+            (n_frames, h, w),
+            dtype=np.int32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), h, w),
         )
 
         self.create_caches(renderer)
@@ -73,7 +99,7 @@ class PointCloudExtractor(object):
         self.instances_cache = np.zeros((FRAME_BATCH_SIZE, h, w), dtype=np.int32)
 
     def write_to_file(self, igbhvr_act_inst):
-        frame_count = igbhvr_act_inst.simulator.frame_count
+        frame_count = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count)
         new_lines = frame_count % FRAME_BATCH_SIZE
         if new_lines == 0:
             return
@@ -87,6 +113,9 @@ class PointCloudExtractor(object):
         self.create_caches(igbhvr_act_inst.simulator.renderer)
 
     def step_callback(self, igbhvr_act_inst, _):
+        if not is_subsampled_frame(igbhvr_act_inst.simulator.frame_count):
+            return
+
         # TODO: Check how this compares to the outputs of SUNRGBD. Currently we're just taking the robot FOV.
         renderer = igbhvr_act_inst.simulator.renderer
         rgb, seg, ins_seg, threed = renderer.render_robot_cameras(modes=("rgb", "seg", "ins_seg", "3d"))
@@ -96,7 +125,7 @@ class PointCloudExtractor(object):
         ins_seg = np.round(ins_seg[:, :, 0] * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
-        frame_idx = igbhvr_act_inst.simulator.frame_count % FRAME_BATCH_SIZE
+        frame_idx = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count) % FRAME_BATCH_SIZE
         self.points_cache[frame_idx] = threed.astype(np.float32)
         self.colors_cache[frame_idx] = rgb[:, :, :3].astype(np.float32)
         self.categories_cache[frame_idx] = seg.astype(np.int32)
@@ -118,13 +147,29 @@ class BBoxExtractor(object):
 
     def start_callback(self, _, log_reader):
         # Create the dataset
-        n_frames = log_reader.total_frame_num
+        n_frames = frame_to_entry_idx(log_reader.total_frame_num)
         # body id, category id, 2d top left, 2d extent, 3d center, 4d orientation quat, 3d extent
         self.bboxes = self.h5py_file.create_dataset(
-            "/bbox2d", (n_frames, p.getNumBodies(), 16), dtype=np.float32, compression="lzf"
+            "/bbox2d",
+            (n_frames, p.getNumBodies(), 16),
+            dtype=np.float32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), p.getNumBodies(), 16),
         )
-        self.cameraV = self.h5py_file.create_dataset("/cameraV", (n_frames, 4, 4), dtype=np.float32, compression="lzf")
-        self.cameraP = self.h5py_file.create_dataset("/cameraP", (n_frames, 4, 4), dtype=np.float32, compression="lzf")
+        self.cameraV = self.h5py_file.create_dataset(
+            "/cameraV",
+            (n_frames, 4, 4),
+            dtype=np.float32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), 4, 4),
+        )
+        self.cameraP = self.h5py_file.create_dataset(
+            "/cameraP",
+            (n_frames, 4, 4),
+            dtype=np.float32,
+            compression="lzf",
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), 4, 4),
+        )
 
         self.create_caches()
 
@@ -134,7 +179,7 @@ class BBoxExtractor(object):
         self.cameraP_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.int32)
 
     def write_to_file(self, igbhvr_act_inst):
-        frame_count = igbhvr_act_inst.simulator.frame_count
+        frame_count = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count)
         new_lines = frame_count % FRAME_BATCH_SIZE
         if new_lines == 0:
             return
@@ -147,12 +192,15 @@ class BBoxExtractor(object):
         self.create_caches()
 
     def step_callback(self, igbhvr_act_inst, _):
+        if not is_subsampled_frame(igbhvr_act_inst.simulator.frame_count):
+            return
+
         renderer = igbhvr_act_inst.simulator.renderer
         ins_seg = renderer.render_robot_cameras(modes="ins_seg")[0][:, :, 0]
         ins_seg = np.round(ins_seg * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
-        frame_idx = igbhvr_act_inst.simulator.frame_count % FRAME_BATCH_SIZE
+        frame_idx = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count) % FRAME_BATCH_SIZE
         filled_obj_idx = 0
 
         for body_id in np.unique(id_seg):
