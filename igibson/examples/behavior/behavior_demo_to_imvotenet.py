@@ -16,6 +16,8 @@ from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
 FRAME_BATCH_SIZE = 100
 START_FRAME = 500
 SUBSAMPLE_EVERY_N_FRAMES = 60
+SAVE_CAMERA = False
+DEBUG_DRAW = False
 
 
 def is_subsampled_frame(frame_count):
@@ -138,8 +140,10 @@ class BBoxExtractor(object):
     def __init__(self, h5py_file):
         self.h5py_file = h5py_file
         self.bboxes = None
-        self.cameraV = None
-        self.cameraP = None
+
+        if SAVE_CAMERA:
+            self.cameraV = None
+            self.cameraP = None
 
     def start_callback(self, _, log_reader):
         # Create the dataset
@@ -152,27 +156,31 @@ class BBoxExtractor(object):
             compression="lzf",
             chunks=(min(n_frames, FRAME_BATCH_SIZE), p.getNumBodies(), 16),
         )
-        self.cameraV = self.h5py_file.create_dataset(
-            "/cameraV",
-            (n_frames, 4, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(n_frames, FRAME_BATCH_SIZE), 4, 4),
-        )
-        self.cameraP = self.h5py_file.create_dataset(
-            "/cameraP",
-            (n_frames, 4, 4),
-            dtype=np.float32,
-            compression="lzf",
-            chunks=(min(n_frames, FRAME_BATCH_SIZE), 4, 4),
-        )
+
+        if SAVE_CAMERA:
+            self.cameraV = self.h5py_file.create_dataset(
+                "/cameraV",
+                (n_frames, 4, 4),
+                dtype=np.float32,
+                compression="lzf",
+                chunks=(min(n_frames, FRAME_BATCH_SIZE), 4, 4),
+            )
+            self.cameraP = self.h5py_file.create_dataset(
+                "/cameraP",
+                (n_frames, 4, 4),
+                dtype=np.float32,
+                compression="lzf",
+                chunks=(min(n_frames, FRAME_BATCH_SIZE), 4, 4),
+            )
 
         self.create_caches()
 
     def create_caches(self):
         self.bboxes_cache = np.full((FRAME_BATCH_SIZE, p.getNumBodies(), 16), -1, dtype=np.float32)
-        self.cameraV_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
-        self.cameraP_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.int32)
+
+        if SAVE_CAMERA:
+            self.cameraV_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
+            self.cameraP_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
 
     def write_to_file(self, igbhvr_act_inst):
         frame_count = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count)
@@ -182,8 +190,10 @@ class BBoxExtractor(object):
 
         start_pos = frame_count - new_lines
         self.bboxes[start_pos:frame_count] = self.bboxes_cache[:new_lines]
-        self.cameraV[start_pos:frame_count] = self.cameraV_cache[:new_lines]
-        self.cameraP[start_pos:frame_count] = self.cameraP_cache[:new_lines]
+
+        if SAVE_CAMERA:
+            self.cameraV[start_pos:frame_count] = self.cameraV_cache[:new_lines]
+            self.cameraP[start_pos:frame_count] = self.cameraP_cache[:new_lines]
 
         self.create_caches()
 
@@ -192,7 +202,8 @@ class BBoxExtractor(object):
             return
 
         # Clear debug drawings.
-        p.removeAllUserDebugItems()
+        if DEBUG_DRAW:
+            p.removeAllUserDebugItems()
 
         renderer = igbhvr_act_inst.simulator.renderer
         ins_seg = renderer.render_robot_cameras(modes="ins_seg")[0][:, :, 0]
@@ -229,15 +240,18 @@ class BBoxExtractor(object):
             camera_frame_orientation = camera_frame_pose[3:]
 
             # Debug-mode drawing of the bounding box.
-            bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (base_frame_extent / 2)
-            bbox_transform = utils.quat_pos_to_mat(world_frame_center, world_frame_orientation)
-            world_frame_vertex_positions = trimesh.transformations.transform_points(
-                bbox_frame_vertex_positions, bbox_transform
-            )
-            for i, from_vertex in enumerate(world_frame_vertex_positions):
-                for j, to_vertex in enumerate(world_frame_vertex_positions):
-                    if j <= i:
-                        p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+            if DEBUG_DRAW and obj.category not in ("walls", "floors", "ceilings"):
+                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
+                    base_frame_extent / 2
+                )
+                bbox_transform = utils.quat_pos_to_mat(world_frame_center, world_frame_orientation)
+                world_frame_vertex_positions = trimesh.transformations.transform_points(
+                    bbox_frame_vertex_positions, bbox_transform
+                )
+                for i, from_vertex in enumerate(world_frame_vertex_positions):
+                    for j, to_vertex in enumerate(world_frame_vertex_positions):
+                        if j <= i:
+                            p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
 
             # Record the results.
             self.bboxes_cache[frame_idx, filled_obj_idx, 0] = body_id
@@ -249,8 +263,9 @@ class BBoxExtractor(object):
             self.bboxes_cache[frame_idx, filled_obj_idx, 13:16] = base_frame_extent
             filled_obj_idx += 1
 
-        self.cameraV_cache[frame_idx] = renderer.V
-        self.cameraP_cache[frame_idx] = renderer.P
+        if SAVE_CAMERA:
+            self.cameraV_cache[frame_idx] = renderer.V
+            self.cameraP_cache[frame_idx] = renderer.P
 
         if frame_idx == FRAME_BATCH_SIZE - 1:
             self.write_to_file(igbhvr_act_inst)
@@ -261,6 +276,8 @@ class BBoxExtractor(object):
 
 def main():
     args = parse_args()
+
+    print(args)
 
     def get_imvotenet_callbacks(demo_name, out_dir):
         path = os.path.join(out_dir, demo_name + "_data.h5py")
@@ -282,6 +299,7 @@ def main():
         get_imvotenet_callbacks,
         image_size=(480, 480),
         ignore_errors=True,
+        debug_display=DEBUG_DRAW,
     )
 
 

@@ -1196,4 +1196,4 @@ class URDFObject(StatefulObject):
         world_frame_center = trimesh.transformations.transform_points([base_frame_center], base_in_world_frame)[0]
         world_frame_extent = np.abs(Rotation.from_quat(base_orn).apply(base_frame_extent))
 
-        return world_frame_center, base_orn, world_frame_extent, base_frame_extent
+        return world_frame_center, base_orn, base_frame_extent, world_frame_extent

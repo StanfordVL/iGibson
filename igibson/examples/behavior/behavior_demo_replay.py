@@ -118,7 +118,7 @@ def replay_demo(
     )
 
     # Check mode
-    assert mode in ["headless", "vr", "simple"]
+    assert mode in ["headless", "vr", "simple", "pbgui"]
 
     # Initialize settings to save action replay frames
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))

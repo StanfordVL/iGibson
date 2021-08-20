@@ -21,6 +21,7 @@ def behavior_demo_batch(
     skip_existing=True,
     ignore_errors=True,
     save_frames=False,
+    debug_display=False,
     image_size=(1280, 720),
 ):
     """
@@ -39,6 +40,7 @@ def behavior_demo_batch(
         log file). If False, the error will be propagated.
     @param skip_existing: Whether demos with existing output logs should be skipped.
     @param save_frames: Whether the demo's frames should be saved alongside statistics.
+    @param debug_display: Whether a debug display (the pybullet GUI) should be enabled.
     @param image_size: The image size that should be used by the renderer.
     """
     logger = logging.getLogger()
@@ -78,7 +80,7 @@ def behavior_demo_batch(
                 start_callbacks=start_callbacks,
                 step_callbacks=step_callbacks,
                 end_callbacks=end_callbacks,
-                mode="headless",
+                mode="pbgui" if debug_display else "headless",
                 verbose=False,
                 image_size=image_size,
             )
@@ -90,7 +92,7 @@ def behavior_demo_batch(
 
         except Exception as e:
             if ignore_errors:
-                print("Demo failed with the error: ", e)
+                print("Demo failed with the error: ", str(e))
                 demo_information = {"demo_id": Path(demo).name, "failed": True, "failure_reason": str(e)}
             else:
                 raise
