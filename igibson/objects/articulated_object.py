@@ -56,7 +56,7 @@ class ArticulatedObject(StatefulObject):
         super(ArticulatedObject, self).__init__()
         self.filename = filename
         self.scale = scale
-        self.merge_fixed_links = merge_fixed_links
+        self.merge_fixed_links = merge_fixed_links and igibson.merge_fixed_links
 
     def _load(self):
         """
@@ -182,7 +182,7 @@ class URDFObject(StatefulObject):
         self.scene_instance_folder = scene_instance_folder
         self.bddl_object_scope = bddl_object_scope
         self.joint_positions = joint_positions
-        self.merge_fixed_links = merge_fixed_links
+        self.merge_fixed_links = merge_fixed_links and igibson.merge_fixed_links
         self.room_floor = None
         self.ignore_visual_shape = ignore_visual_shape
 

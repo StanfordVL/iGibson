@@ -77,3 +77,5 @@ logging.info("Example path: {}".format(example_path))
 logging.info("Example config path: {}".format(example_config_path))
 
 debug_sampling = False
+
+merge_fixed_links = False
