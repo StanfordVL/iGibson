@@ -185,7 +185,7 @@ def collect_demo(
             if steps < physics_warming_steps:
                 action = np.zeros_like(action)
 
-        vr_agent.update(action)
+        vr_agent.apply_action(action)
 
         if not no_vr:
             if satisfied_predicates != satisfied_predicates_cached:

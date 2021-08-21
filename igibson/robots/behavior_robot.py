@@ -146,6 +146,7 @@ class BehaviorRobot(object):
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
         self.action = np.zeros((28,))
+        self.action_dim = 28
 
         # Activation parameters
         self.activated = False
@@ -250,7 +251,7 @@ class BehaviorRobot(object):
             if self.parts[part_name].movement_cid is None:
                 self.parts[part_name].activate_constraints()
 
-    def update(self, action):
+    def apply_action(self, action):
         """
         Updates BehaviorRobot - transforms of all objects managed by this class.
         :param action: numpy array of actions.

@@ -59,6 +59,9 @@ scan_noise_rate: 0.0
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
 
+# Robot
+robot_type: BehaviorRobot
+
 # speed limit
 hand_threshold: 0.4
 hand_speed: 0.3

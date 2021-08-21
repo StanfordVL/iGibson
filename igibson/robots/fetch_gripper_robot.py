@@ -1,7 +1,6 @@
 import gym
 import numpy as np
 import pybullet as p
-from IPython import embed
 
 import igibson.utils.transform_utils as T
 from igibson.controllers.ik_controller import IKController
@@ -269,6 +268,25 @@ class FetchGripper(LocomotorRobot):
             )
 
         return pose
+
+
+    def force_wakeup(self):
+        """
+            compatibility hack - mjlbach
+        """
+        pass
+
+    def get_proprioception_dim(self):
+        """
+            compatibility hack - mjlbach
+        """
+        return 1
+
+    def get_proprioception(self):
+        """
+            compatibility hack - mjlbach
+        """
+        return np.array([1]) 
 
     def set_up_continuous_action_space(self):
         """

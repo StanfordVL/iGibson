@@ -32,7 +32,7 @@ controller:
 # task
 task: re-shelving_library_books
 task_id: 0
-online_sampling: false
+online_sampling: true
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
@@ -74,6 +74,9 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
+
+# Robot
+robot_type: FetchGripper
 
 # speed limit
 hand_threshold: 0.4

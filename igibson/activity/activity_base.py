@@ -1,7 +1,6 @@
 import logging
 from collections import OrderedDict
 
-import cv2
 import networkx as nx
 import pybullet as p
 from bddl.activity_base import BEHAVIORActivityInstance
@@ -14,6 +13,7 @@ from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
@@ -30,7 +30,7 @@ KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
 
 class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
-    def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None):
+    def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None, robot_type=BehaviorRobot, robot_config={}):
         """
         Initialize simulator with appropriate scene and sampled objects.
         :param behavior_activity: string, official ATUS activity label
@@ -45,6 +45,8 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             predefined_problem=predefined_problem,
         )
         self.state_history = {}
+        self.robot_type = robot_type
+        self.robot_config = robot_config
 
     def initialize_simulator(
         self,
@@ -358,53 +360,33 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
     def import_agent(self):
         # TODO: replace this with self.simulator.import_robot(BehaviorRobot(self.simulator)) once BehaviorRobot supports
         # baserobot api
-        agent = BehaviorRobot(self.simulator)
-        self.simulator.import_behavior_robot(agent)
+        if self.robot_type == BehaviorRobot:
+            agent = BehaviorRobot(self.simulator)
+            self.simulator.import_behavior_robot(agent)
+            agent.parts["body"].set_base_link_position_orientation([300, 300, 300], [0, 0, 0, 1])
+            agent.parts["left_hand"].set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
+            agent.parts["right_hand"].set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
+            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
+            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
+            agent.parts["eye"].set_base_link_position_orientation([300, -300, -300], [0, 0, 0, 1])
+            self.object_scope["agent.n.01_1"] = agent.parts["body"]
+
+        elif self.robot_type == FetchGripper:
+            agent = FetchGripper(self.robot_config)
+            self.simulator.import_robot(agent)
+            self.object_scope["agent.n.01_1"] = agent
+        else:
+            Exception("Only BehaviorRobot and FetchGripper are supported")
+
         self.simulator.register_main_vr_robot(agent)
-        self.agent = agent
-        self.simulator.robots.append(agent)
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
-        agent.parts["body"].set_base_link_position_orientation([300, 300, 300], [0, 0, 0, 1])
-        agent.parts["left_hand"].set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
-        agent.parts["right_hand"].set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
-        agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
-        agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
-        agent.parts["eye"].set_base_link_position_orientation([300, -300, -300], [0, 0, 0, 1])
-        self.object_scope["agent.n.01_1"] = agent.parts["body"]
-        if not self.online_sampling and self.scene.agent != {}:
-            agent.parts["body"].set_base_link_position_orientation(
-                self.scene.agent["BRBody_1"]["xyz"], quat_from_euler(self.scene.agent["BRBody_1"]["rpy"])
-            )
-            agent.parts["left_hand"].set_base_link_position_orientation(
-                self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-            )
-            agent.parts["right_hand"].set_base_link_position_orientation(
-                self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-            )
-            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-            )
-            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-            )
-            agent.parts["eye"].set_base_link_position_orientation(
-                self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
-            )
+
 
     def move_agent(self):
-        agent = self.agent
-        if not self.online_sampling and self.scene.agent == {}:
-            agent.parts["body"].set_base_link_position_orientation([0, 0, 0.5], [0, 0, 0, 1])
-            agent.parts["left_hand"].set_base_link_position_orientation(
-                [0, 0.2, 0.7],
-                [0.5, 0.5, -0.5, 0.5],
-            )
-            agent.parts["right_hand"].set_base_link_position_orientation([0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5])
-            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5])
-            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
-                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
-            )
-            agent.parts["eye"].set_base_link_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
+        """
+            Backwards compatibility, to be deprecated
+        """
+        pass
 
     def import_scene(self):
         self.simulator.reload()

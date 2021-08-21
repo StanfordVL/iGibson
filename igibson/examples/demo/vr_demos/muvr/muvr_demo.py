@@ -115,9 +115,9 @@ def run_muvr(mode="server", host="localhost", port="8885"):
                 # Server is the one that steps the physics simulation, not the client
                 s.step()
                 if s.vr_settings.use_vr:
-                    server_agent.update()
+                    server_agent.apply_action()
                 if vr_server.latest_vr_data:
-                    client_agent.update(vr_server.latest_vr_data)
+                    client_agent.apply_action(vr_server.latest_vr_data)
 
             # Generate and send latest rendering data to client
             vr_server.gen_frame_data()
