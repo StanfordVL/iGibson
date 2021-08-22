@@ -358,19 +358,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         return True, feedback
 
     def import_agent(self):
-        # TODO: replace this with self.simulator.import_robot(BehaviorRobot(self.simulator)) once BehaviorRobot supports
-        # baserobot api
         if self.robot_type == BehaviorRobot:
             agent = BehaviorRobot(self.simulator)
             self.simulator.import_behavior_robot(agent)
-            agent.parts["body"].set_base_link_position_orientation([300, 300, 300], [0, 0, 0, 1])
-            agent.parts["left_hand"].set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
-            agent.parts["right_hand"].set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
-            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
-            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
-            agent.parts["eye"].set_base_link_position_orientation([300, -300, -300], [0, 0, 0, 1])
+            agent.set_position_orientation([300, 300, 300], [0,0,0,1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
-
         elif self.robot_type == FetchGripper:
             agent = FetchGripper(self.robot_config)
             self.simulator.import_robot(agent)

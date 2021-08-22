@@ -68,7 +68,7 @@ class IGVRClient(ConnectionListener):
                 instance.poses_rot = poses_rot
 
     def client_step(self):
-        self.s.viewer.apply_action()
+        self.s.viewer.update()
         if self.s.can_access_vr_context:
             self.s.poll_vr_events()
             # Sets the VR starting position if one has been specified by the user
