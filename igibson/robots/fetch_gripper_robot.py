@@ -637,3 +637,8 @@ class FetchGripper(LocomotorRobot):
             ag_data = self.calculate_ag_object()
             if ag_data:
                 self.establish_grasp(ag_data)
+
+    def is_grasping(self, candidate_obj):
+        return [
+            self.object_in_hand == candidate_obj, 
+        ]
