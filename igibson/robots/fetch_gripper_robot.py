@@ -46,7 +46,7 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", True)  # Use assisted grasping
+        self.use_ag = config.get("use_ag", False)  # Use assisted grasping
         self.ag_strict_mode = config.get("ag_strict_mode", False)  # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
@@ -306,16 +306,13 @@ class FetchGripper(LocomotorRobot):
         pass
 
     def get_proprioception_dim(self):
-        """
-        compatibility hack - mjlbach
-        """
-        return 1
+        return 48
 
     def get_proprioception(self):
-        """
-        compatibility hack - mjlbach
-        """
-        return np.array([1])
+        relative_eef_pos = self.get_relative_eef_position()
+        relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
+        joint_states = np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
+        return np.concatenate([relative_eef_pos, relative_eef_orn, joint_states])
 
     def set_up_continuous_action_space(self):
         """
@@ -402,6 +399,11 @@ class FetchGripper(LocomotorRobot):
             p.setCollisionFilterPair(robot_id, robot_id, link_a, link_b, 0)
 
         self.controller = IKController(robot=self, config=self.config)
+
+        # Increase lateral friction for end effector
+        for link in self.gripper_joint_ids:
+            p.changeDynamics(self.get_body_id(), link, lateralFriction=500)
+
         return ids
 
     def apply_action(self, action):
@@ -493,6 +495,9 @@ class FetchGripper(LocomotorRobot):
             # Compute gripper bounding box
             corners = []
 
+            eef_pos, eef_orn, _, _, _, _ = p.getLinkState(self.get_body_id(), self.eef_link_id)
+            i_eef_pos, i_eef_orn = p.invertTransform(eef_pos, eef_orn)
+
             gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[0])
             local_corners = [
                 [0.04, -0.012, 0.014],
@@ -515,18 +520,27 @@ class FetchGripper(LocomotorRobot):
                 corner, _ = p.multiplyTransforms(gripper_fork_2_state[0], gripper_fork_2_state[1], coord, [0, 0, 0, 1])
                 corners.append(corner)
 
-            corners = np.stack(corners)
+            eef_local_corners = []
+            for coord in corners:
+                corner, _ = p.multiplyTransforms(i_eef_pos, i_eef_orn, coord, [0, 0, 0, 1])
+                eef_local_corners.append(corner)
+
+            eef_local_corners = np.stack(eef_local_corners)
             for candidate in candidates:
                 new_contact_point_data = []
                 for contact_point_data in contact_dict[candidate]:
                     pos = contact_point_data["contact_position"]
-                    x_inside = pos[0] < np.max(corners[:, 0]) and pos[0] > np.min(corners[:, 0])
-                    y_inside = pos[1] < np.max(corners[:, 1]) and pos[1] > np.min(corners[:, 1])
-                    z_inside = pos[2] < np.max(corners[:, 2]) and pos[2] > np.min(corners[:, 2])
+                    local_pos, _ = p.multiplyTransforms(i_eef_pos, i_eef_orn, pos, [0, 0, 0, 1])
+                    x_inside = local_pos[0] < np.max(eef_local_corners[:, 0]) and local_pos[0] > np.min(
+                        eef_local_corners[:, 0]
+                    )
+                    y_inside = local_pos[1] < np.max(eef_local_corners[:, 1]) and local_pos[1] > np.min(
+                        eef_local_corners[:, 1]
+                    )
+                    z_inside = local_pos[2] < np.max(eef_local_corners[:, 2]) and local_pos[2] > np.min(
+                        eef_local_corners[:, 2]
+                    )
                     if x_inside and y_inside and z_inside:
-                        import pdb
-
-                        pdb.set_trace()
                         new_contact_point_data.append(contact_point_data)
                 contact_dict[candidate] = new_contact_point_data
 
@@ -644,3 +658,8 @@ class FetchGripper(LocomotorRobot):
             ag_data = self.calculate_ag_object()
             if ag_data:
                 self.establish_grasp(ag_data)
+
+    def is_grasping(self, candidate_obj):
+        return [
+            self.object_in_hand == candidate_obj,
+        ]

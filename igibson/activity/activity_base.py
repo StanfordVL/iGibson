@@ -364,7 +364,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             agent.set_position_orientation([300, 300, 300], [0,0,0,1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
         elif self.robot_type == FetchGripper:
-            agent = FetchGripper(self.robot_config)
+            agent = FetchGripper(self.simulator, self.robot_config)
             self.simulator.import_robot(agent)
             self.object_scope["agent.n.01_1"] = agent
         else:
@@ -897,12 +897,9 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 state["obj_{}_valid".format(i)] = 1.0
                 state["obj_{}_pos".format(i)] = np.array(v.get_position())
                 state["obj_{}_orn".format(i)] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
-                state["obj_{}_in_left_hand".format(i)] = float(
-                    env.robots[0].parts["left_hand"].object_in_hand == v.get_body_id()
-                )
-                state["obj_{}_in_right_hand".format(i)] = float(
-                    env.robots[0].parts["right_hand"].object_in_hand == v.get_body_id()
-                )
+                grasping_objects = env.robots[0].is_grasping(v.get_body_id())
+                for grasp_idx, grasping in enumerate(grasping_objects):
+                    state["obj_{}_pos_in_gripper_{}".format(i, grasp_idx)] = float(grasping)
                 i += 1
 
         state_list = []
