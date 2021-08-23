@@ -204,6 +204,7 @@ public:
 		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
 		float use_pbr,
+		float blend_highlight,
 		int depth_tex_id);
 
     void updateTextureIdArrays(int shaderProgram,

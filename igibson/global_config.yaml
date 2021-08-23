@@ -3,3 +3,4 @@ g_dataset_path: data/g_dataset
 ig_dataset_path: data/ig_dataset
 threedfront_dataset_path: data/threedfront_dataset
 cubicasa_dataset_path: data/cubicasa_dataset
+key_path: data/igibson.key

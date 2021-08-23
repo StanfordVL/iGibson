@@ -54,6 +54,8 @@ void main() {
                    - (sin(uv_transform_param[2]) * texCoords.y * uv_transform_param[1]);
     theCoords.y = (sin(uv_transform_param[2]) * texCoords.x * uv_transform_param[0])
                    + (cos(uv_transform_param[2]) * texCoords.y * uv_transform_param[1]);
+    theCoords.x = fract(theCoords.x);
+    theCoords.y = fract(theCoords.y);
     Instance_seg_color = instance_seg_color;
     Semantic_seg_color = semantic_seg_color;
     Diffuse_color = diffuse_color;

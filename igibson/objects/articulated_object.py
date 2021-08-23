@@ -67,7 +67,8 @@ class ArticulatedObject(StatefulObject):
         return body_id
 
     def create_link_name_to_vm_map(self, body_id):
-        self.link_name_to_vm = {}
+        self.link_name_to_vm = []
+        link_name_to_vm_urdf = {}
         for visual_shape in p.getVisualShapeData(body_id):
             id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = visual_shape[:8]
             try:
@@ -75,13 +76,14 @@ class ArticulatedObject(StatefulObject):
                     link_name = p.getBodyInfo(id)[0].decode("utf-8")
                 else:
                     link_name = p.getJointInfo(id, link_id)[12].decode("utf-8")
-                if not link_name in self.link_name_to_vm:
-                    self.link_name_to_vm[link_name] = []
+                if not link_name in link_name_to_vm_urdf:
+                    link_name_to_vm_urdf[link_name] = []
                 else:
                     raise ValueError("link name clashing")
-                self.link_name_to_vm[link_name].append(filename.decode("utf-8"))
+                link_name_to_vm_urdf[link_name].append(filename.decode("utf-8"))
             except:
                 pass
+        self.link_name_to_vm = [link_name_to_vm_urdf]
 
     def force_wakeup(self):
         """
@@ -646,14 +648,20 @@ class URDFObject(StatefulObject):
                             link_trimesh.density *= 10.0
 
                     if link_trimesh.is_watertight:
-                        center = link_trimesh.center_mass
+                        center = np.copy(link_trimesh.center_mass)
                     else:
-                        center = link_trimesh.centroid
+                        center = np.copy(link_trimesh.centroid)
+
+                    collision_mesh = [col for col in link.findall("collision") if col.find("geometry/mesh") is not None]
+                    assert len(collision_mesh) == 1, "more than one collision mesh in one link"
+                    collision_mesh = collision_mesh[0]
+                    collision_mesh_origin = collision_mesh.find("origin")
+                    if collision_mesh_origin is not None:
+                        offset = np.array([float(val) for val in collision_mesh_origin.attrib["xyz"].split(" ")])
+                        center += offset
 
                     # The inertial frame origin will be scaled down below.
                     # Here, it has the value BEFORE scaling
-                    # TODO: this is not 100% correct. This assumes collision
-                    # mesh has zero origin, which is not always true.
                     origin.attrib["xyz"] = " ".join(map(str, center))
                     origin.attrib["rpy"] = " ".join(map(str, [0.0, 0.0, 0.0]))
 
@@ -772,19 +780,21 @@ class URDFObject(StatefulObject):
         self.create_link_name_vm_mapping()
 
     def create_link_name_vm_mapping(self):
-        self.link_name_to_vm = {}
+        self.link_name_to_vm = []
 
         for i in range(len(self.urdf_paths)):
+            link_name_to_vm_urdf = {}
             sub_urdf_tree = ET.parse(self.urdf_paths[i])
 
             links = sub_urdf_tree.findall(".//link")
             for link in links:
                 name = link.attrib["name"]
-                if name in self.link_name_to_vm:
+                if name in link_name_to_vm_urdf:
                     raise ValueError("link name collision")
-                self.link_name_to_vm[name] = []
+                link_name_to_vm_urdf[name] = []
                 for visual_mesh in link.findall("visual/geometry/mesh"):
-                    self.link_name_to_vm[name].append(visual_mesh.attrib["filename"])
+                    link_name_to_vm_urdf[name].append(visual_mesh.attrib["filename"])
+            self.link_name_to_vm.append(link_name_to_vm_urdf)
 
     def randomize_texture(self):
         """

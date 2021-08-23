@@ -13,6 +13,7 @@ import pybullet as p
 from bddl.condition_evaluation import evaluate_state
 
 from igibson import object_states
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.object_states.factory import get_state_from_name
 from igibson.robots.behavior_robot import PALM_LINK_INDEX, BehaviorRobot
@@ -39,8 +40,8 @@ class BehaviorEnv(iGibsonEnv):
         config_file,
         scene_id=None,
         mode="headless",
-        action_timestep=1 / 10.0,
-        physics_timestep=1 / 240.0,
+        action_timestep=1 / 30.0,
+        physics_timestep=1 / 300.0,
         device_idx=0,
         render_to_tensor=False,
         automatic_reset=False,
@@ -124,7 +125,7 @@ class BehaviorEnv(iGibsonEnv):
             online_sampling=online_sampling,
         )
 
-        for obj_name, obj in self.task.object_scope.items():
+        for _, obj in self.task.object_scope.items():
             if obj.category in ["agent", "room_floor"]:
                 continue
             obj.highlight()
@@ -544,8 +545,8 @@ if __name__ == "__main__":
     env = BehaviorEnv(
         config_file=args.config,
         mode=args.mode,
-        action_timestep=1.0 / 10.0,
-        physics_timestep=1.0 / 240.0,
+        action_timestep=1.0 / 30.0,
+        physics_timestep=1.0 / 300.0,
         action_filter=args.action_filter,
         episode_save_dir=None,
     )

@@ -126,7 +126,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.0rc2",
+    version="2.0.0",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -159,6 +159,8 @@ setup(
         "sphinx_rtd_theme",
         "h5py",
         "gitpython",
+        "py360convert",
+        "bddl",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),

@@ -12,10 +12,10 @@ import h5py
 import numpy as np
 
 import igibson
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.simulator import Simulator
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.utils.git_utils import project_git_info
 from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 from igibson.utils.utils import parse_str_config
@@ -135,6 +135,13 @@ def replay_demo(
     pp = pprint.PrettyPrinter(indent=4)
 
     for key in logged_git_info.keys():
+        if key not in git_info:
+            print(
+                "Warning: {} not present in current git info. It might be installed through PyPI, "
+                "so its version cannot be validated.".format(key)
+            )
+            continue
+
         logged_git_info[key].pop("directory", None)
         git_info[key].pop("directory", None)
         if logged_git_info[key] != git_info[key] and verbose:

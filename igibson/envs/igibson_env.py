@@ -165,6 +165,11 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.image_height, self.image_width, 3), low=0.0, high=1.0
             )
             vision_modalities.append("rgb_filled")
+        if "highlight" in self.output:
+            observation_space["highlight"] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 1), low=0.0, high=1.0
+            )
+            vision_modalities.append("highlight")
         if "scan" in self.output:
             self.n_horizontal_rays = self.config.get("n_horizontal_rays", 128)
             self.n_vertical_beams = self.config.get("n_vertical_beams", 1)
@@ -180,7 +185,6 @@ class iGibsonEnv(BaseEnv):
             )
             observation_space["occupancy_grid"] = self.occupancy_grid_space
             scan_modalities.append("occupancy_grid")
-
         if "bump" in self.output:
             observation_space["bump"] = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
             sensors["bump"] = BumpSensor(self)
