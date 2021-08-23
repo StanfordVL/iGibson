@@ -512,7 +512,6 @@ class FetchGripper(LocomotorRobot):
                     y_inside = (pos[1] < np.max(corners[:, 1]) and pos[1] > np.min(corners[:, 1]))
                     z_inside = (pos[2] < np.max(corners[:, 2]) and pos[2] > np.min(corners[:, 2]))
                     if x_inside and y_inside and z_inside:
-                        import pdb; pdb.set_trace()
                         new_contact_point_data.append(contact_point_data)
                 contact_dict[candidate] = new_contact_point_data
 
