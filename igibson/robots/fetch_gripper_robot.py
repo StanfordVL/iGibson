@@ -12,6 +12,12 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.robots.robot_locomotor import LocomotorRobot
 
+from igibson.external.pybullet_tools.utils import (
+    get_child_frame_pose,
+    get_constraint_violation,
+    set_coll_filter
+)
+
 # Assisted grasping parameters
 ASSIST_FRACTION = 1.0
 ARTICULATED_ASSIST_FRACTION = 0.7
@@ -434,22 +440,6 @@ class FetchGripper(LocomotorRobot):
         new_robot_action[self.gripper_joint_action_idx] = robot_action[10]
         return new_robot_action
 
-    # This begins all of the assisted grasping code...
-    # there is a lot
-    def set_hand_coll_filter(self, target_id, enable):
-        # TODO(mjlbach): mostly shared with behavior robot, can be made a util
-        """
-        Sets collision filters for hand - to enable or disable them
-        :param target_id: physics body to enable/disable collisions with
-        :param enable: whether to enable/disable collisions
-        """
-        target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
-        body_link_idxs = [19, 20, 21] # Gripper links
-
-        for body_link_idx in body_link_idxs:
-            for target_link_idx in target_link_idxs:
-                p.setCollisionFilterPair(self.get_body_id(), target_id, body_link_idx, target_link_idx, 1 if enable else 0)
-
     def calculate_ag_object(self):
         """
         Calculates which object to assisted-grasp. Returns an (object_id, link_id) tuple or None
@@ -567,67 +557,15 @@ class FetchGripper(LocomotorRobot):
         self.release_counter += 1
         time_since_release = self.release_counter * self.simulator.render_timestep
         if time_since_release >= RELEASE_WINDOW:
-            self.set_hand_coll_filter(self.object_in_hand, True)
+            set_coll_filter(target_id=self.object_in_hand, body_id=self.get_body_id(), body_links=[19, 20, 21], enable=True)
             self.object_in_hand = None
             self.release_counter = None
-
-    def get_constraint_violation(self, cid):
-        # TODO(mjlbach): shared with BRRobot, should be made a util
-        (
-            parent_body,
-            parent_link,
-            child_body,
-            child_link,
-            _,
-            _,
-            joint_position_parent,
-            joint_position_child,
-        ) = p.getConstraintInfo(cid)[:8]
-
-        if parent_link == -1:
-            parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
-        else:
-            parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
-
-        if child_link == -1:
-            child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
-        else:
-            child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
-
-        joint_pos_in_parent_world = p.multiplyTransforms(
-            parent_link_pos, parent_link_orn, joint_position_parent, [0, 0, 0, 1]
-        )[0]
-        joint_pos_in_child_world = p.multiplyTransforms(
-            child_link_pos, child_link_orn, joint_position_child, [0, 0, 0, 1]
-        )[0]
-
-        diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
-        return diff
-
-    def get_child_frame_pose(self, ag_bid, ag_link):
-        # TODO(mjlbach):Mostly shared with BRRobot, can be made a util
-
-        # Different pos/orn calculations for base/links
-        if ag_link == -1:
-            body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
-        else:
-            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
-
-        # Get inverse world transform of body frame
-        inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-        link_state = p.getLinkState(self.get_body_id(), GRIPPER_BASE_IDX)
-        link_pos = link_state[0]
-        link_orn = link_state[1]
-        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-        child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
-
-        return child_frame_pos, child_frame_orn
 
     def establish_grasp(self, ag_data):
         #TODO(mjlbach): Can probably remove all freeze joint logic also, we are no longer gripping target links with custom logic
         ag_bid, ag_link = ag_data
 
-        child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
+        child_frame_pos, child_frame_orn = get_child_frame_pose(parent_bid=self.get_body_id(), parent_link=GRIPPER_BASE_IDX, child_bid=ag_bid, child_link=ag_link)
 
         # If we grab a child link of a URDF, create a p2p joint
         if ag_link == -1:
@@ -662,7 +600,7 @@ class FetchGripper(LocomotorRobot):
         self.object_in_hand = ag_bid
         self.should_freeze_joints = True
         # Disable collisions while picking things up
-        self.set_hand_coll_filter(ag_bid, False)
+        set_coll_filter(target_id=ag_bid, body_id=self.get_body_id(), body_links=[19, 20, 21], enable=False)
         for joint_index in range(p.getNumJoints(self.get_body_id())):
             j_val = p.getJointState(self.get_body_id(), joint_index)[0]
             self.freeze_vals[joint_index] = j_val
@@ -681,7 +619,7 @@ class FetchGripper(LocomotorRobot):
             self.handle_release_window()
 
         elif self.object_in_hand and self.release_counter == None:
-            constraint_violated = (self.get_constraint_violation(self.obj_cid) > CONSTRAINT_VIOLATION_THRESHOLD)
+            constraint_violated = (get_constraint_violation(self.obj_cid) > CONSTRAINT_VIOLATION_THRESHOLD)
             if constraint_violated or releasing_grasp:
                 self.release_grasp()
 
