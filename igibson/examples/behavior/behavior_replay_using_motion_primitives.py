@@ -45,6 +45,8 @@ def get_actions_from_segmentation(demo_data):
         state_name = state_change["name"]
         state_value = state_change["value"]
 
+        # TODO(replayMP): Here we compute grasps based on the InHand state. Ditch this and simply do a single-hand
+        # grasp on the object we will manipulate next. That way it will be fetch-compatible.
         if state_name == "Open" and state_value is True:
             primitive = ActionPrimitives.OPEN
             target_object = state_change["objects"][0]

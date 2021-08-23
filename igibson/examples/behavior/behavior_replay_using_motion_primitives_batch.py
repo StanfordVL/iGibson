@@ -11,17 +11,15 @@ import igibson
 
 
 def main():
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("log_manifest", type=str, help="Plain text file consisting of list of demos to replay.")
-    # args = parser.parse_args()
-    demos_path = r"C:\Users\cgokmen\Stanford Drive\BEHAVIOR resources\New NeurIPS Demos"
-    segmentations_path = r"C:\Users\cgokmen\Stanford Drive\BEHAVIOR resources\segmentation_results"
-    results_path = r"C:\Users\cgokmen\Stanford Drive\BEHAVIOR resources\mp_replay_results\examples"
+    # TODO(replayMP): Update this path
+    path_of_gdrive_behavior_resources_dir = r"C:\Users\cgokmen\Stanford Drive\BEHAVIOR resources"
+    demos_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"New NeurIPS Demos")
+    segmentations_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"segmentation_results")
+    results_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"mp_replay_results\examples")
 
     # Load the demo to get info
-    # for demo_fullpath in tqdm.tqdm(list(glob.glob(os.path.join(segmentations_path, "*.json")))):
-    for demo in ["putting_leftovers_away_0_Pomaria_1_int_2021-06-03_14-32-54"]:
-        # demo = os.path.splitext(os.path.basename(demo_fullpath))[0]
+    for demo_fullpath in tqdm.tqdm(list(glob.glob(os.path.join(segmentations_path, "*.json")))):
+        demo = os.path.splitext(os.path.basename(demo_fullpath))[0]
         if "replay" in demo:
             continue
 
@@ -37,11 +35,11 @@ def main():
         script_path = os.path.join(igibson.example_path, "behavior", "behavior_replay_using_motion_primitives.py")
         args = ["python", script_path, demo_path, segmentation_path, output_path]
 
-        print(" ".join([shlex.quote(arg) for arg in args]))
+        # print(" ".join([shlex.quote(arg) for arg in args]))
 
-        # with open(log_path, "w") as log_file:
-        #     tqdm.tqdm.write("Processing %s" % demo)
-        #     subprocess.run(args, stdout=log_file, stderr=subprocess.STDOUT)
+        with open(log_path, "w") as log_file:
+            tqdm.tqdm.write("Processing %s" % demo)
+            subprocess.run(args, stdout=log_file, stderr=subprocess.STDOUT)
 
 
 if __name__ == "__main__":
