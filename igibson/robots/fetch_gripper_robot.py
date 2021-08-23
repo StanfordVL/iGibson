@@ -486,6 +486,9 @@ class FetchGripper(LocomotorRobot):
             # Compute gripper bounding box
             corners = []
 
+            eef_pos, eef_orn, _, _, _, _ = p.getLinkState(self.get_body_id(), self.eef_link_id)
+            i_eef_pos, i_eef_orn = p.invertTransform(eef_pos, eef_orn)
+
             gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_joint_ids[0])
             local_corners = [
                 [ 0.04, -0.012,  0.014],
@@ -508,14 +511,20 @@ class FetchGripper(LocomotorRobot):
                 corner, _ = p.multiplyTransforms(gripper_fork_2_state[0], gripper_fork_2_state[1], coord, [0, 0, 0, 1])
                 corners.append(corner)
 
-            corners = np.stack(corners)
+            eef_local_corners = []
+            for coord in corners:
+                corner, _ = p.multiplyTransforms(i_eef_pos, i_eef_orn, coord, [0, 0, 0, 1])
+                eef_local_corners.append(corner)
+
+            eef_local_corners = np.stack(eef_local_corners)
             for candidate in candidates:
                 new_contact_point_data = []
                 for contact_point_data in contact_dict[candidate]:
                     pos = contact_point_data["contact_position"]
-                    x_inside = (pos[0] < np.max(corners[:, 0]) and pos[0] > np.min(corners[:, 0]))
-                    y_inside = (pos[1] < np.max(corners[:, 1]) and pos[1] > np.min(corners[:, 1]))
-                    z_inside = (pos[2] < np.max(corners[:, 2]) and pos[2] > np.min(corners[:, 2]))
+                    local_pos, _ = p.multiplyTransforms(i_eef_pos, i_eef_orn, pos, [0, 0, 0, 1])
+                    x_inside = (local_pos[0] < np.max(eef_local_corners[:, 0]) and local_pos[0] > np.min(eef_local_corners[:, 0]))
+                    y_inside = (local_pos[1] < np.max(eef_local_corners[:, 1]) and local_pos[1] > np.min(eef_local_corners[:, 1]))
+                    z_inside = (local_pos[2] < np.max(eef_local_corners[:, 2]) and local_pos[2] > np.min(eef_local_corners[:, 2]))
                     if x_inside and y_inside and z_inside:
                         new_contact_point_data.append(contact_point_data)
                 contact_dict[candidate] = new_contact_point_data
