@@ -306,16 +306,10 @@ class FetchGripper(LocomotorRobot):
         pass
 
     def get_proprioception_dim(self):
-        """
-            compatibility hack - mjlbach
-        """
-        return 1
+        return 42
 
     def get_proprioception(self):
-        """
-            compatibility hack - mjlbach
-        """
-        return np.array([1]) 
+        return np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
 
     def set_up_continuous_action_space(self):
         """
