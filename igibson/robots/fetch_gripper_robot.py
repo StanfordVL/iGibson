@@ -306,10 +306,13 @@ class FetchGripper(LocomotorRobot):
         pass
 
     def get_proprioception_dim(self):
-        return 42
+        return 48
 
     def get_proprioception(self):
-        return np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
+        relative_eef_pos = self.get_relative_eef_position()
+        relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
+        joint_states = np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
+        return np.concatenate([relative_eef_pos, relative_eef_orn, joint_states])
 
     def set_up_continuous_action_space(self):
         """
