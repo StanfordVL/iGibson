@@ -30,7 +30,6 @@ class IKController:
         self.input_min = np.array(config["controller"]["input_min"])
         self.output_max = np.array(config["controller"]["output_max"])
         self.output_min = np.array(config["controller"]["output_min"])
-        self.damping = self.robot.joint_damping
         self.action_scale = abs(self.output_max - self.output_min) / abs(self.input_max - self.input_min)
         self.action_output_transform = (self.output_max + self.output_min) / 2.0
         self.action_input_transform = (self.input_max + self.input_min) / 2.0
@@ -185,18 +184,12 @@ class IKController:
                 lowerLimits=self.robot.lower_joint_limits.tolist(),
                 upperLimits=self.robot.upper_joint_limits.tolist(),
                 jointRanges=self.robot.joint_range.tolist(),
-                restPoses=self.robot.untucked_default_joints.tolist(),  # self.robot.rest_joints.tolist(),
-                jointDamping=self.damping.tolist(),
-                # p.IK_DLS,
-                # self.robot.joint_position.tolist(),
+                restPoses=self.robot.untucked_default_joints.tolist(),
+                jointDamping=self.robot.joint_damping.tolist(),
             )
         )
-        # np.set_printoptions(precision=2)
         cmd_joint_pos = self.lpf.estimate(np.array(cmd_joint_pos))
-        # cmd_joint_pos = np.clip(cmd_joint_pos, self.robot.joint_position - 0.05, self.robot.joint_position + 0.05)
-        # print(f"ik jnt: {np.array(cmd_joint_pos)[[2,5,6,7,8,9,10,11]]}")
 
-        # Return this value (only the arm indexes)
         return cmd_joint_pos
 
     def control(self, command):

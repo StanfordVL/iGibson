@@ -14,7 +14,7 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Fetch
+robot: FetchGripper
 default_arm_pose: diagonal30
 trunk_offset: 0.085
 controller:
@@ -74,9 +74,6 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-
-# Robot
-robot_type: FetchGripper
 
 # speed limit
 hand_threshold: 0.4

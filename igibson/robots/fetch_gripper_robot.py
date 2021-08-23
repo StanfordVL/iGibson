@@ -5,18 +5,15 @@ import pybullet as p
 import igibson.utils.transform_utils as T
 from igibson.controllers.ik_controller import IKController
 from igibson.external.pybullet_tools.utils import (
+    get_child_frame_pose,
+    get_constraint_violation,
     get_joint_info,
     get_relative_pose,
     joints_from_names,
+    set_coll_filter,
     set_joint_positions,
 )
 from igibson.robots.robot_locomotor import LocomotorRobot
-
-from igibson.external.pybullet_tools.utils import (
-    get_child_frame_pose,
-    get_constraint_violation,
-    set_coll_filter
-)
 
 # Assisted grasping parameters
 ASSIST_FRACTION = 1.0
@@ -28,8 +25,8 @@ CONSTRAINT_VIOLATION_THRESHOLD = 0.1
 RELEASE_WINDOW = 1 / 30.0  # release window in seconds
 
 # GRIPPER index constants
-GRIPPER_BASE_IDX = 19
 GRIPPER_BASE_CENTER_OFFSET = [0.1, 0, 0]
+
 
 class FetchGripper(LocomotorRobot):
     """
@@ -49,8 +46,8 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", True) # Use assisted grasping
-        self.ag_strict_mode = config.get("ag_strict_mode", False) # Require object to be contained by forks for AG
+        self.use_ag = config.get("use_ag", True)  # Use assisted grasping
+        self.ag_strict_mode = config.get("ag_strict_mode", False)  # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
         self.arm_delta_pos_dim = 3
@@ -58,16 +55,20 @@ class FetchGripper(LocomotorRobot):
         self.gripper_dim = 1
         self.wheel_axle_half = 0.186  # half of the distance between the wheels
         self.wheel_radius = 0.0613  # radius of the wheels
+        self.head_limit_epsilon = 1e-2
 
         self.wheel_joint_ids = np.array([1, 2])
         self.head_joint_ids = np.array([4, 5])
-        self.arm_joint_ids = np.array([3, 12, 13, 14, 15, 16, 17, 18])  # torso and arm
-        self.gripper_joint_ids = np.array([20, 21])
+        self.arm_joint_ids = np.array([3, 12, 13, 14, 15, 16, 17, 18])
+        self.gripper_joint_ids = np.array([19, 20, 21])
+        self.gripper_finger_joint_ids = np.array([20, 21])
 
         self.wheel_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.wheel_joint_ids]
         self.head_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.head_joint_ids]
         self.arm_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.arm_joint_ids]
-        self.gripper_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.gripper_joint_ids]
+        self.gripper_joint_action_idx = [
+            i for i, idn in enumerate(self.joint_ids) if idn in self.gripper_finger_joint_ids
+        ]
 
         LocomotorRobot.__init__(
             self,
@@ -298,24 +299,23 @@ class FetchGripper(LocomotorRobot):
 
         return pose
 
-
     def force_wakeup(self):
         """
-            compatibility hack - mjlbach
+        compatibility hack - mjlbach
         """
         pass
 
     def get_proprioception_dim(self):
         """
-            compatibility hack - mjlbach
+        compatibility hack - mjlbach
         """
         return 1
 
     def get_proprioception(self):
         """
-            compatibility hack - mjlbach
+        compatibility hack - mjlbach
         """
-        return np.array([1]) 
+        return np.array([1])
 
     def set_up_continuous_action_space(self):
         """
@@ -411,10 +411,6 @@ class FetchGripper(LocomotorRobot):
         if self.use_ag:
             self.handle_assisted_grasping(action)
 
-        # import itertools
-        # for c1, c2 in itertools.combinations(corners, 2):
-        #     p.addUserDebugLine(c1, c2)
-
         real_action = self.policy_action_to_robot_action(action)
         self.apply_robot_action(real_action)
 
@@ -428,7 +424,22 @@ class FetchGripper(LocomotorRobot):
         new_robot_action[self.wheel_joint_action_idx] = robot_action[:2]
 
         # dim 2 and 3: head joint velocities
-        new_robot_action[self.head_joint_action_idx] = robot_action[2:4]
+        current_joint_position = np.array(
+            [item[0] for item in p.getJointStates(self.robot_ids[0], self.head_joint_ids)]
+        )
+        violate_lower_limit = current_joint_position < (
+            self.lower_joint_limits[self.head_joint_action_idx] + self.head_limit_epsilon
+        )
+        negative_action = robot_action[2:4] < 0.0
+
+        violate_upper_limit = current_joint_position > (
+            self.upper_joint_limits[self.head_joint_action_idx] - self.head_limit_epsilon
+        )
+        positive_action = robot_action[2:4] > 0.0
+
+        # zero out head movement velocity if it gets close to the joint limit
+        violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
+        new_robot_action[self.head_joint_action_idx] = robot_action[2:4] * (~violation)
 
         # dim 4-9: eef delta pos and orn
         new_robot_action[self.arm_joint_action_idx] = (
@@ -438,6 +449,7 @@ class FetchGripper(LocomotorRobot):
 
         # dim 10: gripper open/close
         new_robot_action[self.gripper_joint_action_idx] = robot_action[10]
+
         return new_robot_action
 
     def calculate_ag_object(self):
@@ -446,8 +458,12 @@ class FetchGripper(LocomotorRobot):
         if no valid AG-enabled object can be found.
         """
         # Step 1 - find all objects in contact with both gripper forks
-        gripper_fork_1_contacts = p.getContactPoints(bodyA=self.get_body_id(), linkIndexA=self.gripper_joint_ids[0])
-        gripper_fork_2_contacts = p.getContactPoints(bodyA=self.get_body_id(), linkIndexA=self.gripper_joint_ids[1])
+        gripper_fork_1_contacts = p.getContactPoints(
+            bodyA=self.get_body_id(), linkIndexA=self.gripper_finger_joint_ids[0]
+        )
+        gripper_fork_2_contacts = p.getContactPoints(
+            bodyA=self.get_body_id(), linkIndexA=self.gripper_finger_joint_ids[1]
+        )
 
         contact_dict = {}
         set_1_contacts = set()
@@ -455,51 +471,44 @@ class FetchGripper(LocomotorRobot):
             set_1_contacts.add(contact[2])
             if contact[2] not in contact_dict:
                 contact_dict[contact[2]] = []
-            contact_dict[contact[2]].append({
-                "contact_position": contact[5],
-                "target_link": contact[4]
-                })
+            contact_dict[contact[2]].append({"contact_position": contact[5], "target_link": contact[4]})
 
         set_2_contacts = set()
         for contact in gripper_fork_2_contacts:
             set_2_contacts.add(contact[2])
             if contact[2] not in contact_dict:
                 contact_dict[contact[2]] = []
-            contact_dict[contact[2]].append({
-                "contact_position": contact[5],
-                "target_link": contact[4]
-                })
+            contact_dict[contact[2]].append({"contact_position": contact[5], "target_link": contact[4]})
 
         candidates = list(set_1_contacts.intersection(set_2_contacts))
 
         if len(candidates) == 0:
             return None
-        
 
         # Step 2, check if contact with target is inside bounding box
-        # Might be easier to check if contact normal points towards or away from center of gripper from 
+        # Might be easier to check if contact normal points towards or away from center of gripper from
         # getContact Points
 
         if self.ag_strict_mode:
             # Compute gripper bounding box
             corners = []
 
-            gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_joint_ids[0])
+            gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[0])
             local_corners = [
-                [ 0.04, -0.012,  0.014],
-                [ 0.04, -0.012, -0.014],
-                [-0.04, -0.012,  0.014],
+                [0.04, -0.012, 0.014],
+                [0.04, -0.012, -0.014],
+                [-0.04, -0.012, 0.014],
                 [-0.04, -0.012, -0.014],
             ]
             for coord in local_corners:
                 corner, _ = p.multiplyTransforms(gripper_fork_1_state[0], gripper_fork_1_state[1], coord, [0, 0, 0, 1])
                 corners.append(corner)
 
-            gripper_fork_2_state = p.getLinkState(self.get_body_id(), self.gripper_joint_ids[1])
+            gripper_fork_2_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[1])
             local_corners = [
-                [ 0.04, 0.012,  0.014],
-                [ 0.04, 0.012, -0.014],
-                [-0.04, 0.012,  0.014],
+                [0.04, 0.012, 0.014],
+                [0.04, 0.012, -0.014],
+                [-0.04, 0.012, 0.014],
                 [-0.04, 0.012, -0.014],
             ]
             for coord in local_corners:
@@ -511,19 +520,23 @@ class FetchGripper(LocomotorRobot):
                 new_contact_point_data = []
                 for contact_point_data in contact_dict[candidate]:
                     pos = contact_point_data["contact_position"]
-                    x_inside = (pos[0] < np.max(corners[:, 0]) and pos[0] > np.min(corners[:, 0]))
-                    y_inside = (pos[1] < np.max(corners[:, 1]) and pos[1] > np.min(corners[:, 1]))
-                    z_inside = (pos[2] < np.max(corners[:, 2]) and pos[2] > np.min(corners[:, 2]))
+                    x_inside = pos[0] < np.max(corners[:, 0]) and pos[0] > np.min(corners[:, 0])
+                    y_inside = pos[1] < np.max(corners[:, 1]) and pos[1] > np.min(corners[:, 1])
+                    z_inside = pos[2] < np.max(corners[:, 2]) and pos[2] > np.min(corners[:, 2])
                     if x_inside and y_inside and z_inside:
-                        import pdb; pdb.set_trace()
+                        import pdb
+
+                        pdb.set_trace()
                         new_contact_point_data.append(contact_point_data)
                 contact_dict[candidate] = new_contact_point_data
 
         # Step 3 - find the closest object to the gripper center among these "inside" objects
-        gripper_state = p.getLinkState(self.get_body_id(), GRIPPER_BASE_IDX)
+        gripper_state = p.getLinkState(self.get_body_id(), self.eef_link_id)
         # Compute gripper bounding box
         gripper_center_pos = np.copy(GRIPPER_BASE_CENTER_OFFSET)
-        gripper_center_pos, _ = p.multiplyTransforms(gripper_state[0], gripper_state[1], gripper_center_pos, [0, 0, 0, 1])
+        gripper_center_pos, _ = p.multiplyTransforms(
+            gripper_state[0], gripper_state[1], gripper_center_pos, [0, 0, 0, 1]
+        )
 
         self.candidate_data = []
         for candidate in candidates:
@@ -538,10 +551,7 @@ class FetchGripper(LocomotorRobot):
             return None
 
         # Return None if any of the following edge cases are activated
-        if (
-            not self.simulator.can_assisted_grasp(ag_bid, ag_link)
-            or (self.get_body_id() == ag_bid)
-        ):
+        if not self.simulator.can_assisted_grasp(ag_bid, ag_link) or (self.get_body_id() == ag_bid):
             return None
 
         return ag_bid, ag_link
@@ -557,15 +567,22 @@ class FetchGripper(LocomotorRobot):
         self.release_counter += 1
         time_since_release = self.release_counter * self.simulator.render_timestep
         if time_since_release >= RELEASE_WINDOW:
-            set_coll_filter(target_id=self.object_in_hand, body_id=self.get_body_id(), body_links=[19, 20, 21], enable=True)
+            set_coll_filter(
+                target_id=self.object_in_hand,
+                body_id=self.get_body_id(),
+                body_links=self.gripper_joint_ids,
+                enable=True,
+            )
             self.object_in_hand = None
             self.release_counter = None
 
     def establish_grasp(self, ag_data):
-        #TODO(mjlbach): Can probably remove all freeze joint logic also, we are no longer gripping target links with custom logic
+        # TODO(mjlbach): Can probably remove all freeze joint logic also, we are no longer gripping target links with custom logic
         ag_bid, ag_link = ag_data
 
-        child_frame_pos, child_frame_orn = get_child_frame_pose(parent_bid=self.get_body_id(), parent_link=GRIPPER_BASE_IDX, child_bid=ag_bid, child_link=ag_link)
+        child_frame_pos, child_frame_orn = get_child_frame_pose(
+            parent_bid=self.get_body_id(), parent_link=self.eef_link_id, child_bid=ag_bid, child_link=ag_link
+        )
 
         # If we grab a child link of a URDF, create a p2p joint
         if ag_link == -1:
@@ -575,7 +592,7 @@ class FetchGripper(LocomotorRobot):
 
         self.obj_cid = p.createConstraint(
             parentBodyUniqueId=self.get_body_id(),
-            parentLinkIndex=GRIPPER_BASE_IDX,
+            parentLinkIndex=self.eef_link_id,
             childBodyUniqueId=ag_bid,
             childLinkIndex=ag_link,
             jointType=joint_type,
@@ -600,7 +617,7 @@ class FetchGripper(LocomotorRobot):
         self.object_in_hand = ag_bid
         self.should_freeze_joints = True
         # Disable collisions while picking things up
-        set_coll_filter(target_id=ag_bid, body_id=self.get_body_id(), body_links=[19, 20, 21], enable=False)
+        set_coll_filter(target_id=ag_bid, body_id=self.get_body_id(), body_links=self.gripper_joint_ids, enable=False)
         for joint_index in range(p.getNumJoints(self.get_body_id())):
             j_val = p.getJointState(self.get_body_id(), joint_index)[0]
             self.freeze_vals[joint_index] = j_val
@@ -611,15 +628,15 @@ class FetchGripper(LocomotorRobot):
         :param action: numpy array of actions.
         """
 
-        applying_grasp = (action[10] < 0.0)
-        releasing_grasp = (action[10] > 0.0)
+        applying_grasp = action[10] < 0.0
+        releasing_grasp = action[10] > 0.0
 
         # Execute gradual release of object
         if self.object_in_hand != None and self.release_counter != None:
             self.handle_release_window()
 
         elif self.object_in_hand and self.release_counter == None:
-            constraint_violated = (get_constraint_violation(self.obj_cid) > CONSTRAINT_VIOLATION_THRESHOLD)
+            constraint_violated = get_constraint_violation(self.obj_cid) > CONSTRAINT_VIOLATION_THRESHOLD
             if constraint_violated or releasing_grasp:
                 self.release_grasp()
 
