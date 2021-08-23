@@ -12,6 +12,18 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.robots.robot_locomotor import LocomotorRobot
 
+# Assisted grasping parameters
+ASSIST_FRACTION = 1.0
+ARTICULATED_ASSIST_FRACTION = 0.7
+MIN_ASSIST_FORCE = 0
+MAX_ASSIST_FORCE = 500
+ASSIST_FORCE = MIN_ASSIST_FORCE + (MAX_ASSIST_FORCE - MIN_ASSIST_FORCE) * ASSIST_FRACTION
+CONSTRAINT_VIOLATION_THRESHOLD = 0.1
+RELEASE_WINDOW = 1 / 30.0  # release window in seconds
+
+# GRIPPER index constants
+GRIPPER_BASE_IDX = 19
+GRIPPER_BASE_CENTER_OFFSET = [0.1, 0, 0]
 
 class FetchGripper(LocomotorRobot):
     """
@@ -20,7 +32,8 @@ class FetchGripper(LocomotorRobot):
     Uses joint velocity control
     """
 
-    def __init__(self, config):
+    def __init__(self, simulator, config):
+        self.simulator = simulator
         self.config = config
         self.linear_velocity = config.get("linear_velocity", 1.0)  # m/s
         self.angular_velocity = config.get("angular_velocity", np.pi)  # rad/second
@@ -30,6 +43,8 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
+        self.use_ag = config.get("use_ag", True) # Use assisted grasping
+        self.ag_strict_mode = config.get("ag_strict_mode", False) # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
         self.arm_delta_pos_dim = 3
@@ -61,6 +76,14 @@ class FetchGripper(LocomotorRobot):
             control=["differential_drive"] * 2 + ["velocity"] * 12,
             self_collision=False,
         )
+
+        # Assistive grasp params
+        self.object_in_hand = None
+        self.obj_cid = None
+        self.obj_cid_params = {}
+        self.should_freeze_joints = False
+        self.release_counter = None
+        self.freeze_vals = {}
 
     @property
     def joint_ids(self):
@@ -375,6 +398,20 @@ class FetchGripper(LocomotorRobot):
         self.controller = IKController(robot=self, config=self.config)
         return ids
 
+    def apply_action(self, action):
+        """
+        Apply policy action
+        """
+        if self.use_ag:
+            self.handle_assisted_grasping(action)
+
+        # import itertools
+        # for c1, c2 in itertools.combinations(corners, 2):
+        #     p.addUserDebugLine(c1, c2)
+
+        real_action = self.policy_action_to_robot_action(action)
+        self.apply_robot_action(real_action)
+
     def policy_action_to_robot_action(self, action):
         self.calc_state()
         # action has 2 + 2 + 6 + 1 = 11 dimensional
@@ -396,3 +433,259 @@ class FetchGripper(LocomotorRobot):
         # dim 10: gripper open/close
         new_robot_action[self.gripper_joint_action_idx] = robot_action[10]
         return new_robot_action
+
+    # This begins all of the assisted grasping code...
+    # there is a lot
+    def set_hand_coll_filter(self, target_id, enable):
+        # TODO(mjlbach): mostly shared with behavior robot, can be made a util
+        """
+        Sets collision filters for hand - to enable or disable them
+        :param target_id: physics body to enable/disable collisions with
+        :param enable: whether to enable/disable collisions
+        """
+        target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
+        body_link_idxs = [19, 20, 21] # Gripper links
+
+        for body_link_idx in body_link_idxs:
+            for target_link_idx in target_link_idxs:
+                p.setCollisionFilterPair(self.get_body_id(), target_id, body_link_idx, target_link_idx, 1 if enable else 0)
+
+    def calculate_ag_object(self):
+        """
+        Calculates which object to assisted-grasp. Returns an (object_id, link_id) tuple or None
+        if no valid AG-enabled object can be found.
+        """
+        # Step 1 - find all objects in contact with both gripper forks
+        gripper_fork_1_contacts = p.getContactPoints(bodyA=self.get_body_id(), linkIndexA=self.gripper_joint_ids[0])
+        gripper_fork_2_contacts = p.getContactPoints(bodyA=self.get_body_id(), linkIndexA=self.gripper_joint_ids[1])
+
+        contact_dict = {}
+        set_1_contacts = set()
+        for contact in gripper_fork_1_contacts:
+            set_1_contacts.add(contact[2])
+            if contact[2] not in contact_dict:
+                contact_dict[contact[2]] = []
+            contact_dict[contact[2]].append({
+                "contact_position": contact[5],
+                "target_link": contact[4]
+                })
+
+        set_2_contacts = set()
+        for contact in gripper_fork_2_contacts:
+            set_2_contacts.add(contact[2])
+            if contact[2] not in contact_dict:
+                contact_dict[contact[2]] = []
+            contact_dict[contact[2]].append({
+                "contact_position": contact[5],
+                "target_link": contact[4]
+                })
+
+        candidates = list(set_1_contacts.intersection(set_2_contacts))
+
+        if len(candidates) == 0:
+            return None
+        
+
+        # Step 2, check if contact with target is inside bounding box
+        # Might be easier to check if contact normal points towards or away from center of gripper from 
+        # getContact Points
+
+        if self.ag_strict_mode:
+            # Compute gripper bounding box
+            corners = []
+
+            gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_joint_ids[0])
+            local_corners = [
+                [ 0.04, -0.012,  0.014],
+                [ 0.04, -0.012, -0.014],
+                [-0.04, -0.012,  0.014],
+                [-0.04, -0.012, -0.014],
+            ]
+            for coord in local_corners:
+                corner, _ = p.multiplyTransforms(gripper_fork_1_state[0], gripper_fork_1_state[1], coord, [0, 0, 0, 1])
+                corners.append(corner)
+
+            gripper_fork_2_state = p.getLinkState(self.get_body_id(), self.gripper_joint_ids[1])
+            local_corners = [
+                [ 0.04, 0.012,  0.014],
+                [ 0.04, 0.012, -0.014],
+                [-0.04, 0.012,  0.014],
+                [-0.04, 0.012, -0.014],
+            ]
+            for coord in local_corners:
+                corner, _ = p.multiplyTransforms(gripper_fork_2_state[0], gripper_fork_2_state[1], coord, [0, 0, 0, 1])
+                corners.append(corner)
+
+            corners = np.stack(corners)
+            for candidate in candidates:
+                new_contact_point_data = []
+                for contact_point_data in contact_dict[candidate]:
+                    pos = contact_point_data["contact_position"]
+                    x_inside = (pos[0] < np.max(corners[:, 0]) and pos[0] > np.min(corners[:, 0]))
+                    y_inside = (pos[1] < np.max(corners[:, 1]) and pos[1] > np.min(corners[:, 1]))
+                    z_inside = (pos[2] < np.max(corners[:, 2]) and pos[2] > np.min(corners[:, 2]))
+                    if x_inside and y_inside and z_inside:
+                        import pdb; pdb.set_trace()
+                        new_contact_point_data.append(contact_point_data)
+                contact_dict[candidate] = new_contact_point_data
+
+        # Step 3 - find the closest object to the gripper center among these "inside" objects
+        gripper_state = p.getLinkState(self.get_body_id(), GRIPPER_BASE_IDX)
+        # Compute gripper bounding box
+        gripper_center_pos = np.copy(GRIPPER_BASE_CENTER_OFFSET)
+        gripper_center_pos, _ = p.multiplyTransforms(gripper_state[0], gripper_state[1], gripper_center_pos, [0, 0, 0, 1])
+
+        self.candidate_data = []
+        for candidate in candidates:
+            for contact_point_data in contact_dict[candidate]:
+                dist = np.linalg.norm(np.array(contact_point_data["contact_position"]) - np.array(gripper_center_pos))
+                self.candidate_data.append((candidate, contact_point_data["target_link"], dist))
+
+        self.candidate_data = sorted(self.candidate_data, key=lambda x: x[2])
+        if len(self.candidate_data) > 0:
+            ag_bid, ag_link, _ = self.candidate_data[0]
+        else:
+            return None
+
+        # Return None if any of the following edge cases are activated
+        if (
+            not self.simulator.can_assisted_grasp(ag_bid, ag_link)
+            or (self.get_body_id() == ag_bid)
+        ):
+            return None
+
+        return ag_bid, ag_link
+
+    def release_grasp(self):
+        p.removeConstraint(self.obj_cid)
+        self.obj_cid = None
+        self.obj_cid_params = {}
+        self.should_freeze_joints = False
+        self.release_counter = 0
+
+    def handle_release_window(self):
+        self.release_counter += 1
+        time_since_release = self.release_counter * self.simulator.render_timestep
+        if time_since_release >= RELEASE_WINDOW:
+            self.set_hand_coll_filter(self.object_in_hand, True)
+            self.object_in_hand = None
+            self.release_counter = None
+
+    def get_constraint_violation(self, cid):
+        # TODO(mjlbach): shared with BRRobot, should be made a util
+        (
+            parent_body,
+            parent_link,
+            child_body,
+            child_link,
+            _,
+            _,
+            joint_position_parent,
+            joint_position_child,
+        ) = p.getConstraintInfo(cid)[:8]
+
+        if parent_link == -1:
+            parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
+        else:
+            parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
+
+        if child_link == -1:
+            child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
+        else:
+            child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
+
+        joint_pos_in_parent_world = p.multiplyTransforms(
+            parent_link_pos, parent_link_orn, joint_position_parent, [0, 0, 0, 1]
+        )[0]
+        joint_pos_in_child_world = p.multiplyTransforms(
+            child_link_pos, child_link_orn, joint_position_child, [0, 0, 0, 1]
+        )[0]
+
+        diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
+        return diff
+
+    def get_child_frame_pose(self, ag_bid, ag_link):
+        # TODO(mjlbach):Mostly shared with BRRobot, can be made a util
+
+        # Different pos/orn calculations for base/links
+        if ag_link == -1:
+            body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
+        else:
+            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
+
+        # Get inverse world transform of body frame
+        inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
+        link_state = p.getLinkState(self.get_body_id(), GRIPPER_BASE_IDX)
+        link_pos = link_state[0]
+        link_orn = link_state[1]
+        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+        child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
+
+        return child_frame_pos, child_frame_orn
+
+    def establish_grasp(self, ag_data):
+        #TODO(mjlbach): Can probably remove all freeze joint logic also, we are no longer gripping target links with custom logic
+        ag_bid, ag_link = ag_data
+
+        child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
+
+        # If we grab a child link of a URDF, create a p2p joint
+        if ag_link == -1:
+            joint_type = p.JOINT_FIXED
+        else:
+            joint_type = p.JOINT_POINT2POINT
+
+        self.obj_cid = p.createConstraint(
+            parentBodyUniqueId=self.get_body_id(),
+            parentLinkIndex=GRIPPER_BASE_IDX,
+            childBodyUniqueId=ag_bid,
+            childLinkIndex=ag_link,
+            jointType=joint_type,
+            jointAxis=(0, 0, 0),
+            parentFramePosition=(0, 0, 0),
+            childFramePosition=child_frame_pos,
+            childFrameOrientation=child_frame_orn,
+        )
+        # Modify max force based on user-determined assist parameters
+        if ag_link == -1:
+            max_force = ASSIST_FORCE
+        else:
+            max_force = ASSIST_FORCE * ARTICULATED_ASSIST_FRACTION
+        p.changeConstraint(self.obj_cid, maxForce=max_force)
+
+        self.obj_cid_params = {
+            "childBodyUniqueId": ag_bid,
+            "childLinkIndex": ag_link,
+            "jointType": joint_type,
+            "maxForce": max_force,
+        }
+        self.object_in_hand = ag_bid
+        self.should_freeze_joints = True
+        # Disable collisions while picking things up
+        self.set_hand_coll_filter(ag_bid, False)
+        for joint_index in range(p.getNumJoints(self.get_body_id())):
+            j_val = p.getJointState(self.get_body_id(), joint_index)[0]
+            self.freeze_vals[joint_index] = j_val
+
+    def handle_assisted_grasping(self, action):
+        """
+        Handles assisted grasping.
+        :param action: numpy array of actions.
+        """
+
+        applying_grasp = (action[10] < 0.0)
+        releasing_grasp = (action[10] > 0.0)
+
+        # Execute gradual release of object
+        if self.object_in_hand != None and self.release_counter != None:
+            self.handle_release_window()
+
+        elif self.object_in_hand and self.release_counter == None:
+            constraint_violated = (self.get_constraint_violation(self.obj_cid) > CONSTRAINT_VIOLATION_THRESHOLD)
+            if constraint_violated or releasing_grasp:
+                self.release_grasp()
+
+        elif not self.object_in_hand and applying_grasp:
+            ag_data = self.calculate_ag_object()
+            if ag_data:
+                self.establish_grasp(ag_data)
