@@ -49,7 +49,7 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", True) # Use assisted grasping
+        self.use_ag = config.get("use_ag", False) # Use assisted grasping
         self.ag_strict_mode = config.get("ag_strict_mode", False) # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
@@ -399,6 +399,11 @@ class FetchGripper(LocomotorRobot):
             p.setCollisionFilterPair(robot_id, robot_id, link_a, link_b, 0)
 
         self.controller = IKController(robot=self, config=self.config)
+
+        # Increase lateral friction for end effector
+        for link in self.gripper_joint_ids:
+            p.changeDynamics(self.get_body_id(), link, lateralFriction=500)
+
         return ids
 
     def apply_action(self, action):
