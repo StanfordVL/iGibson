@@ -337,10 +337,6 @@ class BehaviorEnv(iGibsonEnv):
             )
             self.log_writer.set_up_data_storage()
 
-        # if self.episode_save_dir not set, self.log_writer will be None
-
-        self.robots[0].robot_specific_reset()
-
         self.reset_scene_and_agent()
 
         self.simulator.sync(force_sync=True)

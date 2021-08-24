@@ -32,7 +32,7 @@ controller:
 # task
 task: re-shelving_library_books
 task_id: 0
-online_sampling: true
+online_sampling: false
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar

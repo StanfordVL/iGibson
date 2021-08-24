@@ -370,13 +370,19 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             self.simulator.import_behavior_robot(agent)
             agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
+            # TODO @mjlbach: do we need to set agent pose from scene cache here?
         elif self.robot_type == FetchGripper:
             agent = FetchGripper(self.simulator, self.robot_config)
             self.simulator.import_robot(agent)
             self.object_scope["agent.n.01_1"] = agent
+            # Use the cached pose of BehaviorRobot to initialize FetchGripper
+            pos = np.copy(self.scene.agent["BRBody_1"]["xyz"])
+            pos[2] = 0.0
+            pos[2] = stable_z_on_aabb(agent.get_body_id(), [pos, pos])
+            agent.set_position_orientation(pos, quat_from_euler(self.scene.agent["BRBody_1"]["rpy"]))
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported")
-
+        agent.robot_specific_reset()
         self.simulator.register_main_vr_robot(agent)
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
 
