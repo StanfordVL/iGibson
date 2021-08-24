@@ -19,7 +19,7 @@ def get_metrics_callbacks(config):
         TaskMetric(),
     ]
 
-    robot_type = config["robot_type"]
+    robot_type = config["robot"]
     if robot_type == "FetchGripper":
         metrics.append(FetchRobotMetric())
     elif robot_type == "BehaviorRobot":

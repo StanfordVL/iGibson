@@ -46,8 +46,8 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", False)  # Use assisted grasping
-        self.ag_strict_mode = config.get("ag_strict_mode", False)  # Require object to be contained by forks for AG
+        self.use_ag = config.get("use_ag", True)  # Use assisted grasping
+        self.ag_strict_mode = config.get("ag_strict_mode", True)  # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
         self.arm_delta_pos_dim = 3
@@ -415,6 +415,8 @@ class FetchGripper(LocomotorRobot):
 
         real_action = self.policy_action_to_robot_action(action)
         self.apply_robot_action(real_action)
+        if self.should_freeze_joints:
+            self.freeze_joints()
 
     def policy_action_to_robot_action(self, action):
         self.calc_state()
@@ -590,8 +592,14 @@ class FetchGripper(LocomotorRobot):
             self.object_in_hand = None
             self.release_counter = None
 
+    def freeze_joints(self):
+        """
+        Freezes gripper finger joints - used in assisted grasping.
+        """
+        for joint_index, j_val in self.freeze_vals.items():
+            p.resetJointState(self.get_body_id(), joint_index, targetValue=j_val, targetVelocity=0.0)
+
     def establish_grasp(self, ag_data):
-        # TODO(mjlbach): Can probably remove all freeze joint logic also, we are no longer gripping target links with custom logic
         ag_bid, ag_link = ag_data
 
         child_frame_pos, child_frame_orn = get_child_frame_pose(
@@ -632,7 +640,7 @@ class FetchGripper(LocomotorRobot):
         self.should_freeze_joints = True
         # Disable collisions while picking things up
         set_coll_filter(target_id=ag_bid, body_id=self.get_body_id(), body_links=self.gripper_joint_ids, enable=False)
-        for joint_index in range(p.getNumJoints(self.get_body_id())):
+        for joint_index in self.gripper_finger_joint_ids:
             j_val = p.getJointState(self.get_body_id(), joint_index)[0]
             self.freeze_vals[joint_index] = j_val
 
@@ -646,10 +654,10 @@ class FetchGripper(LocomotorRobot):
         releasing_grasp = action[10] > 0.0
 
         # Execute gradual release of object
-        if self.object_in_hand != None and self.release_counter != None:
+        if self.object_in_hand is not None and self.release_counter is not None:
             self.handle_release_window()
 
-        elif self.object_in_hand and self.release_counter == None:
+        elif self.object_in_hand and self.release_counter is None:
             constraint_violated = get_constraint_violation(self.obj_cid) > CONSTRAINT_VIOLATION_THRESHOLD
             if constraint_violated or releasing_grasp:
                 self.release_grasp()
@@ -663,3 +671,76 @@ class FetchGripper(LocomotorRobot):
         return [
             self.object_in_hand == candidate_obj,
         ]
+
+    # significant overlap with BehaviorRobot
+    def dump_state(self):
+        if not self.use_ag:
+            return None
+
+        # Recompute child frame pose because it could have changed since the
+        # constraint has been created
+        if self.obj_cid is not None:
+            ag_bid = self.obj_cid_params["childBodyUniqueId"]
+            ag_link = self.obj_cid_params["childLinkIndex"]
+            child_frame_pos, child_frame_orn = child_frame_pos, child_frame_orn = get_child_frame_pose(
+                parent_bid=self.get_body_id(), parent_link=self.eef_link_id, child_bid=ag_bid, child_link=ag_link
+            )
+            self.obj_cid_params.update(
+                {
+                    "childFramePosition": child_frame_pos,
+                    "childFrameOrientation": child_frame_orn,
+                }
+            )
+
+        return {
+            "object_in_hand": self.object_in_hand,
+            "release_counter": self.release_counter,
+            "should_freeze_joints": self.should_freeze_joints,
+            "freeze_vals": self.freeze_vals,
+            "obj_cid": self.obj_cid,
+            "obj_cid_params": self.obj_cid_params,
+        }
+
+    def load_state(self, dump):
+        if not self.use_ag:
+            return
+
+        # Cancel the previous AG if exists
+        if self.obj_cid is not None:
+            p.removeConstraint(self.obj_cid)
+
+        if self.object_in_hand is not None:
+            set_coll_filter(
+                target_id=self.object_in_hand,
+                body_id=self.get_body_id(),
+                body_links=self.gripper_joint_ids,
+                enable=True,
+            )
+
+        self.object_in_hand = dump["object_in_hand"]
+        self.release_counter = dump["release_counter"]
+        self.should_freeze_joints = dump["should_freeze_joints"]
+        self.freeze_vals = {int(key): val for key, val in dump["freeze_vals"].items()}
+        self.obj_cid = dump["obj_cid"]
+        self.obj_cid_params = dump["obj_cid_params"]
+        if self.obj_cid is not None:
+            self.obj_cid = p.createConstraint(
+                parentBodyUniqueId=self.get_body_id(),
+                parentLinkIndex=self.eef_link_id,
+                childBodyUniqueId=dump["obj_cid_params"]["childBodyUniqueId"],
+                childLinkIndex=dump["obj_cid_params"]["childLinkIndex"],
+                jointType=dump["obj_cid_params"]["jointType"],
+                jointAxis=(0, 0, 0),
+                parentFramePosition=(0, 0, 0),
+                childFramePosition=dump["obj_cid_params"]["childFramePosition"],
+                childFrameOrientation=dump["obj_cid_params"]["childFrameOrientation"],
+            )
+            p.changeConstraint(self.obj_cid, maxForce=dump["obj_cid_params"]["maxForce"])
+
+        if self.object_in_hand is not None:
+            set_coll_filter(
+                target_id=self.object_in_hand,
+                body_id=self.get_body_id(),
+                body_links=self.gripper_joint_ids,
+                enable=False,
+            )

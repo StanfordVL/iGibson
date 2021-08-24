@@ -30,7 +30,14 @@ KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
 
 class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
-    def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None, robot_type=BehaviorRobot, robot_config={}):
+    def __init__(
+        self,
+        behavior_activity,
+        activity_definition=0,
+        predefined_problem=None,
+        robot_type=BehaviorRobot,
+        robot_config={},
+    ):
         """
         Initialize simulator with appropriate scene and sampled objects.
         :param behavior_activity: string, official ATUS activity label
@@ -361,7 +368,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         if self.robot_type == BehaviorRobot:
             agent = BehaviorRobot(self.simulator)
             self.simulator.import_behavior_robot(agent)
-            agent.set_position_orientation([300, 300, 300], [0,0,0,1])
+            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
         elif self.robot_type == FetchGripper:
             agent = FetchGripper(self.simulator, self.robot_config)
@@ -373,10 +380,9 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         self.simulator.register_main_vr_robot(agent)
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
 
-
     def move_agent(self):
         """
-            Backwards compatibility, to be deprecated
+        Backwards compatibility, to be deprecated
         """
         pass
 

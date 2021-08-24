@@ -347,8 +347,8 @@ class BehaviorRobot(object):
 
     def is_grasping(self, candidate_obj):
         return [
-            self.parts["left_hand"].object_in_hand == candidate_obj, 
-            self.parts["right_hand"].object_in_hand == candidate_obj
+            self.parts["left_hand"].object_in_hand == candidate_obj,
+            self.parts["right_hand"].object_in_hand == candidate_obj,
         ]
 
     def dump_state(self):
