@@ -1243,7 +1243,6 @@ class Simulator:
                 self.import_object(
                     part_obj.head_visual_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False
                 )
-        bvr_robot.set_position_orientation([0, 0, 0.5], [0, 0, 0, 1])
 
     def gen_vr_data(self):
         """
