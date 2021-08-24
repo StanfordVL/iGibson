@@ -23,8 +23,8 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
 from igibson.render.viewer import Viewer, ViewerSimple, ViewerVR
-from igibson.robots.robot_base import BaseRobot
 from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs

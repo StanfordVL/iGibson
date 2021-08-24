@@ -8,11 +8,11 @@ import bddl
 import gym.spaces
 import numpy as np
 from bddl.condition_evaluation import evaluate_state
-from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.fetch_gripper_robot import FetchGripper
 
 from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
 
@@ -110,7 +110,7 @@ class BehaviorEnv(iGibsonEnv):
                 "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene_id, task, task_id, self.instance_id),
             }
         bddl.set_backend("iGibson")
-        robot_class = self.config.get("robot_type")
+        robot_class = self.config.get("robot")
         if robot_class == "BehaviorRobot":
             robot_type = BehaviorRobot
         elif robot_class == "FetchGripper":
@@ -118,7 +118,7 @@ class BehaviorEnv(iGibsonEnv):
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
-        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config = self.config)
+        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config=self.config)
         self.task.initialize_simulator(
             simulator=self.simulator,
             scene_id=scene_id,
@@ -307,7 +307,7 @@ class BehaviorEnv(iGibsonEnv):
         # set the constraints to the current poses
         self.robots[0].apply_action(np.zeros(self.robots[0].action_dim))
 
-    def reset(self, resample_objects=False):
+    def reset(self):
         """
         Reset episode
         """
@@ -336,10 +336,6 @@ class BehaviorEnv(iGibsonEnv):
                 filter_objects=True,
             )
             self.log_writer.set_up_data_storage()
-
-        # if self.episode_save_dir not set, self.log_writer will be None
-
-        self.robots[0].robot_specific_reset()
 
         self.reset_scene_and_agent()
 

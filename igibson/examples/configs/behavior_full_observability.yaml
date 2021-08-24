@@ -13,6 +13,9 @@ debug: False
 texture_randomization_freq: null
 object_randomization_freq: null
 
+# robot
+robot: BehaviorRobot
+
 # task
 task: cleaning_cupboards
 task_id: 0
@@ -58,9 +61,6 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-
-# Robot
-robot_type: BehaviorRobot
 
 # speed limit
 hand_threshold: 0.4

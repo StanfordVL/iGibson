@@ -5,8 +5,8 @@ import numpy as np
 import pybullet as p
 
 import igibson
-
 from igibson.object_states.factory import prepare_object_states
+
 
 class BaseRobot(object):
     """
@@ -164,6 +164,7 @@ class BaseRobot(object):
         if self.robot_ids:
             body_id = self.robot_ids[0]
         return body_id
+
 
 class BodyPart:
     """

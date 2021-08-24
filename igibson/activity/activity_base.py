@@ -30,7 +30,14 @@ KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
 
 class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
-    def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None, robot_type=BehaviorRobot, robot_config={}):
+    def __init__(
+        self,
+        behavior_activity,
+        activity_definition=0,
+        predefined_problem=None,
+        robot_type=BehaviorRobot,
+        robot_config={},
+    ):
         """
         Initialize simulator with appropriate scene and sampled objects.
         :param behavior_activity: string, official ATUS activity label
@@ -358,25 +365,52 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         return True, feedback
 
     def import_agent(self):
+        cached_initial_pose = not self.online_sampling and self.scene.agent != {}
         if self.robot_type == BehaviorRobot:
             agent = BehaviorRobot(self.simulator)
             self.simulator.import_behavior_robot(agent)
-            agent.set_position_orientation([300, 300, 300], [0,0,0,1])
+            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
+            if cached_initial_pose:
+                agent.parts["body"].set_base_link_position_orientation(
+                    self.scene.agent["BRBody_1"]["xyz"], quat_from_euler(self.scene.agent["BRBody_1"]["rpy"])
+                )
+                agent.parts["left_hand"].set_base_link_position_orientation(
+                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
+                )
+                agent.parts["right_hand"].set_base_link_position_orientation(
+                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
+                )
+                agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
+                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
+                )
+                agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
+                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
+                )
+                agent.parts["eye"].set_base_link_position_orientation(
+                    self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
+                )
         elif self.robot_type == FetchGripper:
             agent = FetchGripper(self.simulator, self.robot_config)
             self.simulator.import_robot(agent)
+            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent
+            if cached_initial_pose:
+                # Use the cached pose of BehaviorRobot to initialize FetchGripper
+                pos = np.copy(self.scene.agent["BRBody_1"]["xyz"])
+                pos[2] = 0.0
+                pos[2] = stable_z_on_aabb(agent.get_body_id(), [pos, pos])
+                agent.set_position_orientation(pos, quat_from_euler(self.scene.agent["BRBody_1"]["rpy"]))
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported")
 
+        agent.robot_specific_reset()
         self.simulator.register_main_vr_robot(agent)
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
 
-
     def move_agent(self):
         """
-            Backwards compatibility, to be deprecated
+        Backwards compatibility, to be deprecated
         """
         pass
 
