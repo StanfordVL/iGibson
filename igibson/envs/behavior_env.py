@@ -358,7 +358,7 @@ if __name__ == "__main__":
         "--mode",
         "-m",
         choices=["headless", "gui", "iggui", "pbgui"],
-        default="gui",
+        default="iggui",
         help="which mode for simulation (default: headless)",
     )
     parser.add_argument(
