@@ -67,7 +67,7 @@ def main():
         s.step()
 
         # Update VR objects
-        vr_agent.update()
+        vr_agent.apply_action()
 
         # Switch to different condition with right toggle
         if s.query_vr_event("right_controller", "overlay_toggle"):

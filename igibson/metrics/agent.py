@@ -6,7 +6,7 @@ import pybullet as p
 from igibson.metrics.metric_base import MetricBase
 
 
-class AgentMetric(MetricBase):
+class BehaviorRobotMetric(MetricBase):
     def __init__(self):
         self.initialized = False
 
@@ -111,5 +111,81 @@ class AgentMetric(MetricBase):
             },
             "reset": {
                 "timestep": self.agent_reset,
+            },
+        }
+
+
+class FetchRobotMetric(MetricBase):
+    def __init__(self):
+        self.initialized = False
+
+        self.state_cache = {}
+        self.next_state_cache = {}
+
+        self.agent_pos = {part: [] for part in ["gripper", "body"]}
+        self.agent_grasping = {part: [] for part in ["gripper"]}
+
+        self.agent_local_pos = {part: [] for part in ["gripper"]}
+
+        self.delta_agent_distance = {part: [] for part in ["gripper", "body"]}
+        self.delta_agent_grasp_distance = {part: [] for part in ["gripper"]}
+
+        self.clip = 0.2
+
+    def step_callback(self, igbhvr_act_inst, _):
+        robot = igbhvr_act_inst.simulator.robots[0]
+        agent_distance = {part: 0 for part in self.agent_pos}
+
+        self.next_state_cache = {
+            "gripper": {"position": robot.get_end_effector_position()},
+            "body": {"position": robot.get_position()},
+        }
+
+        if not self.initialized:
+            self.state_cache = copy.deepcopy(self.next_state_cache)
+            self.initialized = True
+
+        self.agent_pos["body"].append(list(self.state_cache["body"]["position"]))
+        delta_pos = np.linalg.norm(
+            np.array(self.next_state_cache["body"]["position"]) - self.state_cache["body"]["position"]
+        )
+        distance = np.abs(delta_pos)
+        self.delta_agent_distance["body"].append(distance)
+
+        self.agent_pos["gripper"].append(list(self.state_cache["gripper"]["position"]))
+        delta_pos = np.linalg.norm(
+            self.next_state_cache["gripper"]["position"] - self.state_cache["gripper"]["position"]
+        )
+        gripper_distance = np.abs(delta_pos)
+        self.delta_agent_distance["gripper"].append(gripper_distance)
+
+        self.agent_local_pos["gripper"].append(list(robot.get_relative_eef_position()))
+
+        contacts = p.getContactPoints(bodyA=robot.robot_ids[0], linkIndexA=robot.eef_link_id)
+        if len(contacts) > 0:
+            self.delta_agent_grasp_distance["gripper"].append(gripper_distance)
+            self.agent_grasping["gripper"].append(True)
+        else:
+            self.delta_agent_grasp_distance["gripper"].append(0)
+            self.agent_grasping["gripper"].append(False)
+
+        self.state_cache = copy.deepcopy(self.next_state_cache)
+
+    def gather_results(self):
+        return {
+            "agent_distance": {
+                "timestep": self.delta_agent_distance,
+            },
+            "grasp_distance": {
+                "timestep": self.delta_agent_grasp_distance,
+            },
+            "pos": {
+                "timestep": self.agent_pos,
+            },
+            "local_pos": {
+                "timestep": self.agent_local_pos,
+            },
+            "grasping": {
+                "timestep": self.agent_grasping,
             },
         }

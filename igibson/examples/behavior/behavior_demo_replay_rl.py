@@ -169,7 +169,7 @@ def replay_demo(
     vr_agent.activate()
     igtn_task.reset_scene(snapshot_id=igtn_task.initial_state)
     # set the constraints to the current poses
-    vr_agent.update(np.zeros(28))
+    vr_agent.apply_action(np.zeros(28))
 
     if not in_log_path:
         raise RuntimeError("Must provide a VR log path to run action replay!")
@@ -200,7 +200,7 @@ def replay_demo(
 
         action = log_reader.get_agent_action("vr_robot")
         # Get relevant VR action data and update VR agent
-        vr_agent.update(action)
+        vr_agent.apply_action(action)
 
         if not disable_save:
             log_writer.process_frame()

@@ -23,6 +23,7 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSettings
 from igibson.render.viewer import Viewer, ViewerSimple, ViewerVR
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.scene_base import Scene
@@ -909,6 +910,9 @@ class Simulator:
             robot=robot,
         )
 
+        for state in robot.states.values():
+            state.initialize(self)
+
         return ids
 
     def add_normal_text(
@@ -1227,6 +1231,8 @@ class Simulator:
         """
         Import registered behavior robot into the simulator.
         """
+        assert isinstance(bvr_robot, BehaviorRobot), "import_robot can only be called with BaseRobot"
+        self.robots.append(bvr_robot)
         for part_name, part_obj in bvr_robot.parts.items():
             self.import_object(part_obj, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
             if bvr_robot.use_ghost_hands and part_name in ["left_hand", "right_hand"]:

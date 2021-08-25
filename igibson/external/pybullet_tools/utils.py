@@ -1157,6 +1157,24 @@ def all_between(lower_limits, values, upper_limits):
     return np.less_equal(lower_limits, values).all() and \
         np.less_equal(values, upper_limits).all()
 
+def get_child_frame_pose(parent_bid, parent_link, child_bid, child_link):
+    # TODO(mjlbach):Mostly shared with BRRobot, can be made a util
+
+    # Different pos/orn calculations for base/links
+    if child_link == -1:
+        body_pos, body_orn = p.getBasePositionAndOrientation(child_bid)
+    else:
+        body_pos, body_orn = p.getLinkState(child_bid, child_link)[:2]
+
+    # Get inverse world transform of body frame
+    inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
+    link_state = p.getLinkState(parent_bid, parent_link)
+    link_pos = link_state[0]
+    link_orn = link_state[1]
+    # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+    child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
+
+    return child_frame_pos, child_frame_orn
 #####################################
 
 # Bodies
@@ -2570,6 +2588,21 @@ def set_all_collisions(body_id, enabled=1):
             for col_link_idx in col_link_idxs:
                 p.setCollisionFilterPair(body_id, col_id, body_link_idx, col_link_idx, enabled)
 
+def set_coll_filter(target_id, body_id, body_links, enable):
+    # TODO(mjlbach): mostly shared with behavior robot, can be factored out
+    """
+    Sets collision filters for body - to enable or disable them
+    :param target_id: physics body to enable/disable collisions with
+    :param body_id: physics body to enable/disable collisions from
+    :param body_id: physics links on body to enable/disable collisions from
+    :param enable: whether to enable/disable collisions
+    """
+    target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
+
+    for body_link_idx in body_links:
+        for target_link_idx in target_link_idxs:
+            p.setCollisionFilterPair(body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
+
 def contact_collision():
     step_simulation()
     return len(p.getContactPoints(physicsClientId=CLIENT)) != 0
@@ -3389,6 +3422,38 @@ def get_constraints():
     """
     return [p.getConstraintUniqueId(i, physicsClientId=CLIENT)
             for i in range(p.getNumConstraints(physicsClientId=CLIENT))]
+
+def get_constraint_violation(cid):
+    (
+        parent_body,
+        parent_link,
+        child_body,
+        child_link,
+        _,
+        _,
+        joint_position_parent,
+        joint_position_child,
+    ) = p.getConstraintInfo(cid)[:8]
+
+    if parent_link == -1:
+        parent_link_pos, parent_link_orn = p.getBasePositionAndOrientation(parent_body)
+    else:
+        parent_link_pos, parent_link_orn = p.getLinkState(parent_body, parent_link)[:2]
+
+    if child_link == -1:
+        child_link_pos, child_link_orn = p.getBasePositionAndOrientation(child_body)
+    else:
+        child_link_pos, child_link_orn = p.getLinkState(child_body, child_link)[:2]
+
+    joint_pos_in_parent_world = p.multiplyTransforms(
+        parent_link_pos, parent_link_orn, joint_position_parent, [0, 0, 0, 1]
+    )[0]
+    joint_pos_in_child_world = p.multiplyTransforms(
+        child_link_pos, child_link_orn, joint_position_child, [0, 0, 0, 1]
+    )[0]
+
+    diff = np.linalg.norm(np.array(joint_pos_in_parent_world) - np.array(joint_pos_in_child_world))
+    return diff
 
 
 def add_p2p_constraint(body, body_link, robot, robot_link, max_force=None):
