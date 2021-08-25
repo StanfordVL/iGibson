@@ -87,7 +87,7 @@ def collect_demo(scene_id, vr_log_path=None, disable_save=False, no_vr=False, pr
         if steps < physics_warming_steps:
             action = np.zeros_like(action)
 
-        vr_agent.update(action)
+        vr_agent.apply_action(action)
 
         if log_writer and not disable_save:
             log_writer.process_frame()

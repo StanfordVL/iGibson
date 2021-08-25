@@ -95,7 +95,7 @@ def main():
 
         if VR_MODE:
             # Update VR objects
-            vr_agent.update()
+            vr_agent.apply_action()
 
     s.disconnect()
 

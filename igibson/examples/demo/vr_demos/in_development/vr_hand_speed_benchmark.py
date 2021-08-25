@@ -143,7 +143,7 @@ def main():
             time_text.set_text("Current time: {}".format(round(timer.get_timer_val(), 1)))
 
             # Update VR agent
-            vr_agent.update()
+            vr_agent.apply_action()
 
     s.disconnect()
 

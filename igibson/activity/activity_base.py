@@ -1,7 +1,6 @@
 import logging
 from collections import OrderedDict
 
-import cv2
 import networkx as nx
 import pybullet as p
 from bddl.activity_base import BEHAVIORActivityInstance
@@ -14,6 +13,7 @@ from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
@@ -30,7 +30,14 @@ KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
 
 class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
-    def __init__(self, behavior_activity, activity_definition=0, predefined_problem=None):
+    def __init__(
+        self,
+        behavior_activity,
+        activity_definition=0,
+        predefined_problem=None,
+        robot_type=BehaviorRobot,
+        robot_config={},
+    ):
         """
         Initialize simulator with appropriate scene and sampled objects.
         :param behavior_activity: string, official ATUS activity label
@@ -45,6 +52,8 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             predefined_problem=predefined_problem,
         )
         self.state_history = {}
+        self.robot_type = robot_type
+        self.robot_config = robot_config
 
     def initialize_simulator(
         self,
@@ -356,55 +365,54 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         return True, feedback
 
     def import_agent(self):
-        # TODO: replace this with self.simulator.import_robot(BehaviorRobot(self.simulator)) once BehaviorRobot supports
-        # baserobot api
-        agent = BehaviorRobot(self.simulator)
-        self.simulator.import_behavior_robot(agent)
+        cached_initial_pose = not self.online_sampling and self.scene.agent != {}
+        if self.robot_type == BehaviorRobot:
+            agent = BehaviorRobot(self.simulator)
+            self.simulator.import_behavior_robot(agent)
+            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
+            self.object_scope["agent.n.01_1"] = agent.parts["body"]
+            if cached_initial_pose:
+                agent.parts["body"].set_base_link_position_orientation(
+                    self.scene.agent["BRBody_1"]["xyz"], quat_from_euler(self.scene.agent["BRBody_1"]["rpy"])
+                )
+                agent.parts["left_hand"].set_base_link_position_orientation(
+                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
+                )
+                agent.parts["right_hand"].set_base_link_position_orientation(
+                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
+                )
+                agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
+                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
+                )
+                agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
+                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
+                )
+                agent.parts["eye"].set_base_link_position_orientation(
+                    self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
+                )
+        elif self.robot_type == FetchGripper:
+            agent = FetchGripper(self.simulator, self.robot_config)
+            self.simulator.import_robot(agent)
+            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
+            self.object_scope["agent.n.01_1"] = agent
+            if cached_initial_pose:
+                # Use the cached pose of BehaviorRobot to initialize FetchGripper
+                pos = np.copy(self.scene.agent["BRBody_1"]["xyz"])
+                pos[2] = 0.0
+                pos[2] = stable_z_on_aabb(agent.get_body_id(), [pos, pos])
+                agent.set_position_orientation(pos, quat_from_euler(self.scene.agent["BRBody_1"]["rpy"]))
+        else:
+            Exception("Only BehaviorRobot and FetchGripper are supported")
+
+        agent.robot_specific_reset()
         self.simulator.register_main_vr_robot(agent)
-        self.agent = agent
-        self.simulator.robots.append(agent)
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
-        agent.parts["body"].set_base_link_position_orientation([300, 300, 300], [0, 0, 0, 1])
-        agent.parts["left_hand"].set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
-        agent.parts["right_hand"].set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
-        agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
-        agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
-        agent.parts["eye"].set_base_link_position_orientation([300, -300, -300], [0, 0, 0, 1])
-        self.object_scope["agent.n.01_1"] = agent.parts["body"]
-        if not self.online_sampling and self.scene.agent != {}:
-            agent.parts["body"].set_base_link_position_orientation(
-                self.scene.agent["BRBody_1"]["xyz"], quat_from_euler(self.scene.agent["BRBody_1"]["rpy"])
-            )
-            agent.parts["left_hand"].set_base_link_position_orientation(
-                self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-            )
-            agent.parts["right_hand"].set_base_link_position_orientation(
-                self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-            )
-            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-            )
-            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
-                self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-            )
-            agent.parts["eye"].set_base_link_position_orientation(
-                self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
-            )
 
     def move_agent(self):
-        agent = self.agent
-        if not self.online_sampling and self.scene.agent == {}:
-            agent.parts["body"].set_base_link_position_orientation([0, 0, 0.5], [0, 0, 0, 1])
-            agent.parts["left_hand"].set_base_link_position_orientation(
-                [0, 0.2, 0.7],
-                [0.5, 0.5, -0.5, 0.5],
-            )
-            agent.parts["right_hand"].set_base_link_position_orientation([0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5])
-            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([0, 0.2, 0.7], [0.5, 0.5, -0.5, 0.5])
-            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
-                [0, -0.2, 0.7], [-0.5, 0.5, 0.5, 0.5]
-            )
-            agent.parts["eye"].set_base_link_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
+        """
+        Backwards compatibility, to be deprecated
+        """
+        pass
 
     def import_scene(self):
         self.simulator.reload()
@@ -923,12 +931,9 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 state["obj_{}_valid".format(i)] = 1.0
                 state["obj_{}_pos".format(i)] = np.array(v.get_position())
                 state["obj_{}_orn".format(i)] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
-                state["obj_{}_in_left_hand".format(i)] = float(
-                    env.robots[0].parts["left_hand"].object_in_hand == v.get_body_id()
-                )
-                state["obj_{}_in_right_hand".format(i)] = float(
-                    env.robots[0].parts["right_hand"].object_in_hand == v.get_body_id()
-                )
+                grasping_objects = env.robots[0].is_grasping(v.get_body_id())
+                for grasp_idx, grasping in enumerate(grasping_objects):
+                    state["obj_{}_pos_in_gripper_{}".format(i, grasp_idx)] = float(grasping)
                 i += 1
 
         state_list = []

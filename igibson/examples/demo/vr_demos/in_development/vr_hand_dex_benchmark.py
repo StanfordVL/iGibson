@@ -312,7 +312,7 @@ def main():
             ag_text.scroll_text(up=scroll_dir)
 
         # Update VR agent
-        vr_agent.update()
+        vr_agent.apply_action()
 
         if show_overlay:
             ag_candidate_data = vr_agent.parts["right_hand"].candidate_data
