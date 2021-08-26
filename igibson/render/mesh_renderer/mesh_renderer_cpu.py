@@ -369,6 +369,10 @@ class MeshRenderer(object):
             # assume optimized renderer will have texture id starting from 0
             texture_id = len(self.texture_files)
         else:
+            if not os.path.exists(igibson.key_path):
+                raise FileNotFoundError(
+                    "iGibson key file is not found, request here https://forms.gle/oW4xB3tRXyCJa1Ap8"
+                )
             texture_id = self.r.loadTexture(tex_filename, self.rendering_settings.texture_scale, igibson.key_path)
             self.textures.append(texture_id)
 
@@ -448,6 +452,10 @@ class MeshRenderer(object):
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         if obj_path.endswith("encrypted.obj"):
+            if not os.path.exists(igibson.key_path):
+                raise FileNotFoundError(
+                    "iGibson key file is not found, request here https://forms.gle/oW4xB3tRXyCJa1Ap8"
+                )
             ret = reader.ParseFromFileWithKey(obj_path, igibson.key_path)
         else:
             ret = reader.ParseFromFile(obj_path)
