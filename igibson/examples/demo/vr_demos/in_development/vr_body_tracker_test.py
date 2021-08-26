@@ -16,7 +16,7 @@ def main():
     # Main simulation loop
     while True:
         s.step()
-        vr_agent.update()
+        vr_agent.apply_action()
 
 
 if __name__ == "__main__":

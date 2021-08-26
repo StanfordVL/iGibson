@@ -195,7 +195,7 @@ def main():
             sample_condition_1.set_show_state(not sample_condition_1.get_show_state())
             sample_condition_2.set_show_state(not sample_condition_2.get_show_state())
 
-        vr_agent.update()
+        vr_agent.apply_action()
 
     s.disconnect()
 

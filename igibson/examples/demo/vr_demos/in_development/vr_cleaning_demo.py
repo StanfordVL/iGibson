@@ -82,6 +82,6 @@ while True:
     s.step(print_time=PRINT_FPS)
 
     if not VIEWER_MANIP:
-        vr_agent.update()
+        vr_agent.apply_action()
 
 s.disconnect()

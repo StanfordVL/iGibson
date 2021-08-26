@@ -85,12 +85,7 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
         if not robot:
             return False
 
-        from igibson.robots.behavior_robot import BRHand
-
-        robot_hands = [part for part in robot.parts.values() if isinstance(part, BRHand)]
-        robot_objects_in_hand = [hand.object_in_hand for hand in robot_hands]
-
-        return self.obj.get_body_id() in robot_objects_in_hand
+        return robot.is_grasping(self.obj.get_body_id()).any()
 
     def _set_value(self, new_value):
         raise NotImplementedError("InHandOfRobot state currently does not support setting.")
