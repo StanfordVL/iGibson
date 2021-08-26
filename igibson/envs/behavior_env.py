@@ -126,7 +126,7 @@ class BehaviorEnv(iGibsonEnv):
                 "trav_map_resolution": 0.025,
             }
         bddl.set_backend("iGibson")
-        robot_class = self.config.get("robot")
+        robot_class = self.config.get("robot", BehaviorRobot)
         if robot_class == "BehaviorRobot":
             robot_type = BehaviorRobot
         elif robot_class == "FetchGripper":
@@ -134,7 +134,7 @@ class BehaviorEnv(iGibsonEnv):
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
-        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config=self.config)
+        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_class, robot_config=self.config)
         self.task.initialize_simulator(
             simulator=self.simulator,
             scene_id=scene_id,
