@@ -16,12 +16,12 @@ from igibson import object_states
 from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.object_states.factory import get_state_from_name
-from igibson.robots.behavior_robot import PALM_LINK_INDEX, BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.task.task_base import iGBEHAVIORActivityInstance
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
+from igibson.robots.behavior_robot import PALM_LINK_INDEX, BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import l2_distance
@@ -87,16 +87,26 @@ class BehaviorEnv(iGibsonEnv):
         """
         Load action space
         """
-        if self.action_filter == "navigation":
-            self.action_space = gym.spaces.Box(shape=(3,), low=-1.0, high=1.0, dtype=np.float32)
-        elif self.action_filter == "mobile_manipulation":
-            self.action_space = gym.spaces.Box(shape=(17,), low=-1.0, high=1.0, dtype=np.float32)
-        elif self.action_filter == "tabletop_manipulation":
-            self.action_space = gym.spaces.Box(shape=(7,), low=-1.0, high=1.0, dtype=np.float32)
-        elif self.action_filter == "magic_grasping":
-            self.action_space = gym.spaces.Box(shape=(6,), low=-1.0, high=1.0, dtype=np.float32)
+        if isinstance(self.robots[0], BehaviorRobot):
+            if self.action_filter == "navigation":
+                self.action_space = gym.spaces.Box(shape=(3,), low=-1.0, high=1.0, dtype=np.float32)
+            elif self.action_filter == "mobile_manipulation":
+                self.action_space = gym.spaces.Box(shape=(17,), low=-1.0, high=1.0, dtype=np.float32)
+            elif self.action_filter == "tabletop_manipulation":
+                self.action_space = gym.spaces.Box(shape=(7,), low=-1.0, high=1.0, dtype=np.float32)
+            elif self.action_filter == "magic_grasping":
+                self.action_space = gym.spaces.Box(shape=(6,), low=-1.0, high=1.0, dtype=np.float32)
+            else:
+                self.action_space = gym.spaces.Box(shape=(26,), low=-1.0, high=1.0, dtype=np.float32)
+        elif isinstance(self.robots[0], FetchGripper):
+            if self.action_filter == "navigation":
+                self.action_space = gym.spaces.Box(shape=(2,), low=-1.0, high=1.0, dtype=np.float32)
+            elif self.action_filter == "tabletop_manipulation":
+                self.action_space = gym.spaces.Box(shape=(7,), low=-1.0, high=1.0, dtype=np.float32)
+            else:
+                self.action_space = gym.spaces.Box(shape=(11,), low=-1.0, high=1.0, dtype=np.float32)
         else:
-            self.action_space = gym.spaces.Box(shape=(26,), low=-1.0, high=1.0, dtype=np.float32)
+            Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
     def load_behavior_task_setup(self):
         """
@@ -116,7 +126,15 @@ class BehaviorEnv(iGibsonEnv):
                 "trav_map_resolution": 0.025,
             }
         bddl.set_backend("iGibson")
-        self.task = iGBEHAVIORActivityInstance(task, task_id)
+        robot_class = self.config.get("robot")
+        if robot_class == "BehaviorRobot":
+            robot_type = BehaviorRobot
+        elif robot_class == "FetchGripper":
+            robot_type = FetchGripper
+        else:
+            Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
+
+        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config=self.config)
         self.task.initialize_simulator(
             simulator=self.simulator,
             scene_id=scene_id,
@@ -131,7 +149,7 @@ class BehaviorEnv(iGibsonEnv):
             obj.highlight()
 
         self.scene = self.task.scene
-        self.robots = [self.task.agent]
+        self.robots = self.simulator.robots
 
         self.reset_checkpoint_idx = self.config.get("reset_checkpoint_idx", -1)
         self.reset_checkpoint_dir = self.config.get("reset_checkpoint_dir", None)
@@ -215,7 +233,8 @@ class BehaviorEnv(iGibsonEnv):
 
         # Activate the robot constraints so that we don't need to feed in
         # trigger press action in the first couple frames
-        self.robots[0].activate()
+        if isinstance(self.robots[0], BehaviorRobot):
+            self.robots[0].activate()
 
     def load(self):
         """
@@ -251,39 +270,46 @@ class BehaviorEnv(iGibsonEnv):
         """
         self.current_step += 1
 
-        if self.action_filter == "navigation":
+        if isinstance(self.robots[0], BehaviorRobot):
             new_action = np.zeros((28,))
-            new_action[:2] = action[:2]
-            new_action[5] = action[2]
-        elif self.action_filter == "mobile_manipulation":
-            new_action = np.zeros((28,))
-            # body x,y,yaw
-            new_action[:2] = action[:2]
-            new_action[5] = action[2]
-            # left hand 7d
-            new_action[12:19] = action[3:10]
-            # right hand 7d
-            new_action[20:27] = action[10:17]
-        elif self.action_filter == "tabletop_manipulation":
-            # only using right hand
-            new_action = np.zeros((28,))
-            new_action[20:27] = action[:7]
-        elif self.action_filter == "magic_grasping":
-            # Note: only using right hand
-            self.robots[0].hand_thresh = 0.8
-            action = action * 0.05
-            new_action = np.zeros((28,))
-            new_action[20:26] = action[:6]
+            if self.action_filter == "navigation":
+                new_action[:2] = action[:2]
+                new_action[5] = action[2]
+            elif self.action_filter == "mobile_manipulation":
+                # body x,y,yaw
+                new_action[:2] = action[:2]
+                new_action[5] = action[2]
+                # left hand 7d
+                new_action[12:19] = action[3:10]
+                # right hand 7d
+                new_action[20:27] = action[10:17]
+            elif self.action_filter == "tabletop_manipulation":
+                # only using right hand
+                new_action[20:27] = action[:7]
+            elif self.action_filter == "magic_grasping":
+                # Note: only using right hand
+                self.robots[0].hand_thresh = 0.8
+                action = action * 0.05
+                new_action = np.zeros((28,))
+                new_action[20:26] = action[:6]
+            else:
+                # all action dims except hand reset
+                new_action[:19] = action[:19]
+                new_action[20:27] = action[19:]
+                # The original action space for BehaviorRobot is too wide for random exploration
+                new_action *= 0.05
+        elif isinstance(self.robots[0], FetchGripper):
+            new_action = np.zeros((11,))
+            if self.action_filter == "navigation":
+                new_action[:2] = action[:2]
+            elif self.action_filter == "tabletop_manipulation":
+                new_action[4:] = action[:7]
+            else:
+                new_action = action
         else:
-            # all action dims except hand reset
-            new_action = np.zeros((28,))
-            new_action[:19] = action[:19]
-            new_action[20:27] = action[19:]
+            Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
-        # The original action space for BehaviorRobot is too wide for random exploration
-        new_action *= 0.05
-
-        self.robots[0].update(new_action)
+        self.robots[0].apply_action(new_action)
         if self.log_writer is not None:
             self.log_writer.process_frame()
         self.simulator.step()
@@ -446,9 +472,9 @@ class BehaviorEnv(iGibsonEnv):
         self.scene.force_wakeup_scene_objects()
         self.scene.open_all_doors()
         # set the constraints to the current poses
-        self.robots[0].update(np.zeros(28))
+        self.robots[0].apply_action(np.zeros(self.robots[0].action_dim))
 
-    def reset(self, resample_objects=False):
+    def reset(self):
         """
         Reset episode
         """
@@ -510,6 +536,7 @@ class BehaviorEnv(iGibsonEnv):
 
             for (_, objA, _), pose in zip(self.sample_objs, self.sample_objs_poses):
                 self.task.object_scope[objA].set_position_orientation(*pose)
+        self.reset_scene_and_agent()
 
         self.simulator.sync(force_sync=True)
         state = self.get_state()
@@ -523,14 +550,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default="igibson/examples/configs/behavior.yaml",
+        default="igibson/examples/configs/behavior_onboard_sensing_fetch.yaml",
         help="which config file to use [default: use yaml files in examples/configs]",
     )
     parser.add_argument(
         "--mode",
         "-m",
         choices=["headless", "gui", "iggui", "pbgui"],
-        default="gui",
+        default="iggui",
         help="which mode for simulation (default: headless)",
     )
     parser.add_argument(

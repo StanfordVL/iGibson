@@ -146,6 +146,7 @@ class BehaviorRobot(object):
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
         self.action = np.zeros((28,))
+        self.action_dim = 28
 
         # Activation parameters
         self.activated = False
@@ -276,7 +277,7 @@ class BehaviorRobot(object):
             if self.parts[part_name].movement_cid is None:
                 self.parts[part_name].activate_constraints()
 
-    def update(self, action):
+    def apply_action(self, action):
         """
         Updates BehaviorRobot - transforms of all objects managed by this class.
         :param action: numpy array of actions.
@@ -370,45 +371,14 @@ class BehaviorRobot(object):
 
         return state_list
 
-    def robot_specific_reset(self):
-        pass
-
     def get_proprioception_dim(self):
         return 6 * 3 + 2
 
-    def get_proprioception(self):
-        state = OrderedDict()
-        # state['body_position'] = self.parts['body'].get_position()
-        # state['body_orientation'] = p.getEulerFromQuaternion(self.parts['body'].get_orientation())
-        # state['left_hand_position'] = self.parts['left_hand'].get_position()
-        # state['left_hand_orientation'] = p.getEulerFromQuaternion(self.parts['left_hand'].get_orientation())
-        # state['right_hand_position'] = self.parts['right_hand'].get_position()
-        # state['right_hand_orientation'] = p.getEulerFromQuaternion(self.parts['right_hand'].get_orientation())
-        # state['eye_position'] = self.parts['eye'].get_position()
-        # state['eye_orientation'] = p.getEulerFromQuaternion(self.parts['eye'].get_orientation())
-        state["left_hand_position_local"] = self.parts["left_hand"].local_pos
-        state["left_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["left_hand"].local_orn)
-        state["right_hand_position_local"] = self.parts["right_hand"].local_pos
-        state["right_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["right_hand"].local_orn)
-        state["eye_position_local"] = self.parts["eye"].local_pos
-        state["eye_orientation_local"] = p.getEulerFromQuaternion(self.parts["eye"].local_orn)
-        state["left_hand_trigger_fraction"] = self.parts["left_hand"].trigger_fraction
-        state["right_hand_trigger_fraction"] = self.parts["right_hand"].trigger_fraction
-
-        state_list = []
-        for k, v in state.items():
-            if isinstance(v, list):
-                state_list.extend(v)
-            elif isinstance(v, tuple):
-                state_list.extend(list(v))
-            elif isinstance(v, np.ndarray):
-                state_list.extend(list(v))
-            elif isinstance(v, (float, int)):
-                state_list.append(v)
-            else:
-                raise ValueError("cannot serialize some proprioception states")
-
-        return state_list
+    def is_grasping(self, candidate_obj):
+        return [
+            self.parts["left_hand"].object_in_hand == candidate_obj,
+            self.parts["right_hand"].object_in_hand == candidate_obj,
+        ]
 
     def dump_state(self):
         return {part_name: part.dump_part_state() for part_name, part in self.parts.items()}

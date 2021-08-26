@@ -448,6 +448,10 @@ class MeshRenderer(object):
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         if obj_path.endswith("encrypted.obj"):
+            if not os.path.exists(igibson.key_path):
+                raise FileNotFoundError(
+                    "iGibson key file is not found, request here https://forms.gle/oW4xB3tRXyCJa1Ap8"
+                )
             ret = reader.ParseFromFileWithKey(obj_path, igibson.key_path)
         else:
             ret = reader.ParseFromFile(obj_path)
