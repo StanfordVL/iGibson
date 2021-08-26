@@ -195,7 +195,7 @@ def main():
             wrap_scroll_text.scroll_text(up=scroll_dir)
 
         # Update VR agent
-        vr_agent.update()
+        vr_agent.apply_action()
 
     s.disconnect()
 

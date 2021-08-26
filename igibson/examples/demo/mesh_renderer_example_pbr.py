@@ -78,7 +78,7 @@ def main():
             i += 1
 
     print(renderer.visual_objects, renderer.instances)
-    print(renderer.materials_mapping, renderer.mesh_materials)
+    print(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)
 
     px = 1
     py = 1

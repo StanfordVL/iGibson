@@ -209,7 +209,7 @@ def replay_demo(
             callback(igbhvr_act_inst, log_reader)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action("vr_robot"))
+        vr_agent.apply_action(log_reader.get_agent_action("vr_robot"))
 
         if not disable_save:
             log_writer.process_frame()

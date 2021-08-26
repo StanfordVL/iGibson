@@ -106,7 +106,9 @@ class InstanceGroup(object):
                     self.last_trans[i],
                     self.last_rot[i],
                 )
-                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                current_material = self.renderer.material_idx_to_material_instance_mapping[
+                    self.renderer.shape_material_idx[object_idx]
+                ]
                 self.renderer.r.init_material_instance(
                     self.renderer.shaderProgram,
                     float(self.class_id) / MAX_CLASS_COUNT,
@@ -140,7 +142,9 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
                     self.renderer.r.draw_elements_instance(
-                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                        self.renderer.material_idx_to_material_instance_mapping[
+                            self.renderer.shape_material_idx[object_idx]
+                        ].is_texture(),
                         texture_id,
                         metallic_texture_id,
                         roughness_texture_id,
@@ -363,7 +367,9 @@ class Instance(object):
         )
 
         for object_idx in self.object.VAO_ids:
-            current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+            current_material = self.renderer.material_idx_to_material_instance_mapping[
+                self.renderer.shape_material_idx[object_idx]
+            ]
             self.renderer.r.init_material_instance(
                 self.renderer.shaderProgram,
                 float(self.class_id) / MAX_CLASS_COUNT,
@@ -398,7 +404,9 @@ class Instance(object):
                     buffer = self.renderer.fbo
 
                 self.renderer.r.draw_elements_instance(
-                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                    self.renderer.material_idx_to_material_instance_mapping[
+                        self.renderer.shape_material_idx[object_idx]
+                    ].is_texture(),
                     texture_id,
                     metallic_texture_id,
                     roughness_texture_id,

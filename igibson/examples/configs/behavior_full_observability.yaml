@@ -13,6 +13,9 @@ debug: False
 texture_randomization_freq: null
 object_randomization_freq: null
 
+# robot
+robot: BehaviorRobot
+
 # task
 task: cleaning_cupboards
 task_id: 0
