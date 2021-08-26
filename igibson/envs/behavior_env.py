@@ -296,8 +296,8 @@ class BehaviorEnv(iGibsonEnv):
                 # all action dims except hand reset
                 new_action[:19] = action[:19]
                 new_action[20:27] = action[19:]
-                # The original action space for BehaviorRobot is too wide for random exploration
-                new_action *= 0.05
+            # The original action space for BehaviorRobot is too wide for random exploration
+            new_action *= 0.05
         elif isinstance(self.robots[0], FetchGripper):
             new_action = np.zeros((11,))
             if self.action_filter == "navigation":
