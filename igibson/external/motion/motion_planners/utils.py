@@ -1,3 +1,7 @@
+"""
+Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
+and adapted by iGibson team.
+"""
 from random import shuffle
 from itertools import islice
 import time

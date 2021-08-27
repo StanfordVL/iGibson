@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-
+"""
+Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
+and adapted by iGibson team.
+"""
 from __future__ import print_function
 
 import os, shutil, sys
