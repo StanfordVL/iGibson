@@ -70,7 +70,7 @@ This is the github repository for iGibson (pip package `igibson`) 2.0 release. (
 
 The support for our previous version of the environment, Gibson, can be found in the [following repository](http://github.com/StanfordVL/GibsonEnv/).
 
-###Acknowledgments
+### Acknowledgments
 
 iGibson uses code from a few open source repositories. Without the efforts of these folks (and their willingness to release their implementations under permissable copyleft licenses), iGibson would not be possible. We thanks these authors for their efforts!
 
