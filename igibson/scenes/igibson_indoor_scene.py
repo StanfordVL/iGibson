@@ -132,7 +132,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.objects_by_room = {}
         self.objects_by_state = {}
         self.category_ids = get_ig_category_ids()
-        self.merge_fixed_links = merge_fixed_links
+        self.merge_fixed_links = merge_fixed_links and igibson.merge_fixed_links
 
         # Current time string to use to save the temporal urdfs
         timestr = time.strftime("%Y%m%d-%H%M%S")

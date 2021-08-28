@@ -14,7 +14,13 @@ from igibson.object_states.on_floor import OnFloor
 from igibson.object_states.on_top import OnTop
 from igibson.object_states.open import Open
 from igibson.object_states.pose import Pose
-from igibson.object_states.robot_related_states import InFOVOfRobot, InHandOfRobot, InReachOfRobot, InSameRoomAsRobot
+from igibson.object_states.robot_related_states import (
+    InFOVOfRobot,
+    InHandOfRobot,
+    InReachOfRobot,
+    InSameRoomAsRobot,
+    ObjectsInFOVOfRobot,
+)
 from igibson.object_states.room_states import (
     ROOM_STATES,
     InsideRoomTypes,
