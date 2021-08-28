@@ -10,6 +10,7 @@ from igibson.robots.jr2_kinova_robot import JR2_Kinova
 from igibson.robots.jr2_robot import JR2
 from igibson.robots.locobot_robot import Locobot
 from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.fetch_gripper_robot_roboturk import FetchGripper
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -182,6 +183,8 @@ class BaseEnv(gym.Env):
             robot = Fetch(self.config)
         elif self.config["robot"] == "Locobot":
             robot = Locobot(self.config)
+        elif self.config["robot"] == "FetchGripper":
+            robot = FetchGripper(self, self.config)
         else:
             raise Exception("unknown robot type: {}".format(self.config["robot"]))
 

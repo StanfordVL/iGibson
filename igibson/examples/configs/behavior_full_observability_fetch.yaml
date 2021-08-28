@@ -1,4 +1,5 @@
 # scene
+scene: igibson
 scene_id: Rs_int
 clutter: false
 build_graph: true
@@ -14,20 +15,20 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: FetchGripper
-default_arm_pose: diagonal30
-trunk_offset: 0.085
-controller:
-  mode: pose_delta_ori    # options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
-  kv_vel: -2.0
-  input_max: [1, 1, 1, 1, 1, 1]
-  input_min: [-1, -1, -1, -1, -1, -1]
-  output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
-  output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
-  eef_always_in_frame: true       # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
-  neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
-  radius_limit: 0.5               # x-y reaching limit
-  height_limits: [0.2, 1.5]       # min, max height limits
+# robot: FetchGripper
+# default_arm_pose: diagonal30
+# trunk_offset: 0.085
+# controller:
+#   mode: pose_delta_ori    # options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
+#   kv_vel: -2.0
+#   input_max: [1, 1, 1, 1, 1, 1]
+#   input_min: [-1, -1, -1, -1, -1, -1]
+#   output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
+#   output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
+#   eef_always_in_frame: true       # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
+#   neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
+#   radius_limit: 0.5               # x-y reaching limit
+#   height_limits: [0.2, 1.5]       # min, max height limits
 
 # task
 task: re-shelving_library_books
@@ -57,7 +58,7 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [proprioception, rgb, highlight, depth, seg, ins_seg, task_obs]
+output: [proprioception, rgb, highlight, depth, seg, ins_seg]
 # image
 fisheye: false
 image_width: 512
@@ -79,3 +80,74 @@ target_visual_object_visible_to_agent: false
 hand_threshold: 0.4
 hand_speed: 0.3
 body_speed: 0.3
+
+# robot
+robot: FetchGripper
+start_tucked: false              # if true, robot will start tucked. Else, will start untucked
+use_tuck_action: false           # if true, will include tuck action as the first value in the action array. Else, will exclude it
+default_arm_pose: diagonal30    # options are {vertical, diagonal45, diagonal30, diagonal15, or horizontal}
+is_discrete: false
+wheel_velocity: 1.0
+torso_lift_velocity: 1.0
+arm_velocity: 1.0
+trunk_offset: 0.085
+
+# fetch max velocities
+max_velocity:
+  - 17.4
+  - 17.4
+  - 0.1
+  - 1.57
+  - 1.57
+  - 1.256
+  - 1.454
+  - 1.571
+  - 1.521
+  - 1.571
+  - 2.268
+  - 2.268
+  - 0.05
+  - 0.05
+
+# Action limits
+action_high: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.05, 0.05]
+action_low: [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, 0.0, 0.0]
+
+# Control
+control:
+  - differential_drive    # wheel
+  - differential_drive
+  - velocity              # torso
+  - velocity              # head
+  - velocity
+  - velocity              # arm
+  - velocity
+  - velocity
+  - velocity
+  - velocity
+  - velocity
+  - velocity
+  - position              # gripper
+  - position
+
+# Visualization
+gripper_visualization: true
+skip_tuck_animation: true
+
+# Controller
+controller:
+  type: ik
+  mode: pose_delta_ori #options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
+  kv_vel: -2.0
+  input_max: [1, 1, 1, 1, 1, 1]
+  input_min: [-1, -1, -1, -1, -1, -1]
+  #output_max: [1, 1, 1, 1, 1, 1]
+  #output_min: [-1, -1, -1, -1, -1, -1]
+  output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
+  output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
+  #damping: [0.01, 0.01, 0.1, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+  eef_tracking_heuristic: move_head_vertical_discrete    # valid options are {move_base_continuous, move_head_horizontal_continuous, move_head_vertical_discrete, null}
+  eef_always_in_frame: true       # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
+  neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
+  radius_limit: 0.5               # x-y reaching limit
+  height_limits: [0.2, 1.5]       # min, max height limits

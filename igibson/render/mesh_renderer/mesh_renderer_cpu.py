@@ -1313,8 +1313,8 @@ class MeshRenderer(object):
         frames = []
         for instance in self.instances:
             if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
+                camera_pos = instance.robot.eyes[0].get_position()
+                orn = instance.robot.eyes[0].get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1], cache=True)
