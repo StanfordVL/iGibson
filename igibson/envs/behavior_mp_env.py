@@ -535,7 +535,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 return
 
     def reset(self, resample_objects=False):
-        obs = super(BehaviorMPEnv, self).reset(resample_objects=resample_objects)
+        obs = super(BehaviorMPEnv, self).reset()
         for hand in ["left_hand", "right_hand"]:
             self.robots[0].parts[hand].set_close_fraction(0)
             self.robots[0].parts[hand].trigger_fraction = 0
