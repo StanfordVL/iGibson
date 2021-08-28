@@ -193,9 +193,9 @@ def run_demonstration(demo_path, segmentation_path, output_path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("demo_path", type=str, help="Path of the demo hdf5 to replay.")
-    parser.add_argument("segmentation_path", type=str, help="Path of the segmentation of the demo.")
-    parser.add_argument("output_path", type=str, help="Path to output result JSON file to.")
+    parser.add_argument("--demo_path", type=str, help="Path of the demo hdf5 to replay.")
+    parser.add_argument("--segmentation_path", type=str, help="Path of the segmentation of the demo.")
+    parser.add_argument("--output_path", type=str, help="Path to output result JSON file to.")
     args = parser.parse_args()
 
     run_demonstration(args.demo_path, args.segmentation_path, args.output_path)
