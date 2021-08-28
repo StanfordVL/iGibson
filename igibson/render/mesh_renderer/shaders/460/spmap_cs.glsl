@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 // Physically Based Rendering
 // Copyright (c) 2017-2018 Michał Siejak
 
