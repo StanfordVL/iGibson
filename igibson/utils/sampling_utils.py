@@ -257,20 +257,34 @@ def sample_cuboid_on_object(
             # for ray_start, ray_end in zip(sources, destinations):
             #     p.addUserDebugLine(ray_start, ray_end, lineWidth=4)
 
-            # Check that all rays hit the object.
-            # TODO: Make the fractional hit work properly by discarding the non-hit rays from all of the remaining math.
-            # It's complicated to do that because we want to be able to access certain vertices (center, corner) by idx.
-            if not check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"], 0.7):
+
+            threshold, hits = check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"], 0.6)
+            if not threshold:
                 continue
 
+            filtered_cast_results = []
+            center_idx = int(len(cast_results) / 2)
+            filtered_center_idx = None
+            center_hit = True
+            for idx, hit in enumerate(hits):
+                # Only consider objects whose center idx has a ray hit
+                if idx == center_idx:
+                    if not hit:
+                        center_hit = False
+                    filtered_center_idx = len(filtered_cast_results)
+                if hit:
+                    filtered_cast_results.append(cast_results[idx])
+            if not center_hit:
+                # import pdb; pdb.set_trace()
+                continue
             # Process the hit positions and normals.
-            hit_positions = np.array([ray_res[3] for ray_res in cast_results])
-            hit_normals = np.array([ray_res[4] for ray_res in cast_results])
+            hit_positions = np.array([ray_res[3] for ray_res in filtered_cast_results])
+            hit_normals = np.array([ray_res[4] for ray_res in filtered_cast_results])
             hit_normals /= np.linalg.norm(hit_normals, axis=1)[:, np.newaxis]
 
-            center_idx = int(len(cast_results) / 2)
-            hit_link = cast_results[center_idx][1]
-            center_hit_normal = hit_normals[center_idx]
+            assert filtered_center_idx
+            hit_link = filtered_cast_results[filtered_center_idx][1]
+            center_hit_normal = hit_normals[filtered_center_idx]
 
             # Reject anything facing more than 45deg downwards if requested.
             if refuse_downwards:
@@ -288,17 +302,10 @@ def sample_cuboid_on_object(
 
             # The fit_plane normal can be facing either direction on the normal axis, but we want it to face away from
             # the object for purposes of normal checking and padding. To do this:
-            # First, we get the multiplier we'd need to multiply by to get this normal to face in the positive
-            # direction of our axis. This is simply the sign of our vector's component in our axis.
-            facing_multiplier = np.sign(plane_normal[axis])
-
-            # Then we invert the multiplier based on whether we want it to face in the positive or negative direction
-            # of the axis. This is determined by whether or not is_top is True, e.g. the sampler intended this as a
-            # positive-facing or negative-facing sample.
-            facing_multiplier *= 1 if is_top else -1
-
-            # Finally, we multiply the entire normal vector by the multiplier to make it face the correct direction.
-            plane_normal *= facing_multiplier
+            # We get a vector from the centroid towards the center ray source, and flip the plane normal to match it.
+            # The cosine has positive sign if the two vectors are similar and a negative one if not.
+            plane_to_source = sources[center_idx] - plane_centroid
+            plane_normal *= np.sign(np.dot(plane_to_source, plane_normal))
 
             # Check that the plane normal is similar to the hit normal
             if not check_normal_similarity(
@@ -314,6 +321,7 @@ def sample_cuboid_on_object(
                 continue
 
             # Get projection of the base onto the plane, fit a rotation, and compute the new center hit / corners.
+            hit_positions = np.array([ray_res[3] for ray_res in cast_results])
             projected_hits = get_projection_onto_plane(hit_positions, plane_centroid, plane_normal)
             padding = _DEFAULT_CUBOID_BOTTOM_PADDING * plane_normal
             projected_hits += padding
@@ -406,13 +414,14 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
 
 def check_rays_hit_object(cast_results, body_id, refusal_log, threshold=1.0):
     hit_body_ids = [ray_res[0] for ray_res in cast_results]
-    if not (sum(hit_body_id == body_id for hit_body_id in hit_body_ids) / len(hit_body_ids)) >= threshold:
+    ray_hits = list(hit_body_id == body_id for hit_body_id in hit_body_ids)
+    if not (sum(ray_hits) / len(hit_body_ids)) >= threshold:
         if igibson.debug_sampling:
             refusal_log.append("hits %r" % hit_body_ids)
 
-        return False
+        return False, ray_hits
 
-    return True
+    return True, ray_hits
 
 
 def check_hit_max_angle_from_z_axis(hit_normal, max_angle_with_z_axis, refusal_log):

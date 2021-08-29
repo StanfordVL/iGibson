@@ -121,13 +121,13 @@ def sample_kinematics(
                 else:
                     assert False, "predicate is not onTop or inside: {}".format(predicate)
 
-                _, _, bbox_bf_extent, bbox_bf_offset, _ = objA.get_base_aligned_bounding_box(visual=False)
+                _, _, base_frame_extent, base_frame_center, _ = objA.get_base_aligned_bounding_box(visual=True)
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
                     objB,
                     num_samples=1,
-                    cuboid_dimensions=bbox_bf_extent,
+                    cuboid_dimensions=base_frame_extent,
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
                     undo_padding=True,
@@ -142,7 +142,7 @@ def sample_kinematics(
                     # Move the object to match the position of the bounding box. To do that, move backwards by the
                     # bbox's offset to the object CoM in the sampled cuboid's frame.
                     pos, orientation = p.multiplyTransforms(
-                        sampled_vector, sampled_quaternion, -bbox_bf_offset, [0, 0, 0, 1]
+                        sampled_vector, sampled_quaternion, -base_frame_center, [0, 0, 0, 1]
                     )
                     pos = np.array(pos)
                     orientation = np.array(orientation)
