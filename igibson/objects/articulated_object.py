@@ -1176,8 +1176,13 @@ class URDFObject(StatefulObject):
                     )
                     link_in_base_frame = np.dot(world_in_base_frame, link_in_world_frame)
 
+                # Account for the link vs. center-of-mass
+                dynamics_info = p.getDynamicsInfo(body_id, link)
+                inertial_pos, inertial_orn = p.invertTransform(dynamics_info[3], dynamics_info[4])
+                com_in_link_frame = utils.quat_pos_to_mat(inertial_pos, inertial_orn)
+
                 # Compute the bounding box vertices in the base frame.
-                bb_in_base_frame = np.dot(link_in_base_frame, bb_in_link_frame)
+                bb_in_base_frame = np.dot(link_in_base_frame, np.dot(com_in_link_frame, bb_in_link_frame))
                 vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (extent / 2)
                 points.extend(trimesh.transformations.transform_points(vertex_positions, bb_in_base_frame))
             else:
