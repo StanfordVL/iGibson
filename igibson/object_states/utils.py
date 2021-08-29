@@ -1,16 +1,10 @@
-import random
-
 import cv2
-import itertools
 import numpy as np
 import pybullet as p
 from IPython import embed
-from scipy.spatial.transform import Rotation as R
-import trimesh
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
-    get_aabb,
     get_aabb_center,
     get_aabb_extent,
     get_link_pose,
@@ -86,7 +80,6 @@ def sample_kinematics(
     max_trials=100,
     z_offset=0.05,
     skip_falling=False,
-    allow_non_default_orientation=False,
 ):
     if not binary_state:
         raise NotImplementedError()
@@ -111,7 +104,7 @@ def sample_kinematics(
         # Orientation needs to be set for stable_z_on_aabb to work correctly
         # Position needs to be set to be very far away because the object's
         # original position might be blocking rays (use_ray_casting_method=True)
-        old_pos = np.array([0, 0, 1])
+        old_pos = np.array([200, 200, 200])
         objA.set_position_orientation(old_pos, orientation)
 
         if sample_on_floor:
@@ -128,47 +121,16 @@ def sample_kinematics(
                 else:
                     assert False, "predicate is not onTop or inside: {}".format(predicate)
 
-                aabb = get_aabb(objA.get_body_id())
-                aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
-                aabb_rotation = R.identity()
-
-                bbox_center, bbox_orn, bbox_bf_extent, bbox_wf_extent = objA.get_base_aligned_bounding_box(visual=True)
-                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (bbox_bf_extent / 2)
-                bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
-                world_frame_vertex_positions = trimesh.transformations.transform_points(
-                    bbox_frame_vertex_positions, bbox_transform
-                )
-                objB_bounding_box = {
-                    "bbox_center": bbox_center,
-                    "bbox_orn": bbox_orn, 
-                    "bbox_bf_extent": bbox_bf_extent, 
-                    "bbox_wf_extent": bbox_wf_extent,
-                    "bbox_frame_vertex_positions": bbox_frame_vertex_positions,
-                    "world_frame_vertex_positions": world_frame_vertex_positions,
-                }
-                # for i, from_vertex in enumerate(world_frame_vertex_positions):
-                #     for j, to_vertex in enumerate(world_frame_vertex_positions):
-                #         if j <= i:
-                #             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
-                # Rotate the AABB as needed.
-                if allow_non_default_orientation:
-                    # Rotate the AABB in one direction by 90 or -90 degrees.
-                    axis = np.array(random.choice([[1, 0, 0], [0, 1, 0], [-1, 0, 0], [0, -1, 0]]))
-                    rotvec = axis * np.pi / 4  # Rotation vector's norm is the amount of rotation around axis
-                    aabb_rotation = R.from_rotvec(rotvec)
-
-                # Rotate the AABB
-                aabb_extent = aabb_rotation.apply(aabb_extent)
-                # import pdb; pdb.set_trace()
+                _, _, bbox_bf_extent, bbox_bf_offset, _ = objA.get_base_aligned_bounding_box(visual=False)
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
                     objB,
-                    obj_bounding_box = objB_bounding_box,
                     num_samples=1,
-                    cuboid_dimensions=aabb_extent,
+                    cuboid_dimensions=bbox_bf_extent,
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
+                    undo_padding=True,
                     **params
                 )
 
@@ -177,18 +139,13 @@ def sample_kinematics(
 
                 sampling_success = sampled_vector is not None
                 if sampling_success:
-                    # Find the delta from the object's CoM to its AABB centroid
-                    diff = old_pos - aabb_center
-
-                    sample_rotation = R.from_quat(sampled_quaternion)
-                    original_rotation = R.from_quat(orientation) * aabb_rotation
-                    combined_rotation = sample_rotation * original_rotation
-
-                    # Rotate it using the quaternion
-                    rotated_diff = sample_rotation.apply(diff)
-
-                    pos = sampled_vector + rotated_diff
-                    orientation = combined_rotation.as_quat()
+                    # Move the object to match the position of the bounding box. To do that, move backwards by the
+                    # bbox's offset to the object CoM in the sampled cuboid's frame.
+                    pos, orientation = p.multiplyTransforms(
+                        sampled_vector, sampled_quaternion, -bbox_bf_offset, [0, 0, 0, 1]
+                    )
+                    pos = np.array(pos)
+                    orientation = np.array(orientation)
             else:
                 random_idx = np.random.randint(len(objB.supporting_surfaces[predicate].keys()))
                 body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[random_idx]
@@ -246,13 +203,13 @@ def sample_kinematics(
 
     p.removeState(state_id)
 
-    # if success and not skip_falling:
-    #     objA.set_position_orientation(pos, orientation)
-    #     # Let it fall for 0.2 second
-    #     physics_timestep = p.getPhysicsEngineParameters()["fixedTimeStep"]
-    #     for _ in range(int(0.2 / physics_timestep)):
-    #         p.stepSimulation()
-    #         if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
-    #             break
+    if success and not skip_falling:
+        objA.set_position_orientation(pos, orientation)
+        # Let it fall for 0.2 second
+        physics_timestep = p.getPhysicsEngineParameters()["fixedTimeStep"]
+        for _ in range(int(0.2 / physics_timestep)):
+            p.stepSimulation()
+            if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
+                break
 
     return success

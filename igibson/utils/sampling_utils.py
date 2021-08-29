@@ -3,11 +3,13 @@ from collections import Counter, defaultdict
 
 import numpy as np
 import pybullet as p
+import trimesh
 from scipy.spatial.transform import Rotation
 from scipy.stats import truncnorm
 
 import igibson
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils import utils
 
 _DEFAULT_AABB_OFFSET = 0.1
 _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 1.0  # Around 60 degrees
@@ -156,9 +158,9 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
 
     return results
 
+
 def sample_cuboid_on_object(
     obj,
-    obj_bounding_box,
     num_samples,
     cuboid_dimensions,
     bimodal_mean_fraction,
@@ -201,43 +203,11 @@ def sample_cuboid_on_object(
         filled if the debug_sampling flag is globally set to True.
     """
     # This is imported here to avoid a circular import with object_states.
-    from igibson.object_states import AABB
-
-    aabb = obj.states[AABB].get_value()
-    aabb_min = np.array(aabb[0])
-    aabb_max = np.array(aabb[1])
-
-    sampling_aabb_min = aabb_min - aabb_offset
-    sampling_aabb_max = aabb_max + aabb_offset
+    bbox_center, bbox_orn, bbox_bf_extent, _, _ = obj.get_base_aligned_bounding_box(visual=False)
+    half_extent_with_offset = (bbox_bf_extent / 2) + aabb_offset
 
     body_id = obj.get_body_id()
-    def check_aabb(aabb_min, aabb_max):
-        coords = []
-        for x in [aabb_min[0], aabb_max[0]]:
-            for y in [aabb_min[1], aabb_max[1]]:
-                for z in [aabb_min[2], aabb_max[2]]:
-                    coords.append([x,y,z])
 
-        combos = itertools.combinations(coords, 2)
-        for combo in combos:
-            p.addUserDebugLine(combo[0], combo[1])
-    check_aabb(aabb_min, aabb_max)
-    # bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (bbox_bf_extent / 2)
-    # bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
-    # # world_frame_vertex_positions = trimesh.transformations.transform_points(
-    # #     bbox_frame_vertex_positions, bbox_transform
-    # # )
-    # # for i, from_vertex in enumerate(world_frame_vertex_positions):
-    # #     for j, to_vertex in enumerate(world_frame_vertex_positions):
-    # #         if j <= i:
-    # #             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
-    # # Rotate the AABB as needed.
-
-    def draw_bb(world_frame_vertex_positions):
-        for i, from_vertex in enumerate(world_frame_vertex_positions):
-            for j, to_vertex in enumerate(world_frame_vertex_positions):
-                if j <= i:
-                    p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
     cuboid_dimensions = np.array(cuboid_dimensions)
     assert cuboid_dimensions.ndim <= 2
     assert cuboid_dimensions.shape[-1] == 3, "Cuboid dimensions need to contain all three dimensions."
@@ -248,9 +218,11 @@ def sample_cuboid_on_object(
 
     for i in range(num_samples):
         # Sample the starting positions in advance.
+        # TODO: Narrow down the sampling domain so that we don't sample scenarios where the center is in-domain but the
+        # full extent isn't. Currently a lot of samples are being wasted because of this.
         samples = sample_origin_positions(
-            sampling_aabb_min,
-            sampling_aabb_max,
+            -half_extent_with_offset,
+            half_extent_with_offset,
             max_sampling_attempts,
             bimodal_mean_fraction,
             bimodal_stdev_fraction,
@@ -262,36 +234,32 @@ def sample_cuboid_on_object(
         # Try each sampled position in the AABB.
         for axis, is_top, start_pos in samples:
             # Compute the ray's destination using the sampling & AABB information.
-            point_on_face = compute_ray_destination(axis, is_top, start_pos, aabb_min, aabb_max)
+            point_on_face = compute_ray_destination(
+                axis, is_top, start_pos, -half_extent_with_offset, half_extent_with_offset
+            )
 
             # If we have a list of offset distances, pick the distance for this particular sample we're getting.
             this_cuboid_dimensions = cuboid_dimensions if cuboid_dimensions.ndim == 1 else cuboid_dimensions[i]
 
             # Obtain the parallel rays using the direction sampling method.
-            import pdb; pdb.set_trace()
-            sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, obj_bounding_box['bbox_bf_extent'][:2] / 2.0)
-            # sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0)
-            # x, y, z = obj_bounding_box['box_bf_extent']
-            # offset = np.array([1, 1]) * np.array
+            bbf_sources, bbf_destinations, grid = get_parallel_rays(
+                start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0
+            )
 
-            # # Compute the grid of rays
-            # steps = (offset / _DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE).astype(int) * 2 + 1
-            # steps = np.maximum(steps, 3)
-            # x_range = np.linspace(-offset[0], offset[0], steps[0])
-            # y_range = np.linspace(-offset[1], offset[1], steps[1])
-            # ray_grid = np.dstack(np.meshgrid(x_range, y_range, indexing="ij"))
-            # ray_grid_flattened = ray_grid.reshape(-1, 2)
+            # Transform the sources, destinations and grid to the world frame coordinates.
+            to_wf_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
+            sources = trimesh.transformations.transform_points(bbf_sources, to_wf_transform)
+            destinations = trimesh.transformations.transform_points(bbf_destinations, to_wf_transform)
 
             # Time to cast the rays.
             cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations, numThreads=0)
 
-            for ray_start, ray_end in zip(sources, destinations):
-                p.addUserDebugLine(ray_start, ray_end, lineWidth=4)
-
-            import pdb; pdb.set_trace()
-
+            # for ray_start, ray_end in zip(sources, destinations):
+            #     p.addUserDebugLine(ray_start, ray_end, lineWidth=4)
 
             # Check that all rays hit the object.
+            # TODO: Make the fractional hit work properly by discarding the non-hit rays from all of the remaining math.
+            # It's complicated to do that because we want to be able to access certain vertices (center, corner) by idx.
             if not check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"], 0.7):
                 continue
 
@@ -438,7 +406,7 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
 
 def check_rays_hit_object(cast_results, body_id, refusal_log, threshold=1.0):
     hit_body_ids = [ray_res[0] for ray_res in cast_results]
-    if not (sum(hit_body_id == body_id for hit_body_id in hit_body_ids)/len(hit_body_ids)) >= threshold:
+    if not (sum(hit_body_id == body_id for hit_body_id in hit_body_ids) / len(hit_body_ids)) >= threshold:
         if igibson.debug_sampling:
             refusal_log.append("hits %r" % hit_body_ids)
 
@@ -490,6 +458,9 @@ def compute_ray_destination(axis, is_top, start_pos, aabb_min, aabb_max):
 
 
 def check_cuboid_empty(hit_normal, bottom_corner_positions, refusal_log, this_cuboid_dimensions):
+    if igibson.debug_sampling:
+        draw_debug_markers(bottom_corner_positions)
+
     # Compute top corners.
     top_corner_positions = bottom_corner_positions + hit_normal * this_cuboid_dimensions[2]
 

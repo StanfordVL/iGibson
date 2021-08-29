@@ -173,18 +173,6 @@ class BehaviorMPEnv(BehaviorEnv):
                             max_trials=20,
                         )
 
-                        if not result:
-                            # Retry with non-default orientation
-                            result = sample_kinematics(
-                                "onTop",
-                                obj_in_hand,
-                                obj,
-                                True,
-                                use_ray_casting_method=True,
-                                max_trials=20,
-                                allow_non_default_orientation=True,
-                            )
-
                         if result:
                             pos = obj_in_hand.get_position()
                             orn = obj_in_hand.get_orientation()
@@ -232,18 +220,6 @@ class BehaviorMPEnv(BehaviorEnv):
                             use_ray_casting_method=True,
                             max_trials=20,
                         )
-
-                        if not result:
-                            # Retry with non-default orientation
-                            result = sample_kinematics(
-                                "inside",
-                                obj_in_hand,
-                                obj,
-                                True,
-                                use_ray_casting_method=True,
-                                max_trials=20,
-                                allow_non_default_orientation=True,
-                            )
 
                         if result:
                             pos = obj_in_hand.get_position()

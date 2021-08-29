@@ -231,7 +231,7 @@ class BBoxExtractor(object):
             bb_bottom_right = np.max(this_object_pixels_positions, axis=0)
 
             # 3D bounding box
-            world_frame_center, world_frame_orientation, base_frame_extent, _ = obj.get_base_aligned_bounding_box(
+            world_frame_center, world_frame_orientation, base_frame_extent, _, _ = obj.get_base_aligned_bounding_box(
                 body_id=body_id, visual=True
             )
             world_frame_pose = np.concatenate([world_frame_center, world_frame_orientation])

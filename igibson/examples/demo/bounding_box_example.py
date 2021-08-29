@@ -37,7 +37,7 @@ def main():
             s.step()
 
             # Draw new debug lines for the cabinet's bounding box.
-            bbox_center, bbox_orn, bbox_bf_extent, bbox_wf_extent = cabinet.get_base_aligned_bounding_box(visual=True)
+            bbox_center, bbox_orn, bbox_bf_extent, _, _ = cabinet.get_base_aligned_bounding_box(visual=True)
             bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (bbox_bf_extent / 2)
             bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
             world_frame_vertex_positions = trimesh.transformations.transform_points(

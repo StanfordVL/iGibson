@@ -13,13 +13,13 @@ download_assets()
 
 
 def main():
-    s = Simulator(mode="gui")
+    s = Simulator(mode="pbgui")
     scene = EmptyScene()
     s.import_scene(scene)
 
     try:
         sample_microwave_plates_apples(s)
-        sample_boxes_on_shelf(s)
+        # sample_boxes_on_shelf(s)
 
         while True:
             s.step()
@@ -72,10 +72,12 @@ def sample_microwave_plates_apples(simulator):
         for _ in range(100):
             simulator.step()
 
-        for j in range(3):
+        for j in range(1):
+            # igibson.debug_sampling = True
             apple = URDFObject(filename=apple_filename, category="apple", model_path=apple_dir)
             simulator.import_object(apple)
             assert apple.states[object_states.OnTop].set_value(plate, True, use_ray_casting_method=True)
+            # igibson.debug_sampling = False
 
             for _ in range(100):
                 simulator.step()
