@@ -1189,11 +1189,11 @@ class URDFObject(StatefulObject):
         # Now take the minimum/maximum in the base frame.
         base_frame_aabb_min = np.amin(points, axis=0)
         base_frame_aabb_max = np.amax(points, axis=0)
-        base_frame_center = (base_frame_aabb_min + base_frame_aabb_max) / 2
+        # base_frame_center = (base_frame_aabb_min + base_frame_aabb_max) / 2
         base_frame_extent = base_frame_aabb_max - base_frame_aabb_min
 
         # Transform the center and extent to the world frame.
-        world_frame_center = trimesh.transformations.transform_points([base_frame_center], base_in_world_frame)[0]
+        # world_frame_center = trimesh.transformations.transform_points([base_frame_center], base_in_world_frame)[0]
         world_frame_extent = np.abs(Rotation.from_quat(base_orn).apply(base_frame_extent))
 
-        return world_frame_center, base_orn, base_frame_extent, world_frame_extent
+        return base_pos, base_orn, base_frame_extent, world_frame_extent

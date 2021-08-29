@@ -146,7 +146,7 @@ def run_demonstration(demo_path, segmentation_path, output_path):
 
     env = BehaviorMPEnv(
         config_file=config,
-        mode="gui",
+        mode="pbgui",
         action_timestep=1.0 / 300.0,
         physics_timestep=1.0 / 300.0,
         use_motion_planning=False,
@@ -159,24 +159,27 @@ def run_demonstration(demo_path, segmentation_path, output_path):
     done = False
     infos = []
     action_successes = []
+    import pybullet as p
+    p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+    p.resetDebugVisualizerCamera(cameraTargetPosition=[1,-1,0], cameraDistance=4, cameraYaw=240, cameraPitch=-45)
     for action_pair in actions:
-        try:
-            print("Executing %s(%s)" % action_pair)
-            primitive, obj_name = action_pair
+        # try:
+        print("Executing %s(%s)" % action_pair)
+        primitive, obj_name = action_pair
 
-            # Convert the action
-            obj_id = next(i for i, obj in enumerate(env.task_relevant_objects) if obj.name == obj_name)
-            action = int(primitive) * env.num_objects + obj_id
+        # Convert the action
+        obj_id = next(i for i, obj in enumerate(env.task_relevant_objects) if obj.name == obj_name)
+        action = int(primitive) * env.num_objects + obj_id
 
-            # Execute.
-            state, reward, done, info = env.step(action)
-            print(reward, info)
-            infos.append(info)
-            action_successes.append(True)
-            if done:
-                break
-        except:
-            action_successes.append(False)
+        # Execute.
+        state, reward, done, info = env.step(action)
+        print(reward, info)
+        infos.append(info)
+        action_successes.append(True)
+        if done:
+            break
+        # except:
+        #     action_successes.append(False)
 
     # Dump the results
     data = {"actions": actions, "infos": infos, "action_successes": action_successes}

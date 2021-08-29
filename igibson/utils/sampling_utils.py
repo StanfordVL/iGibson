@@ -156,9 +156,9 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
 
     return results
 
-
 def sample_cuboid_on_object(
     obj,
+    obj_bounding_box,
     num_samples,
     cuboid_dimensions,
     bimodal_mean_fraction,
@@ -211,7 +211,33 @@ def sample_cuboid_on_object(
     sampling_aabb_max = aabb_max + aabb_offset
 
     body_id = obj.get_body_id()
+    def check_aabb(aabb_min, aabb_max):
+        coords = []
+        for x in [aabb_min[0], aabb_max[0]]:
+            for y in [aabb_min[1], aabb_max[1]]:
+                for z in [aabb_min[2], aabb_max[2]]:
+                    coords.append([x,y,z])
 
+        combos = itertools.combinations(coords, 2)
+        for combo in combos:
+            p.addUserDebugLine(combo[0], combo[1])
+    check_aabb(aabb_min, aabb_max)
+    # bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (bbox_bf_extent / 2)
+    # bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
+    # # world_frame_vertex_positions = trimesh.transformations.transform_points(
+    # #     bbox_frame_vertex_positions, bbox_transform
+    # # )
+    # # for i, from_vertex in enumerate(world_frame_vertex_positions):
+    # #     for j, to_vertex in enumerate(world_frame_vertex_positions):
+    # #         if j <= i:
+    # #             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+    # # Rotate the AABB as needed.
+
+    def draw_bb(world_frame_vertex_positions):
+        for i, from_vertex in enumerate(world_frame_vertex_positions):
+            for j, to_vertex in enumerate(world_frame_vertex_positions):
+                if j <= i:
+                    p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
     cuboid_dimensions = np.array(cuboid_dimensions)
     assert cuboid_dimensions.ndim <= 2
     assert cuboid_dimensions.shape[-1] == 3, "Cuboid dimensions need to contain all three dimensions."
@@ -242,13 +268,31 @@ def sample_cuboid_on_object(
             this_cuboid_dimensions = cuboid_dimensions if cuboid_dimensions.ndim == 1 else cuboid_dimensions[i]
 
             # Obtain the parallel rays using the direction sampling method.
-            sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0)
+            import pdb; pdb.set_trace()
+            sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, obj_bounding_box['bbox_bf_extent'][:2] / 2.0)
+            # sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0)
+            # x, y, z = obj_bounding_box['box_bf_extent']
+            # offset = np.array([1, 1]) * np.array
+
+            # # Compute the grid of rays
+            # steps = (offset / _DEFAULT_NEW_RAY_PER_HORIZONTAL_DISTANCE).astype(int) * 2 + 1
+            # steps = np.maximum(steps, 3)
+            # x_range = np.linspace(-offset[0], offset[0], steps[0])
+            # y_range = np.linspace(-offset[1], offset[1], steps[1])
+            # ray_grid = np.dstack(np.meshgrid(x_range, y_range, indexing="ij"))
+            # ray_grid_flattened = ray_grid.reshape(-1, 2)
 
             # Time to cast the rays.
             cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations, numThreads=0)
 
+            for ray_start, ray_end in zip(sources, destinations):
+                p.addUserDebugLine(ray_start, ray_end, lineWidth=4)
+
+            import pdb; pdb.set_trace()
+
+
             # Check that all rays hit the object.
-            if not check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"]):
+            if not check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"], 0.7):
                 continue
 
             # Process the hit positions and normals.
@@ -392,9 +436,9 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
     return True
 
 
-def check_rays_hit_object(cast_results, body_id, refusal_log):
+def check_rays_hit_object(cast_results, body_id, refusal_log, threshold=1.0):
     hit_body_ids = [ray_res[0] for ray_res in cast_results]
-    if not all(hit_body_id == body_id for hit_body_id in hit_body_ids):
+    if not (sum(hit_body_id == body_id for hit_body_id in hit_body_ids)/len(hit_body_ids)) >= threshold:
         if igibson.debug_sampling:
             refusal_log.append("hits %r" % hit_body_ids)
 

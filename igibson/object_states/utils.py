@@ -1,10 +1,12 @@
 import random
 
 import cv2
+import itertools
 import numpy as np
 import pybullet as p
 from IPython import embed
 from scipy.spatial.transform import Rotation as R
+import trimesh
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
@@ -17,7 +19,7 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState
-from igibson.utils import sampling_utils
+from igibson.utils import sampling_utils, utils
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
     # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
@@ -109,7 +111,7 @@ def sample_kinematics(
         # Orientation needs to be set for stable_z_on_aabb to work correctly
         # Position needs to be set to be very far away because the object's
         # original position might be blocking rays (use_ray_casting_method=True)
-        old_pos = np.array([200, 200, 200])
+        old_pos = np.array([0, 0, 1])
         objA.set_position_orientation(old_pos, orientation)
 
         if sample_on_floor:
@@ -130,6 +132,24 @@ def sample_kinematics(
                 aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
                 aabb_rotation = R.identity()
 
+                bbox_center, bbox_orn, bbox_bf_extent, bbox_wf_extent = objA.get_base_aligned_bounding_box(visual=True)
+                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (bbox_bf_extent / 2)
+                bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
+                world_frame_vertex_positions = trimesh.transformations.transform_points(
+                    bbox_frame_vertex_positions, bbox_transform
+                )
+                objB_bounding_box = {
+                    "bbox_center": bbox_center,
+                    "bbox_orn": bbox_orn, 
+                    "bbox_bf_extent": bbox_bf_extent, 
+                    "bbox_wf_extent": bbox_wf_extent,
+                    "bbox_frame_vertex_positions": bbox_frame_vertex_positions,
+                    "world_frame_vertex_positions": world_frame_vertex_positions,
+                }
+                # for i, from_vertex in enumerate(world_frame_vertex_positions):
+                #     for j, to_vertex in enumerate(world_frame_vertex_positions):
+                #         if j <= i:
+                #             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
                 # Rotate the AABB as needed.
                 if allow_non_default_orientation:
                     # Rotate the AABB in one direction by 90 or -90 degrees.
@@ -139,10 +159,12 @@ def sample_kinematics(
 
                 # Rotate the AABB
                 aabb_extent = aabb_rotation.apply(aabb_extent)
+                # import pdb; pdb.set_trace()
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
                     objB,
+                    obj_bounding_box = objB_bounding_box,
                     num_samples=1,
                     cuboid_dimensions=aabb_extent,
                     axis_probabilities=[0, 0, 1],
