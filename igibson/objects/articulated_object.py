@@ -1122,6 +1122,10 @@ class URDFObject(StatefulObject):
                 for box_type in ["visual", "collision"]:
                     self.scaled_link_bounding_boxes[converted_name][box_type] = {}
                     for axis_type in ["axis_aligned", "oriented"]:
+                        if box_type not in self.metadata["link_bounding_boxes"][name]:
+                            # We'll use the AABB for any nonexistent BBs.
+                            continue
+
                         bb_data = self.metadata["link_bounding_boxes"][name][box_type][axis_type]
                         unscaled_extent = np.array(bb_data["extent"])
                         unscaled_bb_in_link_frame = np.array(bb_data["transform"])
