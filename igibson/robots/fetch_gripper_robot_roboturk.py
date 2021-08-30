@@ -551,8 +551,8 @@ class FetchGripper(LocomotorRobot):
             ee_pos = self.get_eef_position()
             # Make sure correct camera is set when we grab the transforms
             # self.env.simulator.renderer.set_active_camera(cam_name="robot")
-            ee_camera_coords = np.concatenate((self.env.simulator.renderer.transform_point(ee_pos), [1]))
-            ee_pixel_coords = self.env.simulator.renderer.P.dot(ee_camera_coords)
+            ee_camera_coords = np.concatenate((self.env.renderer.transform_point(ee_pos), [1]))
+            ee_pixel_coords = self.env.renderer.P.dot(ee_camera_coords)
             # print("camera: {}".format(ee_camera_coords))
             # print("pixel: {}".format(ee_pixel_coords))
 

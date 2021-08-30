@@ -195,40 +195,40 @@ class BehaviorEnv(iGibsonEnv):
         """
         self.current_step += 1
 
-        if isinstance(self.robots[0], BehaviorRobot):
-            new_action = np.zeros((28,))
-            if self.action_filter == "navigation":
-                new_action[:2] = action[:2]
-                new_action[5] = action[2]
-            elif self.action_filter == "mobile_manipulation":
-                # body x,y,yaw
-                new_action[:2] = action[:2]
-                new_action[5] = action[2]
-                # left hand 7d
-                new_action[12:19] = action[3:10]
-                # right hand 7d
-                new_action[20:27] = action[10:17]
-            elif self.action_filter == "tabletop_manipulation":
-                # only using right hand
-                new_action[20:27] = action[:7]
-            else:
-                # all action dims except hand reset
-                new_action[:19] = action[:19]
-                new_action[20:27] = action[19:]
-            # The original action space for BehaviorRobot is too wide for random exploration
-            new_action *= 0.05
-        elif isinstance(self.robots[0], FetchGripper):
-            new_action = np.zeros((11,))
-            if self.action_filter == "navigation":
-                new_action[:2] = action[:2]
-            elif self.action_filter == "tabletop_manipulation":
-                new_action[4:] = action[:7]
-            else:
-                new_action = action
-        else:
-            Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
+        # if isinstance(self.robots[0], BehaviorRobot):
+        #     new_action = np.zeros((28,))
+        #     if self.action_filter == "navigation":
+        #         new_action[:2] = action[:2]
+        #         new_action[5] = action[2]
+        #     elif self.action_filter == "mobile_manipulation":
+        #         # body x,y,yaw
+        #         new_action[:2] = action[:2]
+        #         new_action[5] = action[2]
+        #         # left hand 7d
+        #         new_action[12:19] = action[3:10]
+        #         # right hand 7d
+        #         new_action[20:27] = action[10:17]
+        #     elif self.action_filter == "tabletop_manipulation":
+        #         # only using right hand
+        #         new_action[20:27] = action[:7]
+        #     else:
+        #         # all action dims except hand reset
+        #         new_action[:19] = action[:19]
+        #         new_action[20:27] = action[19:]
+        #     # The original action space for BehaviorRobot is too wide for random exploration
+        #     new_action *= 0.05
+        # elif isinstance(self.robots[0], FetchGripper):
+        #     new_action = np.zeros((11,))
+        #     if self.action_filter == "navigation":
+        #         new_action[:2] = action[:2]
+        #     elif self.action_filter == "tabletop_manipulation":
+        #         new_action[4:] = action[:7]
+        #     else:
+        #         new_action = action
+        # else:
+        #     Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
-        self.robots[0].apply_action(new_action)
+        self.robots[0].apply_action(action)
         if self.log_writer is not None:
             self.log_writer.process_frame()
         self.simulator.step()
@@ -299,13 +299,16 @@ class BehaviorEnv(iGibsonEnv):
 
         return state
 
+    def check_robot_contact(self):
+        return False
+
     def reset_scene_and_agent(self):
         if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
             load_checkpoint(self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
         else:
             self.task.reset_scene(snapshot_id=self.task.initial_state)
         # set the constraints to the current poses
-        self.robots[0].apply_action(np.zeros(self.robots[0].action_dim))
+        # self.robots[0].apply_action(np.zeros(self.robots[0].action_dim))
 
     def reset(self):
         """

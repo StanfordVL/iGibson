@@ -13,7 +13,8 @@ from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.fetch_gripper_robot import FetchGripper
+# from igibson.robots.fetch_gripper_robot import FetchGripper
+from igibson.robots.fetch_gripper_robot_roboturk import FetchGripper
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
@@ -390,7 +391,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 agent.parts["eye"].set_base_link_position_orientation(
                     self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
                 )
-        elif self.robot_type == FetchGripper:
+        else:
             agent = FetchGripper(self.simulator, self.robot_config)
             self.simulator.import_robot(agent)
             agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
@@ -401,9 +402,8 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 pos[2] = 0.0
                 pos[2] = stable_z_on_aabb(agent.get_body_id(), [pos, pos])
                 agent.set_position_orientation(pos, quat_from_euler(self.scene.agent["BRBody_1"]["rpy"]))
-        else:
-            Exception("Only BehaviorRobot and FetchGripper are supported")
-
+        # else:
+        #     Exception("Only BehaviorRobot and FetchGripper are supported")
         agent.robot_specific_reset()
         self.simulator.register_main_vr_robot(agent)
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
