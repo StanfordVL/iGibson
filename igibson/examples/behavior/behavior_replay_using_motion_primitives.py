@@ -124,65 +124,71 @@ def get_actions_from_segmentation(demo_data):
 
 
 def run_demonstration(demo_path, segmentation_path, output_path):
-    task = IGLogReader.read_metadata_attr(demo_path, "/metadata/atus_activity")
-    task_id = IGLogReader.read_metadata_attr(demo_path, "/metadata/activity_definition")
-    scene_id = IGLogReader.read_metadata_attr(demo_path, "/metadata/scene_id")
+    for i in range(10):
+        task = IGLogReader.read_metadata_attr(demo_path, "/metadata/atus_activity")
+        task_id = IGLogReader.read_metadata_attr(demo_path, "/metadata/activity_definition")
+        scene_id = IGLogReader.read_metadata_attr(demo_path, "/metadata/scene_id")
 
-    # Load the segmentation of a demo for this task.
-    with open(segmentation_path, "r") as f:
-        selected_demo_data = json.load(f)
+        # Load the segmentation of a demo for this task.
+        with open(segmentation_path, "r") as f:
+            selected_demo_data = json.load(f)
 
-    # Get the actions from the segmentation
-    actions = get_actions_from_segmentation(selected_demo_data)
+        # Get the actions from the segmentation
+        actions = get_actions_from_segmentation(selected_demo_data)
 
-    # Prepare the environment
-    config_file = os.path.join(igibson.example_config_path, "behavior/behavior_segmentation_replay.yaml")
-    with open(config_file, "r") as f:
-        config = yaml.safe_load(f)
+        # Prepare the environment
+        config_file = os.path.join(igibson.example_config_path, "behavior/behavior_segmentation_replay.yaml")
+        with open(config_file, "r") as f:
+            config = yaml.safe_load(f)
 
-    config["task"] = task
-    config["task_id"] = task_id
-    config["scene_id"] = scene_id
+        config["task"] = task
+        config["task_id"] = task_id
+        config["scene_id"] = scene_id
 
-    env = BehaviorMPEnv(
-        config_file=config,
-        mode="headless",
-        action_timestep=1.0 / 300.0,
-        physics_timestep=1.0 / 300.0,
-        use_motion_planning=False,
-    )
+        env = BehaviorMPEnv(
+            config_file=config,
+            mode="headless",
+            action_timestep=1.0 / 300.0,
+            physics_timestep=1.0 / 300.0,
+            use_motion_planning=False,
+        )
 
-    start = time.time()
-    env.reset()
+        start = time.time()
+        env.reset()
 
-    # env.robots[0].set_position_orientation([0, 0, 0.7], [0, 0, 0, 1])
-    done = False
-    infos = []
-    action_successes = []
-    import pybullet as p
-    p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
-    p.resetDebugVisualizerCamera(cameraTargetPosition=[1,-1,0], cameraDistance=4, cameraYaw=240, cameraPitch=-45)
-    for action_pair in actions:
-        # try:
-        print("Executing %s(%s)" % action_pair)
-        primitive, obj_name = action_pair
+        # env.robots[0].set_position_orientation([0, 0, 0.7], [0, 0, 0, 1])
+        done = False
+        infos = []
+        action_successes = []
+        import pybullet as p
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+        p.resetDebugVisualizerCamera(cameraTargetPosition=[1,-1,0], cameraDistance=4, cameraYaw=240, cameraPitch=-45)
+        for action_pair in actions:
+            # try:
+            print("Executing %s(%s)" % action_pair)
+            primitive, obj_name = action_pair
 
-        # Convert the action
-        obj_id = next(i for i, obj in enumerate(env.task_relevant_objects) if obj.name == obj_name)
-        action = int(primitive) * env.num_objects + obj_id
+            # Convert the action
+            obj_id = next(i for i, obj in enumerate(env.task_relevant_objects) if obj.name == obj_name)
+            action = int(primitive) * env.num_objects + obj_id
 
-        # Execute.
-        state, reward, done, info = env.step(action)
-        print(reward, info)
-        infos.append(info)
-        action_successes.append(True)
+            # Execute.
+            state, reward, done, info = env.step(action)
+            print(reward, info)
+            infos.append(info)
+            action_successes.append(True)
+            if done:
+                break
+            # except:
+            #     action_successes.append(False)
+
+        # Dump the results
+        env.close()
         if done:
             break
-        # except:
-        #     action_successes.append(False)
 
-    # Dump the results
     data = {"actions": actions, "infos": infos, "action_successes": action_successes}
+
     with open(output_path, "w") as f:
         json.dump(data, f)
 
@@ -191,7 +197,6 @@ def run_demonstration(demo_path, segmentation_path, output_path):
             env.current_step, time.time() - start, done
         )
     )
-    env.close()
 
 
 def main():

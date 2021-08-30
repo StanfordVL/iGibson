@@ -122,7 +122,7 @@ class BehaviorEnv(iGibsonEnv):
             scene_kwargs = {}
         else:
             scene_kwargs = {
-                "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene_id, task, task_id, self.instance_id),
+                "urdf_file": "{}_task_{}_{}_{}_fixed_furniture_no_clutter".format(scene_id, task, task_id, self.instance_id),
                 "trav_map_resolution": 0.025,
             }
         bddl.set_backend("iGibson")
