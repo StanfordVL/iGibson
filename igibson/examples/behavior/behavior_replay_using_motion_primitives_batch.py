@@ -12,10 +12,10 @@ import igibson
 
 def main():
     # TODO(replayMP): Update this path
-    path_of_gdrive_behavior_resources_dir = r"C:\Users\cgokmen\Stanford Drive\BEHAVIOR resources"
-    demos_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"New NeurIPS Demos")
+    path_of_gdrive_behavior_resources_dir = r"/home/michael/Repositories/lab/iGibson"
+    demos_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"demos")
     segmentations_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"segmentation_results")
-    results_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"mp_replay_results\examples")
+    results_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"mp_replay_results_2/examples")
 
     # Load the demo to get info
     for demo_fullpath in tqdm.tqdm(list(glob.glob(os.path.join(segmentations_path, "*.json")))):
