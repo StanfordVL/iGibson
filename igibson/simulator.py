@@ -116,10 +116,10 @@ class Simulator:
 
         if self.mode in ["vr"]:
             self.use_vr_renderer = True
-            rendering_settings.blend_highlight = True
 
         if self.mode in ["simple"]:
             self.use_simple_viewer = True
+        rendering_settings.blend_highlight = True
 
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_start_pos = None

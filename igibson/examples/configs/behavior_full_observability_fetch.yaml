@@ -1,6 +1,6 @@
 # scene
 scene: igibson
-scene_id: Rs_int
+scene_id: Beechwood_0_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -31,7 +31,7 @@ object_randomization_freq: null
 #   height_limits: [0.2, 1.5]       # min, max height limits
 
 # task
-task: re-shelving_library_books
+task: cleaning_table_after_clearing
 task_id: 0
 online_sampling: false
 target_dist_min: 1.0

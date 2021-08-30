@@ -62,16 +62,16 @@ class BaseEnv(gym.Env):
 
         # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
         settings = MeshRendererSettings(
-            enable_shadow=enable_shadow, enable_pbr=enable_pbr, msaa=False, texture_scale=texture_scale, optimized=True
+            enable_shadow=False, enable_pbr=enable_pbr, msaa=False, texture_scale=0.5, optimized=True
         )
 
         self.simulator = Simulator(
             mode=mode,
-            physics_timestep=physics_timestep,
-            render_timestep=action_timestep,
-            image_width=self.config.get("image_width", 128),
-            image_height=self.config.get("image_height", 128),
-            vertical_fov=self.config.get("vertical_fov", 90),
+            physics_timestep=1/90,
+            render_timestep=1/30,
+            image_width=1024,
+            image_height=1024,
+            vertical_fov=self.config.get("vertical_fov", 120),
             device_idx=device_idx,
             render_to_tensor=render_to_tensor,
             rendering_settings=settings,

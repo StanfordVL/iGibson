@@ -53,22 +53,22 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
         # detect marker and hand interaction
         for robot in self.simulator.robots:
             for part_name, part in robot.parts.items():
-                if part_name in ["left_hand", "right_hand"]:
+                if part_name in ["l_gripper_finger_link", "r_gripper_finger_link"]:
                     if (
                         np.linalg.norm(np.array(part.get_position()) - np.array(button_position_on_object))
                         < _TOGGLE_DISTANCE_THRESHOLD
                     ):
                         hand_in_marker = True
                         break
-                    for finger in behavior_robot.FINGER_TIP_LINK_INDICES:
-                        finger_link_state = p.getLinkState(part.body_id, finger)
-                        link_pos = finger_link_state[0]
-                        if (
-                            np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
-                            < _TOGGLE_DISTANCE_THRESHOLD
-                        ):
-                            hand_in_marker = True
-                            break
+                    # for finger in behavior_robot.FINGER_TIP_LINK_INDICES:
+                    #     finger_link_state = p.getLinkState(part.body_id, finger)
+                    #     link_pos = finger_link_state[0]
+                    #     if (
+                    #         np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
+                    #         < _TOGGLE_DISTANCE_THRESHOLD
+                    #     ):
+                    #         hand_in_marker = True
+                    #         break
                     if hand_in_marker:
                         break
 
