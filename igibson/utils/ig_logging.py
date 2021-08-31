@@ -133,7 +133,15 @@ class IGLogWriter(object):
                 ]
             )
         if self.vr_robot:
-            self.name_path_data.extend([["agent_actions", "vr_robot"]])
+            self.name_path_data.extend(
+                [
+                    ["agent_actions", "vr_robot"],
+                    ["agent_actions", "left_hand_local"],
+                    ["agent_actions", "right_hand_local"],
+                    ["agent_actions", "left_hand_trigger_fraction"],
+                    ["agent_actions", "right_hand_trigger_fraction"],
+                ]
+            )
 
     def create_data_map(self):
         """Creates data map of data that will go into HDF5 file. All the data in the
@@ -224,7 +232,19 @@ class IGLogWriter(object):
 
         if self.vr_robot:
             self.data_map["agent_actions"] = {
-                "vr_robot": np.full((self.frames_before_write, 28), self.default_fill_sentinel, dtype=self.np_dtype)
+                "vr_robot": np.full((self.frames_before_write, 28), self.default_fill_sentinel, dtype=self.np_dtype),
+                "left_hand_local": np.full(
+                    (self.frames_before_write, 7), self.default_fill_sentinel, dtype=self.np_dtype
+                ),
+                "right_hand_local": np.full(
+                    (self.frames_before_write, 7), self.default_fill_sentinel, dtype=self.np_dtype
+                ),
+                "left_hand_trigger_fraction": np.full(
+                    (self.frames_before_write, 1), self.default_fill_sentinel, dtype=self.np_dtype
+                ),
+                "right_hand_trigger_fraction": np.full(
+                    (self.frames_before_write, 1), self.default_fill_sentinel, dtype=self.np_dtype
+                ),
             }
 
     def register_action(self, action_path, action_shape):
@@ -482,6 +502,25 @@ class IGLogWriter(object):
 
     def write_agent_data_to_map(self):
         self.data_map["agent_actions"]["vr_robot"][self.frame_counter] = self.vr_robot.dump_action()
+        self.data_map["agent_actions"]["left_hand_local"][self.frame_counter][:3] = self.vr_robot.parts[
+            "left_hand"
+        ].local_pos
+        self.data_map["agent_actions"]["left_hand_local"][self.frame_counter][3:] = self.vr_robot.parts[
+            "left_hand"
+        ].local_orn
+
+        self.data_map["agent_actions"]["right_hand_local"][self.frame_counter][:3] = self.vr_robot.parts[
+            "right_hand"
+        ].local_pos
+        self.data_map["agent_actions"]["right_hand_local"][self.frame_counter][3:] = self.vr_robot.parts[
+            "right_hand"
+        ].local_orn
+        self.data_map["agent_actions"]["left_hand_trigger_fraction"][self.frame_counter] = self.vr_robot.parts[
+            "left_hand"
+        ].trigger_fraction
+        self.data_map["agent_actions"]["right_hand_trigger_fraction"][self.frame_counter] = self.vr_robot.parts[
+            "right_hand"
+        ].trigger_fraction
 
     # TIMELINE: Call this at the end of each frame (eg. at end of while loop)
     def process_frame(self):
