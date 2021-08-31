@@ -6,7 +6,7 @@ import bddl
 import numpy as np
 
 from igibson.envs.behavior_env import BehaviorEnv
-from igibson.metrics.agent import AgentMetric
+from igibson.metrics.agent import BehaviorRobotMetric
 from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
 from igibson.metrics.task import TaskMetric
 from igibson.utils.utils import parse_config
@@ -18,7 +18,7 @@ def get_metrics_callbacks():
     metrics = [
         KinematicDisarrangement(),
         LogicalDisarrangement(),
-        AgentMetric(),
+        BehaviorRobotMetric(),
         TaskMetric(),
     ]
 
