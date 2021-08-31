@@ -346,10 +346,12 @@ class BehaviorRobot(object):
         return state_list
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.parts["left_hand"].object_in_hand == candidate_obj,
-            self.parts["right_hand"].object_in_hand == candidate_obj,
-        ]
+        return np.array(
+            [
+                self.parts["left_hand"].object_in_hand == candidate_obj,
+                self.parts["right_hand"].object_in_hand == candidate_obj,
+            ]
+        )
 
     def dump_state(self):
         return {part_name: part.dump_part_state() for part_name, part in self.parts.items()}

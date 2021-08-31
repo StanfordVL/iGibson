@@ -668,9 +668,7 @@ class FetchGripper(LocomotorRobot):
                 self.establish_grasp(ag_data)
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.object_in_hand == candidate_obj,
-        ]
+        return np.array([self.object_in_hand == candidate_obj])
 
     # significant overlap with BehaviorRobot
     def dump_state(self):
