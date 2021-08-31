@@ -60,9 +60,15 @@ class BehaviorChallenge(object):
         log_path = os.path.join(self.output_dir, "per_episode_metrics.json")
         summary_log_path = os.path.join(self.output_dir, "aggregated_metrics.json")
 
+        self_reported_log_path = os.path.join(
+            self.output_dir, "..", "participant_reported_results", "per_episode_metrics.json"
+        )
         self_reported_summary_log_path = os.path.join(
             self.output_dir, "..", "participant_reported_results", "aggregated_metrics.json"
         )
+        if os.path.exists(self_reported_log_path):
+            shutil.copyfile(self_reported_log_path, log_path)
+            print("Per episode eval results copied from self-reported results %s" % log_path)
         if os.path.exists(self_reported_summary_log_path):
             shutil.copyfile(self_reported_summary_log_path, summary_log_path)
             print("Aggregated eval results copied from self-reported results %s" % summary_log_path)
