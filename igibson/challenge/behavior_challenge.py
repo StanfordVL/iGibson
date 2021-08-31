@@ -33,14 +33,15 @@ def get_metrics_callbacks():
 class BehaviorChallenge(object):
     def __init__(self):
         self.config_file = os.environ["CONFIG_FILE"]
-        self.phase = os.environ["PHASE"]
+        self.split = os.environ["SPLIT"]
+        self.output_dir = os.environ["OUTPUT_DIR"]
 
     def submit(self, agent):
         env_config = parse_config(self.config_file)
 
         per_episode_metrics = {}
 
-        if self.phase == "minival":
+        if self.split == "minival":
             # Only eval one activity in the config file
             tasks = [env_config["task"]]
         else:
@@ -69,7 +70,7 @@ class BehaviorChallenge(object):
 
             # Evaluate 9 activity instances in the training set for now
             if num_scenes == 3:
-                scene_instance_ids = {scenes[0]: range(1), scenes[1]: range(0), scenes[2]: range(0)}
+                scene_instance_ids = {scenes[0]: range(3), scenes[1]: range(3), scenes[2]: range(3)}
             elif num_scenes == 2:
                 scene_instance_ids = {scenes[0]: range(4), scenes[1]: range(5)}
             else:
@@ -107,7 +108,7 @@ class BehaviorChallenge(object):
                     episode += 1
                     env.close()
 
-        log_path = "eval.json"
+        log_path = os.path.join(self.output_dir, "eval.json")
         with open(log_path, "w+") as f:
             json.dump(per_episode_metrics, f)
         print("Eval results saved to %s" % log_path)
