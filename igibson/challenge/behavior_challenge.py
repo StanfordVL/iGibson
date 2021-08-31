@@ -4,6 +4,7 @@ import os
 
 import bddl
 import numpy as np
+from collections import defaultdict
 
 from igibson.envs.behavior_env import BehaviorEnv
 from igibson.metrics.agent import BehaviorRobotMetric
@@ -70,7 +71,7 @@ class BehaviorChallenge(object):
 
             # Evaluate 9 activity instances in the training set for now
             if num_scenes == 3:
-                scene_instance_ids = {scenes[0]: range(3), scenes[1]: range(3), scenes[2]: range(3)}
+                scene_instance_ids = {scenes[0]: range(1), scenes[1]: range(0), scenes[2]: range(0)}
             elif num_scenes == 2:
                 scene_instance_ids = {scenes[0]: range(4), scenes[1]: range(5)}
             else:
@@ -104,14 +105,59 @@ class BehaviorChallenge(object):
                     metrics_summary = {}
                     for callback in data_callbacks:
                         metrics_summary.update(callback())
+
+                    metrics_summary['task'] = task
                     per_episode_metrics[episode] = metrics_summary
                     episode += 1
                     env.close()
 
-        log_path = os.path.join(self.output_dir, "eval.json")
+        log_path = os.path.join(self.output_dir, "per_episode_metrics.json")
+        summary_log_path = os.path.join(self.output_dir, "aggregated_metrics.json")
+
         with open(log_path, "w+") as f:
             json.dump(per_episode_metrics, f)
-        print("Eval results saved to %s" % log_path)
+        print("Per episode eval results saved to %s" % log_path)
+ 
+        aggregated_metrics = {}
+        success_score = []
+        simulator_time = []
+        kinematic_disarrangement = []
+        logical_disarrangement = []
+        distance_navigated = []
+        displacement_of_hands = []
+
+        task_to_mean_success_score = defaultdict(list)
+        task_scores = []
+
+        for episode,metric in per_episode_metrics.items():
+            task_to_mean_success_score[metric['task']].append(metric['q_score']['timestep'][-1])
+
+        for task,scores in task_to_mean_success_score.items():
+            task_scores.append(np.mean(scores))
+
+        task_scores = sorted(task_scores, reverse=True)
+
+        for episode,metric in per_episode_metrics.items():
+            success_score.append(metric['q_score']['timestep'][-1])
+            simulator_time.append(metric['time']['simulator_time'])
+            kinematic_disarrangement.append(metric['kinematic_disarrangement']['relative'])
+            logical_disarrangement.append(metric['logical_disarrangement']['relative'])
+            distance_navigated.append(np.sum(metric['agent_distance']['timestep']['body']))
+            displacement_of_hands.append(np.sum(metric['grasp_distance']['timestep']['left_hand'])
+                + np.sum(metric['grasp_distance']['timestep']['right_hand'])
+            )
+
+
+        aggregated_metrics['Success Score'] = np.mean(success_score)
+        aggregated_metrics['Success Score Top 5'] = np.mean(np.array(task_scores)[:5])
+        aggregated_metrics['Simulated Time'] = np.mean(simulator_time)
+        aggregated_metrics['Kinematic Disarrangement'] = np.mean(kinematic_disarrangement)
+        aggregated_metrics['Logical Disarrangement'] = np.mean(logical_disarrangement)
+        aggregated_metrics['Distance Navigated'] = np.mean(distance_navigated)
+        aggregated_metrics['Displacement of Hands'] = np.mean(displacement_of_hands) 
+        with open(summary_log_path, "w+") as f:
+            json.dump(aggregated_metrics, f)
+        print("Aggregated eval results saved to %s" % summary_log_path)
 
 
 if __name__ == "__main__":
