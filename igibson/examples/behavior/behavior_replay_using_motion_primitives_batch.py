@@ -15,10 +15,11 @@ def main():
     path_of_gdrive_behavior_resources_dir = r"/home/michael/Repositories/lab/iGibson"
     demos_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"demos")
     segmentations_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"segmentation_results")
-    results_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"mp_replay_results_2/examples")
+    results_path = os.path.join(path_of_gdrive_behavior_resources_dir, r"mp_replay_results_failed/examples")
+    demos = pd.read_csv("replay_manifest_failed.csv")['demos']
 
     # Load the demo to get info
-    for demo_fullpath in tqdm.tqdm(list(glob.glob(os.path.join(segmentations_path, "*.json")))):
+    for demo_fullpath in tqdm.tqdm(demos):
         demo = os.path.splitext(os.path.basename(demo_fullpath))[0]
         if "replay" in demo:
             continue
