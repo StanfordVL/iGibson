@@ -1,3 +1,4 @@
+import itertools
 import json
 import logging
 import math
@@ -11,11 +12,16 @@ import cv2
 import numpy as np
 import pybullet as p
 import trimesh
+from scipy.spatial.transform import Rotation
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
+    get_all_links,
+    get_center_extent,
     get_joint_info,
     get_joints,
+    get_link_name,
+    get_link_state,
     link_from_name,
     matrix_from_quat,
     quat_from_matrix,
@@ -26,6 +32,7 @@ from igibson.object_states.texture_change_state_mixin import TextureChangeStateM
 from igibson.object_states.utils import clear_cached_states
 from igibson.objects.stateful_object import StatefulObject
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
+from igibson.utils import utils
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
 from igibson.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_3d
 
@@ -315,6 +322,7 @@ class URDFObject(StatefulObject):
 
         self.avg_obj_dims = avg_obj_dims
 
+        self.base_link_name = get_base_link_name(self.object_tree)
         self.rename_urdf()
 
         self.meta_links = {}
@@ -323,6 +331,7 @@ class URDFObject(StatefulObject):
         self.scale_object()
         self.compute_object_pose()
         self.remove_floating_joints(self.scene_instance_folder)
+        self.prepare_link_based_bounding_boxes()
 
         prepare_object_states(self, abilities, online=True)
         self.prepare_visual_mesh_to_material()
@@ -454,49 +463,40 @@ class URDFObject(StatefulObject):
     def get_prefixed_joint_name(self, name):
         return self.name + "_" + name
 
+    def get_prefixed_link_name(self, name):
+        if name == "world":
+            return name
+        elif name == self.base_link_name:
+            # The base_link get renamed as the link tag indicates
+            # Just change the name of the base link in the embedded urdf
+            return self.name
+        else:
+            # The other links get also renamed to add the name of the link tag as prefix
+            # This allows us to load several instances of the same object
+            return self.name + "_" + name
+
     def rename_urdf(self):
         """
         Helper function that renames the file paths in the object urdf
         from relative paths to absolute paths
         """
-        base_link_name = get_base_link_name(self.object_tree)
 
         # Change the links of the added object to adapt to the given name
         for link_emb in self.object_tree.iter("link"):
-            # If the original urdf already contains world link, do not rename
-            if link_emb.attrib["name"] == "world":
-                pass
-            elif link_emb.attrib["name"] == base_link_name:
-                # The base_link get renamed as the link tag indicates
-                # Just change the name of the base link in the embedded urdf
-                link_emb.attrib["name"] = self.name
-            else:
-                # The other links get also renamed to add the name of the link tag as prefix
-                # This allows us to load several instances of the same object
-                link_emb.attrib["name"] = self.name + "_" + link_emb.attrib["name"]
+            link_emb.attrib["name"] = self.get_prefixed_link_name(link_emb.attrib["name"])
 
         # Change the joints of the added object to adapt them to the given name
         for joint_emb in self.object_tree.iter("joint"):
             # We change the joint name
             joint_emb.attrib["name"] = self.get_prefixed_joint_name(joint_emb.attrib["name"])
+
             # We change the child link names
             for child_emb in joint_emb.findall("child"):
-                # If the original urdf already contains world link, do not rename
-                if child_emb.attrib["link"] == "world":
-                    pass
-                elif child_emb.attrib["link"] == base_link_name:
-                    child_emb.attrib["link"] = self.name
-                else:
-                    child_emb.attrib["link"] = self.name + "_" + child_emb.attrib["link"]
+                child_emb.attrib["link"] = self.get_prefixed_link_name(child_emb.attrib["link"])
+
             # and the parent link names
             for parent_emb in joint_emb.findall("parent"):
-                # If the original urdf already contains world link, do not rename
-                if parent_emb.attrib["link"] == "world":
-                    pass
-                elif parent_emb.attrib["link"] == base_link_name:
-                    parent_emb.attrib["link"] = self.name
-                else:
-                    parent_emb.attrib["link"] = self.name + "_" + parent_emb.attrib["link"]
+                parent_emb.attrib["link"] = self.get_prefixed_link_name(parent_emb.attrib["link"])
 
     def scale_object(self):
         """
@@ -509,16 +509,16 @@ class URDFObject(StatefulObject):
 
         # First, define the scale in each link reference frame
         # and apply it to the joint values
-        base_link_name = get_base_link_name(self.object_tree)
-        scales_in_lf = {base_link_name: self.scale}
+        base_link_name = self.get_prefixed_link_name(self.base_link_name)
+        self.scales_in_link_frame = {base_link_name: self.scale}
         all_processed = False
         while not all_processed:
             all_processed = True
             for joint in self.object_tree.iter("joint"):
                 parent_link_name = joint.find("parent").attrib["link"]
                 child_link_name = joint.find("child").attrib["link"]
-                if parent_link_name in scales_in_lf and child_link_name not in scales_in_lf:
-                    scale_in_parent_lf = scales_in_lf[parent_link_name]
+                if parent_link_name in self.scales_in_link_frame and child_link_name not in self.scales_in_link_frame:
+                    scale_in_parent_lf = self.scales_in_link_frame[parent_link_name]
                     # The location of the joint frame is scaled using the scale in the parent frame
                     for origin in joint.iter("origin"):
                         current_origin_xyz = np.array([float(val) for val in origin.attrib["xyz"].split(" ")])
@@ -551,7 +551,7 @@ class URDFObject(StatefulObject):
 
                     # print("Adding: ", joint.find("child").attrib["link"])
 
-                    scales_in_lf[joint.find("child").attrib["link"]] = scale_in_child_lf
+                    self.scales_in_link_frame[joint.find("child").attrib["link"]] = scale_in_child_lf
 
                     # The axis of the joint is defined in the joint frame, we scale it after applying the rotation
                     for axis in joint.iter("axis"):
@@ -685,7 +685,7 @@ class URDFObject(StatefulObject):
                     inertia.attrib["iyz"] = str(0.0)
                     inertia.attrib["izz"] = str(0.0)
 
-            scale_in_lf = scales_in_lf[link.attrib["name"]]
+            scale_in_lf = self.scales_in_link_frame[link.attrib["name"]]
             # Apply the scale to all mesh elements within the link (original scale and origin)
             for mesh in link.iter("mesh"):
                 if "scale" in mesh.attrib:
@@ -1112,3 +1112,97 @@ class URDFObject(StatefulObject):
     def set_room_floor(self, room_floor):
         assert self.category == "floors"
         self.room_floor = room_floor
+
+    def prepare_link_based_bounding_boxes(self):
+        self.scaled_link_bounding_boxes = {}
+        if "link_bounding_boxes" in self.metadata:
+            for name in self.metadata["link_bounding_boxes"]:
+                converted_name = self.get_prefixed_link_name(name)
+                self.scaled_link_bounding_boxes[converted_name] = {}
+                for box_type in ["visual", "collision"]:
+                    self.scaled_link_bounding_boxes[converted_name][box_type] = {}
+                    for axis_type in ["axis_aligned", "oriented"]:
+                        if box_type not in self.metadata["link_bounding_boxes"][name]:
+                            # We'll use the AABB for any nonexistent BBs.
+                            continue
+
+                        bb_data = self.metadata["link_bounding_boxes"][name][box_type][axis_type]
+                        unscaled_extent = np.array(bb_data["extent"])
+                        unscaled_bb_in_link_frame = np.array(bb_data["transform"])
+
+                        # Prepare the scale matrix for this link's scale
+                        scale_bounding_box = np.diag(np.concatenate([self.scales_in_link_frame[converted_name], [1]]))
+
+                        # Scale the bounding box as necessary.
+                        scaled_bb_in_link_frame = np.dot(scale_bounding_box, unscaled_bb_in_link_frame)
+
+                        # Insert into our results array.
+                        self.scaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
+                            "extent": unscaled_extent,
+                            "transform": scaled_bb_in_link_frame,
+                        }
+
+    def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False):
+        """Get a bounding box for this object that's axis-aligned in the object's base frame."""
+        if body_id is None:
+            body_id = self.get_body_id()
+
+        bbox_type = "visual" if visual else "collision"
+
+        # Get the base position transform
+        base_pos, base_orn = p.getBasePositionAndOrientation(body_id)
+        base_in_world_frame = utils.quat_pos_to_mat(base_pos, base_orn)
+
+        # Compute the world-to-base frame transform
+        world_in_base_frame = trimesh.transformations.inverse_matrix(base_in_world_frame)
+
+        # Grab the corners of all the different links' bounding boxes.
+        points = []
+
+        links = [link_id] if link_id is not None else get_all_links(body_id)
+        for link in links:
+            name = get_link_name(body_id, link)
+
+            # If the link has a bounding box annotation
+            if name in self.scaled_link_bounding_boxes and bbox_type in self.scaled_link_bounding_boxes[name]:
+                # Get the bounding box data.
+                bb_data = self.scaled_link_bounding_boxes[name][bbox_type]["oriented"]
+                extent = bb_data["extent"]
+                bb_in_link_frame = bb_data["transform"]
+
+                # Get the link's pose in the base frame.
+                if link == -1:
+                    link_in_base_frame = np.eye(4)
+                else:
+                    link_state = get_link_state(body_id, link, velocity=False)
+                    link_in_world_frame = utils.quat_pos_to_mat(
+                        link_state.worldLinkFramePosition, link_state.worldLinkFrameOrientation
+                    )
+                    link_in_base_frame = np.dot(world_in_base_frame, link_in_world_frame)
+
+                # Account for the link vs. center-of-mass
+                dynamics_info = p.getDynamicsInfo(body_id, link)
+                inertial_pos, inertial_orn = p.invertTransform(dynamics_info[3], dynamics_info[4])
+                com_in_link_frame = utils.quat_pos_to_mat(inertial_pos, inertial_orn)
+
+                # Compute the bounding box vertices in the base frame.
+                bb_in_base_frame = np.dot(link_in_base_frame, np.dot(com_in_link_frame, bb_in_link_frame))
+                vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (extent / 2)
+                points.extend(trimesh.transformations.transform_points(vertex_positions, bb_in_base_frame))
+            else:
+                # If no BB annotation is available, get the AABB for this link.
+                aabb_center, aabb_extent = get_center_extent(body_id, link=link)
+                aabb_vertices = aabb_center + np.array(list(itertools.product((1, -1), repeat=3))) * (aabb_extent / 2)
+                points.extend(trimesh.transformations.transform_points(aabb_vertices, world_in_base_frame))
+
+        # Now take the minimum/maximum in the base frame.
+        base_frame_aabb_min = np.amin(points, axis=0)
+        base_frame_aabb_max = np.amax(points, axis=0)
+        base_frame_center = (base_frame_aabb_min + base_frame_aabb_max) / 2
+        base_frame_extent = base_frame_aabb_max - base_frame_aabb_min
+
+        # Transform the center and extent to the world frame.
+        world_frame_center = trimesh.transformations.transform_points([base_frame_center], base_in_world_frame)[0]
+        world_frame_extent = np.abs(Rotation.from_quat(base_orn).apply(base_frame_extent))
+
+        return world_frame_center, base_orn, base_frame_extent, base_frame_center, world_frame_extent
