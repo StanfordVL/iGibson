@@ -16,12 +16,12 @@ from igibson import object_states
 from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.object_states.factory import get_state_from_name
+from igibson.robots.behavior_robot import PALM_LINK_INDEX, BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
-from igibson.robots.behavior_robot import PALM_LINK_INDEX, BehaviorRobot
-from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import l2_distance
@@ -126,7 +126,7 @@ class BehaviorEnv(iGibsonEnv):
                 "trav_map_resolution": 0.025,
             }
         bddl.set_backend("iGibson")
-        robot_class = self.config.get("robot", BehaviorRobot)
+        robot_class = self.config.get("robot", "BehaviorRobot")
         if robot_class == "BehaviorRobot":
             robot_type = BehaviorRobot
         elif robot_class == "FetchGripper":
@@ -134,7 +134,7 @@ class BehaviorEnv(iGibsonEnv):
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
-        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_class, robot_config=self.config)
+        self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config=self.config)
         self.task.initialize_simulator(
             simulator=self.simulator,
             scene_id=scene_id,
