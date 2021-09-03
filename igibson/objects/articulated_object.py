@@ -1136,9 +1136,15 @@ class URDFObject(StatefulObject):
                         # Scale the bounding box as necessary.
                         scaled_bb_in_link_frame = np.dot(scale_bounding_box, unscaled_bb_in_link_frame)
 
+                        # Only scale the translation component
+                        scaled_bb_in_link_frame[:4,:3] = unscaled_bb_in_link_frame[:4, :3]
+
+                        # Scale the extent
+                        scaled_extent = unscaled_extent * self.scales_in_link_frame[converted_name]
+
                         # Insert into our results array.
                         self.scaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
-                            "extent": unscaled_extent,
+                            "extent": scaled_extent,
                             "transform": scaled_bb_in_link_frame,
                         }
 
