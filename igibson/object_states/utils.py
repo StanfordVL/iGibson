@@ -121,7 +121,7 @@ def sample_kinematics(
                 else:
                     assert False, "predicate is not onTop or inside: {}".format(predicate)
 
-                _, _, base_frame_extent, base_frame_center, _ = objA.get_base_aligned_bounding_box(visual=True)
+                _, _, base_frame_extent, base_frame_center = objA.get_base_aligned_bounding_box(visual=True)
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
