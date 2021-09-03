@@ -101,10 +101,12 @@ class BehaviorMPEnv(BehaviorEnv):
         self.robots[0].initial_z_offset = 0.7
 
     def load_action_space(self):
-        self.task_relevant_objects = list(
-            set(self.task.simulator.scene.objects_by_name.values()) | set(self.task.object_scope.values())
-        )
-        self.num_objects = len(self.task_relevant_objects)
+        # self.task_relevant_objects = list(
+        #     set(self.task.simulator.scene.objects_by_name.values()) | set(self.task.object_scope.values())
+        # )
+        self.task_relevant_objects = [item for item in self.task.object_scope.values() if isinstance(item, URDFObject)]
+        # self.num_objects = len(self.task_relevant_objects)
+        self.num_objects = 5
         self.action_space = gym.spaces.Discrete(self.num_objects * len(ActionPrimitives))
 
     def get_body_ids(self, include_self=False):
@@ -124,8 +126,8 @@ class BehaviorMPEnv(BehaviorEnv):
         action_primitive = int(action) // self.num_objects
 
         # from IPython import embed; embed()
-        obj = self.task_relevant_objects[obj_list_id]
-        if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
+        if obj_list_id < len(self.task_relevant_objects):
+            obj = self.task_relevant_objects[obj_list_id]
             if action_primitive == ActionPrimitives.NAVIGATE_TO:
                 if self.navigate_to_obj(obj):
                     print("PRIMITIVE: navigate to {} success".format(obj.name))
@@ -418,6 +420,7 @@ class BehaviorMPEnv(BehaviorEnv):
         valid_position = None  # ((x,y,z),(roll, pitch, yaw))
         original_position = self.robots[0].get_position()
         original_orientation = self.robots[0].get_orientation()
+        eye_pos = self.robots[0].parts["eye"].get_position()
         # from IPython import embed; embed()
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         if isinstance(obj, URDFObject):
@@ -427,29 +430,28 @@ class BehaviorMPEnv(BehaviorEnv):
                 for _ in range(20):
                     # p.restoreState(state_id)
                     yaw = np.random.uniform(-np.pi, np.pi)
+                    delta = [distance * np.cos(yaw), distance * np.sin(yaw)]
                     pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
                     orn = [0, 0, yaw - np.pi]
                     self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
                     # from IPython import embed; embed()
-                    eye_pos = self.robots[0].parts["eye"].get_position()
-                    obj_pos = obj.get_position()
                     ray_test_res = p.rayTest(eye_pos, obj_pos)
                     blocked = False
                     if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
                         blocked = True
 
-                    valid_room = True
-                    in_rooms = obj.in_rooms
-                    if len(in_rooms) == 0:
-                        valid_room = False
-                    else:
-                        in_room = in_rooms[0]
-                        xy = np.array([pos[0], pos[1]])
-                        print(self.scene.get_room_instance_by_point(xy), in_room)
-                        if not self.scene.get_room_instance_by_point(xy) == in_room:
-                            valid_room = False
+                    # valid_room = True
+                    # in_rooms = obj.in_rooms
+                    # if len(in_rooms) == 0:
+                    #     valid_room = False
+                    # else:
+                    #     in_room = in_rooms[0]
+                    #     xy = np.array([pos[0], pos[1]])
+                    #     if not self.scene.get_room_instance_by_point(xy) == in_room:
+                    #         valid_room = False
 
-                    if not detect_robot_collision(self.robots[0]) and not blocked and valid_room:
+                    # if not detect_robot_collision(self.robots[0]) and not blocked and valid_room:
+                    if not detect_robot_collision(self.robots[0]) and not blocked:
                         valid_position = (pos, orn)
                         break
                 if valid_position is not None:
@@ -541,8 +543,11 @@ if __name__ == "__main__":
         mode=args.mode,
         action_timestep=1.0 / 300.0,
         physics_timestep=1.0 / 300.0,
-        use_motion_planning=True,
+        use_motion_planning=False,
     )
+    from IPython import embed
+
+    embed()
     step_time_list = []
     for episode in range(100):
         print("Episode: {}".format(episode))
