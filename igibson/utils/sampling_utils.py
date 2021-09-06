@@ -215,7 +215,55 @@ def sample_cuboid_on_object(
         assert cuboid_dimensions.shape[0] == num_samples, "Need as many offsets as samples requested."
 
     results = [(None, None, None, None, defaultdict(list)) for _ in range(num_samples)]
+    bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
+    bbox_bf_extent / 2
+    )
+    bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
+    world_frame_vertex_positions = trimesh.transformations.transform_points(
+        bbox_frame_vertex_positions, bbox_transform
+    )
+    for i, from_vertex in enumerate(world_frame_vertex_positions):
+        for j, to_vertex in enumerate(world_frame_vertex_positions):
+            if j <= i:
+                p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
 
+    tm, extents = trimesh.bounds.oriented_bounds_2D(world_frame_vertex_positions[:, 0:2])
+    # points = trimesh.transformations.transform_points(world_frame_vertex_positions[:,0:2], tm)
+
+    ground_points = np.array(list(itertools.product((1, -1), repeat=2))) * (extents / 2)
+    inverted_points = trimesh.transformations.transform_points(ground_points, np.linalg.inv(tm))
+    vertical_extent = [np.max(world_frame_vertex_positions[:, 2]), np.min(world_frame_vertex_positions[:, 2])]
+    rotated_points = np.c_[np.repeat(inverted_points, 2, 0), vertical_extent *4]
+
+#     # threeD_points = np.array(list(itertools.product((1, -1), repeat=3))) * (extents / 2)
+#     # z_extent = np.max(world_frame_vertex_positions)
+#     # for i, from_vertex in enumerate(ground_points):
+#     #     for j, to_vertex in enumerate(ground_points):
+#     #         if j <= i:
+#     #             from_vertex = [from_vertex[0], from_vertex[1], 0]
+#     #             to_vertex = [to_vertex[0], to_vertex[1], 0]
+#     #             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+
+#     for i, from_vertex in enumerate(points):
+#         for j, to_vertex in enumerate(points):
+#             if j <= i:
+#                 from_vertex = [from_vertex[0], from_vertex[1], 0]
+#                 to_vertex = [to_vertex[0], to_vertex[1], 0]
+#                 p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+
+#     for i, from_vertex in enumerate(inverted_points):
+#         for j, to_vertex in enumerate(inverted_points):
+#             if j <= i:
+#                 from_vertex = [from_vertex[0], from_vertex[1], 0]
+#                 to_vertex = [to_vertex[0], to_vertex[1], 0]
+#                 p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+    for i, from_vertex in enumerate(rotated_points):
+        for j, to_vertex in enumerate(rotated_points):
+            if j <= i:
+                p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+
+
+    import pdb; pdb.set_trace()
     for i in range(num_samples):
         # Sample the starting positions in advance.
         # TODO: Narrow down the sampling domain so that we don't sample scenarios where the center is in-domain but the
@@ -228,6 +276,9 @@ def sample_cuboid_on_object(
             bimodal_stdev_fraction,
             axis_probabilities,
         )
+        # import pdb; pdb.set_trace()
+        # for sample in samples:
+        #     p.addUserDebugLine(sample[2], [0,0,0])
 
         refusal_reasons = results[i][4]
 
@@ -237,6 +288,8 @@ def sample_cuboid_on_object(
             point_on_face = compute_ray_destination(
                 axis, is_top, start_pos, -half_extent_with_offset, half_extent_with_offset
             )
+            # p.addUserDebugLine(start_pos, point_on_face)
+            # import pdb; pdb.set_trace()
 
             # If we have a list of offset distances, pick the distance for this particular sample we're getting.
             this_cuboid_dimensions = cuboid_dimensions if cuboid_dimensions.ndim == 1 else cuboid_dimensions[i]
@@ -250,6 +303,8 @@ def sample_cuboid_on_object(
             to_wf_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
             sources = trimesh.transformations.transform_points(bbf_sources, to_wf_transform)
             destinations = trimesh.transformations.transform_points(bbf_destinations, to_wf_transform)
+            # for start, end in zip(sources, destinations):
+            #     p.addUserDebugLine(start, end)
 
             # Time to cast the rays.
             cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations, numThreads=0)
