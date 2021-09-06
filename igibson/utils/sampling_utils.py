@@ -261,9 +261,7 @@ def sample_cuboid_on_object(
         for j, to_vertex in enumerate(rotated_points):
             if j <= i:
                 p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
-
-
-    import pdb; pdb.set_trace()
+    extent_with_offset = np.array(list(extents/2) + [(np.max(world_frame_vertex_positions[:, 2]) - np.min(world_frame_vertex_positions[:, 2]))/2])
     for i in range(num_samples):
         # Sample the starting positions in advance.
         # TODO: Narrow down the sampling domain so that we don't sample scenarios where the center is in-domain but the
@@ -276,9 +274,30 @@ def sample_cuboid_on_object(
             bimodal_stdev_fraction,
             axis_probabilities,
         )
-        # import pdb; pdb.set_trace()
-        # for sample in samples:
-        #     p.addUserDebugLine(sample[2], [0,0,0])
+
+        test_samples = sample_origin_positions(
+            -extent_with_offset,
+            extent_with_offset,
+            max_sampling_attempts,
+            bimodal_mean_fraction,
+            bimodal_stdev_fraction,
+            axis_probabilities,
+        )
+        sample_points = np.stack([sample[2] for sample in test_samples])
+        inverted_points = trimesh.transformations.transform_points(sample_points[:,:2], np.linalg.inv(tm))
+        inverted_points = np.concatenate([inverted_points, sample_points[:, 2:3] + np.mean(vertical_extent)], axis=1)
+        
+        for i, from_vertex in enumerate(inverted_points):
+            for j, to_vertex in enumerate(inverted_points):
+                if j <= i:
+                    p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+        import pdb; pdb.set_trace()
+
+        # sample_points = np.stack([sample[2] for sample in test_samples])
+        # for i, from_vertex in enumerate(sample_points):
+        #     for j, to_vertex in enumerate(sample_points):
+        #         if j <= i:
+        #             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
 
         refusal_reasons = results[i][4]
 

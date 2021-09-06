@@ -24,7 +24,7 @@ def main():
         filename=shelf_filename, category="shelf", model_path=shelf_dir, bounding_box=np.array([1.0, 0.4, 2.0])
     )
     simulator.import_object(shelf)
-    shelf.set_position([0, 0, 0.6])
+    shelf.set_position([2, 2, 0.6])
     # shelf.set_orientation([0,0,0,1])
     p.changeDynamics(shelf.get_body_id(), linkIndex=-1,  mass=0)
     shelf.set_orientation((0.1, 0.2, 0.3, 0.8176056393931193))
@@ -40,6 +40,7 @@ def main():
             bounding_box=np.array([0.2, 0.05, 0.3]),
         )
         simulator.import_object(cracker_box)
+        # cracker_box.states[object_states.Inside].set_value(shelf, True, use_ray_casting_method=True)
         cracker_box.states[object_states.OnTop].set_value(shelf, True, use_ray_casting_method=True)
 
         print("Box %d placed." % i)
