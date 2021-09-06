@@ -153,6 +153,18 @@ class BaseRobot(object):
         """
         raise NotImplementedError
 
+    def is_grasping(self, candidate_obj):
+        """
+        Returns True if the robot is grasping the target option.
+        """
+        raise NotImplementedError
+
+    def can_toggle(self, toggle_position, toggle_distance_threshold):
+        """
+        Returns True if the part of the robot that can toggle a toggleable is within the given range of a point corresponding to a toggle marker
+        """
+        raise NotImplementedError
+
     def dump_state(self):
         pass
 

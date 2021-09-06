@@ -351,6 +351,21 @@ class BehaviorRobot(object):
             self.parts["right_hand"].object_in_hand == candidate_obj,
         ]
 
+    def can_toggle(self, toggle_position, toggle_distance_threshold):
+        for part_name, part in self.parts.items():
+            if part_name in ["left_hand", "right_hand"]:
+                if (
+                    np.linalg.norm(np.array(part.get_position()) - np.array(toggle_position))
+                    < toggle_distance_threshold
+                ):
+                    return True
+                for finger in FINGER_TIP_LINK_INDICES:
+                    finger_link_state = p.getLinkState(part.body_id, finger)
+                    link_pos = finger_link_state[0]
+                    if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
+                        return True
+        return False
+
     def dump_state(self):
         return {part_name: part.dump_part_state() for part_name, part in self.parts.items()}
 

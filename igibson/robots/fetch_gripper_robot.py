@@ -768,3 +768,11 @@ class FetchGripper(LocomotorRobot):
                 body_links=self.gripper_joint_ids,
                 enable=False,
             )
+
+    def can_toggle(self, toggle_position, toggle_distance_threshold):
+        for joint_id in self.gripper_joint_ids:
+            finger_link_state = p.getLinkState(self.get_body_id(), joint_id)
+            link_pos = finger_link_state[0]
+            if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
+                return True
+        return False
