@@ -407,7 +407,9 @@ class BRBody(ArticulatedObject):
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
         self.mass = BODY_MASS  # p.getDynamicsInfo(body_id, -1)[0]
-        p.changeDynamics(body_id, -1, mass=self.mass)
+        # The actual body is at link 0, the base link is a "virtual" link
+        p.changeDynamics(body_id, 0, mass=self.mass)
+        p.changeDynamics(body_id, -1, mass=1e-9)
         self.create_link_name_to_vm_map(body_id)
 
         return body_id
