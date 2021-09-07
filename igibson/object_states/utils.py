@@ -1,10 +1,15 @@
+import itertools
+
 import cv2
 import numpy as np
 import pybullet as p
+import trimesh
 from IPython import embed
+from scipy.spatial.transform import Rotation as R
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
+    get_aabb,
     get_aabb_center,
     get_aabb_extent,
     get_link_pose,
@@ -121,13 +126,36 @@ def sample_kinematics(
                 else:
                     assert False, "predicate is not onTop or inside: {}".format(predicate)
 
-                _, _, base_frame_extent, base_frame_center = objA.get_base_aligned_bounding_box(visual=True)
+                # Retrieve base CoM frame-aligned bounding box
+                bbox_center, bbox_orn, bbox_bf_extent, _ = objA.get_base_aligned_bounding_box()
+                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
+                    bbox_bf_extent / 2
+                )
+                bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
+                world_frame_vertex_positions = trimesh.transformations.transform_points(
+                    bbox_frame_vertex_positions, bbox_transform
+                )
+
+                # Construct the minimum volume bounding box that is parallel to the x-y plane and get x- and y-extent
+                transform_matrix, extents_2d = trimesh.bounds.oriented_bounds_2D(world_frame_vertex_positions[:, 0:2])
+                # Get z-extent
+                aabb = get_aabb(objA.get_body_id())
+                aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
+                parallel_bbox_extents = np.append(extents_2d, aabb_extent[2])
+                # The transformation is somehow the inverse of what we want
+                # Compute the inverse translation by R.T and -np.dot(R.T, T)
+                parallel_bbox_center = np.append(
+                    -np.dot(transform_matrix[:2, :2].T, transform_matrix[:2, 2]), aabb_center[2]
+                )
+                rotation_matrix = np.eye(3)
+                rotation_matrix[0:2, 0:2] = transform_matrix[:2, :2].T
+                parallel_bbox_orn = R.from_matrix(rotation_matrix).as_quat()
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
                     objB,
                     num_samples=1,
-                    cuboid_dimensions=base_frame_extent,
+                    cuboid_dimensions=parallel_bbox_extents,
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
                     undo_padding=True,
@@ -139,13 +167,22 @@ def sample_kinematics(
 
                 sampling_success = sampled_vector is not None
                 if sampling_success:
-                    # Move the object to match the position of the bounding box. To do that, move backwards by the
-                    # bbox's offset to the object CoM in the sampled cuboid's frame.
-                    pos, orientation = p.multiplyTransforms(
-                        sampled_vector, sampled_quaternion, -base_frame_center, [0, 0, 0, 1]
-                    )
-                    pos = np.array(pos)
-                    orientation = np.array(orientation)
+                    # Move the object from the original parallel bbox to the sampled bbox
+                    parallel_bbox_rotation = R.from_quat(parallel_bbox_orn)
+                    sample_rotation = R.from_quat(sampled_quaternion)
+                    original_rotation = R.from_quat(orientation)
+
+                    # The additional orientation to be applied should be the delta orientation
+                    # between the parallel bbox orientation and the sample orientation
+                    additional_rotation = sample_rotation * parallel_bbox_rotation.inv()
+                    combined_rotation = additional_rotation * original_rotation
+                    orientation = combined_rotation.as_quat()
+
+                    # The delta vector between the base CoM frame and the parallel bbox center needs to be rotated
+                    # by the same additional orientation
+                    diff = old_pos - parallel_bbox_center
+                    rotated_diff = additional_rotation.apply(diff)
+                    pos = sampled_vector + rotated_diff
             else:
                 random_idx = np.random.randint(len(objB.supporting_surfaces[predicate].keys()))
                 body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[random_idx]
