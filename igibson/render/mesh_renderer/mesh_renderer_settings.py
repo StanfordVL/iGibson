@@ -1,6 +1,7 @@
 import os
-import igibson
 import platform
+
+import igibson
 
 
 class MeshRendererSettings(object):
@@ -10,20 +11,20 @@ class MeshRendererSettings(object):
         msaa=False,
         enable_shadow=False,
         enable_pbr=True,
-        env_texture_filename=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
-                                          'photo_studio_01_2k.hdr'),
-        env_texture_filename2=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
-                                           'photo_studio_01_2k.hdr'),
-        env_texture_filename3=os.path.join(igibson.ig_dataset_path, 'scenes', 'background',
-                                           'photo_studio_01_2k.hdr'),
-        light_modulation_map_filename='',
+        env_texture_filename=os.path.join(igibson.ig_dataset_path, "scenes", "background", "photo_studio_01_2k.hdr"),
+        env_texture_filename2=os.path.join(igibson.ig_dataset_path, "scenes", "background", "photo_studio_01_2k.hdr"),
+        env_texture_filename3=os.path.join(igibson.ig_dataset_path, "scenes", "background", "photo_studio_01_2k.hdr"),
+        light_modulation_map_filename="",
         optimized=False,
-        skybox_size=20.,
+        skybox_size=20.0,
         light_dimming_factor=1.0,
         fullscreen=False,
         glfw_gl_version=None,
         texture_scale=1.0,
         hide_robot=True,
+        show_glfw_window=False,
+        blend_highlight=False,
+        is_robosuite=False,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
@@ -41,6 +42,9 @@ class MeshRendererSettings(object):
         :param glfw_gl_version: glfw gl version
         :param texture_scale: texture scale
         :param hide_robot: whether to hide robot when rendering
+        :param show_glfw_window: whether to show glfw window (default false)
+        :param blend_highlight: blend highlight of objects into RGB image
+        :param is_robosuite: whether the environment is of robosuite.
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
@@ -56,11 +60,14 @@ class MeshRendererSettings(object):
         self.fullscreen = fullscreen
         self.texture_scale = texture_scale
         self.hide_robot = hide_robot
+        self.show_glfw_window = show_glfw_window
+        self.blend_highlight = blend_highlight
+        self.is_robosuite = is_robosuite
 
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
         else:
-            if platform.system() == 'Darwin':
+            if platform.system() == "Darwin":
                 self.glfw_gl_version = [4, 1]
             else:
                 self.glfw_gl_version = [4, 5]

@@ -1,4 +1,4 @@
-import tensorflow as tf    # pylint: ignore-module
+import tensorflow as tf  # pylint: ignore-module
 
 
 # TF related

@@ -19,9 +19,10 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
-#include  <glad/gl.h>
+#include <glad/gl.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
@@ -43,6 +44,35 @@ namespace py = pybind11;
 #else
 #define OS_SEP "/"
 #endif
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <cstdlib>
+
+#include "cryptlib.h"
+using CryptoPP::Exception;
+
+#include "hex.h"
+using CryptoPP::HexEncoder;
+using CryptoPP::HexDecoder;
+
+#include "filters.h"
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
+using CryptoPP::StreamTransformationFilter;
+using CryptoPP::ArraySink;
+
+#include "aes.h"
+using CryptoPP::AES;
+
+#include "ccm.h"
+using CryptoPP::CBC_Mode;
+
+#include "assert.h"
+
+using CryptoPP::byte;
 
 class Image {
 public:
@@ -190,12 +220,12 @@ void MeshRendererContext::map_tensor_float(GLuint tid, int width, int height, st
 void MeshRendererContext::render_meshrenderer_pre(bool msaa, GLuint fb1, GLuint fb2) {
 
     glBindFramebuffer(GL_FRAMEBUFFER, fb2);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     if (msaa) {
         glBindFramebuffer(GL_FRAMEBUFFER, fb1);
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
     glEnable(GL_DEPTH_TEST);
@@ -214,7 +244,7 @@ void MeshRendererContext::blit_buffer(int width, int height, GLuint fb1, GLuint 
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb2);
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 7; i++) {
         glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
         glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
         glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
@@ -229,15 +259,15 @@ py::array_t<float> MeshRendererContext::readbuffer_meshrenderer(char *mode, int 
         glReadBuffer(GL_COLOR_ATTACHMENT1);
     } else if (!strcmp(mode, "seg")) {
         glReadBuffer(GL_COLOR_ATTACHMENT2);
-    } else if (!strcmp(mode, "3d")) {
+    } else if (!strcmp(mode, "ins_seg")) {
         glReadBuffer(GL_COLOR_ATTACHMENT3);
-    } else if (!strcmp(mode, "scene_flow")) {
+    } else if (!strcmp(mode, "3d")) {
         glReadBuffer(GL_COLOR_ATTACHMENT4);
-    }
-    else if (!strcmp(mode, "optical_flow")) {
+    } else if (!strcmp(mode, "scene_flow")) {
         glReadBuffer(GL_COLOR_ATTACHMENT5);
-    }
-    else {
+    } else if (!strcmp(mode, "optical_flow")) {
+        glReadBuffer(GL_COLOR_ATTACHMENT6);
+    } else {
         fprintf(stderr, "ERROR: Unknown buffer mode.\n");
         exit(EXIT_FAILURE);
     }
@@ -274,17 +304,18 @@ void MeshRendererContext::clean_meshrenderer(std::vector<GLuint> texture1, std::
 
 py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int height) {
     GLuint *fbo_ptr = (GLuint *) malloc(sizeof(GLuint));
-    GLuint *texture_ptr = (GLuint *) malloc(7 * sizeof(GLuint));
+    GLuint *texture_ptr = (GLuint *) malloc(8 * sizeof(GLuint));
     glGenFramebuffers(1, fbo_ptr);
-    glGenTextures(7, texture_ptr);
+    glGenTextures(8, texture_ptr);
     int fbo = fbo_ptr[0];
     int color_tex_rgb = texture_ptr[0];
     int color_tex_normal = texture_ptr[1];
     int color_tex_semantics = texture_ptr[2];
-    int color_tex_3d = texture_ptr[3];
-    int color_tex_scene_flow = texture_ptr[4];
-    int color_tex_optical_flow = texture_ptr[5];
-    int depth_tex = texture_ptr[6];
+    int color_tex_ins_seg = texture_ptr[3];
+    int color_tex_3d = texture_ptr[4];
+    int color_tex_scene_flow = texture_ptr[5];
+    int color_tex_optical_flow = texture_ptr[6];
+    int depth_tex = texture_ptr[7];
 
     glBindTexture(GL_TEXTURE_2D, color_tex_rgb);
     // Note: VR textures need these settings, otherwise they won't display on the HMD
@@ -295,6 +326,8 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_semantics);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glBindTexture(GL_TEXTURE_2D, color_tex_ins_seg);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_3d);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glBindTexture(GL_TEXTURE_2D, color_tex_scene_flow);
@@ -307,25 +340,28 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, color_tex_rgb, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, color_tex_normal, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, color_tex_semantics, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, color_tex_3d, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, color_tex_scene_flow, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, color_tex_optical_flow, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D, color_tex_ins_seg, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D, color_tex_3d, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D, color_tex_scene_flow, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D, color_tex_optical_flow, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, depth_tex, 0);
     glViewport(0, 0, width, height);
-    GLenum *bufs = (GLenum *) malloc(6 * sizeof(GLenum));
+    GLenum *bufs = (GLenum *) malloc(7 * sizeof(GLenum));
     bufs[0] = GL_COLOR_ATTACHMENT0;
     bufs[1] = GL_COLOR_ATTACHMENT1;
     bufs[2] = GL_COLOR_ATTACHMENT2;
     bufs[3] = GL_COLOR_ATTACHMENT3;
     bufs[4] = GL_COLOR_ATTACHMENT4;
     bufs[5] = GL_COLOR_ATTACHMENT5;
-    glDrawBuffers(6, bufs);
+    bufs[6] = GL_COLOR_ATTACHMENT6;
+    glDrawBuffers(7, bufs);
     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     py::list result;
     result.append(fbo);
     result.append(color_tex_rgb);
     result.append(color_tex_normal);
     result.append(color_tex_semantics);
+    result.append(color_tex_ins_seg);
     result.append(color_tex_3d);
     result.append(color_tex_scene_flow);
     result.append(color_tex_optical_flow);
@@ -335,23 +371,26 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer(int width, int heig
 
 py::list MeshRendererContext::setup_framebuffer_meshrenderer_ms(int width, int height) {
     GLuint *fbo_ptr = (GLuint *) malloc(sizeof(GLuint));
-    GLuint *texture_ptr = (GLuint *) malloc(7 * sizeof(GLuint));
+    GLuint *texture_ptr = (GLuint *) malloc(8 * sizeof(GLuint));
     glGenFramebuffers(1, fbo_ptr);
-    glGenTextures(7, texture_ptr);
+    glGenTextures(8, texture_ptr);
     int fbo = fbo_ptr[0];
     int color_tex_rgb = texture_ptr[0];
     int color_tex_normal = texture_ptr[1];
     int color_tex_semantics = texture_ptr[2];
-    int color_tex_3d = texture_ptr[3];
-    int color_tex_scene_flow = texture_ptr[4];
-    int color_tex_optical_flow = texture_ptr[5];
-    int depth_tex = texture_ptr[6];
+    int color_tex_ins_seg = texture_ptr[3];
+    int color_tex_3d = texture_ptr[4];
+    int color_tex_scene_flow = texture_ptr[5];
+    int color_tex_optical_flow = texture_ptr[6];
+    int depth_tex = texture_ptr[7];
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_rgb);
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_normal);
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_semantics);
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA, width, height, GL_TRUE);
+    glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_ins_seg);
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA32F, width, height, GL_TRUE);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d);
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA32F, width, height, GL_TRUE);
     glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, color_tex_scene_flow);
@@ -364,25 +403,28 @@ py::list MeshRendererContext::setup_framebuffer_meshrenderer_ms(int width, int h
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, color_tex_rgb, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D_MULTISAMPLE, color_tex_normal, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D_MULTISAMPLE, color_tex_semantics, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D_MULTISAMPLE, color_tex_scene_flow, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D_MULTISAMPLE, color_tex_optical_flow, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT3, GL_TEXTURE_2D_MULTISAMPLE, color_tex_ins_seg, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT4, GL_TEXTURE_2D_MULTISAMPLE, color_tex_3d, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT5, GL_TEXTURE_2D_MULTISAMPLE, color_tex_scene_flow, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT6, GL_TEXTURE_2D_MULTISAMPLE, color_tex_optical_flow, 0);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D_MULTISAMPLE, depth_tex, 0);
     glViewport(0, 0, width, height);
-    GLenum *bufs = (GLenum *) malloc(6 * sizeof(GLenum));
+    GLenum *bufs = (GLenum *) malloc(7 * sizeof(GLenum));
     bufs[0] = GL_COLOR_ATTACHMENT0;
     bufs[1] = GL_COLOR_ATTACHMENT1;
     bufs[2] = GL_COLOR_ATTACHMENT2;
     bufs[3] = GL_COLOR_ATTACHMENT3;
     bufs[4] = GL_COLOR_ATTACHMENT4;
     bufs[5] = GL_COLOR_ATTACHMENT5;
-    glDrawBuffers(6, bufs);
+    bufs[6] = GL_COLOR_ATTACHMENT6;
+    glDrawBuffers(7, bufs);
     assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
     py::list result;
     result.append(fbo);
     result.append(color_tex_rgb);
     result.append(color_tex_normal);
     result.append(color_tex_semantics);
+    result.append(color_tex_ins_seg);
     result.append(color_tex_3d);
     result.append(color_tex_scene_flow);
     result.append(color_tex_optical_flow);
@@ -470,13 +512,16 @@ void MeshRendererContext::render_softbody_instance(int vao, int vbo, py::array_t
 }
 
 void
-MeshRendererContext::init_material_instance(int shaderProgram, float instance_color, py::array_t<float> diffuse_color,
-                                            float use_texture, float use_pbr, float use_pbr_mapping, float metallic,
+MeshRendererContext::init_material_instance(int shaderProgram, float semantic_seg_color, float instance_seg_color,
+                                            py::array_t<float> diffuse_color,
+                                            float use_texture, float use_pbr,
+                                            float use_pbr_mapping, float metallic,
                                             float roughness, py::array_t<float> transform_param) {
     float *diffuse_ptr = (float *) diffuse_color.request().ptr;
     float *transform_param_ptr = (float *) transform_param.request().ptr;
 
-    glUniform3f(glGetUniformLocation(shaderProgram, "instance_color"), instance_color, 0, 0);
+    glUniform3f(glGetUniformLocation(shaderProgram, "semantic_seg_color"), semantic_seg_color, 0, 0);
+    glUniform3f(glGetUniformLocation(shaderProgram, "instance_seg_color"), instance_seg_color, 0, 0);
     glUniform3f(glGetUniformLocation(shaderProgram, "diffuse_color"), diffuse_ptr[0], diffuse_ptr[1], diffuse_ptr[2]);
     glUniform3f(glGetUniformLocation(shaderProgram, "uv_transform_param"), transform_param_ptr[0],
                                                                         transform_param_ptr[1],
@@ -625,7 +670,94 @@ void MeshRendererContext::cglUseProgram(int shaderProgram) {
     glUseProgram(shaderProgram);
 }
 
-int MeshRendererContext::loadTexture(std::string filename, float texture_scale) {
+inline bool ends_with(std::string const & value, std::string const & ending)
+{
+    if (ending.size() > value.size()) return false;
+    return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+std::vector<unsigned char> readFile(const char* filename)
+{
+    // open the file:
+    std::ifstream file(filename, std::ios::binary);
+    // read the data:
+    return std::vector<unsigned char>((std::istreambuf_iterator<char>(file)),
+                              std::istreambuf_iterator<char>());
+}
+
+std::vector<unsigned char> readFileWithKey(const char* filename, const char* keyfilename)
+{
+
+    byte key[AES::DEFAULT_KEYLENGTH];
+	byte iv[AES::BLOCKSIZE];
+    std::ifstream key_file(keyfilename);
+    if (!key_file.is_open()) {
+        throw std::runtime_error("ERROR: iGibson key file is not found, request here https://forms.gle/oW4xB3tRXyCJa1Ap8");
+    }
+    std::string key_string, iv_string;
+    std::getline(key_file, key_string);
+    std::getline(key_file, iv_string);
+    StringSource(key_string, true,
+		new HexDecoder(
+			new ArraySink(key, sizeof(key))
+		) // HexEncoder
+	); // StringSource
+
+    StringSource(iv_string, true,
+		new HexDecoder(
+			new ArraySink(iv, sizeof(iv))
+		) // HexEncoder
+	); // StringSource
+
+	std::ifstream in_file;
+    in_file.open(filename, std::ios::binary);
+    std::stringstream str_stream;
+    str_stream << in_file.rdbuf(); //read the file
+
+	std::string cipher = str_stream.str();
+	std::string plain, encoded, recovered;
+
+	try
+	{
+		CBC_Mode< AES >::Decryption d;
+		d.SetKeyWithIV(key, sizeof(key), iv);
+
+		// The StreamTransformationFilter removes
+		//  padding as required.
+		StringSource s(cipher, true,
+			new StreamTransformationFilter(d,
+				new StringSink(recovered)
+			) // StreamTransformationFilter
+		); // StringSource
+
+#if 0
+		StreamTransformationFilter filter(d);
+		filter.Put((const byte*)cipher.data(), cipher.size());
+		filter.MessageEnd();
+
+		const size_t ret = filter.MaxRetrievable();
+		recovered.resize(ret);
+		filter.Get((byte*)recovered.data(), recovered.size());
+#endif
+
+	}
+	catch(const CryptoPP::Exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+		std::exit(1);
+	}
+
+    std::stringstream ss(recovered);
+
+    // open the file:
+    //std::ifstream file(filename, std::ios::binary);
+    // read the data:
+    return std::vector<unsigned char>((std::istreambuf_iterator<char>(ss)),
+                              std::istreambuf_iterator<char>());
+}
+
+
+int MeshRendererContext::loadTexture(std::string filename, float texture_scale, std::string keyfilename) {
     //width, height = img.size
     // glTexImage2D expects the first element of the image data to be the
     // bottom-left corner of the image.  Subsequent elements go left to right,
@@ -641,7 +773,15 @@ int MeshRendererContext::loadTexture(std::string filename, float texture_scale) 
     int h;
     int comp;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char *image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb);
+
+    std::vector<unsigned char> buffer;
+    if (ends_with(filename, std::string("encrypted.png"))) {
+        buffer = readFileWithKey(filename.c_str(), keyfilename.c_str());
+    } else {
+        buffer = readFile(filename.c_str());
+    }
+    unsigned char *image = stbi_load_from_memory(buffer.data(), buffer.size(), &w, &h, &comp, STBI_rgb);
+
     if (image == nullptr)
         throw (std::string("ERROR: Failed to load texture"));
 
@@ -997,17 +1137,18 @@ int MeshRendererContext::allocateTexture(int w, int h) {
 
 void MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int height, GLuint fb2, GLuint texture_id) {
     glBindFramebuffer(GL_FRAMEBUFFER, fb2);
-    glReadBuffer(GL_COLOR_ATTACHMENT3);
+    // read buffer from 3d component
+    glReadBuffer(GL_COLOR_ATTACHMENT4);
 	glCopyTextureSubImage2D(texture_id, 0, 0, 0, 0, 0, width, height);
 }
 
-py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize) {
+py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize, std::string keyfilename) {
 		int num_textures = filenames.size();
 		std::vector<unsigned char*> image_data;
 		std::vector<int> texHeights;
 		std::vector<int> texWidths;
 		std::vector<int> texChannels;
-
+        std::vector<unsigned char> buffer;
 		printf("number of textures %d\n", num_textures);
 		for (int i = 0; i < num_textures; i++) {
 			std::string filename = filenames[i];
@@ -1016,7 +1157,13 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			int h;
 			int comp;
 			stbi_set_flip_vertically_on_load(true);
-			unsigned char* image = stbi_load(filename.c_str(), &w, &h, &comp, STBI_rgb); // force to 3 channels
+			if (ends_with(filename, std::string("encrypted.png"))) {
+                buffer = readFileWithKey(filename.c_str(), keyfilename.c_str());
+            } else {
+                buffer = readFile(filename.c_str());
+            }
+			unsigned char* image = stbi_load_from_memory(buffer.data(), buffer.size(), &w, &h, &comp, STBI_rgb);
+			// force to 3 channels
 			if (image == nullptr)
 				throw(std::string("Failed to load texture"));
 			std::cout << "Size is w: " << w << " by h: " << h << std::endl;
@@ -1191,8 +1338,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		}
 
 		texInfo.append(texId1);
@@ -1213,7 +1360,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		py::array_t<float> mergedHiddenData,
 		py::array_t<float> mergedUVData,
 		int tex_id_1, int tex_id_2, GLuint fb,
-		float use_pbr, int depth_tex_id) {
+		float use_pbr,
+		float blend_highlight,
+		int depth_tex_id) {
 		// First set up VAO and corresponding attributes
 		GLuint VAO;
 		glGenVertexArrays(1, &VAO);
@@ -1291,6 +1440,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_position"), lightposptr[0], lightposptr[1], lightposptr[2]);
 		glUniform3f(glGetUniformLocation(shaderProgram, "light_color"), lightcolorptr[0], lightcolorptr[1], lightcolorptr[2]);
 		glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
+		glUniform1f(glGetUniformLocation(shaderProgram, "blend_highlight"), (float)blend_highlight);
 
 		printf("multidrawcount %d\n", multidrawCount);
 
@@ -1443,6 +1593,76 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		renderData.append(EBO);
 
 		return renderData;
+	}
+
+    void MeshRendererContext::updateTextureIdArrays(int shaderProgram,
+        py::array_t<float> mergedFragData,
+        py::array_t<float> mergedFragRMData,
+		py::array_t<float> mergedFragNData,
+		py::array_t<float> mergedDiffuseData,
+		py::array_t<float> mergedPBRData,
+		py::array_t<float> mergedHiddenData,
+		py::array_t<float> mergedUVData) {
+		// Set up shaders
+		float* fragData = (float*)mergedFragData.request().ptr;
+		float* fragRMData = (float*)mergedFragRMData.request().ptr;
+		float* fragNData = (float*)mergedFragNData.request().ptr;
+		float* diffuseData = (float*)mergedDiffuseData.request().ptr;
+		int fragDataSize = mergedFragData.size();
+		int diffuseDataSize = mergedDiffuseData.size();
+
+		glUseProgram(shaderProgram);
+
+		glGenBuffers(1, &uboTexColorData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
+		texColorDataSize = 4 * 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, texColorDataSize, NULL, GL_STATIC_DRAW);
+		GLuint texColorDataIdx = glGetUniformBlockIndex(shaderProgram, "TexColorData");
+		glUniformBlockBinding(shaderProgram, texColorDataIdx, 0);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 0, uboTexColorData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, fragDataSize * sizeof(float), fragData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragRMData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 2 * 16 * MAX_ARRAY_SIZE, fragDataSize * sizeof(float), fragNData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 3 * 16 * MAX_ARRAY_SIZE, diffuseDataSize * sizeof(float), diffuseData);
+
+		float* pbrData = (float*)mergedPBRData.request().ptr;
+		int pbrDataSize = mergedPBRData.size();
+
+		glGenBuffers(1, &uboPbrData);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboPbrData);
+		int pbrDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, pbrDataMaxSize, NULL, GL_STATIC_DRAW);
+		GLuint pbrDataIdx = glGetUniformBlockIndex(shaderProgram, "PBRData");
+		glUniformBlockBinding(shaderProgram, pbrDataIdx, 1);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 1, uboPbrData);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, pbrDataSize * sizeof(float), pbrData);
+
+
+		float *hiddenData = (float*)mergedHiddenData.request().ptr;
+		int hiddenDataSize = mergedHiddenData.size();
+
+		glGenBuffers(1, &uboHidden);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboHidden);
+		int hiddenDataMaxSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, hiddenDataMaxSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint hiddenIdx = glGetUniformBlockIndex(shaderProgram, "Hidden");
+		glUniformBlockBinding(shaderProgram, hiddenIdx, 4);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 4, uboHidden);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, hiddenDataSize * sizeof(float), hiddenData);
+
+		float* uvData = (float*)mergedUVData.request().ptr;
+		int uvDataSize = mergedUVData.size();
+
+		glGenBuffers(1, &uboUV);
+		glBindBuffer(GL_UNIFORM_BUFFER, uboUV);
+		int uvMaxDataSize = 16 * MAX_ARRAY_SIZE;
+		glBufferData(GL_UNIFORM_BUFFER, uvMaxDataSize, NULL, GL_DYNAMIC_DRAW);
+		GLuint uvIdx = glGetUniformBlockIndex(shaderProgram, "UVData");
+		glUniformBlockBinding(shaderProgram, uvIdx, 5);
+		glBindBufferBase(GL_UNIFORM_BUFFER, 5, uboUV);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, uvDataSize * sizeof(float), uvData);
+
+		glUseProgram(0);
 	}
 
 	// Updates hidden states in vertex shader
@@ -1630,4 +1850,209 @@ void MeshRendererContext::renderSkyBox(int shaderProgram, py::array_t<float> V, 
 
 	glBindVertexArray(m_skybox_vao);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+GLuint MeshRendererContext::loadCharTexture(int rows, int width, py::array_t<int> buffer) {
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	int buffer_len = rows * width;
+	int* buffer_ptr = (int*)buffer.request().ptr;
+	// Convert buffer integers to unsigned char before loading into texture
+	std::vector<unsigned char> buffer_vals;
+	for (int i = 0; i < buffer_len; i++) {
+		buffer_vals.push_back((unsigned char)buffer_ptr[i]);
+	}
+
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_RED,
+		width,
+		rows,
+		0,
+		GL_RED,
+		GL_UNSIGNED_BYTE,
+		&buffer_vals[0]
+	);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	return tex;
+}
+
+py::list MeshRendererContext::setupTextRender() {
+	GLuint VAO, VBO;
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glBindVertexArray(VAO);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	// Each quad requires 6 vertices, containing 4 floats - x, y, tex_u and tex_v
+	// Enable GL_DYNAMIC_DRAW since we will be changing this VBO frequently when rendering the text
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6 * 4, NULL, GL_DYNAMIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+
+	py::list textRenderData;
+	textRenderData.append(VAO);
+	textRenderData.append(VBO);
+
+	return textRenderData;
+}
+
+void MeshRendererContext::preRenderTextFramebufferSetup(int FBO) {
+	// Clears framebuffer in preparation for rendering text
+	int prev_FBO;
+	glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &prev_FBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	// Make framebuffer completely transparent by default, since we only want to render text
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glBindFramebuffer(GL_FRAMEBUFFER, prev_FBO);
+}
+
+void MeshRendererContext::preRenderText(int shaderProgram, int FBO, int VAO, float color_x, float color_y, float color_z) {
+	if (FBO != -1) {
+		// Get previous FBO and store it, so we can go back (if texture and non-texture text rendering is interleaved)
+		this->restore_prev_FBO = true;
+		glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &this->m_prevFBO);
+		glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	}
+	else {
+		this->restore_prev_FBO = false;
+	}
+	
+	// Enable alpha blending so text appears correctly
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_DEPTH_TEST);
+	glUseProgram(shaderProgram);
+	// Orthographic projection used to render text
+	glm::mat4 ortho_proj = glm::ortho(0.0f, static_cast<float>(this->m_windowWidth), 0.0f, static_cast<float>(this->m_windowHeight));
+	glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(ortho_proj));
+
+	// Set text color
+	glUniform3f(glGetUniformLocation(shaderProgram, "textColor"), color_x, color_y, color_z);
+	glActiveTexture(GL_TEXTURE13);
+	glUniform1i(glGetUniformLocation(shaderProgram, "text"), 13);
+	glBindVertexArray(VAO);
+};
+
+void MeshRendererContext::renderChar(float xpos, float ypos, float w, float h, GLuint tex_id, int VBO) {
+	// Generate vertices for this character's quad
+	// First two values are the x and y positions, second two are the texture coordinates
+	float vertices[6][4] = {
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos,     ypos,       0.0f, 1.0f },
+		{ xpos + w, ypos,       1.0f, 1.0f },
+
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos + w, ypos,       1.0f, 1.0f },
+		{ xpos + w, ypos + h,   1.0f, 0.0f }
+	};
+
+	glBindTexture(GL_TEXTURE_2D, tex_id);
+
+	// Load character quad data into VBO
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	// Render quad
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+}
+
+void MeshRendererContext::renderBackgroundQuad(float xpos, float ypos, float w, float h, int VBO, int shaderProgram, float alpha, float color_x, float color_y, float color_z) {
+	// Renders background quad with the given boundary
+	glUniform1f(glGetUniformLocation(shaderProgram, "background"), 1.0);
+	glUniform1f(glGetUniformLocation(shaderProgram, "backgroundAlpha"), alpha);
+	glUniform3f(glGetUniformLocation(shaderProgram, "backgroundColor"), color_x, color_y, color_z);
+
+	// Set all tex coords to 0 since we don't need them
+	float vertices[6][4] = {
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos,     ypos,       0.0f, 0.0f },
+		{ xpos + w, ypos,       0.0f, 0.0f },
+
+		{ xpos,     ypos + h,   0.0f, 0.0f },
+		{ xpos + w, ypos,       0.0f, 0.0f },
+		{ xpos + w, ypos + h,   0.0f, 0.0f }
+	};
+
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	// Clear all background variables
+	glUniform1f(glGetUniformLocation(shaderProgram, "background"), 0.0);
+	glUniform1f(glGetUniformLocation(shaderProgram, "backgroundAlpha"), -1.0);
+}
+
+void MeshRendererContext::postRenderText() {
+	glBindVertexArray(0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	// Disable alpha blending so rest of iGibson rendering is not affected
+	glDisable(GL_BLEND);
+	glDisable(GL_DEPTH_TEST);
+
+	// Restore previous FBO if one was bound
+	// This allows us to render text both to the screen and to a texture
+	if (this->restore_prev_FBO = true) {
+		glBindFramebuffer(GL_FRAMEBUFFER, this->m_prevFBO);
+	}
+}
+
+py::list MeshRendererContext::genTextFramebuffer() {
+	// Create and bind framebuffer
+	GLuint fbo;
+	glGenFramebuffers(1, &fbo);
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	
+	// Create and bind color texture
+	GLuint render_tex;
+	glGenTextures(1, &render_tex);
+	glBindTexture(GL_TEXTURE_2D, render_tex);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, this->m_windowWidth, this->m_windowHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, render_tex, 0);
+
+	// Create a renderbuffer object for depth and stencil, since we won't be sampling either
+	GLuint rbo;
+	glGenRenderbuffers(1, &rbo);
+	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, this->m_windowWidth, this->m_windowHeight);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+	// Check that framebuffer is complete
+	assert(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE);
+	glViewport(0, 0, this->m_windowWidth, this->m_windowHeight);
+	GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
+	glDrawBuffers(1, draw_buffers);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	py::list genOut;
+	genOut.append(fbo);
+	genOut.append(render_tex);
+
+	return genOut;
+}
+
+py::array_t<float> MeshRendererContext::read_fbo_color_tex_to_numpy(GLuint fbo) {
+	// Used for debugging the contents of an FBO's color attachment
+	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+	glReadBuffer(GL_COLOR_ATTACHMENT0);
+	py::array_t<float> data = py::array_t<float>(4 * this->m_windowWidth * this->m_windowHeight);
+	py::buffer_info buf = data.request();
+	float* ptr = (float*)buf.ptr;
+	glReadPixels(0, 0, this->m_windowWidth, this->m_windowHeight, GL_RGBA, GL_FLOAT, ptr);
+	return data;
 }
