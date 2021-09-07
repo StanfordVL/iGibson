@@ -448,7 +448,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 assert matched_sim_obj is not None, obj_inst
                 self.object_scope[obj_inst] = matched_sim_obj
 
-    def sample(self, kinematic_only=False):
+    def sample(self, kinematic_only=False, validate_goal_condition=True):
         feedback = {"init_success": "yes", "goal_success": "yes", "init_feedback": "", "goal_feedback": ""}
         non_sampleable_obj_conditions = []
         sampleable_obj_conditions = []
@@ -620,6 +620,93 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 feedback["init_feedback"] = error_msg
                 return False, feedback
 
+        self.scene_object_scope_filtered = scene_object_scope_filtered
+
+        if validate_goal_condition:
+            success, goal_condition_set_success, goal_sampling_error_msgs = self.sample_goal_conditions(
+                sample_nonkinematic=False
+            )
+
+            if not goal_condition_set_success:
+                goal_sampling_error_msg_compiled = ""
+                for i, log_msg in enumerate(goal_sampling_error_msgs):
+                    goal_sampling_error_msg_compiled += "-" * 30 + "\n"
+                    goal_sampling_error_msg_compiled += "Ground condition set #{}/{}:\n".format(
+                        i + 1, len(goal_sampling_error_msgs)
+                    )
+                    goal_sampling_error_msg_compiled += log_msg + "\n"
+                feedback["goal_success"] = "no"
+                feedback["goal_feedback"] = goal_sampling_error_msg_compiled
+                return False, feedback
+
+        # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
+        for condition, positive in non_sampleable_obj_conditions:
+            num_trials = 10
+            for _ in range(num_trials):
+                success = condition.sample(binary_state=positive)
+                if success:
+                    break
+            if not success:
+                logging.warning(
+                    "Non-sampleable object conditions failed even after successful matching: {}".format(condition.body)
+                )
+                feedback["init_success"] = "no"
+                feedback["init_feedback"] = "Please run test sampling again."
+                return False, feedback
+
+        # Use ray casting for ontop and inside sampling for non-sampleable objects
+        for condition, positive in sampleable_obj_conditions:
+            if condition.STATE_NAME in ["inside", "ontop"]:
+                condition.kwargs["use_ray_casting_method"] = True
+
+        if len(self.sampling_orders) > 0:
+            # Pop non-sampleable objects
+            self.sampling_orders.pop(0)
+            for cur_batch in self.sampling_orders:
+                # First sample non-sliced conditions
+                for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME == "sliced":
+                        continue
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        num_trials = 100
+                        for _ in range(num_trials):
+                            success = condition.sample(binary_state=positive)
+                            if success:
+                                break
+                        if not success:
+                            error_msg = "Sampleable object conditions failed: {} {}".format(
+                                condition.STATE_NAME, condition.body
+                            )
+                            logging.warning(error_msg)
+                            feedback["init_success"] = "no"
+                            feedback["init_feedback"] = error_msg
+                            return False, feedback
+
+                # Then sample non-sliced conditions
+                for condition, positive in sampleable_obj_conditions:
+                    if condition.STATE_NAME != "sliced":
+                        continue
+                    # Sample conditions that involve the current batch of objects
+                    if condition.body[0] in cur_batch:
+                        success = condition.sample(binary_state=positive)
+                        if not success:
+                            error_msg = "Sampleable object conditions failed: {}".format(condition.body)
+                            logging.warning(error_msg)
+                            feedback["init_success"] = "no"
+                            feedback["init_feedback"] = error_msg
+                            return False, feedback
+
+        return True, feedback
+
+    def sample_goal_conditions(self, sample_nonkinematic=True):
+        assert hasattr(
+            self, "scene_object_scope_filtered"
+        ), "Initial conditions must be sampled first in order to sample goal conditions"
+        scene_object_scope_filtered = self.scene_object_scope_filtered
+        success = False
+        goal_condition_set_success = False
+
         np.random.shuffle(self.ground_goal_state_options)
         logging.warning(("number of ground_goal_state_options", len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
@@ -646,7 +733,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                                 if isinstance(goal_condition, Negation):
                                     continue
                                 # only sample kinematic goal condition
-                                if goal_condition.STATE_NAME not in KINEMATICS_STATES:
+                                if not sample_nonkinematic and goal_condition.STATE_NAME not in KINEMATICS_STATES:
                                     continue
                                 if scene_obj not in goal_condition.body:
                                     continue
@@ -772,78 +859,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
             # if one set of goal conditions (and initial conditions) are satisfied, sampling is successful
             break
-
-        if not goal_condition_set_success:
-            goal_sampling_error_msg_compiled = ""
-            for i, log_msg in enumerate(goal_sampling_error_msgs):
-                goal_sampling_error_msg_compiled += "-" * 30 + "\n"
-                goal_sampling_error_msg_compiled += "Ground condition set #{}/{}:\n".format(
-                    i + 1, len(goal_sampling_error_msgs)
-                )
-                goal_sampling_error_msg_compiled += log_msg + "\n"
-            feedback["goal_success"] = "no"
-            feedback["goal_feedback"] = goal_sampling_error_msg_compiled
-            return False, feedback
-
-        # Do sampling again using the object instance -> simulator object mapping from maximum bipartite matching
-        for condition, positive in non_sampleable_obj_conditions:
-            num_trials = 10
-            for _ in range(num_trials):
-                success = condition.sample(binary_state=positive)
-                if success:
-                    break
-            if not success:
-                logging.warning(
-                    "Non-sampleable object conditions failed even after successful matching: {}".format(condition.body)
-                )
-                feedback["init_success"] = "no"
-                feedback["init_feedback"] = "Please run test sampling again."
-                return False, feedback
-
-        # Use ray casting for ontop and inside sampling for non-sampleable objects
-        for condition, positive in sampleable_obj_conditions:
-            if condition.STATE_NAME in ["inside", "ontop"]:
-                condition.kwargs["use_ray_casting_method"] = True
-
-        if len(self.sampling_orders) > 0:
-            # Pop non-sampleable objects
-            self.sampling_orders.pop(0)
-            for cur_batch in self.sampling_orders:
-                # First sample non-sliced conditions
-                for condition, positive in sampleable_obj_conditions:
-                    if condition.STATE_NAME == "sliced":
-                        continue
-                    # Sample conditions that involve the current batch of objects
-                    if condition.body[0] in cur_batch:
-                        num_trials = 100
-                        for _ in range(num_trials):
-                            success = condition.sample(binary_state=positive)
-                            if success:
-                                break
-                        if not success:
-                            error_msg = "Sampleable object conditions failed: {} {}".format(
-                                condition.STATE_NAME, condition.body
-                            )
-                            logging.warning(error_msg)
-                            feedback["init_success"] = "no"
-                            feedback["init_feedback"] = error_msg
-                            return False, feedback
-
-                # Then sample non-sliced conditions
-                for condition, positive in sampleable_obj_conditions:
-                    if condition.STATE_NAME != "sliced":
-                        continue
-                    # Sample conditions that involve the current batch of objects
-                    if condition.body[0] in cur_batch:
-                        success = condition.sample(binary_state=positive)
-                        if not success:
-                            error_msg = "Sampleable object conditions failed: {}".format(condition.body)
-                            logging.warning(error_msg)
-                            feedback["init_success"] = "no"
-                            feedback["init_feedback"] = error_msg
-                            return False, feedback
-
-        return True, feedback
+        return (
+            success,
+            goal_condition_set_success,
+            goal_sampling_error_msgs,
+        )
 
     def debug_sampling(self, scene_object_scope_filtered, non_sampleable_obj_conditions, goal_condition_set=None):
         igibson.debug_sampling = True
