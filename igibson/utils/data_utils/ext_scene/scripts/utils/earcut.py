@@ -1,13 +1,13 @@
 import math
 
-__all__ = ['earcut', 'deviation', 'flatten']
+__all__ = ["earcut", "deviation", "flatten"]
 
 
 def earcut(data, holeIndices=None, dim=None):
     dim = dim or 2
 
     hasHoles = holeIndices and len(holeIndices)
-    outerLen =  holeIndices[0] * dim if hasHoles else len(data)
+    outerLen = holeIndices[0] * dim if hasHoles else len(data)
     outerNode = linkedList(data, 0, outerLen, dim, True)
     triangles = []
 
@@ -26,7 +26,7 @@ def earcut(data, holeIndices=None, dim=None):
         outerNode = eliminateHoles(data, holeIndices, outerNode, dim)
 
     # if the shape is not too simple, we'll use z-order curve hash later; calculate polygon bbox
-    if (len(data) > 80 * dim):
+    if len(data) > 80 * dim:
         minX = maxX = data[0]
         minY = maxY = data[1]
 
@@ -55,7 +55,7 @@ def linkedList(data, start, end, dim, clockwise):
     i = None
     last = None
 
-    if (clockwise == (signedArea(data, start, end, dim) > 0)):
+    if clockwise == (signedArea(data, start, end, dim) > 0):
         for i in range(start, end, dim):
             last = insertNode(i, data[i], data[i + 1], last)
 
@@ -63,7 +63,7 @@ def linkedList(data, start, end, dim, clockwise):
         for i in reversed(range(start, end, dim)):
             last = insertNode(i, data[i], data[i + 1], last)
 
-    if (last and equals(last, last.next)):
+    if last and equals(last, last.next):
         removeNode(last)
         last = last.next
 
@@ -83,10 +83,10 @@ def filterPoints(start, end=None):
     while again or p != end:
         again = False
 
-        if (not p.steiner and (equals(p, p.next) or area(p.prev, p, p.next) == 0)):
+        if not p.steiner and (equals(p, p.next) or area(p.prev, p, p.next) == 0):
             removeNode(p)
             p = end = p.prev
-            if (p == p.next):
+            if p == p.next:
                 return None
 
             again = True
@@ -95,6 +95,7 @@ def filterPoints(start, end=None):
             p = p.next
 
     return end
+
 
 # main ear slicing loop which triangulates a polygon (given as a linked _list)
 def earcutLinked(ear, triangles, dim, minX, minY, size, _pass=None):
@@ -147,6 +148,7 @@ def earcutLinked(ear, triangles, dim, minX, minY, size, _pass=None):
 
             break
 
+
 # check whether a polygon node forms a valid ear with adjacent nodes
 def isEar(ear):
     a = ear.prev
@@ -154,17 +156,18 @@ def isEar(ear):
     c = ear.next
 
     if area(a, b, c) >= 0:
-        return False # reflex, can't be an ear
+        return False  # reflex, can't be an ear
 
     # now make sure we don't have other points inside the potential ear
     p = ear.next.next
 
     while p != ear.prev:
         if pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) and area(p.prev, p, p.next) >= 0:
-                return False
+            return False
         p = p.next
 
     return True
+
 
 def isEarHashed(ear, minX, minY, size):
     a = ear.prev
@@ -172,7 +175,7 @@ def isEarHashed(ear, minX, minY, size):
     c = ear.next
 
     if area(a, b, c) >= 0:
-        return False # reflex, can't be an ear
+        return False  # reflex, can't be an ear
 
     # triangle bbox; min & max are calculated like this for speed
     minTX = (a.x if a.x < c.x else c.x) if a.x < b.x else (b.x if b.x < c.x else c.x)
@@ -188,7 +191,12 @@ def isEarHashed(ear, minX, minY, size):
     p = ear.nextZ
 
     while p and p.z <= maxZ:
-        if p != ear.prev and p != ear.next and pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) and area(p.prev, p, p.next) >= 0:
+        if (
+            p != ear.prev
+            and p != ear.next
+            and pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y)
+            and area(p.prev, p, p.next) >= 0
+        ):
             return False
         p = p.nextZ
 
@@ -196,11 +204,17 @@ def isEarHashed(ear, minX, minY, size):
     p = ear.prevZ
 
     while p and p.z >= minZ:
-        if p != ear.prev and p != ear.next and pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y) and area(p.prev, p, p.next) >= 0:
+        if (
+            p != ear.prev
+            and p != ear.next
+            and pointInTriangle(a.x, a.y, b.x, b.y, c.x, c.y, p.x, p.y)
+            and area(p.prev, p, p.next) >= 0
+        ):
             return False
         p = p.prevZ
 
     return True
+
 
 # go through all polygon nodes and cure small local self-intersections
 def cureLocalIntersections(start, triangles, dim):
@@ -227,6 +241,7 @@ def cureLocalIntersections(start, triangles, dim):
         p = p.next
 
     return p
+
 
 # try splitting polygon into two and triangulate them independently
 def splitEarcut(start, triangles, dim, minX, minY, size):
@@ -256,6 +271,7 @@ def splitEarcut(start, triangles, dim, minX, minY, size):
 
         a = a.next
 
+
 # link every hole into the outer loop, producing a single-ring polygon without holes
 def eliminateHoles(data, holeIndices, outerNode, dim):
     queue = []
@@ -267,10 +283,10 @@ def eliminateHoles(data, holeIndices, outerNode, dim):
 
     for i in range(len(holeIndices)):
         start = holeIndices[i] * dim
-        end =  holeIndices[i + 1] * dim if i < _len - 1 else len(data)
+        end = holeIndices[i + 1] * dim if i < _len - 1 else len(data)
         _list = linkedList(data, start, end, dim, False)
 
-        if (_list == _list.next):
+        if _list == _list.next:
             _list.steiner = True
 
         queue.append(getLeftmost(_list))
@@ -284,8 +300,10 @@ def eliminateHoles(data, holeIndices, outerNode, dim):
 
     return outerNode
 
+
 def compareX(a, b):
     return a.x - b.x
+
 
 # find a bridge between vertices that connects hole with an outer ring and and link it
 def eliminateHole(hole, outerNode):
@@ -293,6 +311,7 @@ def eliminateHole(hole, outerNode):
     if outerNode:
         b = splitPolygon(outerNode, hole)
         filterPoints(b, b.next)
+
 
 # David Eberly's algorithm for finding a bridge between hole and outer polygon
 def findHoleBridge(hole, outerNode):
@@ -313,7 +332,7 @@ def findHoleBridge(hole, outerNode):
             if x <= hx and x > qx:
                 qx = x
 
-                if (x == hx):
+                if x == hx:
                     if hy == p.y:
                         return p
                     if hy == p.next.y:
@@ -327,7 +346,7 @@ def findHoleBridge(hole, outerNode):
         return None
 
     if hx == qx:
-        return m.prev # hole touches outer segment; pick lower endpoint
+        return m.prev  # hole touches outer segment; pick lower endpoint
 
     # look for points inside the triangle of hole point, segment intersection and endpoint;
     # if there are no points found, we have a valid connection;
@@ -347,7 +366,7 @@ def findHoleBridge(hole, outerNode):
 
         if hx >= p.x and p.x >= mx and pointInTriangle(hx_or_qx, hy, mx, my, qx_or_hx, hy, p.x, p.y):
 
-            tan = abs(hy - p.y) / (hx - p.x) # tangential
+            tan = abs(hy - p.y) / (hx - p.x)  # tangential
 
             if (tan < tanMin or (tan == tanMin and p.x > m.x)) and locallyInside(p, hole):
                 m = p
@@ -356,6 +375,7 @@ def findHoleBridge(hole, outerNode):
         p = p.next
 
     return m
+
 
 # interlink polygon nodes in z-order
 def indexCurve(start, minX, minY, size):
@@ -376,6 +396,7 @@ def indexCurve(start, minX, minY, size):
     p.prevZ = None
 
     sortLinked(p)
+
 
 # Simon Tatham's linked _list merge sort algorithm
 # http:#www.chiark.greenend.org.uk/~sgtatham/algorithms/_listsort.html
@@ -417,12 +438,12 @@ def sortLinked(_list):
                     q = q.nextZ
                     qSize -= 1
 
-                elif (qSize == 0 or not q):
+                elif qSize == 0 or not q:
                     e = p
                     p = p.nextZ
                     pSize -= 1
 
-                elif (p.z <= q.z):
+                elif p.z <= q.z:
                     e = p
                     p = p.nextZ
                     pSize -= 1
@@ -467,6 +488,7 @@ def zOrder(x, y, minX, minY, size):
 
     return x | (y << 1)
 
+
 # find the leftmost node of a polygon ring
 def getLeftmost(start):
     do = True
@@ -481,20 +503,32 @@ def getLeftmost(start):
 
     return leftmost
 
+
 # check if a point lies within a convex triangle
 def pointInTriangle(ax, ay, bx, by, cx, cy, px, py):
-    return (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0 and \
-        (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0 and \
-        (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0
+    return (
+        (cx - px) * (ay - py) - (ax - px) * (cy - py) >= 0
+        and (ax - px) * (by - py) - (bx - px) * (ay - py) >= 0
+        and (bx - px) * (cy - py) - (cx - px) * (by - py) >= 0
+    )
+
 
 # check if a diagonal between two polygon nodes is valid (lies in polygon interior)
 def isValidDiagonal(a, b):
-    return a.next.i != b.i and a.prev.i != b.i and not intersectsPolygon(a, b) and \
-        locallyInside(a, b) and locallyInside(b, a) and middleInside(a, b)
+    return (
+        a.next.i != b.i
+        and a.prev.i != b.i
+        and not intersectsPolygon(a, b)
+        and locallyInside(a, b)
+        and locallyInside(b, a)
+        and middleInside(a, b)
+    )
+
 
 # signed area of a triangle
 def area(p, q, r):
     return (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y)
+
 
 # check if two points are equal
 def equals(p1, p2):
@@ -506,8 +540,8 @@ def intersects(p1, q1, p2, q2):
     if (equals(p1, q1) and equals(p2, q2)) or (equals(p1, q2) and equals(p2, q1)):
         return True
 
-    return area(p1, q1, p2) > 0 != area(p1, q1, q2) > 0 and \
-        area(p2, q2, p1) > 0 != area(p2, q2, q1) > 0
+    return area(p1, q1, p2) > 0 != area(p1, q1, q2) > 0 and area(p2, q2, p1) > 0 != area(p2, q2, q1) > 0
+
 
 # check if a polygon diagonal intersects any polygon segments
 def intersectsPolygon(a, b):
@@ -516,19 +550,21 @@ def intersectsPolygon(a, b):
 
     while do or p != a:
         do = False
-        if (p.i != a.i and p.next.i != a.i and p.i != b.i and p.next.i != b.i and intersects(p, p.next, a, b)):
+        if p.i != a.i and p.next.i != a.i and p.i != b.i and p.next.i != b.i and intersects(p, p.next, a, b):
             return True
 
         p = p.next
 
     return False
 
+
 # check if a polygon diagonal is locally inside the polygon
 def locallyInside(a, b):
     if area(a.prev, a, a.next) < 0:
-        return  area(a, b, a.next) >= 0 and area(a, a.prev, b) >= 0
+        return area(a, b, a.next) >= 0 and area(a, a.prev, b) >= 0
     else:
         return area(a, b, a.prev) < 0 or area(a, a.next, b) < 0
+
 
 # check if the middle point of a polygon diagonal is inside the polygon
 def middleInside(a, b):
@@ -546,6 +582,7 @@ def middleInside(a, b):
         p = p.next
 
     return inside
+
 
 # link two polygon vertices with a bridge; if the vertices belong to the same ring, it splits polygon into two;
 # if one belongs to the outer ring and another to a hole, it merges it into a single ring
@@ -586,6 +623,7 @@ def insertNode(i, x, y, last):
 
     return p
 
+
 def removeNode(p):
     p.next.prev = p.prev
     p.prev.next = p.next
@@ -596,9 +634,10 @@ def removeNode(p):
     if p.nextZ:
         p.nextZ.prevZ = p.prevZ
 
+
 class Node(object):
     def __init__(self, i, x, y):
-    # vertice index in coordinates array
+        # vertice index in coordinates array
         self.i = i
 
         # vertex coordinates
@@ -643,8 +682,8 @@ def deviation(data, holeIndices, dim, triangles):
         b = triangles[i + 1] * dim
         c = triangles[i + 2] * dim
         trianglesArea += abs(
-            (data[a] - data[c]) * (data[b + 1] - data[a + 1]) -
-            (data[a] - data[b]) * (data[c + 1] - data[a + 1]))
+            (data[a] - data[c]) * (data[b + 1] - data[a + 1]) - (data[a] - data[b]) * (data[c + 1] - data[a + 1])
+        )
 
     if polygonArea == 0 and trianglesArea == 0:
         return 0
@@ -666,28 +705,25 @@ def signedArea(data, start, end, dim):
 # turn a polygon in a multi-dimensional array form (e.g. as in GeoJSON) into a form Earcut accepts
 def flatten(data):
     dim = len(data[0][0])
-    result = {
-        'vertices': [],
-        'holes': [],
-        'dimensions': dim
-    }
+    result = {"vertices": [], "holes": [], "dimensions": dim}
     holeIndex = 0
 
     for i in range(len(data)):
         for j in range(len(data[i])):
             for d in range(dim):
-                result['vertices'].append(data[i][j][d])
+                result["vertices"].append(data[i][j][d])
 
         if i > 0:
             holeIndex += len(data[i - 1])
-            result['holes'].append(holeIndex)
+            result["holes"].append(holeIndex)
 
     return result
+
 
 def unflatten(data):
     result = []
 
     for i in range(0, len(data), 3):
-        result.append(tuple(data[i:i + 3]))
+        result.append(tuple(data[i : i + 3]))
 
     return result

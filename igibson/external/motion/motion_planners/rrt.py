@@ -1,3 +1,7 @@
+"""
+Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
+and adapted by iGibson team.
+"""
 from random import random
 import numpy as np
 from .utils import irange, argmin, RRT_ITERATIONS
