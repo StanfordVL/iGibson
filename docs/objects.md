@@ -11,7 +11,6 @@ We provide a wide variety of **Objects** that can be imported into the **Simulat
 - `SoftObject`
 - `Cube`
 - `VisualMarker`
-- `VisualShape`
 
 Typically, they take in the name or the path of an object (in `igibson.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` and `import_object` of `Simulator`). The `load` function imports the object into PyBullet. Some **Objects** (e.g. `ArticulatedObject`) also provide APIs to get and set the object pose.
 

@@ -1,5 +1,8 @@
 import os
 
+import numpy as np
+import pybullet as p
+
 import igibson
 from igibson.object_states.aabb import AABB
 from igibson.object_states.inside import Inside
@@ -9,11 +12,11 @@ from igibson.object_states.open import Open
 from igibson.object_states.toggle import ToggledOn
 
 # The name of the heat source link inside URDF files.
-from igibson.objects.visual_shape import VisualShape
+from igibson.objects.visual_marker import VisualMarker
 
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
 
-_HEATING_ELEMENT_MARKER_SCALE = 1.0
+_HEATING_ELEMENT_MARKER_SCALE = [1.0] * 3
 _HEATING_ELEMENT_MARKER_FILENAME = os.path.join(igibson.assets_path, "models/fire/fire.obj")
 
 # TODO: Delete default values for this and make them required.
@@ -120,7 +123,9 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
     def _initialize(self):
         super(HeatSourceOrSink, self)._initialize()
         self.initialize_link_mixin()
-        self.marker = VisualShape(_HEATING_ELEMENT_MARKER_FILENAME, _HEATING_ELEMENT_MARKER_SCALE)
+        self.marker = VisualMarker(
+            visual_shape=p.GEOM_MESH, filename=_HEATING_ELEMENT_MARKER_FILENAME, scale=_HEATING_ELEMENT_MARKER_SCALE
+        )
         self.simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
         self.marker.set_position([0, 0, -100])
 
@@ -131,7 +136,11 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         marker_position = [0, 0, -100]
         if self.position is not None:
             marker_position = self.position
-        self.marker.set_position(marker_position)
+
+        # Lazy update of marker position
+        if not np.all(np.isclose(marker_position, self.marker.get_position())):
+            self.marker.set_position(marker_position)
+            self.marker.force_wakeup()
 
     def _get_value(self):
         return self.status, self.position
