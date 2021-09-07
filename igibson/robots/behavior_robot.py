@@ -1330,7 +1330,9 @@ class BREye(ArticulatedObject):
         super(BREye, self).__init__(filename=self.eye_path, scale=1)
 
         self.should_hide = True
-        self.head_visual_marker = VisualShape(self.head_visual_path, scale=0.08)
+        self.head_visual_marker = VisualMarker(
+            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3
+        )
 
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update
