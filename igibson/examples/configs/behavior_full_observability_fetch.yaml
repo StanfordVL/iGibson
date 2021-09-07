@@ -23,7 +23,7 @@ controller:
   input_min: [-1, -1, -1, -1, -1, -1]
   output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
   output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
-  eef_always_in_frame: true       # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
+  eef_always_in_frame: false      # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
   neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
   radius_limit: 0.5               # x-y reaching limit
   height_limits: [0.2, 1.5]       # min, max height limits
