@@ -46,8 +46,8 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", False)  # Use assisted grasping
-        self.ag_strict_mode = config.get("ag_strict_mode", False)  # Require object to be contained by forks for AG
+        self.use_ag = config.get("use_ag", True)  # Use assisted grasping
+        self.ag_strict_mode = config.get("ag_strict_mode", True)  # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
         self.arm_delta_pos_dim = 3
@@ -692,9 +692,7 @@ class FetchGripper(LocomotorRobot):
                 self.establish_grasp(ag_data)
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.object_in_hand == candidate_obj,
-        ]
+        return np.array([self.object_in_hand == candidate_obj])
 
     # significant overlap with BehaviorRobot
     def dump_state(self):

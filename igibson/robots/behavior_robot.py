@@ -346,10 +346,12 @@ class BehaviorRobot(object):
         return state_list
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.parts["left_hand"].object_in_hand == candidate_obj,
-            self.parts["right_hand"].object_in_hand == candidate_obj,
-        ]
+        return np.array(
+            [
+                self.parts["left_hand"].object_in_hand == candidate_obj,
+                self.parts["right_hand"].object_in_hand == candidate_obj,
+            ]
+        )
 
     def can_toggle(self, toggle_position, toggle_distance_threshold):
         for part_name, part in self.parts.items():
