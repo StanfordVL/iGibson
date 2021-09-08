@@ -42,8 +42,6 @@ class BehaviorChallenge(object):
     def submit(self, agent):
         env_config = parse_config(self.config_file)
 
-        per_episode_metrics = {}
-
         if self.split == "minival":
             # Only eval one activity in the config file
             tasks = [env_config["task"]]
@@ -70,6 +68,10 @@ class BehaviorChallenge(object):
         if os.path.exists(self_reported_log_path):
             shutil.copyfile(self_reported_log_path, log_path)
             print("Per episode eval results copied from self-reported results %s" % log_path)
+            with open(self_reported_log_path) as f:
+                self_reported_log = json.load(f)
+                assert len(self_reported_log) == len(tasks) * 9
+
         if os.path.exists(self_reported_summary_log_path):
             shutil.copyfile(self_reported_summary_log_path, summary_log_path)
             print("Aggregated eval results copied from self-reported results %s" % summary_log_path)
@@ -97,7 +99,7 @@ class BehaviorChallenge(object):
 
             # Evaluate 9 activity instances in the training set for now
             if num_scenes == 3:
-                scene_instance_ids = {scenes[0]: range(1), scenes[1]: range(0), scenes[2]: range(0)}
+                scene_instance_ids = {scenes[0]: range(3), scenes[1]: range(3), scenes[2]: range(3)}
             elif num_scenes == 2:
                 scene_instance_ids = {scenes[0]: range(4), scenes[1]: range(5)}
             else:
