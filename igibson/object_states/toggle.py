@@ -12,13 +12,14 @@ _TOGGLE_DISTANCE_THRESHOLD = 0.1
 _TOGGLE_LINK_NAME = "toggle_button"
 _TOGGLE_BUTTON_RADIUS = 0.05
 _TOGGLE_MARKER_OFF_POSITION = [0, 0, -100]
+_CAN_TOGGLE_STEPS = 5
 
 
 class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureChangeStateMixin):
     def __init__(self, obj):
         super(ToggledOn, self).__init__(obj)
         self.value = False
-        self.hand_in_marker_steps = 0
+        self.robot_can_toggle_steps = 0
 
     def _get_value(self):
         return self.value
@@ -42,42 +43,23 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
             self.visual_marker_off.set_position(_TOGGLE_MARKER_OFF_POSITION)
 
     def _update(self):
-        # Yet another circular import issue.
-        from igibson.robots import behavior_robot
-
         button_position_on_object = self.get_link_position()
         if button_position_on_object is None:
             return
 
-        hand_in_marker = False
+        robot_can_toggle = False
         # detect marker and hand interaction
         for robot in self.simulator.robots:
-            for part_name, part in robot.parts.items():
-                if part_name in ["left_hand", "right_hand"]:
-                    if (
-                        np.linalg.norm(np.array(part.get_position()) - np.array(button_position_on_object))
-                        < _TOGGLE_DISTANCE_THRESHOLD
-                    ):
-                        hand_in_marker = True
-                        break
-                    for finger in behavior_robot.FINGER_TIP_LINK_INDICES:
-                        finger_link_state = p.getLinkState(part.body_id, finger)
-                        link_pos = finger_link_state[0]
-                        if (
-                            np.linalg.norm(np.array(link_pos) - np.array(button_position_on_object))
-                            < _TOGGLE_DISTANCE_THRESHOLD
-                        ):
-                            hand_in_marker = True
-                            break
-                    if hand_in_marker:
-                        break
+            robot_can_toggle = robot.can_toggle(button_position_on_object, _TOGGLE_DISTANCE_THRESHOLD)
+            if robot_can_toggle:
+                break
 
-        if hand_in_marker:
-            self.hand_in_marker_steps += 1
+        if robot_can_toggle:
+            self.robot_can_toggle_steps += 1
         else:
-            self.hand_in_marker_steps = 0
+            self.robot_can_toggle_steps = 0
 
-        if self.hand_in_marker_steps == 5:
+        if self.robot_can_toggle_steps == _CAN_TOGGLE_STEPS:
             self.value = not self.value
 
         # swap two types of markers when toggled
@@ -120,11 +102,11 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
         # make the texture 1.5x brighter
         brighten_texture(diffuse_tex_filename, diffuse_tex_filename_transformed, brightness=1.5)
 
-    # For this state, we simply store its value and the hand-in-marker steps.
+    # For this state, we simply store its value and the robot_can_toggle steps.
     def _dump(self):
-        return {"value": self.value, "hand_in_marker_steps": self.hand_in_marker_steps}
+        return {"value": self.value, "hand_in_marker_steps": self.robot_can_toggle_steps}
 
     def load(self, data):
         # Nothing special to do here when initialized vs. uninitialized
         self.value = data["value"]
-        self.hand_in_marker_steps = data["hand_in_marker_steps"]
+        self.robot_can_toggle_steps = data["hand_in_marker_steps"]

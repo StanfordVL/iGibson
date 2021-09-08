@@ -6,9 +6,6 @@ load_texture: true
 pybullet_load_texture: true
 should_open_all_doors: true
 
-# Ignore task, use EmptyScene instead
-debug: False
-
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
