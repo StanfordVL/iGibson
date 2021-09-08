@@ -7,6 +7,7 @@ from collections import defaultdict
 import bddl
 import numpy as np
 
+import igibson
 from igibson.envs.behavior_env import BehaviorEnv
 from igibson.metrics.agent import BehaviorRobotMetric
 from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
@@ -75,10 +76,17 @@ class BehaviorChallenge(object):
         with open(scene_json) as f:
             activity_to_scenes = json.load(f)
 
+        with open(os.path.join(igibson.ig_dataset_path, "metadata", "behavior_activity_statistics.json")) as f:
+            activity_metadata = json.load(f)
+
         for task in tasks:
             assert task in activity_to_scenes
             scenes = sorted(set(activity_to_scenes[tasks[0]]))
             num_scenes = len(scenes)
+            human_demo_mean_step = activity_metadata[task]["mean"]
+            env_config["max_step"] = human_demo_mean_step * 2  # adjust env_config['max_step'] based on the human
+            # demonstration, we give agent 2x steps of average human demonstration across all possible scenes
+
             assert num_scenes <= 3
 
             # Evaluate 9 activity instances in the training set for now
@@ -89,7 +97,6 @@ class BehaviorChallenge(object):
             else:
                 scene_instance_ids = {scenes[0]: range(9)}
 
-            # TODO: adjust env_config['episode_length'] based on the activity
             for scene_id, instance_ids in scene_instance_ids.items():
                 env_config["scene_id"] = scene_id
                 for instance_id in instance_ids:
