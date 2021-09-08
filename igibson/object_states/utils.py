@@ -138,17 +138,15 @@ def sample_kinematics(
 
                 # Construct the minimum volume bounding box that is parallel to the x-y plane and get x- and y-extent
                 transform_matrix, extents_2d = trimesh.bounds.oriented_bounds_2D(world_frame_vertex_positions[:, 0:2])
+                transform_matrix = np.linalg.inv(transform_matrix)
                 # Get z-extent
                 aabb = get_aabb(objA.get_body_id())
                 aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
                 parallel_bbox_extents = np.append(extents_2d, aabb_extent[2])
-                # The transformation is somehow the inverse of what we want
-                # Compute the inverse translation by R.T and -np.dot(R.T, T)
-                parallel_bbox_center = np.append(
-                    -np.dot(transform_matrix[:2, :2].T, transform_matrix[:2, 2]), aabb_center[2]
-                )
+
+                parallel_bbox_center = np.append(transform_matrix[:2, 2], aabb_center[2])
                 rotation_matrix = np.eye(3)
-                rotation_matrix[0:2, 0:2] = transform_matrix[:2, :2].T
+                rotation_matrix[0:2, 0:2] = transform_matrix[:2, :2]
                 parallel_bbox_orn = R.from_matrix(rotation_matrix).as_quat()
 
                 # TODO: Get this to work with non-URDFObject objects.
