@@ -162,8 +162,9 @@ class BaseRobot(object):
     def can_toggle(self, toggle_position, toggle_distance_threshold):
         """
         Returns True if the part of the robot that can toggle a toggleable is within the given range of a point corresponding to a toggle marker
+        by default, we assume robot cannot toggle toggle markers
         """
-        raise NotImplementedError
+        return False
 
     def dump_state(self):
         pass
