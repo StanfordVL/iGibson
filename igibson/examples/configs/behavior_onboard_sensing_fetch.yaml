@@ -1,13 +1,10 @@
 # scene
-scene_id: Rs_int
+scene_id: Beechwood_1_int
 clutter: false
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
 should_open_all_doors: true
-
-# Ignore task, use EmptyScene instead
-debug: False
 
 # domain randomization
 texture_randomization_freq: null
@@ -15,6 +12,8 @@ object_randomization_freq: null
 
 # robot
 robot: FetchGripper
+use_ag: true
+ag_strict_mode: true
 default_arm_pose: diagonal30
 trunk_offset: 0.085
 controller:
@@ -24,13 +23,13 @@ controller:
   input_min: [-1, -1, -1, -1, -1, -1]
   output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
   output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
-  eef_always_in_frame: true       # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
+  eef_always_in_frame: false      # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
   neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
   radius_limit: 0.5               # x-y reaching limit
   height_limits: [0.2, 1.5]       # min, max height limits
 
 # task
-task: re-shelving_library_books
+task: cleaning_cupboards
 task_id: 0
 online_sampling: false
 target_dist_min: 1.0
