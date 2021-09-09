@@ -162,7 +162,7 @@ class BehaviorChallenge(object):
         task_scores = sorted(task_scores, reverse=True)
 
         for episode, metric in per_episode_metrics.items():
-            success_score.append(metric["q_score"]["timestep"][-1])
+            success_score.append(metric["q_score"]["final"])
             simulator_time.append(metric["time"]["simulator_time"])
             kinematic_disarrangement.append(metric["kinematic_disarrangement"]["relative"])
             logical_disarrangement.append(metric["logical_disarrangement"]["relative"])
