@@ -126,28 +126,10 @@ def sample_kinematics(
                 else:
                     assert False, "predicate is not onTop or inside: {}".format(predicate)
 
-                # Retrieve base CoM frame-aligned bounding box
-                bbox_center, bbox_orn, bbox_bf_extent, _ = objA.get_base_aligned_bounding_box()
-                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
-                    bbox_bf_extent / 2
+                # Retrieve base CoM frame-aligned bounding box parallel to the XY plane
+                parallel_bbox_center, parallel_bbox_orn, parallel_bbox_extents, _ = objA.get_base_aligned_bounding_box(
+                    xy_aligned=True
                 )
-                bbox_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
-                world_frame_vertex_positions = trimesh.transformations.transform_points(
-                    bbox_frame_vertex_positions, bbox_transform
-                )
-
-                # Construct the minimum volume bounding box that is parallel to the x-y plane and get x- and y-extent
-                transform_matrix, extents_2d = trimesh.bounds.oriented_bounds_2D(world_frame_vertex_positions[:, 0:2])
-                transform_matrix = np.linalg.inv(transform_matrix)
-                # Get z-extent
-                aabb = get_aabb(objA.get_body_id())
-                aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
-                parallel_bbox_extents = np.append(extents_2d, aabb_extent[2])
-
-                parallel_bbox_center = np.append(transform_matrix[:2, 2], aabb_center[2])
-                rotation_matrix = np.eye(3)
-                rotation_matrix[0:2, 0:2] = transform_matrix[:2, :2]
-                parallel_bbox_orn = R.from_matrix(rotation_matrix).as_quat()
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
