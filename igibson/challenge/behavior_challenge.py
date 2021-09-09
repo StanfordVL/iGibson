@@ -154,7 +154,7 @@ class BehaviorChallenge(object):
         task_scores = []
 
         for episode, metric in per_episode_metrics.items():
-            task_to_mean_success_score[metric["task"]].append(metric["q_score"]["timestep"][-1])
+            task_to_mean_success_score[metric["task"]].append(metric["q_score"]["final"])
 
         for task, scores in task_to_mean_success_score.items():
             task_scores.append(np.mean(scores))
