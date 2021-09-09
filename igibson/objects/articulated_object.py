@@ -1215,9 +1215,14 @@ class URDFObject(StatefulObject):
             # If the user requested an XY-plane aligned bbox, convert everything to that frame.
             # The desired frame is same as the base_com frame with its X/Y rotations removed.
             translate = trimesh.transformations.translation_from_matrix(base_com_to_world)
-            angles = np.array(trimesh.transformations.euler_from_matrix(base_com_to_world))
-            angles[:2] = 0
-            xy_aligned_base_com_to_world = trimesh.transformations.compose_matrix(translate=translate, angles=angles)
+
+            # To find the rotation that this transform does around the Z axis, we rotate the [1, 0, 0] vector by it
+            # and then take the arctangent of its projection onto the XY plane.
+            rotated_X_axis = base_com_to_world[:3, 0]
+            rotation_around_Z_axis = np.arctan2(rotated_X_axis[1], rotated_X_axis[0])
+            xy_aligned_base_com_to_world = trimesh.transformations.compose_matrix(
+                translate=translate, angles=[0, 0, rotation_around_Z_axis]
+            )
 
             # We want to move our points to this frame as well.
             world_to_xy_aligned_base_com = trimesh.transformations.inverse_matrix(xy_aligned_base_com_to_world)
