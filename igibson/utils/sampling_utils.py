@@ -203,7 +203,7 @@ def sample_cuboid_on_object(
         filled if the debug_sampling flag is globally set to True.
     """
     # This is imported here to avoid a circular import with object_states.
-    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(visual=False)
+    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(visual=False, xy_aligned=True)
     half_extent_with_offset = (bbox_bf_extent / 2) + aabb_offset
 
     body_id = obj.get_body_id()

@@ -1150,7 +1150,7 @@ class URDFObject(StatefulObject):
                             "transform": scaled_bbox_center_in_link_frame,
                         }
 
-    def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False):
+    def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False, xy_aligned=False):
         """Get a bounding box for this object that's axis-aligned in the object's base frame."""
         if body_id is None:
             body_id = self.get_body_id()
@@ -1159,10 +1159,10 @@ class URDFObject(StatefulObject):
 
         # Get the base position transform
         pos, orn = p.getBasePositionAndOrientation(body_id)
-        base_com_frame_in_world_frame = utils.quat_pos_to_mat(pos, orn)
+        base_com_to_world = utils.quat_pos_to_mat(pos, orn)
 
         # Compute the world-to-base frame transform
-        world_frame_in_base_com_frame = trimesh.transformations.inverse_matrix(base_com_frame_in_world_frame)
+        world_to_base_com = trimesh.transformations.inverse_matrix(base_com_to_world)
 
         # Grab the corners of all the different links' bounding boxes.
         points = []
@@ -1177,47 +1177,70 @@ class URDFObject(StatefulObject):
                 bb_data = self.scaled_link_bounding_boxes[name][bbox_type]["oriented"]
                 extent = bb_data["extent"]
 
-                # bbox center in base CoM frame
-                bbox_center_in_link_frame = bb_data["transform"]
+                # Metadata contains bbox center in link origin frame
+                bbox_to_link_origin = bb_data["transform"]
 
                 # Get the link's pose in the base frame.
                 if link == -1:
-                    link_com_frame_in_base_com_frame = np.eye(4)
+                    link_com_to_base_com = np.eye(4)
                 else:
                     link_state = get_link_state(body_id, link, velocity=False)
-                    link_com_frame_in_world_frame = utils.quat_pos_to_mat(
+                    link_com_to_world = utils.quat_pos_to_mat(
                         link_state.linkWorldPosition, link_state.linkWorldOrientation
                     )
-                    link_com_frame_in_base_com_frame = np.dot(
-                        world_frame_in_base_com_frame, link_com_frame_in_world_frame
-                    )
+                    link_com_to_base_com = np.dot(world_to_base_com, link_com_to_world)
 
                 # Account for the link vs. center-of-mass
                 dynamics_info = p.getDynamicsInfo(body_id, link)
                 inertial_pos, inertial_orn = p.invertTransform(dynamics_info[3], dynamics_info[4])
-                link_frame_in_com_frame = utils.quat_pos_to_mat(inertial_pos, inertial_orn)
+                link_origin_to_link_com = utils.quat_pos_to_mat(inertial_pos, inertial_orn)
 
                 # Compute the bounding box vertices in the base frame.
-                bbox_center_in_link_com_frame = np.dot(link_frame_in_com_frame, bbox_center_in_link_frame)
-                bbox_center_in_base_com_frame = np.dot(link_com_frame_in_base_com_frame, bbox_center_in_link_com_frame)
-                vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (extent / 2)
-                points.extend(trimesh.transformations.transform_points(vertex_positions, bbox_center_in_base_com_frame))
+                bbox_to_link_com = np.dot(link_origin_to_link_com, bbox_to_link_origin)
+                bbox_center_in_base_com = np.dot(link_com_to_base_com, bbox_to_link_com)
+                vertices_in_base_com = np.array(list(itertools.product((1, -1), repeat=3))) * (extent / 2)
+                points.extend(trimesh.transformations.transform_points(vertices_in_base_com, bbox_center_in_base_com))
             else:
                 # If no BB annotation is available, get the AABB for this link.
                 aabb_center, aabb_extent = get_center_extent(body_id, link=link)
-                aabb_vertices = aabb_center + np.array(list(itertools.product((1, -1), repeat=3))) * (aabb_extent / 2)
-                points.extend(trimesh.transformations.transform_points(aabb_vertices, world_frame_in_base_com_frame))
+                aabb_vertices_in_world = aabb_center + np.array(list(itertools.product((1, -1), repeat=3))) * (
+                    aabb_extent / 2
+                )
+                aabb_vertices_in_base_com = trimesh.transformations.transform_points(
+                    aabb_vertices_in_world, world_to_base_com
+                )
+                points.extend(aabb_vertices_in_base_com)
 
-        # All points are in base CoM frame
-        # Now take the minimum/maximum in the base frame.
-        base_com_frame_aabb_min = np.amin(points, axis=0)
-        base_com_frame_aabb_max = np.amax(points, axis=0)
-        bbox_center_in_base_com_frame = (base_com_frame_aabb_min + base_com_frame_aabb_max) / 2
-        extent = base_com_frame_aabb_max - base_com_frame_aabb_min
+        if xy_aligned:
+            # If the user requested an XY-plane aligned bbox, convert everything to that frame.
+            # The desired frame is same as the base_com frame with its X/Y rotations removed.
+            translate = trimesh.transformations.translation_from_matrix(base_com_to_world)
+            angles = np.array(trimesh.transformations.euler_from_matrix(base_com_to_world))
+            angles[:2] = 0
+            xy_aligned_base_com_to_world = trimesh.transformations.compose_matrix(translate=translate, angles=angles)
+
+            # We want to move our points to this frame as well.
+            world_to_xy_aligned_base_com = trimesh.transformations.inverse_matrix(xy_aligned_base_com_to_world)
+            base_com_to_xy_aligned_base_com = np.dot(world_to_xy_aligned_base_com, base_com_to_world)
+            points = trimesh.transformations.transform_points(points, base_com_to_xy_aligned_base_com)
+
+            # Finally update our desired frame.
+            desired_frame_to_world = xy_aligned_base_com_to_world
+        else:
+            # Default desired frame is base CoM frame.
+            desired_frame_to_world = base_com_to_world
+
+        # All points are now in the desired frame: either the base CoM or the xy-plane-aligned base CoM.
+        # Now take the minimum/maximum in the desired frame.
+        aabb_min_in_desired_frame = np.amin(points, axis=0)
+        aabb_max_in_desired_frame = np.amax(points, axis=0)
+        bbox_center_in_desired_frame = (aabb_min_in_desired_frame + aabb_max_in_desired_frame) / 2
+        bbox_extent_in_desired_frame = aabb_max_in_desired_frame - aabb_min_in_desired_frame
 
         # Transform the center to the world frame.
-        bbox_center_in_world_frame = trimesh.transformations.transform_points(
-            [bbox_center_in_base_com_frame], base_com_frame_in_world_frame
+        bbox_center_in_world = trimesh.transformations.transform_points(
+            [bbox_center_in_desired_frame], desired_frame_to_world
         )[0]
+        bbox_orn_in_world = trimesh.transformations.quaternion_from_matrix(desired_frame_to_world)
 
-        return bbox_center_in_world_frame, orn, extent, bbox_center_in_base_com_frame
+        return bbox_center_in_world, bbox_orn_in_world, bbox_extent_in_desired_frame, bbox_center_in_desired_frame
