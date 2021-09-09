@@ -143,10 +143,23 @@ class MeshRenderer(object):
                 self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen,
             )
-        else:
+        elif self.platform == "Linux" and self.__class__.__name__ == "MeshRendererVR":
+            from igibson.render.mesh_renderer import VRRendererContext
+
+            self.r = VRRendererContext.VRRendererContext(
+                width,
+                height,
+                int(self.rendering_settings.glfw_gl_version[0]),
+                int(self.rendering_settings.glfw_gl_version[1]),
+                self.rendering_settings.show_glfw_window,
+                rendering_settings.fullscreen,
+            )
+        elif self.platform == "Linux":
             from igibson.render.mesh_renderer import EGLRendererContext
 
             self.r = EGLRendererContext.EGLRendererContext(width, height, device)
+        else:
+            Exception("Unsupported platform and renderer combination")
 
         self.r.init()
 

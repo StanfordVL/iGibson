@@ -2,9 +2,11 @@
 #define VR_MESH_RENDERER_HEADER
 
 #include "glfw_mesh_renderer.h"
+#ifdef WIN32
 #include "SRanipal.h"
 #include "SRanipal_Eye.h"
 #include "SRanipal_Enums.h"
+#endif
 
 #include <thread>
 
@@ -75,12 +77,16 @@ public:
 	glm::mat4 gibToVr;
 	glm::mat4 vrToGib;
 
-	// SRAnipal variables
 	bool useEyeTracking;
+	bool shouldShutDownEyeTracking;
+
+        #ifdef WIN32
+	// SRAnipal variables
 	std::thread* eyeTrackingThread;
 	ViveSR::anipal::Eye::EyeData eyeData;
+        #endif
+
 	int result;
-	bool shouldShutDownEyeTracking;
 
 	// Struct storing eye data for SR anipal - we only return origin and direction in world space
 	// As most users will want to use this ray to query intersection or something similar

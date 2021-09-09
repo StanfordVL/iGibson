@@ -1,15 +1,16 @@
 ### Virtual Reality Overview
 
-Virtual reality is currently only supported on Windows 10/11 on the HTC Vive and Oculus Rift/Quest (with link). 
+Virtual reality is currently supported on Windows 10/11 on the HTC Vive and Oculus Rift/Quest (with link), and on Linux with the HTC Vive (there is no linux driver for Oculus).
 
-Linux support is planned, but the HTC Vive Pro Eye tracking driver is not available for Linux, and currently aysnchronous projection/motion smoothing is not supported on the Nvidia proprietary drivers on linux.
+The HTC Vive Pro Eye tracking driver is not available for Linux. You must have the latest Nvidia driver 470.XX and SteamVR 1.19.7 as asynchronous reprojection (a form of motion smoothing necessary for a usable VR experience) was only added in mid 2021.
 
 ### Setup
 1. Set up the HTC Vive VR hardware according to the [setup guide](https://support.steampowered.com/steamvr/HTC_Vive/)
 
 2. (optional) if you plan to use eye tracking on Windows, create a [vive developer account](https://hub.vive.com/sso/login) then download and install the [SRAnipal runtime](https://developer.vive.com/resources/vive-sense/sdk/vive-eye-and-facial-tracking-sdk/). Note you should [calibrate](https://developer.vive.com/us/support/sdk/category_howto/how-to-calibrate-eye-tracking.html) the Vive eye tracker before each recording session.
 
-3. Ensure you have installed iGibson according to the installation [instructions](http://svl.stanford.edu/igibson/docs/installation.html#installation-method)
+3. Ensure you have installed iGibson according to the installation [instructions](http://svl.stanford.edu/igibson/docs/installation.html#installation-method). 
+    * Note: On Windows VR support is eanbled by default. On Linux, you must install with an additional environmental variable `USE_VR=True pip install -e .`. You must also have addition development headers installed: on Ubuntu `sudo apt install xorg-dev` and on Centos/Fedora: `sudo dnf install libXinerama-devel libXi-devel libXrandr-devel libXcursor-devel`.
 
 ### VR examples
 
