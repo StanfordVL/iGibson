@@ -1246,6 +1246,6 @@ class URDFObject(StatefulObject):
         bbox_center_in_world = trimesh.transformations.transform_points(
             [bbox_center_in_desired_frame], desired_frame_to_world
         )[0]
-        bbox_orn_in_world = trimesh.transformations.quaternion_from_matrix(desired_frame_to_world)
+        bbox_orn_in_world = Rotation.from_matrix(desired_frame_to_world[:3, :3]).as_quat()
 
         return bbox_center_in_world, bbox_orn_in_world, bbox_extent_in_desired_frame, bbox_center_in_desired_frame
