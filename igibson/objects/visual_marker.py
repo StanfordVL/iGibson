@@ -16,6 +16,8 @@ class VisualMarker(Object):
         half_extents=[1, 1, 1],
         length=1,
         initial_offset=[0, 0, 0],
+        filename=None,
+        scale=[1.0] * 3,
     ):
         """
         create a visual shape to show in pybullet and MeshRenderer
@@ -26,6 +28,8 @@ class VisualMarker(Object):
         :param half_extents: parameters for pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER or pybullet.GEOM_CAPSULE
         :param length: parameters for pybullet.GEOM_BOX, pybullet.GEOM_CYLINDER or pybullet.GEOM_CAPSULE
         :param initial_offset: visualFramePosition for the marker
+        :param filename: mesh file name for p.GEOM_MESH
+        :param scale: scale for p.GEOM_MESH
         """
         super(VisualMarker, self).__init__()
         self.visual_shape = visual_shape
@@ -34,12 +38,16 @@ class VisualMarker(Object):
         self.half_extents = half_extents
         self.length = length
         self.initial_offset = initial_offset
+        self.filename = filename
+        self.scale = scale
 
     def _load(self):
         """
         Load the object into pybullet
         """
-        if self.visual_shape == p.GEOM_BOX:
+        if self.visual_shape == p.GEOM_MESH:
+            shape = p.createVisualShape(self.visual_shape, fileName=self.filename, meshScale=self.scale)
+        elif self.visual_shape == p.GEOM_BOX:
             shape = p.createVisualShape(
                 self.visual_shape,
                 rgbaColor=self.rgba_color,

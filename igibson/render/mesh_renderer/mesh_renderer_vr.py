@@ -261,7 +261,10 @@ class MeshRendererVR(MeshRenderer):
         self.width = 1296
         self.height = 1440
         super().__init__(
-            width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings, simulator=simulator
+            width=self.width,
+            height=self.height,
+            rendering_settings=self.vr_rendering_settings,
+            simulator=simulator,
         )
 
         # Rename self.r to self.vrsys

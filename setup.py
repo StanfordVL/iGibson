@@ -1,4 +1,5 @@
 import codecs
+import os
 import os.path
 import platform
 import re
@@ -86,6 +87,9 @@ class CMakeBuild(build_ext):
             cmake_args += ["-DMAC_PLATFORM=TRUE"]
         else:
             cmake_args += ["-DMAC_PLATFORM=FALSE"]
+
+        if os.getenv("USE_VR"):
+            cmake_args += ["-DUSE_VR=TRUE"]
 
         cfg = "Debug" if self.debug else "Release"
         build_args = ["--config", cfg]

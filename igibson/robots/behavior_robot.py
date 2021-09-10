@@ -28,7 +28,7 @@ from igibson import assets_path
 from igibson.external.pybullet_tools.utils import set_all_collisions
 from igibson.object_states.factory import prepare_object_states
 from igibson.objects.articulated_object import ArticulatedObject
-from igibson.objects.visual_shape import VisualShape
+from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 
 # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
@@ -346,10 +346,27 @@ class BehaviorRobot(object):
         return state_list
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.parts["left_hand"].object_in_hand == candidate_obj,
-            self.parts["right_hand"].object_in_hand == candidate_obj,
-        ]
+        return np.array(
+            [
+                self.parts["left_hand"].object_in_hand == candidate_obj,
+                self.parts["right_hand"].object_in_hand == candidate_obj,
+            ]
+        )
+
+    def can_toggle(self, toggle_position, toggle_distance_threshold):
+        for part_name, part in self.parts.items():
+            if part_name in ["left_hand", "right_hand"]:
+                if (
+                    np.linalg.norm(np.array(part.get_position()) - np.array(toggle_position))
+                    < toggle_distance_threshold
+                ):
+                    return True
+                for finger in FINGER_TIP_LINK_INDICES:
+                    finger_link_state = p.getLinkState(part.body_id, finger)
+                    link_pos = finger_link_state[0]
+                    if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
+                        return True
+        return False
 
     def dump_state(self):
         return {part_name: part.dump_part_state() for part_name, part in self.parts.items()}
@@ -392,7 +409,9 @@ class BRBody(ArticulatedObject):
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
         self.mass = BODY_MASS  # p.getDynamicsInfo(body_id, -1)[0]
-        p.changeDynamics(body_id, -1, mass=self.mass)
+        # The actual body is at link 0, the base link is a "virtual" link
+        p.changeDynamics(body_id, 0, mass=self.mass)
+        p.changeDynamics(body_id, -1, mass=1e-9)
         self.create_link_name_to_vm_map(body_id)
 
         return body_id
@@ -540,9 +559,12 @@ class BRHandBase(ArticulatedObject):
         # Keeps track of previous ghost hand hidden state
         self.prev_ghost_hand_hidden_state = False
         if self.parent.use_ghost_hands:
-            self.ghost_hand = VisualShape(
-                os.path.join(assets_path, "models", "vr_agent", "vr_hand", "ghost_hand_{}.obj".format(self.hand)),
-                scale=0.001,
+            self.ghost_hand = VisualMarker(
+                visual_shape=p.GEOM_MESH,
+                filename=os.path.join(
+                    assets_path, "models", "vr_agent", "vr_hand", "ghost_hand_{}.obj".format(self.hand)
+                ),
+                scale=[0.001] * 3,
             )
             self.ghost_hand.category = "agent"
             self.ghost_hand_appear_threshold = ghost_hand_appear_threshold
@@ -1312,7 +1334,9 @@ class BREye(ArticulatedObject):
         super(BREye, self).__init__(filename=self.eye_path, scale=1)
 
         self.should_hide = True
-        self.head_visual_marker = VisualShape(self.head_visual_path, scale=0.08)
+        self.head_visual_marker = VisualMarker(
+            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3
+        )
 
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update

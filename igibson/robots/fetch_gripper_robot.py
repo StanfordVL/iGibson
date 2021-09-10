@@ -46,8 +46,8 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", False)  # Use assisted grasping
-        self.ag_strict_mode = config.get("ag_strict_mode", False)  # Require object to be contained by forks for AG
+        self.use_ag = config.get("use_ag", True)  # Use assisted grasping
+        self.ag_strict_mode = config.get("ag_strict_mode", True)  # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
         self.arm_delta_pos_dim = 3
@@ -56,6 +56,7 @@ class FetchGripper(LocomotorRobot):
         self.wheel_axle_half = 0.186  # half of the distance between the wheels
         self.wheel_radius = 0.0613  # radius of the wheels
         self.head_limit_epsilon = 1e-2
+        self.gripper_limit_epsilon = 1e-2
 
         self.wheel_joint_ids = np.array([1, 2])
         self.head_joint_ids = np.array([4, 5])
@@ -306,13 +307,16 @@ class FetchGripper(LocomotorRobot):
         pass
 
     def get_proprioception_dim(self):
-        return 48
+        return 49
 
     def get_proprioception(self):
         relative_eef_pos = self.get_relative_eef_position()
         relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
         joint_states = np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
-        return np.concatenate([relative_eef_pos, relative_eef_orn, joint_states])
+        ag_data = self.calculate_ag_object()
+        has_grasped = np.array([ag_data is not None]).astype(np.float32)
+        self.ag_data = ag_data
+        return np.concatenate([relative_eef_pos, relative_eef_orn, has_grasped, joint_states])
 
     def set_up_continuous_action_space(self):
         """
@@ -451,8 +455,28 @@ class FetchGripper(LocomotorRobot):
             / self.max_joint_velocities[self.arm_joint_action_idx]
         )
 
-        # dim 10: gripper open/close
-        new_robot_action[self.gripper_joint_action_idx] = robot_action[10]
+        # dim 10: gripper open/close (with maximum joint velocity)
+        if robot_action[10] > 0.0:
+            new_robot_action[self.gripper_joint_action_idx] = 1.0
+        else:
+            new_robot_action[self.gripper_joint_action_idx] = -1.0
+
+        current_joint_position = np.array(
+            [item[0] for item in p.getJointStates(self.robot_ids[0], self.gripper_finger_joint_ids)]
+        )
+        violate_lower_limit = current_joint_position < (
+            self.lower_joint_limits[self.gripper_joint_action_idx] + self.gripper_limit_epsilon
+        )
+        negative_action = new_robot_action[self.gripper_joint_action_idx] < 0.0
+
+        violate_upper_limit = current_joint_position > (
+            self.upper_joint_limits[self.gripper_joint_action_idx] - self.gripper_limit_epsilon
+        )
+        positive_action = new_robot_action[self.gripper_joint_action_idx] > 0.0
+
+        # zero out gripper velocity if it gets close to the joint limit
+        violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
+        new_robot_action[self.gripper_joint_action_idx] *= ~violation
 
         return new_robot_action
 
@@ -668,9 +692,7 @@ class FetchGripper(LocomotorRobot):
                 self.establish_grasp(ag_data)
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.object_in_hand == candidate_obj,
-        ]
+        return np.array([self.object_in_hand == candidate_obj])
 
     # significant overlap with BehaviorRobot
     def dump_state(self):
@@ -744,3 +766,11 @@ class FetchGripper(LocomotorRobot):
                 body_links=self.gripper_joint_ids,
                 enable=False,
             )
+
+    def can_toggle(self, toggle_position, toggle_distance_threshold):
+        for joint_id in self.gripper_joint_ids:
+            finger_link_state = p.getLinkState(self.get_body_id(), joint_id)
+            link_pos = finger_link_state[0]
+            if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
+                return True
+        return False

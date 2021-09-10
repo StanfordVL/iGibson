@@ -1,6 +1,9 @@
+import itertools
+
 import cv2
 import numpy as np
 import pybullet as p
+import trimesh
 from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
@@ -15,7 +18,7 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState
-from igibson.utils import sampling_utils
+from igibson.utils import sampling_utils, utils
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
     # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
@@ -61,8 +64,27 @@ def detect_collision(bodyA):
     return collision
 
 
+def detect_collision(bodyA):
+    collision = False
+    for body_id in range(p.getNumBodies()):
+        if body_id == bodyA:
+            continue
+        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
+        if len(closest_points) > 0:
+            collision = True
+            break
+    return collision
+
+
 def sample_kinematics(
-    predicate, objA, objB, binary_state, use_ray_casting_method=False, max_trials=100, z_offset=0.05, skip_falling=False
+    predicate,
+    objA,
+    objB,
+    binary_state,
+    use_ray_casting_method=False,
+    max_trials=100,
+    z_offset=0.05,
+    skip_falling=False,
 ):
     if not binary_state:
         raise NotImplementedError()
@@ -104,16 +126,19 @@ def sample_kinematics(
                 else:
                     assert False, "predicate is not onTop or inside: {}".format(predicate)
 
-                aabb = get_aabb(objA.get_body_id())
-                aabb_center, aabb_extent = get_aabb_center(aabb), get_aabb_extent(aabb)
+                # Retrieve base CoM frame-aligned bounding box parallel to the XY plane
+                parallel_bbox_center, parallel_bbox_orn, parallel_bbox_extents, _ = objA.get_base_aligned_bounding_box(
+                    xy_aligned=True
+                )
 
                 # TODO: Get this to work with non-URDFObject objects.
                 sampling_results = sampling_utils.sample_cuboid_on_object(
                     objB,
                     num_samples=1,
-                    cuboid_dimensions=aabb_extent,
+                    cuboid_dimensions=parallel_bbox_extents,
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
+                    undo_padding=True,
                     **params
                 )
 
@@ -122,18 +147,22 @@ def sample_kinematics(
 
                 sampling_success = sampled_vector is not None
                 if sampling_success:
-                    # Find the delta from the object's CoM to its AABB centroid
-                    diff = old_pos - aabb_center
-
+                    # Move the object from the original parallel bbox to the sampled bbox
+                    parallel_bbox_rotation = R.from_quat(parallel_bbox_orn)
                     sample_rotation = R.from_quat(sampled_quaternion)
                     original_rotation = R.from_quat(orientation)
-                    combined_rotation = sample_rotation * original_rotation
 
-                    # Rotate it using the quaternion
-                    rotated_diff = sample_rotation.apply(diff)
-
-                    pos = sampled_vector + rotated_diff
+                    # The additional orientation to be applied should be the delta orientation
+                    # between the parallel bbox orientation and the sample orientation
+                    additional_rotation = sample_rotation * parallel_bbox_rotation.inv()
+                    combined_rotation = additional_rotation * original_rotation
                     orientation = combined_rotation.as_quat()
+
+                    # The delta vector between the base CoM frame and the parallel bbox center needs to be rotated
+                    # by the same additional orientation
+                    diff = old_pos - parallel_bbox_center
+                    rotated_diff = additional_rotation.apply(diff)
+                    pos = sampled_vector + rotated_diff
             else:
                 random_idx = np.random.randint(len(objB.supporting_surfaces[predicate].keys()))
                 body_id, link_id = list(objB.supporting_surfaces[predicate].keys())[random_idx]
