@@ -202,8 +202,7 @@ def sample_cuboid_on_object(
         are set to None when no successful sampling happens within the max number of attempts. Refusal details are only
         filled if the debug_sampling flag is globally set to True.
     """
-    # This is imported here to avoid a circular import with object_states.
-    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(visual=False, xy_aligned=True)
+    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(xy_aligned=True)
     half_extent_with_offset = (bbox_bf_extent / 2) + aabb_offset
 
     body_id = obj.get_body_id()
@@ -264,18 +263,18 @@ def sample_cuboid_on_object(
             filtered_cast_results = []
             center_idx = int(len(cast_results) / 2)
             filtered_center_idx = None
-            center_hit = True
+            center_hit = False
             for idx, hit in enumerate(hits):
-                # Only consider objects whose center idx has a ray hit
-                if idx == center_idx:
-                    if not hit:
-                        center_hit = False
-                    filtered_center_idx = len(filtered_cast_results)
                 if hit:
                     filtered_cast_results.append(cast_results[idx])
+                    if idx == center_idx:
+                        center_hit = True
+                        filtered_center_idx = len(filtered_cast_results) - 1
+
+            # Only consider objects whose center idx has a ray hit
             if not center_hit:
-                # import pdb; pdb.set_trace()
                 continue
+
             # Process the hit positions and normals.
             hit_positions = np.array([ray_res[3] for ray_res in filtered_cast_results])
             hit_normals = np.array([ray_res[4] for ray_res in filtered_cast_results])
