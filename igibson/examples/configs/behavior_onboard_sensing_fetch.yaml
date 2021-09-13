@@ -27,7 +27,7 @@ controller:
   neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
   radius_limit: 0.5               # x-y reaching limit
   height_limits: [0.2, 1.5]       # min, max height limits
-  ik_with_trunk: false     # moving the trunk or not when finding solutions with IK for the end-effector
+  ik_with_trunk: true     # moving the trunk or not when finding solutions with IK for the end-effector
 
 # task
 task: cleaning_cupboards
