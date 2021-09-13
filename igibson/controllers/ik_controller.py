@@ -30,6 +30,7 @@ class IKController:
         self.input_min = np.array(config["controller"]["input_min"])
         self.output_max = np.array(config["controller"]["output_max"])
         self.output_min = np.array(config["controller"]["output_min"])
+        self.ik_with_trunk = config.get("controller", {}).get("ik_with_trunk", True)
         self.action_scale = abs(self.output_max - self.output_min) / abs(self.input_max - self.input_min)
         self.action_output_transform = (self.output_max + self.output_min) / 2.0
         self.action_input_transform = (self.input_max + self.input_min) / 2.0
@@ -174,13 +175,15 @@ class IKController:
         # Update robot state
         self.robot.calc_state()
 
-        # Set the joint limits of the torso joint around the current state and adapt the range
         lower_joint_limits = self.robot.lower_joint_limits
-        lower_joint_limits[2] = self.robot.joint_position[2] - 0.01
         upper_joint_limits = self.robot.upper_joint_limits
-        upper_joint_limits[2] = self.robot.joint_position[2] + 0.01
         joint_range = self.robot.joint_range
-        joint_range[2] = 0.02
+
+        if not self.ik_with_trunk:
+            # Set the joint limits of the torso joint around the current state and adapt the range
+            lower_joint_limits[2] = self.robot.joint_position[2] - 0.01
+            upper_joint_limits[2] = self.robot.joint_position[2] + 0.01
+            joint_range[2] = 0.02
 
         # Run IK
         cmd_joint_pos = np.array(
@@ -196,8 +199,10 @@ class IKController:
                 jointDamping=self.robot.joint_damping.tolist(),
             )
         )
-        # Set the goal torso state to be EXACTLY the state before (avoids drifting)
-        cmd_joint_pos[2] = self.robot.joint_position[2]
+
+        if not self.ik_with_trunk:
+            # Set the goal torso state to be EXACTLY the state before (avoids drifting)
+            cmd_joint_pos[2] = self.robot.joint_position[2]
 
         cmd_joint_pos = self.lpf.estimate(np.array(cmd_joint_pos))
 
