@@ -1,4 +1,4 @@
-""" 
+"""
 This demo shows how to load a scaled object from the model library
 """
 import argparse
@@ -181,7 +181,6 @@ def main(args):
             break
 
         action *= 5
-        print(action)
         # print(events)
         if args.replay:
             if i > replayed_actions.shape[0]:
