@@ -15,7 +15,7 @@ scene_kwargs = {
     "not_load_object_categories": ["ceilings"],
 }
 settings = MeshRendererSettings(texture_scale=1)
-simulator = Simulator(mode="headless", image_width=960, image_height=720, rendering_settings=settings)
+simulator = Simulator(mode="pbgui", image_width=960, image_height=720, rendering_settings=settings)
 init_success = igbhvr_act_inst.initialize_simulator(
     scene_id=scene_id, simulator=simulator, load_clutter=False, should_debug_sampling=True, scene_kwargs=scene_kwargs
 )
