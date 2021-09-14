@@ -53,6 +53,12 @@ def parse_args():
         nargs="?",
         help="BDDL integer ID, matching suffix of bddl.",
     )
+    parser.add_argument(
+        "--instance_id",
+        type=int,
+        required=True,
+        help="Instance of behavior activity (particular URDF corresponding to a BDDL file)",
+    )
     parser.add_argument("--vr_log_path", type=str, help="Path (and filename) of vr log")
     parser.add_argument(
         "--scene", type=str, choices=scene_choices, nargs="?", help="Scene name/ID matching iGibson interactive scenes."
@@ -76,6 +82,7 @@ def main():
         args.task,
         args.task_id,
         args.scene,
+        args.instance_id,
         args.vr_log_path,
         args.disable_save,
         args.max_steps,
@@ -89,6 +96,7 @@ def collect_demo(
     task,
     task_id,
     scene,
+    instance_id=0,
     vr_log_path=None,
     disable_save=False,
     max_steps=-1,
@@ -134,7 +142,7 @@ def collect_demo(
 
     if not disable_scene_cache:
         scene_kwargs = {
-            "urdf_file": "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),
+            "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene, task, task_id, instance_id),
         }
         online_sampling = False
 
@@ -152,7 +160,7 @@ def collect_demo(
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         if vr_log_path is None:
-            vr_log_path = "{}_{}_{}_{}.hdf5".format(task, task_id, scene, timestamp)
+            vr_log_path = "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, instance_id, timestamp)
         log_writer = IGLogWriter(
             s,
             log_filepath=vr_log_path,
@@ -163,6 +171,7 @@ def collect_demo(
             filter_objects=True,
         )
         log_writer.set_up_data_storage()
+        log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
     satisfied_predicates_cached = {}
     post_task_steps = copy.deepcopy(POST_TASK_STEPS)

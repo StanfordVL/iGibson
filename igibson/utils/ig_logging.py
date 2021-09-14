@@ -286,6 +286,8 @@ class IGLogWriter(object):
             self.hf.attrs["/metadata/activity_definition"] = self.task.activity_definition
             self.hf.attrs["/metadata/scene_id"] = self.task.scene.scene_id
             self.hf.attrs["/metadata/obj_body_id_to_name"] = self.obj_body_id_to_name_str
+            self.hf.attrs["/metadata/urdf_file"] = self.task.scene.fname
+
         # VR config YML is stored as a string in metadata
         if self.store_vr:
             self.hf.attrs["/metadata/vr_settings"] = self.sim.vr_settings.dump_vr_settings()
