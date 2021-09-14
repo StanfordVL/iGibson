@@ -954,7 +954,6 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
         return task_obs
 
-
     def get_scene_graph(self):
         scene_graph = {}
         for obj_inst, simulator_obj in self.object_scope.items():
@@ -964,11 +963,16 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 print(e)
                 pos, orn = None, None
             try:
-                bbox_center, bbox_orn, bbox_bf_extent, bbox_center_in_base_com_frame = simulator_obj.get_base_aligned_bounding_box()
+                (
+                    bbox_center,
+                    bbox_orn,
+                    bbox_bf_extent,
+                    bbox_center_in_base_com_frame,
+                ) = simulator_obj.get_base_aligned_bounding_box()
             except Exception as e:
                 print(e)
                 bbox_center, bbox_orn, bbox_bf_extent, bbox_center_in_base_com_frame = None, None, None, None
-            if not hasattr(simulator_obj, 'scaled_link_bounding_boxes'):
+            if not hasattr(simulator_obj, "scaled_link_bounding_boxes"):
                 try:
                     simulator_obj.prepare_link_based_bounding_boxes()
                     scaled_link_bounding_boxes = simulator_obj.scaled_link_bounding_boxes
@@ -978,11 +982,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             else:
                 scaled_link_bounding_boxes = simulator_obj.scaled_link_bounding_boxes
             try:
-                bbox_size = simulator_obj.metadata['bbox_size']
+                bbox_size = simulator_obj.metadata["bbox_size"]
             except (AttributeError, KeyError):
                 bbox_size = None
             try:
-                base_link_offset = simulator_obj.metadata['base_link_offset']
+                base_link_offset = simulator_obj.metadata["base_link_offset"]
             except (AttributeError, KeyError):
                 base_link_offset = None
             # try:
@@ -993,20 +997,20 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             # except Exception:
             #     states = None
             scene_graph[obj_inst] = {
-                'name': simulator_obj.name if hasattr(simulator_obj, 'name') else None,
-                'filename': simulator_obj.filename if hasattr(simulator_obj, 'filename') else None,
-                'category': simulator_obj.category if hasattr(simulator_obj, 'category') else None,
-                'pos': pos,
-                'orn': orn,
-                'scale': simulator_obj.scale if hasattr(simulator_obj, 'scale') else None,
-                'bounding_box': simulator_obj.bounding_box if hasattr(simulator_obj, 'bounding_box') else None,
-                'bbox_size': bbox_size,
-                'base_link_offset': base_link_offset,
-                'bbox_center': bbox_center,
-                'bbox_orn': bbox_orn,
-                'bbox_bf_extent': bbox_bf_extent,
-                'bbox_center_in_base_com_frame': bbox_center_in_base_com_frame,
-                'scaled_link_bounding_boxes': scaled_link_bounding_boxes,
+                "name": simulator_obj.name if hasattr(simulator_obj, "name") else None,
+                "filename": simulator_obj.filename if hasattr(simulator_obj, "filename") else None,
+                "category": simulator_obj.category if hasattr(simulator_obj, "category") else None,
+                "pos": pos,
+                "orn": orn,
+                "scale": simulator_obj.scale if hasattr(simulator_obj, "scale") else None,
+                "bounding_box": simulator_obj.bounding_box if hasattr(simulator_obj, "bounding_box") else None,
+                "bbox_size": bbox_size,
+                "base_link_offset": base_link_offset,
+                "bbox_center": bbox_center,
+                "bbox_orn": bbox_orn,
+                "bbox_bf_extent": bbox_bf_extent,
+                "bbox_center_in_base_com_frame": bbox_center_in_base_com_frame,
+                "scaled_link_bounding_boxes": scaled_link_bounding_boxes,
                 # 'states': states, # TODO check other object
             }
         return scene_graph
