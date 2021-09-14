@@ -123,7 +123,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             scene_dir = get_3dfront_scene_path(scene_id)
         self.scene_source = scene_source
         self.scene_dir = scene_dir
-        self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
+        if os.path.sep in fname:
+            self.scene_file = fname
+        else:
+            self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.random_groups = {}
         self.objects_by_category = {}
