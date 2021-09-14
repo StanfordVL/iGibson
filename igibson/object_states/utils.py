@@ -211,7 +211,7 @@ def sample_kinematics(
 
         if igibson.debug_sampling:
             print("sample_kinematics", success)
-            embed()
+            # embed()
 
         if success:
             break

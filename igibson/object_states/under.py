@@ -25,7 +25,7 @@ class Under(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
                     sampling_success = False
                 if igibson.debug_sampling:
                     print("Under checking", sampling_success)
-                    embed()
+                    # embed()
             if sampling_success:
                 break
             else:

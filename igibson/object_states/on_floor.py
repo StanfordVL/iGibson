@@ -42,7 +42,7 @@ class OnFloor(RelativeObjectState, KinematicsMixin, BooleanState):
                     sampling_success = False
                 if igibson.debug_sampling:
                     print("OnFloor checking", sampling_success)
-                    embed()
+                    # embed()
             if sampling_success:
                 break
             else:

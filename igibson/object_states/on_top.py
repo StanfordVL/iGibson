@@ -28,7 +28,7 @@ class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
                     sampling_success = False
                 if igibson.debug_sampling:
                     print("OnTop checking", sampling_success)
-                    embed()
+                    # embed()
             if sampling_success:
                 break
             else:

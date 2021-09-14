@@ -31,7 +31,7 @@ class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
                     sampling_success = False
                 if igibson.debug_sampling:
                     print("Inside checking", sampling_success)
-                    embed()
+                    # embed()
             if sampling_success:
                 break
             else:
