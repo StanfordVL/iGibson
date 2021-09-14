@@ -139,6 +139,7 @@ class Viewer:
         self.create_visual_object()
         self.planner = None
         self.block_command = False
+        self.exit = False
 
     def setup_motion_planner(self, planner=None):
         """
@@ -719,6 +720,7 @@ class Viewer:
 
         # quit (Esc)
         elif q == 27:
+            # self.renderer.release()
             if self.video_folder != "":
                 logging.info(
                     "You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder"
@@ -726,11 +728,13 @@ class Viewer:
                 )
                 logging.info("ffmpeg -i %5d.png -y -c:a copy -c:v libx264 -crf 18 -preset veryslow -r 30 video.mp4")
                 logging.info("The last folder you collected images for a video was: " + self.video_folder)
+            self.simulator.disconnect()
             exit()
 
         # Start/Stop recording. Stopping saves frames to files
         elif q == ord("r"):
             if self.recording:
+                logging.info("Stop recording*****************************")
                 self.recording = False
                 self.pause_recording = False
             else:
@@ -758,6 +762,37 @@ class Viewer:
             self.middle_down = False
             self.right_down = False
             self.manipulation_mode = (self.manipulation_mode + 1) % 3
+
+        # Take screenshot
+        elif q == ord("t"):
+            os.makedirs("/tmp/screenshots", exist_ok=True)
+            timestr = time.strftime("%Y%m%d-%H%M%S")
+            filename = os.path.join(
+                "/tmp/screenshots", "{}_{}_{}.png".format(timestr, random.getrandbits(64), os.getpid())
+            )
+            cv2.imwrite(
+                filename, (frame * 255).astype(np.uint8)
+            )
+            print(f'Took screenshot at {filename}')
+
+        # Print camera coordinates
+        elif q == ord("c"):
+            # print('Camera pose:')
+            # print(camera_pose)
+            # print('View direction:')
+            # print(self.view_direction)
+            # print('Up:')
+            # print(self.up)
+            s = f"""
+        'initial_pos': np.{repr(camera_pose)},
+        'initial_view_direction': np.{repr(self.view_direction)},
+        'initial_up': np.array({repr(self.up)}),""".replace('array(array(','array(').replace('))',')')
+            print(s)
+            with open('camera_settings.out', 'w') as f:
+                f.write(s)
+
+        elif q == ord("l"):
+            self.exit = True
 
         elif (
             self.is_robosuite
