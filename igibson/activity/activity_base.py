@@ -800,7 +800,9 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                     goal_sampling_error_msgs.append(error_msg)
                     if self.should_debug_sampling:
                         self.debug_sampling(
-                            scene_object_scope_filtered_goal_cond, self.non_sampleable_obj_conditions, goal_condition_set
+                            scene_object_scope_filtered_goal_cond,
+                            self.non_sampleable_obj_conditions,
+                            goal_condition_set,
                         )
                     goal_condition_set_success = False
                     break
@@ -948,7 +950,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         #     cur_batch = next_batch
         G = nx.DiGraph()
         for cond, positive in self.sampleable_goal_conditions:
-            if len(cond.body) == 2 and condition.STATE_NAME in ["inside", "ontop"]: # should be redundant conditions?
+            if len(cond.body) == 2 and condition.STATE_NAME in ["inside", "ontop"]:  # should be redundant conditions?
                 G.add_edge(cond.body[1], cond.body[0])
         self.goal_sampling_orders = list(nx.topological_sort(G))
 
@@ -957,7 +959,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         #     self.goal_sampling_orders.pop(0)
         # from IPython import embed
         # embed()
-        for cur_node in self.goal_sampling_orders:  # TODO check! 0 -> -1 TODO less efficient going node by node than processing in batches
+        for (
+            cur_node
+        ) in (
+            self.goal_sampling_orders
+        ):  # TODO check! 0 -> -1 TODO less efficient going node by node than processing in batches
             # First sample non-sliced conditions
             for condition, positive in self.sampleable_goal_conditions:
                 # import pdb; pdb.set_trace()
@@ -966,7 +972,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 # Sample conditions that involve the current batch of objects
                 if condition.body[-1] == cur_node:
                     print(condition.flattened_condition_options)
-                    num_trials = 10 # 100
+                    num_trials = 10  # 100
                     for _ in range(num_trials):
                         print(_)
                         success = condition.sample(binary_state=positive)
