@@ -76,4 +76,4 @@ example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
 logging.info("Example path: {}".format(example_path))
 logging.info("Example config path: {}".format(example_config_path))
 
-debug_sampling = False
+debug_sampling = True
