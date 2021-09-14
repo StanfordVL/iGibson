@@ -7,7 +7,9 @@ from igibson.simulator import Simulator
 
 bddl.set_backend("iGibson")
 
-activity = "assembling_gift_baskets"
+# activity = "assembling_gift_baskets"
+activity = "sorting_books"
+# activity = "test_activity"
 scene_id = "Rs_int"
 
 igbhvr_act_inst = iGBEHAVIORActivityInstance(activity, activity_definition=0)
@@ -15,12 +17,27 @@ scene_kwargs = {
     "not_load_object_categories": ["ceilings"],
 }
 settings = MeshRendererSettings(texture_scale=1)
-simulator = Simulator(mode="pbgui", image_width=960, image_height=720, rendering_settings=settings)
+simulator = Simulator(mode="headless", image_width=960, image_height=720, rendering_settings=settings)
 init_success = igbhvr_act_inst.initialize_simulator(
-    scene_id=scene_id, simulator=simulator, load_clutter=False, should_debug_sampling=True, scene_kwargs=scene_kwargs
+    scene_id=scene_id, 
+    simulator=simulator, 
+    load_clutter=False, 
+    should_debug_sampling=True, 
+    scene_kwargs=scene_kwargs,
+    online_sampling=True,
 )
 assert init_success
-print("success")
+
+success, goal_condition_set_success, goal_sampling_error_msgs = igbhvr_act_inst.assign_scope_for_goal_conditions()
+print(success)
+print(goal_condition_set_success)
+print(goal_sampling_error_msgs)
+success, feedback = igbhvr_act_inst.sample_goal_conditions()
+print(success)
+print(feedback)
+success, sorted_conditions = igbhvr_act_inst.check_success()
+print(success)
+print(sorted_conditions)
 embed()
 
 while True:
