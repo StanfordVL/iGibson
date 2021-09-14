@@ -128,6 +128,14 @@ def replay_demo(
     physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
     render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
     filter_objects = IGLogReader.read_metadata_attr(in_log_path, "/metadata/filter_objects")
+    instance_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/instance_id")
+    urdf_file = IGLogReader.read_metadata_attr(in_log_path, "/metadata/urdf_file")
+
+    if urdf_file is None:
+        urdf_file = ("{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),)
+
+    if instance_id is None:
+        instance_id = 0
 
     logged_git_info = IGLogReader.read_metadata_attr(in_log_path, "/metadata/git_info")
     logged_git_info = parse_str_config(logged_git_info)
@@ -167,7 +175,7 @@ def replay_demo(
         simulator=s,
         scene_id=scene,
         scene_kwargs={
-            "urdf_file": "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),
+            "urdf_file": urdf_file,
         },
         load_clutter=True,
         online_sampling=False,
@@ -179,7 +187,7 @@ def replay_demo(
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         if out_log_path == None:
-            out_log_path = "{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, timestamp)
+            out_log_path = "{}_{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, instance_id, timestamp)
 
         log_writer = IGLogWriter(
             s,
