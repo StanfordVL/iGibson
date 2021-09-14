@@ -2,33 +2,29 @@ import argparse
 import json
 import logging
 import os
+import pdb
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 import bddl
-import pybullet as p
-from PIL import Image
 import numpy as np
-import xml.etree.ElementTree as ET
-
 import pandas as pd
-from igibson.utils.utils import parse_config
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
-from igibson.simulator import Simulator
-from igibson.robots.fetch_gripper_robot import FetchGripper
+import pybullet as p
+from IPython import embed
+from PIL import Image
 
-from xml.dom import minidom
+from igibson.activity.activity_base import iGBEHAVIORActivityInstance
+from igibson.object_states import ContactBodies
+from igibson.object_states.utils import detect_collision
+from igibson.robots.fetch_gripper_robot import FetchGripper
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", help="manifest of files to resample")
     return parser.parse_args()
-
-
-def detect_collisions(robot):
-    for contact in p.getContactPoints(robot.get_body_id()):
-        if contact[8] <= -0.0007 and contact[2] != 3:
-            return True
-    return False
 
 
 def save_modified_urdf(scene, urdf_name, robot, additional_attribs_by_name={}):
@@ -40,28 +36,46 @@ def save_modified_urdf(scene, urdf_name, robot, additional_attribs_by_name={}):
     scene_tree = ET.parse(scene.scene_file)
     tree_root = scene_tree.getroot()
 
-    robot.name = "fetch_gripper_robot_1"
-    robot.body_id = robot.get_body_id()
-    robot.get_position_orientation = lambda: (robot.get_position(), robot.get_orientation())
-    scene.save_obj_or_multiplexer(robot, tree_root, additional_attribs_by_name)
+    xyz = robot.get_position()
+    rpy = robot.get_orientation()
+    link = ET.SubElement(tree_root, "link")
+    link.attrib = {
+        "category": "agent",
+        "name": "fetch_gripper_robot_1",
+        "object_scope": "agent.n.01_1",
+        "rpy": " ".join([str(item) for item in rpy]),
+        "xyz": " ".join([str(item) for item in xyz]),
+    }
+    joint = ET.SubElement(tree_root, "joint")
+    joint.attrib = {
+        "name": "j_fetch_gripper_robot_1",
+        "type": "floating",
+    }
+    origin = ET.SubElement(joint, "origin")
+    origin.attrib = {
+        "rpy": " ".join([str(item) for item in rpy]),
+        "xyz": " ".join([str(item) for item in xyz]),
+    }
+    child = ET.SubElement(joint, "child")
+    child.attrib = {
+        "link": "fetch_gripper_robot_1",
+    }
+    parent = ET.SubElement(joint, "parent")
+    parent.attrib = {
+        "link": "world",
+    }
     path_to_urdf = os.path.join(scene.scene_dir, "urdf", urdf_name + ".urdf")
     xmlstr = minidom.parseString(ET.tostring(tree_root).replace(b"\n", b"").replace(b"\t", b"")).toprettyxml()
     with open(path_to_urdf, "w") as f:
         f.write(xmlstr)
+    print(path_to_urdf)
 
 
 def snapshot(filename, simulator):
-    # Take a picture of the old position
     camera_pos = simulator.robots[0].get_position()
     offset = np.array([1, 0, 1.5])
     camera_pos += offset
     viewing_direction = np.array([-1, 0, -0.75])
-
-    # simulator.viewer.px = camera_pos[0]
-    # simulator.viewer.py = camera_pos[1]
-    # simulator.viewer.pz = camera_pos[2]
-    # simulator.viewer.view_direction = viewing_direction
-
     simulator.sync()
     simulator.renderer.set_camera(camera_pos, camera_pos + viewing_direction, [0, 0, 1])
     rgb = simulator.renderer.render(modes=("rgb"))[0][:, :, :3]
@@ -90,7 +104,6 @@ def main():
 
         logging.warning("TASK: {}".format(task))
         logging.warning("TASK ID: {}".format(task_id))
-
         simulator = Simulator(mode="headless", image_width=960, image_height=720, device_idx=0)
 
         config = parse_config("igibson/examples/configs/behavior_onboard_sensing_fetch.yaml")
@@ -114,60 +127,63 @@ def main():
             online_sampling=False,
         )
 
-        robot = simulator.robots[0]
-        robot.apply_action(np.zeros(11))
-        simulator.step()
-        robot.robot_specific_reset()
+        onfloor_condition = None
+        for condition in igbhvr_act_inst.initial_conditions:
+            if simulator.robots[0] in condition.get_relevant_objects():
+                onfloor_condition = condition
+                break
+        assert onfloor_condition is not None
 
-        robot_collision = detect_collisions(robot)
-        found_good_position = False
-
-        if robot_collision:
-            snapshot("cache_images/pre_{}.png".format(urdf_path), simulator)
-            preAdjustState = p.saveState()
+        if success:
+            robot = simulator.robots[0]
             original_robot_position = robot.get_position()
+            robot.set_position(
+                [original_robot_position[0], original_robot_position[1], original_robot_position[2] + 0.02]
+            )
+            robot.robot_specific_reset()
+            robot_collision = detect_collision(robot.get_body_id())
+            valid = not robot_collision
+            if valid:
+                # Fall for 0.1 second to settle down
+                for _ in range(3):
+                    robot.apply_action(np.zeros(11))
+                    simulator.step()
 
-            found_good_position = False
-
-            # Try to adjust the position of the robot
-            for _ in range(1000):
-                new_position = original_robot_position + rng.normal(0, scale=0.5, size=3)
-                new_position[2] = original_robot_position[2] + 0.02
-                robot.set_position(new_position)
-
-                found_good_position = True
-                for i in range(25):
-                    if i == 0:
-                        p.resetBaseVelocity(robot.get_body_id(), linearVelocity=[0, 0, 0], angularVelocity=[0, 0, 0])
+                # Ugly hack to manually update the robot state because it's not updated by simulator.step()
+                robot.states[ContactBodies].update()
+                valid = onfloor_condition.evaluate()
+            # print("check valid")
+            # embed()
+            if not valid:
+                # Try to adjust the position of the robot
+                for i in range(1000):
+                    new_position = original_robot_position + rng.normal(0, scale=0.1, size=3)
+                    new_position[2] = original_robot_position[2] + 0.02
+                    robot.set_position(new_position)
                     robot.robot_specific_reset()
-                    try:
+                    robot_collision = detect_collision(robot.get_body_id())
+                    if robot_collision:
+                        continue
+
+                    # Fall for 0.1 second to settle down
+                    for _ in range(3):
+                        robot.apply_action(np.zeros(11))
                         simulator.step()
-                    except:
-                        import pdb
 
-                        pdb.set_trace()
-                    if detect_collisions(robot):
-                        found_good_position = False
+                    # Ugly hack to manually update the robot state because it's not updated by simulator.step()
+                    robot.states[ContactBodies].update()
+                    adjusted = onfloor_condition.evaluate()
+                    if adjusted:
                         break
+            # print("check adjusted")
+            # embed()
+            if (not valid) and (not adjusted):
+                resampled = onfloor_condition.children[0].sample(True)
+                success = resampled
+            # print("check resampled")
+            # embed()
 
-                for condition in igbhvr_act_inst.initial_conditions:
-                    if simulator.robots[0] in condition.get_relevant_objects():
-                        found_good_position = found_good_position and condition.evaluate()
-
-                if not found_good_position:
-                    p.restoreState(preAdjustState)
-                    continue
-                else:
-                    adjusted = True
-                    break
-
-            if not found_good_position:
-                for condition in igbhvr_act_inst.initial_conditions:
-                    if simulator.robots[0] in condition.get_relevant_objects():
-                        condition.children[0].sample(True)
-                        resampled = True
-
-        snapshot("cache_images/post_{}.png".format(urdf_path), simulator)
+        snapshot("cache_images/{}.png".format(urdf_path), simulator)
 
         original_valid.append(valid)
         needs_adjustment.append(adjusted)
@@ -175,13 +191,19 @@ def main():
         scene_successful.append(success)
         urdf_list.append(urdf_path)
 
-        df = pd.DataFrame(
-            {"urdf": urdf_list, "success": scene_successful, "resampled": needs_resample, "adjusted": needs_adjustment}
-        )
-        df.to_csv("qc_{}.csv".format(args.manifest[-4]))
-
         save_modified_urdf(simulator.scene, urdf_path, robot)
         simulator.disconnect()
+
+        df = pd.DataFrame(
+            {
+                "urdf": urdf_list,
+                "success": scene_successful,
+                "valid": original_valid,
+                "adjusted": needs_adjustment,
+                "resampled": needs_resample,
+            }
+        )
+        df.to_csv("qc_{}.csv".format(args.manifest[-5]))
 
 
 if __name__ == "__main__":
