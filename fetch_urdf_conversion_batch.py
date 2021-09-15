@@ -19,6 +19,7 @@ from igibson.object_states.utils import detect_collision
 from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
+from igibson.external.pybullet_tools.utils import euler_from_quat
 
 
 def parse_args():
@@ -37,7 +38,7 @@ def save_modified_urdf(scene, urdf_name, robot, additional_attribs_by_name={}):
     tree_root = scene_tree.getroot()
 
     xyz = robot.get_position()
-    rpy = robot.get_orientation()
+    rpy = euler_from_quat(robot.get_orientation())
     link = ET.SubElement(tree_root, "link")
     link.attrib = {
         "category": "agent",
@@ -191,7 +192,9 @@ def main():
         scene_successful.append(success)
         urdf_list.append(urdf_path)
 
-        save_modified_urdf(simulator.scene, urdf_path, robot)
+        if success:
+            save_modified_urdf(simulator.scene, urdf_path, robot)
+
         simulator.disconnect()
 
         df = pd.DataFrame(
