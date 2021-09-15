@@ -99,16 +99,44 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
 
 
 class InFOVOfRobot(CachingEnabledObjectState, BooleanState):
+    @staticmethod
+    def get_optional_dependencies():
+        return CachingEnabledObjectState.get_optional_dependencies() + [ObjectsInFOVOfRobot]
+
     def _compute_value(self):
-        seg = self.simulator.renderer.render_robot_cameras(modes="ins_seg")[0][:, :, 0]
-        seg = np.round(seg * MAX_INSTANCE_COUNT)
-        main_body_instances = [
-            inst.id for inst in self.obj.renderer_instances if inst.pybullet_uuid == self.obj.get_body_id()
-        ]
-        return np.any(np.isin(seg, main_body_instances))
+        robot = _get_behavior_robot(self.simulator)
+        if not robot:
+            return False
+
+        return self.obj.get_body_id() in robot.parts["body"].states[ObjectsInFOVOfRobot].get_value()
 
     def _set_value(self, new_value):
         raise NotImplementedError("InFOVOfRobot state currently does not support setting.")
+
+    # Nothing to do here.
+    def _dump(self):
+        pass
+
+    def load(self, data):
+        pass
+
+
+class ObjectsInFOVOfRobot(CachingEnabledObjectState):
+    def __init__(self, *args, **kwargs):
+        super(CachingEnabledObjectState, self).__init__(*args, **kwargs)
+
+    def _compute_value(self):
+        # Pass the FOV through the instance-to-body ID mapping.
+        seg = self.obj.parent.render_camera_image(modes="ins_seg")[0][:, :, 0]
+        seg = np.round(seg * MAX_INSTANCE_COUNT).astype(int)
+        body_ids = self.simulator.renderer.get_pb_ids_for_instance_ids(seg)
+
+        # Pixels that don't contain an object are marked -1 but we don't want to include that
+        # as a body ID.
+        return set(np.unique(body_ids)) - {-1}
+
+    def _set_value(self, new_value):
+        raise NotImplementedError("ObjectsInFOVOfRobot state currently does not support setting.")
 
     # Nothing to do here.
     def _dump(self):

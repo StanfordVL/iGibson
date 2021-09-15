@@ -18,7 +18,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    def get_metrics_callbacks():
+    def get_metrics_callbacks(**kwargs):
         metrics = [KinematicDisarrangement(), LogicalDisarrangement(), AgentMetric(), GazeMetric(), TaskMetric()]
 
         return (
