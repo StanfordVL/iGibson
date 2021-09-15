@@ -2023,7 +2023,7 @@ class MeshRenderer(object):
     def update_instance_id_to_pb_id_map(self):
         self.instance_id_to_pb_id = np.full((MAX_INSTANCE_COUNT,), -1)
         for inst in self.instances:
-            self.instance_id_to_pb_id[inst.id] = inst.pybullet_uuid
+            self.instance_id_to_pb_id[inst.id] = inst.pybullet_uuid if inst.pybullet_uuid is not None else -1
 
     def get_pb_ids_for_instance_ids(self, instance_ids):
         return self.instance_id_to_pb_id[instance_ids.astype(int)]
