@@ -186,7 +186,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 # We allow burners to be used as if they are stoves
                 categories = self.object_taxonomy.get_subtree_igibson_categories(obj_cat)
                 if obj_cat == "stove.n.01":
-                    categories += self.object_taxonomy.get_subtree_igibson_categories("burner.n.01")
+                    categories += self.object_taxonomy.get_subtree_igibson_categories("burner.n.02")
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     if obj_cat == FLOOR_SYNSET:
                         # TODO: remove after split floors
