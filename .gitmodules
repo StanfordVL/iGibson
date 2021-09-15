@@ -13,3 +13,6 @@
 [submodule "igibson/render/cryptopp"]
 	path = igibson/render/cryptopp
 	url = https://github.com/fxia22/cryptopp
+[submodule "igibson/task_gen/sceneformer"]
+	path = igibson/task_gen/sceneformer
+	url = https://github.com/cy94/sceneformer.git
