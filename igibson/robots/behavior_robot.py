@@ -317,7 +317,7 @@ class BehaviorRobot(object):
         pass
 
     def get_proprioception_dim(self):
-        return 6 * 3 + 2
+        return 6 * 3 + 4
 
     def get_proprioception(self):
         state = OrderedDict()
@@ -328,7 +328,13 @@ class BehaviorRobot(object):
         state["eye_position_local"] = self.parts["eye"].local_pos
         state["eye_orientation_local"] = p.getEulerFromQuaternion(self.parts["eye"].local_orn)
         state["left_hand_trigger_fraction"] = self.parts["left_hand"].trigger_fraction
+        state["left_hand_is_grasping"] = float(
+            self.parts["left_hand"].object_in_hand is not None and self.parts["left_hand"].release_counter is None
+        )
         state["right_hand_trigger_fraction"] = self.parts["right_hand"].trigger_fraction
+        state["right_hand_is_grasping"] = float(
+            self.parts["right_hand"].object_in_hand is not None and self.parts["right_hand"].release_counter is None
+        )
 
         state_list = []
         for k, v in state.items():
