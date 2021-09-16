@@ -7,6 +7,7 @@ import trimesh
 from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
+from igibson.external.pybullet_tools.utils import euler_from_quat, quat_from_euler
 import igibson
 from igibson.external.pybullet_tools.utils import (
     get_aabb,
@@ -104,7 +105,8 @@ def sample_kinematics(
         if hasattr(objA, "orientations") and objA.orientations is not None:
             orientation = objA.sample_orientation()
         else:
-            orientation = [0, 0, 0, 1]
+            orientation = quat_from_euler([0, 0, np.random.uniform(-np.pi, np.pi)])
+            # orientation = [0, 0, 0, 1]
 
         # Orientation needs to be set for stable_z_on_aabb to work correctly
         # Position needs to be set to be very far away because the object's
