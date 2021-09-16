@@ -17,8 +17,19 @@ def run_example(args):
     state = nav_env.reset()
 
     while True:
-        action = np.zeros(nav_env.action_space.shape)
-        state, reward, done, _ = nav_env.step(action)
+        for i in range(90):
+            action = np.random.uniform(-1, 1, nav_env.action_space.shape)
+            state, reward, done, _ = nav_env.step(action)
+        base_path = motion_planner.plan_base_motion([1, 0, 0])
+        print(base_path)
+        motion_planner.dry_run_base_plan(base_path)
+        for i in range(30):
+            action = np.random.uniform(-1, 1, nav_env.action_space.shape)
+            state, reward, done, _ = nav_env.step(action)
+        joint_states = motion_planner.get_arm_joint_positions([0.3, 0.3, 0.8])
+        print(joint_states)
+        # action = np.random.uniform(-1, 1, nav_env.action_space.shape)
+        # state, reward, done, _ = nav_env.step(action)
 
 
 if __name__ == "__main__":
