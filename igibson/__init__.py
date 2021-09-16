@@ -47,6 +47,24 @@ else:
     key_path = global_config["key_path"]
 key_path = os.path.expanduser(key_path)
 
+if "GIBSON_DERIVED_DATA_PATH" in os.environ:
+    derived_data_path = os.environ["GIBSON_DERIVED_DATA_PATH"]
+else:
+    derived_data_path = global_config["derived_data_path"]
+derived_data_path = os.path.expanduser(derived_data_path)
+
+if "GIBSON_DERIVED_SCENES_PATH" in os.environ:
+    derived_scenes_path = os.environ["GIBSON_DERIVED_SCENES_PATH"]
+else:
+    derived_scenes_path = global_config["derived_scenes_path"]
+derived_scenes_path = os.path.expanduser(derived_scenes_path)
+
+if "GIBSON_DERIVED_OBJECTS_PATH" in os.environ:
+    derived_objects_path = os.environ["GIBSON_DERIVED_OBJECTS_PATH"]
+else:
+    derived_objects_path = global_config["derived_objects_path"]
+derived_objects_path = os.path.expanduser(derived_objects_path)
+
 root_path = os.path.dirname(os.path.realpath(__file__))
 
 if not os.path.isabs(assets_path):
@@ -61,6 +79,12 @@ if not os.path.isabs(cubicasa_dataset_path):
     cubicasa_dataset_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), cubicasa_dataset_path)
 if not os.path.isabs(key_path):
     key_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), key_path)
+if not os.path.isabs(derived_data_path):
+    derived_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), derived_data_path)
+if not os.path.isabs(derived_scenes_path):
+    derived_scenes_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), derived_scenes_path)
+if not os.path.isabs(derived_objects_path):
+    derived_objects_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), derived_objects_path)
 
 logging.info("Importing iGibson (igibson module)")
 logging.info("Assets path: {}".format(assets_path))
@@ -69,6 +93,7 @@ logging.info("iG Dataset path: {}".format(ig_dataset_path))
 logging.info("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
 logging.info("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
 logging.info("iGibson Key path: {}".format(key_path))
+logging.info("Derived data path: {}".format(derived_data_path))
 
 example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
 example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples", "configs")

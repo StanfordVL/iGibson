@@ -4,3 +4,6 @@ ig_dataset_path: data/ig_dataset
 threedfront_dataset_path: data/threedfront_dataset
 cubicasa_dataset_path: data/cubicasa_dataset
 key_path: data/igibson.key
+derived_data_path: derived_data
+derived_scenes_path: derived_data/scenes
+derived_objects_path: derived_data/objects
