@@ -1,13 +1,17 @@
+import os
 from time import sleep, time
 
 import numpy as np
 import pybullet as p
+import pybullet_utils.bullet_client as bc
 from transforms3d import euler
 
 from igibson.external.pybullet_tools.utils import (
     control_joints,
     get_base_values,
+    get_client,
     get_joint_positions,
+    get_link_position_from_name,
     get_max_limits,
     get_min_limits,
     get_moving_links,
@@ -18,6 +22,7 @@ from igibson.external.pybullet_tools.utils import (
     plan_base_motion_2d,
     plan_joint_motion,
     set_base_values_with_z,
+    set_client,
     set_joint_positions,
 )
 from igibson.objects.visual_marker import VisualMarker
@@ -35,10 +40,37 @@ class MotionPlanningWrapper(object):
         """
         Get planning related parameters.
         """
+        self.only_final_conf = True  # only_final_conf
+        self.only_onboard_sensors = True  # only_onboard_sensors
+        self.check_self_collisions = True  # check_self_collisions
+        self.check_ext_collisions = True  # check_ext_collisions
+        self.with_torso = True  # with_torso
+
         self.env = env
         assert "occupancy_grid" in self.env.output
         # get planning related parameters from env
         self.robot_id = self.env.robots[0].robot_ids[0]
+        self.arm_mp_robot_id = self.robot_id  # This may change is we use a second simulation only for motion planning
+        self.arm_mp_pb = p
+        self.arm_mp_pb_client = 0
+
+        # Create a new pybullet instance with the robot that we will populate with the obstacles observed with the sensors
+        # This new instance is used for arm motion planning
+        if self.only_onboard_sensors:
+            self.arm_mp_pb = bc.BulletClient(connection_mode=p.DIRECT)
+            self.arm_mp_pb_client = self.arm_mp_pb._client
+            flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
+            if self.env.robots[0].self_collision:
+                flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
+            self.planning_robot_ids = (
+                self.arm_mp_pb.loadURDF(
+                    os.path.join(self.env.robots[0].physics_model_dir, self.env.robots[0].model_file),
+                    globalScaling=self.env.robots[0].scale,
+                    flags=flags,
+                ),
+            )
+            self.arm_mp_robot_id = self.planning_robot_ids[0]
+
         # self.mesh_id = self.scene.mesh_body_id
         # mesh id should not be used
         self.map_size = self.env.scene.trav_map_original_size * self.env.scene.trav_map_default_resolution
@@ -47,6 +79,7 @@ class MotionPlanningWrapper(object):
         self.occupancy_range = self.env.sensors["scan_occ"].occupancy_range
         self.robot_footprint_radius = self.env.sensors["scan_occ"].robot_footprint_radius
         self.robot_footprint_radius_in_map = self.env.sensors["scan_occ"].robot_footprint_radius_in_map
+
         self.robot = self.env.robots[0]
         self.base_mp_algo = base_mp_algo
         self.arm_mp_algo = arm_mp_algo
@@ -56,6 +89,13 @@ class MotionPlanningWrapper(object):
         self.initial_height = self.env.initial_pos_z_offset
         self.fine_motion_plan = fine_motion_plan
         self.robot_type = self.env.config["robot"]
+
+        set_client(self.arm_mp_pb_client)
+        if self.robot_type == "Fetch":
+            self.mp_robot_end_effector_index = link_from_name(self.arm_mp_robot_id, "gripper_link")
+        elif self.robot_type == "Movo":
+            self.mp_robot_end_effector_index = link_from_name(self.arm_mp_robot_id, "gripper_link")
+        set_client(0)
 
         if self.env.simulator.viewer is not None:
             self.env.simulator.viewer.setup_motion_planner(self)
@@ -86,7 +126,9 @@ class MotionPlanningWrapper(object):
 
         :param pos: position
         """
+        set_client(self.arm_mp_pb._client)
         self.marker.set_position(pos)
+        set_client(0)
 
     def set_marker_position_yaw(self, pos, yaw):
         """
@@ -106,13 +148,16 @@ class MotionPlanningWrapper(object):
         :param pos: position
         :param direction: direction vector
         """
+        set_client(self.arm_mp_pb._client)
         yaw = np.arctan2(direction[1], direction[0])
         self.set_marker_position_yaw(pos, yaw)
+        set_client(0)
 
     def setup_arm_mp(self):
         """
         Set up arm motion planner
         """
+
         if self.robot_type == "Fetch":
             self.arm_default_joint_positions = (
                 0.10322468280792236,
@@ -137,6 +182,21 @@ class MotionPlanningWrapper(object):
                     "wrist_roll_joint",
                 ],
             )
+            set_client(self.arm_mp_pb_client)
+            self.arm_mp_joint_ids = joints_from_names(
+                self.arm_mp_robot_id,
+                [
+                    "torso_lift_joint",
+                    "shoulder_pan_joint",
+                    "shoulder_lift_joint",
+                    "upperarm_roll_joint",
+                    "elbow_flex_joint",
+                    "forearm_roll_joint",
+                    "wrist_flex_joint",
+                    "wrist_roll_joint",
+                ],
+            )
+            set_client(0)
         elif self.robot_type == "Movo":
             self.arm_default_joint_positions = (
                 0.205,
@@ -148,7 +208,7 @@ class MotionPlanningWrapper(object):
                 0.5065742552588746,
                 -1.562883631882778,
             )
-            self.arm_joint_ids = joints_from_names(
+            self.joint_ids = joints_from_names(
                 self.robot_id,
                 [
                     "linear_joint",
@@ -161,18 +221,46 @@ class MotionPlanningWrapper(object):
                     "right_wrist_3_joint",
                 ],
             )
+            set_client(self.arm_mp_pb_client)
+            self.arm_mp_joint_ids = joints_from_names(
+                self.arm_mp_robot_id,
+                [
+                    "linear_joint",
+                    "right_shoulder_pan_joint",
+                    "right_shoulder_lift_joint",
+                    "right_arm_half_joint",
+                    "right_elbow_joint",
+                    "right_wrist_spherical_1_joint",
+                    "right_wrist_spherical_2_joint",
+                    "right_wrist_3_joint",
+                ],
+            )
+            set_client(0)
+
         self.arm_joint_ids_all = get_moving_links(self.robot_id, self.arm_joint_ids)
         self.arm_joint_ids_all = [
             item for item in self.arm_joint_ids_all if item != self.robot.end_effector_part_index()
         ]
+
+        set_client(self.arm_mp_pb_client)
+        self.arm_mp_joint_ids_all = get_moving_links(self.arm_mp_robot_id, self.arm_mp_joint_ids)
+        self.arm_mp_joint_ids_all = [
+            item for item in self.arm_mp_joint_ids_all if item != self.mp_robot_end_effector_index
+        ]
+        set_client(0)
+
         self.arm_ik_threshold = 0.05
 
         self.mp_obstacles = []
-        if type(self.env.scene) == StaticIndoorScene:
-            if self.env.scene.mesh_body_id is not None:
-                self.mp_obstacles.append(self.env.scene.mesh_body_id)
-        elif type(self.env.scene) == InteractiveIndoorScene:
-            self.mp_obstacles.extend(self.env.scene.get_body_ids())
+
+        if (
+            not self.only_onboard_sensors
+        ):  # Use the same pybullet instance, with all the already loaded objects / meshes
+            if type(self.env.scene) == StaticIndoorScene:
+                if self.env.scene.mesh_body_id is not None:
+                    self.mp_obstacles.append(self.env.scene.mesh_body_id)
+            elif type(self.env.scene) == InteractiveIndoorScene:
+                self.mp_obstacles.extend(self.env.scene.get_body_ids())
 
     def plan_base_motion(self, goal):
         """
@@ -191,6 +279,7 @@ class MotionPlanningWrapper(object):
         yaw = self.robot.get_rpy()[2]
         half_occupancy_range = self.occupancy_range / 2.0
         robot_position_xy = self.robot.get_position()[:2]
+        print(robot_position_xy)
         corners = [
             robot_position_xy + rotate_vector_2d(local_corner, -yaw)
             for local_corner in [
@@ -218,12 +307,21 @@ class MotionPlanningWrapper(object):
 
     def simulator_sync(self):
         """Sync the simulator to renderer"""
+        client = get_client()
+        set_client(0)
         self.env.simulator.sync()
+        set_client(client)
 
     def simulator_step(self):
         """Step the simulator and sync the simulator to renderer"""
+        client = get_client()
+        set_client(0)
         self.env.simulator.step()
         self.simulator_sync()
+        if self.only_onboard_sensors:
+            set_client(self.arm_mp_pb._client)
+            # set_joint_positions(self.arm_mp_robot_id, self.arm_joint_ids, [0]*7)
+        set_client(client)
 
     def dry_run_base_plan(self, path):
         """
@@ -271,7 +369,7 @@ class MotionPlanningWrapper(object):
 
     def get_arm_joint_positions(self, arm_ik_goal):
         """
-        Attempt to find arm_joint_positions that satisfies arm_subgoal
+        Attempt to find arm_joint_positions that satisfies arm_ik_goal
         If failed, return None
 
         :param arm_ik_goal: [x, y, z] in the world frame
@@ -283,14 +381,15 @@ class MotionPlanningWrapper(object):
 
         n_attempt = 0
         max_attempt = 75
-        sample_fn = get_sample_fn(self.robot_id, self.arm_joint_ids)
+        sample_fn = get_
+        sample_fn(self.robot_id, self.arm_joint_ids)
         base_pose = get_base_values(self.robot_id)
         state_id = p.saveState()
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
             if self.robot_type == "Movo":
-                self.robot.tuck()
+                self.robot.tuck()  # TODO: do it for the second pb context
 
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
@@ -312,10 +411,17 @@ class MotionPlanningWrapper(object):
             elif self.robot_type == "Movo":
                 arm_joint_positions = arm_joint_positions[:8]
 
-            set_joint_positions(self.robot_id, self.arm_joint_ids, arm_joint_positions)
+            set_client(self.arm_mp_pb_client)
+            set_joint_positions(self.arm_mp_robot_id, self.arm_mp_joint_ids, arm_joint_positions)
 
-            dist = l2_distance(self.robot.get_end_effector_position(), arm_ik_goal)
-            # print('dist', dist)
+            dist = l2_distance(
+                get_link_position_from_name(
+                    self.arm_mp_robot_id, "gripper_link"
+                ),  # self.robot.get_end_effector_position(),
+                arm_ik_goal,
+            )
+            set_client(0)
+            print("dist", dist)
             if dist > self.arm_ik_threshold:
                 n_attempt += 1
                 continue
@@ -324,25 +430,25 @@ class MotionPlanningWrapper(object):
             self.simulator_step()
 
             # simulator_step will slightly move the robot base and the objects
-            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
+            set_base_values_with_z(self.arm_mp_robot_id, base_pose, z=self.initial_height)
             # self.reset_object_states()
             # TODO: have a princpled way for stashing and resetting object states
 
             # arm should not have any collision
             if self.robot_type == "Movo":
-                collision_free = is_collision_free(body_a=self.robot_id, link_a_list=self.arm_joint_ids_all)
+                collision_free = is_collision_free(body_a=self.arm_mp_robot_id, link_a_list=self.arm_joint_ids_all)
                 # ignore linear link
             else:
-                collision_free = is_collision_free(body_a=self.robot_id, link_a_list=self.arm_joint_ids)
+                collision_free = is_collision_free(body_a=self.arm_mp_robot_id, link_a_list=self.arm_joint_ids)
 
             if not collision_free:
                 n_attempt += 1
-                # print('arm has collision')
+                print("arm has collision")
                 continue
 
             # gripper should not have any self-collision
             collision_free = is_collision_free(
-                body_a=self.robot_id, link_a_list=[self.robot.end_effector_part_index()], body_b=self.robot_id
+                body_a=self.arm_mp_robot_id, link_a_list=[self.mp_robot_end_effector_index], body_b=self.arm_mp_robot_id
             )
             if not collision_free:
                 n_attempt += 1
@@ -359,6 +465,7 @@ class MotionPlanningWrapper(object):
         p.restoreState(state_id)
         p.removeState(state_id)
         # self.episode_metrics['arm_ik_time'] += time() - ik_start
+
         return None
 
     def plan_arm_motion(self, arm_joint_positions):
@@ -369,80 +476,96 @@ class MotionPlanningWrapper(object):
         :param arm_joint_positions: final arm joint position to reach
         :return: arm trajectory or None if no plan can be found
         """
+        set_client(self.arm_mp_pb._client)
         disabled_collisions = {}
         if self.robot_type == "Fetch":
             disabled_collisions = {
-                (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "torso_fixed_link")),
-                (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "shoulder_lift_link")),
-                (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "upperarm_roll_link")),
-                (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "forearm_roll_link")),
-                (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "elbow_flex_link")),
+                (
+                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
+                    link_from_name(self.arm_mp_robot_id, "torso_fixed_link"),
+                ),
+                (
+                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
+                    link_from_name(self.arm_mp_robot_id, "shoulder_lift_link"),
+                ),
+                (
+                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
+                    link_from_name(self.arm_mp_robot_id, "upperarm_roll_link"),
+                ),
+                (
+                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
+                    link_from_name(self.arm_mp_robot_id, "forearm_roll_link"),
+                ),
+                (
+                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
+                    link_from_name(self.arm_mp_robot_id, "elbow_flex_link"),
+                ),
             }
         elif self.robot_type == "Movo":
             disabled_collisions = {
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_shoulder_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_shoulder_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "right_base_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_base_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_arm_half_1_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_arm_half_1_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_arm_half_2_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_arm_half_2_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_forearm_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_forearm_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_wrist_spherical_1_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_wrist_spherical_1_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_wrist_spherical_2_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_wrist_spherical_2_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "linear_actuator_link"),
-                    link_from_name(self.robot_id, "right_wrist_3_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_wrist_3_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "right_wrist_spherical_2_link"),
-                    link_from_name(self.robot_id, "right_robotiq_coupler_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_wrist_spherical_2_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_robotiq_coupler_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "right_shoulder_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_shoulder_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "left_base_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "left_base_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "left_shoulder_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "left_shoulder_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "left_arm_half_2_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "left_arm_half_2_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "right_arm_half_2_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_arm_half_2_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "right_arm_half_1_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "right_arm_half_1_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
                 (
-                    link_from_name(self.robot_id, "left_arm_half_1_link"),
-                    link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    link_from_name(self.arm_mp_robot_id, "left_arm_half_1_link"),
+                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
                 ),
             }
 
@@ -464,7 +587,7 @@ class MotionPlanningWrapper(object):
             allow_collision_links = [23, 24]
 
         arm_path = plan_joint_motion(
-            self.robot_id,
+            self.arm_mp_robot_id,
             self.arm_joint_ids,
             arm_joint_positions,
             disabled_collisions=disabled_collisions,
@@ -476,6 +599,7 @@ class MotionPlanningWrapper(object):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         p.restoreState(state_id)
         p.removeState(state_id)
+        set_client(0)
         return arm_path
 
     def dry_run_arm_plan(self, arm_path):
