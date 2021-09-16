@@ -96,3 +96,7 @@ def step(simulator, nstep=100):
 
 def pcolored(text, color="green"):
     print(colored(text, color))
+
+
+def tup_to_np(tup, shape):
+    return np.array(tup).reshape(shape)
