@@ -161,6 +161,7 @@ setup(
         "sphinx>=1.8.0",
         "recommonmark",
         "sphinx_rtd_theme",
+        "myst_parser",
         "h5py",
         "gitpython",
         "py360convert",

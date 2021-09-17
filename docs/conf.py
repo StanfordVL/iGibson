@@ -50,6 +50,7 @@ extensions = [
     "sphinx_markdown_tables",
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
+    "myst_parser",
 ]
 
 html_theme = "sphinx_rtd_theme"
