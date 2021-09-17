@@ -70,7 +70,12 @@ class VisualMarker(Object):
                 visualFramePosition=self.initial_offset,
             )
         body_id = p.createMultiBody(
-            baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1, flags=p.URDF_ENABLE_SLEEPING
+            baseVisualShapeIndex=shape,
+            baseCollisionShapeIndex=-1,
+            # BEHAVIOR demos were recorded with an older mesh-based marker implementation called VisualShape that did
+            # not have sleeping enabled. This difference causes replay determinism issues & is avoided here in the
+            # behavior-replay version of this function.
+            flags=p.URDF_ENABLE_SLEEPING if self.visual_shape != p.GEOM_MESH else 0,
         )
 
         return body_id
