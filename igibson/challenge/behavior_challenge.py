@@ -89,7 +89,7 @@ class BehaviorChallenge(object):
 
         for task in tasks:
             assert task in activity_to_scenes
-            scenes = sorted(set(activity_to_scenes[tasks[0]]))
+            scenes = sorted(set(activity_to_scenes[task]))
             num_scenes = len(scenes)
             human_demo_mean_step = activity_metadata[task]["mean"]
             env_config["max_step"] = human_demo_mean_step * 2  # adjust env_config['max_step'] based on the human
@@ -107,6 +107,8 @@ class BehaviorChallenge(object):
 
             for scene_id, instance_ids in scene_instance_ids.items():
                 env_config["scene_id"] = scene_id
+                env_config["task"] = task
+                env_config["task_id"] = 0
                 for instance_id in instance_ids:
                     env = BehaviorEnv(
                         config_file=env_config,
