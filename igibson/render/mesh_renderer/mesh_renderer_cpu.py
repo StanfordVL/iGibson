@@ -67,6 +67,7 @@ class MeshRenderer(object):
         self.height = height
         self.faces = []
         self.instances = []
+        self.update_instance_id_to_pb_id_map()
         self.fisheye = rendering_settings.use_fisheye
         self.optimized = rendering_settings.optimized
         self.texture_files = {}
@@ -77,6 +78,7 @@ class MeshRenderer(object):
         self.pose_rot_array = None
         self.last_trans_array = None
         self.last_rot_array = None
+        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
         # Manages text data that is shared across multiple Text instances
         self.text_manager = TextManager(self)
         self.texts = []
@@ -142,10 +144,23 @@ class MeshRenderer(object):
                 self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen,
             )
-        else:
+        elif self.platform == "Linux" and self.__class__.__name__ == "MeshRendererVR":
+            from igibson.render.mesh_renderer import VRRendererContext
+
+            self.r = VRRendererContext.VRRendererContext(
+                width,
+                height,
+                int(self.rendering_settings.glfw_gl_version[0]),
+                int(self.rendering_settings.glfw_gl_version[1]),
+                self.rendering_settings.show_glfw_window,
+                rendering_settings.fullscreen,
+            )
+        elif self.platform == "Linux":
             from igibson.render.mesh_renderer import EGLRendererContext
 
             self.r = EGLRendererContext.EGLRendererContext(width, height, device)
+        else:
+            Exception("Unsupported platform and renderer combination")
 
         self.r.init()
 
@@ -267,8 +282,10 @@ class MeshRenderer(object):
         self.cache = np.copy(self.V)
 
         self.P = np.ascontiguousarray(P, np.float32)
-        self.materials_mapping = {}
-        self.mesh_materials = []
+        self.material_idx_to_material_instance_mapping = {}
+        self.shape_material_idx = []
+        # shape_material_idx is a list with the same length as self.shapes and self.VAOs, indicating the material_idx
+        # that each shape is mapped to.
         # Number of unique shapes comprising the optimized renderer buffer
         self.or_buffer_shape_num = 0
         # Store trans and rot data for OR as a single variable that we update every frame - avoids copying variable each frame
@@ -315,7 +332,6 @@ class MeshRenderer(object):
         """
         self.lightpos = position
         self.lightV = lookat(self.lightpos, target, [0, 1, 0])
-        self.lightP = ortho(-5, 5, -5, 5, -10, 20.0)
 
     def setup_framebuffer(self):
         """
@@ -446,6 +462,10 @@ class MeshRenderer(object):
         reader = tinyobjloader.ObjReader()
         logging.info("Loading {}".format(obj_path))
         if obj_path.endswith("encrypted.obj"):
+            if not os.path.exists(igibson.key_path):
+                raise FileNotFoundError(
+                    "iGibson key file is not found, request here https://forms.gle/oW4xB3tRXyCJa1Ap8"
+                )
             ret = reader.ParseFromFileWithKey(obj_path, igibson.key_path)
         else:
             ret = reader.ParseFromFile(obj_path)
@@ -476,38 +496,60 @@ class MeshRenderer(object):
         shapes = reader.GetShapes()
         logging.debug("Num shapes: {}".format(len(shapes)))
 
-        material_count = len(self.materials_mapping)
         if overwrite_material is not None and len(materials) > 1:
             logging.warning("passed in one material ends up overwriting multiple materials")
 
-        for i, item in enumerate(materials):
+        # set the default values of variable before being modified later.
+        num_existing_mats = len(self.material_idx_to_material_instance_mapping)  # Number of current Material elements
+        num_added_materials = len(materials)
+
+        if num_added_materials > 0:
+            # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a
+            # Material element for them
+            for i, item in enumerate(materials):
+                if overwrite_material is not None:
+                    if isinstance(overwrite_material, RandomizedMaterial):
+                        self.load_randomized_material(overwrite_material)
+                    elif isinstance(overwrite_material, ProceduralMaterial):
+                        self.load_procedural_material(overwrite_material)
+                    material = overwrite_material
+                elif item.diffuse_texname != "" and load_texture:
+                    obj_dir = os.path.dirname(obj_path)
+                    texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname))
+                    texture_metallic = self.load_texture_file(os.path.join(obj_dir, item.metallic_texname))
+                    texture_roughness = self.load_texture_file(os.path.join(obj_dir, item.roughness_texname))
+                    texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname))
+                    material = Material(
+                        "texture",
+                        texture_id=texture,
+                        metallic_texture_id=texture_metallic,
+                        roughness_texture_id=texture_roughness,
+                        normal_texture_id=texture_normal,
+                    )
+                else:
+                    if input_kd is not None and len(input_kd) == 4 and input_kd[3] != 1:
+                        # This applies to an object with RGBA channels in input k_d color.
+                        # Translucent object is not supported in iG renderer right now, it uses pink color instead.
+                        material = Material("color", kd=[1, 0, 1, 1])
+                    else:
+                        material = Material("color", kd=item.diffuse)
+                self.material_idx_to_material_instance_mapping[num_existing_mats + i] = material
+        else:
+            # Case when mesh obj is without mtl file but overwrite material is specified.
             if overwrite_material is not None:
-                if isinstance(overwrite_material, RandomizedMaterial):
-                    self.load_randomized_material(overwrite_material)
-                elif isinstance(overwrite_material, ProceduralMaterial):
-                    self.load_procedural_material(overwrite_material)
-                material = overwrite_material
-            elif item.diffuse_texname != "" and load_texture:
-                obj_dir = os.path.dirname(obj_path)
-                texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname))
-                texture_metallic = self.load_texture_file(os.path.join(obj_dir, item.metallic_texname))
-                texture_roughness = self.load_texture_file(os.path.join(obj_dir, item.roughness_texname))
-                texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname))
-                material = Material(
-                    "texture",
-                    texture_id=texture,
-                    metallic_texture_id=texture_metallic,
-                    roughness_texture_id=texture_roughness,
-                    normal_texture_id=texture_normal,
-                )
-            else:
-                material = Material("color", kd=item.diffuse)
-            self.materials_mapping[i + material_count] = material
+                self.material_idx_to_material_instance_mapping[num_existing_mats] = overwrite_material
+                num_added_materials = 1
+
+        # material index = num_existing_mats ... num_existing_mats + num_added_materials - 1 are using materials from mesh or
+        # from overwrite_material
+        # material index = num_existing_mats + num_added_materials is a fail-safe default material
 
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.materials_mapping[len(materials) + material_count] = Material("color", kd=input_kd, texture_id=-1)
+            self.material_idx_to_material_instance_mapping[num_existing_mats + num_added_materials] = Material(
+                "color", kd=input_kd, texture_id=-1
+            )
         else:
-            self.materials_mapping[len(materials) + material_count] = Material(
+            self.material_idx_to_material_instance_mapping[num_existing_mats + num_added_materials] = Material(
                 "color", kd=[0.5, 0.5, 0.5], texture_id=-1
             )
 
@@ -519,8 +561,14 @@ class MeshRenderer(object):
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            # assume one shape only has one material
-            material_id = shape.mesh.material_ids[0]
+            if len(shape.mesh.material_ids) == 0:
+                if overwrite_material is not None:
+                    material_id = 0
+                else:
+                    material_id = -1  # if no material and no overwrite material is supplied
+            else:
+                material_id = shape.mesh.material_ids[0]
+
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
@@ -591,11 +639,11 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                self.mesh_materials.append(len(materials) + material_count)
+                self.shape_material_idx.append(num_added_materials + num_existing_mats)
             else:
-                self.mesh_materials.append(material_id + material_count)
+                self.shape_material_idx.append(material_id + num_existing_mats)
 
-            logging.debug("mesh_materials: {}".format(self.mesh_materials))
+            logging.debug("shape_material_idx: {}".format(self.shape_material_idx))
             VAO_ids.append(self.get_num_objects() - 1)
 
         new_obj = VisualObject(
@@ -621,6 +669,7 @@ class MeshRenderer(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body=None,
     ):
         """
         Create instance for a visual object and link it to pybullet
@@ -635,6 +684,7 @@ class MeshRenderer(object):
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
+        :param parent_body: parent body name of current xml element (MuJoCo XML)
         """
         if self.optimization_process_executed and self.optimized:
             logging.error(
@@ -657,8 +707,10 @@ class MeshRenderer(object):
             use_pbr=use_pbr,
             use_pbr_mapping=use_pbr_mapping,
             shadow_caster=shadow_caster,
+            parent_body=parent_body,
         )
         self.instances.append(instance)
+        self.update_instance_id_to_pb_id_map()
 
     def add_instance_group(
         self,
@@ -714,6 +766,7 @@ class MeshRenderer(object):
             shadow_caster=shadow_caster,
         )
         self.instances.append(instance_group)
+        self.update_instance_id_to_pb_id_map()
 
     def add_robot(
         self, object_ids, link_ids, poses_trans, poses_rot, pybullet_uuid=None, class_id=0, dynamic=False, robot=None
@@ -751,6 +804,7 @@ class MeshRenderer(object):
             use_pbr_mapping=False,
         )
         self.instances.append(robot)
+        self.update_instance_id_to_pb_id_map()
 
     def add_text(
         self,
@@ -919,13 +973,13 @@ class MeshRenderer(object):
 
     def update_optimized_texture(self):
         request_update = False
-        for material in self.materials_mapping:
+        for material in self.material_idx_to_material_instance_mapping:
             if (
-                isinstance(self.materials_mapping[material], ProceduralMaterial)
-                and self.materials_mapping[material].request_update
+                isinstance(self.material_idx_to_material_instance_mapping[material], ProceduralMaterial)
+                and self.material_idx_to_material_instance_mapping[material].request_update
             ):
                 request_update = True
-                self.materials_mapping[material].request_update = False
+                self.material_idx_to_material_instance_mapping[material].request_update = False
 
         if request_update:
             self.update_optimized_texture_internal()
@@ -1203,6 +1257,7 @@ class MeshRenderer(object):
         self.faces = []  # GC should free things here
         self.visual_objects = []
         self.instances = []
+        self.update_instance_id_to_pb_id_map()
         self.vertex_data = []
         self.shapes = []
         save_path = os.path.join(igibson.ig_dataset_path, "tmp")
@@ -1242,6 +1297,31 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
+    def render_active_cameras(self, modes=("rgb")):
+        """
+        Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
+        where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB)
+
+        :return: a list of frames (number of modalities x number of robots)
+        """
+        frames = []
+        hide_robot = self.rendering_settings.hide_robot
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        camera_pose = camera.get_pose()
+                        camera_pos = camera_pose[:3]
+                        camera_ori = camera_pose[3:]
+                        camera_ori_mat = quat2rotmat([camera_ori[-1], camera_ori[0], camera_ori[1], camera_ori[2]])[
+                            :3, :3
+                        ]
+                        camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1]))  # Mujoco camera points in -z
+                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
+                            frames.append(item)
+        return frames
+
     def render_robot_cameras(self, modes=("rgb")):
         """
         Render robot camera images
@@ -1270,6 +1350,48 @@ class MeshRenderer(object):
             frames.extend(robot.render_camera_image(modes=modes))
 
         return frames
+
+    def _get_names_active_cameras(self):
+        """
+        Query the list of active cameras.
+        Applicable for integration with robosuite.
+
+        :return: a list of camera names
+        """
+        names = []
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                for camera in instance.robot.cameras:
+                    if camera.is_active():
+                        names.append(camera.camera_name)
+        return names
+
+    def _switch_camera(self, idx):
+        """
+        Switches the camera to particular index.
+        Applicable for integration with iGibson.
+        """
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                instance.robot.cameras[idx].switch()
+
+    def _is_camera_active(self, idx):
+        """
+        Checks if camera at given index is active.
+        Applicable for integration with iGibson.
+        """
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].is_active()
+
+    def _get_camera_name(self, idx):
+        """
+        Checks if camera at given index is active.
+        Applicable for integration with iGibson.
+        """
+        for instance in self.instances:
+            if isinstance(instance, Robot):
+                return instance.robot.cameras[idx].camera_name
 
     def optimize_vertex_and_texture(self):
         """
@@ -1374,7 +1496,7 @@ class MeshRenderer(object):
             index_offset += index_count
 
             # Generate other rendering data, including diffuse color and texture layer
-            id_material = self.materials_mapping[self.mesh_materials[id]]
+            id_material = self.material_idx_to_material_instance_mapping[self.shape_material_idx[id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
@@ -1560,9 +1682,9 @@ class MeshRenderer(object):
         normal_tex_layer_array = []
         transform_param_array = []
 
-        for id in duplicate_vao_ids:
+        for vao_id in duplicate_vao_ids:
             # Generate other rendering data, including diffuse color and texture layer
-            id_material = self.materials_mapping[self.mesh_materials[id]]
+            id_material = self.material_idx_to_material_instance_mapping[self.shape_material_idx[vao_id]]
             texture_id = id_material.texture_id
             if texture_id == -1 or texture_id is None:
                 tex_num_array.append(-1)
@@ -1891,6 +2013,17 @@ class MeshRenderer(object):
         """
         frames = self.get_cube(mode=mode, use_robot_camera=use_robot_camera)
         frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4], frames[5]]
-        equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+        try:
+            equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+        except AssertionError:
+            raise ValueError("Something went wrong during getting cubemap. Is the image size not a square?")
 
         return equi
+
+    def update_instance_id_to_pb_id_map(self):
+        self.instance_id_to_pb_id = np.full((MAX_INSTANCE_COUNT,), -1)
+        for inst in self.instances:
+            self.instance_id_to_pb_id[inst.id] = inst.pybullet_uuid if inst.pybullet_uuid is not None else -1
+
+    def get_pb_ids_for_instance_ids(self, instance_ids):
+        return self.instance_id_to_pb_id[instance_ids.astype(int)]

@@ -691,6 +691,9 @@ std::vector<unsigned char> readFileWithKey(const char* filename, const char* key
     byte key[AES::DEFAULT_KEYLENGTH];
 	byte iv[AES::BLOCKSIZE];
     std::ifstream key_file(keyfilename);
+    if (!key_file.is_open()) {
+        throw std::runtime_error("ERROR: iGibson key file is not found, request here https://forms.gle/oW4xB3tRXyCJa1Ap8");
+    }
     std::string key_string, iv_string;
     std::getline(key_file, key_string);
     std::getline(key_file, iv_string);
@@ -1335,8 +1338,8 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		}
 
 		texInfo.append(texId1);

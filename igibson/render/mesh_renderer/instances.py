@@ -106,7 +106,9 @@ class InstanceGroup(object):
                     self.last_trans[i],
                     self.last_rot[i],
                 )
-                current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+                current_material = self.renderer.material_idx_to_material_instance_mapping[
+                    self.renderer.shape_material_idx[object_idx]
+                ]
                 self.renderer.r.init_material_instance(
                     self.renderer.shaderProgram,
                     float(self.class_id) / MAX_CLASS_COUNT,
@@ -140,7 +142,9 @@ class InstanceGroup(object):
                     else:
                         buffer = self.renderer.fbo
                     self.renderer.r.draw_elements_instance(
-                        self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                        self.renderer.material_idx_to_material_instance_mapping[
+                            self.renderer.shape_material_idx[object_idx]
+                        ].is_texture(),
                         texture_id,
                         metallic_texture_id,
                         roughness_texture_id,
@@ -261,6 +265,7 @@ class Instance(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body=None,
     ):
         """
         :param object: visual object
@@ -274,6 +279,7 @@ class Instance(object):
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
+        :param parent_body: parent body name of current xml element (MuJoCo XML)
         """
         self.object = object
         self.pose_trans = pose_trans
@@ -296,6 +302,7 @@ class Instance(object):
         self.or_buffer_indices = None
         self.last_trans = np.copy(pose_trans)
         self.last_rot = np.copy(pose_rot)
+        self.parent_body = parent_body
         self.highlight = False
 
     def set_highlight(self, highlight):
@@ -360,7 +367,9 @@ class Instance(object):
         )
 
         for object_idx in self.object.VAO_ids:
-            current_material = self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]]
+            current_material = self.renderer.material_idx_to_material_instance_mapping[
+                self.renderer.shape_material_idx[object_idx]
+            ]
             self.renderer.r.init_material_instance(
                 self.renderer.shaderProgram,
                 float(self.class_id) / MAX_CLASS_COUNT,
@@ -395,7 +404,9 @@ class Instance(object):
                     buffer = self.renderer.fbo
 
                 self.renderer.r.draw_elements_instance(
-                    self.renderer.materials_mapping[self.renderer.mesh_materials[object_idx]].is_texture(),
+                    self.renderer.material_idx_to_material_instance_mapping[
+                        self.renderer.shape_material_idx[object_idx]
+                    ].is_texture(),
                     texture_id,
                     metallic_texture_id,
                     roughness_texture_id,

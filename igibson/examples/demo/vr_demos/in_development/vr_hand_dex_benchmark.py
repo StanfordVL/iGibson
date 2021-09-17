@@ -200,17 +200,17 @@ def main():
             "mass": 1.5,
         },
         "chip_1": {
-            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "chip", "chip_000", "chip_000.urdf"),
             "pos": (0.700000, -0.800000, 0.750000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 1,
+            "scale": 0.01,
             "mass": 0.22,
         },
         "chip_2": {
-            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "chip", "40", "40.urdf"),
+            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "chip", "chip_000", "chip_000.urdf"),
             "pos": (1.100000, -0.800000, 0.750000),
             "orn": (0.000000, 0.00000, 0.707107, 0.707107),
-            "scale": 1,
+            "scale": 0.01,
             "mass": 0.22,
         },
         "cherry_1": {
@@ -261,26 +261,19 @@ def main():
             "scale": 1,
             "mass": 1.2,
         },
-        "floor_lamp": {
-            "urdf": os.path.join(igibson.ig_dataset_path, "objects", "floor_lamp", "lamp_0035", "lamp_0035.urdf"),
-            "pos": (-1.500000, 0.00000, 0.500000),
-            "orn": (0.000000, 0.000000, 0.707107, 0.707107),
-            "scale": 1,
-            "mass": 4.3,
-        },
         "table_1": {
             "urdf": "table/table.urdf",
             "pos": (1.000000, -0.200000, 0.01),
             "orn": (0.000000, 0.000000, 0.707107, 0.707107),
             "scale": 1,
-            "mass": 20,
+            "mass": 0,
         },
         "table_2": {
             "urdf": "table/table.urdf",
             "pos": (-1.500000, -3.000000, 0.01),
             "orn": (0.000000, 0.000000, 0.707107, 0.707107),
             "scale": 1,
-            "mass": 20,
+            "mass": 0,
         },
     }
 
@@ -319,7 +312,7 @@ def main():
             ag_text.scroll_text(up=scroll_dir)
 
         # Update VR agent
-        vr_agent.update()
+        vr_agent.apply_action()
 
         if show_overlay:
             ag_candidate_data = vr_agent.parts["right_hand"].candidate_data

@@ -4,7 +4,6 @@ from future.utils import with_metaclass
 
 from igibson.objects.particles import Particle
 from igibson.objects.visual_marker import VisualMarker
-from igibson.objects.visual_shape import VisualShape
 
 
 class Scene(with_metaclass(ABCMeta)):
@@ -76,10 +75,8 @@ class Scene(with_metaclass(ABCMeta)):
         if self.loaded and not _is_call_from_simulator:
             raise ValueError("To add an object to an already-loaded scene, use the Simulator's import_object function.")
 
-        if isinstance(obj, VisualMarker) or isinstance(obj, VisualShape) or isinstance(obj, Particle):
-            raise ValueError(
-                "VisualMarker, VisualShape and Particle objects and subclasses should be added directly to simulator."
-            )
+        if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
+            raise ValueError("VisualMarker and Particle objects and subclasses should be added directly to simulator.")
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
         # let scene._load() load the object when called later on.

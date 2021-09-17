@@ -1,4 +1,5 @@
 import codecs
+import os
 import os.path
 import platform
 import re
@@ -87,6 +88,9 @@ class CMakeBuild(build_ext):
         else:
             cmake_args += ["-DMAC_PLATFORM=FALSE"]
 
+        if os.getenv("USE_VR"):
+            cmake_args += ["-DUSE_VR=TRUE"]
+
         cfg = "Debug" if self.debug else "Release"
         build_args = ["--config", cfg]
 
@@ -126,7 +130,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.0",
+    version="2.0.1",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,

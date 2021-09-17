@@ -177,15 +177,12 @@ def normalizeListVec(v):
     return v
 
 
-# Quat(wxyz)
+# Quat(xyzw)
 def quat_pos_to_mat(pos, quat):
     """Convert position and quaternion to transformation matrix"""
-    r_w, r_x, r_y, r_z = quat
-    # print("quat", r_w, r_x, r_y, r_z)
     mat = np.eye(4)
-    mat[:3, :3] = quaternions.quat2mat([r_w, r_x, r_y, r_z])
+    mat[:3, :3] = R.from_quat(quat).as_matrix()
     mat[:3, -1] = pos
-    # Return: roll, pitch, yaw
     return mat
 
 

@@ -109,7 +109,6 @@ void main() {
                    - (sin(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
     theCoords.y = (sin(uv_transform_param[gl_DrawID][2]) * texCoords.x * uv_transform_param[gl_DrawID][0])
                    + (cos(uv_transform_param[gl_DrawID][2]) * texCoords.y * uv_transform_param[gl_DrawID][1]);
-
     Semantic_seg_color = semantic_seg_color;
     Instance_seg_color = instance_seg_color;
     Diffuse_color = diffuse_color;

@@ -1,3 +1,7 @@
+"""
+Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
+and adapted by iGibson team.
+"""
 import random
 
 from ..utils import get_ik_limits, compute_forward_kinematics, compute_inverse_kinematics, select_solution, \

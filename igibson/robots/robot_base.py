@@ -5,6 +5,7 @@ import numpy as np
 import pybullet as p
 
 import igibson
+from igibson.object_states.factory import prepare_object_states
 
 
 class BaseRobot(object):
@@ -39,7 +40,13 @@ class BaseRobot(object):
         else:
             self.model_type = "MJCF"
             assert self.scale == 1, "pybullet does not support scaling for MJCF model (p.loadMJCF)"
-        self.config = None
+
+        self.states = {}
+        prepare_object_states(self, online=True)
+
+        # For BEHAVIOR compatibility -- may be removed eventually
+        self.category = "agent"
+
         self.self_collision = self_collision
 
     def load(self):
@@ -146,11 +153,30 @@ class BaseRobot(object):
         """
         raise NotImplementedError
 
+    def is_grasping(self, candidate_obj):
+        """
+        Returns True if the robot is grasping the target option.
+        """
+        raise NotImplementedError
+
+    def can_toggle(self, toggle_position, toggle_distance_threshold):
+        """
+        Returns True if the part of the robot that can toggle a toggleable is within the given range of a point corresponding to a toggle marker
+        by default, we assume robot cannot toggle toggle markers
+        """
+        return False
+
     def dump_state(self):
         pass
 
     def load_state(self, dump):
         pass
+
+    def get_body_id(self):
+        body_id = None
+        if self.robot_ids:
+            body_id = self.robot_ids[0]
+        return body_id
 
 
 class BodyPart:

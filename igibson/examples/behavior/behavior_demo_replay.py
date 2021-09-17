@@ -72,6 +72,7 @@ def replay_demo(
     step_callbacks=[],
     end_callbacks=[],
     profile=False,
+    image_size=(1280, 720),
 ):
     """
     Replay a BEHAVIOR demo.
@@ -91,6 +92,7 @@ def replay_demo(
         take a single argument, an iGBEHAVIORActivityInstance.
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
         argument, an iGBEHAVIORActivityInstance.
+    @param image_size: The image size that should be used by the renderer.
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
@@ -116,7 +118,7 @@ def replay_demo(
     )
 
     # Check mode
-    assert mode in ["headless", "vr", "simple"]
+    assert mode in ["headless", "vr", "simple", "pbgui"]
 
     # Initialize settings to save action replay frames
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))
@@ -166,8 +168,8 @@ def replay_demo(
         render_timestep=render_timestep,
         rendering_settings=vr_rendering_settings,
         vr_settings=vr_settings,
-        image_width=1280,
-        image_height=720,
+        image_width=image_size[0],
+        image_height=image_size[1],
     )
 
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
@@ -217,7 +219,7 @@ def replay_demo(
             callback(igbhvr_act_inst, log_reader)
 
         # Get relevant VR action data and update VR agent
-        vr_agent.update(log_reader.get_agent_action("vr_robot"))
+        vr_agent.apply_action(log_reader.get_agent_action("vr_robot"))
 
         if not disable_save:
             log_writer.process_frame()

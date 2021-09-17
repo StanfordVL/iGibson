@@ -1,3 +1,7 @@
+"""
+Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
+and adapted by iGibson team.
+"""
 # TODO: maybe some OpenRAVE links are disabled
 # http://openrave.org/docs/0.8.2/collada_robot_extensions/
 

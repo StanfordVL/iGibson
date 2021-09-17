@@ -237,5 +237,5 @@ if __name__ == "__main__":
         if i < 2:
             action[19] = 1
             action[27] = 1
-        agent.update(action)
+        agent.apply_action(action)
         s.step()
