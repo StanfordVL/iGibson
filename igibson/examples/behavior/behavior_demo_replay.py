@@ -134,7 +134,7 @@ def replay_demo(
     urdf_file = IGLogReader.read_metadata_attr(in_log_path, "/metadata/urdf_file")
 
     if urdf_file is None:
-        urdf_file = ("{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),)
+        urdf_file = "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id)
 
     if instance_id is None:
         instance_id = 0
