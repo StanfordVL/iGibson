@@ -396,11 +396,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent
             if cached_initial_pose:
-                # Use the cached pose of BehaviorRobot to initialize FetchGripper
-                pos = np.copy(self.scene.agent["BRBody_1"]["xyz"])
-                pos[2] = 0.0
-                pos[2] = stable_z_on_aabb(agent.get_body_id(), [pos, pos])
-                agent.set_position_orientation(pos, quat_from_euler(self.scene.agent["BRBody_1"]["rpy"]))
+                assert "fetch_gripper_robot_1" in self.scene.agent, "fetch gripper missing from scene cache"
+                agent.set_position_orientation(
+                    self.scene.agent["fetch_gripper_robot_1"]["xyz"],
+                    quat_from_euler(self.scene.agent["fetch_gripper_robot_1"]["rpy"]),
+                )
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported")
 
