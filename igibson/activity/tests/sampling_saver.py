@@ -21,11 +21,17 @@ def parse_args():
         "--task", type=str, required=True, help="Name of ATUS task matching BDDL parent folder in bddl."
     )
     parser.add_argument("--task_id", type=int, required=True, help="BDDL integer ID, matching suffix of bddl.")
-    parser.add_argument("--max_trials", type=int, default=1, help="Maximum number of trials to try sampling.")
+    parser.add_argument("--max_trials", type=int, default=100, help="Maximum number of trials to try sampling.")
     parser.add_argument(
         "--num_initializations", type=int, default=1, help="Number of initialization per BDDL per scene."
     )
     parser.add_argument("--start_initialization", type=int, default=0, help="Starting idx for initialization")
+    parser.add_argument(
+        "--object_randomization",
+        type=int,
+        default=0,
+        help="Whether to enable furniture object randomization (0 is False, 1 is True)",
+    )
     return parser.parse_args()
 
 
@@ -43,6 +49,7 @@ def main():
     task = args.task
     task_id = args.task_id
     start_initialization = args.start_initialization
+    object_randomization = args.object_randomization
     logging.warning("TASK: {}".format(task))
     logging.warning("TASK ID: {}".format(task_id))
 
@@ -62,8 +69,11 @@ def main():
     logging.warning(("SCENE CHOICES", scene_choices))
     num_initializations = args.num_initializations
     num_trials = args.max_trials
-    simulator = Simulator(mode="headless", image_width=960, image_height=720, device_idx=0)
-    scene_kwargs = {}
+    simulator = Simulator(mode="headless", image_width=960, image_height=720, device_idx=0, physics_timestep=1 / 300.0)
+    if object_randomization == 1:
+        scene_kwargs = {"object_randomization": True, "object_randomization_idx": np.random.randint(5, 10)}
+    else:
+        scene_kwargs = {}
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
     for scene_id in scene_choices:
         logging.warning(("TRY SCENE:", scene_id))
