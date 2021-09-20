@@ -4,6 +4,11 @@ import subprocess
 
 import bddl
 
+# loading_the_dishwasher, making_tea: need to remove goal condition sampling (or potentially use ray-casting based)
+# polishing_silver: need to change particle sampling AABB to 0.01
+
+skip_tasks = ["loading_the_dishwasher", "making_tea", "polishing_silver"]
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -16,6 +21,8 @@ def main():
 
     condition_dir = os.path.join(os.path.dirname(bddl.__file__), "activity_conditions")
     for task in sorted(os.listdir(condition_dir)):
+        if task in skip_tasks:
+            continue
         task_dir = os.path.join(condition_dir, task)
         if os.path.isdir(task_dir):
             for task_id_file in sorted(os.listdir(task_dir)):
