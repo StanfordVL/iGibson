@@ -71,10 +71,6 @@ def main():
     num_initializations = args.num_initializations
     num_trials = args.max_trials
     simulator = Simulator(mode="headless", image_width=960, image_height=720, device_idx=0, physics_timestep=1 / 300.0)
-    if object_randomization == 1:
-        scene_kwargs = {"object_randomization": True, "object_randomization_idx": np.random.randint(5, 10)}
-    else:
-        scene_kwargs = {}
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
     for scene_id in scene_choices:
         logging.warning(("TRY SCENE:", scene_id))
@@ -86,6 +82,10 @@ def main():
                 logging.warning("Already cached: {}".format(full_path))
                 continue
             for _ in range(num_trials):
+                if object_randomization == 1:
+                    scene_kwargs = {"object_randomization": True, "object_randomization_idx": np.random.randint(5, 10)}
+                else:
+                    scene_kwargs = {}
                 success = igbhvr_act_inst.initialize_simulator(
                     simulator=simulator,
                     scene_id=scene_id,
