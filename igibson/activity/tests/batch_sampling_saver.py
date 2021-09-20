@@ -21,6 +21,8 @@ def main():
 
     condition_dir = os.path.join(os.path.dirname(bddl.__file__), "activity_definitions")
     for task in sorted(os.listdir(condition_dir)):
+        if task != "assembling_gift_baskets":
+            continue
         if task in skip_tasks:
             continue
         task_dir = os.path.join(condition_dir, task)
@@ -61,6 +63,8 @@ def main():
     src_urdf_paths = set()
     init_ids = [100, 101]
     for task in sorted(os.listdir(condition_dir)):
+        if task != "assembling_gift_baskets":
+            continue
         if task in skip_tasks:
             continue
         if task not in activity_to_scenes:
