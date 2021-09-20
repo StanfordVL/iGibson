@@ -4,6 +4,7 @@ import logging
 import os
 
 import bddl
+import numpy as np
 import pybullet as p
 
 import igibson
