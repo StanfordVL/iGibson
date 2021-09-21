@@ -395,8 +395,7 @@ class MotionPlanningWrapper(object):
         range_image = np.sqrt(range_image)
         close_points = np.where(range_image < distance_th, 1, 0)  # We only use points that are at the range of the arm
         seg = (segmentation[:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int64)  # Unnormalize
-        # TODO: this is a hack!!! for some reason the robot gets ID=0
-        no_robot_pixels = np.where(seg != 0, 1, 0)  # The robot parts have ID 1
+        no_robot_pixels = np.where(seg != 1, 1, 0)  # The robot parts have ID 1
         # print("no_robot_pixels ", np.count_nonzero(no_robot_pixels))
         close_points = np.multiply(close_points, no_robot_pixels)  # Points of interest are close and not on the robot
         num_close_points = np.count_nonzero(close_points)
