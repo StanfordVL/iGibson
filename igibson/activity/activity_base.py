@@ -369,7 +369,12 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         if self.robot_type == BehaviorRobot:
             agent = BehaviorRobot(self.simulator)
             self.simulator.import_behavior_robot(agent)
-            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
+            agent.parts["body"].set_base_link_position_orientation([300, 300, 300], [0, 0, 0, 1])
+            agent.parts["left_hand"].set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
+            agent.parts["right_hand"].set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
+            agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation([300, 300, -300], [0, 0, 0, 1])
+            agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation([300, -300, 300], [0, 0, 0, 1])
+            agent.parts["eye"].set_base_link_position_orientation([300, -300, -300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
             if cached_initial_pose:
                 agent.parts["body"].set_base_link_position_orientation(
