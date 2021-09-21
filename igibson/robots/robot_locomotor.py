@@ -73,6 +73,9 @@ class LocomotorRobot(BaseRobot):
         """
         return self.robot_body.get_orientation()
 
+    def get_position_orientation(self):
+        return self.get_position(), self.get_orientation()
+
     def get_rpy(self):
         """
         Return robot orientation in roll, pitch, yaw

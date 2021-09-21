@@ -5,6 +5,7 @@ import numpy as np
 import pybullet as p
 import pybullet_utils.bullet_client as bc
 from transforms3d import euler
+from transforms3d.euler import euler2quat
 
 from igibson.external.pybullet_tools.utils import (
     control_joints,
@@ -28,6 +29,8 @@ from igibson.external.pybullet_tools.utils import (
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
+from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 from igibson.utils.utils import l2_distance, quatToXYZW, rotate_vector_2d
 
 
@@ -48,28 +51,32 @@ class MotionPlanningWrapper(object):
 
         self.env = env
         assert "occupancy_grid" in self.env.output
+
         # get planning related parameters from env
+        self.robot = self.env.robots[0]
         self.robot_id = self.env.robots[0].robot_ids[0]
-        self.arm_mp_robot_id = self.robot_id  # This may change is we use a second simulation only for motion planning
-        self.arm_mp_pb = p
-        self.arm_mp_pb_client = 0
+
+        # This changes if we use a second simulation for arm motion planning based on onboard sensing
+        self.amp_robot_id = self.robot_id
+        self.amp_p = p
+        self.amp_p_client_id = 0
 
         # Create a new pybullet instance with the robot that we will populate with the obstacles observed with the sensors
         # This new instance is used for arm motion planning
         if self.only_onboard_sensors:
-            self.arm_mp_pb = bc.BulletClient(connection_mode=p.DIRECT)
-            self.arm_mp_pb_client = self.arm_mp_pb._client
+            self.amp_p = bc.BulletClient(connection_mode=p.DIRECT)
+            self.amp_p_client_id = self.amp_p._client
             flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
-            if self.env.robots[0].self_collision:
+            if self.robot.self_collision:
                 flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
             self.planning_robot_ids = (
-                self.arm_mp_pb.loadURDF(
-                    os.path.join(self.env.robots[0].physics_model_dir, self.env.robots[0].model_file),
-                    globalScaling=self.env.robots[0].scale,
+                self.amp_p.loadURDF(
+                    os.path.join(self.robot.physics_model_dir, self.robot.model_file),
+                    globalScaling=self.robot.scale,
                     flags=flags,
                 ),
             )
-            self.arm_mp_robot_id = self.planning_robot_ids[0]
+            self.amp_robot_id = self.planning_robot_ids[0]
 
         # self.mesh_id = self.scene.mesh_body_id
         # mesh id should not be used
@@ -80,7 +87,6 @@ class MotionPlanningWrapper(object):
         self.robot_footprint_radius = self.env.sensors["scan_occ"].robot_footprint_radius
         self.robot_footprint_radius_in_map = self.env.sensors["scan_occ"].robot_footprint_radius_in_map
 
-        self.robot = self.env.robots[0]
         self.base_mp_algo = base_mp_algo
         self.arm_mp_algo = arm_mp_algo
         self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
@@ -90,11 +96,18 @@ class MotionPlanningWrapper(object):
         self.fine_motion_plan = fine_motion_plan
         self.robot_type = self.env.config["robot"]
 
-        set_client(self.arm_mp_pb_client)
+        # Create two variables for the ee index, one for the simulated robot, one for the robot for arm motion planning
         if self.robot_type == "Fetch":
-            self.mp_robot_end_effector_index = link_from_name(self.arm_mp_robot_id, "gripper_link")
+            self.simulated_ee_index = link_from_name(self.robot_id, "gripper_link")
         elif self.robot_type == "Movo":
-            self.mp_robot_end_effector_index = link_from_name(self.arm_mp_robot_id, "gripper_link")
+            self.simulated_ee_index = link_from_name(self.robot_id, "gripper_link")
+        # This works for onboard sensing (separate PB) and not (simulation PB)
+        # If we do not use onboard sensing self.amp_ee_index == self.simulated_ee_index
+        set_client(self.amp_p_client_id)
+        if self.robot_type == "Fetch":
+            self.amp_ee_index = link_from_name(self.amp_robot_id, "gripper_link")
+        elif self.robot_type == "Movo":
+            self.amp_ee_index = link_from_name(self.amp_robot_id, "gripper_link")
         set_client(0)
 
         if self.env.simulator.viewer is not None:
@@ -126,7 +139,7 @@ class MotionPlanningWrapper(object):
 
         :param pos: position
         """
-        set_client(self.arm_mp_pb._client)
+        set_client(self.amp_p._client)
         self.marker.set_position(pos)
         set_client(0)
 
@@ -148,7 +161,7 @@ class MotionPlanningWrapper(object):
         :param pos: position
         :param direction: direction vector
         """
-        set_client(self.arm_mp_pb._client)
+        set_client(self.amp_p._client)
         yaw = np.arctan2(direction[1], direction[0])
         self.set_marker_position_yaw(pos, yaw)
         set_client(0)
@@ -169,7 +182,7 @@ class MotionPlanningWrapper(object):
                 -1.2862852996643066,
                 0.0008453550418615341,
             )
-            self.arm_joint_ids = joints_from_names(
+            self.simulated_arm_joint_ids = joints_from_names(
                 self.robot_id,
                 [
                     "torso_lift_joint",
@@ -182,9 +195,9 @@ class MotionPlanningWrapper(object):
                     "wrist_roll_joint",
                 ],
             )
-            set_client(self.arm_mp_pb_client)
-            self.arm_mp_joint_ids = joints_from_names(
-                self.arm_mp_robot_id,
+            set_client(self.amp_p_client_id)
+            self.amp_joint_ids = joints_from_names(
+                self.amp_robot_id,
                 [
                     "torso_lift_joint",
                     "shoulder_pan_joint",
@@ -208,7 +221,7 @@ class MotionPlanningWrapper(object):
                 0.5065742552588746,
                 -1.562883631882778,
             )
-            self.joint_ids = joints_from_names(
+            self.simulated_arm_joint_ids = joints_from_names(
                 self.robot_id,
                 [
                     "linear_joint",
@@ -221,9 +234,9 @@ class MotionPlanningWrapper(object):
                     "right_wrist_3_joint",
                 ],
             )
-            set_client(self.arm_mp_pb_client)
-            self.arm_mp_joint_ids = joints_from_names(
-                self.arm_mp_robot_id,
+            set_client(self.amp_p_client_id)
+            self.amp_joint_ids = joints_from_names(
+                self.amp_robot_id,
                 [
                     "linear_joint",
                     "right_shoulder_pan_joint",
@@ -237,16 +250,14 @@ class MotionPlanningWrapper(object):
             )
             set_client(0)
 
-        self.arm_joint_ids_all = get_moving_links(self.robot_id, self.arm_joint_ids)
-        self.arm_joint_ids_all = [
-            item for item in self.arm_joint_ids_all if item != self.robot.end_effector_part_index()
+        self.simulated_arm_joint_ids_all = get_moving_links(self.robot_id, self.simulated_arm_joint_ids)
+        self.simulated_arm_joint_ids_all = [
+            item for item in self.simulated_arm_joint_ids_all if item != self.simulated_ee_index
         ]
 
-        set_client(self.arm_mp_pb_client)
-        self.arm_mp_joint_ids_all = get_moving_links(self.arm_mp_robot_id, self.arm_mp_joint_ids)
-        self.arm_mp_joint_ids_all = [
-            item for item in self.arm_mp_joint_ids_all if item != self.mp_robot_end_effector_index
-        ]
+        set_client(self.amp_p_client_id)
+        self.amp_joint_ids_all = get_moving_links(self.amp_robot_id, self.amp_joint_ids)
+        self.amp_joint_ids_all = [item for item in self.amp_joint_ids_all if item != self.amp_ee_index]
         set_client(0)
 
         self.arm_ik_threshold = 0.05
@@ -307,21 +318,12 @@ class MotionPlanningWrapper(object):
 
     def simulator_sync(self):
         """Sync the simulator to renderer"""
-        client = get_client()
-        set_client(0)
         self.env.simulator.sync()
-        set_client(client)
 
     def simulator_step(self):
         """Step the simulator and sync the simulator to renderer"""
-        client = get_client()
-        set_client(0)
         self.env.simulator.step()
         self.simulator_sync()
-        if self.only_onboard_sensors:
-            set_client(self.arm_mp_pb._client)
-            # set_joint_positions(self.arm_mp_robot_id, self.arm_joint_ids, [0]*7)
-        set_client(client)
 
     def dry_run_base_plan(self, path):
         """
@@ -348,11 +350,11 @@ class MotionPlanningWrapper(object):
         """
         max_limits, min_limits, rest_position, joint_range, joint_damping = None, None, None, None, None
         if self.robot_type == "Fetch":
-            max_limits = [0.0, 0.0] + get_max_limits(self.robot_id, self.arm_joint_ids)
-            min_limits = [0.0, 0.0] + get_min_limits(self.robot_id, self.arm_joint_ids)
+            max_limits = [0.0, 0.0] + get_max_limits(self.robot_id, self.simulated_arm_joint_ids)
+            min_limits = [0.0, 0.0] + get_min_limits(self.robot_id, self.simulated_arm_joint_ids)
             # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
             min_limits[2] += 0.02
-            rest_position = [0.0, 0.0] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+            rest_position = [0.0, 0.0] + list(get_joint_positions(self.robot_id, self.simulated_arm_joint_ids))
             joint_range = list(np.array(max_limits) - np.array(min_limits))
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
@@ -366,6 +368,136 @@ class MotionPlanningWrapper(object):
             joint_damping = [0.1 for _ in joint_range]
 
         return (max_limits, min_limits, rest_position, joint_range, joint_damping)
+
+    def reset_obstacles_with_sensing(self):
+        # Get the point cloud
+        state = self.env.get_state()
+
+        # 3D point coordinates wrt. the camera frame
+        [td_image, segmentation] = self.env.simulator.renderer.render(modes=("3d", "seg"))
+        depth_map = -td_image[:, :, 2:3]
+        distance_th = 2  # meters
+        close_points = np.where(depth_map < distance_th, 1, 0)
+        # print(segmentation.shape)
+        # print(np.unique(segmentation[:, :, 0:1]))
+        seg = (segmentation[:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int64)
+
+        # TODO: this is a hack!!! for some reason the robot gets ID0
+        no_robot_pixels = np.where(seg != 0, 1, 0)  # The robot parts have ID 1
+        # cv2.imshow("mask", no_robot_pixels)
+        print("no_robot_pixels ", np.count_nonzero(no_robot_pixels))
+        close_points = np.multiply(close_points, no_robot_pixels)
+        num_close_points = np.count_nonzero(close_points)
+
+        # Pose of the camera of the simulated robot in world frame
+        eye_pos, eye_orn = self.robot.parts["eyes"].get_position_orientation()
+        camera_in_wf = quat2rotmat(xyzw2wxyz(eye_orn))
+        camera_in_wf[:3, 3] = eye_pos
+        print("Camera in world frame")
+        print(camera_in_wf)
+
+        # Transforming coordinates of points from opengl frame to camera frame
+        camera_in_openglf = quat2rotmat(euler2quat(np.pi / 2.0, 0, -np.pi / 2.0))
+        print("Camera in opengl frame")
+        print(camera_in_openglf)
+
+        # Pose of the simulated robot in world frame
+        robot_pos, robot_orn = self.robot.get_position_orientation()
+        robot_in_wf = quat2rotmat(xyzw2wxyz(robot_orn))
+        robot_in_wf[:3, 3] = robot_pos
+        print("Robot in world frame")
+        print(robot_in_wf)
+
+        # Pose of the camera in robot frame
+        cam_in_robot_frame = np.dot(np.linalg.inv(robot_in_wf), camera_in_wf)  # , np.linalg.inv(robot_in_wf))
+        # print("Camera in robot frame. this should be constant")
+        # print(cam_in_robot_frame)
+        # print(np.linalg.inv(robot_ht).dot(eye_ht))
+
+        # Adding points as spheres-obstacles for motion planning
+        max_num_points = 500
+        sphere_obstacle_radius = 0.05
+        if len(self.mp_obstacles) == 0:
+            self.visual_obstacles = []
+            for spheres in range(max_num_points):  # Add ALL the spheres, but far
+                # Creating spheres with collision shapes, adding them to the bullet client for planning and the list of
+                # obstacles
+                sphere_id = self.amp_p.createCollisionShape(
+                    shapeType=self.amp_p.GEOM_SPHERE,
+                    radius=sphere_obstacle_radius,
+                    physicsClientId=self.amp_p_client_id,
+                )
+                sphere_o_id = self.amp_p.createMultiBody(
+                    baseMass=100,
+                    baseCollisionShapeIndex=sphere_id,
+                    basePosition=[-300, -300, -300],
+                    physicsClientId=self.amp_p_client_id,
+                )
+                self.mp_obstacles.append(sphere_o_id)
+
+                # TODO: only for debugging
+                sphere_vis_id2 = self.amp_p.createVisualShape(
+                    shapeType=self.amp_p.GEOM_SPHERE,
+                    rgbaColor=[0, 0, 1, 1],
+                    radius=sphere_obstacle_radius,
+                    physicsClientId=0,
+                )
+                sphere_o_id2 = p.createMultiBody(
+                    baseMass=0,
+                    baseCollisionShapeIndex=-1,
+                    baseVisualShapeIndex=sphere_vis_id2,
+                    basePosition=[-300, -300, -300],
+                    physicsClientId=0,
+                )
+                self.visual_obstacles.append(sphere_o_id2)
+                print("Adding point ", len(self.mp_obstacles))
+
+        max_num_points = min(
+            max_num_points, num_close_points
+        )  # Maximum number of points that are close enough this frame
+        print("num_close_points", num_close_points)
+        print("max_num_points", max_num_points)
+        # Pick max_num_points among the close points
+        indices = np.random.choice(
+            num_close_points, max_num_points, False
+        )  # Create list of max_num_points between 0 and num_close_points -1
+        close_points_idx = np.nonzero(close_points)  # Create pair of lists with the indices of the close points
+        sphere_idx = 0
+        for idx in indices:
+            u = close_points_idx[1][
+                idx
+            ]  # np.random.randint(0, self.env.simulator.image_width)#self.downsampling_factor*u_idx#
+            v = close_points_idx[0][
+                idx
+            ]  # np.random.randint(0, self.env.simulator.image_height)#self.downsampling_factor*v_idx#
+            # print(u)
+            # print(v)
+            sphere_position_in_openglf = td_image[v, u]
+            sphere_position_in_cf = np.dot(camera_in_openglf, sphere_position_in_openglf)
+            # Transforming coordinates of points from camera frame to robot frame
+            sphere_position_in_rf = np.dot(cam_in_robot_frame, sphere_position_in_cf)
+            sphere_o_id = self.mp_obstacles[sphere_idx]
+            self.amp_p.resetBasePositionAndOrientation(
+                sphere_o_id, sphere_position_in_rf[:3], [0, 0, 0, 1], physicsClientId=self.amp_p_client_id
+            )
+
+            # TODO: only for debugging
+            sphere_vis_id = self.visual_obstacles[sphere_idx]
+            sphere_position_in_wf = np.dot(robot_in_wf, sphere_position_in_rf)
+            p.resetBasePositionAndOrientation(sphere_vis_id, sphere_position_in_wf[:3], [0, 0, 0, 1], physicsClientId=0)
+            sphere_idx = sphere_idx + 1
+
+        # If we picked less than the total number of spheres, we set the rest to far away to not affect
+        for other_idx in range(max_num_points - sphere_idx):
+            sphere_position_in_rf = np.dot(cam_in_robot_frame, sphere_position_in_cf)
+            sphere_o_id = self.mp_obstacles[sphere_idx + other_idx]
+            self.amp_p.resetBasePositionAndOrientation(
+                sphere_o_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=self.amp_p_client_id
+            )
+
+            # TODO: only for debugging
+            sphere_vis_id = self.visual_obstacles[sphere_idx + other_idx]
+            p.resetBasePositionAndOrientation(sphere_vis_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=0)
 
     def get_arm_joint_positions(self, arm_ik_goal):
         """
@@ -381,92 +513,205 @@ class MotionPlanningWrapper(object):
 
         n_attempt = 0
         max_attempt = 75
-        sample_fn = get_
-        sample_fn(self.robot_id, self.arm_joint_ids)
-        base_pose = get_base_values(self.robot_id)
-        state_id = p.saveState()
-        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
-        # find collision-free IK solution for arm_subgoal
-        while n_attempt < max_attempt:
-            if self.robot_type == "Movo":
-                self.robot.tuck()  # TODO: do it for the second pb context
 
-            set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
-            arm_joint_positions = p.calculateInverseKinematics(
-                self.robot_id,
-                self.robot.end_effector_part_index(),
-                targetPosition=arm_ik_goal,
-                # targetOrientation=self.robots[0].get_orientation(),
-                lowerLimits=min_limits,
-                upperLimits=max_limits,
-                jointRanges=joint_range,
-                restPoses=rest_position,
-                jointDamping=joint_damping,
-                solver=p.IK_DLS,
-                maxNumIterations=100,
-            )
+        if not self.only_onboard_sensors:
 
-            if self.robot_type == "Fetch":
-                arm_joint_positions = arm_joint_positions[2:10]
-            elif self.robot_type == "Movo":
-                arm_joint_positions = arm_joint_positions[:8]
+            sample_fn = get_sample_fn(self.robot_id, self.simulate_arm_joint_ids)
+            base_pose = get_base_values(self.robot_id)
+            state_id = p.saveState()
+            # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+            # find collision-free IK solution for arm_subgoal
+            while n_attempt < max_attempt:
+                if self.robot_type == "Movo":
+                    self.robot.tuck()  # TODO: do it for the second pb context
 
-            set_client(self.arm_mp_pb_client)
-            set_joint_positions(self.arm_mp_robot_id, self.arm_mp_joint_ids, arm_joint_positions)
+                set_joint_positions(self.robot_id, self.simulate_arm_joint_ids, sample_fn())
+                arm_joint_positions = p.calculateInverseKinematics(
+                    self.robot_id,
+                    self.simulated_ee_index,
+                    targetPosition=arm_ik_goal,
+                    # targetOrientation=self.robots[0].get_orientation(),
+                    lowerLimits=min_limits,
+                    upperLimits=max_limits,
+                    jointRanges=joint_range,
+                    restPoses=rest_position,
+                    jointDamping=joint_damping,
+                    solver=p.IK_DLS,
+                    maxNumIterations=100,
+                )
 
-            dist = l2_distance(
-                get_link_position_from_name(
-                    self.arm_mp_robot_id, "gripper_link"
-                ),  # self.robot.get_end_effector_position(),
-                arm_ik_goal,
-            )
-            set_client(0)
-            print("dist", dist)
-            if dist > self.arm_ik_threshold:
-                n_attempt += 1
-                continue
+                if self.robot_type == "Fetch":
+                    arm_joint_positions = arm_joint_positions[2:10]
+                elif self.robot_type == "Movo":
+                    arm_joint_positions = arm_joint_positions[:8]
 
-            # need to simulator_step to get the latest collision
-            self.simulator_step()
+                set_joint_positions(self.robot_id, self.simulated_arm_joint_ids, arm_joint_positions)
 
-            # simulator_step will slightly move the robot base and the objects
-            set_base_values_with_z(self.arm_mp_robot_id, base_pose, z=self.initial_height)
-            # self.reset_object_states()
-            # TODO: have a princpled way for stashing and resetting object states
+                dist = l2_distance(
+                    get_link_position_from_name(
+                        self.robot_id, "gripper_link"
+                    ),  # self.robot.get_end_effector_position(),
+                    arm_ik_goal,
+                )
+                print("dist", dist)
+                if dist > self.arm_ik_threshold:
+                    n_attempt += 1
+                    continue
 
-            # arm should not have any collision
-            if self.robot_type == "Movo":
-                collision_free = is_collision_free(body_a=self.arm_mp_robot_id, link_a_list=self.arm_joint_ids_all)
-                # ignore linear link
-            else:
-                collision_free = is_collision_free(body_a=self.arm_mp_robot_id, link_a_list=self.arm_joint_ids)
+                # need to simulator_step to get the latest collision
+                self.simulator_step()
 
-            if not collision_free:
-                n_attempt += 1
-                print("arm has collision")
-                continue
+                # simulator_step will slightly move the robot base and the objects
+                set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
+                # self.reset_object_states()
+                # TODO: have a princpled way for stashing and resetting object states
 
-            # gripper should not have any self-collision
-            collision_free = is_collision_free(
-                body_a=self.arm_mp_robot_id, link_a_list=[self.mp_robot_end_effector_index], body_b=self.arm_mp_robot_id
-            )
-            if not collision_free:
-                n_attempt += 1
-                print("gripper has collision")
-                continue
+                # arm should not have any collision
+                if self.robot_type == "Movo":
+                    collision_free = is_collision_free(body_a=self.robot_id, link_a_list=self.simulated_arm_joint_ids)
+                    # ignore linear link
+                else:
+                    collision_free = is_collision_free(body_a=self.robot_id, link_a_list=self.simulated_arm_joint_ids)
 
-            # self.episode_metrics['arm_ik_time'] += time() - ik_start
+                if not collision_free:
+                    n_attempt += 1
+                    print("arm has collision")
+                    continue
+
+                # gripper should not have any self-collision
+                collision_free = is_collision_free(
+                    body_a=self.robot_id, link_a_list=[self.simulated_ee_index], body_b=self.robot_id
+                )
+                if not collision_free:
+                    n_attempt += 1
+                    print("gripper has collision")
+                    continue
+
+                # self.episode_metrics['arm_ik_time'] += time() - ik_start
+                # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+                p.restoreState(state_id)
+                p.removeState(state_id)
+                return arm_joint_positions
+
             # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
             p.restoreState(state_id)
             p.removeState(state_id)
-            return arm_joint_positions
+            # self.episode_metrics['arm_ik_time'] += time() - ik_start
 
-        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        p.restoreState(state_id)
-        p.removeState(state_id)
-        # self.episode_metrics['arm_ik_time'] += time() - ik_start
+            return None
 
-        return None
+        else:
+            self.reset_obstacles_with_sensing()
+
+            set_client(self.amp_p_client_id)
+            sample_fn = get_sample_fn(self.amp_robot_id, self.amp_joint_ids)
+            set_client(0)
+
+            base_pose = get_base_values(self.amp_robot_id)
+            state_id = self.amp_p.saveState()
+            # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+            # find collision-free IK solution for arm_subgoal
+            while n_attempt < max_attempt:
+                if self.robot_type == "Movo":
+                    self.robot.tuck()  # TODO: do it for the second pb context
+
+                set_client(self.amp_p_client_id)
+                set_joint_positions(self.amp_robot_id, self.amp_joint_ids, sample_fn())
+                arm_joint_positions = self.amp_p.calculateInverseKinematics(
+                    self.amp_robot_id,
+                    self.amp_ee_index,
+                    targetPosition=arm_ik_goal,
+                    # targetOrientation=self.robots[0].get_orientation(),
+                    lowerLimits=min_limits,
+                    upperLimits=max_limits,
+                    jointRanges=joint_range,
+                    restPoses=rest_position,
+                    jointDamping=joint_damping,
+                    solver=p.IK_DLS,
+                    maxNumIterations=100,
+                )
+                set_client(0)
+
+                if self.robot_type == "Fetch":
+                    arm_joint_positions = arm_joint_positions[2:10]
+                elif self.robot_type == "Movo":
+                    arm_joint_positions = arm_joint_positions[:8]
+
+                set_client(self.amp_p_client_id)
+                set_joint_positions(self.amp_robot_id, self.amp_joint_ids, arm_joint_positions)
+                set_client(0)
+
+                set_client(self.amp_p_client_id)
+                dist = l2_distance(
+                    get_link_position_from_name(
+                        self.amp_robot_id, "gripper_link"
+                    ),  # self.robot.get_end_effector_position(),
+                    arm_ik_goal,
+                )
+                set_client(0)
+                # print("dist", dist)
+                if dist > self.arm_ik_threshold:
+                    n_attempt += 1
+                    continue
+
+                print("IK result is close enough to the desired pose/position")
+
+                # need to simulator_step to get the latest collision
+                self.amp_p.stepSimulation()
+                print("returned?")
+
+                # simulator_step will slightly move the robot base and the objects
+                set_client(self.amp_p_client_id)
+                set_base_values_with_z(self.amp_robot_id, base_pose, z=self.initial_height)
+                set_client(0)
+
+                # arm should not have any collision
+                print("Checking arm collision")
+                set_client(self.amp_p_client_id)
+                if self.robot_type == "Movo":
+                    collision_free = is_collision_free(body_a=self.amp_robot_id, link_a_list=self.amp_joint_ids)
+                    # ignore linear link
+                else:
+                    collision_free = is_collision_free(body_a=self.amp_robot_id, link_a_list=self.amp_joint_ids)
+                set_client(0)
+
+                if not collision_free:
+                    n_attempt += 1
+                    print("Arm has collision")
+                    continue
+                else:
+                    print("Arm is collision-free")
+
+                # gripper should not have any self-collision
+                print("Checking arm self-collision")
+                set_client(self.amp_p_client_id)
+                collision_free = is_collision_free(
+                    body_a=self.amp_robot_id, link_a_list=[self.amp_ee_index], body_b=self.amp_robot_id
+                )
+                set_client(0)
+                if not collision_free:
+                    n_attempt += 1
+                    print("gripper has collision")
+                    continue
+                else:
+                    print("Arm is self-collision-free")
+
+                # self.episode_metrics['arm_ik_time'] += time() - ik_start
+                # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+                self.amp_p.restoreState(state_id)
+                self.amp_p.removeState(state_id)
+
+                # TODO: remove, this is only for debugging purposes
+                set_joint_positions(self.robot_id, self.simulated_arm_joint_ids, arm_joint_positions)
+
+                return arm_joint_positions
+
+            # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            self.amp_p.restoreState(state_id)
+            self.amp_p.removeState(state_id)
+            # self.episode_metrics['arm_ik_time'] += time() - ik_start
+
+            return None
 
     def plan_arm_motion(self, arm_joint_positions):
         """
@@ -476,131 +721,259 @@ class MotionPlanningWrapper(object):
         :param arm_joint_positions: final arm joint position to reach
         :return: arm trajectory or None if no plan can be found
         """
-        set_client(self.arm_mp_pb._client)
-        disabled_collisions = {}
-        if self.robot_type == "Fetch":
-            disabled_collisions = {
-                (
-                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
-                    link_from_name(self.arm_mp_robot_id, "torso_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
-                    link_from_name(self.arm_mp_robot_id, "shoulder_lift_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
-                    link_from_name(self.arm_mp_robot_id, "upperarm_roll_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
-                    link_from_name(self.arm_mp_robot_id, "forearm_roll_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "torso_lift_link"),
-                    link_from_name(self.arm_mp_robot_id, "elbow_flex_link"),
-                ),
-            }
-        elif self.robot_type == "Movo":
-            disabled_collisions = {
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_shoulder_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "right_base_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_arm_half_1_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_arm_half_2_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_forearm_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_wrist_spherical_1_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_wrist_spherical_2_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_wrist_3_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "right_wrist_spherical_2_link"),
-                    link_from_name(self.arm_mp_robot_id, "right_robotiq_coupler_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "right_shoulder_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "left_base_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "left_shoulder_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "left_arm_half_2_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "right_arm_half_2_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "right_arm_half_1_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-                (
-                    link_from_name(self.arm_mp_robot_id, "left_arm_half_1_link"),
-                    link_from_name(self.arm_mp_robot_id, "linear_actuator_fixed_link"),
-                ),
-            }
+        if not self.only_onboard_sensors:
+            if self.robot_type == "Fetch":
+                disabled_collisions = {
+                    (
+                        link_from_name(self.robot_id, "torso_lift_link"),
+                        link_from_name(self.robot_id, "torso_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "torso_lift_link"),
+                        link_from_name(self.robot_id, "shoulder_lift_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "torso_lift_link"),
+                        link_from_name(self.robot_id, "upperarm_roll_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "torso_lift_link"),
+                        link_from_name(self.robot_id, "forearm_roll_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "torso_lift_link"),
+                        link_from_name(self.robot_id, "elbow_flex_link"),
+                    ),
+                }
+            elif self.robot_type == "Movo":
+                disabled_collisions = {
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_shoulder_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "right_base_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_arm_half_1_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_arm_half_2_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_forearm_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_wrist_spherical_1_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_wrist_spherical_2_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "linear_actuator_link"),
+                        link_from_name(self.robot_id, "right_wrist_3_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "right_wrist_spherical_2_link"),
+                        link_from_name(self.robot_id, "right_robotiq_coupler_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "right_shoulder_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "left_base_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "left_shoulder_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "left_arm_half_2_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "right_arm_half_2_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "right_arm_half_1_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.robot_id, "left_arm_half_1_link"),
+                        link_from_name(self.robot_id, "linear_actuator_fixed_link"),
+                    ),
+                }
 
-        if self.fine_motion_plan:
-            self_collisions = True
-            mp_obstacles = self.mp_obstacles
+            if self.fine_motion_plan:
+                self_collisions = True
+                mp_obstacles = self.mp_obstacles
+            else:
+                self_collisions = False
+                mp_obstacles = []
+
+            plan_arm_start = time()
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
+            state_id = p.saveState()
+
+            allow_collision_links = []
+            if self.robot_type == "Fetch":
+                allow_collision_links = [19]
+            elif self.robot_type == "Movo":
+                allow_collision_links = [23, 24]
+
+            arm_path = plan_joint_motion(
+                self.robot_id,
+                self.simulated_arm_joint_ids,
+                arm_joint_positions,
+                disabled_collisions=disabled_collisions,
+                self_collisions=self_collisions,
+                obstacles=mp_obstacles,
+                algorithm=self.arm_mp_algo,
+                allow_collision_links=allow_collision_links,
+            )
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
+            p.restoreState(state_id)
+            p.removeState(state_id)
+            return arm_path
         else:
-            self_collisions = False
+            set_client(self.amp_p_client_id)
+            disabled_collisions = {}
+            if self.robot_type == "Fetch":
+                disabled_collisions = {
+                    (
+                        link_from_name(self.amp_robot_id, "torso_lift_link"),
+                        link_from_name(self.amp_robot_id, "torso_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "torso_lift_link"),
+                        link_from_name(self.amp_robot_id, "shoulder_lift_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "torso_lift_link"),
+                        link_from_name(self.amp_robot_id, "upperarm_roll_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "torso_lift_link"),
+                        link_from_name(self.amp_robot_id, "forearm_roll_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "torso_lift_link"),
+                        link_from_name(self.amp_robot_id, "elbow_flex_link"),
+                    ),
+                }
+            elif self.robot_type == "Movo":
+                disabled_collisions = {
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_shoulder_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "right_base_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_arm_half_1_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_arm_half_2_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_forearm_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_wrist_spherical_1_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_wrist_spherical_2_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "linear_actuator_link"),
+                        link_from_name(self.amp_robot_id, "right_wrist_3_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "right_wrist_spherical_2_link"),
+                        link_from_name(self.amp_robot_id, "right_robotiq_coupler_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "right_shoulder_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "left_base_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "left_shoulder_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "left_arm_half_2_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "right_arm_half_2_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "right_arm_half_1_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                    (
+                        link_from_name(self.amp_robot_id, "left_arm_half_1_link"),
+                        link_from_name(self.amp_robot_id, "linear_actuator_fixed_link"),
+                    ),
+                }
+            set_client(0)
+
+            # TODO: create obstacles based on sensor information
             mp_obstacles = []
 
-        plan_arm_start = time()
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
-        state_id = p.saveState()
+            plan_arm_start = time()
+            self.amp_p.configureDebugVisualizer(self.amp_p.COV_ENABLE_RENDERING, False)
+            state_id = self.amp_p.saveState()
 
-        allow_collision_links = []
-        if self.robot_type == "Fetch":
-            allow_collision_links = [19]
-        elif self.robot_type == "Movo":
-            allow_collision_links = [23, 24]
+            allow_collision_links = []
+            if self.robot_type == "Fetch":
+                allow_collision_links = [19]
+            elif self.robot_type == "Movo":
+                allow_collision_links = [23, 24]
 
-        arm_path = plan_joint_motion(
-            self.arm_mp_robot_id,
-            self.arm_joint_ids,
-            arm_joint_positions,
-            disabled_collisions=disabled_collisions,
-            self_collisions=self_collisions,
-            obstacles=mp_obstacles,
-            algorithm=self.arm_mp_algo,
-            allow_collision_links=allow_collision_links,
-        )
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        p.restoreState(state_id)
-        p.removeState(state_id)
-        set_client(0)
-        return arm_path
+            # Sync the state of simulated robot and planning robot
+            sim_joint_states = get_joint_positions(self.robot_id, self.simulated_arm_joint_ids)
+            set_client(self.amp_p_client_id)
+            set_joint_positions(self.amp_robot_id, self.simulated_arm_joint_ids, sim_joint_states)
+            set_client(0)
+
+            set_client(self.amp_p_client_id)
+            arm_path = plan_joint_motion(
+                self.amp_robot_id,
+                self.amp_joint_ids,
+                arm_joint_positions,
+                disabled_collisions=disabled_collisions,
+                self_collisions=self.check_self_collisions,
+                obstacles=mp_obstacles,
+                algorithm=self.arm_mp_algo,
+                allow_collision_links=allow_collision_links,
+            )
+            set_client(0)
+            self.amp_p.configureDebugVisualizer(self.amp_p.COV_ENABLE_RENDERING, True)
+            self.amp_p.restoreState(state_id)
+            self.amp_p.removeState(state_id)
+            return arm_path
 
     def dry_run_arm_plan(self, arm_path):
         """
