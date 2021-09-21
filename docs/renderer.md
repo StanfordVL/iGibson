@@ -83,7 +83,7 @@ In this example, we show that MeshRenderer can directly render into a PyTorch te
 
 #### About the 3D Image
 
-The mode '3d' provides a 4-channeled image where the first three channels correspond to the x, y, and z coordinates of the pixels in the image. Because our code internally uses OpenGL for rendering, the coordinates are defined in the common convention of this framework: for a given image, the x axis point left to right, the y axis point bottom to top, and the z axis points "outside" of the image, in the opposite direction to the viewing direction of the camera. The camera is located at the location of the frame "eyes" of the robot, but the orientation of this frame corresponds to the computer vision convention: x axis pointing in the viewing direction of the camera, y axis pointing right to left and z axis pointing bottom to top. The following code can be helpful to transform between reference frames:
+The mode '3d' provides a 4-channeled image where the first three channels correspond to the x, y, and z coordinates of the pixels in the image. Because our code internally uses OpenGL for rendering, the coordinates are defined in the common convention of this framework: for a given image, the x axis point left to right, the y axis point bottom to top, and the z axis points from front to the backward, in the opposite direction to the viewing direction of the camera. The camera is located at the location of the frame "eyes" of the robot, but the orientation of this frame corresponds to the computer vision convention: x axis pointing forward in the viewing direction of the camera, y axis pointing right to left and z axis pointing bottom to top. The following code can be helpful to transform between reference frames:
 
 ```
 # Pose of the camera of the simulated robot in world frame
@@ -110,10 +110,10 @@ point_in_wf = np.dot(robot_in_wf, point_in_rf)
 
 #### About the Semantic Segmentation Image
 
-The mode 'seg' provides a 4-channeled image where the first channel corresponds to the semantic segmentation. The values are normalized between 0 and 1, with a normalizing constant of MAX_CLASS_COUNT = 512 (defined in 'utils/constants.py'). The following code is helpful to unnormalize the segmentation image:
+The mode 'seg' provides a 4-channeled image where the first channel corresponds to the semantic segmentation. The values are normalized between 0 and 1, with a normalizing constant of `MAX_CLASS_COUNT = 512` (defined in `utils/constants.py`). The following code is helpful to unnormalize the segmentation image:
 
 ```
 [segmentation] = self.env.simulator.renderer.render(modes=('seg'))
 seg = (segmentation[:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int32)
 ```
-This transformation is directly performed if the segmentation is accessed through a VisionSensor (e.g., as part of the iGibsonEnv) using the method get_seg.
+This transformation is directly performed if the segmentation is accessed through a `VisionSensor` (e.g., as part of the iGibsonEnv) using the method `get_seg`.
