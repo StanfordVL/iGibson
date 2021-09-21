@@ -3,11 +3,10 @@ import itertools
 import pybullet as p
 
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from igibson.objects.object_base import Object
-from igibson.objects.stateful_object import StatefulObject
+from igibson.objects.object_base import BaseObject, NonRobotObject
 
 
-class ObjectGrouper(StatefulObject):
+class ObjectGrouper(NonRobotObject):
     """A multi-object wrapper that groups multiple objects and applies operations to all of them in parallel."""
 
     class ProceduralMaterialAggregator(object):
@@ -83,11 +82,9 @@ class ObjectGrouper(StatefulObject):
                 obj.states[self.state_type].set_value(other, new_value)
 
     def __init__(self, objects_with_pose_offsets):
-        super(StatefulObject, self).__init__()
-
         objects = [obj for obj, _ in objects_with_pose_offsets]
         pose_offsets = [trans for _, trans in objects_with_pose_offsets]
-        assert objects and all(isinstance(obj, Object) for obj in objects)
+        assert objects and all(isinstance(obj, BaseObject) for obj in objects)
         self.objects = objects
 
         # Pose offsets are the transformation of the object parts to the whole
@@ -169,17 +166,12 @@ class ObjectGrouper(StatefulObject):
             new_pos, new_orn = p.multiplyTransforms(pos, orn, part_pos, part_orn)
             obj.set_base_link_position_orientation(new_pos, new_orn)
 
-    def rotate_by(self, x=0, y=0, z=0):
-        raise ValueError("Cannot rotate_by on ObjectGrouper")
 
-
-class ObjectMultiplexer(StatefulObject):
+class ObjectMultiplexer(NonRobotObject):
     """A multi-object wrapper that acts as a proxy for the selected one between the set of objects it contains."""
 
     def __init__(self, name, multiplexed_objects, current_index):
-        super(StatefulObject, self).__init__()
-
-        assert multiplexed_objects and all(isinstance(obj, Object) for obj in multiplexed_objects)
+        assert multiplexed_objects and all(isinstance(obj, BaseObject) for obj in multiplexed_objects)
         assert 0 <= current_index < len(multiplexed_objects)
 
         for obj in multiplexed_objects:
@@ -188,9 +180,6 @@ class ObjectMultiplexer(StatefulObject):
         self._multiplexed_objects = multiplexed_objects
         self.current_index = current_index
         self.name = name
-
-        # This will help route obj.states to one of the multiplexed_objects
-        del self.states
 
     def set_selection(self, idx):
         assert 0 <= idx < len(self._multiplexed_objects)
@@ -234,9 +223,6 @@ class ObjectMultiplexer(StatefulObject):
 
     def set_base_link_position_orientation(self, pos, orn):
         return self.current_selection().set_base_link_position_orientation(pos, orn)
-
-    def rotate_by(self, x=0, y=0, z=0):
-        return self.current_selection().rotate_by(x, y, z)
 
     def dump_state(self):
         return {

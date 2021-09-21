@@ -248,7 +248,7 @@ class Viewer:
             self.constraint_marker2.set_position(hit_pos)
             self.dist = np.linalg.norm(np.array(hit_pos) - camera_pose)
             cid = p.createConstraint(
-                parentBodyUniqueId=self.constraint_marker.body_id,
+                parentBodyUniqueId=self.constraint_marker.get_body_id(),
                 parentLinkIndex=-1,
                 childBodyUniqueId=object_id,
                 childLinkIndex=link_id,
