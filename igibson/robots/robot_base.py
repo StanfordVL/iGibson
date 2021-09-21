@@ -223,6 +223,11 @@ class BodyPart:
         Orientation is by default defined in [x,y,z,w]"""
         return self.get_pose()[3:]
 
+    def get_position_orientation(self):
+        """Get position and orientation of the body part
+        Redundant with get_pose"""
+        return self.get_position(), self.get_orientation()
+
     def get_rpy(self):
         """Get roll, pitch and yaw of body part
         [roll, pitch, yaw]"""
