@@ -1,3 +1,4 @@
+import logging
 import os
 import platform
 
@@ -52,7 +53,13 @@ class MeshRendererSettings(object):
         self.env_texture_filename = env_texture_filename
         self.env_texture_filename2 = env_texture_filename2
         self.env_texture_filename3 = env_texture_filename3
-        self.optimized = optimized
+
+        if platform.system() == "Darwin":
+            self.optimized = False
+            logging.warn("Darwin does not support optimized renderer, automatically disabling")
+        else:
+            self.optimized = optimized
+
         self.skybox_size = skybox_size
         self.light_modulation_map_filename = light_modulation_map_filename
         self.light_dimming_factor = light_dimming_factor
