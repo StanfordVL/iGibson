@@ -80,3 +80,40 @@ The Velodyne VLP-16 LiDAR visualization will look like this:
 
 In this example, we show that MeshRenderer can directly render into a PyTorch tensor to maximize efficiency. PyTorch installation is required (otherwise, iGibson does not depend on PyTorch). The code can be found in [igibson/examples/demo/mesh_renderer_gpu_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/mesh_renderer_gpu_example.py).
 
+
+#### About the 3D Image
+
+The mode '3d' provides a 4-channeled image where the first three channels correspond to the x, y, and z coordinates of the pixels in the image. Because our code internally uses OpenGL for rendering, the coordinates are defined in the common convention of this framework: for a given image, the x axis point left to right, the y axis point bottom to top, and the z axis points "outside" of the image, in the opposite direction to the viewing direction of the camera. The camera is located at the location of the frame "eyes" of the robot, but the orientation of this frame corresponds to the computer vision convention: x axis pointing in the viewing direction of the camera, y axis pointing right to left and z axis pointing bottom to top. The following code can be helpful to transform between reference frames:
+
+```
+# Pose of the camera of the simulated robot in world frame
+eye_pos, eye_orn = self.robot.parts["eyes"].get_position_orientation()
+camera_in_wf = quat2rotmat(xyzw2wxyz(eye_orn))
+camera_in_wf[:3,3] = eye_pos
+
+# Transforming coordinates of points from opengl frame to camera frame
+camera_in_openglf = quat2rotmat(euler2quat(np.pi / 2.0, 0, -np.pi / 2.0))
+
+# Pose of the simulated robot in world frame
+robot_pos, robot_orn = self.robot.get_position_orientation()
+robot_in_wf = quat2rotmat(xyzw2wxyz(robot_orn))
+robot_in_wf[:3, 3] = robot_pos
+
+u = 0
+v = 0
+[td_image] = self.env.simulator.renderer.render(modes=('3d'))
+point_in_openglf = td_image[u,v]
+point_in_cf = np.dot(camera_in_openglf, point_in_openglf)
+point_in_rf = np.dot(cam_in_robot_frame, point_in_cf)
+point_in_wf = np.dot(robot_in_wf, point_in_rf)
+```
+
+#### About the Semantic Segmentation Image
+
+The mode 'seg' provides a 4-channeled image where the first channel corresponds to the semantic segmentation. The values are normalized between 0 and 1, with a normalizing constant of MAX_CLASS_COUNT = 512 (defined in 'utils/constants.py'). The following code is helpful to unnormalize the segmentation image:
+
+```
+[segmentation] = self.env.simulator.renderer.render(modes=('seg'))
+seg = (segmentation[:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int32)
+```
+This transformation is directly performed if the segmentation is accessed through a VisionSensor (e.g., as part of the iGibsonEnv) using the method get_seg.
