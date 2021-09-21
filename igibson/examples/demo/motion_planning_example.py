@@ -9,27 +9,32 @@ from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
 
 
 def run_example(args):
-    nav_env = iGibsonEnv(
+    environment = iGibsonEnv(
         config_file=args.config, mode=args.mode, action_timestep=1.0 / 120.0, physics_timestep=1.0 / 120.0
     )
 
-    motion_planner = MotionPlanningWrapper(nav_env)
-    state = nav_env.reset()
+    motion_planner = MotionPlanningWrapper(environment)
+    state = environment.reset()
 
     while True:
-        for i in range(90):
-            action = np.random.uniform(-1, 1, nav_env.action_space.shape)
-            state, reward, done, _ = nav_env.step(action)
-        base_path = motion_planner.plan_base_motion([1, 0, 0])
-        print(base_path)
-        motion_planner.dry_run_base_plan(base_path)
-        for i in range(30):
-            action = np.random.uniform(-1, 1, nav_env.action_space.shape)
-            state, reward, done, _ = nav_env.step(action)
-        joint_states = motion_planner.get_arm_joint_positions([0.3, 0.3, 0.8])
+        for i in range(1):
+            action = np.zeros(environment.action_space.shape)
+            # action = np.random.uniform(-1, 1, environment.action_space.shape)
+            state, reward, done, _ = environment.step(action)
+        # base_path = motion_planner.plan_base_motion([1, 0, 0])
+        # print(base_path)
+        # motion_planner.dry_run_base_plan(base_path)
+        # for i in range(30):
+        #     action = np.random.uniform(-1, 1, environment.action_space.shape)
+        #     state, reward, done, _ = environment.step(action)
+        joint_states = motion_planner.get_arm_joint_positions([0.6, 0.1, 0.8])
         print(joint_states)
-        # action = np.random.uniform(-1, 1, nav_env.action_space.shape)
-        # state, reward, done, _ = nav_env.step(action)
+        if joint_states:
+            print("Finding path")
+            joint_states_path = motion_planner.plan_arm_motion(joint_states)
+            print(joint_states_path)
+        # action = np.random.uniform(-1, 1, environment.action_space.shape)
+        # state, reward, done, _ = environment.step(action)
 
 
 if __name__ == "__main__":
