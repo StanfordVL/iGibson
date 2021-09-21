@@ -1,5 +1,4 @@
 from igibson import object_states
-from igibson.object_states.factory import prepare_object_states
 from igibson.objects.ycb_object import YCBObject
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
@@ -10,9 +9,7 @@ def main():
     scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
     s.import_ig_scene(scene)
 
-    block = YCBObject(name="036_wood_block")
-    block.abilities = ["soakable", "cleaningTool"]
-    prepare_object_states(block, abilities={"soakable": {}, "cleaningTool": {}})
+    block = YCBObject(name="036_wood_block", abilities={"soakable": {}, "cleaningTool": {}})
     s.import_object(block)
     block.set_position([1, 1, 1.8])
 

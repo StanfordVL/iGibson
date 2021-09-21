@@ -88,7 +88,7 @@ def run_muvr(mode="server", host="localhost", port="8885"):
         mustard = YCBObject("006_mustard_bottle")
         s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
-        p.changeDynamics(mustard.body_id, -1, mass=mass_list[i])
+        p.changeDynamics(mustard.get_body_id(), -1, mass=mass_list[i])
 
     # Start the two agents at different points so they don't collide upon entering the scene
     if vr_settings.use_vr:
