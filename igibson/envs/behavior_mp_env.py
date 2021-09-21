@@ -48,9 +48,9 @@ def detect_collision(bodyA, object_in_hand=None):
 def detect_robot_collision(robot):
     object_in_hand = robot.parts["right_hand"].object_in_hand
     return (
-        detect_collision(robot.parts["body"].body_id)
-        or detect_collision(robot.parts["left_hand"].body_id)
-        or detect_collision(robot.parts["right_hand"].body_id, object_in_hand)
+        detect_collision(robot.parts["body"].get_body_id())
+        or detect_collision(robot.parts["left_hand"].get_body_id())
+        or detect_collision(robot.parts["right_hand"].get_body_id(), object_in_hand)
     )
 
 
@@ -339,7 +339,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 np.zeros(
                     28,
                 ),
-                override_ag_data=(obj.body_id[0], -1),
+                override_ag_data=(obj.get_body_id(), -1),
             )
 
     def execute_grasp_plan(self, plan, obj):
@@ -367,7 +367,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 np.zeros(
                     28,
                 ),
-                override_ag_data=(obj.body_id[0], -1),
+                override_ag_data=(obj.get_body_id(), -1),
             )
         )
 
@@ -401,7 +401,7 @@ class BehaviorMPEnv(BehaviorEnv):
 
             state = p.saveState()
             obstacles = self.get_body_ids()
-            obstacles.remove(self.obj_in_hand.body_id[0])
+            obstacles.remove(self.obj_in_hand.get_body_id())
             plan = plan_hand_motion_br(
                 robot=self.robots[0],
                 obj_in_hand=self.obj_in_hand,

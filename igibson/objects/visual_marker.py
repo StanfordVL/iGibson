@@ -1,9 +1,9 @@
 import pybullet as p
 
-from igibson.objects.object_base import Object
+from igibson.objects.object_base import SingleBodyObject
 
 
-class VisualMarker(Object):
+class VisualMarker(SingleBodyObject):
     """
     Visual shape created with shape primitives
     """
@@ -73,7 +73,7 @@ class VisualMarker(Object):
             baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1, flags=p.URDF_ENABLE_SLEEPING
         )
 
-        return body_id
+        return [body_id]
 
     def set_color(self, color):
         """
@@ -81,18 +81,18 @@ class VisualMarker(Object):
 
         :param color: normalized rgba color
         """
-        p.changeVisualShape(self.body_id, -1, rgbaColor=color)
+        p.changeVisualShape(self.get_body_id(), -1, rgbaColor=color)
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.body_id
+            body_id = self.get_body_id()
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
         activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.body_id, -1, activationState=activationState)
+        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
 
     def set_position(self, pos):
         self.force_wakeup()

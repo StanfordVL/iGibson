@@ -41,8 +41,9 @@ class BaseRobot(object):
             self.model_type = "MJCF"
             assert self.scale == 1, "pybullet does not support scaling for MJCF model (p.loadMJCF)"
 
+        # TODO: Replace this with a reasonable StatefulObject inheritance.
         self.states = {}
-        prepare_object_states(self, online=True)
+        prepare_object_states(self, abilities={"robot": {}})
 
         # For BEHAVIOR compatibility -- may be removed eventually
         self.category = "agent"

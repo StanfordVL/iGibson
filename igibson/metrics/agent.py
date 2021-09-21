@@ -33,7 +33,7 @@ class BehaviorRobotMetric(MetricBase):
 
         for part in ["left_hand", "right_hand", "body"]:
             self.next_state_cache[part] = {
-                "position": np.array(p.getBasePositionAndOrientation(robot.parts[part].body_id)[0]),
+                "position": np.array(p.getBasePositionAndOrientation(robot.parts[part].get_body_id())[0]),
             }
 
         if not self.initialized:
@@ -73,7 +73,8 @@ class BehaviorRobotMetric(MetricBase):
             if part in ["left_hand", "right_hand"]:
                 self.agent_local_pos[part].append(list(robot.parts[part].local_pos))
             if part in ["left_hand", "right_hand"] and (
-                len(p.getContactPoints(robot.parts[part].body_id)) > 0 or robot.parts[part].object_in_hand is not None
+                len(p.getContactPoints(robot.parts[part].get_body_id())) > 0
+                or robot.parts[part].object_in_hand is not None
             ):
                 self.delta_agent_grasp_distance[part].append(distance)
                 self.agent_grasping[part].append(True)

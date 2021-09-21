@@ -71,15 +71,13 @@ class IGLogWriter(object):
         if self.task:
             self.obj_body_id_to_name = {}
             for obj_name, obj in self.task.object_scope.items():
-                if hasattr(obj, "body_id"):
-                    self.obj_body_id_to_name[obj.get_body_id()] = obj_name
+                self.obj_body_id_to_name[obj.get_body_id()] = obj_name
             self.obj_body_id_to_name_str = dump_config(self.obj_body_id_to_name)
 
         if self.task and self.filter_objects:
             self.tracked_objects = {}
             for obj_name, obj in self.task.object_scope.items():
-                if hasattr(obj, "body_id"):
-                    self.tracked_objects[obj.get_body_id()] = obj
+                self.tracked_objects[obj.get_body_id()] = obj
         else:
             self.tracked_objects = [p.getBodyUniqueId(i) for i in range(p.getNumBodies())]
 
@@ -286,6 +284,8 @@ class IGLogWriter(object):
             self.hf.attrs["/metadata/activity_definition"] = self.task.activity_definition
             self.hf.attrs["/metadata/scene_id"] = self.task.scene.scene_id
             self.hf.attrs["/metadata/obj_body_id_to_name"] = self.obj_body_id_to_name_str
+            self.hf.attrs["/metadata/urdf_file"] = self.task.scene.fname
+
         # VR config YML is stored as a string in metadata
         if self.store_vr:
             self.hf.attrs["/metadata/vr_settings"] = self.sim.vr_settings.dump_vr_settings()

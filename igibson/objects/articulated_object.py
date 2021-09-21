@@ -9,6 +9,7 @@ import time
 import xml.etree.ElementTree as ET
 
 import cv2
+import networkx as nx
 import numpy as np
 import pybullet as p
 import trimesh
@@ -27,9 +28,9 @@ from igibson.external.pybullet_tools.utils import (
     quat_from_matrix,
     set_joint_position,
 )
-from igibson.object_states.factory import prepare_object_states
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.object_states.utils import clear_cached_states
+from igibson.objects.object_base import NonRobotObject, SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.utils import utils
@@ -46,14 +47,14 @@ except ImportError:
     OBJECT_TAXONOMY = None
 
 
-class ArticulatedObject(StatefulObject):
+class ArticulatedObject(StatefulObject, SingleBodyObject):
     """
     Articulated objects are defined in URDF files.
     They are passive (no motors).
     """
 
-    def __init__(self, filename, scale=1, merge_fixed_links=True):
-        super(ArticulatedObject, self).__init__()
+    def __init__(self, filename, scale=1, merge_fixed_links=True, **kwargs):
+        super(ArticulatedObject, self).__init__(**kwargs)
         self.filename = filename
         self.scale = scale
         self.merge_fixed_links = merge_fixed_links
@@ -69,9 +70,8 @@ class ArticulatedObject(StatefulObject):
         body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
 
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
-        self.body_id = body_id
         self.create_link_name_to_vm_map(body_id)
-        return body_id
+        return [body_id]
 
     def create_link_name_to_vm_map(self, body_id):
         self.link_name_to_vm = []
@@ -96,12 +96,9 @@ class ArticulatedObject(StatefulObject):
         """
         Force wakeup sleeping objects
         """
-        for joint_id in range(p.getNumJoints(self.body_id)):
-            p.changeDynamics(self.body_id, joint_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
-        p.changeDynamics(self.body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
-
-    def get_body_id(self):
-        return self.body_id
+        for joint_id in range(p.getNumJoints(self.get_body_id())):
+            p.changeDynamics(self.get_body_id(), joint_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
+        p.changeDynamics(self.get_body_id(), -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
 
 
 class RBOObject(ArticulatedObject):
@@ -115,7 +112,7 @@ class RBOObject(ArticulatedObject):
         super(RBOObject, self).__init__(filename, scale)
 
 
-class URDFObject(StatefulObject):
+class URDFObject(StatefulObject, NonRobotObject):
     """
     URDFObjects are instantiated from a URDF file. They can be composed of one
     or more links and joints. They should be passive. We use this class to
@@ -146,6 +143,7 @@ class URDFObject(StatefulObject):
         joint_positions=None,
         merge_fixed_links=True,
         ignore_visual_shape=False,
+        **kwargs
     ):
         """
         :param filename: urdf file path of that object model
@@ -169,7 +167,19 @@ class URDFObject(StatefulObject):
         :param joint_positions: Joint positions, keyed by body index and joint name, in the form of
             List[Dict[name, position]]
         """
-        super(URDFObject, self).__init__()
+        # Load abilities from taxonomy if needed & possible
+        if abilities is None:
+            if OBJECT_TAXONOMY is not None:
+                taxonomy_class = OBJECT_TAXONOMY.get_class_name_from_igibson_category(category)
+                if taxonomy_class is not None:
+                    abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
+                else:
+                    abilities = {}
+            else:
+                abilities = {}
+
+        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
+        super(URDFObject, self).__init__(abilities=abilities, **kwargs)
 
         self.name = name
         self.category = category
@@ -185,20 +195,6 @@ class URDFObject(StatefulObject):
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
         self.ignore_visual_shape = ignore_visual_shape
-
-        # Load abilities from taxonomy if needed & possible
-        if abilities is None:
-            if OBJECT_TAXONOMY is not None:
-                taxonomy_class = OBJECT_TAXONOMY.get_class_name_from_igibson_category(self.category)
-                if taxonomy_class is not None:
-                    abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
-                else:
-                    abilities = {}
-            else:
-                abilities = {}
-
-        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
-        self.abilities = abilities
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -333,7 +329,6 @@ class URDFObject(StatefulObject):
         self.remove_floating_joints(self.scene_instance_folder)
         self.prepare_link_based_bounding_boxes()
 
-        prepare_object_states(self, abilities, online=True)
         self.prepare_visual_mesh_to_material()
 
     def set_ignore_visual_shape(self, value):
@@ -786,7 +781,7 @@ class URDFObject(StatefulObject):
             link_name_to_vm_urdf = {}
             sub_urdf_tree = ET.parse(self.urdf_paths[i])
 
-            links = sub_urdf_tree.findall(".//link")
+            links = sub_urdf_tree.findall("link")
             for link in links:
                 name = link.attrib["name"]
                 if name in link_name_to_vm_urdf:
@@ -794,6 +789,27 @@ class URDFObject(StatefulObject):
                 link_name_to_vm_urdf[name] = []
                 for visual_mesh in link.findall("visual/geometry/mesh"):
                     link_name_to_vm_urdf[name].append(visual_mesh.attrib["filename"])
+
+            if self.merge_fixed_links:
+                # Add visual meshes of the child link to the parent link for fixed joints because they will be merged
+                # by pybullet after loading
+                vms_before_merging = set([item for _, vms in link_name_to_vm_urdf.items() for item in vms])
+                directed_graph = nx.DiGraph()
+                child_to_parent = dict()
+                for joint in sub_urdf_tree.findall("joint"):
+                    if joint.attrib["type"] == "fixed":
+                        child_link_name = joint.find("child").attrib["link"]
+                        parent_link_name = joint.find("parent").attrib["link"]
+                        directed_graph.add_edge(child_link_name, parent_link_name)
+                        child_to_parent[child_link_name] = parent_link_name
+                for child_link_name in list(nx.algorithms.topological_sort(directed_graph)):
+                    if child_link_name in child_to_parent:
+                        parent_link_name = child_to_parent[child_link_name]
+                        link_name_to_vm_urdf[parent_link_name].extend(link_name_to_vm_urdf[child_link_name])
+                        del link_name_to_vm_urdf[child_link_name]
+                vms_after_merging = set([item for _, vms in link_name_to_vm_urdf.items() for item in vms])
+                assert vms_before_merging == vms_after_merging
+
             self.link_name_to_vm.append(link_name_to_vm_urdf)
 
     def randomize_texture(self):
@@ -984,108 +1000,19 @@ class URDFObject(StatefulObject):
                         body_id, j, p.VELOCITY_CONTROL, targetVelocity=0.0, force=self.joint_friction
                     )
 
-    def get_position(self):
-        """
-        Get object position
-
-        :return: position in xyz
-        """
-        body_id = self.get_body_id()
-        pos, _ = p.getBasePositionAndOrientation(body_id)
-        return pos
-
-    def get_orientation(self):
-        """
-        Get object orientation
-
-        :return: quaternion in xyzw
-        """
-        body_id = self.get_body_id()
-        _, orn = p.getBasePositionAndOrientation(body_id)
-        return orn
-
-    def get_position_orientation(self):
-        """
-        Get object position and orientation
-
-        :return: position in xyz
-        :return: quaternion in xyzw
-        """
-        body_id = self.get_body_id()
-        pos, orn = p.getBasePositionAndOrientation(body_id)
-        return pos, orn
-
-    def get_base_link_position_orientation(self):
-        """
-        Get object base link position and orientation
-
-        :return: position in xyz
-        :return: quaternion in xyzw
-        """
-        # TODO: not used anywhere yet, but probably should be put in ObjectBase
-        body_id = self.get_body_id()
-        pos, orn = p.getBasePositionAndOrientation(body_id)
-        dynamics_info = p.getDynamicsInfo(body_id, -1)
-        inertial_pos = dynamics_info[3]
-        inertial_orn = dynamics_info[4]
-        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
-        pos, orn = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
-        return pos, orn
-
-    def set_position(self, pos):
-        """
-        Set object position
-
-        :param pos: position in xyz
-        """
-        body_id = self.get_body_id()
-        if self.main_body_is_fixed:
-            logging.warning("cannot set_position for fixed objects")
-            return
-
-        _, old_orn = p.getBasePositionAndOrientation(body_id)
-        p.resetBasePositionAndOrientation(body_id, pos, old_orn)
-        clear_cached_states(self)
-
-    def set_orientation(self, orn):
-        """
-        Set object orientation
-
-        :param orn: quaternion in xyzw
-        """
-        body_id = self.get_body_id()
-        if self.main_body_is_fixed:
-            logging.warning("cannot set_orientation for fixed objects")
-            return
-
-        old_pos, _ = p.getBasePositionAndOrientation(body_id)
-        p.resetBasePositionAndOrientation(body_id, old_pos, orn)
-        clear_cached_states(self)
-
     def set_position_orientation(self, pos, orn):
-        """
-        Set object position and orientation
-        :param pos: position in xyz
-        :param orn: quaternion in xyzw
-        """
-        body_id = self.get_body_id()
         if self.main_body_is_fixed:
-            logging.warning("cannot set_position_orientation for fixed objects")
+            logging.warning("cannot set position / orientation for fixed objects")
             return
 
-        p.resetBasePositionAndOrientation(body_id, pos, orn)
-        clear_cached_states(self)
+        super(URDFObject, self).set_position_orientation(pos, orn)
 
     def set_base_link_position_orientation(self, pos, orn):
-        body_id = self.get_body_id()
         if self.main_body_is_fixed:
             logging.warning("cannot set_base_link_position_orientation for fixed objects")
             return
-        dynamics_info = p.getDynamicsInfo(body_id, -1)
-        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-        pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
-        self.set_position_orientation(pos, orn)
-        clear_cached_states(self)
+
+        super(URDFObject, self).set_base_link_position_orientation(pos, orn)
 
     def get_body_id(self):
         return self.body_ids[self.main_body]
