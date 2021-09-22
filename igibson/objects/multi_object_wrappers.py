@@ -143,6 +143,9 @@ class ObjectGrouper(NonRobotObject):
             body_ids += obj._load()
         return body_ids
 
+    def get_body_id(self):
+        raise ValueError("Cannot get_body_id on ObjectGrouper")
+
     def get_position(self):
         raise ValueError("Cannot get_position on ObjectGrouper")
 
@@ -202,6 +205,9 @@ class ObjectMultiplexer(NonRobotObject):
         for obj in self._multiplexed_objects:
             body_ids += obj._load()
         return body_ids
+
+    def get_body_id(self):
+        return self.current_selection().get_body_id()
 
     def get_position(self):
         return self.current_selection().get_position()
