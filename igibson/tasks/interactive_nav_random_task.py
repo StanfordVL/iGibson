@@ -14,7 +14,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
     def __init__(self, env):
         super(InteractiveNavRandomTask, self).__init__(env)
         self.interactive_objects = self.load_interactive_objects(env)
-        env.collision_ignore_body_b_ids |= set([obj.body_id for obj in self.interactive_objects])
+        env.collision_ignore_body_b_ids |= set([obj.get_body_id() for obj in self.interactive_objects])
 
     def load_interactive_objects(self, env):
         """

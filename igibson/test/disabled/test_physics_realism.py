@@ -317,16 +317,16 @@ def render_physics_gifs(main_urdf_file_and_offset):
             push_visual_marker = VisualMarker(radius=0.1)
             s.import_object(push_visual_marker)
             push_visual_marker.set_position([100, 100, 0.0])
-            z = stable_z_on_aabb(obj.body_id, [[0, 0, 0], [0, 0, 0]])
+            z = stable_z_on_aabb(obj.get_body_id(), [[0, 0, 0], [0, 0, 0]])
 
             # offset is translation from the bounding box center to the base link frame origin
             # need to add another offset that is the translation from the base link frame origin to the inertial frame origin
             # p.resetBasePositionAndOrientation() sets the inertial frame origin instead of the base link frame origin
             # Assuming the bounding box center is at (0, 0, z) where z is half of the extent in z-direction
-            base_link_to_inertial = p.getDynamicsInfo(obj.body_id, -1)[3]
+            base_link_to_inertial = p.getDynamicsInfo(obj.get_body_id(), -1)[3]
             obj.set_position([offset[0] + base_link_to_inertial[0], offset[1] + base_link_to_inertial[1], z])
 
-            center, extent = get_center_extent(obj.body_id)
+            center, extent = get_center_extent(obj.get_body_id())
             # the bounding box center should be at (0, 0) on the xy plane and the bottom of the bounding box should touch the ground
             if not (np.linalg.norm(center[:2]) < 1e-3 and np.abs(center[2] - extent[2] / 2.0) < 1e-3):
                 print("-" * 50)
@@ -369,7 +369,7 @@ def render_physics_gifs(main_urdf_file_and_offset):
                     ray_start[2] = ray_z
                     ray_end[2] = ray_z
                     res = p.rayTest(ray_start, ray_end)
-                    if res[0][0] == obj.body_id:
+                    if res[0][0] == obj.get_body_id():
                         valid_ray_z = True
                         break
                 if valid_ray_z:
@@ -381,7 +381,7 @@ def render_physics_gifs(main_urdf_file_and_offset):
             for i in range(step_per_sec * 4):
                 res = p.rayTest(ray_start, ray_end)
                 object_id, link_id, _, hit_pos, hit_normal = res[0]
-                if object_id != obj.body_id:
+                if object_id != obj.get_body_id():
                     break
                 push_visual_marker.set_position(hit_pos)
                 p.applyExternalForce(object_id, link_id, unit_force * force_mag, hit_pos, p.WORLD_FRAME)
@@ -420,7 +420,7 @@ def debug_renderer_scaling():
     obj.set_position([0, 0, 0])
     embed()
 
-    z = stable_z_on_aabb(obj.body_id, [[0, 0, 0], [0, 0, 0]])
+    z = stable_z_on_aabb(obj.get_body_id(), [[0, 0, 0], [0, 0, 0]])
     obj.set_position([0, 0, z])
     embed()
     for _ in range(100000000000):
