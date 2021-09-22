@@ -11,6 +11,7 @@ from igibson.external.pybullet_tools.utils import (
     control_joints,
     get_base_values,
     get_joint_positions,
+    get_link_name,
     get_link_position_from_name,
     get_max_limits,
     get_min_limits,
@@ -80,14 +81,17 @@ class MotionPlanningWrapper(object):
             self.amp_robot_id = self.planning_robot_ids[0]
             set_client(self.amp_p_client_id)
             for link_idx in range(get_num_links(self.amp_robot_id)):
+                # print(link_idx)
+                print("Adding link to collision filter group mask: ", get_link_name(self.amp_robot_id, link_idx))
                 self.amp_p.setCollisionFilterGroupMask(
                     self.amp_robot_id,
                     link_idx,
-                    12,
-                    255,
+                    1,
+                    3,
                     physicsClientId=self.amp_p_client_id,
                 )
             set_client(0)
+            # self.amp_p.setPhysicsEngineParameter(collisionFilterMode=1) # OR
 
         # self.mesh_id = self.scene.mesh_body_id
         # mesh id should not be used
@@ -426,56 +430,80 @@ class MotionPlanningWrapper(object):
         # print(np.linalg.inv(robot_ht).dot(eye_ht))
 
         # Adding points as spheres-obstacles for motion planning
-        max_num_points = 500
+        max_num_points = 200
         sphere_obstacle_radius = 0.05
+        debugging_with_visuals = False  # Delete all of this at the end
         if len(self.mp_obstacles) == 0:
-            sphere_id = self.amp_p.createCollisionShape(
+            sphere_coll_id = self.amp_p.createCollisionShape(
                 shapeType=self.amp_p.GEOM_SPHERE,
                 radius=sphere_obstacle_radius,
                 physicsClientId=self.amp_p_client_id,
             )
-            # TODO: for debugging / visualizing the spheres
-            self.visual_obstacles = []
-            sphere_vis_id2 = self.amp_p.createVisualShape(
-                shapeType=self.amp_p.GEOM_SPHERE,
-                rgbaColor=[0, 0, 1, 1],
-                radius=sphere_obstacle_radius,
-                physicsClientId=0,
-            )
+
+            if debugging_with_visuals:
+                # TODO: for debugging / visualizing the spheres########################################################
+                self.visual_obstacles = []
+                sphere_vis_id2 = self.amp_p.createVisualShape(
+                    shapeType=self.amp_p.GEOM_SPHERE,
+                    rgbaColor=[0, 0, 1, 1],
+                    radius=sphere_obstacle_radius,
+                    physicsClientId=0,
+                )
+                ########################################################################################################
+
             for spheres in range(max_num_points):  # Add ALL the spheres, but far
                 # Creating spheres with collision shapes, adding them to the bullet client for planning and the list of
                 # obstacles
                 sphere_o_id = self.amp_p.createMultiBody(
                     baseMass=1,
-                    baseCollisionShapeIndex=sphere_id,
+                    baseCollisionShapeIndex=sphere_coll_id,
                     basePosition=[-300, -300, -300],
                     physicsClientId=self.amp_p_client_id,
                 )  # No mass means no collision, but we want to activate collisions with the robot!
                 self.amp_p.setCollisionFilterGroupMask(
                     sphere_o_id,
                     -1,
-                    4,
-                    8,
+                    2,
+                    1,
                     physicsClientId=self.amp_p_client_id,
                 )
+                # This should be redundant using the group mask but I can't get it to collide with that
+                for link_idx in range(get_num_links(self.amp_robot_id)):
+                    # print(link_idx)
+                    # print("Adding link to collision filter group mask: ", get_link_name(self.amp_robot_id, link_idx))
+                    self.amp_p.setCollisionFilterPair(
+                        self.amp_robot_id,
+                        sphere_o_id,
+                        link_idx,
+                        -1,
+                        1,
+                        physicsClientId=self.amp_p_client_id,
+                    )
+                for link_idx in range(get_num_links(self.amp_robot_id)):
+                    # print(link_idx)
+                    # print("Adding link to collision filter group mask: ", get_link_name(self.amp_robot_id, link_idx))
+                    self.amp_p.setCollisionFilterPair(
+                        self.amp_robot_id,
+                        sphere_o_id,
+                        link_idx,
+                        0,
+                        1,
+                        physicsClientId=self.amp_p_client_id,
+                    )
                 self.mp_obstacles.append(sphere_o_id)
 
-                # # TODO: only for debugging
-                sphere_o_id2 = p.createMultiBody(
-                    baseMass=0,
-                    baseCollisionShapeIndex=-1,
-                    baseVisualShapeIndex=sphere_vis_id2,
-                    basePosition=[-300, -300, -300],
-                    physicsClientId=0,
-                )
-                self.visual_obstacles.append(sphere_o_id2)
-                p.setCollisionFilterGroupMask(
-                    sphere_o_id2,
-                    -1,
-                    16,
-                    1,
-                    physicsClientId=0,
-                )
+                if debugging_with_visuals:
+                    # # TODO: only for debugging########################################################################
+                    sphere_o_id2 = p.createMultiBody(
+                        baseMass=0,
+                        baseCollisionShapeIndex=-1,
+                        baseVisualShapeIndex=sphere_vis_id2,
+                        basePosition=[-300, -300, -300],
+                        physicsClientId=0,
+                    )
+                    self.visual_obstacles.append(sphere_o_id2)
+                    ####################################################################################################
+
                 print("Adding point ", len(self.mp_obstacles))
 
         max_num_points = min(
@@ -507,10 +535,14 @@ class MotionPlanningWrapper(object):
                 sphere_o_id, sphere_position_in_rf[:3], [0, 0, 0, 1], physicsClientId=self.amp_p_client_id
             )
 
-            # # TODO: only for debugging / visualizing
-            sphere_vis_id = self.visual_obstacles[sphere_idx]
-            sphere_position_in_wf = np.dot(robot_in_wf, sphere_position_in_rf)
-            p.resetBasePositionAndOrientation(sphere_vis_id, sphere_position_in_wf[:3], [0, 0, 0, 1], physicsClientId=0)
+            if debugging_with_visuals:
+                # # TODO: only for debugging / visualizing###############################################################
+                sphere_vis_id = self.visual_obstacles[sphere_idx]
+                sphere_position_in_wf = np.dot(robot_in_wf, sphere_position_in_rf)
+                p.resetBasePositionAndOrientation(
+                    sphere_vis_id, sphere_position_in_wf[:3], [0, 0, 0, 1], physicsClientId=0
+                )
+                #########################################################################################################
 
             sphere_idx = sphere_idx + 1
 
@@ -521,9 +553,11 @@ class MotionPlanningWrapper(object):
                 sphere_o_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=self.amp_p_client_id
             )
 
-            # TODO: only for debugging
-            sphere_vis_id = self.visual_obstacles[sphere_idx + other_idx]
-            p.resetBasePositionAndOrientation(sphere_vis_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=0)
+            if debugging_with_visuals:
+                # TODO: only for debugging/ visualizing##################################################################
+                sphere_vis_id = self.visual_obstacles[sphere_idx + other_idx]
+                p.resetBasePositionAndOrientation(sphere_vis_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=0)
+                ######################################################################################################3
 
     def get_arm_joint_positions(self, arm_ik_goal):
         """
@@ -689,7 +723,10 @@ class MotionPlanningWrapper(object):
                 cv2.waitKey(10000)
 
                 # need to simulator_step to get the latest collision
+                self.amp_p.performCollisionDetection(physicsClientId=self.amp_p_client_id)
+                p.performCollisionDetection(physicsClientId=self.amp_p_client_id)
                 self.amp_p.stepSimulation(physicsClientId=self.amp_p_client_id)
+                p.stepSimulation(physicsClientId=self.amp_p_client_id)
 
                 # simulator_step will slightly move the robot base and the objects
                 set_client(self.amp_p_client_id)
