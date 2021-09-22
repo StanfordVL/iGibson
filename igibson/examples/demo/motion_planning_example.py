@@ -28,9 +28,9 @@ def run_example(args):
         #     action = np.random.uniform(-1, 1, environment.action_space.shape)
         #     state, reward, done, _ = environment.step(action)
         joint_states = motion_planner.get_arm_joint_positions([0.6, 0.1, 0.8])
-        print(joint_states)
+        print("IK solution: ", joint_states)
         if joint_states:
-            print("Finding path")
+            print("Finding path to the IK solution")
             joint_states_path = motion_planner.plan_arm_motion(joint_states)
             print(joint_states_path)
         # action = np.random.uniform(-1, 1, environment.action_space.shape)

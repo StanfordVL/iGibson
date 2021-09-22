@@ -1,6 +1,7 @@
 import os
 from time import sleep, time
 
+import cv2
 import numpy as np
 import pybullet as p
 import pybullet_utils.bullet_client as bc
@@ -157,7 +158,8 @@ class MotionPlanningWrapper(object):
         img = p.getCameraImage(
             render_dim, render_dim, viewMatrix=view_mat, projectionMatrix=proj_mat, physicsClientId=self.amp_p_client_id
         )[2]
-        img = img[:, :, :3]
+        img = np.array(img).reshape(render_dim, render_dim, 4)
+        img = img[:, :, :3].astype(np.uint8)
         return img
 
     def set_marker_position(self, pos):
@@ -455,7 +457,7 @@ class MotionPlanningWrapper(object):
                 # Creating spheres with collision shapes, adding them to the bullet client for planning and the list of
                 # obstacles
                 sphere_o_id = self.amp_p.createMultiBody(
-                    baseMass=1,
+                    baseMass=100,
                     baseCollisionShapeIndex=sphere_coll_id,
                     basePosition=[-300, -300, -300],
                     physicsClientId=self.amp_p_client_id,
@@ -509,8 +511,8 @@ class MotionPlanningWrapper(object):
         max_num_points = min(
             max_num_points, num_close_points
         )  # Maximum number of points that are close enough this frame
-        print("num_close_points", num_close_points)
-        print("max_num_points", max_num_points)
+        # print("num_close_points", num_close_points)
+        # print("max_num_points", max_num_points)
         # Pick max_num_points among the close points
         indices = np.random.choice(
             num_close_points, max_num_points, False
@@ -717,12 +719,12 @@ class MotionPlanningWrapper(object):
                 print("IK result is close enough to the desired pose/position")
 
                 img = self.create_image_from_amp()
-                import cv2
-
-                cv2.imshow("renderdd", img)
-                cv2.waitKey(10000)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                cv2.imshow("MotionPlanningSim", img)
+                cv2.waitKey(10)
 
                 # need to simulator_step to get the latest collision
+                # TODO: some are redundant
                 self.amp_p.performCollisionDetection(physicsClientId=self.amp_p_client_id)
                 p.performCollisionDetection(physicsClientId=self.amp_p_client_id)
                 self.amp_p.stepSimulation(physicsClientId=self.amp_p_client_id)
@@ -745,10 +747,10 @@ class MotionPlanningWrapper(object):
 
                 if not collision_free:
                     n_attempt += 1
-                    print("Arm has collision")
+                    print("Invalid IK solution, arm is in collision")
                     continue
                 else:
-                    print("Arm is collision-free")
+                    print("Valid IK solution: arm is collision-free")
 
                 # gripper should not have any self-collision
                 print("Checking arm self-collision")
@@ -759,10 +761,10 @@ class MotionPlanningWrapper(object):
                 set_client(0)
                 if not collision_free:
                     n_attempt += 1
-                    print("gripper has collision")
+                    print("Invalid IK solution, gripper is in collision with the robot")
                     continue
                 else:
-                    print("Arm is self-collision-free")
+                    print("Valid IK solution: gripper is not in collision with the robot")
 
                 # self.episode_metrics['arm_ik_time'] += time() - ik_start
                 # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
