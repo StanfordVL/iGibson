@@ -422,6 +422,16 @@ class BRBody(ArticulatedObject):
     def set_position_orientation_unwrapped(self, pos, orn):
         super(BRBody, self).set_position_orientation(pos, orn)
 
+    def set_position_unwrapped(self, pos):
+        """Set object position in the format of Array[x, y, z]"""
+        old_orn = self.get_orientation()
+        self.set_position_orientation_unwrapped(pos, old_orn)
+
+    def set_orientation_unwrapped(self, orn):
+        """Set object orientation as a quaternion in the format of Array[x, y, z, w]"""
+        old_pos = self.get_position()
+        self.set_position_orientation_unwrapped(old_pos, orn)
+
     def set_position_orientation(self, pos, orn):
         self.parent.set_position_orientation(pos, orn)
 
@@ -505,8 +515,8 @@ class BRBody(ArticulatedObject):
             if not self.activated:
                 self.set_colliders(enabled=True)
                 self.activated = True
-            self.set_position(self.new_pos)
-            self.set_orientation(self.new_orn)
+            self.set_position_unwrapped(self.new_pos)
+            self.set_orientation_unwrapped(self.new_orn)
 
         self.move(self.new_pos, self.new_orn)
 
