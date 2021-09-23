@@ -48,12 +48,12 @@ class BaseObject(with_metaclass(ABCMeta, object)):
 
     def set_position(self, pos):
         """Set object position in the format of Array[x, y, z]"""
-        _, old_orn = p.getBasePositionAndOrientation(self.get_body_id())
+        old_orn = self.get_orientation()
         self.set_position_orientation(pos, old_orn)
 
     def set_orientation(self, orn):
         """Set object orientation as a quaternion in the format of Array[x, y, z, w]"""
-        old_pos, _ = p.getBasePositionAndOrientation(self.get_body_id())
+        old_pos = self.get_position()
         self.set_position_orientation(old_pos, orn)
 
     def set_position_orientation(self, pos, orn):
