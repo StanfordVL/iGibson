@@ -1014,8 +1014,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         ids = []
         for obj_name in self.objects_by_name:
-            if self.objects_by_name[obj_name].get_body_id() is not None:
-                ids.extend(self.objects_by_name[obj_name].get_body_id())
+            # TODO: Remove URDFObject-specific logic
+            if (
+                hasattr(self.objects_by_name[obj_name], "body_ids")
+                and self.objects_by_name[obj_name].body_ids is not None
+            ):
+                ids.extend(self.objects_by_name[obj_name].body_ids)
+            elif self.objects_by_name[obj_name].get_body_id() is not None:
+                ids.append(self.objects_by_name[obj_name].get_body_id())
         return ids
 
     def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
@@ -1073,7 +1079,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if hasattr(obj, "body_ids"):
             body_id = obj.body_ids[obj.main_body]
         else:
-            body_id = obj.get_body_id()
+            body_id = obj.body_id
 
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
@@ -1156,7 +1162,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Common logic for objects that are both in the scene & otherwise.
         # Add joints
-        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.get_body_id()]
+        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
         joint_data = []
         for bid in body_ids:
             this_joint_data = {}
