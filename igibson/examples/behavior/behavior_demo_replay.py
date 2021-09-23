@@ -206,39 +206,41 @@ def replay_demo(
         )
         log_writer.set_up_data_storage()
 
-    for callback in start_callbacks:
-        callback(igbhvr_act_inst, log_reader)
-
-    task_done = False
-    while log_reader.get_data_left_to_read():
-
-        igbhvr_act_inst.simulator.step(print_stats=profile)
-        task_done, _ = igbhvr_act_inst.check_success()
-
-        # Set camera each frame
-        if mode == "vr":
-            log_reader.set_replay_camera(s)
-
-        for callback in step_callbacks:
+    try:
+        for callback in start_callbacks:
             callback(igbhvr_act_inst, log_reader)
 
-        # Get relevant VR action data and update VR agent
-        vr_agent.apply_action(log_reader.get_agent_action("vr_robot"))
+        task_done = False
+        while log_reader.get_data_left_to_read():
 
+            igbhvr_act_inst.simulator.step(print_stats=profile)
+            task_done, _ = igbhvr_act_inst.check_success()
+
+            # Set camera each frame
+            if mode == "vr":
+                log_reader.set_replay_camera(s)
+
+            for callback in step_callbacks:
+                callback(igbhvr_act_inst, log_reader)
+
+            # Get relevant VR action data and update VR agent
+            vr_agent.apply_action(log_reader.get_agent_action("vr_robot"))
+
+            if not disable_save:
+                log_writer.process_frame()
+
+        print("Demo was succesfully completed: ", task_done)
+
+        demo_statistics = {}
+        for callback in end_callbacks:
+            callback(igbhvr_act_inst, log_reader)
+    finally:
+        s.disconnect()
         if not disable_save:
-            log_writer.process_frame()
-
-    print("Demo was succesfully completed: ", task_done)
-
-    demo_statistics = {}
-    for callback in end_callbacks:
-        callback(igbhvr_act_inst, log_reader)
-
-    s.disconnect()
+            log_writer.end_log_session()
 
     is_deterministic = None
     if not disable_save:
-        log_writer.end_log_session()
         is_deterministic = verify_determinism(in_log_path, out_log_path)
         print("Demo was deterministic: ", is_deterministic)
 
