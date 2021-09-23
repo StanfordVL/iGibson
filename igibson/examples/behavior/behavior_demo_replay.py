@@ -28,10 +28,14 @@ def verify_determinism(in_log_path, out_log_path):
             for attribute in original_file["physics_data"][obj]:
                 is_close = np.isclose(
                     original_file["physics_data"][obj][attribute], new_file["physics_data"][obj][attribute]
-                ).all()
-                is_deterministic = is_deterministic and is_close
-                if not is_close:
-                    print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
+                )
+                is_deterministic = is_deterministic and is_close.all()
+                if not is_close.all():
+                    print(
+                        "Mismatch for obj {} with mismatched attribute {} starting at timestep {}".format(
+                            obj, attribute, np.where(is_close == False)[0][0]
+                        )
+                    )
     return bool(is_deterministic)
 
 
