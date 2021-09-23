@@ -2,6 +2,7 @@ import itertools
 
 import pybullet as p
 
+from igibson.object_states.factory import get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.objects.object_base import BaseObject, NonRobotObject
 
@@ -168,6 +169,18 @@ class ObjectGrouper(NonRobotObject):
         for obj, (part_pos, part_orn) in zip(self.objects, self.pose_offsets):
             new_pos, new_orn = p.multiplyTransforms(pos, orn, part_pos, part_orn)
             obj.set_base_link_position_orientation(new_pos, new_orn)
+
+    def dump_state(self):
+        return {
+            get_state_name(state_type): state_instance.dump()
+            for state_type, state_instance in self.states.items()
+            if issubclass(state_type, AbsoluteObjectState)
+        }
+
+    def load_state(self, dump):
+        for state_type, state_instance in self.states.items():
+            if issubclass(state_type, AbsoluteObjectState):
+                state_instance.load(dump[get_state_name(state_type)])
 
 
 class ObjectMultiplexer(NonRobotObject):
