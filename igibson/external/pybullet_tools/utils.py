@@ -380,6 +380,14 @@ def set_client(client):
     CLIENT = client
 
 
+def fnc_with_client(fnc, client, *args, **kwargs):
+    prev_client = get_client()
+    set_client(client)
+    retval = fnc(*args, **kwargs)
+    set_client(prev_client)
+    return retval
+
+
 ModelInfo = namedtuple("URDFInfo", ["name", "path", "fixed_base", "scale"])
 
 INFO_FROM_BODY = {}
@@ -2751,7 +2759,19 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
         if (body1 == body2) and (link1 == link2):
             continue
         if pairwise_link_collision(body1, link1, body2, link2, **kwargs):
-            # print('body {} link {} body {} link {}'.format(body1, link1, body2, link2))
+            print(
+                "Collision between body {} ({}) link {} ({}) body {} link {} ({})".format(
+                    body1,
+                    get_body_name(body1),
+                    link1,
+                    get_link_name(body1, link1),
+                    body2,
+                    get_body_name(body2),
+                    link2,
+                    get_link_name(body2, link2),
+                )
+            )
+
             return True
     return False
 
@@ -3062,11 +3082,14 @@ def get_collision_fn(
     # TODO: convert most of these to keyword arguments
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
     moving_links = frozenset([item for item in get_moving_links(body, joints) if not item in allow_collision_links])
+    print("Moving links: ", moving_links)
+
     # TODO: This is a fetch specific change
     attached_bodies = [attachment.child for attachment in attachments]
     moving_bodies = [(body, moving_links)] + attached_bodies
     # moving_bodies = [body] + [attachment.child for attachment in attachments]
     # + list(combinations(moving_bodies, 2))
+
     check_body_pairs = list(product(moving_bodies, obstacles))
     lower_limits, upper_limits = get_custom_limits(body, joints, custom_limits)
 
@@ -3074,22 +3097,29 @@ def get_collision_fn(
     # TODO: test self collision with the holding
     def collision_fn(q):
         if not all_between(lower_limits, q, upper_limits):
+            print("Joint limits violated")
             pass
             # print(lower_limits, q, upper_limits)
             # print('Joint limits violated')
             # return True
         set_joint_positions(body, joints, q)
         for attachment in attachments:
+            print("attachment?")
             attachment.assign()
         for link1, link2 in check_link_pairs:
             # Self-collisions should not have the max_distance parameter
             # , **kwargs):
             if pairwise_link_collision(body, link1, body, link2):
-                # print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
+                print("Self collision")
+                print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 return True
-        for body1, body2 in check_body_pairs:
-            if pairwise_collision(body1, body2, **kwargs):
-                # print('body collision', body1, body2)
+        for body_and_links1, body_and_links2 in check_body_pairs:
+            if pairwise_collision(body_and_links1, body_and_links2, **kwargs):
+                print("Collision between tuples of bodies and links ", body_and_links1, body_and_links2)
+                # if isinstance(body_and_links1, tuple):
+                #     print("Body1 name: ", get_body_name(body_and_links1[0]))
+                #     for links1 in body_and_links1[1]:
+                #         print()
                 # print(get_body_name(body1), get_body_name(body2))
                 return True
         return False
@@ -3146,10 +3176,10 @@ def plan_direct_joint_motion(body, joints, end_conf, **kwargs):
 
 def check_initial_end(start_conf, end_conf, collision_fn):
     if collision_fn(start_conf):
-        # print("Warning: initial configuration is in collision")
+        print("Warning: initial configuration is in collision")
         return False
     if collision_fn(end_conf):
-        # print("Warning: end configuration is in collision")
+        print("Warning: end configuration is in collision")
         return False
     return True
 
@@ -3189,11 +3219,17 @@ def plan_joint_motion(
 
     start_conf = get_joint_positions(body, joints)
 
+    print("Planning path between: ")
+    print(start_conf)
+    print(end_conf)
+
     if not check_initial_end(start_conf, end_conf, collision_fn):
+        print("Initial or final configuration are in collision")
         return None
     if algorithm == "direct":
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
     elif algorithm == "birrt":
+        print("Planing arm birrt")
         return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
     elif algorithm == "rrt_star":
         return rrt_star(
@@ -4769,6 +4805,7 @@ def is_collision_free(body_a, link_a_list, body_b=None, link_b_list=None):
         for link_a in link_a_list:
             contact_pts = p.getContactPoints(bodyA=body_a, linkIndexA=link_a, physicsClientId=CLIENT)
             if len(contact_pts) > 0:
+                print("Collision in body {} link {}".format(get_body_name(body_a), get_link_name(body_a, link_a)))
                 return False
     elif link_b_list is None:
         for link_a in link_a_list:
