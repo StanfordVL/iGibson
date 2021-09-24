@@ -32,7 +32,12 @@ def run_example(args):
         if joint_states:
             print("Finding path to the IK solution")
             joint_states_path = motion_planner.plan_arm_motion(joint_states)
-            print(joint_states_path)
+            if not joint_states_path:
+                print("No collision free path found")
+            else:
+                print("Collision free path found!!!!!!!!!!!!!!!!!!")
+                # for joint_conf in joint_states_path:
+                #     print(joint_conf)
         # action = np.random.uniform(-1, 1, environment.action_space.shape)
         # state, reward, done, _ = environment.step(action)
 
