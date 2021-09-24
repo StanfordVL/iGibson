@@ -51,7 +51,7 @@ class MotionPlanningWrapper(object):
         arm_mp_algo="birrt",
         optimize_iter=0,
         fine_motion_plan=True,
-        amp_based_on_sensing=False,
+        amp_based_on_sensing=True,
     ):
         """
         Get planning related parameters.
@@ -132,8 +132,8 @@ class MotionPlanningWrapper(object):
         self.visualize_amp = True
         self.last_time_obstacles = -1
         self.arm_reachability = 2.0  # meters
-        self.max_num_points = 200  # Max number of points from the pointcloud to use as obstacles if we use sensing
-        self.sphere_obstacle_radius = 0.05  # Radius of each point as obstacle if we use sensing
+        self.max_num_points = 250  # Max number of points from the pointcloud to use as obstacles if we use sensing
+        self.sphere_obstacle_radius = 0.03  # Radius of each point as obstacle if we use sensing
         ################################################################################################################
 
         if self.env.simulator.viewer is not None:
@@ -159,16 +159,23 @@ class MotionPlanningWrapper(object):
         Creates an image of the robot in the arm motion planning PB context
         @rtype: RGB image of the robot and the obstacles
         """
+        cam_delta_to_robot_in_rf = np.array([-0.8, -0.8, 1.5])  # This is a vector, not a 3D point
+        view_point_delta_to_robot_in_rf = np.array([0.5, 0, 1])
         if self.amp_based_on_sensing:
             robot_base_position = np.zeros(3)
+            cam_delta_to_robot_in_wf = cam_delta_to_robot_in_rf
+            view_point_delta_to_robot_in_wf = view_point_delta_to_robot_in_rf
         else:
             robot_base_position = np.array(self.robot.get_position())
-        cam_pos = robot_base_position + np.array(
-            [-1.5, -1, 1.35]
-        )  # TODO: The cam location needs to change based on robot orientation
-        look_at = robot_base_position + np.array([-0.5, 0, 1])
+            robot_pos, robot_orn = self.robot.get_position_orientation()
+            robot_in_wf_orn_4x4 = quat2rotmat(xyzw2wxyz(robot_orn))
+            robot_in_wf_orn = robot_in_wf_orn_4x4[:3, :3]
+            cam_delta_to_robot_in_wf = np.dot(robot_in_wf_orn, cam_delta_to_robot_in_rf)
+            view_point_delta_to_robot_in_wf = np.dot(robot_in_wf_orn, view_point_delta_to_robot_in_rf)
+        cam_pos_in_wf = robot_base_position + cam_delta_to_robot_in_wf
+        viewing_point_in_wf = robot_base_position + view_point_delta_to_robot_in_wf
         render_dim = 512
-        view_mat = p.computeViewMatrix(cam_pos, look_at, [0.0, 0, 1])
+        view_mat = p.computeViewMatrix(cam_pos_in_wf, viewing_point_in_wf, [0.0, 0, 1])
         proj_mat = p.computeProjectionMatrixFOV(fov=70, aspect=1, nearVal=0.1, farVal=100.0)
         img = p.getCameraImage(
             render_dim, render_dim, viewMatrix=view_mat, projectionMatrix=proj_mat, physicsClientId=client_id
@@ -424,7 +431,6 @@ class MotionPlanningWrapper(object):
         # print(np.linalg.inv(robot_ht).dot(eye_ht))
 
         # Adding points as spheres-obstacles for motion planning
-        debugging_with_visuals = False  # Delete all of this at the end
         if len(self.mp_obstacles) == 0:
             print("Adding collision elements")
             sphere_coll_id = self.amp_p.createCollisionShape(
@@ -432,14 +438,6 @@ class MotionPlanningWrapper(object):
                 radius=self.sphere_obstacle_radius,
                 physicsClientId=self.amp_client_id,
             )
-            if debugging_with_visuals:
-                self.visual_obstacles = []
-                sphere_vis_id2 = self.amp_p.createVisualShape(
-                    shapeType=self.amp_p.GEOM_SPHERE,
-                    rgbaColor=[0, 0, 1, 1],
-                    radius=self.sphere_obstacle_radius,
-                    physicsClientId=0,
-                )
 
             for spheres in range(self.max_num_points):  # Add ALL the spheres, but far
                 # Creating spheres with collision shapes, adding them to the bullet client for planning and the list of
@@ -457,41 +455,8 @@ class MotionPlanningWrapper(object):
                     1,
                     physicsClientId=self.amp_client_id,
                 )
-                # This should be redundant using the group mask but I can't get it to collide with that
-                for link_idx in range(get_num_links(self.amp_robot_id)):
-                    # print(link_idx)
-                    # print("Adding link to collision filter group mask: ", get_link_name(self.amp_robot_id, link_idx))
-                    self.amp_p.setCollisionFilterPair(
-                        self.amp_robot_id,
-                        sphere_o_id,
-                        link_idx,
-                        -1,
-                        1,
-                        physicsClientId=self.amp_client_id,
-                    )
-                for link_idx in range(get_num_links(self.amp_robot_id)):
-                    # print(link_idx)
-                    # print("Adding link to collision filter group mask: ", get_link_name(self.amp_robot_id, link_idx))
-                    self.amp_p.setCollisionFilterPair(
-                        self.amp_robot_id,
-                        sphere_o_id,
-                        link_idx,
-                        0,
-                        1,
-                        physicsClientId=self.amp_client_id,
-                    )
                 self.mp_obstacles.append(sphere_o_id)
                 # print("Adding point ", len(self.mp_obstacles))
-
-                if debugging_with_visuals:
-                    sphere_o_id2 = p.createMultiBody(
-                        baseMass=0,
-                        baseCollisionShapeIndex=-1,
-                        baseVisualShapeIndex=sphere_vis_id2,
-                        basePosition=[-300, -300, -300],
-                        physicsClientId=0,
-                    )
-                    self.visual_obstacles.append(sphere_o_id2)
 
         max_num_points = min(
             self.max_num_points, num_close_points
@@ -522,13 +487,6 @@ class MotionPlanningWrapper(object):
                 sphere_o_id, sphere_position_in_rf[:3], [0, 0, 0, 1], physicsClientId=self.amp_client_id
             )
 
-            if debugging_with_visuals:
-                sphere_vis_id = self.visual_obstacles[sphere_idx]
-                sphere_position_in_wf = np.dot(robot_in_wf, sphere_position_in_rf)
-                p.resetBasePositionAndOrientation(
-                    sphere_vis_id, sphere_position_in_wf[:3], [0, 0, 0, 1], physicsClientId=0
-                )
-
             sphere_idx = sphere_idx + 1
 
         # If we picked less than the total number of spheres, we set the rest to far away to not affect
@@ -538,16 +496,14 @@ class MotionPlanningWrapper(object):
                 sphere_o_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=self.amp_client_id
             )
 
-            if debugging_with_visuals:
-                sphere_vis_id = self.visual_obstacles[sphere_idx + other_idx]
-                p.resetBasePositionAndOrientation(sphere_vis_id, [-300, -300, -300], [0, 0, 0, 1], physicsClientId=0)
-
-    def get_arm_joint_positions(self, arm_ik_goal, check_collisions=True):
+    def get_arm_joint_positions(self, arm_ik_goal_rf, check_collisions=True):
         """
-        Attempt to find arm_joint_positions that satisfies arm_subgoal
+        Attempt to find a configuration of the joints of the arm to place the "gripper_link" in the given position
         If failed, return None
 
-        :param arm_ik_goal: [x, y, z] in the world frame
+        :param arm_ik_goal_rf: [x, y, z] in the robot reference frame
+        :param check_collisions: boolean flag to indicate if we check for collisions in the computed goal or not
+        (not used currently)
         :return: arm joint positions
         """
 
@@ -568,6 +524,15 @@ class MotionPlanningWrapper(object):
             self.reset_obstacles_with_sensing()
         state_id = self.amp_p.saveState()
 
+        if self.amp_based_on_sensing:
+            arm_ik_goal_wf = arm_ik_goal_rf
+        else:
+            robot_pos, robot_orn = self.robot.get_position_orientation()
+            robot_in_wf = quat2rotmat(xyzw2wxyz(robot_orn))
+            robot_in_wf[:3, 3] = robot_pos
+            arm_ik_goal_rf_hc = np.array([arm_ik_goal_rf[0], arm_ik_goal_rf[1], arm_ik_goal_rf[2], 1])
+            arm_ik_goal_wf = np.dot(robot_in_wf, arm_ik_goal_rf_hc)[:3]
+
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
             if self.robot_type == "Movo":
@@ -577,7 +542,7 @@ class MotionPlanningWrapper(object):
             arm_joint_positions = self.amp_p.calculateInverseKinematics(
                 self.amp_robot_id,
                 self.amp_ee_index,
-                targetPosition=arm_ik_goal,
+                targetPosition=arm_ik_goal_wf,
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
                 upperLimits=max_limits,
@@ -600,7 +565,7 @@ class MotionPlanningWrapper(object):
 
             dist = l2_distance(
                 fnc_with_client(get_link_position_from_name, self.amp_client_id, self.amp_robot_id, "gripper_link"),
-                arm_ik_goal,
+                arm_ik_goal_wf,
             )
             # print("dist", dist)
             if dist > self.arm_ik_threshold:
@@ -719,13 +684,7 @@ class MotionPlanningWrapper(object):
                     )
                 )
             else:
-
                 for link_id in fnc_with_client(get_all_links, self.amp_client_id, self.amp_robot_id):
-                    print(
-                        "Disabled collision between {} and {}".format(
-                            pair[0], get_link_name(self.amp_robot_id, link_id)
-                        )
-                    )
                     disabled_collisions.add(
                         (fnc_with_client(link_from_name, self.amp_client_id, self.amp_robot_id, pair[0]), link_id)
                     )

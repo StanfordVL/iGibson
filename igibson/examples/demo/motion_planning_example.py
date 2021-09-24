@@ -13,7 +13,7 @@ def run_example(args):
         config_file=args.config, mode=args.mode, action_timestep=1.0 / 120.0, physics_timestep=1.0 / 120.0
     )
 
-    motion_planner = MotionPlanningWrapper(environment)
+    motion_planner = MotionPlanningWrapper(environment, amp_based_on_sensing=True)
     state = environment.reset()
 
     while True:
@@ -27,7 +27,7 @@ def run_example(args):
         # for i in range(30):
         #     action = np.random.uniform(-1, 1, environment.action_space.shape)
         #     state, reward, done, _ = environment.step(action)
-        joint_states = motion_planner.get_arm_joint_positions([0.6, 0.1, 0.8])
+        joint_states = motion_planner.get_arm_joint_positions(arm_ik_goal_rf=[0.6, 0.1, 0.8])
         print("IK solution: ", joint_states)
         if joint_states:
             print("Finding path to the IK solution")

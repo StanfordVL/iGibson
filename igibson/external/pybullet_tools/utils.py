@@ -2760,7 +2760,7 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
             continue
         if pairwise_link_collision(body1, link1, body2, link2, **kwargs):
             print(
-                "Collision between body {} ({}) link {} ({}) body {} link {} ({})".format(
+                "Collision between body {} ({}) link {} ({}) and body {} link {} ({})".format(
                     body1,
                     get_body_name(body1),
                     link1,
@@ -3115,7 +3115,7 @@ def get_collision_fn(
                 return True
         for body_and_links1, body_and_links2 in check_body_pairs:
             if pairwise_collision(body_and_links1, body_and_links2, **kwargs):
-                print("Collision between tuples of bodies and links ", body_and_links1, body_and_links2)
+                # print("Collision between tuples of bodies and links ", body_and_links1, body_and_links2)
                 # if isinstance(body_and_links1, tuple):
                 #     print("Body1 name: ", get_body_name(body_and_links1[0]))
                 #     for links1 in body_and_links1[1]:
