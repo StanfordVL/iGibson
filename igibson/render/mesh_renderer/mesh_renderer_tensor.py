@@ -30,7 +30,8 @@ try:
             with torch.cuda.device(self.cuda_idx):
                 self.image_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
-                self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
+                self.seg_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
+                self.ins_seg_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
                 self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
                 self.optical_flow_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
                 self.scene_flow_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
@@ -61,6 +62,14 @@ try:
                             int(self.color_tex_semantics), int(self.width), int(self.height), self.seg_tensor.data_ptr()
                         )
                         results.append(self.seg_tensor.clone())
+                    elif mode == "ins_seg":
+                        self.r.map_tensor(
+                            int(self.color_tex_ins_seg),
+                            int(self.width),
+                            int(self.height),
+                            self.ins_seg_tensor.data_ptr(),
+                        )
+                        results.append(self.ins_seg_tensor.clone())
                     elif mode == "3d":
                         self.r.map_tensor_float(
                             int(self.color_tex_3d), int(self.width), int(self.height), self.pc_tensor.data_ptr()
@@ -85,7 +94,7 @@ try:
 
             return results
 
-        def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True):
+        def render(self, modes=AVAILABLE_MODALITIES, hidden=(), render_shadow_pass=True):
             """
             A function to render all the instances in the renderer and read the output from framebuffer into pytorch tensor.
 
