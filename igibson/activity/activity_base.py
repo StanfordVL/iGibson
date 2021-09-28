@@ -391,7 +391,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                     self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
                 )
         elif self.robot_type == FetchGripper:
-            agent = FetchGripper(self.simulator, self.robot_config)
+            agent = FetchGripper(self.robot_config, self.simulator)
             self.simulator.import_robot(agent)
             agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent

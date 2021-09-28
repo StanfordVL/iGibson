@@ -2,6 +2,7 @@ import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.ant_robot import Ant
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.robots.fetch_robot import Fetch
 from igibson.robots.freight_robot import Freight
 from igibson.robots.humanoid_robot import Humanoid
@@ -180,6 +181,8 @@ class BaseEnv(gym.Env):
             robot = Freight(self.config)
         elif self.config["robot"] == "Fetch":
             robot = Fetch(self.config)
+        elif self.config["robot"] == "FetchGripper":
+            robot = FetchGripper(self.config, self.simulator)
         elif self.config["robot"] == "Locobot":
             robot = Locobot(self.config)
         else:

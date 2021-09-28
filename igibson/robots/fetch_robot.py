@@ -14,6 +14,13 @@ class Fetch(LocomotorRobot):
     """
 
     def __init__(self, config):
+        print("*" * 80)
+        print("*" * 80)
+        print("*" * 80)
+        print("DEPRECATED! Use FetchGripper instead")
+        print("*" * 80)
+        print("*" * 80)
+        print("*" * 80)
         self.config = config
         self.wheel_velocity = config.get("wheel_velocity", 1.0)
         self.torso_lift_velocity = config.get("torso_lift_velocity", 1.0)
