@@ -1,10 +1,11 @@
 '''
 Behavioral cloning agent network architecture and training
 '''
+import argparse
+
+import glob
 import h5py
 import numpy as np
-import glob
-import argparse
 
 import torch
 import torch.nn as nn

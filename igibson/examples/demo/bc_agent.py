@@ -1,10 +1,12 @@
+import argparse
+import os
+
+import numpy as np
+import torch
+
 import igibson
 from igibson.envs.behavior_env import BehaviorEnv
 from simple_bc_agent import BCNet_taskObs, BCNet_rgbp
-import torch
-import argparse
-import os
-import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate the trained behvaior_cloning agent in behavior")

@@ -1,8 +1,7 @@
 import argparse
-from igibson.envs.behavior_env import BehaviorEnv
-import igibson
-import numpy as np
 import os
+
+import numpy as np
 from pynput import keyboard
 import threading as th
 import torch
@@ -10,6 +9,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+import igibson
+from igibson.envs.behavior_env import BehaviorEnv
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 human_feedback = None
@@ -62,10 +63,16 @@ def train_ol_model(ol_agent, env, device):
                     ol_agent = OLNet_taskObs(task_obs_dim=task_obs.size()[-1], proprioception_dim=proprioception.size()[-1]).to(device)
                 action = ol_agent(task_obs, proprioception)
                 a = action.cpu().numpy().squeeze(0)
-                a_no_reset = np.concatenate((a[:19], a[20:27])) # we do not allow reset action for agents here
+                a_no_reset = np.concatenate((a[:19], a[20:27]))
                 obs, reward, done, info = env.step(a_no_reset)
                 if human_feedback:
-                    print(human_feedback)
+                    if 'Press' in str(human_feedback): # only use keypresses as reward signals
+                        if human_feedback.key == keyboard.KeyCode.from_char('s'):
+                            print("Negative feeddback received")
+                        elif human_feedback.key == keyboard.KeyCode.from_char('d'):
+                            print("Positive feedback received")
+                        else:
+                            print("Invalid feedback received")
                     th.Thread(target=key_capture_thread, args=(), name='key_capture_thread', daemon=True).start()
                     human_feedback = None
                 total_reward += reward
