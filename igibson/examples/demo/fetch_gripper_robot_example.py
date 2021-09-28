@@ -16,7 +16,7 @@ if __name__ == "__main__":
     s.import_scene(scene)
 
     config = parse_config(os.path.join(igibson.example_config_path, "behavior_onboard_sensing_fetch.yaml"))
-    robot = FetchGripper(s, config)
+    robot = FetchGripper(config, s)
     s.import_robot(robot)
 
     robot.robot_specific_reset()

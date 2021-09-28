@@ -35,7 +35,7 @@ class FetchGripper(LocomotorRobot):
     Uses joint velocity control
     """
 
-    def __init__(self, simulator, config):
+    def __init__(self, config, simulator):
         self.simulator = simulator
         self.config = config
         self.linear_velocity = config.get("linear_velocity", 1.0)  # m/s
@@ -96,6 +96,25 @@ class FetchGripper(LocomotorRobot):
     @property
     def joint_ids(self):
         return np.array([1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 20, 21])
+
+    @property
+    def joint_names(self):
+        return [
+            "r_wheel_joint",
+            "l_wheel_joint",
+            "torso_lift_joint",
+            "head_pan_joint",
+            "head_tilt_joint",
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "upperarm_roll_joint",
+            "elbow_flex_joint",
+            "forearm_roll_joint",
+            "wrist_flex_joint",
+            "wrist_roll_joint",
+            "r_gripper_finger_joint",
+            "l_gripper_finger_joint",
+        ]
 
     @property
     def joint_damping(self):
