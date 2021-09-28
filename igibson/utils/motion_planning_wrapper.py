@@ -122,7 +122,7 @@ class MotionPlanningWrapper(object):
         self.initial_height = self.env.initial_pos_z_offset
         self.fine_motion_plan = fine_motion_plan
         self.arm_interaction_length = 0.2
-        if self.robot_type in ["Fetch", "Movo"]:
+        if self.robot_type in ["Fetch", "FetchGripper", "Movo"]:
             # Create two variables for the ee index, one for the simulated robot, one for the robot for arm motion planning
             self.ee_index = fnc_with_client(link_from_name, self.client_id, self.robot_id, "gripper_link")
             # If we do not use onboard sensing self.amp_ee_index == self.ee_index
@@ -227,6 +227,29 @@ class MotionPlanningWrapper(object):
                 2.9631312579803466,
                 -1.2862852996643066,
                 0.0008453550418615341,
+            )
+            joint_names = [
+                "torso_lift_joint",
+                "shoulder_pan_joint",
+                "shoulder_lift_joint",
+                "upperarm_roll_joint",
+                "elbow_flex_joint",
+                "forearm_roll_joint",
+                "wrist_flex_joint",
+                "wrist_roll_joint",
+            ]
+
+        elif self.robot_type == "FetchGripper":
+            all_joints = self.robot.untucked_default_joints
+            self.arm_default_joint_positions = (
+                all_joints[2],
+                all_joints[5],
+                all_joints[6],
+                all_joints[7],
+                all_joints[8],
+                all_joints[9],
+                all_joints[10],
+                all_joints[11],
             )
             joint_names = [
                 "torso_lift_joint",
@@ -368,6 +391,20 @@ class MotionPlanningWrapper(object):
             # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
             min_limits[2] += 0.02
             rest_position = [0.0, 0.0] + list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+            joint_range = list(np.array(max_limits) - np.array(min_limits))
+            joint_range = [item + 1 for item in joint_range]
+            joint_damping = [0.1 for _ in joint_range]
+
+        if self.robot_type == "FetchGripper":
+            arm_max_limits = get_max_limits(self.robot_id, self.arm_joint_ids)
+            arm_min_limits = get_min_limits(self.robot_id, self.arm_joint_ids)
+            # 2 DoF base wheels, 1 DoF torso , 2 DoF head, 7 DoF arm, 2 DoF fingers
+            max_limits = [0.0, 0.0] + [arm_max_limits[0]] + [0.0, 0.0] + arm_max_limits[1:] + [0.0, 0.0]
+            min_limits = [0.0, 0.0] + [arm_min_limits[0]] + [0.0, 0.0] + arm_min_limits[1:] + [0.0, 0.0]
+            # increase torso_lift_joint lower limit to 0.02 to avoid self-collision
+            min_limits[2] += 0.02
+            arm_rest_position = list(get_joint_positions(self.robot_id, self.arm_joint_ids))
+            rest_position = [0.0, 0.0] + [arm_rest_position[0]] + [0.0, 0.0] + arm_rest_position[1:] + [0.0, 0.0]
             joint_range = list(np.array(max_limits) - np.array(min_limits))
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
@@ -556,6 +593,8 @@ class MotionPlanningWrapper(object):
 
             if self.robot_type == "Fetch":
                 arm_joint_positions = arm_joint_positions[2:10]
+            elif self.robot_type == "FetchGripper":
+                arm_joint_positions = [arm_joint_positions[2]] + list(arm_joint_positions[5:12])
             elif self.robot_type == "Movo":
                 arm_joint_positions = arm_joint_positions[:8]
 
@@ -646,7 +685,7 @@ class MotionPlanningWrapper(object):
         :return: arm trajectory or None if no plan can be found
         """
 
-        if self.robot_type == "Fetch":
+        if self.robot_type == "Fetch" or self.robot_type == "FetchGripper":
             pairs_to_disable = [
                 ["torso_lift_link", "torso_fixed_link"],
                 ["torso_lift_link", "shoulder_lift_link"],
@@ -734,21 +773,37 @@ class MotionPlanningWrapper(object):
 
         :param arm_path: arm trajectory or None if no plan can be found
         """
-        base_pose = get_base_values(self.robot_id)
+        base_pose = fnc_with_client(get_base_values, self.amp_client_id, self.amp_robot_id)
         if arm_path is not None:
             if self.mode in ["gui", "iggui", "pbgui"]:
                 for joint_way_point in arm_path:
-                    set_joint_positions(self.robot_id, self.arm_joint_ids, joint_way_point)
-                    set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-                    self.simulator_sync()
-                    # sleep(0.02)  # animation
+                    fnc_with_client(
+                        set_joint_positions, self.amp_client_id, self.amp_robot_id, self.arm_joint_ids, joint_way_point
+                    )
+                    fnc_with_client(
+                        set_base_values_with_z, self.amp_client_id, self.amp_robot_id, base_pose, z=self.initial_height
+                    )
+                    if self.visualize_amp:
+                        img = self.create_image_from_amp(self.amp_client_id)
+                        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                        cv2.imshow("MotionPlanningSim", img)
+                        cv2.waitKey(10)
+                    sleep(0.02)  # animation
             else:
-                set_joint_positions(self.robot_id, self.arm_joint_ids, arm_path[-1])
+                fnc_with_client(
+                    set_joint_positions, self.amp_client_id, self.amp_robot_id, self.arm_joint_ids, arm_path[-1]
+                )
         else:
             # print('arm mp fails')
             if self.robot_type == "Movo":
                 self.robot.tuck()
-            set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
+            fnc_with_client(
+                set_joint_positions,
+                self.amp_client_id,
+                self.amp_robot_id,
+                self.arm_joint_ids,
+                self.arm_default_joint_positions,
+            )
 
     def plan_arm_push(self, hit_pos, hit_normal):
         """
@@ -802,7 +857,7 @@ class MotionPlanningWrapper(object):
                 maxNumIterations=100,
             )
 
-            if self.robot_type == "Fetch":
+            if self.robot_type == "Fetch" or self.robot_type == "FetchGripper":
                 joint_positions = joint_positions[2:10]
             elif self.robot_type == "Movo":
                 joint_positions = joint_positions[:8]
@@ -835,3 +890,102 @@ class MotionPlanningWrapper(object):
             self.interact(hit_pos, hit_normal)
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             self.simulator_sync()
+
+    def joint_to_cartesian_space_rf(self, mp_plan_js):
+        self.last_controller_index = 0  # We set this once before executing
+        cartesian_trajectory_rf = []
+        state_id = self.amp_p.saveState()
+
+        robot_in_wf = np.eye(4)
+        if not self.amp_based_on_sensing:
+            robot_pos, robot_orn = self.robot.get_position_orientation()
+            robot_in_wf = quat2rotmat(xyzw2wxyz(robot_orn))
+            robot_in_wf[:3, 3] = robot_pos
+
+        for joint_conf in mp_plan_js:
+            fnc_with_client(set_joint_positions, self.amp_client_id, self.amp_robot_id, self.arm_joint_ids, joint_conf)
+            cartesian_position_wf = fnc_with_client(
+                get_link_position_from_name, self.amp_client_id, self.amp_robot_id, "gripper_link"
+            )
+            cartesian_position_wf_hc = np.array(
+                [cartesian_position_wf[0], cartesian_position_wf[1], cartesian_position_wf[2], 1]
+            )
+            cartesian_position_rf = np.dot(np.linalg.inv(robot_in_wf), cartesian_position_wf_hc)[:3]
+            print("Position in robot frame: ", cartesian_position_rf)
+            cartesian_trajectory_rf.append(cartesian_position_rf)
+
+        self.amp_p.restoreState(state_id)
+        self.amp_p.removeState(state_id)
+        return cartesian_trajectory_rf
+
+    def cartesian_traj_controller_vel(self, mp_plan_cart):
+        # The real position
+        current_ee_position_wf = fnc_with_client(
+            get_link_position_from_name, self.client_id, self.robot_id, "gripper_link"
+        )
+        robot_pos, robot_orn = self.robot.get_position_orientation()
+        robot_in_wf = quat2rotmat(xyzw2wxyz(robot_orn))
+        robot_in_wf[:3, 3] = robot_pos
+        current_ee_position_wf_hc = np.array(
+            [current_ee_position_wf[0], current_ee_position_wf[1], current_ee_position_wf[2], 1]
+        )
+        current_ee_position_rf = np.dot(np.linalg.inv(robot_in_wf), current_ee_position_wf_hc)[:3]
+        goal_th = 0.06
+        last_cartesian_position_rf = []
+
+        cartesian_position_rf = []
+
+        for indexx in range(len(mp_plan_cart)):
+            if indexx < self.last_controller_index:
+                continue
+            self.last_controller_index = indexx
+            last_cartesian_position_rf = mp_plan_cart[indexx]
+            dist = l2_distance(last_cartesian_position_rf, current_ee_position_rf)
+            print(
+                "Distance between trajectory point {} and current robot position {}".format(
+                    last_cartesian_position_rf, dist
+                )
+            )
+            if dist > goal_th:
+                print("Using {} as next goal".format(last_cartesian_position_rf))
+                break
+
+        # At the end, use the last position as goal
+        delta_rf = 10 * (last_cartesian_position_rf - current_ee_position_rf) / goal_th
+        return delta_rf
+
+    def convergence_accuracy(self, desired_position_rf):
+        current_ee_position_wf = fnc_with_client(
+            get_link_position_from_name, self.client_id, self.robot_id, "gripper_link"
+        )
+        robot_pos, robot_orn = self.robot.get_position_orientation()
+        robot_in_wf = quat2rotmat(xyzw2wxyz(robot_orn))
+        robot_in_wf[:3, 3] = robot_pos
+        current_ee_position_wf_hc = np.array(
+            [current_ee_position_wf[0], current_ee_position_wf[1], current_ee_position_wf[2], 1]
+        )
+        current_ee_position_rf = np.dot(np.linalg.inv(robot_in_wf), current_ee_position_wf_hc)[:3]
+        last_cartesian_position_rf = desired_position_rf
+        dist = l2_distance(last_cartesian_position_rf, current_ee_position_rf)
+        return dist
+
+    def has_converged(self, desired_position_rf, tolerance=0.1):
+        accuracy = self.convergence_accuracy(desired_position_rf)
+        return accuracy < tolerance
+
+    def joint_traj_controller_vel(self, mp_plan_joint):
+        # Sync the state of simulated robot and planning robot
+        current_q = fnc_with_client(get_joint_positions, self.client_id, self.robot_id, self.arm_joint_ids)
+        goal_th = 0.2
+        last_q = []
+        for next_q in mp_plan_joint:
+            last_q = next_q
+            diff = np.array(current_q) - np.array(last_q)
+            print("Distance between trajectory point and current robot position: ", diff)
+            if np.amax(diff) > goal_th:
+                print("Using {} as next goal".format(last_q))
+                break
+
+        # At the end, use the last position as goal
+        delta_q = np.array(current_q) - np.array(last_q)
+        return delta_q

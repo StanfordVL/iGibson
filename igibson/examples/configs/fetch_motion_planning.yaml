@@ -14,10 +14,21 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Fetch
+robot: FetchGripper
 wheel_velocity: 0.8
 torso_lift_velocity: 0.8
 arm_velocity: 0.8
+controller:
+  mode: pose_delta_ori    # options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
+  kv_vel: -2.0
+  input_max: [1, 1, 1, 1, 1, 1]
+  input_min: [-1, -1, -1, -1, -1, -1]
+  output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
+  output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
+  eef_always_in_frame: false      # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
+  neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
+  radius_limit: 0.5               # x-y reaching limit
+  height_limits: [0.2, 1.5]       # min, max height limits
 
 # task
 task: room_rearrangement
