@@ -1,12 +1,13 @@
-import argparse
 import os
 import threading as th
+from logging import Handler
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from human_feedback import HumanFeedback
 from pynput import keyboard
 
 import igibson
@@ -16,7 +17,7 @@ human_feedback = None
 
 
 class OLNet_taskObs(nn.Module):
-    def __init__(self, task_obs_dim=456, proprioception_dim=20, num_actions=28):
+    def __init__(self, task_obs_dim=456, proprioception_dim=20, num_actions=26):
         super(OLNet_taskObs, self).__init__()
         # image feature
         self.fc1 = nn.Linear(task_obs_dim + proprioception_dim, 1024)
@@ -40,36 +41,46 @@ def key_capture_thread():
         human_feedback = event
 
 
-def train_ol_model(ol_agent, env, device):
+def train_ol_model(ol_agent, env, device, learning_rate):
     global human_feedback
-    with torch.no_grad():
-        th.Thread(target=key_capture_thread, args=(), name="key_capture_thread", daemon=True).start()
-        for _ in range(iterations):
-            obs = env.reset()
-            total_reward = 0
-            done = False
-            while not done:
-                task_obs = torch.tensor(obs["task_obs"], dtype=torch.float32).unsqueeze(0).to(device)
-                proprioception = torch.tensor(obs["proprioception"], dtype=torch.float32).unsqueeze(0).to(device)
-                if not ol_agent:
-                    ol_agent = OLNet_taskObs(
-                        task_obs_dim=task_obs.size()[-1], proprioception_dim=proprioception.size()[-1]
-                    ).to(device)
-                action = ol_agent(task_obs, proprioception)
-                a = action.cpu().numpy().squeeze(0)
-                a_no_reset = np.concatenate((a[:19], a[20:27]))
-                obs, reward, done, info = env.step(a_no_reset)
-                if human_feedback:
-                    if "Press" in str(human_feedback):  # only use keypresses as reward signals
-                        if human_feedback.key == keyboard.KeyCode.from_char("s"):
-                            print("Negative feeddback received")
-                        elif human_feedback.key == keyboard.KeyCode.from_char("d"):
-                            print("Positive feedback received")
-                        else:
-                            print("Invalid feedback received")
-                    th.Thread(target=key_capture_thread, args=(), name="key_capture_thread", daemon=True).start()
-                    human_feedback = None
-                total_reward += reward
+    optimizer = None
+    feedback_dictionary = HumanFeedback().feedback_dictionary
+    th.Thread(target=key_capture_thread, args=(), name="key_capture_thread", daemon=True).start()
+    for _ in range(iterations):
+        obs = env.reset()
+        total_reward = 0
+        done = False
+
+        while not done:
+            task_obs = torch.tensor(obs["task_obs"], dtype=torch.float32).unsqueeze(0).to(device)
+            proprioception = torch.tensor(obs["proprioception"], dtype=torch.float32).unsqueeze(0).to(device)
+            if not ol_agent:
+                ol_agent = OLNet_taskObs(
+                    task_obs_dim=task_obs.size()[-1], proprioception_dim=proprioception.size()[-1]
+                ).to(device)
+                ol_agent.train()
+                optimizer = optim.Adam(ol_agent.parameters())
+            optimizer.zero_grad()
+            action = ol_agent(task_obs, proprioception)
+            a = action.cpu().detach().numpy().squeeze(0)
+            obs, reward, done, info = env.step(a)
+
+            if human_feedback:
+                if "Press" in str(human_feedback):  # only use keypresses as reward signals
+                    feedback = [0 for _ in range(action.size()[-1])]
+                    if human_feedback.key in feedback_dictionary:
+                        feedback = feedback_dictionary[human_feedback.key]
+                    else:
+                        print("Invalid feedback received")
+                    error = np.array(feedback) * learning_rate
+                    label_action = torch.from_numpy(a + error).type(torch.FloatTensor).view(action.size()).to(device)
+                    loss = 100 * nn.MSELoss()(action, label_action)
+                    loss.backward()
+                    optimizer.step()
+
+                th.Thread(target=key_capture_thread, args=(), name="key_capture_thread", daemon=True).start()
+                human_feedback = None
+            total_reward += reward
 
 
 if __name__ == "__main__":
@@ -80,10 +91,10 @@ if __name__ == "__main__":
     config_file = "behavior_full_observability.yaml"
     env = BehaviorEnv(
         config_file=os.path.join(igibson.example_config_path, config_file),
-        mode="gui",
+        mode="headless",
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
         action_filter="all",
     )
 
-    train_ol_model(ol_agent, env, device)
+    train_ol_model(ol_agent, env, device, 0.1)
