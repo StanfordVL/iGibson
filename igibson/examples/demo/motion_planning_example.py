@@ -16,11 +16,17 @@ def run_example(args):
     motion_planner = MotionPlanningWrapper(environment, amp_based_on_sensing=True)
     state = environment.reset()
 
+    arm_controller_type = motion_planner.robot.arm_controller_type
+    print("Arm controller type: ", arm_controller_type)
+
     while True:
-        for i in range(1):
-            action = np.zeros(environment.action_space.shape)
-            # action = np.random.uniform(-1, 1, environment.action_space.shape)
-            state, reward, done, _ = environment.step(action)
+        # for i in range(1000):
+        #     action = np.zeros(environment.action_space.shape)
+        #     jointss = motion_planner.robot.untucked_default_joints
+        #     action[2:12] = jointss[2:12]
+        #     print(environment.action_space.shape)
+        #     # action = np.random.uniform(-1, 1, environment.action_space.shape)
+        #     state, reward, done, _ = environment.step(action)
         # base_path = motion_planner.plan_base_motion([1, 0, 0])
         # print(base_path)
         # motion_planner.dry_run_base_plan(base_path)
@@ -42,30 +48,57 @@ def run_example(args):
                 motion_planner.dry_run_arm_plan(joint_states_path)
 
                 print("Executing it")
-                # action = np.zeros(environment.action_space.shape)
-                # for controller_steps in range(3*len(joint_states_path)):
-                #     delta_q = motion_planner.joint_traj_controller_vel(joint_states_path)
-                #     action[3:10] = delta_q
-                #     print("Executing robot action: ", action)
-                #     state, reward, done, _ = environment.step(action)
-                # if motion_planner.has_converged(goal_in_rf):
-                #     print("Goal achieved. Accuracy: ", motion_planner.convergence_accuracy(goal_in_rf))
-                # else:
-                #     print("Failed path execution. Error in convergence: ", motion_planner.convergence_accuracy(goal_in_rf))
 
-                cartesian_path = motion_planner.joint_to_cartesian_space_rf(joint_states_path)
-                action = np.zeros(environment.action_space.shape)
-                for controller_steps in range(10 * len(cartesian_path)):
-                    delta = motion_planner.cartesian_traj_controller_vel(cartesian_path)
-                    action[4:7] = delta
-                    # print("Executing robot action: ", action)
-                    state, reward, done, _ = environment.step(action)
-                if motion_planner.has_converged(goal_in_rf):
-                    print("Goal achieved. Accuracy: ", motion_planner.convergence_accuracy(goal_in_rf))
+                if arm_controller_type == "cartesian_ik":
+                    cartesian_path = motion_planner.joint_to_cartesian_space_rf(joint_states_path)
+                    action = np.zeros(environment.action_space.shape)
+                    for controller_steps in range(15 * len(cartesian_path)):
+                        delta = motion_planner.cartesian_traj_controller_vel(cartesian_path)
+                        action[4:7] = delta
+                        print("Executing robot action: ", action)
+                        state, reward, done, _ = environment.step(action)
+                    if motion_planner.has_converged(goal_in_rf):
+                        print("Goal achieved. Accuracy: ", motion_planner.convergence_accuracy(goal_in_rf))
+                    else:
+                        print(
+                            "Failed path execution. Error in convergence: ",
+                            motion_planner.convergence_accuracy(goal_in_rf),
+                        )
+                elif arm_controller_type == "joint_space_velocity":
+                    action = np.zeros(environment.action_space.shape)
+                    for controller_steps in range(10 * len(joint_states_path)):
+                        delta_q = motion_planner.joint_traj_controller_vel(joint_states_path)
+                        action[2] = delta_q[0]
+                        action[5:12] = delta_q[1:8]
+                        print("Executing robot action: ")
+                        print(action)
+                        state, reward, done, _ = environment.step(action)
+                    if motion_planner.has_converged(goal_in_rf):
+                        print("Goal achieved. Accuracy: ", motion_planner.convergence_accuracy(goal_in_rf))
+                    else:
+                        print(
+                            "Failed path execution. Error in convergence: ",
+                            motion_planner.convergence_accuracy(goal_in_rf),
+                        )
+
+                elif arm_controller_type == "joint_space_position":
+                    action = np.zeros(environment.action_space.shape)
+                    for controller_steps in range(3 * len(joint_states_path)):
+                        delta_q = motion_planner.joint_traj_controller_pos(joint_states_path)
+                        action[2] = delta_q[0]
+                        action[5:12] = delta_q[1:8]
+                        print("Executing robot action: ", action)
+                        state, reward, done, _ = environment.step(action)
+                    if motion_planner.has_converged(goal_in_rf):
+                        print("Goal achieved. Accuracy: ", motion_planner.convergence_accuracy(goal_in_rf))
+                    else:
+                        print(
+                            "Failed path execution. Error in convergence: ",
+                            motion_planner.convergence_accuracy(goal_in_rf),
+                        )
                 else:
-                    print(
-                        "Failed path execution. Error in convergence: ", motion_planner.convergence_accuracy(goal_in_rf)
-                    )
+                    print("unexpected arm controller type")
+                    exit(-1)
 
                 # for joint_conf in joint_states_path:
                 #     print(joint_conf)
