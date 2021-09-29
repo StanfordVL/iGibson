@@ -15,10 +15,8 @@ object_randomization_freq: null
 
 # robot
 robot: FetchGripper
-wheel_velocity: 0.8
-torso_lift_velocity: 0.8
-arm_velocity: 0.8
 controller:
+  type: cartesian_ik      # options are {cartesian_ik, joint_space_position, joint_space_velocity}
   mode: pose_delta_ori    # options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
   kv_vel: -2.0
   input_max: [1, 1, 1, 1, 1, 1]

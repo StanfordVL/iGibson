@@ -17,6 +17,7 @@ ag_strict_mode: true
 default_arm_pose: diagonal30
 trunk_offset: 0.085
 controller:
+  type: cartesian_ik
   mode: pose_delta_ori    # options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
   kv_vel: -2.0
   input_max: [1, 1, 1, 1, 1, 1]
