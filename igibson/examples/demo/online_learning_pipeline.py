@@ -50,6 +50,7 @@ def train_ol_model(ol_agent, env, device, learning_rate):
         obs = env.reset()
         total_reward = 0
         done = False
+        paused = False
 
         while not done:
             task_obs = torch.tensor(obs["task_obs"], dtype=torch.float32).unsqueeze(0).to(device)
@@ -63,20 +64,28 @@ def train_ol_model(ol_agent, env, device, learning_rate):
             optimizer.zero_grad()
             action = ol_agent(task_obs, proprioception)
             a = action.cpu().detach().numpy().squeeze(0)
-            obs, reward, done, info = env.step(a)
+            if not paused:
+                obs, reward, done, _ = env.step(a)
+            else:
+                reward = 0
 
             if human_feedback:
                 if "Press" in str(human_feedback):  # only use keypresses as reward signals
-                    feedback = [0 for _ in range(action.size()[-1])]
                     if human_feedback.key in feedback_dictionary:
+                        feedback = [0 for _ in range(action.size()[-1])]
                         feedback = feedback_dictionary[human_feedback.key]
+                        error = np.array(feedback) * learning_rate
+                        label_action = (
+                            torch.from_numpy(a + error).type(torch.FloatTensor).view(action.size()).to(device)
+                        )
+                        loss = 100 * nn.MSELoss()(action, label_action)
+                        loss.backward()
+                        optimizer.step()
+                        print(loss)
+                    elif human_feedback.key == keyboard.KeyCode.from_char("p"):  # use 'p' for pausing
+                        paused = not paused
                     else:
                         print("Invalid feedback received")
-                    error = np.array(feedback) * learning_rate
-                    label_action = torch.from_numpy(a + error).type(torch.FloatTensor).view(action.size()).to(device)
-                    loss = 100 * nn.MSELoss()(action, label_action)
-                    loss.backward()
-                    optimizer.step()
 
                 th.Thread(target=key_capture_thread, args=(), name="key_capture_thread", daemon=True).start()
                 human_feedback = None
