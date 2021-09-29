@@ -59,7 +59,7 @@ class MotionPlanningWrapper(object):
         self.amp_based_on_sensing = (
             amp_based_on_sensing  # If we use the entire scene for arm planning or only the sensed info
         )
-        # TODO: self.with_torso = True  # with_torso (check how we do IK without torso in the IK controller)
+        # TODO: self.with_torso = True  # with_torso (check how we do IK without torso in the IK arm_controller)
 
         self.env = env
         assert "occupancy_grid" in self.env.output
@@ -685,6 +685,7 @@ class MotionPlanningWrapper(object):
         :return: arm trajectory or None if no plan can be found
         """
 
+        self.last_controller_index = 0  # We set this once before executing
         if self.robot_type == "Fetch" or self.robot_type == "FetchGripper":
             pairs_to_disable = [
                 ["torso_lift_link", "torso_fixed_link"],
@@ -864,7 +865,7 @@ class MotionPlanningWrapper(object):
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
 
-            # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+            # set_joint_positions(self.robot_id, self.torso_and_arm_joint_ids, joint_positions)
             achieved = self.robot.get_end_effector_position()
             # print('ee delta', np.array(achieved) - push_goal, np.linalg.norm(np.array(achieved) - push_goal))
 
@@ -892,7 +893,7 @@ class MotionPlanningWrapper(object):
             self.simulator_sync()
 
     def joint_to_cartesian_space_rf(self, mp_plan_js):
-        self.last_controller_index = 0  # We set this once before executing
+
         cartesian_trajectory_rf = []
         state_id = self.amp_p.saveState()
 
@@ -951,7 +952,7 @@ class MotionPlanningWrapper(object):
                 break
 
         # At the end, use the last position as goal
-        delta_rf = 10 * (last_cartesian_position_rf - current_ee_position_rf) / goal_th
+        delta_rf = 15 * (last_cartesian_position_rf - current_ee_position_rf) / goal_th
         return delta_rf
 
     def convergence_accuracy(self, desired_position_rf):
@@ -976,16 +977,38 @@ class MotionPlanningWrapper(object):
     def joint_traj_controller_vel(self, mp_plan_joint):
         # Sync the state of simulated robot and planning robot
         current_q = fnc_with_client(get_joint_positions, self.client_id, self.robot_id, self.arm_joint_ids)
-        goal_th = 0.2
-        last_q = []
-        for next_q in mp_plan_joint:
-            last_q = next_q
-            diff = np.array(current_q) - np.array(last_q)
-            print("Distance between trajectory point and current robot position: ", diff)
+        print("Current pose:")
+        print("{}".format(current_q))
+        goal_th = 0.1
+        for indexx in range(len(mp_plan_joint)):
+            if indexx < self.last_controller_index:
+                continue
+            self.last_controller_index = indexx
+            diff = np.array(current_q) - np.array(mp_plan_joint[indexx])
+            print("Distance between trajectory point and current robot position: ")
+            print("{}".format(list(diff)))
             if np.amax(diff) > goal_th:
-                print("Using {} as next goal".format(last_q))
+                print("Using {} as next goal".format(mp_plan_joint[indexx]))
                 break
 
         # At the end, use the last position as goal
-        delta_q = np.array(current_q) - np.array(last_q)
+        kp = -3
+        delta_q = kp * (np.array(current_q) - np.array(mp_plan_joint[indexx]))
         return delta_q
+
+    def joint_traj_controller_pos(self, mp_plan_joint):
+        # Sync the state of simulated robot and planning robot
+        current_q = fnc_with_client(get_joint_positions, self.client_id, self.robot_id, self.arm_joint_ids)
+        goal_th = 0.1
+        for indexx in range(len(mp_plan_joint)):
+            if indexx < self.last_controller_index:
+                continue
+            self.last_controller_index = indexx
+            diff = np.array(current_q) - np.array(mp_plan_joint[indexx])
+            print("Distance between trajectory point and current robot position: ", diff)
+            if np.amax(diff) > goal_th:
+                print("Using {} as next goal".format(mp_plan_joint[indexx]))
+                break
+
+        # At the end, use the last position as goal
+        return mp_plan_joint[indexx]

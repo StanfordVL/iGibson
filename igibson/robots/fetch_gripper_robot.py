@@ -4,6 +4,7 @@ import pybullet as p
 
 import igibson.utils.transform_utils as T
 from igibson.controllers.ik_controller import IKController
+from igibson.controllers.js_controller import JointSpaceController
 from igibson.external.pybullet_tools.utils import (
     get_child_frame_pose,
     get_constraint_violation,
@@ -38,50 +39,79 @@ class FetchGripper(LocomotorRobot):
     def __init__(self, config, simulator):
         self.simulator = simulator
         self.config = config
-        self.linear_velocity = config.get("linear_velocity", 1.0)  # m/s
-        self.angular_velocity = config.get("angular_velocity", np.pi)  # rad/second
-        self.head_velocity = config.get("head_velocity", 1.0)  # 1.0 represents maximum joint velocity
-        self.arm_delta_pos_velocity = config.get("arm_delta_pos_velocity", 0.25)  # delta_pos = 0.25m
-        self.arm_delta_orn_velocity = config.get("arm_delta_orn_velocity", np.deg2rad(30))  # delta_orn = 30deg
-        self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
+
+        self.base_max_linear_vel = config.get("base_max_linear_vel", 1.0)  # m/s
+        self.base_max_angular_vel = config.get("base_max_angular_vel", np.pi)  # rad/second
+
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
         self.use_ag = config.get("use_ag", True)  # Use assisted grasping
         self.ag_strict_mode = config.get("ag_strict_mode", True)  # Require object to be contained by forks for AG
-        self.wheel_dim = 2
-        self.head_dim = 2
-        self.arm_delta_pos_dim = 3
-        self.arm_delta_orn_dim = 3
-        self.gripper_dim = 1
+
         self.wheel_axle_half = 0.186  # half of the distance between the wheels
         self.wheel_radius = 0.0613  # radius of the wheels
         self.head_limit_epsilon = 1e-2
         self.gripper_limit_epsilon = 1e-2
 
-        self.wheel_joint_ids = np.array([1, 2])
+        # Joint ids
+        self.base_joint_ids = np.array([1, 2])
         self.head_joint_ids = np.array([4, 5])
-        self.arm_joint_ids = np.array([3, 12, 13, 14, 15, 16, 17, 18])
-        self.gripper_joint_ids = np.array([19, 20, 21])
-        self.gripper_finger_joint_ids = np.array([20, 21])
+        self.torso_and_arm_joint_ids = np.array([3, 12, 13, 14, 15, 16, 17, 18])
+        self.gripper_joint_ids = np.array([19, 20, 21])  # These are fixed joints
+        self.gripper_fingers_joint_ids = np.array([20, 21])
 
-        self.wheel_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.wheel_joint_ids]
-        self.head_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.head_joint_ids]
-        self.arm_joint_action_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.arm_joint_ids]
-        self.gripper_joint_action_idx = [
-            i for i, idn in enumerate(self.joint_ids) if idn in self.gripper_finger_joint_ids
+        # Indices of the joints in the self.joint_ids vector
+        self.base_joint_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.base_joint_ids]
+        self.head_joint_idx = [i for i, idn in enumerate(self.joint_ids) if idn in self.head_joint_ids]
+        self.torso_and_arm_joint_idx = [
+            i for i, idn in enumerate(self.joint_ids) if idn in self.torso_and_arm_joint_ids
         ]
+        self.gripper_fingers_joint_idx = [
+            i for i, idn in enumerate(self.joint_ids) if idn in self.gripper_fingers_joint_ids
+        ]
+
+        # Robot DoFs
+        self.base_dofs = len(
+            self.base_joint_idx
+        )  # No matter if we control each wheel or linear (1dof) + angular (1dof) velocity
+        self.head_dofs = len(self.head_joint_ids)
+        self.torso_and_arm_dofs = len(self.torso_and_arm_joint_ids)
+        self.gripper_fingers_dofs = len(self.gripper_fingers_joint_ids)
+
+        self.base_action_dim = 2
+        self.head_action_dim = 2
+        self.gripper_action_dim = 1
+
+        self.arm_controller_type = self.config["controller"].get("type", "cartesian_ik")
+        joint_control = "velocity"
+        if self.arm_controller_type == "cartesian_ik":
+            self.arm_controller = IKController(robot=self, config=self.config)
+            self.arm_max_delta_pos = config.get("arm_max_delta_pos", 0.25)  # delta_pos = 0.25m
+            self.arm_max_delta_orn = config.get("arm_max_delta_orn", np.deg2rad(30))  # delta_orn = 30deg
+            self.arm_delta_pos_dim = 3
+            self.arm_delta_orn_dim = 3
+            self.torso_and_arm_action_dim = self.arm_delta_pos_dim + self.arm_delta_orn_dim
+        elif "joint_space" in self.arm_controller_type:
+            self.torso_and_arm_action_dim = self.torso_and_arm_dofs
+            self.arm_controller = JointSpaceController(robot=self, config=self.config)
+            joint_control = self.arm_controller_type.replace("joint_space_", "")
+            if joint_control not in ["position", "velocity", "torque"]:
+                print("The joint space control type should define either position, velocity or torque")
+                exit(-1)
+        else:
+            print("Unsupported arm_controller type")
+            exit(-1)
 
         LocomotorRobot.__init__(
             self,
             "fetch/fetch_gripper.urdf",
-            action_dim=self.wheel_dim
-            + self.head_dim
-            + self.arm_delta_pos_dim
-            + self.arm_delta_orn_dim
-            + self.gripper_dim,
+            action_dim=self.base_action_dim
+            + self.head_action_dim
+            + self.torso_and_arm_action_dim
+            + self.gripper_action_dim,
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
-            control=["differential_drive"] * 2 + ["velocity"] * 12,
+            control=["differential_drive"] * 2 + [joint_control] * 10 + ["velocity"] * 2,
             self_collision=False,
         )
 
@@ -95,7 +125,11 @@ class FetchGripper(LocomotorRobot):
 
     @property
     def joint_ids(self):
-        return np.array([1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 20, 21])
+        return np.sort(
+            np.concatenate(
+                (self.base_joint_ids, self.head_joint_ids, self.torso_and_arm_joint_ids, self.gripper_fingers_joint_ids)
+            )
+        )
 
     @property
     def joint_names(self):
@@ -174,20 +208,20 @@ class FetchGripper(LocomotorRobot):
     def max_joint_velocities(self):
         return np.array(
             [
-                17.4,
-                17.4,
-                0.1,
-                1.57,
-                1.57,
-                1.256,
-                1.454,
-                1.571,
-                1.521,
-                1.571,
-                2.268,
-                2.268,
-                0.05,
-                0.05,
+                17.4,  # rad/s
+                17.4,  # rad/s
+                0.1,  # m/s
+                1.57,  # rad/s
+                1.57,  # rad/s
+                1.256,  # rad/s
+                1.454,  # rad/s
+                1.571,  # rad/s
+                1.521,  # rad/s
+                1.571,  # rad/s
+                2.268,  # rad/s
+                2.268,  # rad/s
+                0.05,  # m/s
+                0.05,  # m/s
             ]
         )
 
@@ -340,15 +374,41 @@ class FetchGripper(LocomotorRobot):
         """
         Set up continuous action space
         """
-        self.action_high = np.array(
-            [self.linear_velocity]
-            + [self.angular_velocity]
-            + [self.head_velocity] * self.head_dim
-            + [self.arm_delta_pos_velocity] * self.arm_delta_pos_dim
-            + [self.arm_delta_orn_velocity] * self.arm_delta_orn_dim
-            + [self.gripper_velocity] * self.gripper_dim
-        )
-        self.action_low = -self.action_high
+        if self.arm_controller_type == "cartesian_ik":
+            self.action_high = np.array(
+                [self.base_max_linear_vel]
+                + [self.base_max_angular_vel]
+                + [self.max_joint_velocities[3], self.max_joint_velocities[4]]
+                + [self.arm_max_delta_pos] * self.arm_delta_pos_dim
+                + [self.arm_max_delta_orn] * self.arm_delta_orn_dim
+                + [1]  # Will be converted into binary signal for fingers to close or open
+            )
+            self.action_low = -self.action_high
+        elif self.arm_controller_type == "joint_space_velocity":
+            self.action_high = np.array(
+                [self.base_max_linear_vel]  # Base is always controlled in diff drive
+                + [self.base_max_angular_vel]  # Base is always controlled in diff drive
+                + list(self.max_joint_velocities[2:12])  # torso, head, arm
+                + [1]  # Will be converted into binary signal for fingers to close or open
+            )
+            self.action_low = -self.action_high
+        elif self.arm_controller_type == "joint_space_position":
+            self.action_high = np.array(
+                [self.base_max_linear_vel]  # Base is always controlled in diff drive
+                + [self.base_max_angular_vel]  # Base is always controlled in diff drive
+                + list(self.upper_joint_limits[2:12])  # torso, head, arm
+                + [1]  # Will be converted into binary signal for fingers to close or open
+            )
+            self.action_low = np.array(
+                [-self.base_max_linear_vel]  # Base is always controlled in diff drive
+                + [-self.base_max_angular_vel]  # Base is always controlled in diff drive
+                + list(self.lower_joint_limits[2:12])  # torso, head, arm
+                + [-1]  # Will be converted into binary signal for fingers to close or open
+            )
+        else:
+            print("wrong type")
+            exit(-1)
+
         self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
 
     def set_up_discrete_action_space(self):
@@ -364,10 +424,10 @@ class FetchGripper(LocomotorRobot):
         """
         super(FetchGripper, self).robot_specific_reset()
 
-        joints = self.untucked_default_joints
-        set_joint_positions(self.robot_ids[0], self.joint_ids, joints)
+        untucked_q = self.untucked_default_joints
+        set_joint_positions(self.robot_ids[0], self.joint_ids, untucked_q)
 
-        self.controller.reset()
+        self.arm_controller.reset()
 
     def get_end_effector_position(self):
         """
@@ -420,8 +480,6 @@ class FetchGripper(LocomotorRobot):
             link_a, link_b = joints_from_names(robot_id, names)
             p.setCollisionFilterPair(robot_id, robot_id, link_a, link_b, 0)
 
-        self.controller = IKController(robot=self, config=self.config)
-
         # Increase lateral friction for end effector
         for link in self.gripper_joint_ids:
             p.changeDynamics(self.get_body_id(), link, lateralFriction=500)
@@ -442,61 +500,110 @@ class FetchGripper(LocomotorRobot):
 
     def policy_action_to_robot_action(self, action):
         self.calc_state()
-        # action has 2 + 2 + 6 + 1 = 11 dimensional
-        robot_action = super(FetchGripper, self).policy_action_to_robot_action(action)
-        new_robot_action = np.zeros(self.num_joints)
+        if self.arm_controller_type == "cartesian_ik":
+            # action has 2 + 2 + 6 + 1 = 11 dimensional
+            # linear and angular base vels + pan and tilt head joint vels + ee position and vel + grasping open/close
 
-        # dim 0 and 1: linear and angular velocities of robot base
-        new_robot_action[self.wheel_joint_action_idx] = robot_action[:2]
+            # 1) Unnormalize (possibly) the given action
+            robot_action = super(FetchGripper, self).policy_action_to_robot_action(action)
 
-        # dim 2 and 3: head joint velocities
-        current_joint_position = np.array(
-            [item[0] for item in p.getJointStates(self.robot_ids[0], self.head_joint_ids)]
-        )
-        violate_lower_limit = current_joint_position < (
-            self.lower_joint_limits[self.head_joint_action_idx] + self.head_limit_epsilon
-        )
-        negative_action = robot_action[2:4] < 0.0
+            # 2) Some actions need to be transformed into commands for the DoFs of the robot
+            robot_joint_commands = np.zeros(self.num_joints)
 
-        violate_upper_limit = current_joint_position > (
-            self.upper_joint_limits[self.head_joint_action_idx] - self.head_limit_epsilon
-        )
-        positive_action = robot_action[2:4] > 0.0
+            # 3) Copy directly the first two dimensions (we do not transform here into wheel motion)
+            # dim 0 and 1 of the action space: linear and angular velocities of robot base
+            robot_joint_commands[self.base_joint_idx] = robot_action[:2]
 
-        # zero out head movement velocity if it gets close to the joint limit
-        violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
-        new_robot_action[self.head_joint_action_idx] = robot_action[2:4] * (~violation)
+            # 3) Process the head joint velocities
+            # dim 2 and 3 of the action space: head joint velocities
+            # we check that we do not command velocities that would bring the head out of the joint limits
+            # if that happens, we command 0 vels
+            current_joint_position = np.array(
+                [item[0] for item in p.getJointStates(self.robot_ids[0], self.head_joint_ids)]
+            )
+            violate_lower_limit = current_joint_position < (
+                self.lower_joint_limits[self.head_joint_idx] + self.head_limit_epsilon
+            )
+            negative_action = robot_action[2:4] < 0.0
 
-        # dim 4-9: eef delta pos and orn
-        new_robot_action[self.arm_joint_action_idx] = (
-            self.controller.control(robot_action[4:10])[self.arm_joint_action_idx]
-            / self.max_joint_velocities[self.arm_joint_action_idx]
-        )
+            violate_upper_limit = current_joint_position > (
+                self.upper_joint_limits[self.head_joint_idx] - self.head_limit_epsilon
+            )
+            positive_action = robot_action[2:4] > 0.0
+            # zero out head movement velocity if it gets close to the joint limit
+            violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
+            robot_joint_commands[self.head_joint_idx] = robot_action[2:4] * (~violation)
 
-        # dim 10: gripper open/close (with maximum joint velocity)
-        if robot_action[10] > 0.0:
-            new_robot_action[self.gripper_joint_action_idx] = 1.0
+            # 4) Process the desired delta in end-effector pose
+            # dim 4-9: eef delta pos and orn
+            q_arm_controller = self.arm_controller.control(robot_action[4:10])  # velocities of all joints
+            # TODO: why are we dividing by max_joint_velocities here? are the velocities not coming unnormalized already??
+            robot_joint_commands[self.torso_and_arm_joint_idx] = (
+                q_arm_controller[self.torso_and_arm_joint_idx] / self.max_joint_velocities[self.torso_and_arm_joint_idx]
+            )
+
+            # 5) Process the desired gripper action (binary: open/close)
+            # dim 10: gripper open/close (with maximum joint velocity)
+            # we check that we do not command velocities that would bring the fingers out of the joint limits
+            # if that happens, we command 0 vels
+            if robot_action[10] > 0.0:
+                robot_joint_commands[self.gripper_fingers_joint_idx] = 1.0
+            else:
+                robot_joint_commands[self.gripper_fingers_joint_idx] = -1.0
+            current_joint_position = np.array(
+                [item[0] for item in p.getJointStates(self.robot_ids[0], self.gripper_fingers_joint_ids)]
+            )
+            violate_lower_limit = current_joint_position < (
+                self.lower_joint_limits[self.gripper_fingers_joint_idx] + self.gripper_limit_epsilon
+            )
+            negative_action = robot_joint_commands[self.gripper_fingers_joint_idx] < 0.0
+
+            violate_upper_limit = current_joint_position > (
+                self.upper_joint_limits[self.gripper_fingers_joint_idx] - self.gripper_limit_epsilon
+            )
+            positive_action = robot_joint_commands[self.gripper_fingers_joint_idx] > 0.0
+            # zero out gripper velocity if it gets close to the joint limit
+            violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
+            robot_joint_commands[self.gripper_fingers_joint_idx] *= ~violation
+
+            return robot_joint_commands
         else:
-            new_robot_action[self.gripper_joint_action_idx] = -1.0
+            # action has 2 + 1 + 2 + 7 + 1 = 13 dimensional
+            # linear and angular base vels + torso + head pan/tilt + arm + gripper
 
-        current_joint_position = np.array(
-            [item[0] for item in p.getJointStates(self.robot_ids[0], self.gripper_finger_joint_ids)]
-        )
-        violate_lower_limit = current_joint_position < (
-            self.lower_joint_limits[self.gripper_joint_action_idx] + self.gripper_limit_epsilon
-        )
-        negative_action = new_robot_action[self.gripper_joint_action_idx] < 0.0
+            # 1) Unnormalize (possibly) the given action
+            # robot_action = super(FetchGripper, self).policy_action_to_robot_action(action)
+            robot_action = action  # TODO: Set the action space to be physical units
 
-        violate_upper_limit = current_joint_position > (
-            self.upper_joint_limits[self.gripper_joint_action_idx] - self.gripper_limit_epsilon
-        )
-        positive_action = new_robot_action[self.gripper_joint_action_idx] > 0.0
+            # 2) Actions are directly commands for the DoFs of the robot except for the gripper
+            robot_joint_commands = np.zeros(self.num_joints)
+            robot_joint_commands[:12] = robot_action[:12]
 
-        # zero out gripper velocity if it gets close to the joint limit
-        violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
-        new_robot_action[self.gripper_joint_action_idx] *= ~violation
+            # 5) Process the desired gripper action (binary: open/close)
+            # dim 10: gripper open/close (with maximum joint velocity)
+            # we check that we do not command velocities that would bring the fingers out of the joint limits
+            # if that happens, we command 0 vels
+            if robot_action[12] > 0.0:
+                robot_joint_commands[self.gripper_fingers_joint_idx] = 1.0
+            else:
+                robot_joint_commands[self.gripper_fingers_joint_idx] = -1.0
+            current_joint_position = np.array(
+                [item[0] for item in p.getJointStates(self.robot_ids[0], self.gripper_fingers_joint_ids)]
+            )
+            violate_lower_limit = current_joint_position < (
+                self.lower_joint_limits[self.gripper_fingers_joint_idx] + self.gripper_limit_epsilon
+            )
+            negative_action = robot_joint_commands[self.gripper_fingers_joint_idx] < 0.0
 
-        return new_robot_action
+            violate_upper_limit = current_joint_position > (
+                self.upper_joint_limits[self.gripper_fingers_joint_idx] - self.gripper_limit_epsilon
+            )
+            positive_action = robot_joint_commands[self.gripper_fingers_joint_idx] > 0.0
+            # zero out gripper velocity if it gets close to the joint limit
+            violation = np.logical_or(violate_lower_limit * negative_action, violate_upper_limit * positive_action)
+            robot_joint_commands[self.gripper_fingers_joint_idx] *= ~violation
+
+            return robot_joint_commands
 
     def calculate_ag_object(self):
         """
@@ -505,10 +612,10 @@ class FetchGripper(LocomotorRobot):
         """
         # Step 1 - find all objects in contact with both gripper forks
         gripper_fork_1_contacts = p.getContactPoints(
-            bodyA=self.get_body_id(), linkIndexA=self.gripper_finger_joint_ids[0]
+            bodyA=self.get_body_id(), linkIndexA=self.gripper_fingers_joint_ids[0]
         )
         gripper_fork_2_contacts = p.getContactPoints(
-            bodyA=self.get_body_id(), linkIndexA=self.gripper_finger_joint_ids[1]
+            bodyA=self.get_body_id(), linkIndexA=self.gripper_fingers_joint_ids[1]
         )
 
         contact_dict = {}
@@ -542,7 +649,7 @@ class FetchGripper(LocomotorRobot):
             eef_pos, eef_orn, _, _, _, _ = p.getLinkState(self.get_body_id(), self.eef_link_id)
             i_eef_pos, i_eef_orn = p.invertTransform(eef_pos, eef_orn)
 
-            gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[0])
+            gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_fingers_joint_ids[0])
             local_corners = [
                 [0.04, -0.012, 0.014],
                 [0.04, -0.012, -0.014],
@@ -553,7 +660,7 @@ class FetchGripper(LocomotorRobot):
                 corner, _ = p.multiplyTransforms(gripper_fork_1_state[0], gripper_fork_1_state[1], coord, [0, 0, 0, 1])
                 corners.append(corner)
 
-            gripper_fork_2_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[1])
+            gripper_fork_2_state = p.getLinkState(self.get_body_id(), self.gripper_fingers_joint_ids[1])
             local_corners = [
                 [0.04, 0.012, 0.014],
                 [0.04, 0.012, -0.014],
@@ -682,7 +789,7 @@ class FetchGripper(LocomotorRobot):
         self.should_freeze_joints = True
         # Disable collisions while picking things up
         set_coll_filter(target_id=ag_bid, body_id=self.get_body_id(), body_links=self.gripper_joint_ids, enable=False)
-        for joint_index in self.gripper_finger_joint_ids:
+        for joint_index in self.gripper_fingers_joint_ids:
             j_val = p.getJointState(self.get_body_id(), joint_index)[0]
             self.freeze_vals[joint_index] = j_val
 
