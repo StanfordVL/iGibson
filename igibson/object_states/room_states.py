@@ -1,6 +1,14 @@
 import numpy as np
 
-from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState, CachingEnabledObjectState
+from igibson.object_states.kinematics import KinematicsMixin
+from igibson.object_states.object_state_base import (
+    AbsoluteObjectState,
+    BooleanState,
+    CachingEnabledObjectState,
+    RelativeObjectState,
+)
+from igibson.object_states.on_floor import RoomFloor
+from igibson.object_states.utils import get_center_extent
 
 
 class InsideRoomTypes(CachingEnabledObjectState):
@@ -101,3 +109,19 @@ ROOM_STATES = [
     IsInAuditorium,
     IsInUndefined,
 ]
+
+
+class InRoom(RelativeObjectState, KinematicsMixin, BooleanState):
+    def _set_value(self, other, new_value):
+        raise NotImplementedError("Cannot set InRoom")
+
+    def _get_value(self, other):
+        if not isinstance(other, RoomFloor):
+            return False
+
+        objA_states = self.obj.states
+        center, extent = get_center_extent(objA_states)
+        room_instance = other.scene.get_room_instance_by_point(center[:2])
+        is_in_room = room_instance == other.room_instance
+
+        return is_in_room

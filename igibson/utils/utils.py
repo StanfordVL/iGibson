@@ -155,6 +155,17 @@ def quatXYZWFromRotMat(rot_mat):
     return quatXYZW
 
 
+def z_angle_from_quat(quat):
+    """Get the angle around the Z axis produced by the quaternion."""
+    rotated_X_axis = R.from_quat(quat).apply([1, 0, 0])
+    return np.arctan2(rotated_X_axis[1], rotated_X_axis[0])
+
+
+def z_rotation_from_quat(quat):
+    """Get the quaternion for the rotation around the Z axis produced by the quaternion."""
+    return R.from_euler("z", z_angle_from_quat(quat)).as_quat()
+
+
 # Represents a rotation by q1, followed by q0
 def multQuatLists(q0, q1):
     """Multiply two quaternions that are represented as lists."""

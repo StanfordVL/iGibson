@@ -23,6 +23,7 @@ from igibson.object_states.robot_related_states import (
 )
 from igibson.object_states.room_states import (
     ROOM_STATES,
+    InRoom,
     InsideRoomTypes,
     IsInAuditorium,
     IsInBalcony,
