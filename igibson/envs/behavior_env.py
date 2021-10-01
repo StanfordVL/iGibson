@@ -121,7 +121,7 @@ class BehaviorEnv(iGibsonEnv):
         elif robot_class == "FetchGripper":
             robot_type = FetchGripper
         else:
-            Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
+            raise ValueError("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
         self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config=self.config)
         self.task.initialize_simulator(

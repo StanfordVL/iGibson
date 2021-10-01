@@ -72,13 +72,20 @@ class Open(CachingEnabledObjectState, BooleanState):
         # Return open if any joint is open, false otherwise.
         return any(joint_openness)
 
-    def _set_value(self, new_value):
+    def _set_value(self, new_value, fully=False):
+        """
+        Set the openness state, either to a random joint position satisfying the new value, or fully open/closed.
+
+        @param new_value: bool value for the openness state of the object.
+        @param fully: whether the object should be fully opened/closed (e.g. all relevant joints to 0/1).
+        @return: bool indicating setter success. Failure may happen due to unannotated objects.
+        """
         relevant_joint_infos = _get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
 
         # All joints are relevant if we are closing, but if we are opening let's sample a subset.
-        if new_value:
+        if new_value and not fully:
             num_to_open = random.randint(1, len(relevant_joint_infos))
             relevant_joint_infos = random.sample(relevant_joint_infos, num_to_open)
 
@@ -88,10 +95,16 @@ class Open(CachingEnabledObjectState, BooleanState):
 
             if new_value:
                 # Sample an open position.
-                joint_pos = random.uniform(joint_threshold, joint_info.jointUpperLimit)
+                if fully:
+                    joint_pos = joint_info.jointUpperLimit
+                else:
+                    joint_pos = random.uniform(joint_threshold, joint_info.jointUpperLimit)
             else:
                 # Sample a closed position.
-                joint_pos = random.uniform(joint_info.jointLowerLimit, joint_threshold)
+                if fully:
+                    joint_pos = joint_info.jointLowerLimit
+                else:
+                    joint_pos = random.uniform(joint_info.jointLowerLimit, joint_threshold)
 
             # Save sampled position.
             utils.set_joint_position(self.obj.get_body_id(), joint_info.jointIndex, joint_pos)

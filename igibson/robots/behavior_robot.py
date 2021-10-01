@@ -209,6 +209,8 @@ class BehaviorRobot(object):
 
         self.parts["left_hand"].move(left_pos, left_orn)
         self.parts["right_hand"].move(right_pos, right_orn)
+        if self.constraints_active["body"]:
+            self.parts["body"].move(pos, orn)
 
     def get_position(self):
         return self.parts["body"].get_position()

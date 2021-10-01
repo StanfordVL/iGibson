@@ -997,7 +997,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         x, y = self.world_to_seg_map(xy)
-        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]:
+        if x >= self.room_ins_map.shape[0] or y >= self.room_ins_map.shape[1]:
             return None
         ins_id = self.room_ins_map[x, y]
         # room boundary
