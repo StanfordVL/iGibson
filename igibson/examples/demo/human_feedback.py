@@ -1,6 +1,6 @@
 import threading as th
 
-from pynput import keyboard
+from pynput import keyboard, mouse
 
 
 # order: torso - x, y, z, roll, pitch, yaw
@@ -184,6 +184,10 @@ class HumanFeedback:
         self.human_keyboard_feedback = None
         self.run_keyboard_capture_thread()
 
+        self.human_mouse_feedback = None
+        self.start_mouse_thread = False
+        self.run_mouse_capture_thread()
+
     def keyboard_capture_thread(self):
         with keyboard.Events() as events:
             event = events.get(1e6)
@@ -205,4 +209,26 @@ class HumanFeedback:
             self.run_keyboard_capture_thread()
 
         self.human_keyboard_feedback = None
+        return feedback
+
+    def mouse_capture_thread(self):
+        with mouse.Events() as events:
+            event = events.get(1e6)
+            self.start_mouse_thread = True
+            if "Click" in str(event) and "pressed=False" in str(event):
+                self.human_mouse_feedback = event
+
+    def run_mouse_capture_thread(self):
+        th.Thread(target=self.mouse_capture_thread, args=(), name="mouse_capture_thread", daemon=True).start()
+
+    def return_human_mouse_feedback(self):
+        feedback = None
+        if self.human_mouse_feedback:
+            feedback = self.human_mouse_feedback
+
+        if self.start_mouse_thread:
+            self.run_mouse_capture_thread()
+            self.start_mouse_thread = False
+
+        self.human_mouse_feedback = None
         return feedback

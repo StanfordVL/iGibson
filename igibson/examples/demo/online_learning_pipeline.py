@@ -69,6 +69,10 @@ def train_ol_model(ol_agent, env, device, learning_rate):
                     optimizer.step()
                     print(loss)
 
+            curr_mouse_feedback = human_feedback.return_human_mouse_feedback()
+            if curr_mouse_feedback:
+                print(curr_mouse_feedback)
+
             total_reward += reward
 
 
@@ -80,7 +84,7 @@ if __name__ == "__main__":
     config_file = "behavior_full_observability.yaml"
     env = BehaviorEnv(
         config_file=os.path.join(igibson.example_config_path, config_file),
-        mode="gui",
+        mode="headless",
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
         action_filter="all",
