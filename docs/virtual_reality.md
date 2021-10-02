@@ -10,7 +10,7 @@ The HTC Vive Pro Eye tracking driver is not available for Linux. You must have t
 2. (optional) if you plan to use eye tracking on Windows, create a [vive developer account](https://hub.vive.com/sso/login) then download and install the [SRAnipal runtime](https://developer.vive.com/resources/vive-sense/sdk/vive-eye-and-facial-tracking-sdk/). Note you should [calibrate](https://developer.vive.com/us/support/sdk/category_howto/how-to-calibrate-eye-tracking.html) the Vive eye tracker before each recording session.
 
 3. Ensure you have installed iGibson according to the installation [instructions](http://svl.stanford.edu/igibson/docs/installation.html#installation-method). 
-    * Note: On Windows VR support is eanbled by default. On Linux, you must install with an additional environmental variable `USE_VR=True pip install -e .`. You must also have addition development headers installed: on Ubuntu `sudo apt install xorg-dev` and on Centos/Fedora: `sudo dnf install libXinerama-devel libXi-devel libXrandr-devel libXcursor-devel`.
+    * Note: On Windows VR support is eanbled by default. On Linux, you must install with an additional environmental variable `USE_VR=TRUE pip install -e .`. You must also have addition development headers installed: on Ubuntu `sudo apt install xorg-dev` and on Centos/Fedora: `sudo dnf install libXinerama-devel libXi-devel libXrandr-devel libXcursor-devel`.
 
 ### VR examples
 
