@@ -111,7 +111,11 @@ class FetchGripper(LocomotorRobot):
             + self.gripper_action_dim,
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
-            control=["differential_drive"] * 2 + [joint_control] * 10 + ["velocity"] * 2,
+            control=["differential_drive"] * 2
+            + [joint_control]
+            + ["velocity"] * 2
+            + [joint_control] * 7
+            + ["velocity"] * 2,
             self_collision=False,
         )
 
