@@ -46,8 +46,8 @@ class FetchGripper(LocomotorRobot):
         self.gripper_velocity = config.get("gripper_velocity", 1.0)  # 1.0 represents maximum joint velocity
         self.default_arm_pose = config.get("default_arm_pose", "vertical")
         self.trunk_offset = config.get("trunk_offset", 0.0)
-        self.use_ag = config.get("use_ag", False)  # Use assisted grasping
-        self.ag_strict_mode = config.get("ag_strict_mode", False)  # Require object to be contained by forks for AG
+        self.use_ag = config.get("use_ag", True)  # Use assisted grasping
+        self.ag_strict_mode = config.get("ag_strict_mode", True)  # Require object to be contained by forks for AG
         self.wheel_dim = 2
         self.head_dim = 2
         self.arm_delta_pos_dim = 3
@@ -313,10 +313,9 @@ class FetchGripper(LocomotorRobot):
         relative_eef_pos = self.get_relative_eef_position()
         relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
         joint_states = np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
-        ag_data = self.calculate_ag_object()
-        has_grasped = np.array([ag_data is not None]).astype(np.float32)
-        self.ag_data = ag_data
-        return np.concatenate([relative_eef_pos, relative_eef_orn, has_grasped, joint_states])
+        self.ag_data = self.calculate_ag_object()
+        is_grasping = np.array([self.object_in_hand is not None and self.release_counter is None]).astype(np.float32)
+        return np.concatenate([relative_eef_pos, relative_eef_orn, is_grasping, joint_states])
 
     def set_up_continuous_action_space(self):
         """
@@ -692,9 +691,7 @@ class FetchGripper(LocomotorRobot):
                 self.establish_grasp(ag_data)
 
     def is_grasping(self, candidate_obj):
-        return [
-            self.object_in_hand == candidate_obj,
-        ]
+        return np.array([self.object_in_hand == candidate_obj])
 
     # significant overlap with BehaviorRobot
     def dump_state(self):

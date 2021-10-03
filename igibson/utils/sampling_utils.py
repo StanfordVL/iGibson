@@ -3,11 +3,13 @@ from collections import Counter, defaultdict
 
 import numpy as np
 import pybullet as p
+import trimesh
 from scipy.spatial.transform import Rotation
 from scipy.stats import truncnorm
 
 import igibson
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils import utils
 
 _DEFAULT_AABB_OFFSET = 0.1
 _PARALLEL_RAY_NORMAL_ANGLE_TOLERANCE = 1.0  # Around 60 degrees
@@ -200,15 +202,8 @@ def sample_cuboid_on_object(
         are set to None when no successful sampling happens within the max number of attempts. Refusal details are only
         filled if the debug_sampling flag is globally set to True.
     """
-    # This is imported here to avoid a circular import with object_states.
-    from igibson.object_states import AABB
-
-    aabb = obj.states[AABB].get_value()
-    aabb_min = np.array(aabb[0])
-    aabb_max = np.array(aabb[1])
-
-    sampling_aabb_min = aabb_min - aabb_offset
-    sampling_aabb_max = aabb_max + aabb_offset
+    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(xy_aligned=True)
+    half_extent_with_offset = (bbox_bf_extent / 2) + aabb_offset
 
     body_id = obj.get_body_id()
 
@@ -222,9 +217,11 @@ def sample_cuboid_on_object(
 
     for i in range(num_samples):
         # Sample the starting positions in advance.
+        # TODO: Narrow down the sampling domain so that we don't sample scenarios where the center is in-domain but the
+        # full extent isn't. Currently a lot of samples are being wasted because of this.
         samples = sample_origin_positions(
-            sampling_aabb_min,
-            sampling_aabb_max,
+            -half_extent_with_offset,
+            half_extent_with_offset,
             max_sampling_attempts,
             bimodal_mean_fraction,
             bimodal_stdev_fraction,
@@ -236,29 +233,56 @@ def sample_cuboid_on_object(
         # Try each sampled position in the AABB.
         for axis, is_top, start_pos in samples:
             # Compute the ray's destination using the sampling & AABB information.
-            point_on_face = compute_ray_destination(axis, is_top, start_pos, aabb_min, aabb_max)
+            point_on_face = compute_ray_destination(
+                axis, is_top, start_pos, -half_extent_with_offset, half_extent_with_offset
+            )
 
             # If we have a list of offset distances, pick the distance for this particular sample we're getting.
             this_cuboid_dimensions = cuboid_dimensions if cuboid_dimensions.ndim == 1 else cuboid_dimensions[i]
 
             # Obtain the parallel rays using the direction sampling method.
-            sources, destinations, grid = get_parallel_rays(start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0)
+            bbf_sources, bbf_destinations, grid = get_parallel_rays(
+                start_pos, point_on_face, this_cuboid_dimensions[:2] / 2.0
+            )
+
+            # Transform the sources, destinations and grid to the world frame coordinates.
+            to_wf_transform = utils.quat_pos_to_mat(bbox_center, bbox_orn)
+            sources = trimesh.transformations.transform_points(bbf_sources, to_wf_transform)
+            destinations = trimesh.transformations.transform_points(bbf_destinations, to_wf_transform)
 
             # Time to cast the rays.
             cast_results = p.rayTestBatch(rayFromPositions=sources, rayToPositions=destinations, numThreads=0)
 
-            # Check that all rays hit the object.
-            if not check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"]):
+            # for ray_start, ray_end in zip(sources, destinations):
+            #     p.addUserDebugLine(ray_start, ray_end, lineWidth=4)
+
+            threshold, hits = check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"], 0.6)
+            if not threshold:
+                continue
+
+            filtered_cast_results = []
+            center_idx = int(len(cast_results) / 2)
+            filtered_center_idx = None
+            center_hit = False
+            for idx, hit in enumerate(hits):
+                if hit:
+                    filtered_cast_results.append(cast_results[idx])
+                    if idx == center_idx:
+                        center_hit = True
+                        filtered_center_idx = len(filtered_cast_results) - 1
+
+            # Only consider objects whose center idx has a ray hit
+            if not center_hit:
                 continue
 
             # Process the hit positions and normals.
-            hit_positions = np.array([ray_res[3] for ray_res in cast_results])
-            hit_normals = np.array([ray_res[4] for ray_res in cast_results])
+            hit_positions = np.array([ray_res[3] for ray_res in filtered_cast_results])
+            hit_normals = np.array([ray_res[4] for ray_res in filtered_cast_results])
             hit_normals /= np.linalg.norm(hit_normals, axis=1)[:, np.newaxis]
 
-            center_idx = int(len(cast_results) / 2)
-            hit_link = cast_results[center_idx][1]
-            center_hit_normal = hit_normals[center_idx]
+            assert filtered_center_idx
+            hit_link = filtered_cast_results[filtered_center_idx][1]
+            center_hit_normal = hit_normals[filtered_center_idx]
 
             # Reject anything facing more than 45deg downwards if requested.
             if refuse_downwards:
@@ -276,17 +300,10 @@ def sample_cuboid_on_object(
 
             # The fit_plane normal can be facing either direction on the normal axis, but we want it to face away from
             # the object for purposes of normal checking and padding. To do this:
-            # First, we get the multiplier we'd need to multiply by to get this normal to face in the positive
-            # direction of our axis. This is simply the sign of our vector's component in our axis.
-            facing_multiplier = np.sign(plane_normal[axis])
-
-            # Then we invert the multiplier based on whether we want it to face in the positive or negative direction
-            # of the axis. This is determined by whether or not is_top is True, e.g. the sampler intended this as a
-            # positive-facing or negative-facing sample.
-            facing_multiplier *= 1 if is_top else -1
-
-            # Finally, we multiply the entire normal vector by the multiplier to make it face the correct direction.
-            plane_normal *= facing_multiplier
+            # We get a vector from the centroid towards the center ray source, and flip the plane normal to match it.
+            # The cosine has positive sign if the two vectors are similar and a negative one if not.
+            plane_to_source = sources[center_idx] - plane_centroid
+            plane_normal *= np.sign(np.dot(plane_to_source, plane_normal))
 
             # Check that the plane normal is similar to the hit normal
             if not check_normal_similarity(
@@ -302,6 +319,7 @@ def sample_cuboid_on_object(
                 continue
 
             # Get projection of the base onto the plane, fit a rotation, and compute the new center hit / corners.
+            hit_positions = np.array([ray_res[3] for ray_res in cast_results])
             projected_hits = get_projection_onto_plane(hit_positions, plane_centroid, plane_normal)
             padding = _DEFAULT_CUBOID_BOTTOM_PADDING * plane_normal
             projected_hits += padding
@@ -392,15 +410,16 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
     return True
 
 
-def check_rays_hit_object(cast_results, body_id, refusal_log):
+def check_rays_hit_object(cast_results, body_id, refusal_log, threshold=1.0):
     hit_body_ids = [ray_res[0] for ray_res in cast_results]
-    if not all(hit_body_id == body_id for hit_body_id in hit_body_ids):
+    ray_hits = list(hit_body_id == body_id for hit_body_id in hit_body_ids)
+    if not (sum(ray_hits) / len(hit_body_ids)) >= threshold:
         if igibson.debug_sampling:
             refusal_log.append("hits %r" % hit_body_ids)
 
-        return False
+        return False, ray_hits
 
-    return True
+    return True, ray_hits
 
 
 def check_hit_max_angle_from_z_axis(hit_normal, max_angle_with_z_axis, refusal_log):
@@ -446,6 +465,9 @@ def compute_ray_destination(axis, is_top, start_pos, aabb_min, aabb_max):
 
 
 def check_cuboid_empty(hit_normal, bottom_corner_positions, refusal_log, this_cuboid_dimensions):
+    if igibson.debug_sampling:
+        draw_debug_markers(bottom_corner_positions)
+
     # Compute top corners.
     top_corner_positions = bottom_corner_positions + hit_normal * this_cuboid_dimensions[2]
 

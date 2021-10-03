@@ -16,6 +16,11 @@ from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
 
+BEHAVIOR_ROBOT_ACTION_SCALING = 0.05
+# The original action space defined in BehaviorEnv is too large and will be clipped when applying
+# the action in robot.apply_action. So we multiple the action with a scaling factor. It can be
+# further adjusted to get better performance or more stable training.
+
 
 class BehaviorEnv(iGibsonEnv):
     """
@@ -116,7 +121,7 @@ class BehaviorEnv(iGibsonEnv):
         elif robot_class == "FetchGripper":
             robot_type = FetchGripper
         else:
-            Exception("Only BehaviorRobot and FetchGripper are supported for behavior_env")
+            raise ValueError("Only BehaviorRobot and FetchGripper are supported for behavior_env")
 
         self.task = iGBEHAVIORActivityInstance(task, task_id, robot_type=robot_type, robot_config=self.config)
         self.task.initialize_simulator(
@@ -216,7 +221,7 @@ class BehaviorEnv(iGibsonEnv):
                 new_action[:19] = action[:19]
                 new_action[20:27] = action[19:]
             # The original action space for BehaviorRobot is too wide for random exploration
-            new_action *= 0.05
+            new_action *= BEHAVIOR_ROBOT_ACTION_SCALING
         elif isinstance(self.robots[0], FetchGripper):
             new_action = np.zeros((11,))
             if self.action_filter == "navigation":

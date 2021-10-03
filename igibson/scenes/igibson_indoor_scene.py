@@ -123,6 +123,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             scene_dir = get_3dfront_scene_path(scene_id)
         self.scene_source = scene_source
         self.scene_dir = scene_dir
+        self.fname = fname
         self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.random_groups = {}
@@ -473,7 +474,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for id in obj.body_ids:
                 del self.objects_by_id[id]
         else:
-            del self.objects_by_id[obj.body_id]
+            del self.objects_by_id[obj.get_body_id()]
 
     def _add_object(self, obj):
         """
@@ -520,8 +521,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for id in obj.body_ids:
                 self.objects_by_id[id] = obj
         else:
-            if obj.body_id is not None:
-                self.objects_by_id[obj.body_id] = obj
+            if obj.get_body_id() is not None:
+                self.objects_by_id[obj.get_body_id()] = obj
 
     def randomize_texture(self):
         """
@@ -996,7 +997,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         x, y = self.world_to_seg_map(xy)
-        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]:
+        if x >= self.room_ins_map.shape[0] or y >= self.room_ins_map.shape[1]:
             return None
         ins_id = self.room_ins_map[x, y]
         # room boundary
@@ -1013,8 +1014,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         ids = []
         for obj_name in self.objects_by_name:
-            if self.objects_by_name[obj_name].body_id is not None:
-                ids.extend(self.objects_by_name[obj_name].body_id)
+            # TODO: Remove URDFObject-specific logic
+            if (
+                hasattr(self.objects_by_name[obj_name], "body_ids")
+                and self.objects_by_name[obj_name].body_ids is not None
+            ):
+                ids.extend(self.objects_by_name[obj_name].body_ids)
+            elif self.objects_by_name[obj_name].get_body_id() is not None:
+                ids.append(self.objects_by_name[obj_name].get_body_id())
         return ids
 
     def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):

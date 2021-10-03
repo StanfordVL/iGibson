@@ -38,10 +38,10 @@ def main():
                 bbox_min = np.array(bbox_data["min"])
             offset = -(bbox_max + bbox_min) / 2.0
 
-            z = stable_z_on_aabb(obj.body_id, [[0, 0, 0], [0, 0, 0]])
+            z = stable_z_on_aabb(obj.get_body_id(), [[0, 0, 0], [0, 0, 0]])
 
             obj.set_position([offset[0], offset[1], z])
-            _, extent = get_center_extent(obj.body_id)
+            _, extent = get_center_extent(obj.get_body_id())
 
             max_half_extent = max(extent) / 2.0
             px = max_half_extent * 3.0
@@ -51,7 +51,7 @@ def main():
 
             s.renderer.set_camera(camera_pose, [0, 0, pz], [0, 0, 1])
 
-            num_joints = p.getNumJoints(obj.body_id)
+            num_joints = p.getNumJoints(obj.get_body_id())
             if num_joints == 0:
                 s.reload()
                 continue
@@ -60,13 +60,13 @@ def main():
             joint_low = []
             joint_high = []
             for j in range(num_joints):
-                j_low, j_high = p.getJointInfo(obj.body_id, j)[8:10]
+                j_low, j_high = p.getJointInfo(obj.get_body_id(), j)[8:10]
                 joint_low.append(j_low)
                 joint_high.append(j_high)
 
             # set joints to their lowest limits
             for j, j_low in zip(range(num_joints), joint_low):
-                p.resetJointState(obj.body_id, j, targetValue=j_low, targetVelocity=0.0)
+                p.resetJointState(obj.get_body_id(), j, targetValue=j_low, targetVelocity=0.0)
             s.sync()
 
             # render the images
@@ -82,7 +82,7 @@ def main():
 
             # set joints to their highest limits
             for j, j_high in zip(range(num_joints), joint_high):
-                p.resetJointState(obj.body_id, j, targetValue=j_high, targetVelocity=0.0)
+                p.resetJointState(obj.get_body_id(), j, targetValue=j_high, targetVelocity=0.0)
             s.sync()
 
             # render the images

@@ -1,9 +1,10 @@
 import pybullet as p
 
+from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
 
 
-class SoftObject(StatefulObject):
+class SoftObject(StatefulObject, SingleBodyObject):
     """
     Soft object (WIP)
     """
@@ -28,8 +29,9 @@ class SoftObject(StatefulObject):
         frictionCoeff=0,
         useFaceContact=0,
         useSelfCollision=0,
+        **kwargs
     ):
-        super(SoftObject, self).__init__()
+        super(SoftObject, self).__init__(**kwargs)
         self.filename = filename
         self.scale = scale
         self.basePosition = basePosition
@@ -77,10 +79,12 @@ class SoftObject(StatefulObject):
         # Set signed distance function voxel size (integrate to Simulator class?)
         p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
 
-        return body_id
+        return [body_id]
 
     def add_anchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0, 0, 0], physicsClientId=0):
         """
         Create soft body anchor
         """
-        p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId)
+        p.createSoftBodyAnchor(
+            self.get_body_id(), nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId
+        )

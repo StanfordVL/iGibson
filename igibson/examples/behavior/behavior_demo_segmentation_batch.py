@@ -15,7 +15,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    def get_segmentation_callbacks():
+    def get_segmentation_callbacks(**kwargs):
         # Create default segmentation processors.
         segmentation_processors = get_default_segmentation_processors()
 

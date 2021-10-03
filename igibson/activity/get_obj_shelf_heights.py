@@ -29,7 +29,8 @@ if __name__ == "__main__":
 
     out_dict = {}
     obj = ArticulatedObject(filename=args.object_file, scale=1.0)
-    body_id = simulator.import_object(obj)
+    simulator.import_object(obj)
+    body_id = obj.get_body_id()
     aabb = pb.getAABB(body_id)
     size = [aabb[1][0] - aabb[0][0], aabb[1][1] - aabb[0][1], aabb[1][2] - aabb[0][2]]
 
