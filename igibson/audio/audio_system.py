@@ -10,104 +10,15 @@ import numpy as np
 import pybullet as p
 from scipy.io.wavfile import write
 
-#This is an inelegant (and potentially unsustainable) way to map materials, and should be directly unified
-#with the C enums in resonance audio 
-
-#enum MaterialName {
-#  kTransparent = 0,
-#  kAcousticCeilingTiles,
-#  kBrickBare,
-#  kBrickPainted,
-#  kConcreteBlockCoarse,
-#  kConcreteBlockPainted,
-#  kCurtainHeavy,
-#  kFiberGlassInsulation,
-#  kGlassThin,
-#  kGlassThick,
-#  kGrass,
-#  kLinoleumOnConcrete,
-#  kMarble,
-#  kMetal,
-#  kParquetOnConcrete,
-#  kPlasterRough,
-#  kPlasterSmooth,
-#  kPlywoodPanel,
-#  kPolishedConcreteOrTile,
-#  kSheetrock,
-#  kWaterOrIceSurface,
-#  kWoodCeiling,
-#  kWoodPanel,
-#  kUniform,
-#  kNumMaterialNames
-#};
-
-#We hardcode these mappings because there is no clean way to directly access the materials of the iGibson mesh if they are loaded with
-#randomization off
-iGibsonToResonanceMaterialMap = {
-    "walls": 5,             #kConcreteBlockPainted
-    "floors": 22,           #kWoodPanel
-    "ceilings": 5,          #kConcreteBlockPainted
-    "window": 8             #kGlassThick
-}
-
-
-def getMesh(simulator):
-    vert, face = simulator.renderer.dump()
-
-    vert_flattened = np.empty((vert.size,), dtype=vert.dtype)
-    vert_flattened[0::3] = vert[:,0]
-    vert_flattened[1::3] = vert[:,1]
-    vert_flattened[2::3] = vert[:,2]
-
-    face_flattened = np.empty((face.size,), dtype=face.dtype)
-    face_flattened[0::3] = face[:,0]
-    face_flattened[1::3] = face[:,1]
-    face_flattened[2::3] = face[:,2]
-
-    material_indices = np.ones(face.shape[0]) * 22  #TODO: Implement material-specific customization
-
-    return vert_flattened, face_flattened, material_indices
-
-def dumpFromRenderer(renderer, obj_pb_ids):
-    instances_vertices = []
-    instances_faces = []
-    len_v = 0
-    for instance in renderer.instances:
-        if instance.pybullet_uuid in obj_pb_ids:
-            vertex_info, face_info = instance.dump()
-            for v, f in zip(vertex_info, face_info):
-                instances_vertices.append(v)
-                instances_faces.append(f + len_v)
-                len_v += len(v)
-    instances_vertices = np.concatenate(instances_vertices, axis=0)
-    instances_faces = np.concatenate(instances_faces, axis=0)
-
-    return instances_vertices, instances_faces
-
-def getSceneSkeletonMesh(simulator):
-    vert, face, mat = [], [], []
-    for category in ["walls", "floors", "ceilings", "window"]:
-        for obj in simulator.scene.objects_by_category[category]:
-            for id in obj.body_ids:
-                obj_verts, obj_faces = dumpFromRenderer(simulator.renderer, [id])
-                mat.extend([iGibsonToResonanceMaterialMap[category]] * len(obj_faces))
-                vert.extend(obj_verts)
-                face.extend(obj_faces)
-   
-    vert, face = np.asarray(vert), np.asarray(face)
-    vert_flattened = np.empty((vert.size,), dtype=vert.dtype)
-    vert_flattened[0::3] = vert[:,0]
-    vert_flattened[1::3] = vert[:,1]
-    vert_flattened[2::3] = vert[:,2]
-
-    face_flattened = np.empty((face.size,), dtype=face.dtype)
-    face_flattened[0::3] = face[:,0]
-    face_flattened[1::3] = face[:,1]
-    face_flattened[2::3] = face[:,2]
-
-    material_indices = np.asarray(mat) 
-
-    return vert_flattened, face_flattened, material_indices
+# Mesh object required to be populated for AudioSystem
+class AcousticMesh:
+    # flattened vertex position array
+    verts = None
+    # flattened list of vertex indices of triangle faces
+    faces = None
+    # An array of integers, corresponding to the ResonanceAudio MaterialName enum value for each
+    # face in the mesh
+    materials = None
 
 class AudioSystem(object):
     """
@@ -115,12 +26,13 @@ class AudioSystem(object):
     It manages a set of audio objects and their corresponding audio buffers.
     It also interfaces with ResonanceAudio to perform the simulaiton to the listener.
     """
-    def __init__(self, simulator, listener, is_Viewer=False, writeToFile=False, SR=44100, num_probes=10):
+    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, writeToFile=False, SR=44100, num_probes=10):
         """
         :param scene: iGibson scene
         :param pybullet: pybullet client
         :param simulator: Simulator object
         :param listener: Audio receiver, either a Viewer object or any subclass of BaseRobot
+        :param mesh: AudioMesh object, populated by caller. This mesh is primarily used for reverb/reflection baking.
         :param SR: ResonanceAudio sample rate
         :param num_probes: Determines number of reverb/reflections probes in the scene. Actual number is num_probes ^ 2
         """
@@ -129,6 +41,9 @@ class AudioSystem(object):
         self.s = simulator
         self.listener = listener
         self.writeToFile = writeToFile
+
+        if acousticMesh.faces is None or acousticMesh.verts is None or acousticMesh.materials is None:
+            raise ValueError('Invalid audioMesh')
 
         def getViewerOrientation():
             #from numpy-quaternion github
@@ -145,8 +60,6 @@ class AudioSystem(object):
             self.get_pos = self.listener.eyes.get_position
             self.get_ori = self.listener.eyes.get_orientation
 
-        verts, faces, materials = getSceneSkeletonMesh(simulator)
-
         #TODO: Here we assume an integer number of audio frames per simulator time step. 
         #Usually true, but if not, is this even a problem?
 
@@ -154,7 +67,7 @@ class AudioSystem(object):
         audio.InitializeSystem(self.framesPerBuf, SR)
 
         #Load scene mesh without dynamic objects
-        audio.LoadMesh(int(verts.size / 3), int(faces.size / 3), verts, faces, materials, 0.9) #Scattering coefficient needs tuning?
+        audio.LoadMesh(int(acousticMesh.verts.size / 3), int(acousticMesh.faces.size / 3), acousticMesh.verts, acousticMesh.faces, acousticMesh.materials, 0.9) #Scattering coefficient needs tuning?
 
         #Get reverb and reflection properties at equally spaced point in grid along traversible map
         self.probe_key_to_pos_by_floor = []
@@ -174,11 +87,15 @@ class AudioSystem(object):
 
         print("Finished computing reverb probes")
         self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
+
+        #We can only intelligently avoid doble-counting collisions with individual objects on interactive scenes
         self.alwaysCountCollisionIDs = set()
-        #Since the walls are all assigned one obj_id, we need to make sure not to automatically skip counting duplicate collisions with these ids
-        for category in ["walls", "floors", "ceilings"]:
-            for obj in self.s.scene.objects_by_category[category]: 
-                self.alwaysCountCollisionIDs.add(obj)
+        self.single_occl_hit_per_obj = isinstance(self.scene, InteractiveIndoorScene)
+        if self.single_occl_hit_per_obj:
+            #Since the walls are all assigned one obj_id, we need to make sure not to automatically skip counting duplicate collisions with these ids
+            for category in ["walls", "floors", "ceilings"]:
+                for obj in self.s.scene.objects_by_category[category]: 
+                    self.alwaysCountCollisionIDs.add(obj)
 
         self.sourceToEnabled, self.sourceToBuffer, self.sourceToRepeat,  self.sourceToResonanceID = {}, {}, {}, {}
         self.current_output, self.complete_output = [], []
@@ -218,8 +135,6 @@ class AudioSystem(object):
         self.sourceToRepeat[source_obj_id] = repeat
         self.sourceToBuffer[source_obj_id] = buffer
         audio.SetSourceOcclusion(self.sourceToResonanceID[source_obj_id], 0)
-        
-
 
     def setSourceEnabled(self, source_obj_id, enabled=True):
         self.sourceToEnabled[source_obj_id] = enabled
@@ -254,14 +169,13 @@ class AudioSystem(object):
                 hit_objects = set()
                 while hit_num < 12:
                     rayHit = p.rayTestBatch([source_pos], [listener_pos], reportHitNumber=hit_num, fractionEpsilon=0.01)
-                    #print(rayHit)
                     hit_id = rayHit[0][0]
                     if hit_id == -1: #add collision with listener
                         break
                     if hit_id != source:
                         if hit_id not in hit_objects:
                             occl_hits += 1
-                        if hit_id not in self.alwaysCountCollisionIDs:
+                        if self.single_occl_hit_per_obj and hit_id not in self.alwaysCountCollisionIDs:
                             hit_objects.add(hit_id)
                     hit_num += 1
                 audio.SetSourceOcclusion(self.sourceToResonanceID[source], occl_hits)
