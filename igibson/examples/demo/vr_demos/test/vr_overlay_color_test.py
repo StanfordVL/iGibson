@@ -170,7 +170,7 @@ def main():
             )
             handle.set_position(new_pos)
             handle.set_orientation(orn)
-            p.changeDynamics(handle.body_id, -1, mass=masses[i])
+            p.changeDynamics(handle.get_body_id(), -1, mass=masses[i])
 
     # Text position/size is described in percentage of axes in screen space
     wrap_scroll_text = s.add_vr_overlay_text(

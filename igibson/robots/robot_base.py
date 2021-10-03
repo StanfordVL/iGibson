@@ -41,8 +41,9 @@ class BaseRobot(object):
             self.model_type = "MJCF"
             assert self.scale == 1, "pybullet does not support scaling for MJCF model (p.loadMJCF)"
 
+        # TODO: Replace this with a reasonable StatefulObject inheritance.
         self.states = {}
-        prepare_object_states(self, online=True)
+        prepare_object_states(self, abilities={"robot": {}})
 
         # For BEHAVIOR compatibility -- may be removed eventually
         self.category = "agent"
@@ -162,8 +163,9 @@ class BaseRobot(object):
     def can_toggle(self, toggle_position, toggle_distance_threshold):
         """
         Returns True if the part of the robot that can toggle a toggleable is within the given range of a point corresponding to a toggle marker
+        by default, we assume robot cannot toggle toggle markers
         """
-        raise NotImplementedError
+        return False
 
     def dump_state(self):
         pass
@@ -220,6 +222,11 @@ class BodyPart:
         """Get orientation of body part
         Orientation is by default defined in [x,y,z,w]"""
         return self.get_pose()[3:]
+
+    def get_position_orientation(self):
+        """Get position and orientation of the body part
+        Redundant with get_pose"""
+        return self.get_position(), self.get_orientation()
 
     def get_rpy(self):
         """Get roll, pitch and yaw of body part

@@ -67,6 +67,7 @@ class MeshRenderer(object):
         self.height = height
         self.faces = []
         self.instances = []
+        self.update_instance_id_to_pb_id_map()
         self.fisheye = rendering_settings.use_fisheye
         self.optimized = rendering_settings.optimized
         self.texture_files = {}
@@ -143,10 +144,23 @@ class MeshRenderer(object):
                 self.rendering_settings.show_glfw_window,
                 rendering_settings.fullscreen,
             )
-        else:
+        elif self.platform == "Linux" and self.__class__.__name__ == "MeshRendererVR":
+            from igibson.render.mesh_renderer import VRRendererContext
+
+            self.r = VRRendererContext.VRRendererContext(
+                width,
+                height,
+                int(self.rendering_settings.glfw_gl_version[0]),
+                int(self.rendering_settings.glfw_gl_version[1]),
+                self.rendering_settings.show_glfw_window,
+                rendering_settings.fullscreen,
+            )
+        elif self.platform == "Linux":
             from igibson.render.mesh_renderer import EGLRendererContext
 
             self.r = EGLRendererContext.EGLRendererContext(width, height, device)
+        else:
+            Exception("Unsupported platform and renderer combination")
 
         self.r.init()
 
@@ -696,6 +710,7 @@ class MeshRenderer(object):
             parent_body=parent_body,
         )
         self.instances.append(instance)
+        self.update_instance_id_to_pb_id_map()
 
     def add_instance_group(
         self,
@@ -751,6 +766,7 @@ class MeshRenderer(object):
             shadow_caster=shadow_caster,
         )
         self.instances.append(instance_group)
+        self.update_instance_id_to_pb_id_map()
 
     def add_robot(
         self, object_ids, link_ids, poses_trans, poses_rot, pybullet_uuid=None, class_id=0, dynamic=False, robot=None
@@ -788,6 +804,7 @@ class MeshRenderer(object):
             use_pbr_mapping=False,
         )
         self.instances.append(robot)
+        self.update_instance_id_to_pb_id_map()
 
     def add_text(
         self,
@@ -1240,6 +1257,7 @@ class MeshRenderer(object):
         self.faces = []  # GC should free things here
         self.visual_objects = []
         self.instances = []
+        self.update_instance_id_to_pb_id_map()
         self.vertex_data = []
         self.shapes = []
         save_path = os.path.join(igibson.ig_dataset_path, "tmp")
@@ -1995,6 +2013,17 @@ class MeshRenderer(object):
         """
         frames = self.get_cube(mode=mode, use_robot_camera=use_robot_camera)
         frames = [frames[0], frames[1][:, ::-1, :], frames[2][:, ::-1, :], frames[3], frames[4], frames[5]]
-        equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+        try:
+            equi = py360convert.c2e(cubemap=frames, h=frames[0].shape[0], w=frames[0].shape[0] * 2, cube_format="list")
+        except AssertionError:
+            raise ValueError("Something went wrong during getting cubemap. Is the image size not a square?")
 
         return equi
+
+    def update_instance_id_to_pb_id_map(self):
+        self.instance_id_to_pb_id = np.full((MAX_INSTANCE_COUNT,), -1)
+        for inst in self.instances:
+            self.instance_id_to_pb_id[inst.id] = inst.pybullet_uuid if inst.pybullet_uuid is not None else -1
+
+    def get_pb_ids_for_instance_ids(self, instance_ids):
+        return self.instance_id_to_pb_id[instance_ids.astype(int)]

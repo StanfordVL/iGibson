@@ -5,7 +5,6 @@ import os
 
 import igibson
 from igibson import object_states
-from igibson.object_states.factory import prepare_object_states
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
@@ -60,11 +59,9 @@ s.import_ig_scene(scene)
 if not VIEWER_MANIP:
     vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER, normal_color=False)
 
-block = YCBObject(name="036_wood_block")
+block = YCBObject(name="036_wood_block", abilities={"soakable": {}, "cleaning_tool": {}})
 s.import_object(block)
 block.set_position([1, 1, 1.8])
-block.abilities = ["soakable", "cleaning_tool"]
-prepare_object_states(block, abilities={"soakable": {}, "cleaning_tool": {}})
 
 # Set everything that can go dirty.
 dirtyable_objects = set(

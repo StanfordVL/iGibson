@@ -73,6 +73,14 @@ class LocomotorRobot(BaseRobot):
         """
         return self.robot_body.get_orientation()
 
+    def get_position_orientation(self):
+        """
+        Return robot position and orientation
+
+        :return: tuple of position (3D vector) and quaternion in xyzw
+        """
+        return self.get_position(), self.get_orientation()
+
     def get_rpy(self):
         """
         Return robot orientation in roll, pitch, yaw

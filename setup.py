@@ -1,4 +1,5 @@
 import codecs
+import os
 import os.path
 import platform
 import re
@@ -87,6 +88,9 @@ class CMakeBuild(build_ext):
         else:
             cmake_args += ["-DMAC_PLATFORM=FALSE"]
 
+        if os.getenv("USE_VR"):
+            cmake_args += ["-DUSE_VR=TRUE"]
+
         cfg = "Debug" if self.debug else "Release"
         build_args = ["--config", cfg]
 
@@ -157,6 +161,7 @@ setup(
         "sphinx>=1.8.0",
         "recommonmark",
         "sphinx_rtd_theme",
+        "myst_parser",
         "h5py",
         "gitpython",
         "py360convert",

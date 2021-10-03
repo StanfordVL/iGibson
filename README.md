@@ -27,24 +27,24 @@ iGibson is a simulation environment providing fast visual rendering and physics 
 If you use iGibson or its assets and models, consider citing the following publication:
 
 ```
-@misc{shen2021igibson,
-      title={iGibson 1.0: a Simulation Environment for Interactive Tasks in Large Realistic Scenes}, 
-      author={Bokui Shen and Fei Xia and Chengshu Li and Roberto Martín-Martín and Linxi Fan and Guanzhi Wang and Claudia Pérez-D'Arpino and Shyamal Buch and Sanjana Srivastava and Lyne P. Tchapmi and Micael E. Tchapmi and Kent Vainio and Josiah Wong and Li Fei-Fei and Silvio Savarese},
-      year={2021},
-      eprint={2012.02924},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI}
-}
-```
-
-```
 @misc{li2021igibson,
       title={iGibson 2.0: Object-Centric Simulation for Robot Learning of Everyday Household Tasks}, 
-      author={Chengshu Li and Fei Xia and Roberto Martín-Martín and Michael Lingelbach and Sanjana Srivastava and Bokui Shen and Kent Vainio and Cem Gokmen and Gokul Dharan and Tanish Jain and Andrey Kurenkov and Karen Liu and Hyowon Gweon and Jiajun Wu and Li Fei-Fei and Silvio Savarese},
+      author={Chengshu Li and Fei Xia and Roberto Mart\'in-Mart\'in and Michael Lingelbach and Sanjana Srivastava and Bokui Shen and Kent Vainio and Cem Gokmen and Gokul Dharan and Tanish Jain and Andrey Kurenkov and Karen Liu and Hyowon Gweon and Jiajun Wu and Li Fei-Fei and Silvio Savarese},
       year={2021},
       eprint={2108.03272},
       archivePrefix={arXiv},
       primaryClass={cs.RO}
+}
+```
+
+```
+@inproceedings{shen2021igibson,
+      title={iGibson 1.0: a Simulation Environment for Interactive Tasks in Large Realistic Scenes}, 
+      author={Bokui Shen and Fei Xia and Chengshu Li and Roberto Mart\'in-Mart\'in and Linxi Fan and Guanzhi Wang and Claudia P\'erez-D'Arpino and Shyamal Buch and Sanjana Srivastava and Lyne P. Tchapmi and Micael E. Tchapmi and Kent Vainio and Josiah Wong and Li Fei-Fei and Silvio Savarese},
+      booktitle={2021 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+      year={2021},
+      pages={accepted},
+      organization={IEEE}
 }
 ```
 
@@ -57,9 +57,9 @@ If you want to know more about iGibson, you can also check out [our webpage](htt
 
 For instructions to install iGibson and download dataset, you can visit [installation guide](http://svl.stanford.edu/igibson/docs/installation.html) and [dataset download guide](http://svl.stanford.edu/igibson/docs/dataset.html).
 
-There are other datasets we link to iGibson. We include support to use CubiCasa5K and 3DFront scenes, adding up more than 8000 extra interactive scenes to use in iGibson! Check our documentation on how to use those.
+There are other datasets we link to iGibson. We include support to use CubiCasa5K and 3DFront scenes, adding up more than 10000 extra interactive scenes to use in iGibson! Check our [documentation](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene) on how to use those.
 
-We also maintain compatibility with datasets of 3D reconstructed large real-world scenes (homes and offices) that you can download and use with iGibson, for example from our previous simulator, Gibson. All of them will be accessible once you fill in this <a href="https://forms.gle/36TW9uVpjrE1Mkf9A" target="_blank">[form]</a>.
+We also maintain compatibility with datasets of 3D reconstructed large real-world scenes (homes and offices) that you can download and use with iGibson. For Gibson Dataset and Stanford 2D-3D-Semantics Dataset, please fill out this [form](https://forms.gle/36TW9uVpjrE1Mkf9A). For Matterport3D Dataset, please fill in this [form](http://dovahkiin.stanford.edu/matterport/public/MP_TOS.pdf) and send it to [matterport3d@googlegroups.com](mailto:matterport3d@googlegroups.com). Please put "use with iGibson simulator" in your email. Check our [dataset download guide](http://svl.stanford.edu/igibson/docs/dataset.html) for more details.
 
 ### Using iGibson with VR
 If you want to use iGibson VR interface, please visit the [VR guide (TBA)].
