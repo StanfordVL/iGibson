@@ -1,6 +1,5 @@
 import os
 import sys
-import threading as th
 from logging import Handler
 
 import numpy as np
@@ -37,19 +36,11 @@ class OLNet_taskObs(nn.Module):
         return x
 
 
-def launch_gui():
-    global app, feedback_gui
-    app = QApplication(sys.argv)
-    feedback_gui = FeedbackInterface()
-    sys.exit(app.exec_())
-
-
 def train_ol_model(ol_agent, env, device, learning_rate):
     optimizer = None
     human_feedback = HumanFeedback()
-    th.Thread(target=launch_gui, args=(), name="launch_gui", daemon=True).start()
-    # app = QApplication(sys.argv)
-    # feedback_gui = FeedbackInterface()
+    app = QApplication(sys.argv)
+    feedback_gui = FeedbackInterface()
     for _ in range(iterations):
         obs = env.reset()
         total_reward = 0
@@ -105,8 +96,8 @@ if __name__ == "__main__":
     ol_agent = None
     config_file = "behavior_full_observability.yaml"
     env = BehaviorEnv(
-        config_file=os.path.join(igibson.example_config_path, config_file),
-        mode="headless",
+        config_file=os.path.join("../configs/", config_file),
+        mode="gui",
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
         action_filter="all",
