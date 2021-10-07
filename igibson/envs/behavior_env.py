@@ -285,20 +285,7 @@ class BehaviorEnv(iGibsonEnv):
         :param collision_links: collisions from last physics timestep
         :return: observation as a dictionary
         """
-        state = OrderedDict()
-        if "task_obs" in self.output:
-            state["task_obs"] = self.task.get_task_obs(self)
-        if "vision" in self.sensors:
-            vision_obs = self.sensors["vision"].get_obs(self)
-            for modality in vision_obs:
-                state[modality] = vision_obs[modality]
-        if "scan_occ" in self.sensors:
-            scan_obs = self.sensors["scan_occ"].get_obs(self)
-            for modality in scan_obs:
-                state[modality] = scan_obs[modality]
-        if "bump" in self.sensors:
-            state["bump"] = self.sensors["bump"].get_obs(self)
-
+        state = super(BehaviorEnv, self).get_state(collision_links)
         if "proprioception" in self.output:
             state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
