@@ -181,6 +181,10 @@ class HumanFeedback:
                 0,
             ],  # -y
         }
+        self.keyboard_control_dictionary = {
+            keyboard.KeyCode.from_char("p"): "Pause",
+            keyboard.KeyCode.from_char("r"): "Reset",
+        }
         self.human_keyboard_feedback = None
         self.run_keyboard_capture_thread()
 
@@ -203,8 +207,8 @@ class HumanFeedback:
                 if self.human_keyboard_feedback.key in self.keyboard_feedback_dictionary:
                     feedback = [0 for _ in range(action_length)]
                     feedback = self.keyboard_feedback_dictionary[self.human_keyboard_feedback.key]
-                elif self.human_keyboard_feedback.key == keyboard.KeyCode.from_char("p"):  # use 'p' for pausing:
-                    feedback = "Pause"
+                elif self.human_keyboard_feedback.key in self.keyboard_control_dictionary:  # use 'p' for pausing:
+                    feedback = self.keyboard_control_dictionary[self.human_keyboard_feedback.key]
 
             self.run_keyboard_capture_thread()
 

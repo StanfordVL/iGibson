@@ -1,4 +1,5 @@
 import os
+import sys
 import threading as th
 from logging import Handler
 
@@ -8,10 +9,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from human_feedback import HumanFeedback
-from pynput import keyboard
+from online_learning_interface import FeedbackInterface
+from PyQt5.QtWidgets import *
 
 import igibson
 from igibson.envs.behavior_env import BehaviorEnv
+
+app = None
+feedback_gui = None
 
 
 class OLNet_taskObs(nn.Module):
@@ -32,9 +37,19 @@ class OLNet_taskObs(nn.Module):
         return x
 
 
+def launch_gui():
+    global app, feedback_gui
+    app = QApplication(sys.argv)
+    feedback_gui = FeedbackInterface()
+    sys.exit(app.exec_())
+
+
 def train_ol_model(ol_agent, env, device, learning_rate):
     optimizer = None
     human_feedback = HumanFeedback()
+    th.Thread(target=launch_gui, args=(), name="launch_gui", daemon=True).start()
+    # app = QApplication(sys.argv)
+    # feedback_gui = FeedbackInterface()
     for _ in range(iterations):
         obs = env.reset()
         total_reward = 0
@@ -61,10 +76,16 @@ def train_ol_model(ol_agent, env, device, learning_rate):
             if curr_keyboard_feedback:
                 if "Pause" in curr_keyboard_feedback:
                     paused = not paused
+                elif "Reset" in curr_keyboard_feedback:
+                    obs = env.reset()
+                    total_reward = 0
+                    done = False
+                    paused = False
                 else:
                     error = np.array(curr_keyboard_feedback) * learning_rate
                     label_action = torch.from_numpy(a + error).type(torch.FloatTensor).view(action.size()).to(device)
                     loss = nn.MSELoss()(action, label_action)
+                    feedback_gui.updateLoss(loss.item())
                     loss.backward()
                     optimizer.step()
                     print(loss)
@@ -74,6 +95,7 @@ def train_ol_model(ol_agent, env, device, learning_rate):
                 print(curr_mouse_feedback)
 
             total_reward += reward
+            feedback_gui.updateReward(reward)
 
 
 if __name__ == "__main__":
