@@ -100,7 +100,8 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
 
     def get_shaped_reward(self, satisfied_predicates):
         shaped_reward = 0.0
-
+        if len(satisfied_predicates["unsatisfied"]) == 0:
+            return shaped_reward
         target_id = min(satisfied_predicates["unsatisfied"])
         has_picked = []
         for goal_relevant_obj in self.goal_relevant_objs:
