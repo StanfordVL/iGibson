@@ -26,7 +26,7 @@ class AudioSystem(object):
     It manages a set of audio objects and their corresponding audio buffers.
     It also interfaces with ResonanceAudio to perform the simulaiton to the listener.
     """
-    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, writeToFile=False, SR=44100, num_probes=10):
+    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, writeToFile=False, SR=44100, num_probes=10, renderAmbisonics=False, renderReverbReflections=True):
         """
         :param scene: iGibson scene
         :param pybullet: pybullet client
@@ -41,6 +41,8 @@ class AudioSystem(object):
         self.s = simulator
         self.listener = listener
         self.writeToFile = writeToFile
+        self.renderAmbisonics = renderAmbisonics
+        self.reverb = renderReverbReflections
 
         if acousticMesh.faces is None or acousticMesh.verts is None or acousticMesh.materials is None:
             raise ValueError('Invalid audioMesh')
@@ -70,23 +72,25 @@ class AudioSystem(object):
         audio.LoadMesh(int(acousticMesh.verts.size / 3), int(acousticMesh.faces.size / 3), acousticMesh.verts, acousticMesh.faces, acousticMesh.materials, 0.9) #Scattering coefficient needs tuning?
 
         #Get reverb and reflection properties at equally spaced point in grid along traversible map
-        self.probe_key_to_pos_by_floor = []
+        self.probe_key_to_pos_by_floor, self.current_probe_key = [], None
+        if self.reverb:
+            points_grid = self.scene.get_points_grid(num_probes)
+            for floor in points_grid.keys():
+                self.probe_key_to_pos_by_floor.append({})
+                for i, sample_position in enumerate(points_grid[floor]):
+                    key = "floor " + str(floor) + " probe " + str(i)
+                    if is_Viewer:
+                        #add arbitrary height
+                        sample_position[2] += 1.7
+                    else:
+                        sample_position[2] += self.get_pos()[2]
+                    audio.RegisterReverbProbe(key, sample_position)
+                    self.probe_key_to_pos_by_floor[floor][key] = sample_position[:2]
 
-        points_grid = self.scene.get_points_grid(num_probes)
-        for floor in points_grid.keys():
-            self.probe_key_to_pos_by_floor.append({})
-            for i, sample_position in enumerate(points_grid[floor]):
-                key = "floor " + str(floor) + " probe " + str(i)
-                if is_Viewer:
-                    #add arbitrary height
-                    sample_position[2] += 1.7
-                else:
-                    sample_position[2] += self.get_pos()[2]
-                audio.RegisterReverbProbe(key, sample_position)
-                self.probe_key_to_pos_by_floor[floor][key] = sample_position[:2]
-
-        print("Finished computing reverb probes")
-        self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
+            print("Finished computing reverb probes")
+            self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
+        else:
+            audio.DisableRoomEffects()
 
         #We can only intelligently avoid doble-counting collisions with individual objects on interactive scenes
         self.alwaysCountCollisionIDs = set()
@@ -182,13 +186,17 @@ class AudioSystem(object):
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
 
         audio.SetListenerPositionAndRotation(listener_pos, self.get_ori())
-        closest_probe_key = self.getClosestReverbProbe(listener_pos)
-        if closest_probe_key != self.current_probe_key:
-            print("Updating Reverb/Reflection properties to probe " + closest_probe_key)
-            audio.SetRoomPropertiesFromProbe(closest_probe_key)
-            self.current_probe_key = closest_probe_key
+        if self.reverb:
+            closest_probe_key = self.getClosestReverbProbe(listener_pos)
+            if closest_probe_key != self.current_probe_key:
+                print("Updating Reverb/Reflection properties to probe " + closest_probe_key)
+                audio.SetRoomPropertiesFromProbe(closest_probe_key)
+                self.current_probe_key = closest_probe_key
 
         self.current_output = audio.ProcessListener(self.framesPerBuf)
+
+        if self.renderAmbisonics:
+            self.current_output = audio.RenderAmbisonics(self.framesPerBuf)
 
         if self.writeToFile:
             self.complete_output.extend(self.current_output)

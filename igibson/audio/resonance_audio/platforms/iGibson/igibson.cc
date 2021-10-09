@@ -33,6 +33,29 @@ void Initialize(int sample_rate, size_t num_channels,
 
 void Shutdown() { resonance_audio.reset(); }
 
+void RenderAmbisonics(size_t num_frames, std::vector<std::vector<float>>* ambisonicData) {
+  auto resonance_audio_copy = resonance_audio;
+  if (resonance_audio_copy == nullptr) {
+    return;
+  }
+
+  // Record output into soundfield.
+  auto* const resonance_audio_api_impl = static_cast<ResonanceAudioApiImpl*>(resonance_audio_copy->api.get());
+  const auto* soundfield_buffer = resonance_audio_api_impl->GetAmbisonicOutputBuffer();
+
+  if (soundfield_buffer != nullptr) {
+    for (size_t c=0; c < soundfield_buffer->num_channels(); ++c) {
+      const AudioBuffer::Channel& channel = (*soundfield_buffer)[c];
+      CHECK(channel.size() == num_frames);
+      for (size_t i = 0; i < channel.size(); ++i) {
+          (*ambisonicData)[c][i] = channel[i];
+      }
+    }
+  }
+
+  return;
+}
+
 void ProcessListener(size_t num_frames, float* output) {
   CHECK(output != nullptr);
 

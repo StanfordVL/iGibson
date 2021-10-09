@@ -187,6 +187,10 @@ namespace igibson {
         //SetListenerStereoSpeakerMode(true);
     }
 
+    void DisableRoomEffects() {
+        resonance_audio->api->EnableRoomEffects(false);
+    }
+
 
     void LoadMesh(int num_vertices, int num_triangles,
         py::array_t<float> vertices, py::array_t<int> triangles,
@@ -312,14 +316,20 @@ namespace igibson {
     }
 
     py::array_t<int16> ProcessListenerBind(size_t num_frames) {
-
         py::array_t<int16> output_py = py::array_t<int16>(kNumOutputChannels * num_frames);
         py::buffer_info out_buf = output_py.request();
         int16* output = static_cast<int16*>(out_buf.ptr);
 
         ProcessListener(num_frames, output);
-
         return output_py; 
+    }
+
+    std::vector<std::vector<float>> RenderAmbisonicsBind(size_t num_frames) {
+        std::vector<float> audioData(num_frames, 0);
+        std::vector<std::vector<float>> ambisonicData(kNumThirdOrderAmbisonicChannels, audioData);
+
+        RenderAmbisonics(num_frames, &ambisonicData);
+        return ambisonicData; 
     }
 
     py::array_t<int16> ProcessSourceAndListener(int source_id, size_t num_frames, py::array_t<int16> input_arr) {
@@ -336,6 +346,8 @@ namespace igibson {
                 py::scoped_estream_redirect>());
 
         m.def("InitializeSystem", &InitializeSystem, py::return_value_policy::automatic, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("DisableRoomEffects", &DisableRoomEffects, py::return_value_policy::automatic, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
         m.def("LoadMesh", &LoadMesh, py::call_guard<py::scoped_ostream_redirect,
@@ -359,6 +371,8 @@ namespace igibson {
                 py::scoped_estream_redirect>());
 
         m.def("ProcessListener", &ProcessListenerBind, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("RenderAmbisonics", &RenderAmbisonicsBind, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
         m.def("SetSourceOcclusion", &SetSourceOcclusion, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());

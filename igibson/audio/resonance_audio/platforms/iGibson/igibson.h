@@ -80,6 +80,8 @@ void Shutdown();
 
 // Processes the next output buffer and stores the processed buffer in |output|.
 // This method must be called from the audio thread.
+void RenderAmbisonics(size_t num_frames, std::vector<std::vector<float>>* ambisonicData);
+
 void ProcessListener(size_t num_frames, float* output);
 
 void ProcessListener(size_t num_frames, int16* output);
