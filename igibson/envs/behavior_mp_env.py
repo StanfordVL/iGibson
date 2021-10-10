@@ -286,6 +286,181 @@ class BehaviorMPEnv(BehaviorEnv):
         logging.debug("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
         return state, reward, done, info
 
+    def step_with_exec_info(self, action):
+        """
+        Same as the above step method, but returns an additional param (action_exec_status)
+        that is True if the high-level action execution succeeded and False otherwise
+        """
+        obj_list_id = int(action) % self.num_objects
+        action_primitive = int(action) // self.num_objects
+        action_exec_status = False
+
+        obj = self.task_relevant_objects[obj_list_id]
+        if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
+            if action_primitive == ActionPrimitives.NAVIGATE_TO:
+                if self.navigate_to_obj(obj, use_motion_planning=self.use_motion_planning):
+                    print("PRIMITIVE: navigate to {} success".format(obj.name))
+                    action_exec_status = True
+                else:
+                    print("PRIMITIVE: navigate to {} fail".format(obj.name))
+
+            elif action_primitive == ActionPrimitives.GRASP:
+                if self.obj_in_hand is None:
+                    if isinstance(obj, URDFObject) and hasattr(obj, "states") and object_states.AABB in obj.states:
+                        lo, hi = obj.states[object_states.AABB].get_value()
+                        volume = get_aabb_volume(lo, hi)
+                        if (
+                            volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed
+                        ):  # say we can only grasp small objects
+                            if (
+                                np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position()))
+                                < 2
+                            ):
+                                self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
+                                print(
+                                    "PRIMITIVE: grasp {} success, obj in hand {}".format(obj.name, self.obj_in_hand)
+                                )
+                                action_exec_status = True
+                            else:
+                                print("PRIMITIVE: grasp {} fail, too far".format(obj.name))
+                        else:
+                            print("PRIMITIVE: grasp {} fail, too big or fixed".format(obj.name))
+            elif action_primitive == ActionPrimitives.PLACE_ONTOP:
+                if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                    print("PRIMITIVE:attempt to place {} ontop {}".format(self.obj_in_hand.name, obj.name))
+
+                    if isinstance(obj, URDFObject):
+                        if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                            state = p.saveState()
+                            result = sample_kinematics(
+                                "onTop",
+                                self.obj_in_hand,
+                                obj,
+                                True,
+                                use_ray_casting_method=True,
+                                max_trials=20,
+                                skip_falling=True,
+                            )
+                            if result:
+                                print(
+                                    "PRIMITIVE: place {} ontop {} success".format(self.obj_in_hand.name, obj.name)
+                                )
+                                action_exec_status = True
+                                pos = self.obj_in_hand.get_position()
+                                orn = self.obj_in_hand.get_orientation()
+                                self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
+                            else:
+                                p.removeState(state)
+                                print(
+                                    "PRIMITIVE: place {} ontop {} fail, sampling fail".format(
+                                        self.obj_in_hand.name, obj.name
+                                    )
+                                )
+
+                        else:
+                            print(
+                                "PRIMITIVE: place {} ontop {} fail, too far".format(self.obj_in_hand.name, obj.name)
+                            )
+                    else:
+                        state = p.saveState()
+                        result = sample_kinematics(
+                            "onFloor",
+                            self.obj_in_hand,
+                            obj,
+                            True,
+                            use_ray_casting_method=True,
+                            max_trials=20,
+                            skip_falling=True,
+                        )
+                        if result:
+                            print(
+                                "PRIMITIVE: place {} ontop {} success".format(self.obj_in_hand.name, obj.name)
+                            )
+                            action_exec_status = True
+                            pos = self.obj_in_hand.get_position()
+                            orn = self.obj_in_hand.get_orientation()
+                            self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
+                        else:
+                            print(
+                                "PRIMITIVE: place {} ontop {} fail, sampling fail".format(
+                                    self.obj_in_hand.name, obj.name
+                                )
+                            )
+                            p.removeState(state)
+
+            elif action_primitive == ActionPrimitives.PLACE_INSIDE:
+                if self.obj_in_hand is not None and self.obj_in_hand != obj and isinstance(obj, URDFObject):
+                    print("PRIMITIVE:attempt to place {} inside {}".format(self.obj_in_hand.name, obj.name))
+                    if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                        if (
+                            hasattr(obj, "states")
+                            and object_states.Open in obj.states
+                            and obj.states[object_states.Open].get_value()
+                        ) or (hasattr(obj, "states") and not object_states.Open in obj.states):
+                            state = p.saveState()
+                            result = sample_kinematics(
+                                "inside",
+                                self.obj_in_hand,
+                                obj,
+                                True,
+                                use_ray_casting_method=True,
+                                max_trials=20,
+                                skip_falling=True,
+                            )
+                            if result:
+                                print(
+                                    "PRIMITIVE: place {} inside {} success".format(self.obj_in_hand.name, obj.name)
+                                )
+                                action_exec_status = True
+                                pos = self.obj_in_hand.get_position()
+                                orn = self.obj_in_hand.get_orientation()
+                                self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
+                            else:
+                                print(
+                                    "PRIMITIVE: place {} inside {} fail, sampling fail".format(
+                                        self.obj_in_hand.name, obj.name
+                                    )
+                                )
+                                p.removeState(state)
+                        else:
+                            print(
+                                "PRIMITIVE: place {} inside {} fail, need open not open".format(
+                                    self.obj_in_hand.name, obj.name
+                                )
+                            )
+                    else:
+                        print(
+                            "PRIMITIVE: place {} inside {} fail, too far".format(self.obj_in_hand.name, obj.name)
+                        )
+            elif action_primitive == ActionPrimitives.OPEN:
+                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                    if hasattr(obj, "states") and object_states.Open in obj.states:
+                        action_exec_status = True
+                        print("PRIMITIVE open succeeded")
+                        obj.states[object_states.Open].set_value(True)
+                    else:
+                        print("PRIMITIVE open failed, cannot be opened")
+                else:
+                    print("PRIMITIVE open failed, too far")
+
+            elif action_primitive == ActionPrimitives.CLOSE:
+                if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                    if hasattr(obj, "states") and object_states.Open in obj.states:
+                        action_exec_status = True
+                        obj.states[object_states.Open].set_value(False)
+                        print("PRIMITIVE close succeeded")
+                    else:
+                        print("PRIMITIVE close failed, cannot be opened")
+                else:
+                    print("PRIMITIVE close failed, too far")
+
+        else:
+            print(f"Attempted to execute a High Level Action whose target was the robot's body! This is incorrect, please pass a sensible high level action argument!")
+
+        state, reward, done, info = super(BehaviorMPEnv, self).step(np.zeros(17))
+        print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
+        return state, reward, done, info, action_exec_status
+
     def grasp_obj(self, obj, use_motion_planning=False):
         if use_motion_planning:
             x, y, _ = obj.get_position()
@@ -451,7 +626,7 @@ class BehaviorMPEnv(BehaviorEnv):
             distance_to_try = [0.6, 1.2, 1.8, 2.4]
             obj_pos = obj.get_position()
             for distance in distance_to_try:
-                for _ in range(20):
+                for _ in range(40):
                     yaw = np.random.uniform(-np.pi, np.pi)
                     pos = [
                         obj_pos[0] + distance * np.cos(yaw),
@@ -473,7 +648,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 if valid_position is not None:
                     break
         else:
-            for _ in range(60):
+            for _ in range(120):
                 _, pos = obj.scene.get_random_point_by_room_instance(obj.room_instance)
                 yaw = np.random.uniform(-np.pi, np.pi)
                 orn = [0, 0, yaw]
