@@ -512,7 +512,9 @@ class BehaviorMPEnv(BehaviorEnv):
             return False
 
     def reset(self, resample_objects=False):
-        obs = super(BehaviorMPEnv, self).reset(resample_objects=resample_objects)
+        # NOTE: The below line used to be super(BehaviorMPEnv, self, resample_objects=resample_objects).reset()
+        # However, this causes an error because the super call only expects 2 args.
+        obs = super(BehaviorMPEnv, self).reset()
         self.obj_in_hand = None
 
         return obs
