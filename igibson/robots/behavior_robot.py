@@ -726,7 +726,7 @@ class BRHandBase(ArticulatedObject):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
         self.set_close_fraction(new_trig_frac)
         self.trigger_fraction = new_trig_frac
 
@@ -1004,7 +1004,7 @@ class BRHand(BRHandBase):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
 
         # Execute gradual release of object
         if self.release_counter is not None:
@@ -1021,7 +1021,7 @@ class BRHand(BRHandBase):
 
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
-            if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
+            if new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
@@ -1159,7 +1159,7 @@ class BRHand(BRHandBase):
             return
 
         # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
+        clipped_close_frac = np.clip(close_frac, 0.0, 1.0)
 
         for joint_index in range(p.getNumJoints(self.get_body_id())):
             jf = p.getJointInfo(self.get_body_id(), joint_index)

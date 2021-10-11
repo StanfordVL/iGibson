@@ -298,6 +298,8 @@ class BehaviorEnv(iGibsonEnv):
             self.task.reset_scene(snapshot_id=self.task.initial_state)
         # set the constraints to the current poses
         self.robots[0].apply_action(np.zeros(self.robots[0].action_dim))
+        for hand in ["left_hand", "right_hand"]:
+            self.robots[0].parts[hand].trigger_fraction = 0.5
 
     def reset(self):
         """
