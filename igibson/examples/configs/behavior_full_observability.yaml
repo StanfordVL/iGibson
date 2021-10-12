@@ -44,8 +44,8 @@ collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot lin
 output: [proprioception, rgb, highlight, depth, seg, ins_seg, task_obs]
 # image
 fisheye: false
-image_width: 128
-image_height: 128
+image_width: 512
+image_height: 512
 vertical_fov: 120
 # depth
 depth_low: 0.0
