@@ -6,7 +6,7 @@ import time
 import yaml
 
 import igibson
-from igibson.envs.behavior_mp_env import ActionPrimitives, BehaviorMPEnv
+from igibson.examples.mp_replay.behavior_motion_primitive_env import BehaviorMotionPrimitiveEnv, MotionPrimitive
 from igibson.utils.ig_logging import IGLogReader
 
 
@@ -19,10 +19,9 @@ def get_empty_hand(current_hands):
     raise ValueError("Both hands are full but you are trying to execute a grasp.")
 
 
-def get_actions_from_segmentation(demo_data):
+def get_actions_from_segmentation(demo_data, only_first_from_multi_segment=True):
     print("Conversion of demo segmentation to motion primitives:")
 
-    hand_by_object = {}
     actions = []
     segmentation = demo_data["segmentations"]["flat"]["sub_segments"]
 
@@ -34,10 +33,13 @@ def get_actions_from_segmentation(demo_data):
             print("Found segment with no useful state changes: %r" % segment)
             continue
         elif len(state_records) > 1:
-            print("Found segment with multiple state changes, using the first: %r" % segment)
+            if only_first_from_multi_segment:
+                print("Found segment with multiple state changes, using the first: %r" % segment)
+                state_records = [state_records[0]]
+            else:
+                print("Found segment with multiple state changes, using all: %r" % segment)
 
-        state_change = state_records[0]
-        state_changes.append(state_change)
+        state_changes.extend(state_records)
 
     # Now go through the state changes and convert them to actions
     for i, state_change in enumerate(state_changes):
@@ -45,78 +47,40 @@ def get_actions_from_segmentation(demo_data):
         state_name = state_change["name"]
         state_value = state_change["value"]
 
-        # TODO(replayMP): Here we compute grasps based on the InHand state. Ditch this and simply do a single-hand
-        # grasp on the object we will manipulate next. That way it will be fetch-compatible.
         if state_name == "Open" and state_value is True:
-            primitive = ActionPrimitives.OPEN
+            primitive = MotionPrimitive.OPEN
             target_object = state_change["objects"][0]
         elif state_name == "Open" and state_value is False:
-            primitive = ActionPrimitives.CLOSE
+            primitive = MotionPrimitive.CLOSE
             target_object = state_change["objects"][0]
         elif state_name == "InReachOfRobot" and state_value is True:
             # The primitives support automatic navigation to relevant objects.
             continue
         elif state_name == "InHandOfRobot" and state_value is True:
-            target_object = state_change["objects"][0]
-
-            # Check that we do something with this object later on, otherwise don't grasp it.
-            is_used = False
-            for future_state_change in state_changes[i + 1 :]:
-                # We should only grasp the moved object in these cases.
-                if future_state_change["objects"][0] != target_object:
-                    continue
-
-                if future_state_change["name"] == "InHandOfRobot" and future_state_change["value"] is True:
-                    # This object is re-grasped later. No need to look any further than that.
-                    break
-
-                # We only care about Inside and OnTop use cases later.
-                if future_state_change["name"] not in ("Inside", "OnTop") or future_state_change["value"] is False:
-                    continue
-
-                # This is a supported use case so we approve the grasp.
-                is_used = True
-                break
-
-            # If the object is not used in the future, don't grasp it.
-            if not is_used:
-                continue
-
-            hand = get_empty_hand(hand_by_object)
-            hand_by_object[target_object] = hand
-            primitive = ActionPrimitives.LEFT_GRASP if hand == "left_hand" else ActionPrimitives.RIGHT_GRASP
+            # The primitives support automatic grasping of relevant objects.
+            continue
         elif state_name == "Inside" and state_value is True:
             placed_object = state_change["objects"][0]
             target_object = state_change["objects"][1]
-            if placed_object not in hand_by_object:
-                print(
-                    "Placed object %s in segment %d not currently grasped. Maybe some sort of segmentation error?"
-                    % (placed_object, i)
-                )
-                continue
-            hand = hand_by_object[placed_object]
-            del hand_by_object[placed_object]
-            primitive = (
-                ActionPrimitives.LEFT_PLACE_INSIDE if hand == "left_hand" else ActionPrimitives.RIGHT_PLACE_INSIDE
-            )
+            primitive = MotionPrimitive.PLACE_INSIDE
+
+            # Before the actual item is placed, insert a grasp request.
+            actions.append((MotionPrimitive.GRASP, placed_object))
         elif state_name == "OnTop" and state_value is True:
             placed_object = state_change["objects"][0]
             target_object = state_change["objects"][1]
-            if placed_object not in hand_by_object:
-                print(
-                    "Placed object %s in segment %d not currently grasped. Maybe some sort of segmentation error?"
-                    % (placed_object, i)
-                )
-                continue
-            hand = hand_by_object[placed_object]
-            del hand_by_object[placed_object]
-            primitive = ActionPrimitives.LEFT_PLACE_ONTOP if hand == "left_hand" else ActionPrimitives.RIGHT_PLACE_ONTOP
+            primitive = MotionPrimitive.PLACE_ON_TOP
+
+            # Before the actual item is placed, insert a grasp request.
+            actions.append((MotionPrimitive.GRASP, placed_object))
         else:
             raise ValueError("Found a state change we can't process: %r" % state_change)
 
         # Append the action.
         action = (primitive, target_object)
         actions.append(action)
+
+    for action in actions:
         print("%s(%s)" % action)
 
     print("Conversion complete.\n")
@@ -144,12 +108,11 @@ def run_demonstration(demo_path, segmentation_path, output_path):
     config["task_id"] = task_id
     config["scene_id"] = scene_id
 
-    env = BehaviorMPEnv(
+    env = BehaviorMotionPrimitiveEnv(
         config_file=config,
         mode="headless",
         action_timestep=1.0 / 300.0,
         physics_timestep=1.0 / 300.0,
-        use_motion_planning=False,
         activity_relevant_objects_only=False,
     )
 

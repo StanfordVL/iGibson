@@ -34,6 +34,8 @@ from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 THRESHOLD_EPSILON = 0.001
 
 # Part offset parameters
+BODY_OFFSET_FROM_FLOOR = 0.7
+
 NECK_BASE_REL_POS_UNTRACKED = [-0.15, 0, 0.3]
 RIGHT_SHOULDER_REL_POS_UNTRACKED = [-0.15, -0.15, 0.3]
 LEFT_SHOULDER_REL_POS_UNTRACKED = [-0.15, 0.15, 0.3]

@@ -22,7 +22,7 @@ def _compute_joint_threshold(joint_info):
     return (1 - f) * joint_info.jointLowerLimit + f * joint_info.jointUpperLimit
 
 
-def _get_relevant_joints(obj):
+def get_relevant_joints(obj):
     if not hasattr(obj, "metadata"):
         return None
 

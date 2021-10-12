@@ -1077,7 +1077,9 @@ class URDFObject(StatefulObject, NonRobotObject):
                             "transform": scaled_bbox_center_in_link_frame,
                         }
 
-    def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False, xy_aligned=False):
+    def get_base_aligned_bounding_box(
+        self, body_id=None, link_id=None, visual=False, xy_aligned=False, link_base=False
+    ):
         """Get a bounding box for this object that's axis-aligned in the object's base frame."""
         if body_id is None:
             body_id = self.get_body_id()
@@ -1138,6 +1140,7 @@ class URDFObject(StatefulObject, NonRobotObject):
                 )
                 points.extend(aabb_vertices_in_base_com)
 
+        # Here we decide which frame the bounding box will be axis-aligned in.
         if xy_aligned:
             # If the user requested an XY-plane aligned bbox, convert everything to that frame.
             # The desired frame is same as the base_com frame with its X/Y rotations removed.
@@ -1151,16 +1154,24 @@ class URDFObject(StatefulObject, NonRobotObject):
                 translate=translate, angles=[0, 0, rotation_around_Z_axis]
             )
 
-            # We want to move our points to this frame as well.
-            world_to_xy_aligned_base_com = trimesh.transformations.inverse_matrix(xy_aligned_base_com_to_world)
-            base_com_to_xy_aligned_base_com = np.dot(world_to_xy_aligned_base_com, base_com_to_world)
-            points = trimesh.transformations.transform_points(points, base_com_to_xy_aligned_base_com)
-
             # Finally update our desired frame.
             desired_frame_to_world = xy_aligned_base_com_to_world
+        elif link_base:
+            # If the user wants the bb in a link frame, let's do that.
+            assert link_id != None
+            link_state = get_link_state(body_id, link_id, velocity=False)
+            desired_frame_to_world = utils.quat_pos_to_mat(
+                link_state.linkWorldPosition, link_state.linkWorldOrientation
+            )
         else:
             # Default desired frame is base CoM frame.
             desired_frame_to_world = base_com_to_world
+
+        # Transform the points to the correct frame of reference:
+        if xy_aligned or link_base:
+            world_to_desired_frame = trimesh.transformations.inverse_matrix(desired_frame_to_world)
+            base_com_to_desired_frame = np.dot(world_to_desired_frame, base_com_to_world)
+            points = trimesh.transformations.transform_points(points, base_com_to_desired_frame)
 
         # All points are now in the desired frame: either the base CoM or the xy-plane-aligned base CoM.
         # Now take the minimum/maximum in the desired frame.
