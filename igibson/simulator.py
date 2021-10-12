@@ -1780,36 +1780,29 @@ class Simulator:
 
             if activation_state != PyBulletSleepState.AWAKE:
                 return body_links_awake
-            # pos and orn of the inertial frame of the base link,
-            # instead of the base link frame
+
             pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
-
-            # Need to convert to the base link frame because that is
-            # what our own renderer keeps track of
-            # Based on pyullet docuementation:
-            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
-
             instance.set_position(pos)
             instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
             body_links_awake += 1
+
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
                     dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
-                    if len(dynamics_info) == 13 and not self.first_sync:
+                    if len(dynamics_info) == 13 and not self.first_sync and not force_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE
 
                     if activation_state != PyBulletSleepState.AWAKE:
                         continue
-                    # same conversion is needed as above
-                    pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
 
+                    pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
                 else:
                     dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, link_id)
 
-                    if len(dynamics_info) == 13 and not self.first_sync:
+                    if len(dynamics_info) == 13 and not self.first_sync and not force_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE
