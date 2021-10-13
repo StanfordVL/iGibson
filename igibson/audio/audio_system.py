@@ -44,9 +44,6 @@ class AudioSystem(object):
         self.renderAmbisonics = renderAmbisonics
         self.reverb = renderReverbReflections
 
-        if acousticMesh.faces is None or acousticMesh.verts is None or acousticMesh.materials is None:
-            raise ValueError('Invalid audioMesh')
-
         def getViewerOrientation():
             #from numpy-quaternion github
             ct = np.cos(self.listener.theta / 2.0)
@@ -68,12 +65,13 @@ class AudioSystem(object):
         self.framesPerBuf =  int(SR / (1 / self.s.render_timestep)) 
         audio.InitializeSystem(self.framesPerBuf, SR)
 
-        #Load scene mesh without dynamic objects
-        audio.LoadMesh(int(acousticMesh.verts.size / 3), int(acousticMesh.faces.size / 3), acousticMesh.verts, acousticMesh.faces, acousticMesh.materials, 0.9) #Scattering coefficient needs tuning?
-
         #Get reverb and reflection properties at equally spaced point in grid along traversible map
         self.probe_key_to_pos_by_floor, self.current_probe_key = [], None
         if self.reverb:
+            if acousticMesh.faces is None or acousticMesh.verts is None or acousticMesh.materials is None:
+                raise ValueError('Invalid audioMesh')
+            #Load scene mesh without dynamic objects
+            audio.LoadMesh(int(acousticMesh.verts.size / 3), int(acousticMesh.faces.size / 3), acousticMesh.verts, acousticMesh.faces, acousticMesh.materials, 0.9) #Scattering coefficient needs tuning?
             points_grid = self.scene.get_points_grid(num_probes)
             for floor in points_grid.keys():
                 self.probe_key_to_pos_by_floor.append({})
@@ -145,6 +143,9 @@ class AudioSystem(object):
     
     def setSourceRepeat(self, source_obj_id, repeat=True):
         self.sourceToRepeat[source_obj_id] = repeat
+
+    def setSourceNearFieldEffectGain(self, source_obj_id, gain):
+        audio.SetNearFieldEffectGain(self.sourceToResonanceID[source_obj_id], gain)
 
     def readSource(self, source, nframes):
         #This conversion to numpy is inefficient and unnecessary

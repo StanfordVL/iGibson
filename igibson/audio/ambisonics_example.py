@@ -18,7 +18,7 @@ import audio
 import wave
 import pybullet as p
 import time
-from audio_system import AudioSystem
+from audio_system import AudioSystem, AcousticMesh
 from math import cos, sin, atan2, sqrt, pi, factorial
 
 class Position(object):
@@ -299,18 +299,18 @@ IGIBSON_OFFSET = 0
 
 def mp3d_example():
     s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
-    scene = StaticIndoorScene('17DRP5sb8fy')
+    scene = StadiumScene()#StaticIndoorScene('17DRP5sb8fy')
     s.import_scene(scene)
 
 
 
-    acousticMesh = getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/17DRP5sb8fy/sem_map.png")
-    transparent_id =ResonanceMaterialToId["Transparent"]
+    acousticMesh = AcousticMesh()#getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/17DRP5sb8fy/sem_map.png")
+    #transparent_id =ResonanceMaterialToId["Transparent"]
     #Make mesh transparent so we only render direct sound
-    acousticMesh.materials = np.ones(acousticMesh.materials.shape) * transparent_id
+    #acousticMesh.materials = np.ones(acousticMesh.materials.shape) * transparent_id
 
     # Audio System Initialization, with reverb/reflections off
-    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=True, SR = 44100, num_probes=5, renderAmbisonics=True, renderReverbReflections=False)
+    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=False, SR = 44100, num_probes=5, renderAmbisonics=True, renderReverbReflections=False)
     obj = cube.Cube(pos=[-4.1,3.1,1.2], dim=[0.05, 0.05, 0.05], visual_only=True, mass=0, color=[1,0,0,1])
     obj_id = s.import_object(obj)[0]
 
@@ -318,6 +318,7 @@ def mp3d_example():
     audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id)
+    audioSystem.setSourceNearFieldEffectGain(obj_id, 1.1)
 
     s.attachAudioSystem(audioSystem)
 
@@ -341,6 +342,9 @@ def mp3d_example():
         source_pos,_ = p.getBasePositionAndOrientation(obj_id)
         #print("estimated source-listener angle: {}".format(estimated_angle))    
         print("estimated max energy angle: %3d   " % estimated_angle, end='\r')
+        if estimated_angle == 170:
+            pass
+            #print(audio_data)
         
         # NOTE: this azimuth angle is uncalibrated/relative, you need to calibrate it so that you get the absolute
         # angle as per the coordinate system you want it to be in. An easy way to do it is to look at adjacent
