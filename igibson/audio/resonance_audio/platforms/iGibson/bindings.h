@@ -30,6 +30,8 @@ void SetSourcePosition(int source_id, py::array_t<float> source_pos);
 
 void SetListenerPosition(py::array_t<float> listener_pos);
 
+void SetNearFieldEffectGain(int source_id, float gain);
+
 
 py::array_t<int16> ProcessSourceAndListener(int source_id, size_t num_frames, py::array_t<int16> input_arr);
 

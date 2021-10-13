@@ -196,7 +196,6 @@ namespace igibson {
         py::array_t<float> vertices, py::array_t<int> triangles,
         py::array_t<int> material_indices,
         float scattering_coefficient) {
-        py::print("Entering LoadMesh");
 
         py::buffer_info mi_buf = material_indices.request();
         int* material_indices_arr = (int*)mi_buf.ptr;
@@ -260,7 +259,6 @@ namespace igibson {
     }
 
     int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance) {
-
         ResonanceAudioApi::SourceId source_id = CreateSoundObject(RenderingMode::kBinauralHighQuality, min_distance, max_distance);
 
         py::buffer_info sl_buf = source_pos.request();
@@ -268,8 +266,13 @@ namespace igibson {
 
         SetSourcePosition(source_id, source_pos);
         SetSourceGain(source_id, 1.0f);
+        SetNearFieldEffectGain(source_id, 1.0f);
 
         return source_id;
+    }
+
+    void SetNearFieldEffectGain(int source_id, float gain) {
+        resonance_audio->api->SetSoundObjectNearFieldEffectGain(source_id, gain);
     }
 
     void SetSourcePosition(int source_id, py::array_t<float> source_pos) {
@@ -357,6 +360,9 @@ namespace igibson {
                 py::scoped_estream_redirect>());
 
         m.def("InitializeSource", &InitializeSource, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+
+        m.def("SetNearFieldEffectGain", &SetNearFieldEffectGain, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
         m.def("SetSourcePosition", &SetSourcePosition, py::call_guard<py::scoped_ostream_redirect,
