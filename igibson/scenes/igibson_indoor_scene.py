@@ -1076,10 +1076,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
-        if hasattr(obj, "body_ids"):
-            body_id = obj.body_ids[obj.main_body]
-        else:
-            body_id = obj.body_id
+        body_id = obj.get_body_id()
 
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
@@ -1162,7 +1159,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Common logic for objects that are both in the scene & otherwise.
         # Add joints
-        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
+        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.get_body_id()]
         joint_data = []
         for bid in body_ids:
             this_joint_data = {}
