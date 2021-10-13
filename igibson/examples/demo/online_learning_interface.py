@@ -41,8 +41,23 @@ class FeedbackInterface(QWidget):
             " to the robot. Please use the following keys on your keyboard to guide the robot in the appropriate direction.",
             self,
         )
+        self.advice_label = QLabel(
+            "Corrective Advice",
+            self,
+        )
+        self.evaluative_feedback = QLabel(
+            "Evaluative Feedback",
+            self,
+        )
+
         self.intro_text.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
         self.intro_text.setWordWrap(True)
+
+        self.advice_label.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.advice_label.setWordWrap(True)
+
+        self.evaluative_feedback.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Fixed)
+        self.evaluative_feedback.setWordWrap(True)
 
         self.loss_label = QLabel("0", self)
         self.reward_label = QLabel("0", self)
@@ -50,26 +65,36 @@ class FeedbackInterface(QWidget):
         self.horizontalGroupBox = QGroupBox()
         layout = QGridLayout()
         layout.addWidget(self.intro_text, 0, 0, 1, 6)
+        layout.addWidget(self.advice_label, 1, 3)
 
-        layout.addWidget(QPushButton("W = +Y"), 1, 1)
-        layout.addWidget(QPushButton("R = Reset"), 1, 4)
-        layout.addWidget(QPushButton("P = Pause"), 1, 5)
+        layout.addWidget(QPushButton("W = +Y"), 2, 1)
+        layout.addWidget(QPushButton("R = Reset"), 2, 4)
+        layout.addWidget(QPushButton("P = Pause"), 2, 5)
 
-        layout.addWidget(QPushButton("A = -X"), 2, 0)
-        layout.addWidget(QPushButton("S = +Z"), 2, 1)
-        layout.addWidget(QPushButton("D = +X"), 2, 2)
+        layout.addWidget(QPushButton("A = -X"), 3, 0)
+        layout.addWidget(QPushButton("S = +Z"), 3, 1)
+        layout.addWidget(QPushButton("D = +X"), 3, 2)
 
-        layout.addWidget(QPushButton("Z = -Z"), 3, 0)
-        layout.addWidget(QPushButton("X = -Y"), 3, 1)
+        layout.addWidget(QPushButton("Z = -Z"), 4, 0)
+        layout.addWidget(QPushButton("X = -Y"), 4, 1)
 
-        layout.addWidget(QPushButton("Loss: "), 4, 0)
-        layout.addWidget(self.loss_label, 4, 1)
+        layout.addWidget(self.evaluative_feedback, 5, 3)
 
-        layout.addWidget(QPushButton("Reward: "), 4, 2)
-        layout.addWidget(self.reward_label, 4, 3)
+        layout.addWidget(QPushButton("1 = -3"), 6, 0)
+        layout.addWidget(QPushButton("2 = -2"), 6, 1)
+        layout.addWidget(QPushButton("3 = -1"), 6, 2)
+        layout.addWidget(QPushButton("4 = +1"), 6, 3)
+        layout.addWidget(QPushButton("5 = +2"), 6, 4)
+        layout.addWidget(QPushButton("6 = +3"), 6, 5)
 
-        layout.addWidget(QPushButton("BDDL Goal State: "), 4, 4)
-        layout.addWidget(self.bddl_goal_state, 4, 5)
+        layout.addWidget(QPushButton("Loss: "), 7, 0)
+        layout.addWidget(self.loss_label, 7, 1)
+
+        layout.addWidget(QPushButton("Reward: "), 7, 2)
+        layout.addWidget(self.reward_label, 7, 3)
+
+        layout.addWidget(QPushButton("BDDL Goal State: "), 7, 4)
+        layout.addWidget(self.bddl_goal_state, 7, 5)
 
         self.horizontalGroupBox.setLayout(layout)
 

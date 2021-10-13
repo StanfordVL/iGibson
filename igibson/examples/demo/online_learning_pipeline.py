@@ -65,14 +65,14 @@ def train_ol_model(ol_agent, env, device, learning_rate):
                 reward = 0
             curr_keyboard_feedback = human_feedback.return_human_keyboard_feedback(action.size()[-1])
             if curr_keyboard_feedback:
-                if "Pause" in curr_keyboard_feedback:
+                if "Pause" in str(curr_keyboard_feedback):
                     paused = not paused
-                elif "Reset" in curr_keyboard_feedback:
+                elif "Reset" in str(curr_keyboard_feedback):
                     obs = env.reset()
                     total_reward = 0
                     done = False
                     paused = False
-                else:
+                elif type(curr_keyboard_feedback) == list:
                     error = np.array(curr_keyboard_feedback) * learning_rate
                     label_action = torch.from_numpy(a + error).type(torch.FloatTensor).view(action.size()).to(device)
                     loss = nn.MSELoss()(action, label_action)
@@ -80,6 +80,8 @@ def train_ol_model(ol_agent, env, device, learning_rate):
                     loss.backward()
                     optimizer.step()
                     print(loss)
+                else:
+                    print(curr_keyboard_feedback)
 
             curr_mouse_feedback = human_feedback.return_human_mouse_feedback()
             if curr_mouse_feedback:

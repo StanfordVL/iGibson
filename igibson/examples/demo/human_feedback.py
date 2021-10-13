@@ -180,6 +180,12 @@ class HumanFeedback:
                 0,
                 0,
             ],  # -y
+            keyboard.KeyCode.from_char("1"): -3,
+            keyboard.KeyCode.from_char("2"): -2,
+            keyboard.KeyCode.from_char("3"): -1,
+            keyboard.KeyCode.from_char("4"): 1,
+            keyboard.KeyCode.from_char("5"): 2,
+            keyboard.KeyCode.from_char("6"): 3,
         }
         self.keyboard_control_dictionary = {
             keyboard.KeyCode.from_char("p"): "Pause",
