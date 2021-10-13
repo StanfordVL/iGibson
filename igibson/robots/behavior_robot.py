@@ -246,6 +246,7 @@ class BehaviorRobot(object):
         """
         self.first_frame = False
         self.activated = True
+        self.set_colliders(enabled=True)
         for part_name in self.constraints_active:
             self.constraints_active[part_name] = True
             self.parts[part_name].activated = True
@@ -440,7 +441,7 @@ class BRBody(ArticulatedObject):
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
         set_all_collisions(self.get_body_id(), int(enabled))
-        if enabled == True:
+        if enabled:
             self.set_body_collision_filters()
 
     def activate_constraints(self):
@@ -1074,20 +1075,17 @@ class BRHand(BRHandBase):
                 # Disable collisions while picking things up
                 self.set_hand_coll_filter(ag_bid, False)
                 self.gen_freeze_vals()
+                print("AG grasped")
                 return True
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if (
-                new_trig_frac >= 0.0
-                and new_trig_frac <= 1.0
-                and new_trig_frac <= TRIGGER_FRACTION_THRESHOLD
-                or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD
-            ):
+            if new_trig_frac <= TRIGGER_FRACTION_THRESHOLD or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD:
                 p.removeConstraint(self.obj_cid)
                 self.obj_cid = None
                 self.obj_cid_params = {}
                 self.should_freeze_joints = False
                 self.release_counter = 0
+                print("AG released")
 
             return False
 
