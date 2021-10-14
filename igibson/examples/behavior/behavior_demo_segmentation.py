@@ -336,7 +336,7 @@ class DemoSegmentationProcessor(object):
         stringified_entries = [
             (
                 state_record.state_type.__name__,
-                ", ".join(obj.category for obj in state_record.objects),
+                ", ".join(self.obj2str(obj) for obj in state_record.objects),
                 state_record.value,
             )
             for state_record in segment.state_records
