@@ -6,7 +6,7 @@ from igibson.robots import behavior_robot
 from igibson.robots.behavior_robot import BehaviorRobot
 
 DEFAULT_DIST_THRESHOLD = 0.01
-DEFAULT_ANGLE_THRESHOLD = 0.02
+DEFAULT_ANGLE_THRESHOLD = 0.05
 
 LOW_PRECISION_DIST_THRESHOLD = 0.1
 LOW_PRECISION_ANGLE_THRESHOLD = 0.2
@@ -16,8 +16,8 @@ BODY_KW = 0.5
 BODY_MAX_V = 0.3
 BODY_MAX_W = 1
 
-LIMB_KV = 0.2
-LIMB_KW = 0.3
+LIMB_KV = 0.15
+LIMB_KW = 0.2
 LIMB_MAX_V = 0.1
 LIMB_MAX_W = 0.5
 

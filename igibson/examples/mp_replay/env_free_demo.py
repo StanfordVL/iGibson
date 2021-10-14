@@ -98,11 +98,11 @@ def main():
 
     try:
         # go_to_waypoint(s, robot, controller)
-        # go_to_sink_and_toggle(s, robot, controller)
+        go_to_sink_and_toggle(s, robot, controller)
         # hand_fwd_by_one(s, robot, controller)
         # prepare_to_grasp_tray(s, robot, controller)
-        grasp_tray(s, robot, controller)
-        put_on_table(s, robot, controller)
+        # grasp_tray(s, robot, controller)
+        # put_on_table(s, robot, controller)
 
         while True:
             action = np.zeros(28)

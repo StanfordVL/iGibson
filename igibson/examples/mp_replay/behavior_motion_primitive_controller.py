@@ -24,14 +24,14 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 
 HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
 
-MAX_STEPS_FOR_HAND_MOVE = 200
+MAX_STEPS_FOR_HAND_MOVE = 100
 MAX_STEPS_FOR_GRASP_OR_RELEASE = 30
 MAX_WAIT_FOR_GRASP_OR_RELEASE = 10
 MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 600
 
 MAX_ATTEMPTS_FOR_GRASPING = 100
 MAX_ATTEMPTS_FOR_OPENING = 5
-MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION = 10
+MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION = 20
 
 MAX_ATTEMPTS_FOR_SAMPLING_POSE_WITH_OBJECT_AND_PREDICATE = 20
 MAX_ATTEMPTS_FOR_SAMPLING_POSE_NEAR_OBJECT = 100
@@ -180,9 +180,15 @@ class MotionPrimitiveController(object):
         # Put the hand in the toggle marker.
         toggle_state = obj.states[object_states.ToggledOn]
         toggle_position = toggle_state.get_link_position()
+        yield from self._navigate_if_needed(obj, toggle_position)
+
         hand_orientation = self.robot.parts["right_hand"].get_orientation()  # Just keep the current hand orientation.
         desired_hand_pose = (toggle_position, hand_orientation)
-        yield from self._move_hand(desired_hand_pose)
+
+        try:
+            yield from self._move_hand_direct(desired_hand_pose)
+        except MotionPrimitiveError:
+            pass  # We can accept some deviation here.
 
         # Put hand back where it was.
         yield from self._reset_hand()

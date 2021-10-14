@@ -7,7 +7,7 @@ from igibson.objects.articulated_object import URDFObject
 
 PRISMATIC_JOINT_DIST_ACROSS_LATERAL_AXIS = 0.4
 GUARANTEED_GRASPABLE_WIDTH = 0.1
-GRASP_OFFSET = np.array([0, 0.09, -0.07])  # 9cm back and 7cm up.
+GRASP_OFFSET = np.array([0, 0.08, -0.09])  # 8cm back and 9cm up.
 GRASP_ANGLE = 0.52  # 30 degrees
 NUM_LATERAL_SAMPLES = 10
 LATERAL_MARGIN = 0.05
