@@ -16,7 +16,8 @@ from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
 
-BEHAVIOR_ROBOT_ACTION_SCALING = 0.05
+# TODO(replayMP): Fix this!
+BEHAVIOR_ROBOT_ACTION_SCALING = 1.0
 # The original action space defined in BehaviorEnv is too large and will be clipped when applying
 # the action in robot.apply_action. So we multiple the action with a scaling factor. It can be
 # further adjusted to get better performance or more stable training.
