@@ -52,7 +52,7 @@ STATE_DIRECTIONS = {
     object_states.InSameRoomAsRobot: SegmentationStateDirection.FALSE_TO_TRUE,
     object_states.Inside: SegmentationStateDirection.FALSE_TO_TRUE,
     object_states.NextTo: SegmentationStateDirection.FALSE_TO_TRUE,
-    # OnFloor: SegmentationStateDirection.FALSE_TO_TRUE,
+    object_states.OnFloor: SegmentationStateDirection.FALSE_TO_TRUE,
     object_states.OnTop: SegmentationStateDirection.FALSE_TO_TRUE,
     object_states.Open: SegmentationStateDirection.BOTH_DIRECTIONS,
     object_states.Sliced: SegmentationStateDirection.BOTH_DIRECTIONS,
@@ -86,7 +86,7 @@ ALLOWED_SUB_SEGMENTS_BY_STATE = {
         object_states.InHandOfRobot,
     },
     object_states.NextTo: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
-    # OnFloor: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
+    object_states.OnFloor: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.OnTop: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.Open: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
     object_states.Sliced: {object_states.InSameRoomAsRobot, object_states.InReachOfRobot, object_states.InHandOfRobot},
@@ -210,11 +210,16 @@ class DemoSegmentationProcessor(object):
             self.profiler.start()
 
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
-            objects = [obj for obj in igbhvr_act_inst.object_scope.values() if not isinstance(obj, BRBody)]
+            objects = list(
+                set([obj for obj in igbhvr_act_inst.object_scope.values() if not isinstance(obj, BRBody)])
+                | set(igbhvr_act_inst.simulator.scene.objects_by_category["door"])
+            )
         elif self.object_selection == SegmentationObjectSelection.ROBOTS:
             objects = [obj for obj in igbhvr_act_inst.object_scope.values() if isinstance(obj, BRBody)]
         elif self.object_selection == SegmentationObjectSelection.ALL_OBJECTS:
-            objects = igbhvr_act_inst.simulator.scene.get_objects()
+            objects = list(
+                set(igbhvr_act_inst.simulator.scene.get_objects()) | set(igbhvr_act_inst.object_scope.values())
+            )
         else:
             raise ValueError("Incorrect SegmentationObjectSelection %r" % self.object_selection)
 
@@ -382,10 +387,11 @@ def get_default_segmentation_processors(profiler=None):
     # primitives.
     flat_states = [
         object_states.Open,
+        object_states.OnFloor,
         object_states.OnTop,
         object_states.Inside,
         object_states.InHandOfRobot,
-        object_states.InReachOfRobot,
+        # object_states.InReachOfRobot,
     ]
     flat_object_segmentation = DemoSegmentationProcessor(
         flat_states, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS, label_by_instance=True, profiler=profiler
@@ -408,7 +414,7 @@ def get_default_segmentation_processors(profiler=None):
     return {
         # "goal": goal_segmentation,
         "flat": flat_object_segmentation,
-        "room": room_presence_segmentation,
+        # "room": room_presence_segmentation,
     }
 
 

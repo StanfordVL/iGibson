@@ -54,10 +54,13 @@ class PositionalValidationMemoizedObjectStateMixin(MemoizedObjectStateMixin):
             new_pos, _ = obj.states[Pose].get_value()
 
             # Don't do expensive vector work if the positions are already equal.
-            if np.all(np.asarray(new_pos) == np.asarray(old_pos)):
+            new_pos = np.asarray(new_pos)
+            old_pos = np.asarray(old_pos)
+            if np.all(new_pos == old_pos):
                 continue
 
-            dist = l2_distance(new_pos, old_pos)
+            # Use L1 distance - it's faster here & this line gets executed very often.
+            dist = np.sum(np.abs(new_pos - old_pos))
             if dist > POSITIONAL_VALIDATION_EPSILON:
                 return False
 
