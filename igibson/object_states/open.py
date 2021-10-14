@@ -16,7 +16,7 @@ _JOINT_THRESHOLD_BY_TYPE = {
 _METADATA_FIELD = "openable_joint_ids"
 
 
-def _compute_joint_threshold(joint_info):
+def compute_joint_threshold(joint_info):
     # Convert fractional threshold to actual joint position.
     f = _JOINT_THRESHOLD_BY_TYPE[joint_info.jointType]
     return (1 - f) * joint_info.jointLowerLimit + f * joint_info.jointUpperLimit
@@ -65,7 +65,7 @@ class Open(CachingEnabledObjectState, BooleanState):
 
         # Compute a boolean openness state for each joint by comparing positions to thresholds.
         joint_ids = [joint_info.jointIndex for joint_info in relevant_joint_infos]
-        joint_thresholds = (_compute_joint_threshold(joint_info) for joint_info in relevant_joint_infos)
+        joint_thresholds = (compute_joint_threshold(joint_info) for joint_info in relevant_joint_infos)
         joint_positions = utils.get_joint_positions(self.obj.get_body_id(), joint_ids)
         joint_openness = (position > threshold for position, threshold in zip(joint_positions, joint_thresholds))
 
@@ -91,7 +91,7 @@ class Open(CachingEnabledObjectState, BooleanState):
 
         # Go through the relevant joints & set random positions.
         for joint_info in relevant_joint_infos:
-            joint_threshold = _compute_joint_threshold(joint_info)
+            joint_threshold = compute_joint_threshold(joint_info)
 
             if new_value:
                 # Sample an open position.

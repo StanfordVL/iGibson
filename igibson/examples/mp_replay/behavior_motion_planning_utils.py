@@ -16,9 +16,9 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 SEARCHED = []
-
-MAX_DISTANCE = 0  # Setting this higher unfortunately causes things to become impossible to pick up
-# (they touch their hosts)
+# Setting this higher unfortunately causes things to become impossible to pick up (they touch their hosts)
+BODY_MAX_DISTANCE = 0.05
+HAND_MAX_DISTANCE = 0
 
 
 def plan_base_motion_br(
@@ -29,47 +29,90 @@ def plan_base_motion_br(
     obstacles=[],
     direct=False,
     resolution=0.05,
-    max_distance=MAX_DISTANCE,
+    turn_resolution=np.pi / 6,
+    max_distance=BODY_MAX_DISTANCE,
     iterations=200,
-    restarts=5,
-    shortening=100,
+    restarts=20,
+    shortening=0,
     **kwargs
 ):
-    difference_fn = lambda q1, q2: np.array(q2) - np.array(q1)
-    distance_fn = lambda q1, q2: np.linalg.norm(difference_fn(q1, q2))
+    distance_fn = lambda q1, q2: np.linalg.norm(np.array(q2[:2]) - np.array(q1[:2]))
     obstacles = set(obstacles)
     if obj_in_hand is not None:
         obstacles -= {obj_in_hand.get_body_id()}
 
-    def extend_fn(q1, q2):
-        aq1 = np.array(q1)
-        aq2 = np.array(q2)
+    def slippery_extender(q1, q2):
+        aq1 = np.array(q1[:2])
+        aq2 = np.array(q2[:2])
         diff = aq2 - aq1
+        start_yaw = q1[2]
+        end_yaw = q2[2]
+        diff_yaw = circular_difference(end_yaw, start_yaw)
+
+        if np.all(q1 != q2):
+            dist = np.linalg.norm(diff)
+            steps = int(max(ceil(dist / resolution), ceil(abs(diff_yaw) / turn_resolution)))
+            for i in range(steps):
+                dist_ratio = (i + 1) / steps
+                extension = aq1 + dist_ratio * diff
+                yaw = start_yaw + dist_ratio * diff_yaw
+                yield (extension[0], extension[1], yaw)
+
+    def turn_and_move_extender(q1, q2):
+        aq1 = np.array(q1[:2])
+        aq2 = np.array(q2[:2])
+        diff = aq2 - aq1
+        start_yaw = q1[2]
+        road_yaw = np.arctan2(diff[1], diff[0])
+        diff_yaw = circular_difference(road_yaw, start_yaw)
+
+        # Do the yaw change first.
+        if diff_yaw != 0:
+            turn_steps = int(ceil(abs(diff_yaw) / turn_resolution))
+            for i in range(turn_steps):
+                turn_ratio = (i + 1) / turn_steps
+                extension_yaw = start_yaw + turn_ratio * diff_yaw
+                yield (aq1[0], aq1[1], extension_yaw)
+
+        # Then do the dist change.
         dist = np.linalg.norm(diff)
-        steps = int(ceil(dist / resolution))
-        for i in range(steps):
-            dist_ratio = (i + 1) / steps
-            q = tuple(aq1 + dist_ratio * diff)
-            yield q
+        if dist != 0:
+            steps = int(ceil(dist / resolution))
+            for i in range(steps):
+                dist_ratio = (i + 1) / steps
+                extension = aq1 + dist_ratio * diff
+                yield (extension[0], extension[1], road_yaw)
+
+        # Now do another yaw change.
+        end_yaw = q2[2]
+        diff_yaw = circular_difference(end_yaw, road_yaw)
+        if diff_yaw != 0:
+            turn_steps = int(ceil(abs(diff_yaw) / turn_resolution))
+            for i in range(turn_steps):
+                turn_ratio = (i + 1) / turn_steps
+                extension_yaw = road_yaw + turn_ratio * diff_yaw
+                yield (aq2[0], aq2[1], extension_yaw)
+
+    extend_fn = slippery_extender
 
     body_ids = []
     for part in ["body", "left_hand", "right_hand"]:
         body_ids.append(robot.parts[part].get_body_id())
 
     def collision_fn(q):
-        for rot in np.linspace(-np.pi, np.pi, 8, endpoint=False):
-            robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, rot)))
-            for body_id in body_ids:
-                close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(body_id)))
-                close_obstacles = close_objects & obstacles
-                collisions = [
-                    (obs, pairwise_collision(body_id, obs, max_distance=max_distance))
-                    for obs in close_obstacles
-                    for body_id in body_ids
-                ]
-                colliding_bids = [obs for obs, col in collisions if col]
-                if colliding_bids:
-                    return True
+        # TODO(replayMP): Is this a good idea?
+        robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, q[2])))
+        for body_id in body_ids:
+            close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(body_id)))
+            close_obstacles = close_objects & obstacles
+            collisions = [
+                (obs, pairwise_collision(body_id, obs, max_distance=max_distance))
+                for obs in close_obstacles
+                for body_id in body_ids
+            ]
+            colliding_bids = [obs for obs, col in collisions if col]
+            if colliding_bids:
+                return True
 
         # The below code is useful for plotting the RRT tree.
         # SEARCHED.append(np.flip(scene.world_to_map((q[0], q[1]))))
@@ -93,7 +136,8 @@ def plan_base_motion_br(
         return False
 
     pos = robot.get_position()
-    start_conf = tuple(pos[:2])
+    yaw = p.getEulerFromQuaternion(robot.get_orientation())[2]
+    start_conf = (pos[0], pos[1], yaw)
     # if collision_fn(start_conf):
     #     print("Warning: initial configuration is in collision")
     #     return None
@@ -138,10 +182,10 @@ def plan_hand_motion_br(
     obstacles=[],
     direct=False,
     resolutions=(0.05, 0.05, 0.05, 0.2, 0.2, 0.2),
-    max_distance=MAX_DISTANCE,
+    max_distance=HAND_MAX_DISTANCE,
     iterations=200,
     restarts=5,
-    shortening=100,
+    shortening=0,
 ):
     def sample_fn():
         x, y, z = np.random.uniform(*hand_limits)
@@ -187,7 +231,7 @@ def plan_hand_motion_br(
     return shorten_path(path, extend_fn, collision_fn, shortening)
 
 
-def get_xyzrpy_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=MAX_DISTANCE):
+def get_xyzrpy_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAND_MAX_DISTANCE):
     collision_fn = get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance)
 
     def wrapper(q):
@@ -198,7 +242,7 @@ def get_xyzrpy_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=MAX
     return wrapper
 
 
-def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=MAX_DISTANCE):
+def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAND_MAX_DISTANCE):
     non_hand_non_oih_obstacles = {
         obs
         for obs in obstacles

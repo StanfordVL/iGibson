@@ -55,6 +55,11 @@ def put_on_table(s, robot, controller: MotionPrimitiveController):
     execute_controller(controller.place_on_top(table), robot, s)
 
 
+def open_fridge(s, robot, controller: MotionPrimitiveController):
+    fridge = s.scene.objects_by_category["fridge"][0]
+    execute_controller(controller.open(fridge), robot, s)
+
+
 def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
     execute_controller(controller._move_hand_direct_relative_to_robot(([0.5, 0, 0], [0, 0, 0, 1])), robot, s)
 
@@ -62,7 +67,7 @@ def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
 def main():
     s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
-        "Rs_int", load_object_categories=["walls", "floors", "bed", "door", "sink", "coffee_table"]
+        "Rs_int", load_object_categories=["walls", "floors", "bed", "door", "sink", "coffee_table", "fridge"]
     )
     s.import_ig_scene(scene)
 
@@ -98,11 +103,12 @@ def main():
 
     try:
         # go_to_waypoint(s, robot, controller)
-        go_to_sink_and_toggle(s, robot, controller)
+        # go_to_sink_and_toggle(s, robot, controller)
         # hand_fwd_by_one(s, robot, controller)
         # prepare_to_grasp_tray(s, robot, controller)
         # grasp_tray(s, robot, controller)
         # put_on_table(s, robot, controller)
+        open_fridge(s, robot, controller)
 
         while True:
             action = np.zeros(28)

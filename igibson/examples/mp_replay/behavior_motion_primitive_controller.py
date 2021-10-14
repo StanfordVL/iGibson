@@ -32,6 +32,7 @@ MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 600
 MAX_ATTEMPTS_FOR_GRASPING = 100
 MAX_ATTEMPTS_FOR_OPENING = 5
 MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION = 20
+MAX_ATTEMPTS_FOR_OBJECT_PLACEMENT = 20
 
 MAX_ATTEMPTS_FOR_SAMPLING_POSE_WITH_OBJECT_AND_PREDICATE = 20
 MAX_ATTEMPTS_FOR_SAMPLING_POSE_NEAR_OBJECT = 100
@@ -86,7 +87,7 @@ class MotionPrimitiveController(object):
 
         for _ in range(MAX_ATTEMPTS_FOR_OPENING):
             try:
-                grasp_pose, target_pose = get_grasp_position_for_open(self.robot, obj, should_open)
+                grasp_pose, target_pose = random.choice(get_grasp_position_for_open(self.robot, obj, should_open))
                 # TODO(replayMP): How do we navigate to the correct side of a door?
                 yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
                 yield from self._move_hand(grasp_pose)
@@ -201,7 +202,7 @@ class MotionPrimitiveController(object):
         if obj_in_hand is None:
             raise MotionPrimitiveError("Cannot place object if not holding one.")
 
-        for _ in range(MAX_ATTEMPTS_FOR_GRASPING):
+        for _ in range(MAX_ATTEMPTS_FOR_OBJECT_PLACEMENT):
             obj_in_hand = self._get_obj_in_hand()
             if obj_in_hand is None:
                 raise MotionPrimitiveError("Looks like we might have dropped the object.")
@@ -209,7 +210,7 @@ class MotionPrimitiveController(object):
             try:
                 obj_pose = self._sample_pose_with_object_and_predicate(predicate, obj_in_hand, obj)
                 hand_pose = self._get_hand_pose_for_object_pose(obj_pose)
-                yield from self._navigate_if_needed(obj, pos_on_obj=hand_pose[0])
+                yield from self._navigate_if_needed(obj, pos_on_obj=hand_pose[0], max_attempts=1)
                 yield from self._move_hand(hand_pose)
                 yield from self._execute_release()
                 yield from self._reset_hand()
@@ -322,18 +323,17 @@ class MotionPrimitiveController(object):
             while True:
                 random_point = np.array(self.scene.get_random_point()[1][:2])
 
-                if within_circle:
-                    if np.linalg.norm(random_point - center_xy) < circle_radius:
-                        return tuple(random_point)
-                else:
-                    return tuple(random_point)
+                if within_circle and np.linalg.norm(random_point - center_xy) > circle_radius:
+                    continue
+
+                return (random_point[0], random_point[1], np.random.uniform(-np.pi, np.pi))
 
         with UndoableContext(self.robot):
             # Note that the plan returned by this planner only contains xy pairs & not yaw.
             plan = plan_base_motion_br(
                 robot=self.robot,
                 obj_in_hand=self._get_obj_in_hand(),
-                end_conf=end_xy,
+                end_conf=pose_2d,
                 sample_fn=sample_fn,
                 obstacles=self._get_collision_body_ids(),
             )
@@ -343,21 +343,20 @@ class MotionPrimitiveController(object):
 
         # Follow the plan to navigate.
         print("Plan has %d steps." % len(plan))
-        for i, xy_pos in enumerate(plan):
+        for i, pose_2d in enumerate(plan):
             print("Executing navigation plan step %d/%d" % (i + 1, len(plan)))
             low_precision = True if i < len(plan) - 1 else False
-            yield from self._navigate_to_pose_direct(xy_pos, low_precision=low_precision)
+            yield from self._navigate_to_pose_direct(pose_2d, low_precision=low_precision)
 
         # Match the final desired yaw.
-        yield from self._rotate_in_place(pose_2d[2])
+        # yield from self._rotate_in_place(pose_2d[2])
 
     def _rotate_in_place(self, yaw, low_precision=False):
-        cur_xy_pos = np.array(self.robot.get_position())[:2]
-
-        pose = self._get_robot_pose_from_2d_pose((cur_xy_pos[0], cur_xy_pos[1], yaw))
+        cur_pos = self.robot.get_position()
+        target_pose = self._get_robot_pose_from_2d_pose((cur_pos[0], cur_pos[1], yaw))
         for _ in range(MAX_STEPS_FOR_WAYPOINT_NAVIGATION):
             action = behavior_ik_controller.get_action(
-                self.robot, body_target_pose=self._get_pose_in_robot_frame(pose), low_precision=low_precision
+                self.robot, body_target_pose=self._get_pose_in_robot_frame(target_pose), low_precision=low_precision
             )
             if action is None:
                 print("Rotate is complete.")
@@ -365,15 +364,12 @@ class MotionPrimitiveController(object):
 
             yield action
 
-    def _navigate_to_pose_direct(self, xy_pos, low_precision=False):
+    def _navigate_to_pose_direct(self, pose_2d, low_precision=False):
         # First, rotate the robot to face towards the waypoint.
-        cur_xy_pos = np.array(self.robot.get_position())[:2]
-        displacement = np.array(xy_pos) - cur_xy_pos
-        z_rot = np.arctan2(displacement[1], displacement[0])
-        yield from self._rotate_in_place(z_rot)
+        # yield from self._rotate_in_place(pose_2d[2])
 
         # Keep the same orientation until the target.
-        pose = self._get_robot_pose_from_2d_pose((xy_pos[0], xy_pos[1], z_rot))
+        pose = self._get_robot_pose_from_2d_pose(pose_2d)
         for _ in range(MAX_STEPS_FOR_WAYPOINT_NAVIGATION):
             action = behavior_ik_controller.get_action(
                 self.robot, body_target_pose=self._get_pose_in_robot_frame(pose), low_precision=low_precision
@@ -384,11 +380,11 @@ class MotionPrimitiveController(object):
 
             yield action
 
-        # TODO: Do we care if navigation fails?
-        # raise MotionPrimitiveError("Could not move robot to desired waypoint.")
+        # TODO(replayMP): Do we care if navigation fails?
+        raise MotionPrimitiveError("Could not move robot to desired waypoint.")
 
-    def _navigate_to_obj(self, obj, pos_on_obj=None):
-        for _ in range(MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION):
+    def _navigate_to_obj(self, obj, pos_on_obj=None, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION):
+        for _ in range(max_attempts):
             try:
                 yield from self._navigate_to_obj_once(obj, pos_on_obj=pos_on_obj)
                 return
@@ -485,7 +481,7 @@ class MotionPrimitiveController(object):
             pos, orn = held_obj.get_position_orientation()
             return pos, orn
 
-    def _navigate_if_needed(self, obj, pos_on_obj=None):
+    def _navigate_if_needed(self, obj, pos_on_obj=None, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION):
         if pos_on_obj is not None:
             if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
                 # No need to navigate.
@@ -493,7 +489,7 @@ class MotionPrimitiveController(object):
         elif obj.states[object_states.InReachOfRobot].get_value():
             return
 
-        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj)
+        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION)
 
     @staticmethod
     def _detect_collision(bodyA, obj_in_hand=None):
