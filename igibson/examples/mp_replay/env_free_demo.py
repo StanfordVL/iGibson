@@ -62,20 +62,18 @@ def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
 def main():
     s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
-        "Rs_int", load_object_categories=["walls", "floors", "bed", "doors", "sink", "coffee_table"]
+        "Rs_int", load_object_categories=["walls", "floors", "bed", "door", "sink", "coffee_table"]
     )
     s.import_ig_scene(scene)
 
     coffee_table = scene.objects_by_category["coffee_table"][0]
-    for _ in range(100):
-        s.step()
 
     model_path = get_ig_model_path("tray", "tray_000")
     model_filename = os.path.join(model_path, "tray_000.urdf")
     max_bbox = [0.1, 0.1, 0.1]
     avg_category_spec = get_ig_avg_category_specs()
 
-    brush = URDFObject(
+    tray = URDFObject(
         filename=model_filename,
         category="tray",
         name="tray",
@@ -83,13 +81,10 @@ def main():
         fit_avg_dim_volume=True,
         model_path=model_path,
     )
-    s.import_object(brush)
-    brush.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    s.import_object(tray)
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
 
-    # brush.states[object_states.OnTop].set_value(coffee_table, True, use_ray_casting_method=True)
-
-    for _ in range(100):
-        s.step()
+    # tray.states[object_states.OnTop].set_value(coffee_table, True, use_ray_casting_method=True)
 
     robot = BehaviorRobot(s)
     s.import_behavior_robot(robot)

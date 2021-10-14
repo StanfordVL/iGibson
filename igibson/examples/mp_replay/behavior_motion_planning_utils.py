@@ -2,25 +2,13 @@ import os
 import time
 from math import ceil
 
-import cv2
 import numpy as np
 import pybullet as p
-from matplotlib import pyplot as plt
+from scipy.spatial.transform import Rotation
 
 import igibson
 from igibson.external.motion.motion_planners.rrt_connect import birrt
-from igibson.external.pybullet_tools.utils import (
-    CIRCULAR_LIMITS,
-    MAX_DISTANCE,
-    PI,
-    circular_difference,
-    direct_path,
-    get_aabb,
-    get_base_difference_fn,
-    get_base_distance_fn,
-    pairwise_collision,
-    rrt_star,
-)
+from igibson.external.pybullet_tools.utils import PI, circular_difference, direct_path, pairwise_collision
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.behavior_robot import BODY_OFFSET_FROM_FLOOR, BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
@@ -28,6 +16,9 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 SEARCHED = []
+
+MAX_DISTANCE = 0  # Setting this higher unfortunately causes things to become impossible to pick up
+# (they touch their hosts)
 
 
 def plan_base_motion_br(
@@ -41,6 +32,7 @@ def plan_base_motion_br(
     max_distance=MAX_DISTANCE,
     iterations=200,
     restarts=5,
+    smoothing=500,
     **kwargs
 ):
     difference_fn = lambda q1, q2: np.array(q2) - np.array(q1)
@@ -99,9 +91,9 @@ def plan_base_motion_br(
 
     pos = robot.get_position()
     start_conf = tuple(pos[:2])
-    if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
-        return None
+    # if collision_fn(start_conf):
+    #     print("Warning: initial configuration is in collision")
+    #     return None
     if collision_fn(end_conf):
         print("Warning: end configuration is in collision")
         return None
@@ -116,7 +108,7 @@ def plan_base_motion_br(
         collision_fn,
         iterations=iterations,
         restarts=restarts,
-        **kwargs
+        smooth=smoothing,
     )
 
 
@@ -140,11 +132,11 @@ def plan_hand_motion_br(
     hand_limits,
     obstacles=[],
     direct=False,
-    resolutions=(0.01, 0.01, 0.01, 0.1, 0.1, 0.1),
+    resolutions=(0.05, 0.05, 0.05, 0.2, 0.2, 0.2),
     max_distance=MAX_DISTANCE,
     iterations=200,
     restarts=5,
-    **kwargs
+    smoothing=500,
 ):
     def sample_fn():
         x, y, z = np.random.uniform(*hand_limits)
@@ -155,6 +147,53 @@ def plan_hand_motion_br(
     orn = robot.parts["right_hand"].get_orientation()
     rpy = p.getEulerFromQuaternion(orn)
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
+
+    def extend_fn(q1, q2):
+        steps = np.abs(np.divide(hand_difference_fn(q2, q1), resolutions))
+        n = int(np.max(steps)) + 1
+
+        for i in range(n):
+            q = ((i + 1) / float(n)) * np.array(hand_difference_fn(q2, q1)) + np.array(q1)
+            q = tuple(q)
+            yield q
+
+    collision_fn = get_xyzrpy_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=MAX_DISTANCE)
+
+    # if collision_fn(start_conf):
+    #     print("Warning: initial configuration is in collision")
+    #     return None
+    if collision_fn(end_conf):
+        print("Warning: end configuration is in collision")
+        return None
+    if direct:
+        return direct_path(start_conf, end_conf, extend_fn, collision_fn)
+    return birrt(
+        start_conf,
+        end_conf,
+        hand_distance_fn,
+        sample_fn,
+        extend_fn,
+        collision_fn,
+        iterations=iterations,
+        restarts=restarts,
+        smooth=smoothing,
+    )
+
+
+def get_xyzrpy_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=MAX_DISTANCE):
+    collision_fn = get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance)
+
+    def wrapper(q):
+        quat = p.getQuaternionFromEuler(q[3:])
+        pose3d = (q[:3], quat)
+        return collision_fn(tuple(pose3d))
+
+    return wrapper
+
+
+def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=MAX_DISTANCE):
+    pos = robot.parts["right_hand"].get_position()
+    orn = robot.parts["right_hand"].get_orientation()
 
     if obj_in_hand is not None:
         obj_pos = obj_in_hand.get_position()
@@ -170,25 +209,10 @@ def plan_hand_motion_br(
         )
     ]
 
-    def extend_fn(q1, q2):
-        steps = np.abs(np.divide(hand_difference_fn(q2, q1), resolutions))
-        n = int(np.max(steps)) + 1
-
-        for i in range(n):
-            q = (i / float(n)) * np.array(hand_difference_fn(q2, q1)) + np.array(q1)
-            q = tuple(q)
-            yield q
-
-    def collision_fn(q):
-        robot.parts["right_hand"].set_position_orientation(
-            [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
-        )
-        if obj_in_hand is not None:
-            obj_in_hand.set_position_orientation(
-                *p.multiplyTransforms(
-                    [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]]), local_pos, local_orn
-                )
-            )
+    def collision_fn(pose3d):
+        robot.parts["right_hand"].set_position_orientation(*pose3d)
+        # if obj_in_hand is not None:
+        #     obj_in_hand.set_position_orientation(*p.multiplyTransforms(*pose3d, local_pos, local_orn))
 
         collisions = [
             (obs, pairwise_collision(robot.parts["right_hand"].get_body_id(), obs, max_distance=max_distance))
@@ -196,7 +220,7 @@ def plan_hand_motion_br(
         ]
         colliding_bids = [obs for obs, col in collisions if col]
         if colliding_bids:
-            pass  # print("Hand collision with objects: ", colliding_bids)
+            print("Hand collision with objects: ", colliding_bids)
         collision = bool(colliding_bids)
 
         if obj_in_hand is not None:
@@ -206,30 +230,12 @@ def plan_hand_motion_br(
             ]
             obj_colliding_bids = [obs for obs, col in obj_collisions if col]
             if obj_colliding_bids:
-                pass  # print("Held object collision with objects: ", obj_colliding_bids)
-            collision = collision or bool(colliding_bids)
+                print("Held object collision with objects: ", obj_colliding_bids)
+            collision = collision or bool(obj_colliding_bids)
 
         return collision
 
-    if collision_fn(start_conf):
-        print("Warning: initial configuration is in collision")
-        return None
-    if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
-        return None
-    if direct:
-        return direct_path(start_conf, end_conf, extend_fn, collision_fn)
-    return birrt(
-        start_conf,
-        end_conf,
-        hand_distance_fn,
-        sample_fn,
-        extend_fn,
-        collision_fn,
-        iterations=iterations,
-        restarts=restarts,
-        **kwargs
-    )
+    return collision_fn
 
 
 if __name__ == "__main__":

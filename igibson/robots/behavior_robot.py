@@ -47,8 +47,10 @@ NECK_BASE_REL_POS_TRACKED = [-0.15, 0, -0.15]
 RIGHT_SHOULDER_REL_POS_TRACKED = [-0.15, -0.15, -0.15]
 LEFT_SHOULDER_REL_POS_TRACKED = [-0.15, 0.15, -0.15]
 EYE_LOC_POSE_TRACKED = ([0.05, 0, 0.4], [0, 0, 0, 1])
-RIGHT_HAND_LOC_POSE_TRACKED = ([0.1, -0.12, 0.05], [-0.7, 0.7, 0.0, 0.15])
-LEFT_HAND_LOC_POSE_TRACKED = ([0.1, 0.12, 0.05], [0.7, 0.7, 0.0, 0.15])
+# TODO(replayMP): These are currently changed as an easy solution to a couple issues.
+# This is a behavior that can entirely be replicated using actions, I just cut a corner here.
+RIGHT_HAND_LOC_POSE_TRACKED = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
+LEFT_HAND_LOC_POSE_TRACKED = ([0, 0.12, 0.4], [0.5, -0.5, 0.5, 0.5])
 
 # Body parameters
 BODY_LINEAR_VELOCITY = 0.3  # linear velocity thresholds in meters/frame

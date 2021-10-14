@@ -59,7 +59,7 @@ def get_relevant_joints(obj):
 
 class Open(CachingEnabledObjectState, BooleanState):
     def _compute_value(self):
-        relevant_joint_infos = _get_relevant_joints(self.obj)
+        relevant_joint_infos = get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
 
@@ -80,7 +80,7 @@ class Open(CachingEnabledObjectState, BooleanState):
         @param fully: whether the object should be fully opened/closed (e.g. all relevant joints to 0/1).
         @return: bool indicating setter success. Failure may happen due to unannotated objects.
         """
-        relevant_joint_infos = _get_relevant_joints(self.obj)
+        relevant_joint_infos = get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
 
