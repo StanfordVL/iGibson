@@ -57,16 +57,16 @@ def plan_base_motion_br(
         body_ids.append(robot.parts[part].get_body_id())
 
     def collision_fn(q):
-        # TODO(replayMP): Check for all rotations. Also, check for the object in hand.
-        robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], [0, 0, 0, 1])
-        collisions = [
-            (obs, pairwise_collision(body_id, obs, max_distance=max_distance))
-            for obs in obstacles
-            for body_id in body_ids
-        ]
-        colliding_bids = [obs for obs, col in collisions if col]
-        if colliding_bids:
-            pass  # print("Collision with objects: ", colliding_bids)
+        for rot in np.linspace(-np.pi, np.pi, 8, endpoint=False):
+            robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, rot)))
+            collisions = [
+                (obs, pairwise_collision(body_id, obs, max_distance=max_distance))
+                for obs in obstacles
+                for body_id in body_ids
+            ]
+            colliding_bids = [obs for obs, col in collisions if col]
+            if colliding_bids:
+                return True
 
         # The below code is useful for plotting the RRT tree.
         # SEARCHED.append(np.flip(scene.world_to_map((q[0], q[1]))))
@@ -87,7 +87,7 @@ def plan_base_motion_br(
         # cv2.imshow("SceneGraph", img)
         # cv2.waitKey(1)
 
-        return bool(colliding_bids)
+        return False
 
     pos = robot.get_position()
     start_conf = tuple(pos[:2])

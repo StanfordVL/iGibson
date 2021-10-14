@@ -16,9 +16,9 @@ BODY_KW = 0.5
 BODY_MAX_V = 0.3
 BODY_MAX_W = 1
 
-LIMB_KV = 0.08
-LIMB_KW = 0.1
-LIMB_MAX_V = 0.05
+LIMB_KV = 0.2
+LIMB_KW = 0.3
+LIMB_MAX_V = 0.1
 LIMB_MAX_W = 0.5
 
 
@@ -45,7 +45,7 @@ def get_action_from_pose_to_pose(start_pose, end_pose, kv, kw, max_v, max_w, dis
 
 
 def get_action(
-    robot: BehaviorRobot, body_target_pose=None, hand_target_pose=None, reset_others=False, low_precision=False
+    robot: BehaviorRobot, body_target_pose=None, hand_target_pose=None, reset_others=True, low_precision=False
 ):
     assert body_target_pose is not None or hand_target_pose is not None
 

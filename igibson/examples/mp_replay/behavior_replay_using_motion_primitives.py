@@ -110,7 +110,7 @@ def run_demonstration(demo_path, segmentation_path, output_path):
 
     env = BehaviorMotionPrimitiveEnv(
         config_file=config,
-        mode="pbgui",
+        mode="gui",
         action_timestep=1.0 / 30.0,
         physics_timestep=1.0 / 120.0,
         activity_relevant_objects_only=False,
