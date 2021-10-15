@@ -28,12 +28,13 @@ JOINT_CHECKING_RESOLUTION = np.pi / 18
 HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
 
 MAX_STEPS_FOR_HAND_MOVE = 100
+MAX_STEPS_FOR_HAND_MOVE_WHEN_OPENING = 30
 MAX_STEPS_FOR_GRASP_OR_RELEASE = 30
 MAX_WAIT_FOR_GRASP_OR_RELEASE = 10
-MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 600
+MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 200
 
 MAX_ATTEMPTS_FOR_GRASPING = 100
-MAX_ATTEMPTS_FOR_OPENING = 5
+MAX_ATTEMPTS_FOR_OPENING = 20
 MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION = 20
 MAX_ATTEMPTS_FOR_OBJECT_PLACEMENT = 20
 
@@ -44,7 +45,7 @@ MAX_ATTEMPTS_FOR_SAMPLING_POSE_IN_ROOM = 60
 BIRRT_SAMPLING_CIRCLE_PROBABILITY = 0.5
 HAND_SAMPLING_DOMAIN_PADDING = 1  # Allow 1m of freedom around the sampling range.
 
-GRASP_APPROACH_DISTANCE = 0.08
+GRASP_APPROACH_DISTANCE = 0.06
 OPEN_GRASP_APPROACH_DISTANCE = 0.1
 
 RIGHT_HAND_OBJECT_CARRYING_POSE = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
@@ -106,7 +107,7 @@ class MotionPrimitiveController(object):
                         # We were trying to do something but didn't have the data.
                         raise MotionPrimitiveError("Could not get grasp position for opening/closing.")
 
-                grasp_pose, target_pose, object_direction, joint_info = grasp_data
+                grasp_pose, target_poses, object_direction, joint_info, grasp_required = grasp_data
                 with UndoableContext(self.robot):
                     if hand_collision_fn(grasp_pose):
                         print("Rejecting grasp pose candidate due to collision")
@@ -117,7 +118,6 @@ class MotionPrimitiveController(object):
                 approach_pose = (approach_pos, grasp_pose[1])
 
                 # If the grasp pose is too far, navigate
-                # TODO(replayMP): How do we navigate to the correct side of a door?
                 check_joint = (obj.get_body_id(), joint_info)
                 yield from self._navigate_if_needed(
                     obj, pos_on_obj=approach_pos, check_joint=check_joint, max_attempts=1
@@ -133,15 +133,19 @@ class MotionPrimitiveController(object):
                 print("Performing grasp approach for open.")
                 yield from self._move_hand_direct(approach_pose, ignore_failure=True)
 
-                try:
-                    yield from self._execute_grasp()
-                except MotionPrimitiveError:
-                    # Retreat back to the grasp pose.
-                    yield from self._execute_release()
-                    yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
-                    raise
+                if grasp_required:
+                    try:
+                        yield from self._execute_grasp()
+                    except MotionPrimitiveError:
+                        # Retreat back to the grasp pose.
+                        yield from self._execute_release()
+                        yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+                        raise
 
-                yield from self._move_hand_direct(target_pose, ignore_failure=True)
+                for target_pose in target_poses:
+                    yield from self._move_hand_direct(
+                        target_pose, ignore_failure=True, max_steps_for_hand_move=MAX_STEPS_FOR_HAND_MOVE_WHEN_OPENING
+                    )
 
                 # Moving to target pose often fails. Let's get the hand to apply the correct actions for its current pos
                 # This prevents the hand from jerking into its desired position when we do a release.
@@ -310,8 +314,10 @@ class MotionPrimitiveController(object):
     def _move_hand_direct(self, target_pose, **kwargs):
         yield from self._move_hand_direct_relative_to_robot(self._get_pose_in_robot_frame(target_pose), **kwargs)
 
-    def _move_hand_direct_relative_to_robot(self, relative_target_pose, ignore_failure=False):
-        for _ in range(MAX_STEPS_FOR_HAND_MOVE):
+    def _move_hand_direct_relative_to_robot(
+        self, relative_target_pose, ignore_failure=False, max_steps_for_hand_move=MAX_STEPS_FOR_HAND_MOVE
+    ):
+        for _ in range(max_steps_for_hand_move):
             action = behavior_ik_controller.get_action(self.robot, hand_target_pose=relative_target_pose)
             if action is None:
                 return
