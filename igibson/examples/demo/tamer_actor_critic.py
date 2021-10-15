@@ -153,7 +153,7 @@ def sac(
     feedback_gui = FeedbackInterface()
 
     env, test_env = env_fn(), env_fn()
-    obs_dim = (env.observation_space['task_obs'].shape[0] + env.observation_space['proprioception'].shape[0],)
+    obs_dim = (env.observation_space["task_obs"].shape[0] + env.observation_space["proprioception"].shape[0],)
     act_dim = env.action_space.shape[0]
 
     # Action limit for clamping: critically, assumes all dimensions share the same bound!
@@ -177,7 +177,7 @@ def sac(
     var_counts = tuple(count_vars(module) for module in [ac.pi, ac.q1, ac.q2])
 
     def extract_observations(obs):
-        return np.append(obs['task_obs'], obs['proprioception'])
+        return np.append(obs["task_obs"], obs["proprioception"])
 
     # Set up function for computing SAC Q-losses
     def compute_loss_q(data):
