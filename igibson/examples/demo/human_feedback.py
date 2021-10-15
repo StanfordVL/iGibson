@@ -206,12 +206,11 @@ class HumanFeedback:
     def run_keyboard_capture_thread(self):
         th.Thread(target=self.keyboard_capture_thread, args=(), name="keyboard_capture_thread", daemon=True).start()
 
-    def return_human_keyboard_feedback(self, action_length):
+    def return_human_keyboard_feedback(self):
         feedback = None
         if self.human_keyboard_feedback:
             if "Press" in str(self.human_keyboard_feedback):  # only use keypresses as reward signals
                 if self.human_keyboard_feedback.key in self.keyboard_feedback_dictionary:
-                    feedback = [0 for _ in range(action_length)]
                     feedback = self.keyboard_feedback_dictionary[self.human_keyboard_feedback.key]
                 elif self.human_keyboard_feedback.key in self.keyboard_control_dictionary:  # use 'p' for pausing:
                     feedback = self.keyboard_control_dictionary[self.human_keyboard_feedback.key]

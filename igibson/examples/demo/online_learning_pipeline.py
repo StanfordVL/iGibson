@@ -63,7 +63,7 @@ def train_ol_model(ol_agent, env, device, learning_rate):
                 obs, reward, done, info = env.step(a)
             else:
                 reward = 0
-            curr_keyboard_feedback = human_feedback.return_human_keyboard_feedback(action.size()[-1])
+            curr_keyboard_feedback = human_feedback.return_human_keyboard_feedback()
             if curr_keyboard_feedback:
                 if "Pause" in str(curr_keyboard_feedback):
                     paused = not paused
