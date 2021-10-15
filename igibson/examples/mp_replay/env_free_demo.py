@@ -55,9 +55,10 @@ def put_on_table(s, robot, controller: MotionPrimitiveController):
     execute_controller(controller.place_on_top(table), robot, s)
 
 
-def open_fridge(s, robot, controller: MotionPrimitiveController):
+def open_and_close_fridge(s, robot, controller: MotionPrimitiveController):
     fridge = s.scene.objects_by_category["fridge"][0]
     execute_controller(controller.open(fridge), robot, s)
+    execute_controller(controller.close(fridge), robot, s)
 
 
 def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
@@ -96,7 +97,7 @@ def main():
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
     robot.activate()
 
-    for _ in range(100):
+    for _ in range(300):
         s.step()
 
     controller = MotionPrimitiveController(scene, robot)
@@ -108,7 +109,7 @@ def main():
         # prepare_to_grasp_tray(s, robot, controller)
         # grasp_tray(s, robot, controller)
         # put_on_table(s, robot, controller)
-        open_fridge(s, robot, controller)
+        open_and_close_fridge(s, robot, controller)
 
         while True:
             action = np.zeros(28)

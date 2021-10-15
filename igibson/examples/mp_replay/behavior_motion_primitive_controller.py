@@ -1,4 +1,5 @@
 import random
+from math import ceil
 
 import numpy as np
 import pybullet as p
@@ -14,13 +15,15 @@ from igibson.examples.mp_replay.behavior_motion_planning_utils import (
     plan_base_motion_br,
     plan_hand_motion_br,
 )
-from igibson.external.pybullet_tools.utils import get_center_extent
+from igibson.external.pybullet_tools.utils import get_center_extent, set_joint_position
 from igibson.object_states.on_floor import RoomFloor
 from igibson.object_states.utils import sample_kinematics
 from igibson.objects.articulated_object import URDFObject
 from igibson.robots import behavior_robot
 from igibson.robots.behavior_robot import BODY_OFFSET_FROM_FLOOR, BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+
+JOINT_CHECKING_RESOLUTION = np.pi / 18
 
 HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
 
@@ -41,7 +44,8 @@ MAX_ATTEMPTS_FOR_SAMPLING_POSE_IN_ROOM = 60
 BIRRT_SAMPLING_CIRCLE_PROBABILITY = 0.5
 HAND_SAMPLING_DOMAIN_PADDING = 1  # Allow 1m of freedom around the sampling range.
 
-GRASP_APPROACH_DISTANCE = 0.05
+GRASP_APPROACH_DISTANCE = 0.08
+OPEN_GRASP_APPROACH_DISTANCE = 0.1
 
 RIGHT_HAND_OBJECT_CARRYING_POSE = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
 
@@ -81,19 +85,72 @@ class MotionPrimitiveController(object):
         yield from self._open_or_close(obj, False)
 
     def _open_or_close(self, obj, should_open):
-        # Don't do anything if the object is already open.
-        if obj.states[object_states.Open].get_value() == should_open:
-            return
-
+        hand_collision_fn = get_pose3d_hand_collision_fn(
+            self.robot, None, self._get_collision_body_ids(include_robot=True)
+        )
         for _ in range(MAX_ATTEMPTS_FOR_OPENING):
             try:
-                grasp_pose, target_pose = random.choice(get_grasp_position_for_open(self.robot, obj, should_open))
-                # TODO(replayMP): How do we navigate to the correct side of a door?
-                yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
-                yield from self._move_hand(grasp_pose)
-                yield from self._execute_grasp()
-                yield from self._move_hand_direct(target_pose)
+                # Open the hand first
                 yield from self._execute_release()
+
+                # Don't do anything if the object is already closed and we're trying to close.
+                if not should_open and not obj.states[object_states.Open].get_value():
+                    return
+
+                grasp_data = get_grasp_position_for_open(self.robot, obj, should_open)
+                if grasp_data is None:
+                    if should_open and obj.states[object_states.Open].get_value():
+                        # It's already open so we're good
+                        return
+                    else:
+                        # We were trying to do something but didn't have the data.
+                        raise MotionPrimitiveError("Could not get grasp position for opening/closing.")
+
+                grasp_pose, target_pose, object_direction, joint_info = grasp_data
+                with UndoableContext(self.robot):
+                    if hand_collision_fn(grasp_pose):
+                        print("Rejecting grasp pose candidate due to collision")
+                        continue
+
+                # Prepare data for the approach later.
+                approach_pos = grasp_pose[0] + object_direction * OPEN_GRASP_APPROACH_DISTANCE
+                approach_pose = (approach_pos, grasp_pose[1])
+
+                # If the grasp pose is too far, navigate
+                # TODO(replayMP): How do we navigate to the correct side of a door?
+                check_joint = (obj.get_body_id(), joint_info)
+                yield from self._navigate_if_needed(
+                    obj, pos_on_obj=approach_pos, check_joint=check_joint, max_attempts=1
+                )
+                yield from self._navigate_if_needed(
+                    obj, pos_on_obj=grasp_pose[0], check_joint=check_joint, max_attempts=1
+                )
+
+                yield from self._move_hand(grasp_pose)
+
+                # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
+                # It's okay if we can't go all the way because we run into the object.
+                print("Performing grasp approach for open.")
+                yield from self._move_hand_direct(approach_pose, ignore_failure=True)
+
+                try:
+                    yield from self._execute_grasp()
+                except MotionPrimitiveError:
+                    # Retreat back to the grasp pose.
+                    yield from self._execute_release()
+                    yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+                    raise
+
+                yield from self._move_hand_direct(target_pose, ignore_failure=True)
+
+                # Moving to target pose often fails. Let's get the hand to apply the correct actions for its current pos
+                # This prevents the hand from jerking into its desired position when we do a release.
+                yield from self._move_hand_direct(
+                    self.robot.parts["right_hand"].get_position_orientation(), ignore_failure=True
+                )
+
+                yield from self._execute_release()
+                yield from self._reset_hand()
 
                 if obj.states[object_states.Open].get_value() == should_open:
                     return
@@ -135,22 +192,24 @@ class MotionPrimitiveController(object):
                     approach_pos = grasp_pose[0] + object_direction * GRASP_APPROACH_DISTANCE
                     approach_pose = (approach_pos, grasp_pose[1])
 
-                    # If the grasp pose is too far, navigate (and discard this pose - it's aligned for the old pos)
-                    yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos)
-                    yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
+                    # If the grasp pose is too far, navigate.
+                    yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos, max_attempts=1)
+                    yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0], max_attempts=1)
 
                     yield from self._move_hand(grasp_pose)
 
                     # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
                     # It's okay if we can't go all the way because we run into the object.
-                    try:
-                        print("Performing grasp approach.")
-                        yield from self._move_hand_direct(approach_pose)
-                    except MotionPrimitiveError:
-                        pass
+                    print("Performing grasp approach.")
+                    yield from self._move_hand_direct(approach_pose, ignore_failure=True)
 
                     print("Grasping.")
-                    yield from self._execute_grasp()
+                    try:
+                        yield from self._execute_grasp()
+                    except MotionPrimitiveError:
+                        # Retreat back to the grasp pose.
+                        yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+                        raise
 
                 print("Moving hand back to neutral position.")
                 yield from self._reset_hand()
@@ -186,10 +245,7 @@ class MotionPrimitiveController(object):
         hand_orientation = self.robot.parts["right_hand"].get_orientation()  # Just keep the current hand orientation.
         desired_hand_pose = (toggle_position, hand_orientation)
 
-        try:
-            yield from self._move_hand_direct(desired_hand_pose)
-        except MotionPrimitiveError:
-            pass  # We can accept some deviation here.
+        yield from self._move_hand_direct(desired_hand_pose, ignore_failure=True)
 
         # Put hand back where it was.
         yield from self._reset_hand()
@@ -251,10 +307,10 @@ class MotionPrimitiveController(object):
             pose = (xyz_rpy[:3], p.getQuaternionFromEuler(xyz_rpy[3:]))
             yield from self._move_hand_direct(pose)
 
-    def _move_hand_direct(self, target_pose):
-        yield from self._move_hand_direct_relative_to_robot(self._get_pose_in_robot_frame(target_pose))
+    def _move_hand_direct(self, target_pose, **kwargs):
+        yield from self._move_hand_direct_relative_to_robot(self._get_pose_in_robot_frame(target_pose), **kwargs)
 
-    def _move_hand_direct_relative_to_robot(self, relative_target_pose):
+    def _move_hand_direct_relative_to_robot(self, relative_target_pose, ignore_failure=False):
         for _ in range(MAX_STEPS_FOR_HAND_MOVE):
             action = behavior_ik_controller.get_action(self.robot, hand_target_pose=relative_target_pose)
             if action is None:
@@ -263,7 +319,8 @@ class MotionPrimitiveController(object):
             yield action
 
         # TODO(replayMP): Decide if this is needed.
-        raise MotionPrimitiveError("Could not move gripper to desired position.")
+        if not ignore_failure:
+            raise MotionPrimitiveError("Could not move gripper to desired position.")
 
     def _execute_grasp(self):
         action = np.zeros(26)
@@ -303,7 +360,7 @@ class MotionPrimitiveController(object):
             raise MotionPrimitiveError("Could not release grasp!")
 
     def _reset_hand(self):
-        # TODO(replayMP): Could we use motion planning here?
+        # TODO(replayMP): Do we have to use motion planning for all the use cases of this?
         default_pose = p.multiplyTransforms(
             *self.robot.parts["body"].get_position_orientation(), *behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED
         )
@@ -364,6 +421,35 @@ class MotionPrimitiveController(object):
 
             yield action
 
+    def _navigate_if_needed(self, obj, pos_on_obj=None, **kwargs):
+        if pos_on_obj is not None:
+            if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
+                # No need to navigate.
+                return
+        elif obj.states[object_states.InReachOfRobot].get_value():
+            return
+
+        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, **kwargs)
+
+    def _navigate_to_obj(self, obj, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION, **kwargs):
+        for _ in range(max_attempts):
+            try:
+                yield from self._navigate_to_obj_once(obj, **kwargs)
+                return
+            except MotionPrimitiveError as e:
+                print("Retrying object navigation: ", e)
+
+        raise MotionPrimitiveError("Could not navigate to object after multiple attempts.")
+
+    def _navigate_to_obj_once(self, obj, pos_on_obj=None, **kwargs):
+        if isinstance(obj, RoomFloor):
+            # TODO(lowprio-replayMP): Pos-on-obj for the room navigation?
+            pose = self._sample_pose_in_room(obj.room_instance)
+        else:
+            pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj, **kwargs)
+
+        yield from self._navigate_to_pose(pose)
+
     def _navigate_to_pose_direct(self, pose_2d, low_precision=False):
         # First, rotate the robot to face towards the waypoint.
         # yield from self._rotate_in_place(pose_2d[2])
@@ -383,26 +469,7 @@ class MotionPrimitiveController(object):
         # TODO(replayMP): Do we care if navigation fails?
         raise MotionPrimitiveError("Could not move robot to desired waypoint.")
 
-    def _navigate_to_obj(self, obj, pos_on_obj=None, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION):
-        for _ in range(max_attempts):
-            try:
-                yield from self._navigate_to_obj_once(obj, pos_on_obj=pos_on_obj)
-                return
-            except MotionPrimitiveError as e:
-                print("Retrying object navigation: ", e)
-
-        raise MotionPrimitiveError("Could not navigate to object after multiple attempts.")
-
-    def _navigate_to_obj_once(self, obj, pos_on_obj=None):
-        if isinstance(obj, RoomFloor):
-            # TODO(lowprio-replayMP): Pos-on-obj for the room navigation?
-            pose = self._sample_pose_in_room(obj.room_instance)
-        else:
-            pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj)
-
-        yield from self._navigate_to_pose(pose)
-
-    def _sample_pose_near_object(self, obj, pos_on_obj=None):
+    def _sample_pose_near_object(self, obj, pos_on_obj=None, **kwargs):
         if pos_on_obj is None:
             pos_on_obj = self._sample_position_on_aabb_face(obj)
 
@@ -431,7 +498,7 @@ class MotionPrimitiveController(object):
             #     print("Candidate position failed ray test.")
             #     continue
 
-            if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj):
+            if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj, **kwargs):
                 continue
 
             return pose_2d
@@ -481,16 +548,6 @@ class MotionPrimitiveController(object):
             pos, orn = held_obj.get_position_orientation()
             return pos, orn
 
-    def _navigate_if_needed(self, obj, pos_on_obj=None, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION):
-        if pos_on_obj is not None:
-            if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
-                # No need to navigate.
-                return
-        elif obj.states[object_states.InReachOfRobot].get_value():
-            return
-
-        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, max_attempts=MAX_ATTEMPTS_FOR_OBJECT_NAVIGATION)
-
     @staticmethod
     def _detect_collision(bodyA, obj_in_hand=None):
         collision = []
@@ -519,7 +576,7 @@ class MotionPrimitiveController(object):
 
         return body or left or right
 
-    def _test_pose(self, pose_2d, pos_on_obj=None):
+    def _test_pose(self, pose_2d, pos_on_obj=None, check_joint=None):
         with UndoableContext(self.robot):
             self.robot.set_position_orientation(*self._get_robot_pose_from_2d_pose(pose_2d))
 
@@ -532,6 +589,19 @@ class MotionPrimitiveController(object):
             if self._detect_robot_collision():
                 print("Candidate position failed collision test.")
                 return False
+
+            if check_joint is not None:
+                body_id, joint_info = check_joint
+                # Check at different positions of the joint.
+                joint_range = joint_info.jointUpperLimit - joint_info.jointLowerLimit
+                turn_steps = int(ceil(abs(joint_range) / (JOINT_CHECKING_RESOLUTION)))
+                for i in range(turn_steps):
+                    joint_pos = (i + 1) / turn_steps * joint_range + joint_info.jointLowerLimit
+                    set_joint_position(body_id, joint_info.jointIndex, joint_pos)
+
+                    if self._detect_robot_collision():
+                        print("Candidate position failed joint-move collision test.")
+                        return False
 
             # TODO(replayMP): Other validations here?
             return True

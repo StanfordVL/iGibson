@@ -198,6 +198,7 @@ def plan_hand_motion_br(
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
 
     def extend_fn(q1, q2):
+        # TODO: Use scipy's slerp
         steps = np.abs(np.divide(hand_difference_fn(q2, q1), resolutions))
         n = int(np.max(steps)) + 1
 
