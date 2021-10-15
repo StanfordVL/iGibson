@@ -153,14 +153,14 @@ def sac(
     feedback_gui = FeedbackInterface()
 
     env, test_env = env_fn(), env_fn()
-    obs_dim = env.observation_space.shape
+    obs_dim = (env.observation_space['task_obs'].shape[0] + env.observation_space['proprioception'].shape[0],)
     act_dim = env.action_space.shape[0]
 
     # Action limit for clamping: critically, assumes all dimensions share the same bound!
     act_limit = env.action_space.high[0]
 
     # Create actor-critic module and target networks
-    ac = actor_critic(env.observation_space, env.action_space, **ac_kwargs)
+    ac = actor_critic(obs_dim, env.action_space, **ac_kwargs)
     ac_targ = deepcopy(ac)
 
     # Freeze target networks with respect to optimizers (only update via polyak averaging)
@@ -175,6 +175,9 @@ def sac(
 
     # Count variables (protip: try to get a feel for how different size networks behave!)
     var_counts = tuple(count_vars(module) for module in [ac.pi, ac.q1, ac.q2])
+
+    def extract_observations(obs):
+        return np.append(obs['task_obs'], obs['proprioception'])
 
     # Set up function for computing SAC Q-losses
     def compute_loss_q(data):
@@ -264,9 +267,11 @@ def sac(
     def test_agent():
         for j in range(num_test_episodes):
             o, d, ep_ret, ep_len = test_env.reset(), False, 0, 0
+            o = extract_observations(o)
             while not (d or (ep_len == max_ep_len)):
                 # Take deterministic actions at test time
                 o, r, d, _ = test_env.step(get_action(o, True))
+                o = extract_observations(o)
                 ep_ret += r
                 ep_len += 1
 
@@ -274,6 +279,7 @@ def sac(
     total_steps = steps_per_epoch * epochs
     start_time = time.time()
     o, ep_ret, ep_len = env.reset(), 0, 0
+    o = extract_observations(o)
 
     # Main loop: collect experience in env and update/log each epoch
     for t in range(total_steps):
@@ -288,6 +294,7 @@ def sac(
 
         # Step the env
         o2, r, d, _ = env.step(a)
+        o2 = extract_observations(o2)
 
         curr_keyboard_feedback = human_feedback.return_human_keyboard_feedback()
         if curr_keyboard_feedback and type(curr_keyboard_feedback) == int:
@@ -312,6 +319,7 @@ def sac(
         # End of trajectory handling
         if d or (ep_len == max_ep_len):
             o, ep_ret, ep_len = env.reset(), 0, 0
+            o = extract_observations(o)
 
         # Update handling
         if t >= update_after and t % update_every == 0:
