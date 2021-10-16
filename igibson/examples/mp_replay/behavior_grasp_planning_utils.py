@@ -10,7 +10,7 @@ from igibson.object_states.open import get_relevant_joints
 from igibson.objects.articulated_object import URDFObject
 
 ROTATION_ARC_SEGMENT_LENGTHS = 0.1
-REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS = (0.2, 0.8)
+REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS = (0.4, 0.6)
 PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS = (0.2, 0.8)
 GUARANTEED_GRASPABLE_WIDTH = 0.1
 GRASP_OFFSET = np.array([0, 0.05, -0.08])  # 5cm back and 8cm up.

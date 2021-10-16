@@ -22,27 +22,10 @@ def execute_controller(ctrl_gen, robot, s):
         s.step()
 
 
-def go_to_waypoint(s, robot, controller: MotionPrimitiveController):
-    # Navigate 1m back and 1m to the side.
-    delta_xy = np.array([-1, -1])
-    robot_xy = np.array(robot.parts["body"].get_position())[:2]
-    waypoint = robot_xy + delta_xy
-    execute_controller(controller._navigate_to_pose_direct(waypoint), robot, s)
-
-
 def go_to_sink_and_toggle(s, robot, controller: MotionPrimitiveController):
     sink = s.scene.objects_by_category["sink"][1]
     execute_controller(controller._navigate_to_obj(sink), robot, s)
     execute_controller(controller.toggle_on(sink), robot, s)
-
-
-def prepare_to_grasp_tray(s, robot, controller: MotionPrimitiveController):
-    tray = s.scene.objects_by_category["tray"][0]
-    execute_controller(controller._navigate_to_obj(tray), robot, s)
-
-    for grasp_pose, _ in get_grasp_poses_for_object(robot, tray):
-        robot.parts["right_hand"].set_position_orientation(*grasp_pose)
-        # execute_controller(controller._move_hand(grasp_pose), robot, s)
 
 
 def grasp_tray(s, robot, controller: MotionPrimitiveController):
@@ -68,13 +51,9 @@ def open_and_close_door(s, robot, controller: MotionPrimitiveController):
 
 
 def open_and_close_cabinet(s, robot, controller: MotionPrimitiveController):
-    cabinet = s.scene.objects_by_category["cabinet"][0]
+    cabinet = s.scene.objects_by_category["bottom_cabinet"][2]
     execute_controller(controller.open(cabinet), robot, s)
     execute_controller(controller.close(cabinet), robot, s)
-
-
-def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
-    execute_controller(controller._move_hand_direct_relative_to_robot(([0.5, 0, 0], [0, 0, 0, 1])), robot, s)
 
 
 def main():
@@ -110,14 +89,11 @@ def main():
     controller = MotionPrimitiveController(scene, robot)
 
     try:
-        # go_to_waypoint(s, robot, controller)
         # go_to_sink_and_toggle(s, robot, controller)
-        # hand_fwd_by_one(s, robot, controller)
-        # prepare_to_grasp_tray(s, robot, controller)
         # grasp_tray(s, robot, controller)
         # put_on_table(s, robot, controller)
         # open_and_close_fridge(s, robot, controller)
-        open_and_close_door(s, robot, controller)
+        # open_and_close_door(s, robot, controller)
         open_and_close_cabinet(s, robot, controller)
 
         while True:
