@@ -99,6 +99,9 @@ def plan_base_motion_br(
     for part in ["body", "left_hand", "right_hand"]:
         body_ids.append(robot.parts[part].get_body_id())
 
+    if obj_in_hand is not None:
+        body_ids.append(obj_in_hand.get_body_id())
+
     def collision_fn(q):
         # TODO(replayMP): Is this a good idea?
         robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, q[2])))

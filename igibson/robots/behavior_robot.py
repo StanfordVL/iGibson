@@ -34,7 +34,7 @@ from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 THRESHOLD_EPSILON = 0.001
 
 # Part offset parameters
-BODY_OFFSET_FROM_FLOOR = 0.55
+BODY_OFFSET_FROM_FLOOR = 0.65
 
 NECK_BASE_REL_POS_UNTRACKED = [-0.15, 0, 0.3]
 RIGHT_SHOULDER_REL_POS_UNTRACKED = [-0.15, -0.15, 0.3]
@@ -49,7 +49,7 @@ LEFT_SHOULDER_REL_POS_TRACKED = [-0.15, 0.15, -0.15]
 EYE_LOC_POSE_TRACKED = ([0.05, 0, 0.4], [0, 0, 0, 1])
 # TODO(replayMP): These are currently changed as an easy solution to a couple issues.
 # This is a behavior that can entirely be replicated using actions, I just cut a corner here.
-RIGHT_HAND_LOC_POSE_TRACKED = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
+RIGHT_HAND_LOC_POSE_TRACKED = ([0.2, -0.12, 0.05], [-0.7, 0.7, 0.0, 0.15])
 LEFT_HAND_LOC_POSE_TRACKED = ([0, 0.12, 0.4], [0.5, -0.5, 0.5, 0.5])
 
 # Body parameters
@@ -326,12 +326,14 @@ class BehaviorRobot(object):
 
     def get_proprioception(self):
         state = OrderedDict()
-        state["left_hand_position_local"] = self.parts["left_hand"].local_pos
-        state["left_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["left_hand"].local_orn)
-        state["right_hand_position_local"] = self.parts["right_hand"].local_pos
-        state["right_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["right_hand"].local_orn)
-        state["eye_position_local"] = self.parts["eye"].local_pos
-        state["eye_orientation_local"] = p.getEulerFromQuaternion(self.parts["eye"].local_orn)
+        state["left_hand_position_local"] = self.parts["left_hand"].get_local_position()
+        state["left_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["left_hand"].get_local_orientation())
+        state["right_hand_position_local"] = self.parts["right_hand"].get_local_position()
+        state["right_hand_orientation_local"] = p.getEulerFromQuaternion(
+            self.parts["right_hand"].get_local_orientation()
+        )
+        state["eye_position_local"] = self.parts["eye"].get_local_position()
+        state["eye_orientation_local"] = p.getEulerFromQuaternion(self.parts["eye"].get_local_orientation())
         state["left_hand_trigger_fraction"] = self.parts["left_hand"].trigger_fraction
         state["left_hand_is_grasping"] = float(
             self.parts["left_hand"].object_in_hand is not None and self.parts["left_hand"].release_counter is None
@@ -565,7 +567,6 @@ class BRHandBase(ArticulatedObject):
         # This base rotation is applied before any actual rotation is applied to the hand. This adjusts
         # for the hand model's rotation to make it appear in the right place.
         self.base_rot = base_rot
-        self.local_pos, self.local_orn = [0, 0, 0], [0, 0, 0, 1]
         self.trigger_fraction = 0
 
         # Bool indicating whether the hands have been spwaned by pressing the trigger reset
@@ -619,20 +620,25 @@ class BRHandBase(ArticulatedObject):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BRHandBase, self).set_position_orientation(pos, orn)
-        body = self.parent.parts["body"]
-        if body.new_pos is None:
-            inv_body_pos, inv_body_orn = p.invertTransform(*body.get_position_orientation())
-        else:
-            inv_body_pos, inv_body_orn = p.invertTransform(body.new_pos, body.new_orn)
-        new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos, orn)
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
+
         self.new_pos = pos
         self.new_orn = orn
         # Update pos and orientation of ghost hands as well
         if self.parent.use_ghost_hands:
             self.ghost_hand.set_position(self.new_pos)
             self.ghost_hand.set_orientation(self.new_orn)
+
+    def get_local_position(self):
+        return self.get_local_position_orientation()[0]
+
+    def get_local_orientation(self):
+        return self.get_local_position_orientation()[1]
+
+    def get_local_position_orientation(self):
+        body = self.parent.parts["body"]
+        return p.multiplyTransforms(
+            *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
+        )
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -665,7 +671,7 @@ class BRHandBase(ArticulatedObject):
 
         shoulder_point = left_shoulder_rel_pos if self.hand == "left" else right_shoulder_rel_pos
         shoulder_point = np.array(shoulder_point)
-        desired_local_pos = np.array(self.local_pos) + np.array(clipped_delta_pos)
+        desired_local_pos = np.array(self.get_local_position()) + np.array(clipped_delta_pos)
         shoulder_to_hand = desired_local_pos - shoulder_point
         dist_to_shoulder = np.linalg.norm(shoulder_to_hand)
         if dist_to_shoulder > (HAND_DISTANCE_THRESHOLD + THRESHOLD_EPSILON):
@@ -676,7 +682,7 @@ class BRHandBase(ArticulatedObject):
             # Add to shoulder position to get final local position
             reduced_local_pos = shoulder_point + reduced_shoulder_to_hand
             # Calculate new delta to get to this point
-            clipped_delta_pos = reduced_local_pos - np.array(self.local_pos)
+            clipped_delta_pos = reduced_local_pos - np.array(self.get_local_position())
 
         return clipped_delta_pos, clipped_delta_orn
 
@@ -697,12 +703,9 @@ class BRHandBase(ArticulatedObject):
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new local transform
-        old_local_pos, old_local_orn = self.local_pos, self.local_orn
+        old_local_pos, old_local_orn = self.get_local_position_orientation()
         _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], old_local_orn)
         new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
-
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
 
         # Calculate new world position based on local transform and new body pose
         body = self.parent.parts["body"]
@@ -773,14 +776,10 @@ class BRHandBase(ArticulatedObject):
 
     def dump_part_state(self):
         return {
-            "local_pos": list(self.local_pos),
-            "local_orn": list(self.local_orn),
             "trigger_fraction": self.trigger_fraction,
         }
 
     def load_part_state(self, dump):
-        self.local_pos = np.array(dump["local_pos"])
-        self.local_orn = np.array(dump["local_orn"])
         self.trigger_fraction = dump["trigger_fraction"]
 
 
@@ -1341,7 +1340,6 @@ class BREye(ArticulatedObject):
 
     def __init__(self, parent):
         # Set up class
-        self.local_pos, self.local_orn = [0, 0, 0], [0, 0, 0, 1]
         self.parent = parent
 
         self.name = "BREye_{}".format(self.parent.robot_num)
@@ -1359,18 +1357,31 @@ class BREye(ArticulatedObject):
             visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3
         )
 
+    def _load(self):
+        body_ids = super(BREye, self)._load()
+        assert len(body_ids) == 1
+
+        # Set mass to 0
+        p.changeDynamics(body_ids[0], -1, 0)
+
+        return body_ids
+
+    def get_local_position(self):
+        return self.get_local_position_orientation()[0]
+
+    def get_local_orientation(self):
+        return self.get_local_position_orientation()[1]
+
+    def get_local_position_orientation(self):
+        body = self.parent.parts["body"]
+        return p.multiplyTransforms(
+            *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
+        )
+
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BREye, self).set_position_orientation(pos, orn)
-        body = self.parent.parts["body"]
-        if body.new_pos is None:
-            inv_body_pos, inv_body_orn = p.invertTransform(*body.get_position_orientation())
-        else:
-            inv_body_pos, inv_body_orn = p.invertTransform(body.new_pos, body.new_orn)
-        new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos, orn)
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
         self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
@@ -1397,7 +1408,7 @@ class BREye(ArticulatedObject):
         else:
             neck_base_rel_pos = NECK_BASE_REL_POS_UNTRACKED
         neck_base_point = np.array(neck_base_rel_pos)
-        desired_local_pos = np.array(self.local_pos) + np.array(clipped_delta_pos)
+        desired_local_pos = np.array(self.get_local_position()) + np.array(clipped_delta_pos)
         neck_to_head = desired_local_pos - neck_base_point
         dist_to_neck = np.linalg.norm(neck_to_head)
         if dist_to_neck > (HEAD_DISTANCE_THRESHOLD + THRESHOLD_EPSILON):
@@ -1405,7 +1416,7 @@ class BREye(ArticulatedObject):
             shrink_factor = HEAD_DISTANCE_THRESHOLD / dist_to_neck
             reduced_neck_to_head = neck_to_head * shrink_factor
             reduced_local_pos = neck_base_point + reduced_neck_to_head
-            clipped_delta_pos = reduced_local_pos - np.array(self.local_pos)
+            clipped_delta_pos = reduced_local_pos - np.array(self.get_local_position())
 
         return clipped_delta_pos, clipped_delta_orn
 
@@ -1426,12 +1437,8 @@ class BREye(ArticulatedObject):
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new local transform
-        old_local_pos, old_local_orn = self.local_pos, self.local_orn
-        _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], old_local_orn)
-        new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
-
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
+        _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], self.get_local_orientation())
+        new_local_pos = np.array(self.get_local_position()) + np.array(clipped_delta_pos)
 
         # Calculate new world position based on local transform and new body pose
         body = self.parent.parts["body"]
@@ -1441,11 +1448,7 @@ class BREye(ArticulatedObject):
         self.set_position_orientation(self.new_pos, self.new_orn)
 
     def dump_part_state(self):
-        return {
-            "local_pos": list(self.local_pos),
-            "local_orn": list(self.local_orn),
-        }
+        pass
 
     def load_part_state(self, dump):
-        self.local_pos = np.array(dump["local_pos"])
-        self.local_orn = np.array(dump["local_orn"])
+        pass

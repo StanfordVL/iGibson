@@ -43,11 +43,9 @@ HAND_SAMPLING_DOMAIN_PADDING = 1  # Allow 1m of freedom around the sampling rang
 PREDICATE_SAMPLING_Z_OFFSET = 0.1
 JOINT_CHECKING_RESOLUTION = np.pi / 18
 
-GRASP_APPROACH_DISTANCE = 0.15
-OPEN_GRASP_APPROACH_DISTANCE = 0.15
+GRASP_APPROACH_DISTANCE = 0.2
+OPEN_GRASP_APPROACH_DISTANCE = 0.2
 HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
-
-RIGHT_HAND_OBJECT_CARRYING_POSE = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
 
 
 class MotionPrimitiveError(ValueError):
@@ -130,7 +128,7 @@ class MotionPrimitiveController(object):
                 # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
                 # It's okay if we can't go all the way because we run into the object.
                 print("Performing grasp approach for open.")
-                yield from self._move_hand_direct(approach_pose, ignore_failure=True)
+                yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
 
                 # When the approach is done, reset the constraints to where we currently are.
 
@@ -206,7 +204,7 @@ class MotionPrimitiveController(object):
                     # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
                     # It's okay if we can't go all the way because we run into the object.
                     print("Performing grasp approach.")
-                    yield from self._move_hand_direct(approach_pose, ignore_failure=True)
+                    yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
 
                     print("Grasping.")
                     try:
@@ -316,9 +314,16 @@ class MotionPrimitiveController(object):
         yield from self._move_hand_direct_relative_to_robot(self._get_pose_in_robot_frame(target_pose), **kwargs)
 
     def _move_hand_direct_relative_to_robot(
-        self, relative_target_pose, ignore_failure=False, max_steps_for_hand_move=MAX_STEPS_FOR_HAND_MOVE
+        self,
+        relative_target_pose,
+        ignore_failure=False,
+        max_steps_for_hand_move=MAX_STEPS_FOR_HAND_MOVE,
+        stop_on_contact=False,
     ):
         for _ in range(max_steps_for_hand_move):
+            if stop_on_contact and p.getContactPoints(self.robot.parts["right_hand"].get_body_id()):
+                return
+
             action = behavior_ik_controller.get_action(self.robot, hand_target_pose=relative_target_pose)
             if action is None:
                 return

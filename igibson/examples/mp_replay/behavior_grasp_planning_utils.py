@@ -92,10 +92,12 @@ def grasp_position_for_open_on_prismatic_joint(robot, target_obj, relevant_joint
     # Find the correct side of the lateral axis & go some distance along that direction.
     min_lateral_pos_wrt_surface_center = (canonical_x_axis + canonical_y_axis) * -bbox_extent_in_link_frame / 2
     max_lateral_pos_wrt_surface_center = (canonical_x_axis + canonical_y_axis) * bbox_extent_in_link_frame / 2
-    lateral_pos_wrt_surface_center = np.random.uniform(
-        PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * min_lateral_pos_wrt_surface_center,
-        PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * max_lateral_pos_wrt_surface_center,
+    diff_lateral_pos_wrt_surface_center = max_lateral_pos_wrt_surface_center - min_lateral_pos_wrt_surface_center
+    sampled_lateral_pos_wrt_min = np.random.uniform(
+        PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * diff_lateral_pos_wrt_surface_center,
+        PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * diff_lateral_pos_wrt_surface_center,
     )
+    lateral_pos_wrt_surface_center = min_lateral_pos_wrt_surface_center + sampled_lateral_pos_wrt_min
     grasp_position_in_bbox_frame = center_of_selected_surface_along_push_axis + lateral_pos_wrt_surface_center
 
     # Get the appropriate rotation
@@ -111,7 +113,6 @@ def grasp_position_for_open_on_prismatic_joint(robot, target_obj, relevant_joint
     # Finally apply our predetermined rotation around the X axis.
     grasp_orn_in_bbox_frame = hand_orn_in_bbox_frame * Rotation.from_euler("X", -GRASP_ANGLE)
     grasp_quat_in_bbox_frame = grasp_orn_in_bbox_frame.as_quat()
-    grasp_pose_in_bbox_frame = grasp_position_in_bbox_frame, grasp_quat_in_bbox_frame
 
     # Now apply the grasp offset.
     offset_in_bbox_frame = hand_orn_in_bbox_frame.apply(OPEN_GRASP_OFFSET)
@@ -197,21 +198,27 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     center_of_selected_surface_along_push_axis = points_along_open_axis[open_axis_closer_side_idx]
 
     # Find the correct side of the lateral axis & go some distance along that direction.
-    # TODO(replayMP): Add some random movement in joint axis too.
-    canonical_lateral_axis = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_bbox[lateral_axis_idx])
-    min_lateral_pos_wrt_surface_center = canonical_lateral_axis * np.array(
-        origin_wrt_bbox[0]
-    )  # Stay on the correct side of the axis.
-    max_lateral_pos_wrt_surface_center = canonical_lateral_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
-    lateral_pos_wrt_surface_center = np.random.uniform(
-        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * min_lateral_pos_wrt_surface_center,
-        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * max_lateral_pos_wrt_surface_center,
+    canonical_joint_axis = np.eye(3)[joint_axis_idx]
+    lateral_away_from_origin = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_bbox[lateral_axis_idx])
+    min_lateral_pos_wrt_surface_center = (
+        lateral_away_from_origin * np.array(origin_wrt_bbox[0])
+        - canonical_joint_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
     )
+    max_lateral_pos_wrt_surface_center = (
+        lateral_away_from_origin * bbox_extent_in_link_frame[lateral_axis_idx] / 2
+        + canonical_joint_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
+    )
+    diff_lateral_pos_wrt_surface_center = max_lateral_pos_wrt_surface_center - min_lateral_pos_wrt_surface_center
+    sampled_lateral_pos_wrt_min = np.random.uniform(
+        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * diff_lateral_pos_wrt_surface_center,
+        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * diff_lateral_pos_wrt_surface_center,
+    )
+    lateral_pos_wrt_surface_center = min_lateral_pos_wrt_surface_center + sampled_lateral_pos_wrt_min
     grasp_position = center_of_selected_surface_along_push_axis + lateral_pos_wrt_surface_center
 
     # Get the appropriate rotation
     palm = canonical_open_direction * -open_axis_closer_side_sign
-    wrist = np.eye(3)[joint_axis_idx] * -open_axis_closer_side_sign
+    wrist = canonical_joint_axis * -open_axis_closer_side_sign
     lateral = np.cross(wrist, palm)
     hand_orn_in_bbox_frame = get_hand_rotation_from_axes(lateral, wrist, palm)
 
