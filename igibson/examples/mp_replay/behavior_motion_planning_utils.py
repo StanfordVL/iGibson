@@ -103,7 +103,6 @@ def plan_base_motion_br(
         body_ids.append(obj_in_hand.get_body_id())
 
     def collision_fn(q):
-        # TODO(replayMP): Is this a good idea?
         robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, q[2])))
         for body_id in body_ids:
             close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(body_id)))

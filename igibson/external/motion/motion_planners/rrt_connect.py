@@ -14,8 +14,6 @@ def asymmetric_extend(q1, q2, extend_fn, backward=False):
 
 
 def rrt_connect(q1, q2, distance_fn, sample_fn, extend_fn, collision_fn, iterations=RRT_ITERATIONS):
-    # TODO: collision(q1, q2)
-    # TODO(replayMP): Do we care about this?
     if collision_fn(q2):  # or collision_fn(q1)
         return None
     nodes1, nodes2 = [TreeNode(q1)], [TreeNode(q2)]
@@ -52,7 +50,6 @@ def rrt_connect(q1, q2, distance_fn, sample_fn, extend_fn, collision_fn, iterati
 
 
 def direct_path(q1, q2, extend_fn, collision_fn):
-    # TODO(replayMP): Do we care about this?
     if collision_fn(q2):  # or collision_fn(q1)
         return None
     path = [q1]
@@ -66,8 +63,7 @@ def direct_path(q1, q2, extend_fn, collision_fn):
 def birrt(
     q1, q2, distance, sample, extend, collision, restarts=RRT_RESTARTS, iterations=RRT_ITERATIONS, smooth=RRT_SMOOTHING
 ):
-    # TODO(replayMP): Do we care about this?
-    if collision(q2):  # or collision(q1)
+    if collision(q2):
         return None
     path = direct_path(q1, q2, extend, collision)
     if path is not None:
