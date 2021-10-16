@@ -199,7 +199,9 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     # Find the correct side of the lateral axis & go some distance along that direction.
     # TODO(replayMP): Add some random movement in joint axis too.
     canonical_lateral_axis = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_bbox[lateral_axis_idx])
-    min_lateral_pos_wrt_surface_center = np.array(origin_wrt_bbox[0])  # Stay on the correct side of the axis.
+    min_lateral_pos_wrt_surface_center = canonical_lateral_axis * np.array(
+        origin_wrt_bbox[0]
+    )  # Stay on the correct side of the axis.
     max_lateral_pos_wrt_surface_center = canonical_lateral_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
     lateral_pos_wrt_surface_center = np.random.uniform(
         REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * min_lateral_pos_wrt_surface_center,
@@ -209,8 +211,8 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
     # Get the appropriate rotation
     palm = canonical_open_direction * -open_axis_closer_side_sign
-    wrist = np.eye(3)[joint_axis_idx] * -np.sign(joint_axis[joint_axis_idx])
-    lateral = canonical_lateral_axis * open_axis_closer_side_sign
+    wrist = np.eye(3)[joint_axis_idx] * -open_axis_closer_side_sign
+    lateral = np.cross(wrist, palm)
     hand_orn_in_bbox_frame = get_hand_rotation_from_axes(lateral, wrist, palm)
 
     # Apply an additional random rotation along the face plane
