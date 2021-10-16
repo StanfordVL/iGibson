@@ -15,7 +15,7 @@ from igibson.examples.mp_replay.behavior_motion_planning_utils import (
     plan_base_motion_br,
     plan_hand_motion_br,
 )
-from igibson.external.pybullet_tools.utils import get_center_extent, set_joint_position
+from igibson.external.pybullet_tools.utils import get_center_extent, get_joint_position, set_joint_position
 from igibson.object_states.on_floor import RoomFloor
 from igibson.object_states.utils import sample_kinematics
 from igibson.objects.articulated_object import URDFObject
@@ -339,16 +339,17 @@ class MotionPrimitiveController(object):
 
             action = behavior_ik_controller.get_action(self.robot, hand_target_pose=relative_target_pose)
             if action is None:
+                if stop_on_contact:
+                    raise MotionPrimitiveError("No contact was made.")
                 return
 
             yield action
 
-        # TODO(replayMP): Decide if this is needed.
-        if stop_on_contact:
-            raise MotionPrimitiveError("No contact was made.")
-
         if not ignore_failure:
             raise MotionPrimitiveError("Could not move gripper to desired position.")
+
+        if stop_on_contact:
+            raise MotionPrimitiveError("No contact was made.")
 
     def _execute_grasp(self):
         action = np.zeros(26)
@@ -388,7 +389,6 @@ class MotionPrimitiveController(object):
             raise MotionPrimitiveError("Could not release grasp!")
 
     def _reset_hand(self):
-        # TODO(replayMP): Do we have to use motion planning for all the use cases of this?
         default_pose = p.multiplyTransforms(
             *self.robot.parts["body"].get_position_orientation(), *behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED
         )
@@ -494,7 +494,6 @@ class MotionPrimitiveController(object):
 
             yield action
 
-        # TODO(replayMP): Do we care if navigation fails?
         raise MotionPrimitiveError("Could not move robot to desired waypoint.")
 
     def _sample_pose_near_object(self, obj, pos_on_obj=None, **kwargs):
@@ -502,6 +501,7 @@ class MotionPrimitiveController(object):
             pos_on_obj = self._sample_position_on_aabb_face(obj)
 
         pos_on_obj = np.array(pos_on_obj)
+        obj_rooms = obj.in_rooms if obj.in_rooms else [self.scene.get_room_instance_by_point(pos_on_obj[:2])]
         for _ in range(MAX_ATTEMPTS_FOR_SAMPLING_POSE_NEAR_OBJECT):
             distance = np.random.uniform(0.2, 1.0)
             yaw = np.random.uniform(-np.pi, np.pi)
@@ -509,15 +509,9 @@ class MotionPrimitiveController(object):
                 [pos_on_obj[0] + distance * np.cos(yaw), pos_on_obj[1] + distance * np.sin(yaw), yaw + np.pi]
             )
 
-            # Check line-of-sight
-            # TODO(lowprio-replayMP): Generalize
-            pos, _ = self._get_robot_pose_from_2d_pose(pose_2d)
-            eye_pos = pos + np.array(behavior_robot.EYE_LOC_POSE_TRACKED[0])
-            ray_test_res = p.rayTest(eye_pos, pos_on_obj)
-
-            # TODO(replayMP): Do we need the ray test?
-            if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
-                print("Candidate position failed ray test.")
+            # Check room
+            if self.scene.get_room_instance_by_point(pose_2d[:2]) not in obj_rooms:
+                print("Candidate position is in the wrong room.")
                 continue
 
             if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj, **kwargs):
@@ -601,6 +595,7 @@ class MotionPrimitiveController(object):
 
     def _test_pose(self, pose_2d, pos_on_obj=None, check_joint=None):
         with UndoableContext(self.robot):
+            robot_pose = self.robot.parts["body"].get_position_orientation()
             self.robot.set_position_orientation(*self._get_robot_pose_from_2d_pose(pose_2d))
 
             if pos_on_obj is not None:
@@ -615,6 +610,8 @@ class MotionPrimitiveController(object):
 
             if check_joint is not None:
                 body_id, joint_info = check_joint
+                original_joint_position = get_joint_position(body_id, joint_info.jointIndex)
+
                 # Check at different positions of the joint.
                 joint_range = joint_info.jointUpperLimit - joint_info.jointLowerLimit
                 turn_steps = int(ceil(abs(joint_range) / (JOINT_CHECKING_RESOLUTION)))
@@ -626,7 +623,12 @@ class MotionPrimitiveController(object):
                         print("Candidate position failed joint-move collision test.")
                         return False
 
-            # TODO(replayMP): Other validations here?
+            # Now put everything back. There's a bug in the sleep logic that cares about this.
+            # TODO(lowprio-replayMP): Figure this out.
+            self.robot.set_position_orientation(*robot_pose)
+            if check_joint:
+                set_joint_position(body_id, joint_info.jointIndex, original_joint_position)
+
             return True
 
     def _get_robot_pose_from_2d_pose(self, pose_2d):

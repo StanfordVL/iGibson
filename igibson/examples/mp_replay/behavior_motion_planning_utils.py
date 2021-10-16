@@ -32,7 +32,7 @@ def plan_base_motion_br(
     turn_resolution=np.pi / 6,
     max_distance=BODY_MAX_DISTANCE,
     iterations=200,
-    restarts=20,
+    restarts=5,
     shortening=0,
     **kwargs
 ):
@@ -188,7 +188,7 @@ def plan_hand_motion_br(
     resolutions=(0.05, 0.05, 0.05, 0.2, 0.2, 0.2),
     max_distance=HAND_MAX_DISTANCE,
     iterations=200,
-    restarts=5,
+    restarts=3,
     shortening=0,
 ):
     def sample_fn():
