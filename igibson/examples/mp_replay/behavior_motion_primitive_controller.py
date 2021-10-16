@@ -128,7 +128,14 @@ class MotionPrimitiveController(object):
                 # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
                 # It's okay if we can't go all the way because we run into the object.
                 print("Performing grasp approach for open.")
-                yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
+
+                try:
+                    yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
+                except MotionPrimitiveError:
+                    # An error will be raised when contact fails. If this happens, let's retry.
+                    # Retreat back to the grasp pose.
+                    yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+                    continue
 
                 # When the approach is done, reset the constraints to where we currently are.
 
@@ -204,7 +211,13 @@ class MotionPrimitiveController(object):
                     # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
                     # It's okay if we can't go all the way because we run into the object.
                     print("Performing grasp approach.")
-                    yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
+                    try:
+                        yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
+                    except MotionPrimitiveError:
+                        # An error will be raised when contact fails. If this happens, let's retry.
+                        # Retreat back to the grasp pose.
+                        yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+                        continue
 
                     print("Grasping.")
                     try:
@@ -331,6 +344,9 @@ class MotionPrimitiveController(object):
             yield action
 
         # TODO(replayMP): Decide if this is needed.
+        if stop_on_contact:
+            raise MotionPrimitiveError("No contact was made.")
+
         if not ignore_failure:
             raise MotionPrimitiveError("Could not move gripper to desired position.")
 
@@ -486,18 +502,12 @@ class MotionPrimitiveController(object):
             pos_on_obj = self._sample_position_on_aabb_face(obj)
 
         pos_on_obj = np.array(pos_on_obj)
-        obj_room = self.scene.get_room_instance_by_point(pos_on_obj[:2])
         for _ in range(MAX_ATTEMPTS_FOR_SAMPLING_POSE_NEAR_OBJECT):
             distance = np.random.uniform(0.2, 1.0)
             yaw = np.random.uniform(-np.pi, np.pi)
             pose_2d = np.array(
                 [pos_on_obj[0] + distance * np.cos(yaw), pos_on_obj[1] + distance * np.sin(yaw), yaw + np.pi]
             )
-
-            # Check room
-            if self.scene.get_room_instance_by_point(pose_2d[:2]) != obj_room:
-                print("Candidate position is in the wrong room.")
-                continue
 
             # Check line-of-sight
             # TODO(lowprio-replayMP): Generalize
@@ -506,9 +516,9 @@ class MotionPrimitiveController(object):
             ray_test_res = p.rayTest(eye_pos, pos_on_obj)
 
             # TODO(replayMP): Do we need the ray test?
-            # if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
-            #     print("Candidate position failed ray test.")
-            #     continue
+            if len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id():
+                print("Candidate position failed ray test.")
+                continue
 
             if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj, **kwargs):
                 continue

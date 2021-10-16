@@ -62,9 +62,15 @@ def open_and_close_fridge(s, robot, controller: MotionPrimitiveController):
 
 
 def open_and_close_door(s, robot, controller: MotionPrimitiveController):
-    door = s.scene.objects_by_category["door"][1]
+    door = (set(s.scene.objects_by_category["door"]) & set(s.scene.objects_by_room["bathroom_0"])).pop()
     execute_controller(controller.open(door), robot, s)
     execute_controller(controller.close(door), robot, s)
+
+
+def open_and_close_cabinet(s, robot, controller: MotionPrimitiveController):
+    cabinet = s.scene.objects_by_category["cabinet"][0]
+    execute_controller(controller.open(cabinet), robot, s)
+    execute_controller(controller.close(cabinet), robot, s)
 
 
 def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
@@ -74,15 +80,12 @@ def hand_fwd_by_one(s, robot, controller: MotionPrimitiveController):
 def main():
     s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
-        "Rs_int", load_object_categories=["walls", "floors", "bed", "door", "sink", "coffee_table", "fridge"]
+        "Rs_int", load_object_categories=["walls", "floors", "bottom_cabinet", "door", "sink", "coffee_table", "fridge"]
     )
     s.import_ig_scene(scene)
 
-    coffee_table = scene.objects_by_category["coffee_table"][0]
-
     model_path = get_ig_model_path("tray", "tray_000")
     model_filename = os.path.join(model_path, "tray_000.urdf")
-    max_bbox = [0.1, 0.1, 0.1]
     avg_category_spec = get_ig_avg_category_specs()
 
     tray = URDFObject(
@@ -95,8 +98,6 @@ def main():
     )
     s.import_object(tray)
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
-
-    # tray.states[object_states.OnTop].set_value(coffee_table, True, use_ray_casting_method=True)
 
     robot = BehaviorRobot(s)
     s.import_behavior_robot(robot)
@@ -113,10 +114,11 @@ def main():
         # go_to_sink_and_toggle(s, robot, controller)
         # hand_fwd_by_one(s, robot, controller)
         # prepare_to_grasp_tray(s, robot, controller)
-        grasp_tray(s, robot, controller)
-        put_on_table(s, robot, controller)
-        open_and_close_fridge(s, robot, controller)
+        # grasp_tray(s, robot, controller)
+        # put_on_table(s, robot, controller)
+        # open_and_close_fridge(s, robot, controller)
         open_and_close_door(s, robot, controller)
+        open_and_close_cabinet(s, robot, controller)
 
         while True:
             action = np.zeros(28)

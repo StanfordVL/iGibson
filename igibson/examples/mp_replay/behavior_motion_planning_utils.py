@@ -115,6 +115,7 @@ def plan_base_motion_br(
             ]
             colliding_bids = [obs for obs, col in collisions if col]
             if colliding_bids:
+                # print("Found collision w/ ", colliding_bids)
                 return True
 
         # The below code is useful for plotting the RRT tree.

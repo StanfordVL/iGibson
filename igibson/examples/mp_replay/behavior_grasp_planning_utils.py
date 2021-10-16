@@ -201,7 +201,7 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     canonical_joint_axis = np.eye(3)[joint_axis_idx]
     lateral_away_from_origin = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_bbox[lateral_axis_idx])
     min_lateral_pos_wrt_surface_center = (
-        lateral_away_from_origin * np.array(origin_wrt_bbox[0])
+        lateral_away_from_origin * -np.array(origin_wrt_bbox[0])
         - canonical_joint_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
     )
     max_lateral_pos_wrt_surface_center = (
