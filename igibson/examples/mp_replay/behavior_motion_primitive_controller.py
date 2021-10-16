@@ -23,10 +23,6 @@ from igibson.robots import behavior_robot
 from igibson.robots.behavior_robot import BODY_OFFSET_FROM_FLOOR, BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 
-JOINT_CHECKING_RESOLUTION = np.pi / 18
-
-HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
-
 MAX_STEPS_FOR_HAND_MOVE = 100
 MAX_STEPS_FOR_HAND_MOVE_WHEN_OPENING = 30
 MAX_STEPS_FOR_GRASP_OR_RELEASE = 30
@@ -44,9 +40,12 @@ MAX_ATTEMPTS_FOR_SAMPLING_POSE_IN_ROOM = 60
 
 BIRRT_SAMPLING_CIRCLE_PROBABILITY = 0.5
 HAND_SAMPLING_DOMAIN_PADDING = 1  # Allow 1m of freedom around the sampling range.
+PREDICATE_SAMPLING_Z_OFFSET = 0.1
+JOINT_CHECKING_RESOLUTION = np.pi / 18
 
 GRASP_APPROACH_DISTANCE = 0.15
 OPEN_GRASP_APPROACH_DISTANCE = 0.15
+HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
 
 RIGHT_HAND_OBJECT_CARRYING_POSE = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
 
@@ -548,6 +547,7 @@ class MotionPrimitiveController(object):
                 use_ray_casting_method=True,
                 max_trials=MAX_ATTEMPTS_FOR_SAMPLING_POSE_WITH_OBJECT_AND_PREDICATE,
                 skip_falling=True,
+                z_offset=PREDICATE_SAMPLING_Z_OFFSET,
             )
 
             if not result:

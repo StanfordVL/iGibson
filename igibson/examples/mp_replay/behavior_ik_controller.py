@@ -63,10 +63,10 @@ def get_action(
     # Compute the needed body motion
     if body_target_pose is not None:
         # TODO(replayMP): Do we need to disregard upwards movement?
-        body_target_pose_without_upwards = ((body_target_pose[0][0], body_target_pose[0][1], 0), body_target_pose[1])
+        # body_target_pose_without_upwards = ((body_target_pose[0][0], body_target_pose[0][1], 0), body_target_pose[1])
         action[:6] = get_action_from_pose_to_pose(
             ([0, 0, 0], [0, 0, 0, 1]),
-            body_target_pose_without_upwards,
+            body_target_pose,
             BODY_KV,
             BODY_KW,
             BODY_MAX_V,

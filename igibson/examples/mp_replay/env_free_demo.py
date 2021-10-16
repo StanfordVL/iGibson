@@ -113,10 +113,10 @@ def main():
         # go_to_sink_and_toggle(s, robot, controller)
         # hand_fwd_by_one(s, robot, controller)
         # prepare_to_grasp_tray(s, robot, controller)
-        # grasp_tray(s, robot, controller)
-        # put_on_table(s, robot, controller)
-        # open_and_close_fridge(s, robot, controller)
-        # open_and_close_door(s, robot, controller)
+        grasp_tray(s, robot, controller)
+        put_on_table(s, robot, controller)
+        open_and_close_fridge(s, robot, controller)
+        open_and_close_door(s, robot, controller)
 
         while True:
             action = np.zeros(28)
