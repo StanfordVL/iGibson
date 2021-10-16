@@ -45,8 +45,8 @@ MAX_ATTEMPTS_FOR_SAMPLING_POSE_IN_ROOM = 60
 BIRRT_SAMPLING_CIRCLE_PROBABILITY = 0.5
 HAND_SAMPLING_DOMAIN_PADDING = 1  # Allow 1m of freedom around the sampling range.
 
-GRASP_APPROACH_DISTANCE = 0.06
-OPEN_GRASP_APPROACH_DISTANCE = 0.1
+GRASP_APPROACH_DISTANCE = 0.15
+OPEN_GRASP_APPROACH_DISTANCE = 0.15
 
 RIGHT_HAND_OBJECT_CARRYING_POSE = ([0.2, -0.12, -0.05], [-0.7, 0.7, 0.0, 0.15])
 
@@ -132,6 +132,8 @@ class MotionPrimitiveController(object):
                 # It's okay if we can't go all the way because we run into the object.
                 print("Performing grasp approach for open.")
                 yield from self._move_hand_direct(approach_pose, ignore_failure=True)
+
+                # When the approach is done, reset the constraints to where we currently are.
 
                 if grasp_required:
                     try:

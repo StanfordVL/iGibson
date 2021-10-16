@@ -11,6 +11,7 @@ from igibson.objects.articulated_object import URDFObject
 
 ROTATION_ARC_SEGMENT_LENGTHS = 0.1
 REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS = (0.2, 0.8)
+PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS = (0.2, 0.8)
 GUARANTEED_GRASPABLE_WIDTH = 0.1
 GRASP_OFFSET = np.array([0, 0.05, -0.08])  # 5cm back and 8cm up.
 OPEN_GRASP_OFFSET = np.array([0, 0.05, -0.12])  # 5cm back and 12cm up.
@@ -51,77 +52,7 @@ def get_grasp_position_for_open(robot, target_obj, should_open, link_id=None):
         raise ValueError("Unknown joint type encountered while generating joint position.")
 
 
-def grasp_position_for_open_on_prismatic_joint(robot, target_obj, target_joint_info, should_open):
-    grasp_candidates = []
-
-    # Pick a moving link of the object.
-    relevant_joints = get_relevant_joints(target_obj)
-    for relevant_joint_info in relevant_joints:
-        link_id = relevant_joint_info.jointIndex
-
-        # Get the bounding box of the child link.
-        (
-            bbox_center_in_world,
-            bbox_quat_in_world,
-            bbox_extent_in_link_frame,
-            _,
-        ) = target_obj.get_base_aligned_bounding_box(link_id=link_id, visual=False)
-
-        # Get the part of the object away from the joint position/axis.
-        # The link origin is where the joint is. Let's get the position of the origin w.r.t the CoM.
-        dynamics_info = p.getDynamicsInfo(target_obj.get_body_id(), link_id)
-        origin_pos, origin_orn = p.invertTransform(dynamics_info[3], dynamics_info[4])
-
-        joint_axis = np.array(relevant_joint_info.jointAxis)
-        origin_towards_com = -np.array(origin_pos)
-        push_direction = np.cross(joint_axis, origin_towards_com)
-        push_direction /= np.linalg.norm(push_direction)
-        lateral_axis = np.cross(push_direction, joint_axis)
-
-        # Match the axes to the canonical axes of the link bb.
-        lateral_axis_idx = np.argmax(np.abs(lateral_axis))
-        push_axis_idx = np.argmax(np.abs(push_direction))
-        joint_axis_idx = np.argmax(np.abs(joint_axis))
-        assert lateral_axis_idx != push_axis_idx
-        assert lateral_axis_idx != joint_axis_idx
-        assert push_axis_idx != joint_axis_idx
-
-        # Find the correct side of the push axis the user is on.
-        canonical_push_direction = np.eye(3)[push_axis_idx] * bbox_extent_in_link_frame[push_axis_idx] / 2
-        points_along_push_axis = np.array([canonical_push_direction, -canonical_push_direction])
-        push_axis_closer_idx, closer_surface_along_push_axis, _ = get_closest_point_to_point_in_world_frame(
-            points_along_push_axis, (origin_pos, origin_orn), robot.get_position()
-        )
-        push_axis_closer_sign = -1 if push_axis_closer_idx == 1 else 1
-
-        # Find the correct side of the lateral axis & go some distance along that direction.
-        canonical_lateral_axis = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_com[lateral_axis_idx])
-        lateral_position = (
-            canonical_lateral_axis
-            * PRISMATIC_JOINT_DIST_ACROSS_LATERAL_AXIS
-            * bbox_extent_in_link_frame[lateral_axis_idx]
-        )
-        push_position = closer_surface_along_push_axis + lateral_position
-
-        # Get the appropriate rotation
-        palm = np.eye(3)[push_axis_idx] * -push_axis_closer_sign
-        wrist = np.eye(3)[joint_axis_idx] * -np.sign(joint_axis[joint_axis_idx])
-        lateral = -canonical_lateral_axis
-        flat_rot = get_hand_rotation_from_axes(lateral, wrist, palm)
-
-        # Finally apply our predetermined rotation around the X axis.
-        grasp_orn_in_bbox_frame = flat_rot * Rotation.from_euler("X", -GRASP_ANGLE)
-        push_quat = grasp_orn_in_bbox_frame.as_quat()
-
-        # Now apply the grasp offset.
-        grasp_pose = p.multiplyTransforms(bbox_center_in_world, bbox_quat_in_world, push_position, push_quat)
-        offset_grasp_pose = p.multiplyTransforms(*grasp_pose, OPEN_GRASP_OFFSET, [0, 0, 0, 1])
-        grasp_candidates.append(offset_grasp_pose)
-
-    return grasp_candidates
-
-
-def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_info, should_open):
+def grasp_position_for_open_on_prismatic_joint(robot, target_obj, relevant_joint_info, should_open):
     link_id = relevant_joint_info.jointIndex
 
     # Get the bounding box of the child link.
@@ -132,16 +63,110 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
         _,
     ) = target_obj.get_base_aligned_bounding_box(link_id=link_id, visual=False, link_base=True)
 
+    # Match the push axis to one of the bb axes.
+    push_axis = np.array(relevant_joint_info.jointAxis)
+    push_axis /= np.linalg.norm(push_axis)
+    push_axis_idx = np.argmax(np.abs(push_axis))
+    canonical_push_axis = np.eye(3)[push_axis_idx]
+    canonical_push_direction = canonical_push_axis * np.sign(push_axis[push_axis_idx])
+
+    # Pick the closer of the two faces along the push axis as our favorite.
+    points_along_push_axis = (
+        np.array([canonical_push_axis, -canonical_push_axis]) * bbox_extent_in_link_frame[push_axis_idx] / 2
+    )
+    (
+        push_axis_closer_side_idx,
+        center_of_selected_surface_along_push_axis,
+        _,
+    ) = get_closest_point_to_point_in_world_frame(
+        points_along_push_axis, (bbox_center_in_world, bbox_quat_in_world), robot.get_position()
+    )
+    push_axis_closer_side_sign = 1 if push_axis_closer_side_idx == 0 else -1
+
+    # Pick the other axes.
+    all_axes = list(set(range(3)) - {push_axis_idx})
+    x_axis_idx, y_axis_idx = tuple(sorted(all_axes))
+    canonical_x_axis = np.eye(3)[x_axis_idx]
+    canonical_y_axis = np.eye(3)[y_axis_idx]
+
+    # Find the correct side of the lateral axis & go some distance along that direction.
+    min_lateral_pos_wrt_surface_center = (canonical_x_axis + canonical_y_axis) * -bbox_extent_in_link_frame / 2
+    max_lateral_pos_wrt_surface_center = (canonical_x_axis + canonical_y_axis) * bbox_extent_in_link_frame / 2
+    lateral_pos_wrt_surface_center = np.random.uniform(
+        PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * min_lateral_pos_wrt_surface_center,
+        PRISMATIC_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * max_lateral_pos_wrt_surface_center,
+    )
+    grasp_position_in_bbox_frame = center_of_selected_surface_along_push_axis + lateral_pos_wrt_surface_center
+
+    # Get the appropriate rotation
+    palm = canonical_push_axis * -push_axis_closer_side_sign
+    wrist = canonical_y_axis
+    lateral = np.cross(wrist, palm)
+    hand_orn_in_bbox_frame = get_hand_rotation_from_axes(lateral, wrist, palm)
+
+    # Apply an additional random rotation along the face plane
+    random_rot = random.choice([np.pi, np.pi / 2, 0, -np.pi / 2])
+    hand_orn_in_bbox_frame = hand_orn_in_bbox_frame * Rotation.from_rotvec([0, 0, random_rot])
+
+    # Finally apply our predetermined rotation around the X axis.
+    grasp_orn_in_bbox_frame = hand_orn_in_bbox_frame * Rotation.from_euler("X", -GRASP_ANGLE)
+    grasp_quat_in_bbox_frame = grasp_orn_in_bbox_frame.as_quat()
+    grasp_pose_in_bbox_frame = grasp_position_in_bbox_frame, grasp_quat_in_bbox_frame
+
+    # Now apply the grasp offset.
+    offset_in_bbox_frame = hand_orn_in_bbox_frame.apply(OPEN_GRASP_OFFSET)
+    offset_grasp_pose_in_bbox_frame = (grasp_position_in_bbox_frame + offset_in_bbox_frame, grasp_quat_in_bbox_frame)
+    offset_grasp_pose_in_world_frame = p.multiplyTransforms(
+        bbox_center_in_world, bbox_quat_in_world, *offset_grasp_pose_in_bbox_frame
+    )
+
+    # To compute the rotation position, we want to decide how far along the rotation axis we'll go.
+    target_joint_pos = relevant_joint_info.jointUpperLimit if should_open else relevant_joint_info.jointLowerLimit
+    current_joint_pos = get_joint_position(target_obj.get_body_id(), link_id)
+    required_pos_change = target_joint_pos - current_joint_pos
+    push_vector_in_bbox_frame = canonical_push_direction * required_pos_change
+    target_hand_pos_in_bbox_frame = grasp_position_in_bbox_frame + push_vector_in_bbox_frame
+    target_hand_pos_in_world_frame = p.multiplyTransforms(
+        bbox_center_in_world, bbox_quat_in_world, target_hand_pos_in_bbox_frame, grasp_quat_in_bbox_frame
+    )
+
+    # Compute the approach direction.
+    approach_direction_in_world_frame = Rotation.from_quat(bbox_quat_in_world).apply(palm)
+
+    # Decide whether a grasp is required. If approach direction and displacement are similar, no need to grasp.
+    grasp_required = np.dot(push_vector_in_bbox_frame, palm) < 0
+
+    return (
+        offset_grasp_pose_in_world_frame,
+        [target_hand_pos_in_world_frame],
+        approach_direction_in_world_frame,
+        relevant_joint_info,
+        grasp_required,
+    )
+
+
+def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_info, should_open):
+    link_id = relevant_joint_info.jointIndex
+
+    # Get the bounding box of the child link.
+    (
+        bbox_center_in_world,
+        bbox_quat_in_world,
+        bbox_extent_in_link_frame,
+        bbox_center_in_link_frame,
+    ) = target_obj.get_base_aligned_bounding_box(link_id=link_id, visual=False, link_base=True)
+
     # Get the part of the object away from the joint position/axis.
     # The link origin is where the joint is. Let's get the position of the origin w.r.t the CoM.
     dynamics_info = p.getDynamicsInfo(target_obj.get_body_id(), link_id)
     com_wrt_origin = (dynamics_info[3], dynamics_info[4])
-    origin_wrt_com = p.invertTransform(*com_wrt_origin)
+    bbox_wrt_origin = p.multiplyTransforms(*com_wrt_origin, bbox_center_in_link_frame, [0, 0, 0, 1])
+    origin_wrt_bbox = p.invertTransform(*bbox_wrt_origin)
 
     joint_axis = np.array(relevant_joint_info.jointAxis)
     joint_axis /= np.linalg.norm(joint_axis)
-    origin_towards_com = np.array(com_wrt_origin[0])
-    open_direction = np.cross(joint_axis, origin_towards_com)
+    origin_towards_bbox = np.array(bbox_wrt_origin[0])
+    open_direction = np.cross(joint_axis, origin_towards_bbox)
     open_direction /= np.linalg.norm(open_direction)
     lateral_axis = np.cross(open_direction, joint_axis)
 
@@ -162,7 +187,7 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     current_yaw = get_joint_position(target_obj.get_body_id(), link_id)
     closed_yaw = relevant_joint_info.jointLowerLimit
     points_along_open_axis_after_rotation = [
-        rotate_point_around_axis((point, [0, 0, 0, 1]), com_wrt_origin, joint_axis, closed_yaw - current_yaw)[0]
+        rotate_point_around_axis((point, [0, 0, 0, 1]), bbox_wrt_origin, joint_axis, closed_yaw - current_yaw)[0]
         for point in points_along_open_axis
     ]
     open_axis_closer_side_idx, _, _ = get_closest_point_to_point_in_world_frame(
@@ -173,14 +198,14 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
     # Find the correct side of the lateral axis & go some distance along that direction.
     # TODO(replayMP): Add some random movement in joint axis too.
-    canonical_lateral_axis = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_com[lateral_axis_idx])
-    min_lateral_pos_wrt_surface_com = np.array(origin_wrt_com[0])  # Stay on the correct side of the axis.
-    max_lateral_pos_wrt_surface_com = canonical_lateral_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
-    lateral_pos_wrt_surface_com = np.random.uniform(
-        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * min_lateral_pos_wrt_surface_com,
-        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * max_lateral_pos_wrt_surface_com,
+    canonical_lateral_axis = np.eye(3)[lateral_axis_idx] * np.sign(origin_towards_bbox[lateral_axis_idx])
+    min_lateral_pos_wrt_surface_center = np.array(origin_wrt_bbox[0])  # Stay on the correct side of the axis.
+    max_lateral_pos_wrt_surface_center = canonical_lateral_axis * bbox_extent_in_link_frame[lateral_axis_idx] / 2
+    lateral_pos_wrt_surface_center = np.random.uniform(
+        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[0] * min_lateral_pos_wrt_surface_center,
+        REVOLUTE_JOINT_FRACTION_ACROSS_SURFACE_AXIS_BOUNDS[1] * max_lateral_pos_wrt_surface_center,
     )
-    grasp_position = center_of_selected_surface_along_push_axis + lateral_pos_wrt_surface_com
+    grasp_position = center_of_selected_surface_along_push_axis + lateral_pos_wrt_surface_center
 
     # Get the appropriate rotation
     palm = canonical_open_direction * -open_axis_closer_side_sign
@@ -194,11 +219,11 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
     # Finally apply our predetermined rotation around the X axis.
     grasp_orn_in_bbox_frame = hand_orn_in_bbox_frame * Rotation.from_euler("X", -GRASP_ANGLE)
-    push_quat = grasp_orn_in_bbox_frame.as_quat()
+    grasp_quat_in_bbox_frame = grasp_orn_in_bbox_frame.as_quat()
 
     # Now apply the grasp offset.
     offset_in_bbox_frame = hand_orn_in_bbox_frame.apply(OPEN_GRASP_OFFSET)
-    offset_grasp_pose_in_bbox_frame = (grasp_position + offset_in_bbox_frame, push_quat)
+    offset_grasp_pose_in_bbox_frame = (grasp_position + offset_in_bbox_frame, grasp_quat_in_bbox_frame)
     offset_grasp_pose_in_world_frame = p.multiplyTransforms(
         bbox_center_in_world, bbox_quat_in_world, *offset_grasp_pose_in_bbox_frame
     )
@@ -209,8 +234,8 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
     # Now we'll rotate the grasp position around the origin by the desired rotation.
     # Note that we use the non-offset position here since the joint can't be pulled all the way to the offset.
-    grasp_pose_in_com_frame = grasp_position, push_quat
-    grasp_pose_in_origin_frame = p.multiplyTransforms(*com_wrt_origin, *grasp_pose_in_com_frame)
+    grasp_pose_in_bbox_frame = grasp_position, grasp_quat_in_bbox_frame
+    grasp_pose_in_origin_frame = p.multiplyTransforms(*bbox_wrt_origin, *grasp_pose_in_bbox_frame)
 
     # Get the arc length and divide it up to 10cm segments
     arc_length = abs(required_yaw_change) * np.linalg.norm(grasp_pose_in_origin_frame[0])
@@ -218,11 +243,11 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     targets = []
     for i in range(turn_steps):
         partial_yaw_change = (i + 1) / turn_steps * required_yaw_change
-        rotated_grasp_pose_in_com_frame = rotate_point_around_axis(
-            grasp_pose_in_com_frame, com_wrt_origin, joint_axis, partial_yaw_change
+        rotated_grasp_pose_in_bbox_frame = rotate_point_around_axis(
+            grasp_pose_in_bbox_frame, bbox_wrt_origin, joint_axis, partial_yaw_change
         )
         rotated_grasp_pose_in_world_frame = p.multiplyTransforms(
-            bbox_center_in_world, bbox_quat_in_world, *rotated_grasp_pose_in_com_frame
+            bbox_center_in_world, bbox_quat_in_world, *rotated_grasp_pose_in_bbox_frame
         )
         targets.append(rotated_grasp_pose_in_world_frame)
 
@@ -243,11 +268,11 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
 
 def get_grasp_poses_for_object(robot, target_obj: URDFObject, force_allow_any_extent=True):
-    # Grab the object's bounding box and attempt a top-down grasp.
     bbox_center_in_world, bbox_quat_in_world, bbox_extent_in_base_frame, _ = target_obj.get_base_aligned_bounding_box(
         visual=False
     )
 
+    # Normally just try to grasp the small-enough dimensions.
     allow_any_extent = True
     if not force_allow_any_extent and np.any(bbox_extent_in_base_frame < GUARANTEED_GRASPABLE_WIDTH):
         allow_any_extent = False
@@ -365,14 +390,14 @@ def get_closest_point_to_point_in_world_frame(
     return closer_option_idx, vector_in_arbitrary_frame, vector_in_world_frame
 
 
-def rotate_point_around_axis(point_wrt_com, com_wrt_origin, joint_axis, yaw_change):
+def rotate_point_around_axis(point_wrt_arbitrary_frame, arbitrary_frame_wrt_origin, joint_axis, yaw_change):
     rotation = p.getQuaternionFromAxisAngle(joint_axis, yaw_change)
-    origin_wrt_com = p.invertTransform(*com_wrt_origin)
+    origin_wrt_arbitrary_frame = p.invertTransform(*arbitrary_frame_wrt_origin)
 
-    pose_in_origin_frame = p.multiplyTransforms(*com_wrt_origin, *point_wrt_com)
+    pose_in_origin_frame = p.multiplyTransforms(*arbitrary_frame_wrt_origin, *point_wrt_arbitrary_frame)
     rotated_pose_in_origin_frame = p.multiplyTransforms([0, 0, 0], rotation, *pose_in_origin_frame)
-    rotated_pose_in_com_frame = p.multiplyTransforms(*origin_wrt_com, *rotated_pose_in_origin_frame)
-    return rotated_pose_in_com_frame
+    rotated_pose_in_arbitrary_frame = p.multiplyTransforms(*origin_wrt_arbitrary_frame, *rotated_pose_in_origin_frame)
+    return rotated_pose_in_arbitrary_frame
 
 
 def _draw_coordinate_system(system_to_world):

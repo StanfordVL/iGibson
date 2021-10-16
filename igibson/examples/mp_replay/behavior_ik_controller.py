@@ -18,8 +18,8 @@ BODY_MAX_W = 1
 
 LIMB_KV = 0.15
 LIMB_KW = 0.2
-LIMB_MAX_V = 0.1
-LIMB_MAX_W = 0.5
+LIMB_MAX_V = 0.05
+LIMB_MAX_W = 0.25
 
 
 def get_action_from_pose_to_pose(start_pose, end_pose, kv, kw, max_v, max_w, dist_threshold, angle_threshold):

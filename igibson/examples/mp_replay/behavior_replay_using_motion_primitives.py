@@ -73,6 +73,13 @@ def get_actions_from_segmentation(demo_data, only_first_from_multi_segment=True)
 
             # Before the actual item is placed, insert a grasp request.
             actions.append((MotionPrimitive.GRASP, placed_object))
+        elif state_name == "OnFloor" and state_value is True:
+            placed_object = state_change["objects"][0]
+            target_object = state_change["objects"][1]
+            primitive = MotionPrimitive.PLACE_ON_TOP
+
+            # Before the actual item is placed, insert a grasp request.
+            actions.append((MotionPrimitive.GRASP, placed_object))
         else:
             raise ValueError("Found a state change we can't process: %r" % state_change)
 
