@@ -34,7 +34,7 @@ def main():
             continue
 
         # Batch me
-        script_path = os.path.join(igibson.example_path, "behavior", "behavior_replay_using_motion_primitives.py")
+        script_path = os.path.join(igibson.example_path, "mp_replay", "behavior_replay_using_motion_primitives.py")
         command = ["python", script_path, demo_path, segmentation_path, output_path]
 
         with open(log_path, "w") as log_file:
