@@ -639,7 +639,7 @@ class MeshRenderer(object):
             self.shapes.append(shape)
             # if material loading fails, use the default material
             if material_id == -1:
-                self.shape_material_idx.append(num_added_materials + num_existing_mats)
+                self.shape_material_idx.append(len(materials) + num_existing_mats)
             else:
                 self.shape_material_idx.append(material_id + num_existing_mats)
 
