@@ -8,7 +8,7 @@ from igibson.object_states.object_state_base import AbsoluteObjectState, Boolean
 from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.multi_object_wrappers import ObjectMultiplexer
 
-SIMULATOR_SETTLE_TIME = 150
+SIMULATOR_SETTLE_TIME = 0
 
 
 class KinematicDisarrangement(MetricBase):
