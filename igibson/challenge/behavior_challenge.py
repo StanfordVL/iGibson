@@ -137,9 +137,12 @@ class BehaviorChallenge(object):
                     state = env.reset()
                     while True:
                         action = agent.act(state)
-                        state, reward, done, info = env.step(action)
-                        for callback in step_callbacks:
-                            callback(env.task, None)
+                        try:
+                            state, reward, done, info = env.step(action)
+                            for callback in step_callbacks:
+                                callback(env.task, None)
+                        except:
+                            done = True
                         if done:
                             break
                     for callback in end_callbacks:
