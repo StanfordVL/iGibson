@@ -15,7 +15,6 @@ from igibson.objects.articulated_object import URDFObject
 from igibson.robots.behavior_robot import BRBody, BREye, BRHand
 from igibson.utils.behavior_robot_planning_utils import dry_run_base_plan, plan_base_motion_br, plan_hand_motion_br
 
-
 class ActionPrimitives(IntEnum):
     NAVIGATE_TO = 0
     LEFT_GRASP = 1

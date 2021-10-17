@@ -73,6 +73,10 @@ class BehaviorMotionPrimitiveEnv(BehaviorEnv):
         return self.step(action)
 
     def step(self, action: int):
+        if action == -1:
+            state, reward, done, info = super(BehaviorMotionPrimitiveEnv, self).step(np.zeros(26))
+            return state, reward, done, info
+
         # Find the target object.
         obj_list_id = int(action) % self.num_objects
         target_obj = self.addressable_objects[obj_list_id]

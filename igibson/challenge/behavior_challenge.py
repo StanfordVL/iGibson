@@ -8,7 +8,7 @@ import bddl
 import numpy as np
 
 import igibson
-from igibson.envs.behavior_env import BehaviorEnv
+from igibson.examples.mp_replay.behavior_motion_primitive_env import BehaviorMotionPrimitiveEnv, MotionPrimitive
 from igibson.metrics.agent import BehaviorRobotMetric
 from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
 from igibson.metrics.task import TaskMetric
@@ -50,8 +50,8 @@ class BehaviorChallenge(object):
             tasks = sorted(
                 [
                     item
-                    for item in os.listdir(os.path.join(os.path.dirname(bddl.__file__), "activity_conditions"))
-                    if item != "domain_igibson.bddl"
+                    for item in os.listdir(os.path.join(os.path.dirname(bddl.__file__), "activity_definitions"))
+                    if item != "domain_igibson.bddl" and "simplified" not in item
                 ]
             )
             assert len(tasks) == 100
@@ -114,18 +114,19 @@ class BehaviorChallenge(object):
                 env_config["scene_id"] = scene_id
                 env_config["task"] = task
                 env_config["task_id"] = 0
+
                 for instance_id in instance_ids:
-                    env = BehaviorEnv(
+                    env = BehaviorMotionPrimitiveEnv(
                         config_file=env_config,
-                        mode="all",
+                        mode="headless",
                         action_timestep=1.0 / 30.0,
                         physics_timestep=1.0 / 120.0,
-                        instance_id=instance_id,
+                        activity_relevant_objects_only=False,
                     )
                     start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_metrics_callbacks()
                     for callback in start_callbacks:
                         callback(env.task, None)
-                    agent.reset()
+                    agent.reset(env, env_config)
                     state = env.reset()
                     while True:
                         action = agent.act(state)
