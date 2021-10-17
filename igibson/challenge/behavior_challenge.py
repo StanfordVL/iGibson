@@ -130,7 +130,11 @@ class BehaviorChallenge(object):
                         physics_timestep=1.0 / 120.0,
                         activity_relevant_objects_only=False,
                     )
-                    start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_metrics_callbacks()
+                    try:
+                        start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_metrics_callbacks()
+                    except:
+                        print('failed metrics')
+
                     for callback in start_callbacks:
                         callback(env.task, None)
                     agent.reset(env, env_config)
