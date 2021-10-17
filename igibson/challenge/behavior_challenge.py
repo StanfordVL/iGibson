@@ -116,6 +116,13 @@ class BehaviorChallenge(object):
                 env_config["task_id"] = 0
 
                 for instance_id in instance_ids:
+                    task_library = os.listdir('/home/michael/Repositories/lab/BehaviorChallenge2021/segmentations')
+                    should_try = False
+                    for plan in task_library:
+                        if task in plan and str(0) in plan and scene_id in plan:
+                            should_try = True
+                    if not should_try:
+                        break
                     env = BehaviorMotionPrimitiveEnv(
                         config_file=env_config,
                         mode="headless",
