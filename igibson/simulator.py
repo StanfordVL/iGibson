@@ -134,7 +134,6 @@ class Simulator:
         self.rendering_settings = rendering_settings
         self.viewer = None
         self.vr_settings = vr_settings
-        self.vr_overlay_initialized = False
         # We must be using the Simulator's vr mode and have use_vr set to true in the settings to access the VR context
         self.can_access_vr_context = self.use_vr_renderer and self.vr_settings.use_vr
         # Duration of a vsync frame - assumes 90Hz refresh rate
@@ -227,6 +226,7 @@ class Simulator:
             self.renderer = MeshRendererVR(
                 rendering_settings=self.rendering_settings, vr_settings=self.vr_settings, simulator=self
             )
+            self.renderer.gen_vr_hud()
         else:
             self.renderer = MeshRenderer(
                 width=self.image_width,
@@ -976,10 +976,6 @@ class Simulator:
         """
         if not self.can_access_vr_context:
             raise RuntimeError("ERROR: Trying to access VR context without enabling vr mode and use_vr in vr settings!")
-        if not self.vr_overlay_initialized:
-            # This function automatically creates a VR text overlay the first time text is added
-            self.renderer.gen_vr_hud()
-            self.vr_overlay_initialized = True
 
         # Note: For pos/size - (0,0) is bottom-left and (100, 100) is top-right
         # Calculate pixel positions for text
