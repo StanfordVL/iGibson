@@ -54,6 +54,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         self.state_history = {}
         self.robot_type = robot_type
         self.robot_config = robot_config
+        self.snapshot_id = 0
 
     def initialize_simulator(
         self,
@@ -93,13 +94,54 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         return result
 
     def save_scene(self):
-        snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = save_internal_states(self.simulator)
+        # snapshot_id = p.saveState()
+        # self.state_history[snapshot_id] = save_internal_states(self.simulator)
+        # return snapshot_id
+
+        state = {}
+        for item in range(p.getNumBodies()):
+            pos, orn = p.getBasePositionAndOrientation(item)
+            linear_velocity, angular_velocity = p.getBaseVelocity(item)
+            state[item] = {
+                "base_position": pos,
+                "base_orientation": orn,
+                "linear_velocity": linear_velocity,
+                "angular_velocity": angular_velocity,
+            }
+            joints = {}
+            for joint in range(p.getNumJoints(item)):
+                joint_state = p.getJointState(item, joint)
+                joints[joint] = {
+                    "joint_position": joint_state[0],
+                    "joint_velocity": joint_state[1],
+                    "joint_reaction_forces": joint_state[2],
+                    "applied_joint_motor_torque": joint_state[3],
+                }
+            state[item]["joints"] = joints
+        self.state_history[self.snapshot_id] = {
+            "internal_state": save_internal_states(self.simulator),
+            "pybullet_state": state,
+        }
+        snapshot_id = self.snapshot_id
+        self.snapshot_id += 1
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
-        p.restoreState(snapshot_id)
-        load_internal_states(self.simulator, self.state_history[snapshot_id])
+        # p.restoreState(snapshot_id)
+        # load_internal_states(self.simulator, self.state_history[snapshot_id])
+
+        state = self.state_history[snapshot_id]["pybullet_state"]
+        for body_id, body_state in state.items():
+            p.resetBasePositionAndOrientation(body_id, body_state["base_position"], body_state["base_orientation"])
+
+            p.resetBaseVelocity(
+                body_id, linearVelocity=body_state["linear_velocity"], angularVelocity=body_state["angular_velocity"]
+            )
+            for joint_id, joint in body_state["joints"].items():
+                p.resetJointState(
+                    body_id, joint_id, targetValue=joint["joint_position"], targetVelocity=joint["joint_velocity"]
+                )
+        load_internal_states(self.simulator, self.state_history[snapshot_id]["internal_state"])
 
     def check_scene(self):
         feedback = {"init_success": "yes", "goal_success": "untested", "init_feedback": "", "goal_feedback": ""}
@@ -251,6 +293,10 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                     for key, val in room_type_to_scene_objs[room_type][obj_inst].items()
                     if key in room_inst_satisfied
                 }
+
+        # room_type_to_scene_objs["living_room"]["table.n.02_1"]["living_room_0"] = [
+        #     self.scene.objects_by_name["breakfast_table_18"]
+        # ]
 
         self.non_sampleable_object_scope = room_type_to_scene_objs
 

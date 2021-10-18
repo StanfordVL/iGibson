@@ -2,6 +2,7 @@ import argparse
 import time
 from collections import OrderedDict
 
+import cv2
 import gym
 import numpy
 import numpy as np
@@ -23,6 +24,9 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         self.observation_space.spaces["task_obs"] = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.task_obs_dim,), dtype=np.float32
         )
+        # self.observation_space.spaces["depth"] = gym.spaces.Box(
+        #     low=0.0, high=1.0, shape=(128, 128, 1), dtype=np.float32
+        # )
 
     def get_state(self, collision_links=[]):
         """
@@ -32,6 +36,7 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         :return: observation as a dictionary
         """
         state = super(BehaviorRewardShapingEnv, self).get_state(collision_links)
+        # state["depth"] = np.expand_dims(cv2.resize(state["depth"], (128, 128)), axis=2)
         task_obs = np.zeros(self.task_obs_dim)
         state_dict = OrderedDict()
         state_dict["robot_pos"] = np.array(self.robots[0].get_position())
@@ -97,18 +102,89 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         self.reward_picked_weight = 5.0 / len(self.goal_has_picked)
         self.reward_predicate_weight = 10.0
         self.reward_distance_weight = 1.0
+        self.magic_grasping_cid = None
+        self.grasp_episode = 0
+        self.success_episode = 0
+        self.use_sticky_mitten = True
+
+    def get_child_frame_pose(self, object_body_id, robot_hand_body_id):
+        body_pos, body_orn = p.getBasePositionAndOrientation(object_body_id)
+
+        # Get inverse world transform of body frame
+        inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
+        link_pos, link_orn = p.getBasePositionAndOrientation(robot_hand_body_id)
+
+        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
+        child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
+
+        return child_frame_pos, child_frame_orn
 
     def get_shaped_reward(self, satisfied_predicates):
         shaped_reward = 0.0
         if len(satisfied_predicates["unsatisfied"]) == 0:
             return shaped_reward
         target_id = min(satisfied_predicates["unsatisfied"])
+
+        if self.use_sticky_mitten:
+            goal_relevant_obj = self.goal_relevant_objs[target_id]
+            left_hand_pickup = (
+                len(
+                    p.getContactPoints(goal_relevant_obj.get_body_id(), self.robots[0].parts["left_hand"].get_body_id())
+                )
+                > 0
+            )
+            right_hand_pickup = (
+                len(
+                    p.getContactPoints(
+                        goal_relevant_obj.get_body_id(), self.robots[0].parts["right_hand"].get_body_id()
+                    )
+                )
+                > 0
+            )
+            if left_hand_pickup and self.magic_grasping_cid is None:
+                child_frame_pos, child_frame_orn = self.get_child_frame_pose(
+                    goal_relevant_obj.get_body_id(), self.robots[0].parts["left_hand"].get_body_id()
+                )
+                self.magic_grasping_cid = p.createConstraint(
+                    parentBodyUniqueId=self.robots[0].parts["left_hand"].get_body_id(),
+                    parentLinkIndex=-1,
+                    childBodyUniqueId=goal_relevant_obj.get_body_id(),
+                    childLinkIndex=-1,
+                    jointType=p.JOINT_FIXED,
+                    jointAxis=(0, 0, 1),
+                    parentFramePosition=(0, 0, 0),
+                    childFramePosition=child_frame_pos,
+                    childFrameOrientation=child_frame_orn,
+                )
+                p.changeConstraint(self.magic_grasping_cid, maxForce=10000)
+            if right_hand_pickup and self.magic_grasping_cid is None:
+                child_frame_pos, child_frame_orn = self.get_child_frame_pose(
+                    goal_relevant_obj.get_body_id(), self.robots[0].parts["right_hand"].get_body_id()
+                )
+                self.magic_grasping_cid = p.createConstraint(
+                    parentBodyUniqueId=self.robots[0].parts["right_hand"].get_body_id(),
+                    parentLinkIndex=-1,
+                    childBodyUniqueId=goal_relevant_obj.get_body_id(),
+                    childLinkIndex=-1,
+                    jointType=p.JOINT_FIXED,
+                    jointAxis=(0, 0, 1),
+                    parentFramePosition=(0, 0, 0),
+                    childFramePosition=child_frame_pos,
+                    childFrameOrientation=child_frame_orn,
+                )
+                p.changeConstraint(self.magic_grasping_cid, maxForce=10000)
+
         has_picked = []
         for goal_relevant_obj in self.goal_relevant_objs:
-            has_picked.append(
-                goal_relevant_obj.get_body_id() == self.robots[0].parts["left_hand"].object_in_hand
-                or goal_relevant_obj.get_body_id() == self.robots[0].parts["right_hand"].object_in_hand
-            )
+            if not self.use_sticky_mitten:
+                left_hand_pickup = goal_relevant_obj.get_body_id() == self.robots[0].parts["left_hand"].object_in_hand
+                right_hand_pickup = goal_relevant_obj.get_body_id() == self.robots[0].parts["right_hand"].object_in_hand
+                has_picked.append(left_hand_pickup or right_hand_pickup)
+            else:
+                has_picked.append(self.magic_grasping_cid is not None)
+
+        if np.sum(has_picked) > 0:
+            self.has_grasped = True
 
         if not has_picked[target_id]:
             distance_potential = min(
@@ -128,7 +204,7 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
             if not self.goal_has_picked[target_id] and has_picked[target_id]:
                 # picked target object at this timestep
                 shaped_reward += self.reward_picked_weight
-                # print("picked")
+                print("picked reward")
             elif self.goal_has_picked[target_id] and not has_picked[target_id]:
                 # dropped target object at this timestep
                 shaped_reward -= self.reward_picked_weight
@@ -158,6 +234,10 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         self.goal_has_picked = [False] * len(self.goal_has_picked)
         self.goal_target_id = -1
         self.goal_distance_potential = None
+        self.has_grasped = False
+        if self.magic_grasping_cid is not None:
+            p.removeConstraint(self.magic_grasping_cid)
+            self.magic_grasping_cid = None
 
 
 if __name__ == "__main__":

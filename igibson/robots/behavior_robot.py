@@ -1000,6 +1000,7 @@ class BRHand(BRHandBase):
         Handles assisted grasping.
         :param action: numpy array of actions.
         """
+
         if self.hand == "left":
             delta_trig_frac = action[18]
         else:
@@ -1075,7 +1076,10 @@ class BRHand(BRHandBase):
                 # Disable collisions while picking things up
                 self.set_hand_coll_filter(ag_bid, False)
                 self.gen_freeze_vals()
-                print("AG grasped")
+                object_name = "unknown"
+                if self.object_in_hand in self.parent.simulator.scene.objects_by_id:
+                    object_name = self.parent.simulator.scene.objects_by_id[ag_bid].name
+                print("AG grasped: {}".format(object_name))
                 return True
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
@@ -1085,7 +1089,10 @@ class BRHand(BRHandBase):
                 self.obj_cid_params = {}
                 self.should_freeze_joints = False
                 self.release_counter = 0
-                print("AG released")
+                object_name = "unknown"
+                if self.object_in_hand in self.parent.simulator.scene.objects_by_id:
+                    object_name = self.parent.simulator.scene.objects_by_id[self.object_in_hand].name
+                print("AG released: {}".format(object_name))
 
             return False
 

@@ -257,6 +257,13 @@ class BehaviorEnv(iGibsonEnv):
             info["last_observation"] = state
             state = self.reset()
 
+        if len(satisfied_predicates["unsatisfied"]) == 0:
+            self.success_episode += 1
+        if done:
+            self.grasp_episode += int(self.has_grasped)
+            print("success rate: {}/{}".format(self.success_episode, self.current_episode))
+            print("grasp rate: {}/{}".format(self.grasp_episode, self.current_episode))
+
         return state, reward, done, info
 
     def get_potential(self, satisfied_predicates):
@@ -296,6 +303,8 @@ class BehaviorEnv(iGibsonEnv):
             load_checkpoint(self.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
         else:
             self.task.reset_scene(snapshot_id=self.task.initial_state)
+        # when some asleep objects are reset to their original positions, they cannot be waken up by interaction
+        # self.scene.force_wakeup_scene_objects()
         # set the constraints to the current poses
         self.robots[0].apply_action(np.zeros(self.robots[0].action_dim))
         for hand in ["left_hand", "right_hand"]:
