@@ -1,11 +1,14 @@
 import argparse
 import glob
 import os
+import random
 import subprocess
 
 import tqdm
 
 import igibson
+
+MAX_MINUTES_PER_DEMO = 15
 
 
 def parse_args():
@@ -20,7 +23,9 @@ def main():
     args = parse_args()
 
     # Load the demo to get info
-    for demo_fullpath in tqdm.tqdm(list(glob.glob(os.path.join(args.segmentation_directory, "*.json")))):
+    demo_paths = list(glob.glob(os.path.join(args.segmentation_directory, "*.json")))
+    random.shuffle(demo_paths)
+    for demo_fullpath in tqdm.tqdm(demo_paths):
         demo = os.path.splitext(os.path.basename(demo_fullpath))[0]
         if "replay" in demo:
             continue
@@ -39,7 +44,10 @@ def main():
 
         with open(log_path, "w") as log_file:
             tqdm.tqdm.write("Processing %s" % demo)
-            subprocess.run(command, stdout=log_file, stderr=subprocess.STDOUT)
+            try:
+                subprocess.run(command, stdout=log_file, stderr=subprocess.STDOUT, timeout=MAX_MINUTES_PER_DEMO * 60)
+            except:
+                pass
 
 
 if __name__ == "__main__":
