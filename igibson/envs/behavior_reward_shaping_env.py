@@ -23,6 +23,11 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         self.observation_space.spaces["task_obs"] = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.task_obs_dim,), dtype=np.float32
         )
+        self.observation_space.spaces["action"] = self.action_space
+
+        self.observation_space.spaces["discount"] = gym.spaces.Box(
+            low=0, high=1, shape=(1,), dtype=np.float32
+        )
 
     def get_state(self, collision_links=[]):
         """
@@ -72,6 +77,9 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         assert len(state_list) == len(task_obs)
         task_obs = np.array(state_list)
         state["task_obs"] = task_obs
+        state["rgb"] *= 255
+        state["rgb"] = state["rgb"].astype(np.uint8)
+        state["discount"] = np.array([1], dtype=np.float32)
 
         return state
 

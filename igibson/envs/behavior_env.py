@@ -173,8 +173,8 @@ class BehaviorEnv(iGibsonEnv):
         Load environment
         """
         self.load_task_setup()
-        self.load_observation_space()
         self.load_action_space()
+        self.load_observation_space()
         self.load_miscellaneous_variables()
 
     def load_observation_space(self):
@@ -239,6 +239,8 @@ class BehaviorEnv(iGibsonEnv):
         self.simulator.step()
 
         state = self.get_state()
+        state['action'] = new_action
+        import pdb; pdb.set_trace()
         info = {}
         done, satisfied_predicates = self.task.check_success()
         # Compute the initial reward potential here instead of during reset
@@ -257,6 +259,8 @@ class BehaviorEnv(iGibsonEnv):
             info["last_observation"] = state
             state = self.reset()
 
+        state['reward'] = np.array([reward], dtype=np.float32)
+        state['islast'] = done
         return state, reward, done, info
 
     def get_potential(self, satisfied_predicates):
@@ -335,6 +339,9 @@ class BehaviorEnv(iGibsonEnv):
 
         self.simulator.sync(force_sync=True)
         state = self.get_state()
+        state['action'] = np.zeros(self.action_space.shape[0], dtype=np.float32)
+        state['reward'] = np.array([0.0], dtype=np.float32)
+        state['islast'] = False
         self.reset_variables()
 
         return state
