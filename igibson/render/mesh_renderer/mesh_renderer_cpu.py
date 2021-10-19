@@ -22,6 +22,7 @@ from igibson.utils.constants import AVAILABLE_MODALITIES, MAX_CLASS_COUNT, MAX_I
 from igibson.utils.mesh_util import lookat, mat2xyz, ortho, perspective, quat2rotmat, safemat2quat, xyz2mat, xyzw2wxyz
 
 Image.MAX_IMAGE_PIXELS = None
+NO_MATERIAL_DEFINED_IN_SHAPE_AND_NO_OVERWRITE_SUPPLIED = -1
 
 
 class MeshRenderer(object):
@@ -487,17 +488,26 @@ class MeshRenderer(object):
 
         # set the default values of variable before being modified later.
         num_existing_mats = len(self.material_idx_to_material_instance_mapping)  # Number of current Material elements
-        num_added_materials = len(materials)
+        if overwrite_material is not None:
+            if isinstance(overwrite_material, RandomizedMaterial):
+                self.load_randomized_material(overwrite_material)
+            elif isinstance(overwrite_material, ProceduralMaterial):
+                self.load_procedural_material(overwrite_material)
 
-        if num_added_materials > 0:
+        # No MTL is supplied, or MTL is empty
+        if len(materials) == 0:
+            # Case when mesh obj is without mtl file but overwrite material is specified.
+            if overwrite_material is not None:
+                self.material_idx_to_material_instance_mapping[num_existing_mats] = overwrite_material
+                num_added_materials = 1
+            else:
+                num_added_materials = 0
+        else:
             # Deparse the materials in the obj file by loading textures into the renderer's memory and creating a
             # Material element for them
+            num_added_materials = len(materials)
             for i, item in enumerate(materials):
                 if overwrite_material is not None:
-                    if isinstance(overwrite_material, RandomizedMaterial):
-                        self.load_randomized_material(overwrite_material)
-                    elif isinstance(overwrite_material, ProceduralMaterial):
-                        self.load_procedural_material(overwrite_material)
                     material = overwrite_material
                 elif item.diffuse_texname != "" and load_texture:
                     obj_dir = os.path.dirname(obj_path)
@@ -520,22 +530,19 @@ class MeshRenderer(object):
                     else:
                         material = Material("color", kd=item.diffuse)
                 self.material_idx_to_material_instance_mapping[num_existing_mats + i] = material
-        else:
-            # Case when mesh obj is without mtl file but overwrite material is specified.
-            if overwrite_material is not None:
-                self.material_idx_to_material_instance_mapping[num_existing_mats] = overwrite_material
-                num_added_materials = 1
 
-        # material index = num_existing_mats ... num_existing_mats + num_added_materials - 1 are using materials from mesh or
-        # from overwrite_material
+        # material index = num_existing_mats ... num_existing_mats + num_added_materials - 1 (inclusive) are using
+        # materials from mesh or from overwrite_material
         # material index = num_existing_mats + num_added_materials is a fail-safe default material
 
+        idx_of_failsafe_material = num_existing_mats + num_added_materials
+
         if input_kd is not None:  # append the default material in the end, in case material loading fails
-            self.material_idx_to_material_instance_mapping[num_existing_mats + num_added_materials] = Material(
+            self.material_idx_to_material_instance_mapping[idx_of_failsafe_material] = Material(
                 "color", kd=input_kd, texture_id=-1
             )
         else:
-            self.material_idx_to_material_instance_mapping[num_existing_mats + num_added_materials] = Material(
+            self.material_idx_to_material_instance_mapping[idx_of_failsafe_material] = Material(
                 "color", kd=[0.5, 0.5, 0.5], texture_id=-1
             )
 
@@ -547,13 +554,18 @@ class MeshRenderer(object):
 
         for shape in shapes:
             logging.debug("Shape name: {}".format(shape.name))
-            if len(shape.mesh.material_ids) == 0:
+            if len(shape.mesh.material_ids) == 0 or shape.mesh.material_ids[0] == -1:
+                # material not found, or invalid material, as defined here
+                # https://github.com/tinyobjloader/tinyobjloader/blob/master/tiny_obj_loader.h#L2997
                 if overwrite_material is not None:
                     material_id = 0
+                    # shape don't have material id, use material 0, which is the overwrite material
                 else:
-                    material_id = -1  # if no material and no overwrite material is supplied
+                    material_id = NO_MATERIAL_DEFINED_IN_SHAPE_AND_NO_OVERWRITE_SUPPLIED
+                    # if no material and no overwrite material is supplied
             else:
                 material_id = shape.mesh.material_ids[0]
+                # assumption: each shape only have one material
 
             logging.debug("material_id = {}".format(material_id))
             logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
@@ -624,8 +636,9 @@ class MeshRenderer(object):
             self.vertex_data.append(vertexData)
             self.shapes.append(shape)
             # if material loading fails, use the default material
-            if material_id == -1:
-                self.shape_material_idx.append(len(materials) + num_existing_mats)
+            if material_id == NO_MATERIAL_DEFINED_IN_SHAPE_AND_NO_OVERWRITE_SUPPLIED:
+                # use fall back material
+                self.shape_material_idx.append(idx_of_failsafe_material)
             else:
                 self.shape_material_idx.append(material_id + num_existing_mats)
 
