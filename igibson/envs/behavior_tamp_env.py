@@ -6,6 +6,7 @@ from enum import IntEnum
 import gym.spaces
 import numpy as np
 import pybullet as p
+import scipy
 
 from igibson import object_states
 from igibson.envs.behavior_env import BehaviorEnv
@@ -17,7 +18,7 @@ from igibson.robots.behavior_robot import BRBody, BREye, BRHand
 from igibson.utils.behavior_robot_planning_utils import dry_run_base_plan, plan_base_motion_br, plan_hand_motion_br
 
 NUM_ACTIONS = 6
-MAX_ACTION_CONT_PARAMS = 2
+MAX_ACTION_CONT_PARAMS = 4
 
 
 class ActionPrimitives(IntEnum):
@@ -133,47 +134,47 @@ class BehaviorTAMPEnv(BehaviorEnv):
             self.robots[0].parts["right_hand"].trigger_fraction = 0
             p.stepSimulation()
 
-    def step(self, action, continuous_params):
-        """
-        :param action: an integer such that action % self.num_objects yields the object id, and 
-        action // self.num_objects yields the correct action enum
-        :param continuous_params: a numpy vector of length MAX_ACTION_CONT_PARAMS. This represents
-        values derived from the continuous parameters of the action.
-        """
+    # def step(self, action, continuous_params):
+    #     """
+    #     :param action: an integer such that action % self.num_objects yields the object id, and 
+    #     action // self.num_objects yields the correct action enum
+    #     :param continuous_params: a numpy vector of length MAX_ACTION_CONT_PARAMS. This represents
+    #     values derived from the continuous parameters of the action.
+    #     """
 
-        obj_list_id = int(action) % self.num_objects
-        action_primitive = int(action) // self.num_objects
-        obj = self.task_relevant_objects[obj_list_id]
+    #     obj_list_id = int(action) % self.num_objects
+    #     action_primitive = int(action) // self.num_objects
+    #     obj = self.task_relevant_objects[obj_list_id]
 
-        assert continuous_params.shape == (MAX_ACTION_CONT_PARAMS,)
+    #     assert continuous_params.shape == (MAX_ACTION_CONT_PARAMS,)
 
-        if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
-            if action_primitive == ActionPrimitives.NAVIGATE_TO:
-                if self.navigate_to_obj_pos(obj, continuous_params[0:2], use_motion_planning=self.use_motion_planning):
-                    logging.debug("PRIMITIVE: navigate to {} success".format(obj.name))
-                else:
-                    logging.debug("PRIMITIVE: navigate to {} fail".format(obj.name))
+    #     if not (isinstance(obj, BRBody) or isinstance(obj, BRHand) or isinstance(obj, BREye)):
+    #         if action_primitive == ActionPrimitives.NAVIGATE_TO:
+    #             if self.navigate_to_obj_pos(obj, continuous_params[0:2], use_motion_planning=self.use_motion_planning):
+    #                 logging.debug("PRIMITIVE: navigate to {} success".format(obj.name))
+    #             else:
+    #                 logging.debug("PRIMITIVE: navigate to {} fail".format(obj.name))
 
-            elif action_primitive == ActionPrimitives.GRASP:
-                if self.obj_in_hand is None:
-                    if isinstance(obj, URDFObject) and hasattr(obj, "states") and object_states.AABB in obj.states:
-                        lo, hi = obj.states[object_states.AABB].get_value()
-                        volume = get_aabb_volume(lo, hi)
-                        if (
-                            volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed
-                        ):  # say we can only grasp small objects
-                            if (
-                                np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position()))
-                                < 2
-                            ):
-                                self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
-                                logging.debug(
-                                    "PRIMITIVE: grasp {} success, obj in hand {}".format(obj.name, self.obj_in_hand)
-                                )
-                            else:
-                                logging.debug("PRIMITIVE: grasp {} fail, too far".format(obj.name))
-                        else:
-                            logging.debug("PRIMITIVE: grasp {} fail, too big or fixed".format(obj.name))
+    #         elif action_primitive == ActionPrimitives.GRASP:
+    #             if self.obj_in_hand is None:
+    #                 if isinstance(obj, URDFObject) and hasattr(obj, "states") and object_states.AABB in obj.states:
+    #                     lo, hi = obj.states[object_states.AABB].get_value()
+    #                     volume = get_aabb_volume(lo, hi)
+    #                     if (
+    #                         volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed
+    #                     ):  # say we can only grasp small objects
+    #                         if (
+    #                             np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position()))
+    #                             < 2
+    #                         ):
+    #                             self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
+    #                             logging.debug(
+    #                                 "PRIMITIVE: grasp {} success, obj in hand {}".format(obj.name, self.obj_in_hand)
+    #                             )
+    #                         else:
+    #                             logging.debug("PRIMITIVE: grasp {} fail, too far".format(obj.name))
+    #                     else:
+    #                         logging.debug("PRIMITIVE: grasp {} fail, too big or fixed".format(obj.name))
 
             # elif action_primitive == ActionPrimitives.PLACE_ONTOP:
             #     if self.obj_in_hand is not None and self.obj_in_hand != obj:
@@ -297,9 +298,9 @@ class BehaviorTAMPEnv(BehaviorEnv):
             #     else:
             #         logging.debug("PRIMITIVE close failed, too far")
 
-        state, reward, done, info = super(BehaviorTAMPEnv, self).step(np.zeros(17))
-        logging.debug("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
-        return state, reward, done, info
+        # state, reward, done, info = super(BehaviorTAMPEnv, self).step(np.zeros(17))
+        # logging.debug("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
+        # return state, reward, done, info
 
     def step_with_exec_info(self, action, continuous_params):
         """
@@ -319,7 +320,7 @@ class BehaviorTAMPEnv(BehaviorEnv):
                     print("PRIMITIVE: navigate to {} success".format(obj.name))
                     action_exec_status = True
                 else:
-                    print("PRIMITIVE: navigate to {} fail".format(obj.name))
+                    print(f"PRIMITIVE: navigate to {obj.name} with params {continuous_params[0:2]} fail")
 
             elif action_primitive == ActionPrimitives.GRASP:
                 if self.obj_in_hand is None:
@@ -333,7 +334,7 @@ class BehaviorTAMPEnv(BehaviorEnv):
                                 np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position()))
                                 < 2
                             ):
-                                self.grasp_obj(obj, use_motion_planning=self.use_motion_planning)
+                                self.grasp_obj_at_pos(obj, continuous_params[0:3], use_motion_planning=self.use_motion_planning)
                                 print(
                                     "PRIMITIVE: grasp {} success, obj in hand {}".format(obj.name, self.obj_in_hand)
                                 )
@@ -342,6 +343,8 @@ class BehaviorTAMPEnv(BehaviorEnv):
                                 print("PRIMITIVE: grasp {} fail, too far".format(obj.name))
                         else:
                             print("PRIMITIVE: grasp {} fail, too big or fixed".format(obj.name))
+                else:
+                    print("PRIMITIVE: grasp {} fail, agent already has an object in hand!".format(obj.name))
 
             # elif action_primitive == ActionPrimitives.PLACE_ONTOP:
             #     if self.obj_in_hand is not None and self.obj_in_hand != obj:
@@ -479,16 +482,18 @@ class BehaviorTAMPEnv(BehaviorEnv):
         print("PRIMITIVE satisfied predicates:", info["satisfied_predicates"])
         return state, reward, done, info, action_exec_status
 
-    def grasp_obj(self, obj, use_motion_planning=False):
+    def grasp_obj_at_pos(self, obj, grasp_offset_and_z_rot, use_motion_planning=False):
         if use_motion_planning:
-            x, y, _ = obj.get_position()
-            z = obj.states[object_states.AABB].get_value()[1][2]
+            x, y, z = obj.get_position()
+            x += grasp_offset_and_z_rot[0]
+            y += grasp_offset_and_z_rot[1]
+            z += grasp_offset_and_z_rot[2]
             hand_x, hand_y, hand_z = self.robots[0].parts["right_hand"].get_position()
 
-            # add a little randomness to avoid getting stuck
-            x += np.random.uniform(-0.025, 0.025)
-            y += np.random.uniform(-0.025, 0.025)
-            z += np.random.uniform(-0.025, 0.025)
+            # # add a little randomness to avoid getting stuck
+            # x += np.random.uniform(-0.025, 0.025)
+            # y += np.random.uniform(-0.025, 0.025)
+            # z += np.random.uniform(-0.025, 0.025)
 
             minx = min(x, hand_x) - 0.5
             miny = min(y, hand_y) - 0.5
@@ -497,12 +502,31 @@ class BehaviorTAMPEnv(BehaviorEnv):
             maxy = max(y, hand_y) + 0.5
             maxz = max(z, hand_z) + 0.5
 
+            # compute the angle the hand must be in such that it can grasp the object from its current offset position
+            # This involves aligning the z-axis (in the world frame) of the hand with the vector that goes from the hand 
+            # to the object. We can find the rotation matrix that accomplishes this rotation by following:
+            # https://math.stackexchange.com/questions/180418/calculate-rotation-matrix-to-align-vector-a-to-vector-b-in-3d
+            hand_to_obj_vector = np.array([x - hand_x, y - hand_y, z - hand_z])
+            hand_to_obj_unit_vector = hand_to_obj_vector / np.linalg.norm(hand_to_obj_vector)
+            unit_z_vector = np.array(0,0,1)
+            c = np.dot(unit_z_vector, hand_to_obj_unit_vector)
+            if not c == -1.0:
+                v = np.cross(unit_z_vector, hand_to_obj_unit_vector)
+                s = np.linalg.norm(v)
+                v_x = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+                R = np.eye(3) + v_x + np.linalg.matrix_power(v_x, 2) * ((1-c)/(s ** 2))
+                r = scipy.spatial.transform.Rotation.from_matrix(R)
+                euler_angles = r.as_euler('xyz')
+                euler_angles[2] += grasp_offset_and_z_rot[3]
+            else:
+                euler_angles = np.array([0.0, np.pi, 0.0])
+
             state = p.saveState()
             # plan a motion to above the object
             plan = plan_hand_motion_br(
                 robot=self.robots[0],
                 obj_in_hand=None,
-                end_conf=[x, y, z + 0.05, 0, np.pi * 5 / 6.0, np.random.uniform(-np.pi, np.pi)],
+                end_conf=[x, y, z, euler_angles[0], euler_angles[1], euler_angles[2]],
                 hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
                 obstacles=self.get_body_ids(include_self=True),
             )
@@ -633,7 +657,7 @@ class BehaviorTAMPEnv(BehaviorEnv):
         theta = np.random.uniform(*CIRCULAR_LIMITS)
         return (x, y, theta)
 
-    def navigate_to_obj_pos(self, obj, to_pos, use_motion_planning=False):
+    def navigate_to_obj_pos(self, obj, pos_offset, use_motion_planning=False):
         """
         navigates the robot to a certain x,y position and selects an orientation
         such that the robot is facing the object. If the navigation is infeasible,
@@ -648,25 +672,23 @@ class BehaviorTAMPEnv(BehaviorEnv):
         valid_position = None  # ((x,y,z),(roll, pitch, yaw))
         original_position = self.robots[0].get_position()
         original_orientation = self.robots[0].get_orientation()
-        pos = [to_pos[0], to_pos[1], self.robots[0].initial_z_offset]
 
-        if isinstance(obj, URDFObject):
+        if isinstance(obj, URDFObject): # must be a URDFObject so we can get its position!
             obj_pos = obj.get_position()
-            pos_diff = np.array(obj_pos) - np.array(pos)
-            yaw_angle = np.arctan2(pos_diff[1], pos_diff[0])
+            pos = [pos_offset[0] + obj_pos[0], pos_offset[1] + obj_pos[1], self.robots[0].initial_z_offset]
+            yaw_angle = np.arctan2(pos_offset[1], pos_offset[0])
             orn = [0, 0, yaw_angle]
             self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
             eye_pos = self.robots[0].parts["eye"].get_position()
             ray_test_res = p.rayTest(eye_pos, obj_pos)
-            blocked = len(ray_test_res) > 0 and ray_test_res[0][0] != obj.get_body_id()
+            # Test to see if the robot is obstructed by some object, but make sure that object 
+            # is not either the robot's body or the object we want to pick up!
+            blocked = len(ray_test_res) > 0 and (ray_test_res[0][0] not in (self.robots[0].parts["body"].get_body_id(), obj.get_body_id()))
             if not detect_robot_collision(self.robots[0]) and not blocked:
-                valid_position = (pos, orn)
-        else:
-            orn = [0, 0, np.pi]
-            if not detect_robot_collision(self.robots[0]):
                 valid_position = (pos, orn)
 
         if valid_position is not None:
+            print("Position commanded is not in collision!")
             if use_motion_planning:
                 self.robots[0].set_position_orientation(original_position, original_orientation)
                 plan = plan_base_motion_br(
@@ -692,6 +714,7 @@ class BehaviorTAMPEnv(BehaviorEnv):
                 self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
                 return True
         else:
+            print("Position commanded is in collision!")
             self.robots[0].set_position_orientation(original_position, original_orientation)
             return False
 
