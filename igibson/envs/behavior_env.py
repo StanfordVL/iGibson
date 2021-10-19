@@ -239,8 +239,7 @@ class BehaviorEnv(iGibsonEnv):
         self.simulator.step()
 
         state = self.get_state()
-        state['action'] = new_action
-        import pdb; pdb.set_trace()
+        state['action'] = action
         info = {}
         done, satisfied_predicates = self.task.check_success()
         # Compute the initial reward potential here instead of during reset
@@ -261,6 +260,8 @@ class BehaviorEnv(iGibsonEnv):
 
         state['reward'] = np.array([reward], dtype=np.float32)
         state['islast'] = done
+        if state['rgb'].shape[0] == 27:
+            import pdb; pdb.set_trace()
         return state, reward, done, info
 
     def get_potential(self, satisfied_predicates):
@@ -338,12 +339,11 @@ class BehaviorEnv(iGibsonEnv):
         self.reset_scene_and_agent()
 
         self.simulator.sync(force_sync=True)
-        state = self.get_state()
+        state = self.get_state(reset=True)
         state['action'] = np.zeros(self.action_space.shape[0], dtype=np.float32)
         state['reward'] = np.array([0.0], dtype=np.float32)
         state['islast'] = False
         self.reset_variables()
-
         return state
 
 

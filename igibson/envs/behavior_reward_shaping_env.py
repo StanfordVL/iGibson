@@ -1,6 +1,6 @@
 import argparse
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 
 import gym
 import numpy
@@ -18,7 +18,9 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
     """
 
     def load_observation_space(self):
+
         super(BehaviorRewardShapingEnv, self).load_observation_space()
+        self.frames = deque([], maxlen=3)
         self.task_obs_dim = 27
         self.observation_space.spaces["task_obs"] = gym.spaces.Box(
             low=-np.inf, high=np.inf, shape=(self.task_obs_dim,), dtype=np.float32
@@ -28,8 +30,11 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         self.observation_space.spaces["discount"] = gym.spaces.Box(
             low=0, high=1, shape=(1,), dtype=np.float32
         )
+        self.observation_space.spaces["rgb"] = gym.spaces.Box(
+            shape=(9, self.image_height, self.image_width), low=0.0, high=1.0, dtype=np.float32
+        )
 
-    def get_state(self, collision_links=[]):
+    def get_state(self, collision_links=[], reset=False):
         """
         Get the current observation
 
@@ -77,8 +82,17 @@ class BehaviorRewardShapingEnv(BehaviorEnv):
         assert len(state_list) == len(task_obs)
         task_obs = np.array(state_list)
         state["task_obs"] = task_obs
+
         state["rgb"] *= 255
         state["rgb"] = state["rgb"].astype(np.uint8)
+        state["rgb"] = state["rgb"].transpose(2, 0, 1).copy()
+        if reset:
+            for i in range(3):
+                self.frames.append(state['rgb'])
+        else:
+            self.frames.append(state["rgb"])
+        state["rgb"] = np.concatenate(list(self.frames), axis=0)
+
         state["discount"] = np.array([1], dtype=np.float32)
 
         return state
