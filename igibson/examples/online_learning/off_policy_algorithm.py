@@ -110,6 +110,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         sde_sample_freq: int = -1,
         use_sde_at_warmup: bool = False,
         sde_support: bool = True,
+        save_every: int = 100,
         remove_time_limit_termination: bool = False,
         supported_action_spaces: Optional[Tuple[gym.spaces.Space, ...]] = None,
     ):
@@ -144,6 +145,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             replay_buffer_kwargs = {}
         self.replay_buffer_kwargs = replay_buffer_kwargs
         self._episode_storage = None
+        self.save_every = save_every
 
         # Remove terminations (dones) that are due to time limit
         # see https://github.com/hill-a/stable-baselines/issues/863
@@ -380,6 +382,9 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 if gradient_steps > 0:
                     self.train(batch_size=self.batch_size, gradient_steps=gradient_steps)
 
+            if self.num_timesteps % self.save_every == 0:
+                self.save(f"tamer_sac_{self.num_timesteps}.pt")
+
         callback.on_training_end()
 
         return self
@@ -579,9 +584,6 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 curr_keyboard_feedback = self.human_feedback.return_human_keyboard_feedback()
                 if curr_keyboard_feedback and type(curr_keyboard_feedback) == int:
                     reward += curr_keyboard_feedback
-                    print(reward)
-                else:
-                    print(curr_keyboard_feedback)
 
                 self.num_timesteps += 1
                 episode_timesteps += 1

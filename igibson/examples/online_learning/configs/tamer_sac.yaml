@@ -5,3 +5,10 @@ gamma: 0.99
 seed: 42
 epochs: 50
 load_model: None
+tensorboard_log_dir: "log_dir"
+policy_name: "MultiInputPolicy"
+buffer_size: 10
+verbose: 1
+steps: 1000
+load_model: 0
+save_every_steps: 100

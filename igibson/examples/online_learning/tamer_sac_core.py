@@ -99,6 +99,7 @@ class SAC(OffPolicyAlgorithm):
         verbose: int = 0,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
+        save_every: int = 100,
         _init_setup_model: bool = True,
     ):
 
@@ -129,6 +130,7 @@ class SAC(OffPolicyAlgorithm):
             sde_sample_freq=sde_sample_freq,
             use_sde_at_warmup=use_sde_at_warmup,
             optimize_memory_usage=optimize_memory_usage,
+            save_every=save_every,
             supported_action_spaces=(gym.spaces.Box),
         )
 

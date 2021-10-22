@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Callable
 
+import yaml
 from human_feedback import HumanFeedback
 from online_learning_interface import FeedbackInterface
 from PyQt5.QtWidgets import *
@@ -99,44 +100,51 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
 
 def main():
-    config_file = "behavior_full_observability_fetch.yaml"
-    tensorboard_log_dir = "log_dir"
+    with open("configs/tamer_sac.yaml", "r") as f:
+        config_data = yaml.load(f, Loader=yaml.FullLoader)
 
-    human_feedback = HumanFeedback()
-    app = QApplication(sys.argv)
-    feedback_gui = FeedbackInterface()
-
+    config_file = config_data["env_config_file"]
+    tensorboard_log_dir = config_data["tensorboard_log_dir"]
     env = BehaviorEnv(
         config_file=os.path.join("../configs/", config_file),
         mode="gui",
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
+        action_filter="all",
     )
+
+    human_feedback = HumanFeedback()
+    app = QApplication(sys.argv)
+    feedback_gui = FeedbackInterface()
 
     policy_kwargs = dict(
         features_extractor_class=CustomCombinedExtractor,
     )
     os.makedirs(tensorboard_log_dir, exist_ok=True)
     model = SAC(
-        "MultiInputPolicy",
+        config_data["policy_name"],
         env,
-        buffer_size=10,
-        verbose=1,
+        buffer_size=config_data["buffer_size"],
+        verbose=config_data["verbose"],
         tensorboard_log=tensorboard_log_dir,
         policy_kwargs=policy_kwargs,
         human_feedback=human_feedback,
         feedback_gui=feedback_gui,
+        save_every=config_data["save_every_steps"],
     )
 
-    model.learn(1000)
+    if config_data["load_model"] != 0:
+        model = SAC.load(f"tamer_sac_{config_data['load_model']}.pt")
+
+    model.learn(config_data["steps"])
 
     mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20)
     print(f"After Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
-    model.save("ckpt")
+    model.save(f"tamer_sac_{config_data['steps']}.pt")
     del model
 
-    model = SAC.load("ckpt")
+    model = SAC.load(f"tamer_sac_{config_data['steps']}.pt")
     mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20)
     print(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
