@@ -5,7 +5,6 @@ import sys
 import time
 from copy import deepcopy
 from logging import Handler
-from igibson.utils.checkpoint_utils import load_checkpoint
 
 import numpy as np
 import torch
@@ -21,6 +20,7 @@ from torch.optim import Adam
 
 import igibson
 from igibson.envs.behavior_env import BehaviorEnv
+from igibson.utils.checkpoint_utils import load_checkpoint
 
 
 class ReplayBuffer:
@@ -60,7 +60,7 @@ class ReplayBuffer:
 def sac(
     env_fn,
     actor_critic=MLPActorCritic,
-    ac_kwargs=dict(),
+    hidden_dim=128,
     seed=0,
     steps_per_epoch=4000,
     epochs=100,
@@ -76,7 +76,7 @@ def sac(
     num_test_episodes=10,
     max_ep_len=1000,
     save_freq=1,
-    load_model=None
+    load_model=None,
 ):
     """
     Soft Actor-Critic (SAC)
@@ -149,7 +149,7 @@ def sac(
             the current policy and value function.
         load_model (int): Epoch corresponding to the model checkpoint that needs
             to be loaded. None if training needs to be done from scratch. Model
-            name format must be tamer_sac_epoch_{load_model}.pt. 
+            name format must be tamer_sac_epoch_{load_model}.pt.
     """
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -159,14 +159,10 @@ def sac(
     feedback_gui = FeedbackInterface()
 
     env, test_env = env_fn(), env_fn()
-    obs_dim = (env.observation_space["task_obs"].shape[0] + env.observation_space["proprioception"].shape[0],)
     act_dim = env.action_space.shape[0]
 
-    # Action limit for clamping: critically, assumes all dimensions share the same bound!
-    act_limit = env.action_space.high[0]
-
     # Create actor-critic module and target networks
-    ac = actor_critic(obs_dim, env.action_space, **ac_kwargs)
+    ac = actor_critic(env.observation_space, env.action_space, hidden_dim=hidden_dim)
     if load_model:
         ac.load_state_dict(torch.load(f"tamer_sac_epoch_{load_model}.pt"))
     ac_targ = deepcopy(ac)
@@ -179,13 +175,8 @@ def sac(
     q_params = itertools.chain(ac.q1.parameters(), ac.q2.parameters())
 
     # Experience buffer
-    replay_buffer = ReplayBuffer(obs_dim=obs_dim, act_dim=act_dim, size=replay_size)
-
-    # Count variables (protip: try to get a feel for how different size networks behave!)
-    var_counts = tuple(count_vars(module) for module in [ac.pi, ac.q1, ac.q2])
-
-    def extract_observations(obs):
-        return np.append(obs["task_obs"], obs["proprioception"])
+    # TODO: Fix replay buffer to handle inputs of different sizes
+    replay_buffer = ReplayBuffer(obs_dim=env.observation_space, act_dim=act_dim, size=replay_size)
 
     # Set up function for computing SAC Q-losses
     def compute_loss_q(data):
@@ -348,7 +339,7 @@ if __name__ == "__main__":
     with open("configs/tamer_sac.yaml", "r") as f:
         config_data = yaml.load(f, Loader=yaml.FullLoader)
 
-    config_file = config_data['env_config_file']
+    config_file = config_data["env_config_file"]
     env = BehaviorEnv(
         config_file=os.path.join("../configs/", config_file),
         mode="gui",
@@ -362,10 +353,9 @@ if __name__ == "__main__":
     sac(
         lambda: env,
         actor_critic=MLPActorCritic,
-        ac_kwargs=dict(hidden_sizes=[config_data["hidden_dim"]] * config_data["num_layers"]),
+        hidden_dim=config_data["hidden_dim"],
         gamma=config_data["gamma"],
         seed=config_data["seed"],
         epochs=config_data["epochs"],
-        load_model=epoch_to_load
-
+        load_model=epoch_to_load,
     )

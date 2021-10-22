@@ -1,5 +1,5 @@
 # scene
-scene_id: Beechwood_1_int
+scene_id: Ihlen_1_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -29,7 +29,7 @@ controller:
   height_limits: [0.2, 1.5]       # min, max height limits
 
 # task
-task: cleaning_cupboards
+task: throwing_away_leftovers
 task_id: 0
 online_sampling: false
 target_dist_min: 1.0
