@@ -1,0 +1,7 @@
+env_config_file: behavior_full_observability_fetch.yaml
+hidden_dim: 256
+num_layers: 2
+gamma: 0.99
+seed: 42
+epochs: 50
+load_model: None
