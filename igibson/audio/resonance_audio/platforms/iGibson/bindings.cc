@@ -258,7 +258,7 @@ namespace igibson {
         SetRoomReflectionAndReverb(reflection_and_reverb.first, reflection_and_reverb.second);
     }
 
-    int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance) {
+    int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance, float room_effects_gain) {
         ResonanceAudioApi::SourceId source_id = CreateSoundObject(RenderingMode::kBinauralHighQuality, min_distance, max_distance);
 
         py::buffer_info sl_buf = source_pos.request();
@@ -267,6 +267,7 @@ namespace igibson {
         SetSourcePosition(source_id, source_pos);
         SetSourceGain(source_id, 1.0f);
         SetNearFieldEffectGain(source_id, 1.0f);
+        SetSourceRoomEffectsGain(source_id, room_effects_gain);
 
         return source_id;
     }

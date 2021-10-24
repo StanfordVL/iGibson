@@ -26,6 +26,8 @@ MatterportToResonanceMaterialMap = {
     "sofa chair" : "CurtainHeavy",
     "door" : "WoodPanel",
     "partition" : "ConcreteBlockPainted",
+    "door frame" : "PlywoodPanel",
+    "window" : "GlassThick"
 }
 
 def buildMatterportCategories():
@@ -40,17 +42,20 @@ def buildMatterportCategories():
 def classesToMaterials(classes):
     materials = []
     unknowns = {}
+    mapped_faces = 0
     for c in classes:
         if c in MatterportToResonanceMaterialMap:
             res_material = MatterportToResonanceMaterialMap[c]
             materials.append(ResonanceMaterialToId[res_material])
+            mapped_faces += 1
         else:
-            materials.append(ResonanceMaterialToId["Transparent"])
+            materials.append(ResonanceMaterialToId["Uniform"])
             if c in unknowns:
                 unknowns[c] += 1
             else:
                 unknowns[c] = 1
     biggest_unknowns = sorted(unknowns, key=unknowns.get, reverse=True)
+    print("Acoustic mapping successful for {}% of mesh".format(mapped_faces * 100 / len(classes)))
     if len(biggest_unknowns) > 0:
         print("Unmapped Matterport classes found, substituting with transparent, printing largest 10")
         for i in range(min(10, len(biggest_unknowns))):
@@ -74,14 +79,17 @@ def getMatterportAcousticMesh(s, sem_map_fn):
                 # Convert uv coordinates to pixel location
                 u =  texcoords[i+offset,0]
                 v = texcoords[i+offset,1]
-                pixel_x = int((1-v) * sem_map.shape[1] - 0.1) 
-                pixel_y = int(u * sem_map.shape[0] - 0.1)
-                # Get pixel values
-                vertex_class_rgb = sem_map[pixel_x, pixel_y]
-                #Decode pixel rgb to class ID
-                vertex_class = int(np.round(vertex_class_rgb[0]) + \
-                                    np.round(vertex_class_rgb[1]) * 16.0 + \
-                                    np.round(vertex_class_rgb[2] * 16.0 * 16.0))
+                if u < 0 or v < 0 or u > 1 or v > 1:
+                    vertex_class = -1
+                else:
+                    pixel_x = int((1-v) * sem_map.shape[1] - 0.1) 
+                    pixel_y = int(u * sem_map.shape[0] - 0.1)
+                    # Get pixel values
+                    vertex_class_rgb = sem_map[pixel_x, pixel_y]
+                    #Decode pixel rgb to class ID
+                    vertex_class = int(np.round(vertex_class_rgb[0]) + \
+                                        np.round(vertex_class_rgb[1]) * 16.0 + \
+                                        np.round(vertex_class_rgb[2] * 16.0 * 16.0))
                 classes_for_face.append(vertex_class)
             # majority vote for face class from vertex classes
             face_class = max(set(classes_for_face), key = classes_for_face.count)
