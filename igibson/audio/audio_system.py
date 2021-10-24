@@ -85,8 +85,9 @@ class AudioSystem(object):
                     audio.RegisterReverbProbe(key, sample_position)
                     self.probe_key_to_pos_by_floor[floor][key] = sample_position[:2]
 
-            print("Finished computing reverb probes")
             self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
+            print("Updating Reverb/Reflection properties to probe " + self.current_probe_key)
+            audio.SetRoomPropertiesFromProbe(self.current_probe_key)
         else:
             audio.DisableRoomEffects()
 
@@ -131,7 +132,7 @@ class AudioSystem(object):
             raise Exception('Source {} has {} channels, 1 expected.'.format(audio_fname, buffer.getnchannels()))
 
         source_pos,_ = p.getBasePositionAndOrientation(source_obj_id)
-        source_id = audio.InitializeSource(source_pos, 0.1, 10)
+        source_id = audio.InitializeSource(source_pos, 0.1, 10, 1)
         self.sourceToResonanceID[source_obj_id] = source_id
         self.sourceToEnabled[source_obj_id] = enabled
         self.sourceToRepeat[source_obj_id] = repeat
@@ -185,6 +186,8 @@ class AudioSystem(object):
                     hit_num += 1
                 audio.SetSourceOcclusion(self.sourceToResonanceID[source], occl_hits)
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
+            else:
+                audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, np.zeros(self.framesPerBuf, dtype=np.int16))
 
         audio.SetListenerPositionAndRotation(listener_pos, self.get_ori())
         if self.reverb:
@@ -195,9 +198,10 @@ class AudioSystem(object):
                 self.current_probe_key = closest_probe_key
 
         self.current_output = audio.ProcessListener(self.framesPerBuf)
+        #print("{} {}".format(np.mean(source_audio), np.mean(self.current_output)))
 
         if self.renderAmbisonics:
-            self.current_output = audio.RenderAmbisonics(self.framesPerBuf)
+            self.ambisonic_output = audio.RenderAmbisonics(self.framesPerBuf)
 
         if self.writeToFile:
             self.complete_output.extend(self.current_output)

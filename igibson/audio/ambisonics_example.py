@@ -293,29 +293,32 @@ class SphericalAmbisonicsVisualizer(object):
 
 # PARAMETERS FOR BUILDING INTENSITY MAP
 DURATION = 1.0 # may choose shorter DURATION because eventually only the first sample matters 
-ANGULAR_RES = 10 # resolution for binning the estimated angles
+ANGULAR_RES = 5 # resolution for binning the estimated angles
 
 IGIBSON_OFFSET = 0
 
 def mp3d_example():
     s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
-    scene = StadiumScene()#StaticIndoorScene('17DRP5sb8fy')
+    scene = StaticIndoorScene('17DRP5sb8fy')
+    #scene = StadiumScene()
     s.import_scene(scene)
 
 
 
-    acousticMesh = AcousticMesh()#getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/17DRP5sb8fy/sem_map.png")
+    acousticMesh = getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/17DRP5sb8fy/sem_map.png")#AcousticMesh()
+    #acousticMesh = AcousticMesh()
     #transparent_id =ResonanceMaterialToId["Transparent"]
     #Make mesh transparent so we only render direct sound
     #acousticMesh.materials = np.ones(acousticMesh.materials.shape) * transparent_id
 
     # Audio System Initialization, with reverb/reflections off
-    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=False, SR = 44100, num_probes=5, renderAmbisonics=True, renderReverbReflections=False)
-    obj = cube.Cube(pos=[-4.1,3.1,1.2], dim=[0.05, 0.05, 0.05], visual_only=True, mass=0, color=[1,0,0,1])
+    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=True, SR = 44100, num_probes=5, renderAmbisonics=True, renderReverbReflections=False)
+    # -4.1,3.1,1.2
+    obj = cube.Cube(pos=[-1, 1, 1.2], dim=[0.05, 0.05, 0.05], visual_only=True, mass=0, color=[1,0,0,1])
     obj_id = s.import_object(obj)[0]
 
     # Attach wav file to imported cube obj
-    audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
+    audioSystem.registerSource(obj_id, "250Hz_44100Hz.wav", enabled=True)
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id)
     audioSystem.setSourceNearFieldEffectGain(obj_id, 1.1)
@@ -323,33 +326,45 @@ def mp3d_example():
     s.attachAudioSystem(audioSystem)
 
     # Runs for 30 seconds, then saves output audio to file. 
-    for i in range(10000):
+    numberOfSteps = 3
+    audio_window = np.zeros((16, 1470 * numberOfSteps))
+    viewer_pos = audioSystem.get_pos()
+    r = 1.5
+    state = True
+    
+    for i in range(1000):
+        theta = i / 20
+        #obj.set_position([viewer_pos[0] + r*cos(theta), viewer_pos[1] + r*sin(theta), viewer_pos[2]])
+        if i % 50 == 0:
+            state = not state
+            audioSystem.setSourceEnabled(obj_id, state)
         s.step()
-        audio_data = np.asarray(audioSystem.current_output)
-        ambiSpherical = SphericalAmbisonicsVisualizer(audio_data.transpose(), DEFAULT_RATE, window=1/DEFAULT_RATE,
-                                                    angular_res=ANGULAR_RES)
+        audio_window[:,(i % numberOfSteps) * 1470:((i % numberOfSteps)+1) * 1470] = np.asarray(audioSystem.ambisonic_output)
+        if i % numberOfSteps == 0:
+            ambiSpherical = SphericalAmbisonicsVisualizer(audio_window.transpose(), DEFAULT_RATE, window=numberOfSteps/30,
+                                                        angular_res=ANGULAR_RES)
 
-        azimuth_range = np.flip(np.arange(-180., 180, ANGULAR_RES), 0)
-        # looping over chunks of sound, break after the very first chunk to get angles from the direct sound
-        for frame_count, rms in enumerate(ambiSpherical.loop_frames()):
-            # there is only 1 elevation angle i.e., 0 degrees, so use that with index 0
-            estimated_angle = azimuth_range[np.argmax(rms[0, :])] + IGIBSON_OFFSET
-            # just use the first chunk
-            if frame_count == 0:
-                break
+            azimuth_range = np.flip(np.arange(-180., 180, ANGULAR_RES), 0)
+            # looping over chunks of sound, break after the very first chunk to get angles from the direct sound
+            for frame_count, rms in enumerate(ambiSpherical.loop_frames()):
+                # there is only 1 elevation angle i.e., 0 degrees, so use that with index 0
+                estimated_angle = azimuth_range[np.argmax(rms[0, :])] + IGIBSON_OFFSET
+                # just use the first chunk
+                if frame_count == 0:
+                    break
 
-        listener_pos, listener_ori = audioSystem.get_pos(), audioSystem.get_ori()
-        source_pos,_ = p.getBasePositionAndOrientation(obj_id)
-        #print("estimated source-listener angle: {}".format(estimated_angle))    
-        print("estimated max energy angle: %3d   " % estimated_angle, end='\r')
-        if estimated_angle == 170:
-            pass
-            #print(audio_data)
-        
-        # NOTE: this azimuth angle is uncalibrated/relative, you need to calibrate it so that you get the absolute
-        # angle as per the coordinate system you want it to be in. An easy way to do it is to look at adjacent
-        # nodes and see what angle this code estimates and what angle it is as per your coordinate system and then
-        # add the necessary offset to the estimate
+            listener_pos, listener_ori = audioSystem.get_pos(), audioSystem.get_ori()
+            source_pos,_ = p.getBasePositionAndOrientation(obj_id)
+            #print("estimated source-listener angle: {}".format(estimated_angle))    
+            print("estimated max energy angle: %3d   " % (estimated_angle))
+            #print(np.mean(audio_data))
+            #if estimated_angle == 170:
+            #    print(np.mean(audio_data))
+            
+            # NOTE: this azimuth angle is uncalibrated/relative, you need to calibrate it so that you get the absolute
+            # angle as per the coordinate system you want it to be in. An easy way to do it is to look at adjacent
+            # nodes and see what angle this code estimates and what angle it is as per your coordinate system and then
+            # add the necessary offset to the estimate
     audioSystem.disconnect()
     s.disconnect()
     

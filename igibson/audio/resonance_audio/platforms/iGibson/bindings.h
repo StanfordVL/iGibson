@@ -24,7 +24,7 @@ py::array_t<int16> InitializeFromMeshAndTest(int num_vertices, int num_triangles
 
 void InitializeSystem(int frames_per_buffer, int sample_rate);
 
-int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance);
+int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance, float room_effects_gain);
 
 void SetSourcePosition(int source_id, py::array_t<float> source_pos); 
 
