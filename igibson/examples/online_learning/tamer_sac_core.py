@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
+from igibson.examples.online_learning.human_feedback import HumanFeedback
 import numpy as np
 import torch as th
 from off_policy_algorithm import OffPolicyAlgorithm
@@ -74,11 +75,10 @@ class SAC(OffPolicyAlgorithm):
         policy: Union[str, Type[SACPolicy]],
         env: Union[GymEnv, str],
         human_feedback,
-        feedback_gui,
         learning_rate: Union[float, Schedule] = 3e-4,
         buffer_size: int = 1_000_000,  # 1e6
-        learning_starts: int = 100,
-        batch_size: int = 256,
+        learning_starts: int = 5,
+        batch_size: int = 2,
         tau: float = 0.005,
         gamma: float = 0.99,
         train_freq: Union[int, Tuple[int, str]] = 1,
@@ -108,7 +108,6 @@ class SAC(OffPolicyAlgorithm):
             env,
             SACPolicy,
             human_feedback,
-            feedback_gui,
             learning_rate,
             buffer_size,
             learning_starts,
@@ -182,7 +181,7 @@ class SAC(OffPolicyAlgorithm):
         self.critic = self.policy.critic
         self.critic_target = self.policy.critic_target
 
-    def train(self, gradient_steps: int, batch_size: int = 64) -> None:
+    def train(self, gradient_steps: int, human_feedback_gui: HumanFeedback, batch_size: int = 64) -> None:
         # Switch to train mode (this affects batch norm / dropout)
         self.policy.set_training_mode(True)
         # Update optimizers learning rate
@@ -259,7 +258,7 @@ class SAC(OffPolicyAlgorithm):
             min_qf_pi, _ = th.min(q_values_pi, dim=1, keepdim=True)
             actor_loss = (ent_coef * log_prob - min_qf_pi).mean()
             actor_losses.append(actor_loss.item())
-            self.feedback_gui.updateLoss(actor_loss.item())
+            human_feedback_gui.updateLoss(actor_loss.item())
 
             # Optimize the actor
             self.actor.optimizer.zero_grad()
@@ -282,6 +281,7 @@ class SAC(OffPolicyAlgorithm):
     def learn(
         self,
         total_timesteps: int,
+        human_feedback_gui: HumanFeedback,
         callback: MaybeCallback = None,
         log_interval: int = 4,
         eval_env: Optional[GymEnv] = None,
@@ -294,6 +294,7 @@ class SAC(OffPolicyAlgorithm):
 
         return super(SAC, self).learn(
             total_timesteps=total_timesteps,
+            human_feedback_gui=human_feedback_gui,
             callback=callback,
             log_interval=log_interval,
             eval_env=eval_env,

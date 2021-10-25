@@ -6,6 +6,7 @@ import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
+from igibson.examples.online_learning.human_feedback import HumanFeedback
 import numpy as np
 import torch as th
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -85,7 +86,6 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         env: Union[GymEnv, str],
         policy_base: Type[BasePolicy],
         human_feedback,
-        feedback_gui,
         learning_rate: Union[float, Schedule],
         buffer_size: int = 1_000_000,  # 1e6
         learning_starts: int = 100,
@@ -162,7 +162,6 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         # For gSDE only
         self.use_sde_at_warmup = use_sde_at_warmup
         self.human_feedback = human_feedback
-        self.feedback_gui = feedback_gui
 
     def _convert_train_freq(self) -> None:
         """
@@ -337,6 +336,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
     def learn(
         self,
         total_timesteps: int,
+        human_feedback_gui: HumanFeedback,
         callback: MaybeCallback = None,
         log_interval: int = 4,
         eval_env: Optional[GymEnv] = None,
@@ -368,6 +368,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 callback=callback,
                 learning_starts=self.learning_starts,
                 replay_buffer=self.replay_buffer,
+                human_feedback_gui=human_feedback_gui,
                 log_interval=log_interval,
             )
 
@@ -380,7 +381,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 gradient_steps = self.gradient_steps if self.gradient_steps >= 0 else rollout.episode_timesteps
                 # Special case when the user passes `gradient_steps=0`
                 if gradient_steps > 0:
-                    self.train(batch_size=self.batch_size, gradient_steps=gradient_steps)
+                    self.train(batch_size=self.batch_size, human_feedback_gui=human_feedback_gui, gradient_steps=gradient_steps)
 
             if self.num_timesteps % self.save_every == 0:
                 self.save(f"tamer_sac_{self.num_timesteps}.pt")
@@ -528,6 +529,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         callback: BaseCallback,
         train_freq: TrainFreq,
         replay_buffer: ReplayBuffer,
+        human_feedback_gui: HumanFeedback,
         action_noise: Optional[ActionNoise] = None,
         learning_starts: int = 0,
         log_interval: Optional[int] = None,
@@ -596,7 +598,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                     return RolloutReturn(0.0, num_collected_steps, num_collected_episodes, continue_training=False)
 
                 episode_reward += reward
-                self.feedback_gui.updateReward(episode_reward)
+                human_feedback_gui.updateReward(episode_reward)
 
                 # Retrieve reward and episode length if using Monitor wrapper
                 self._update_info_buffer(infos, done)

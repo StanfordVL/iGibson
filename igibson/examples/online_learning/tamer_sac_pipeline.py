@@ -129,14 +129,13 @@ def main():
         tensorboard_log=tensorboard_log_dir,
         policy_kwargs=policy_kwargs,
         human_feedback=human_feedback,
-        feedback_gui=feedback_gui,
         save_every=config_data["save_every_steps"],
     )
 
     if config_data["load_model"] != 0:
         model = SAC.load(f"tamer_sac_{config_data['load_model']}.pt")
 
-    model.learn(config_data["steps"])
+    model.learn(config_data["steps"], human_feedback_gui=feedback_gui)
 
     mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20)
     print(f"After Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
