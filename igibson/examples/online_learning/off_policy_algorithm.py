@@ -6,7 +6,6 @@ import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
-from igibson.examples.online_learning.human_feedback import HumanFeedback
 import numpy as np
 import torch as th
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -26,6 +25,8 @@ from stable_baselines3.common.type_aliases import (
 from stable_baselines3.common.utils import safe_mean, should_collect_more_steps
 from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
+
+from igibson.examples.online_learning.human_feedback import HumanFeedback
 
 
 class OffPolicyAlgorithm(BaseAlgorithm):
@@ -381,7 +382,9 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 gradient_steps = self.gradient_steps if self.gradient_steps >= 0 else rollout.episode_timesteps
                 # Special case when the user passes `gradient_steps=0`
                 if gradient_steps > 0:
-                    self.train(batch_size=self.batch_size, human_feedback_gui=human_feedback_gui, gradient_steps=gradient_steps)
+                    self.train(
+                        batch_size=self.batch_size, human_feedback_gui=human_feedback_gui, gradient_steps=gradient_steps
+                    )
 
             if self.num_timesteps % self.save_every == 0:
                 self.save(f"tamer_sac_{self.num_timesteps}.pt")

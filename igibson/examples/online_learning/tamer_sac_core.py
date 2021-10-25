@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
-from igibson.examples.online_learning.human_feedback import HumanFeedback
 import numpy as np
 import torch as th
 from off_policy_algorithm import OffPolicyAlgorithm
@@ -11,6 +10,8 @@ from stable_baselines3.common.type_aliases import GymEnv, MaybeCallback, Schedul
 from stable_baselines3.common.utils import polyak_update
 from stable_baselines3.sac.policies import SACPolicy
 from torch.nn import functional as F
+
+from igibson.examples.online_learning.human_feedback import HumanFeedback
 
 
 class SAC(OffPolicyAlgorithm):
