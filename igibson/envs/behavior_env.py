@@ -15,6 +15,8 @@ from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.ig_logging import IGLogWriter
+from igibson.objects.articulated_object import URDFObject
+from igibson.object_states.on_floor import RoomFloor
 
 
 class BehaviorEnv(iGibsonEnv):
@@ -33,7 +35,7 @@ class BehaviorEnv(iGibsonEnv):
         render_to_tensor=False,
         automatic_reset=False,
         seed=0,
-        action_filter="all",
+        action_filter="mobile_manipulation",
         instance_id=0,
         episode_save_dir=None,
     ):
@@ -64,6 +66,12 @@ class BehaviorEnv(iGibsonEnv):
         self.episode_save_dir = episode_save_dir
         if self.episode_save_dir is not None:
             os.makedirs(self.episode_save_dir, exist_ok=True)
+        self.task_relevant_objects = [
+            item
+            for item in self.task.object_scope.values()
+            if isinstance(item, URDFObject) or isinstance(item, RoomFloor)
+        ]
+        self.num_objects = len(self.task_relevant_objects)
 
         self.log_writer = None
 
@@ -216,7 +224,7 @@ class BehaviorEnv(iGibsonEnv):
                 new_action[:19] = action[:19]
                 new_action[20:27] = action[19:]
             # The original action space for BehaviorRobot is too wide for random exploration
-            new_action *= 0.05
+            # new_action *= 0.05
         elif isinstance(self.robots[0], FetchGripper):
             new_action = np.zeros((11,))
             if self.action_filter == "navigation":

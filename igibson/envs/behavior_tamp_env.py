@@ -10,15 +10,26 @@ import scipy
 
 from igibson import object_states
 from igibson.envs.behavior_env import BehaviorEnv
-from igibson.external.pybullet_tools.utils import CIRCULAR_LIMITS
+from igibson.external.pybullet_tools.utils import CIRCULAR_LIMITS, get_base_difference_fn
 from igibson.object_states.on_floor import RoomFloor
-from igibson.object_states.utils import sample_kinematics
+from igibson.object_states.utils import sample_kinematics, continuous_param_kinematics
 from igibson.objects.articulated_object import URDFObject
 from igibson.robots.behavior_robot import BRBody, BREye, BRHand
 from igibson.utils.behavior_robot_planning_utils import dry_run_base_plan, plan_base_motion_br, plan_hand_motion_br
+# from igibson.external.pybullet_tools.utils import (
+#     CIRCULAR_LIMITS,
+#     MAX_DISTANCE,
+#     PI,
+#     birrt,
+#     circular_difference,
+#     direct_path,
+#     get_base_difference_fn,
+#     get_base_distance_fn,
+#     pairwise_collision,
+# )
 
 NUM_ACTIONS = 6
-MAX_ACTION_CONT_PARAMS = 4
+MAX_ACTION_CONT_PARAMS = 7
 
 
 class ActionPrimitives(IntEnum):
@@ -346,68 +357,70 @@ class BehaviorTAMPEnv(BehaviorEnv):
                 else:
                     print("PRIMITIVE: grasp {} fail, agent already has an object in hand!".format(obj.name))
 
-            # elif action_primitive == ActionPrimitives.PLACE_ONTOP:
-            #     if self.obj_in_hand is not None and self.obj_in_hand != obj:
-            #         print("PRIMITIVE:attempt to place {} ontop {}".format(self.obj_in_hand.name, obj.name))
+            elif action_primitive == ActionPrimitives.PLACE_ONTOP:
+                if self.obj_in_hand is not None and self.obj_in_hand != obj:
+                    print("PRIMITIVE:attempt to place {} ontop {}".format(self.obj_in_hand.name, obj.name))
 
-            #         if isinstance(obj, URDFObject):
-            #             if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
-            #                 state = p.saveState()
-            #                 result = sample_kinematics(
-            #                     "onTop",
-            #                     self.obj_in_hand,
-            #                     obj,
-            #                     True,
-            #                     use_ray_casting_method=True,
-            #                     max_trials=20,
-            #                     skip_falling=True,
-            #                 )
-            #                 if result:
-            #                     print(
-            #                         "PRIMITIVE: place {} ontop {} success".format(self.obj_in_hand.name, obj.name)
-            #                     )
-            #                     action_exec_status = True
-            #                     pos = self.obj_in_hand.get_position()
-            #                     orn = self.obj_in_hand.get_orientation()
-            #                     self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
-            #                 else:
-            #                     p.removeState(state)
-            #                     print(
-            #                         "PRIMITIVE: place {} ontop {} fail, sampling fail".format(
-            #                             self.obj_in_hand.name, obj.name
-            #                         )
-            #                     )
+                    if isinstance(obj, URDFObject):
+                        if np.linalg.norm(np.array(obj.get_position()) - np.array(self.robots[0].get_position())) < 2:
+                            state = p.saveState()
+                            result = continuous_param_kinematics(
+                                "onTop",
+                                self.obj_in_hand,
+                                obj,
+                                True,
+                                continuous_params[0:7],
+                                use_ray_casting_method=True,
+                                max_trials=10,
+                                skip_falling=True,
+                            )
+                            if result:
+                                print(
+                                    "PRIMITIVE: place {} ontop {} success".format(self.obj_in_hand.name, obj.name)
+                                )
+                                action_exec_status = True
+                                pos = self.obj_in_hand.get_position()
+                                orn = self.obj_in_hand.get_orientation()
+                                self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
+                            else:
+                                p.removeState(state)
+                                print(
+                                    "PRIMITIVE: place {} ontop {} fail, sampling fail".format(
+                                        self.obj_in_hand.name, obj.name
+                                    )
+                                )
 
-            #             else:
-            #                 print(
-            #                     "PRIMITIVE: place {} ontop {} fail, too far".format(self.obj_in_hand.name, obj.name)
-            #                 )
-            #         else:
-            #             state = p.saveState()
-            #             result = sample_kinematics(
-            #                 "onFloor",
-            #                 self.obj_in_hand,
-            #                 obj,
-            #                 True,
-            #                 use_ray_casting_method=True,
-            #                 max_trials=20,
-            #                 skip_falling=True,
-            #             )
-            #             if result:
-            #                 print(
-            #                     "PRIMITIVE: place {} ontop {} success".format(self.obj_in_hand.name, obj.name)
-            #                 )
-            #                 action_exec_status = True
-            #                 pos = self.obj_in_hand.get_position()
-            #                 orn = self.obj_in_hand.get_orientation()
-            #                 self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
-            #             else:
-            #                 print(
-            #                     "PRIMITIVE: place {} ontop {} fail, sampling fail".format(
-            #                         self.obj_in_hand.name, obj.name
-            #                     )
-            #                 )
-            #                 p.removeState(state)
+                        else:
+                            print(
+                                "PRIMITIVE: place {} ontop {} fail, too far".format(self.obj_in_hand.name, obj.name)
+                            )
+                    else:
+                        state = p.saveState()
+                        result = continuous_param_kinematics(
+                            "onFloor",
+                            self.obj_in_hand,
+                            obj,
+                            True,
+                            continuous_params[0:7],
+                            use_ray_casting_method=True,
+                            max_trials=10,
+                            skip_falling=True,
+                        )
+                        if result:
+                            print(
+                                "PRIMITIVE: place {} ontop {} success".format(self.obj_in_hand.name, obj.name)
+                            )
+                            action_exec_status = True
+                            pos = self.obj_in_hand.get_position()
+                            orn = self.obj_in_hand.get_orientation()
+                            self.place_obj(state, pos, orn, use_motion_planning=self.use_motion_planning)
+                        else:
+                            print(
+                                "PRIMITIVE: place {} ontop {} fail, sampling fail".format(
+                                    self.obj_in_hand.name, obj.name
+                                )
+                            )
+                            p.removeState(state)
 
             # elif action_primitive == ActionPrimitives.PLACE_INSIDE:
             #     if self.obj_in_hand is not None and self.obj_in_hand != obj and isinstance(obj, URDFObject):
@@ -563,6 +576,7 @@ class BehaviorTAMPEnv(BehaviorEnv):
         for x, y, z, roll, pitch, yaw in plan:
             self.robots[0].parts["right_hand"].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
             p.stepSimulation()
+            # s, a = get_last_action(p)
 
         x, y, z, roll, pitch, yaw = plan[-1]
 
@@ -651,13 +665,33 @@ class BehaviorTAMPEnv(BehaviorEnv):
                 for _ in range(100):
                     p.stepSimulation()
 
+    # def convert_nav_action_to_17dim_action(nav_action):
+    #     """
+    #     :param nav_action: a 3-dim numpy array that represents the x-position, y-position and 
+    #     z-rotation of the robot in the world frame 
+    #     """
+    #     curr_body_pos = self.robots[0].get_position()
+    #     curr_body_eul = p.getEulerFromQuaternion(self.robots[0].parts["right_hand"].get_orientation())
+    #     curr_right_pos = self.robots[0].parts["right_hand"].get_position()
+    #     curr_right_eul = p.getEulerFromQuaternion(self.robots[0].parts["right_hand"].get_orientation())
+
+    #     curr_body_pos_arr = np.zeros(3)
+    #     curr_body_pos_arr[0:2] = np.array(curr_body_pos)
+    #     new_body_pos_arr = np.zeros(3)
+    #     curr_body_pos_arr[0:2] = np.array(nav_action[0:2])
+    #     new_body_pos_arr[2] = curr_body_pos_arr[2]
+    #     right_pos_offset = curr_body_pos_arr - np.array(curr_right_pos)
+    #     new_right_pos = new_body_pos_arr - right_pos_offset
+
+
+
     def sample_fn(self):
         random_point = self.scene.get_random_point()
         x, y = random_point[1][:2]
         theta = np.random.uniform(*CIRCULAR_LIMITS)
         return (x, y, theta)
 
-    def navigate_to_obj_pos(self, obj, pos_offset, use_motion_planning=False):
+    def navigate_to_obj_pos(self, obj, pos_offset):
         """
         navigates the robot to a certain x,y position and selects an orientation
         such that the robot is facing the object. If the navigation is infeasible,
@@ -672,6 +706,7 @@ class BehaviorTAMPEnv(BehaviorEnv):
         valid_position = None  # ((x,y,z),(roll, pitch, yaw))
         original_position = self.robots[0].get_position()
         original_orientation = self.robots[0].get_orientation()
+        base_diff_fn = get_base_difference_fn()
 
         if isinstance(obj, URDFObject): # must be a URDFObject so we can get its position!
             obj_pos = obj.get_position()
@@ -688,35 +723,29 @@ class BehaviorTAMPEnv(BehaviorEnv):
                 valid_position = (pos, orn)
 
         if valid_position is not None:
-            print("Position commanded is not in collision!")
-            if use_motion_planning:
-                self.robots[0].set_position_orientation(original_position, original_orientation)
-                plan = plan_base_motion_br(
-                    robot=self.robots[0],
-                    end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
-                    base_limits=(),
-                    obstacles=self.get_body_ids(),
-                    override_sample_fn=self.sample_fn,
-                )
+            self.robots[0].set_position_orientation(original_position, original_orientation)
+            plan = plan_base_motion_br(
+                robot=self.robots[0],
+                end_conf=[valid_position[0][0], valid_position[0][1], valid_position[1][2]],
+                base_limits=(),
+                obstacles=self.get_body_ids(),
+                override_sample_fn=self.sample_fn,
+            )
 
-                if plan is not None:
-                    if self.mode != "headless":
-                        dry_run_base_plan(robot=self.robots[0], plan=plan)
-                    else:
-                        self.robots[0].set_position_orientation(
-                            valid_position[0], p.getQuaternionFromEuler(valid_position[1])
-                        )
-                    return True
-                else:
-                    self.robots[0].set_position_orientation(original_position, original_orientation)
-                    return False
-            else:
-                self.robots[0].set_position_orientation(valid_position[0], p.getQuaternionFromEuler(valid_position[1]))
-                return True
+            plan_num_steps = len(plan)
+            ret_actions = np.zeros((17, plan_num_steps - 1))
+            plan_arr = np.array(plan)
+
+            for i in range(1, plan_num_steps):
+                ret_actions[0:3, i] = base_diff_fn(plan_arr[:, i], plan_arr[:, i-1])
+            
+            return ret_actions, True
+            
         else:
             print("Position commanded is in collision!")
             self.robots[0].set_position_orientation(original_position, original_orientation)
-            return False
+            return np.zeros(17), False
+
 
     def reset(self, resample_objects=False):
         obs = super(BehaviorTAMPEnv, self).reset()

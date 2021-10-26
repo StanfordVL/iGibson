@@ -21,6 +21,7 @@ def rrt_connect(q1, q2, distance_fn, sample_fn, extend_fn, collision_fn, iterati
         tree1, tree2 = nodes1, nodes2
         if swap:
             tree1, tree2 = nodes2, nodes1
+        
         s = sample_fn()
 
         last1 = argmin(lambda n: distance_fn(n.config, s), tree1)
@@ -62,6 +63,7 @@ def birrt(q1, q2, distance, sample, extend, collision,
     if collision(q1) or collision(q2):
         return None
     path = direct_path(q1, q2, extend, collision)
+
     if path is not None:
         return path
     for attempt in irange(restarts + 1):
