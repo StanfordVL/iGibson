@@ -96,13 +96,14 @@ def plan_base_motion_br(
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
+
     return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
 
 def dry_run_base_plan(robot: BehaviorRobot, plan):
     for (x, y, yaw) in plan:
         robot.set_position_orientation([x, y, robot.initial_z_offset], p.getQuaternionFromEuler([0, 0, yaw]))
-        time.sleep(0.01)
+        time.sleep(0.05)
 
 
 def dry_run_arm_plan(robot: BehaviorRobot, plan):
