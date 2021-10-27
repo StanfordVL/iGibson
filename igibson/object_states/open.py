@@ -27,10 +27,13 @@ def _compute_joint_threshold(joint_info, joint_direction):
     return threshold, open_end, closed_end
 
 
-def _is_in_range(x, a, b):
-    low = min(a, b)
-    high = max(a, b)
-    return low <= x <= high
+def _is_in_range(position, threshold, range_end):
+    # Note that we are unable to do an actual range check here because the joint positions can actually go
+    # slightly further than the denoted joint limits.
+    if range_end > threshold:
+        return position > threshold
+    else:
+        return position < threshold
 
 
 def _get_relevant_joints(obj):
