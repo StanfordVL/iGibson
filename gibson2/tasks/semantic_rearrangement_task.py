@@ -335,7 +335,7 @@ class SemanticRearrangementTask(BaseTask):
         # If we have trash, we also need to update its position
         if self.include_trash:
             # Update trash bin object
-            self.trash_bin = self.env.scene.objects_by_name[self.config["trash_bin"]]
+            self.trash_bin = self.env.scene.objects_by_name[self.config.get("trash_bin", "trash_can_77")]
             if not info_only:
                 for tr in self.trash.values():
                     # Update sampling args
