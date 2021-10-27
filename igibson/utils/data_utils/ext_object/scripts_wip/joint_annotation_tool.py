@@ -22,6 +22,7 @@ download_assets()
 
 ABILITY_NAME = "openable"
 META_FIELD = "openable_joint_ids"
+BOTH_SIDES_META_FIELD = "openable_both_sides"
 SKIP_EXISTING = True
 ALLOWED_JOINT_TYPES = ["revolute", "prismatic", "continuous"]
 
@@ -67,11 +68,13 @@ def get_joint_selection(s, objdirfull, offline_joints):
     )
 
     accepted_joint_infos = []
+    both_sides = False
     for joint in relevant_joints:
         if joint.jointUpperLimit <= joint.jointLowerLimit:
             print("Bounds seem funky.")
 
         toggle_time = time.time()
+        reverse = False
         percentages = [0, 0.25, 0.5, 0.75, 1.0]
         i = 0
         while True:
@@ -79,7 +82,10 @@ def get_joint_selection(s, objdirfull, offline_joints):
             if time.time() - toggle_time > 0.5:
                 toggle_time = time.time()
                 i += 1
-                percentage = percentages[i % len(percentages)]
+                idx = i % len(percentages)
+                if reverse:
+                    idx = len(percentages) - idx - 1
+                percentage = percentages[idx]
                 pos = (1 - percentage) * joint.jointLowerLimit + percentage * joint.jointUpperLimit
                 p.resetJointState(bid, joint.jointIndex, pos)
 
@@ -89,14 +95,22 @@ def get_joint_selection(s, objdirfull, offline_joints):
                     continue
 
                 elif event.key.char == "y":
-                    accepted_joint_infos.append(joint)
+                    accepted_joint_infos.append((joint, -1 if reverse else 1))
                     break
 
                 elif event.key.char == "n":
                     break
 
+                elif event.key.char == "r":
+                    reverse = not reverse
+                    print("Reverse:", reverse)
+
+                elif event.key.char == "b":
+                    both_sides = not both_sides
+                    print("Both ways:", both_sides)
+
     obj.set_position([300, 300, 5])
-    return accepted_joint_infos
+    return accepted_joint_infos, both_sides
 
 
 def main():
@@ -209,12 +223,13 @@ def main():
             print("%s already has the requested link." % objdirfull)
             existing = True
             processed_allowed_joints = meta[META_FIELD]
+            both_sides = meta[BOTH_SIDES_META_FIELD] if BOTH_SIDES_META_FIELD in meta else False
 
         if not existing or not SKIP_EXISTING:
             joint_names_matching = [bytes("obj_" + j, encoding="utf-8") for j in joints]
-            allowed_joints = get_joint_selection(s, objdirfull, joint_names_matching)
+            allowed_joints, both_sides = get_joint_selection(s, objdirfull, joint_names_matching)
             processed_allowed_joints = [
-                (ji.jointIndex, str(ji.jointName[4:], encoding="utf-8")) for ji in allowed_joints
+                (ji.jointIndex, str(ji.jointName[4:], encoding="utf-8"), reverse) for ji, reverse in allowed_joints
             ]
 
         # Do some final validation
@@ -222,6 +237,7 @@ def main():
             print("Object %s has joints but none were useful for openable." % objdirfull)
 
         meta[META_FIELD] = processed_allowed_joints
+        meta[BOTH_SIDES_META_FIELD] = both_sides
 
         with open(mfn, "w") as mf:
             json.dump(meta, mf)
