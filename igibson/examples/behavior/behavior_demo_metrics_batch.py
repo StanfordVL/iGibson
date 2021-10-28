@@ -1,7 +1,7 @@
 import argparse
 
 from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
-from igibson.metrics.agent import AgentMetric
+from igibson.metrics.agent import BehaviorRobotMetric
 from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
 from igibson.metrics.gaze import GazeMetric
 from igibson.metrics.task import TaskMetric
@@ -19,7 +19,13 @@ def main():
     args = parse_args()
 
     def get_metrics_callbacks(**kwargs):
-        metrics = [KinematicDisarrangement(), LogicalDisarrangement(), AgentMetric(), GazeMetric(), TaskMetric()]
+        metrics = [
+            KinematicDisarrangement(),
+            LogicalDisarrangement(),
+            BehaviorRobotMetric(),
+            GazeMetric(),
+            TaskMetric(),
+        ]
 
         return (
             [metric.start_callback for metric in metrics],
