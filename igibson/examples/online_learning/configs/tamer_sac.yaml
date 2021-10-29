@@ -11,7 +11,9 @@ steps: 3000
 load_model: 0
 save_every_steps: 100
 learning_rate: 0.0003
-buffer_size: 128
+
+# Replay Buffer Size. Ensure that it is greater than number of timesteps you want to assign human reward credit for.
+buffer_size: 3072
 learning_starts: 128
 batch_size: 32
 tau: 0.005

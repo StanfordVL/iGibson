@@ -527,6 +527,13 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         if self._vec_normalize_env is not None:
             self._last_original_obs = new_obs_
 
+    def apply_uniform_credit_assignment(
+        self, replay_buffer: ReplayBuffer, reward: float, start_iter: int, end_iter: int
+    ):
+        end_iter = end_iter if (replay_buffer.full or replay_buffer.pos > end_iter) else replay_buffer.pos
+        update_indies = (replay_buffer.pos - np.arange(start_iter, end_iter)) % replay_buffer.buffer_size
+        replay_buffer.rewards[update_indies, 0] += reward / (end_iter - start_iter)
+
     def collect_rollouts(
         self,
         env: VecEnv,
@@ -589,8 +596,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 # Rescale and perform action
                 new_obs, reward, done, infos = env.step(action)
                 curr_keyboard_feedback = human_feedback.return_human_keyboard_feedback()
-                if curr_keyboard_feedback and type(curr_keyboard_feedback) == int:
-                    reward += curr_keyboard_feedback
+                human_feedback_received = curr_keyboard_feedback and type(curr_keyboard_feedback) == int
 
                 self.num_timesteps += 1
                 episode_timesteps += 1
@@ -603,14 +609,17 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                     return RolloutReturn(0.0, num_collected_steps, num_collected_episodes, continue_training=False)
 
                 episode_reward += reward
-                human_feedback_gui.updateReward(episode_reward)
 
                 # Retrieve reward and episode length if using Monitor wrapper
                 self._update_info_buffer(infos, done)
 
                 # Store data in replay buffer (normalized action and unnormalized observation)
                 self._store_transition(replay_buffer, buffer_action, new_obs, reward, done, infos)
+                if human_feedback_received:
+                    self.apply_uniform_credit_assignment(replay_buffer, float(curr_keyboard_feedback), 0, 40)
+                    episode_reward += curr_keyboard_feedback
 
+                human_feedback_gui.updateReward(episode_reward)
                 self._update_current_progress_remaining(self.num_timesteps, self._total_timesteps)
 
                 # For DQN, check if the target network should be updated
