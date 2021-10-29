@@ -5,12 +5,11 @@ import os
 import h5py
 import numpy as np
 import pybullet as p
+from scipy.spatial.transform import Rotation
 
 import igibson
 from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
-from igibson.objects.articulated_object import URDFObject
-from igibson.utils import utils
-from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
+from igibson.utils.constants import MAX_INSTANCE_COUNT
 
 
 def parse_args():
@@ -37,15 +36,15 @@ class EyeTrackingExtractor(object):
         # Create the dataset
         num_bodies = p.getNumBodies()
         num_bytes = -(num_bodies // -8)  # This is rounded up.
-        n_frames = log_reader.total_frame_num
+        n_frames = log_reader.total_frame_num + 1
         self.directly_attended = np.full(n_frames, -1, dtype=np.int16)
         self.approximately_attended = np.zeros((n_frames, num_bytes), dtype=np.uint8)
 
         scene = igbhvr_act_inst.simulator.scene
-        self.h5py_file.attrs["body_id_to_category"] = json.dump(
+        self.h5py_file.attrs["body_id_to_category"] = json.dumps(
             {bid: scene.objects_by_id[bid].category for bid in range(num_bodies) if bid in scene.objects_by_id}
         )
-        self.h5py_file.attrs["body_id_to_name"] = json.dump(
+        self.h5py_file.attrs["body_id_to_name"] = json.dumps(
             {bid: scene.objects_by_id[bid].name for bid in range(num_bodies) if bid in scene.objects_by_id}
         )
 
@@ -54,8 +53,8 @@ class EyeTrackingExtractor(object):
         robot = igbhvr_act_inst.simulator.robots[0]
         eye_data = log_reader.get_vr_data().query("eye_data")
         if eye_data[0] != -1:
-            eye_pos = eye_data[1:4]
-            eye_dir = eye_data[4:7]
+            eye_pos = np.array(eye_data[1])
+            eye_dir = np.array(eye_data[2])
             eye_dir /= np.linalg.norm(eye_dir)
 
             # Get an up axis.
@@ -86,10 +85,10 @@ class EyeTrackingExtractor(object):
             col_min, col_max = gaze2D[1] - radius, gaze2D[1] + radius
             sub_seg = seg[row_min:row_max, col_min:col_max]
             attended_ids = igbhvr_act_inst.simulator.renderer.get_pb_ids_for_instance_ids(sub_seg)
-            attended_ids = set(np.unique(attended_ids)) - {-1}
+            attended_ids = list(set(np.unique(attended_ids)) - {-1})
 
             # Convert the approximately attended objects to a bitvector.
-            attended_id_map = np.zeros(p.getNumBodies(), dtype=np.bool)
+            attended_id_map = np.zeros(p.getNumBodies(), dtype=bool)
             attended_id_map[attended_ids] = True
             attended_id_bitvec = np.packbits(attended_id_map)
             self.approximately_attended[frame_count] = attended_id_bitvec
@@ -134,9 +133,6 @@ def main():
         args.log_manifest,
         args.out_dir,
         get_eye_tracking_callbacks,
-        image_size=(480, 480),
-        ignore_errors=True,
-        debug_display=False,
     )
 
 
