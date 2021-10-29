@@ -62,6 +62,7 @@ class FeedbackInterface(QWidget):
         self.loss_label = QLabel("0", self)
         self.reward_label = QLabel("0", self)
         self.bddl_goal_state = QLabel("0", self)
+        self.robot_feedback = QLabel("0", self)
         self.horizontalGroupBox = QGroupBox()
         layout = QGridLayout()
         layout.addWidget(self.intro_text, 0, 0, 1, 6)
@@ -96,6 +97,25 @@ class FeedbackInterface(QWidget):
         layout.addWidget(QPushButton("BDDL Goal State: "), 7, 4)
         layout.addWidget(self.bddl_goal_state, 7, 5)
 
+        layout.addWidget(QPushButton("Robot Feedback: "), 8, 2)
+        layout.addWidget(self.robot_feedback, 8, 3)
+
+        rand_init_x = QLineEdit()
+        rand_init_x.textChanged.connect(self.textchangedX)
+
+        rand_init_y = QLineEdit()
+        rand_init_y.textChanged.connect(self.textchangedY)
+
+        rand_init_z = QLineEdit()
+        rand_init_z.textChanged.connect(self.textchangedZ)
+
+        layout.addWidget(QPushButton("Random Init X: "), 9, 0)
+        layout.addWidget(rand_init_x, 9, 1)
+        layout.addWidget(QPushButton("Random Init Y: "), 9, 2)
+        layout.addWidget(rand_init_y, 9, 3)
+        layout.addWidget(QPushButton("Random Init Z: "), 9, 4)
+        layout.addWidget(rand_init_z, 9, 5)
+
         self.horizontalGroupBox.setLayout(layout)
 
     def updateLoss(self, loss_val):
@@ -106,6 +126,15 @@ class FeedbackInterface(QWidget):
 
     def updateBDDL(self, bddl_val):
         self.bddl_goal_state.setText(str(bddl_val))
+
+    def textchangedX(self, text):
+        self.X = text
+
+    def textchangedY(self, text):
+        self.Y = text
+
+    def textchangedZ(self, text):
+        self.Z = text
 
 
 def main():
