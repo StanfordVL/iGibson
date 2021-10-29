@@ -82,4 +82,4 @@ igibson/utils/data_utils/mesh_decimation/final_videos
 igibson/render/mesh_renderer/libcryptopp.so.8.6
 
 # trained online learning models
-igibson/examples/online_learning/*.pt
+igibson/examples/online_learning/models/

@@ -6,6 +6,7 @@ import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
+from igibson.examples.online_learning.online_learning_interface import FeedbackInterface
 import numpy as np
 import torch as th
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -86,7 +87,6 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         policy: Type[BasePolicy],
         env: Union[GymEnv, str],
         policy_base: Type[BasePolicy],
-        human_feedback,
         learning_rate: Union[float, Schedule],
         buffer_size: int = 1_000_000,  # 1e6
         learning_starts: int = 100,
@@ -162,7 +162,6 @@ class OffPolicyAlgorithm(BaseAlgorithm):
             self.policy_kwargs["use_sde"] = self.use_sde
         # For gSDE only
         self.use_sde_at_warmup = use_sde_at_warmup
-        self.human_feedback = human_feedback
 
     def _convert_train_freq(self) -> None:
         """
@@ -337,7 +336,8 @@ class OffPolicyAlgorithm(BaseAlgorithm):
     def learn(
         self,
         total_timesteps: int,
-        human_feedback_gui: HumanFeedback,
+        human_feedback_gui: FeedbackInterface,
+        human_feedback: HumanFeedback,
         callback: MaybeCallback = None,
         log_interval: int = 4,
         eval_env: Optional[GymEnv] = None,
@@ -370,6 +370,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                 learning_starts=self.learning_starts,
                 replay_buffer=self.replay_buffer,
                 human_feedback_gui=human_feedback_gui,
+                human_feedback=human_feedback,
                 log_interval=log_interval,
             )
 
@@ -387,7 +388,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
                     )
 
             if self.num_timesteps % self.save_every == 0:
-                self.save(f"tamer_sac_{self.num_timesteps}.pt")
+                self.save(f"models/tamer_sac_{self.num_timesteps}.pt")
 
         callback.on_training_end()
 
@@ -532,7 +533,8 @@ class OffPolicyAlgorithm(BaseAlgorithm):
         callback: BaseCallback,
         train_freq: TrainFreq,
         replay_buffer: ReplayBuffer,
-        human_feedback_gui: HumanFeedback,
+        human_feedback: HumanFeedback,
+        human_feedback_gui: FeedbackInterface,
         action_noise: Optional[ActionNoise] = None,
         learning_starts: int = 0,
         log_interval: Optional[int] = None,
@@ -586,7 +588,7 @@ class OffPolicyAlgorithm(BaseAlgorithm):
 
                 # Rescale and perform action
                 new_obs, reward, done, infos = env.step(action)
-                curr_keyboard_feedback = self.human_feedback.return_human_keyboard_feedback()
+                curr_keyboard_feedback = human_feedback.return_human_keyboard_feedback()
                 if curr_keyboard_feedback and type(curr_keyboard_feedback) == int:
                     reward += curr_keyboard_feedback
 

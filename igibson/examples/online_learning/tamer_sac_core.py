@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
+from igibson.examples.online_learning.online_learning_interface import FeedbackInterface
 import numpy as np
 import torch as th
 from off_policy_algorithm import OffPolicyAlgorithm
@@ -75,7 +76,6 @@ class SAC(OffPolicyAlgorithm):
         self,
         policy: Union[str, Type[SACPolicy]],
         env: Union[GymEnv, str],
-        human_feedback,
         learning_rate: Union[float, Schedule] = 3e-4,
         buffer_size: int = 1_000_000,  # 1e6
         learning_starts: int = 5,
@@ -108,7 +108,6 @@ class SAC(OffPolicyAlgorithm):
             policy,
             env,
             SACPolicy,
-            human_feedback,
             learning_rate,
             buffer_size,
             learning_starts,
@@ -282,7 +281,8 @@ class SAC(OffPolicyAlgorithm):
     def learn(
         self,
         total_timesteps: int,
-        human_feedback_gui: HumanFeedback,
+        human_feedback_gui: FeedbackInterface,
+        human_feedback: HumanFeedback,
         callback: MaybeCallback = None,
         log_interval: int = 4,
         eval_env: Optional[GymEnv] = None,
@@ -296,6 +296,7 @@ class SAC(OffPolicyAlgorithm):
         return super(SAC, self).learn(
             total_timesteps=total_timesteps,
             human_feedback_gui=human_feedback_gui,
+            human_feedback=human_feedback,
             callback=callback,
             log_interval=log_interval,
             eval_env=eval_env,

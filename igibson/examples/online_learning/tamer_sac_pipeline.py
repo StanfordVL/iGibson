@@ -124,26 +124,33 @@ def main():
     model = SAC(
         config_data["policy_name"],
         env,
-        buffer_size=config_data["buffer_size"],
         verbose=config_data["verbose"],
         tensorboard_log=tensorboard_log_dir,
         policy_kwargs=policy_kwargs,
-        human_feedback=human_feedback,
         save_every=config_data["save_every_steps"],
+        learning_rate=config_data["learning_rate"],
+        buffer_size=config_data["buffer_size"],
+        learning_starts=config_data["learning_starts"],
+        batch_size=config_data["batch_size"],
+        tau=config_data["tau"],
+        gamma=config_data["gamma"],
+        train_freq=config_data["train_freq"],
+        gradient_steps=config_data["gradient_steps"],
+        seed=config_data["seed"]
     )
 
     if config_data["load_model"] != 0:
-        model = SAC.load(f"tamer_sac_{config_data['load_model']}.pt")
+        model = SAC.load(f"models/tamer_sac_{config_data['load_model']}.pt", env=env)
 
-    model.learn(config_data["steps"], human_feedback_gui=feedback_gui)
+    model.learn(config_data["steps"], human_feedback_gui=feedback_gui, human_feedback=human_feedback)
 
     mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20)
     print(f"After Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
-    model.save(f"tamer_sac_{config_data['steps']}.pt")
+    model.save(f"models/tamer_sac_{config_data['steps']}.pt")
     del model
 
-    model = SAC.load(f"tamer_sac_{config_data['steps']}.pt")
+    model = SAC.load(f"models/tamer_sac_{config_data['steps']}.pt")
     mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=20)
     print(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
