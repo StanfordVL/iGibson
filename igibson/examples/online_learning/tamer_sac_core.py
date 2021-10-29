@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
-from igibson.examples.online_learning.online_learning_interface import FeedbackInterface
 import numpy as np
 import torch as th
 from off_policy_algorithm import OffPolicyAlgorithm
@@ -13,6 +12,7 @@ from stable_baselines3.sac.policies import SACPolicy
 from torch.nn import functional as F
 
 from igibson.examples.online_learning.human_feedback import HumanFeedback
+from igibson.examples.online_learning.online_learning_interface import FeedbackInterface
 
 
 class SAC(OffPolicyAlgorithm):

@@ -136,7 +136,7 @@ def main():
         gamma=config_data["gamma"],
         train_freq=config_data["train_freq"],
         gradient_steps=config_data["gradient_steps"],
-        seed=config_data["seed"]
+        seed=config_data["seed"],
     )
 
     if config_data["load_model"] != 0:

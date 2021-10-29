@@ -6,7 +6,6 @@ import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gym
-from igibson.examples.online_learning.online_learning_interface import FeedbackInterface
 import numpy as np
 import torch as th
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -28,6 +27,7 @@ from stable_baselines3.common.vec_env import VecEnv
 from stable_baselines3.her.her_replay_buffer import HerReplayBuffer
 
 from igibson.examples.online_learning.human_feedback import HumanFeedback
+from igibson.examples.online_learning.online_learning_interface import FeedbackInterface
 
 
 class OffPolicyAlgorithm(BaseAlgorithm):
