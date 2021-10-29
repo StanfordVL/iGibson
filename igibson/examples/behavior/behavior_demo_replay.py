@@ -214,7 +214,7 @@ def replay_demo(
         while log_reader.get_data_left_to_read():
 
             igbhvr_act_inst.simulator.step(print_stats=profile)
-            task_done, _ = igbhvr_act_inst.check_success()
+            task_done |= igbhvr_act_inst.check_success()[0]
 
             # Set camera each frame
             if mode == "vr":
