@@ -67,12 +67,12 @@ class EyeTrackingExtractor(object):
 
             # Fit a rotation.
             eye_orn = Rotation.from_matrix(eye_mat).as_quat()
-            robot.parts["eye"].set_position_orientation(eye_pos, eye_orn)
+            eye_pose = (eye_pos, eye_orn)
 
             # Actually render & grab the directly-attended object.
             img_w, img_h = igbhvr_act_inst.simulator.image_width, igbhvr_act_inst.simulator.image_height
             gaze2D = (img_w // 2, img_h // 2)
-            seg = robot.render_camera_image(modes="ins_seg")[0][:, :, 0]
+            seg = robot.render_camera_image(modes="ins_seg", eye_pose=eye_pose)[0][:, :, 0]
             seg = np.transpose(np.round(seg * MAX_INSTANCE_COUNT).astype(int))
             self.directly_attended[frame_count] = seg[gaze2D]
 
@@ -117,7 +117,7 @@ def main():
     print(args)
 
     def get_eye_tracking_callbacks(demo_name, out_dir):
-        path = os.path.join(out_dir, demo_name + "_data.h5py")
+        path = os.path.join(out_dir, demo_name + "_data.hdf5")
         h5py_file = h5py.File(path, "w")
         extractors = [EyeTrackingExtractor(h5py_file)]
 

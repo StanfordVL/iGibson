@@ -288,9 +288,11 @@ class BehaviorRobot(object):
         for vr_obj_name in ["left_hand", "right_hand", "eye"]:
             self.parts[vr_obj_name].update(frame_action)
 
-    def render_camera_image(self, modes=("rgb")):
+    def render_camera_image(self, modes=("rgb"), eye_pose=None):
         # render frames from current eye position
-        eye_pos, eye_orn = self.parts["eye"].get_position_orientation()
+        if eye_pose is None:
+            eye_pose = self.parts["eye"].get_position_orientation()
+        eye_pos, eye_orn = eye_pose
         renderer = self.simulator.renderer
         mat = quat2rotmat(xyzw2wxyz(eye_orn))[:3, :3]
         view_direction = mat.dot(np.array([1, 0, 0]))
