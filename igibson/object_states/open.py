@@ -38,7 +38,7 @@ def _is_in_range(position, threshold, range_end):
 
 def _get_relevant_joints(obj):
     if not hasattr(obj, "metadata"):
-        return None
+        return None, None, None
 
     both_sides = obj.metadata[_BOTH_SIDES_METADATA_FIELD] if _BOTH_SIDES_METADATA_FIELD in obj.metadata else False
 
@@ -46,7 +46,7 @@ def _get_relevant_joints(obj):
     # we stop here and return Open=False.
     if _METADATA_FIELD not in obj.metadata:
         print("No openable joint metadata found for object %s" % obj.name)
-        return None
+        return None, None, None
 
     joint_metadata = obj.metadata[_METADATA_FIELD]
 
@@ -56,7 +56,7 @@ def _get_relevant_joints(obj):
     joint_directions = [m[2] if len(m) > 2 else 1 for m in joint_metadata]
     if not joint_names:
         print("No openable joint was listed in metadata for object %s" % obj.name)
-        return None
+        return None, None, None
     joint_names = set(obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8") for joint_name in joint_names)
 
     # Get joint infos and compute openness thresholds.
