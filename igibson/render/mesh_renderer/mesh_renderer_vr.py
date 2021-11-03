@@ -258,8 +258,8 @@ class MeshRendererVR(MeshRenderer):
         self.vr_settings = vr_settings
         # Override glfw window show settings
         self.vr_rendering_settings.show_glfw_window = self.vr_settings.use_companion_window
-        self.width = 1296
-        self.height = 1440
+        self.width = 640
+        self.height = 640
         super().__init__(
             width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings, simulator=simulator
         )
@@ -335,7 +335,7 @@ class MeshRendererVR(MeshRenderer):
                 self.vr_hud.refresh_text()
         else:
             if return_frame:
-                return super().render(modes=("rgb"), return_buffer=return_frame, render_shadow_pass=True)
+                return super().render(modes=("rgb", "ins_seg"), return_buffer=return_frame, render_shadow_pass=True)
             else:
                 super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=True)
 

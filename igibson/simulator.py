@@ -197,6 +197,7 @@ class Simulator:
             self.viewer = ViewerVR(
                 self.vr_settings.use_companion_window, frame_save_path=self.vr_settings.frame_save_path
             )
+            self.viewer.simulator = self
         elif self.use_simple_viewer:
             self.viewer = ViewerSimple()
         else:

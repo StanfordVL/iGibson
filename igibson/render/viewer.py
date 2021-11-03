@@ -8,6 +8,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
 from igibson.utils.utils import rotate_vector_2d
 
 
@@ -17,9 +18,9 @@ class ViewerVR:
         :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
         """
         self.renderer = None
+        self.simulator = None
         self.use_companion_window = use_companion_window
         self.frame_save_path = frame_save_path
-        self.frame_counter = 0
         self.frame_save_video_handler = None
 
     def update(self):
@@ -28,30 +29,48 @@ class ViewerVR:
         """
         if not self.renderer:
             raise RuntimeError("Unable to render without a renderer attached to the ViewerVR!")
-        if self.frame_save_path:
-            frame = cv2.cvtColor(self.renderer.render(return_frame=True)[0], cv2.COLOR_RGB2BGR)
+        if self.frame_save_path and self.simulator.frame_count % 30 == 0:
+            frames = self.renderer.render(return_frame=True)
+            frame = cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR)
             frame = (frame * 255).astype(np.uint8)
-            # Save as a video
-            if self.frame_save_path.endswith(".mp4"):
-                if self.frame_save_video_handler is None:
-                    fourcc = cv2.VideoWriter_fourcc(*"XVID")
-                    self.frame_save_video_handler = cv2.VideoWriter(
-                        self.frame_save_path, fourcc, 30.0, (self.renderer.width, self.renderer.height)
-                    )
-                self.frame_save_video_handler.write(frame)
-            # Save as a folder of images
-            else:
-                if not os.path.isdir(self.frame_save_path):
-                    os.mkdir(self.frame_save_path)
-                final_save_path = os.path.join(self.frame_save_path, "%05d.jpg" % self.frame_counter)
-                cv2.imwrite(final_save_path, frame)
+            if not os.path.isdir(self.frame_save_path):
+                os.mkdir(self.frame_save_path)
+            final_save_path = os.path.join(self.frame_save_path, "%05d.jpg" % self.simulator.frame_count)
+            cv2.imwrite(final_save_path, frame)
+
+            ins_seg = frames[1][:, :, 0]
+            ins_seg = np.round(ins_seg * MAX_INSTANCE_COUNT).astype(int)
+            id_seg = self.renderer.get_pb_ids_for_instance_ids(ins_seg)
+
+            entries = []
+            for body_id in np.unique(id_seg):
+                if body_id == -1 or body_id not in self.simulator.scene.objects_by_id:
+                    continue
+
+                # Get the object semantic class ID
+                obj = self.simulator.scene.objects_by_id[body_id]
+                if not hasattr(obj, "category"):
+                    # Ignore robots etc.
+                    continue
+
+                class_id = self.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
+
+                # 2D bounding box
+                this_object_pixels_positions = np.argwhere(id_seg == body_id)
+                bb_top_left = np.min(this_object_pixels_positions, axis=0)
+                bb_bottom_right = np.max(this_object_pixels_positions, axis=0)
+                bb_center = ((bb_top_left + bb_bottom_right) / 2).astype(int)
+                bb_extent = (bb_bottom_right - bb_top_left).astype(int)
+                entry = "%d %d %d %d %d" % (class_id, bb_center[0], bb_center[1], bb_extent[0], bb_extent[1])
+                entries.append(entry)
+
+            with open(os.path.join(self.frame_save_path, "%05d.txt" % self.simulator.frame_count), "w") as f:
+                f.write("\n".join(entries))
         else:
             self.renderer.render()
 
         if self.use_companion_window:
             self.renderer.render_companion_window()
-
-        self.frame_counter += 1
 
 
 class ViewerSimple:

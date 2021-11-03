@@ -19,7 +19,7 @@ def main():
     args = parse_args()
 
     def get_metrics_callbacks():
-        metrics = [KinematicDisarrangement(), LogicalDisarrangement(), AgentMetric(), GazeMetric(), TaskMetric()]
+        metrics = []  # [KinematicDisarrangement(), LogicalDisarrangement(), AgentMetric(), GazeMetric(), TaskMetric()]
 
         return (
             [metric.start_callback for metric in metrics],
@@ -28,7 +28,7 @@ def main():
             [metric.gather_results for metric in metrics],
         )
 
-    behavior_demo_batch(args.demo_root, args.log_manifest, args.out_dir, get_metrics_callbacks)
+    behavior_demo_batch(args.demo_root, args.log_manifest, args.out_dir, get_metrics_callbacks, save_frames=True)
 
 
 if __name__ == "__main__":

@@ -17,4 +17,5 @@ def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS + 1):
             for line in f.readlines():
                 class_name_to_class_id[line.strip()] = starting_class_id
                 starting_class_id += 1
+    class_name_to_class_id["agent"] = SemanticClass.ROBOTS
     return class_name_to_class_id

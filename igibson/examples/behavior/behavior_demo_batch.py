@@ -55,7 +55,7 @@ def behavior_demo_batch(
 
         curr_frame_save_path = None
         if save_frames:
-            curr_frame_save_path = os.path.join(out_dir, demo_name + ".mp4")
+            curr_frame_save_path = os.path.join(out_dir, demo_name + "_frames")
 
         try:
             start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_callbacks_callback()
@@ -66,7 +66,7 @@ def behavior_demo_batch(
                 start_callbacks=start_callbacks,
                 step_callbacks=step_callbacks,
                 end_callbacks=end_callbacks,
-                mode="headless",
+                mode="vr",
                 verbose=False,
             )
             demo_information["failed"] = False
