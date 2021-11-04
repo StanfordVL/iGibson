@@ -487,14 +487,19 @@ class BRBody(ArticulatedObject):
         delta_pos = action[:3]
         delta_orn = action[3:6]
         clipped_delta_pos, clipped_delta_orn = self.clip_delta_pos_orn(delta_pos, delta_orn)
+
         # Convert orientation to a quaternion
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new body transform
         old_pos, old_orn = self.get_position_orientation()
         self.new_pos, self.new_orn = p.multiplyTransforms(old_pos, old_orn, clipped_delta_pos, clipped_delta_orn)
-        self.new_pos = np.round(self.new_pos, 5).tolist()
-        self.new_orn = np.round(self.new_orn, 5).tolist()
+        
+        # self.new_pos = np.round(self.new_pos, 5).tolist()
+        # self.new_orn = np.round(self.new_orn, 5).tolist()
+
+        self.new_pos = list(self.new_pos)
+        self.new_orn = list(self.new_orn)
 
         # Reset agent activates the body and its collision filters
         reset_agent = action[19] > 0 or action[27] > 0

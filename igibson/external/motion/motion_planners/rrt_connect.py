@@ -41,7 +41,7 @@ def rrt_connect(q1, q2, distance_fn, sample_fn, extend_fn, collision_fn, iterati
             path1, path2 = last1.retrace(), last2.retrace()
             if swap:
                 path1, path2 = path2, path1
-            #print('{} iterations, {} nodes'.format(iteration, len(nodes1) + len(nodes2)))
+            print('{} iterations, {} nodes'.format(iteration, len(nodes1) + len(nodes2)))
             return configs(path1[:-1] + path2[::-1])
     return None
 
@@ -70,7 +70,6 @@ def birrt(q1, q2, distance, sample, extend, collision,
         path = rrt_connect(q1, q2, distance, sample, extend,
                            collision, iterations=iterations)
         if path is not None:
-            #print('{} attempts'.format(attempt))
             if smooth is None:
                 return path
             return smooth_path(path, extend, collision, iterations=smooth)

@@ -665,6 +665,64 @@ class BehaviorTAMPEnv(BehaviorEnv):
                 for _ in range(100):
                     p.stepSimulation()
 
+    def place_obj_plan(self, original_state, target_pos, target_orn, use_motion_planning=False):
+        pos = self.obj_in_hand.get_position()
+        p.restoreState(original_state)
+        p.removeState(original_state)
+        if not use_motion_planning:
+            self.reset_and_release_hand()
+            self.robots[0].parts["right_hand"].force_release_obj()
+            self.obj_in_hand.set_position_orientation(target_pos, target_orn)
+            self.obj_in_hand = None
+
+        else:
+            x, y, z = target_pos
+            hand_x, hand_y, hand_z = self.robots[0].parts["right_hand"].get_position()
+
+            minx = min(x, hand_x) - 1
+            miny = min(y, hand_y) - 1
+            minz = min(z, hand_z) - 0.5
+            maxx = max(x, hand_x) + 1
+            maxy = max(y, hand_y) + 1
+            maxz = max(z, hand_z) + 0.5
+
+            state = p.saveState()
+            obstacles = self.get_body_ids()
+            obstacles.remove(self.obj_in_hand.body_id[0])
+            plan = plan_hand_motion_br(
+                robot=self.robots[0],
+                obj_in_hand=self.obj_in_hand,
+                end_conf=[x, y, z + 0.1, 0, np.pi * 5 / 6.0, 0],
+                hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
+                obstacles=obstacles,
+            )  #
+            p.restoreState(state)
+            p.removeState(state)
+
+            if plan:
+                for x, y, z, roll, pitch, yaw in plan:
+                    self.robots[0].parts["right_hand"].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+                    p.stepSimulation()
+                released_obj = self.obj_in_hand
+                self.obj_in_hand = None
+
+                # release hand
+                self.reset_and_release_hand()
+
+                # force release object to avoid dealing with stateful AG release mechanism
+                self.robots[0].parts["right_hand"].force_release_obj()
+                self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
+                # reset hand
+
+                # reset the released object to zero velocity
+                p.resetBaseVelocity(released_obj.get_body_id(), linearVelocity=[0, 0, 0], angularVelocity=[0, 0, 0])
+
+                # let object fall
+                for _ in range(100):
+                    p.stepSimulation()
+
+                return plan
+
     # def convert_nav_action_to_17dim_action(nav_action):
     #     """
     #     :param nav_action: a 3-dim numpy array that represents the x-position, y-position and 

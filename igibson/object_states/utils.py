@@ -334,6 +334,8 @@ def continuous_param_kinematics(
         else:
             pos[2] += z_offset
             objA.set_position_orientation(pos, orientation)
+            # TODO (wmcclinton) switch ^ with: iGibson/igibson/utils/behavior_robot_planning_utils.py -> plan_hand_motion_br
+            # May need to get the transform of the obj relative to the hand and then use that to get the hand position and orientation after the object is placed
             success = not detect_collision(objA.get_body_id())  # len(p.getContactPoints(objA.get_body_id())) == 0
 
         if igibson.debug_sampling:
