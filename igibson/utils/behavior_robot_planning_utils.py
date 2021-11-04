@@ -47,7 +47,7 @@ def plan_base_motion_br(
     distance_fn = get_base_distance_fn(weights=weights)
 
     body_ids = []
-    for part in ["body", "left_hand", "right_hand"]:
+    for part in ["body", "left_hand", "right_hand", "eye"]:
         body_ids.append(robot.parts[part].body_id)
 
     def extend_fn(q1, q2):
@@ -89,14 +89,13 @@ def plan_base_motion_br(
     yaw = p.getEulerFromQuaternion(robot.get_orientation())[2]
     start_conf = [pos[0], pos[1], yaw]
     if collision_fn(start_conf):
-        # print("Warning: initial configuration is in collision")
+        print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        # print("Warning: end configuration is in collision")
+        print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
-
     return birrt(start_conf, end_conf, distance_fn, sample_fn, extend_fn, collision_fn, **kwargs)
 
 
@@ -197,10 +196,10 @@ def plan_hand_motion_br(
         return collision
 
     if collision_fn(start_conf):
-        # print("Warning: initial configuration is in collision")
+        print("Warning: initial configuration is in collision")
         return None
     if collision_fn(end_conf):
-        # print("Warning: end configuration is in collision")
+        print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)

@@ -141,7 +141,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         for node in g.nodes:
             trav_map[node[0], node[1]] = 255
 
-    def get_random_point(self, floor=None):
+    def get_random_point(self, floor=None, rng=None):
         """
         Sample a random point on the given floor number. If not given, sample a random floor number.
 
@@ -153,7 +153,10 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
             floor = self.get_random_floor()
         trav = self.floor_map[floor]
         trav_space = np.where(trav == 255)
-        idx = np.random.randint(0, high=trav_space[0].shape[0])
+        if rng is None:
+            idx = np.random.randint(0, high=trav_space[0].shape[0])
+        else:
+            idx = rng.integers(low=0, high=trav_space[0].shape[0])
         xy_map = np.array([trav_space[0][idx], trav_space[1][idx]])
         x, y = self.map_to_world(xy_map)
         z = self.floor_heights[floor]

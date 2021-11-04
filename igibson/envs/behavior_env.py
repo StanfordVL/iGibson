@@ -38,6 +38,7 @@ class BehaviorEnv(iGibsonEnv):
         action_filter="mobile_manipulation",
         instance_id=0,
         episode_save_dir=None,
+        rng=None
     ):
         """
         :param config_file: config_file path
@@ -60,7 +61,10 @@ class BehaviorEnv(iGibsonEnv):
             device_idx=device_idx,
             render_to_tensor=render_to_tensor,
         )
-        self.rng = np.random.default_rng(seed=seed)
+        if rng is None:
+            self.rng = np.random.default_rng(seed=seed)
+        else:
+            self.rng = rng
         self.automatic_reset = automatic_reset
         self.reward_potential = None
         self.episode_save_dir = episode_save_dir
