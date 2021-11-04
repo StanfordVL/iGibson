@@ -1,4 +1,5 @@
 import os
+
 import yaml
 
 import igibson
@@ -21,12 +22,14 @@ def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS + 1):
     class_name_to_class_id["agent"] = SemanticClass.ROBOTS
     return class_name_to_class_id
 
-if __name__ == "__main__":
-    class_mapping_dict = get_class_name_to_class_id()
-    classes, ids = zip(*sorted(class_mapping_dict.items(), key=lambda x: x[1]))
-    n_categories = len(class_mapping_dict)
-    classes = ['placeholder1', 'placeholder2', 'placeholder3', 'agent'] + list(classes)[1:]
-    ids = [0, 1, 2, 3] + list(ids)[1:]
 
-    with open('igibson_dataset.yaml', 'w') as file:
-        yaml.dump({'nc': len(classes), 'names': classes }, file)
+if __name__ == "__main__":
+    class_name_to_id = get_class_name_to_class_id()
+    class_id_to_name = {int(y): x for x, y in class_name_to_id.items()}
+    classes = [
+        class_id_to_name[x] if x in class_id_to_name else "placeholder" + str(x)
+        for x in range(max(class_id_to_name) + 1)
+    ]
+
+    with open("igibson_dataset.yaml", "w") as file:
+        yaml.dump({"nc": len(classes), "names": classes}, file)
