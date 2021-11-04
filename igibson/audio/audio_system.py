@@ -26,7 +26,7 @@ class AudioSystem(object):
     It manages a set of audio objects and their corresponding audio buffers.
     It also interfaces with ResonanceAudio to perform the simulaiton to the listener.
     """
-    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, writeToFile=False, SR=44100, num_probes=10, renderAmbisonics=False, renderReverbReflections=True):
+    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, writeToFile="", SR=44100, num_probes=10, renderAmbisonics=False, renderReverbReflections=True):
         """
         :param scene: iGibson scene
         :param pybullet: pybullet client
@@ -120,7 +120,7 @@ class AudioSystem(object):
                 min_probe = probe_key
         return min_probe
 
-    def registerSource(self, source_obj_id, audio_fname, enabled=False, repeat=True):
+    def registerSource(self, source_obj_id, audio_fname, enabled=False, repeat=True, reverb_gain=2):
         print("Initializing source object " + str(source_obj_id) + " from file: " + audio_fname)
         if source_obj_id in self.sourceToEnabled:
             raise Exception('Object {} has already been registered with source {}, and we currently only support one audio stream per source.'.format(source_obj_id, audio_fname))
@@ -132,7 +132,7 @@ class AudioSystem(object):
             raise Exception('Source {} has {} channels, 1 expected.'.format(audio_fname, buffer.getnchannels()))
 
         source_pos,_ = p.getBasePositionAndOrientation(source_obj_id)
-        source_id = audio.InitializeSource(source_pos, 0.1, 10, 1)
+        source_id = audio.InitializeSource(source_pos, 0.1, 10, reverb_gain)
         self.sourceToResonanceID[source_obj_id] = source_id
         self.sourceToEnabled[source_obj_id] = enabled
         self.sourceToRepeat[source_obj_id] = repeat
@@ -152,7 +152,7 @@ class AudioSystem(object):
         #This conversion to numpy is inefficient and unnecessary
         #TODO: is np.int16 limiting?
         buffer = self.sourceToBuffer[source]
-        return np.frombuffer(buffer.readframes(self.framesPerBuf), dtype=np.int16)
+        return np.frombuffer(buffer.readframes(nframes), dtype=np.int16)
 
     def step(self):
         listener_pos = self.get_pos()
@@ -165,7 +165,7 @@ class AudioSystem(object):
                         audio_to_append = self.readSource(source, self.framesPerBuf - source_audio.size)
                         source_audio = np.append(source_audio, audio_to_append)
                     else:
-                        num_pad = source_audio.size - self.framesPerBuf
+                        num_pad = self.framesPerBuf - source_audio.size
                         source_audio = np.pad(source_audio, (0, num_pad), 'constant')
                         self.setSourceEnabled(source, enabled=False)
                 #TODO: Source orientation!
@@ -203,9 +203,10 @@ class AudioSystem(object):
         if self.renderAmbisonics:
             self.ambisonic_output = audio.RenderAmbisonics(self.framesPerBuf)
 
-        if self.writeToFile:
+        if self.writeToFile != "":
             self.complete_output.extend(self.current_output)
     
     def disconnect(self):
-        deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
-        write("Audio_Out.wav", self.SR, deinterleaved_audio)
+        if self.writeToFile != "":
+            deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
+            write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
