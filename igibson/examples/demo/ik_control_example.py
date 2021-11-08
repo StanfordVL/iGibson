@@ -1,5 +1,5 @@
 """
-This demo shows how to load a scaled object from the model library
+This demo shows how to use keyboard to control a Fetch robot via IK
 """
 import argparse
 import os
@@ -19,9 +19,8 @@ from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_categor
 from igibson.utils.utils import parse_config
 
 
-def main(args):
-    # VR rendering settings
-    vr_rendering_settings = MeshRendererSettings(
+def main():
+    rendering_settings = MeshRendererSettings(
         optimized=True,
         fullscreen=False,
         enable_shadow=True,
@@ -29,13 +28,12 @@ def main(args):
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = Simulator(mode="pbgui", rendering_settings=vr_rendering_settings, image_height=512, image_width=512)
+    s = Simulator(mode="pbgui", rendering_settings=rendering_settings, image_height=512, image_width=512)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, enable=0)
 
     scene = EmptyScene()
     s.scene = scene
     scene.objects_by_id = {}
-    # scene.load_object_categories(benchmark_names)
 
     s.import_scene(scene, render_floor_plane=True)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -43,8 +41,6 @@ def main(args):
     config = parse_config(os.path.join(igibson.root_path, "examples", "configs", "behavior_onboard_sensing_fetch.yaml"))
     vr_agent = FetchGripper(simulator=s, config=config)
     s.import_robot(vr_agent)
-    # s.register_main_vr_robot(vr_agent)
-    # vr_agent.activate()
 
     table_objects_to_load = {
         "table_1": {
@@ -67,8 +63,6 @@ def main(args):
         },
     }
 
-    if args.replay:
-        replayed_actions = np.load("replay.npy")
     avg_category_spec = get_ig_avg_category_specs()
 
     scene_objects = {}
@@ -130,12 +124,6 @@ def main(args):
         #     * also moves body
         # 10 - close/open gripper (good) (z/x)
 
-        # if i < 1000:
-        #     action[9] = -0.1
-        #     print("reversing {}".format(i))
-        # else:
-        #     action[9] = 0.1
-
         events = p.getKeyboardEvents()
         if 65295 in events:
             action[1] += -0.1
@@ -181,25 +169,12 @@ def main(args):
             break
 
         action *= 5
-        # print(events)
-        if args.replay:
-            if i > replayed_actions.shape[0]:
-                break
-            action = replayed_actions[i]
-
         vr_agent.apply_action(action)
         actions.append(action)
         p.stepSimulation()
 
     s.disconnect()
-    if not args.replay:
-        print("Saving!")
-        # np.save("replay", np.stack(actions))
-        print("Saved")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the fetch robot interactive script")
-    parser.add_argument("--replay", action="store_true", help="Replay actions from demonstration")
-    args = parser.parse_args()
-    main(args)
+    main()
