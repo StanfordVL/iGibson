@@ -33,11 +33,12 @@ def plan_base_motion_br(
     resolutions=0.05 * np.ones(3),
     max_distance=MAX_DISTANCE,
     override_sample_fn=None,
+    rng=np.random.default_rng(23),
     **kwargs
 ):
     def sample_fn():
-        x, y = np.random.uniform(*base_limits)
-        theta = np.random.uniform(*CIRCULAR_LIMITS)
+        x, y = (rng.random() * (base_limits[1] - base_limits[0])) + base_limits[0] # np.random.uniform(*base_limits)
+        theta = (rng.random() * (CIRCULAR_LIMITS[1] - CIRCULAR_LIMITS[0])) + CIRCULAR_LIMITS[0] # np.random.uniform(*CIRCULAR_LIMITS)
         return (x, y, theta)
 
     if override_sample_fn is not None:
@@ -142,11 +143,15 @@ def plan_hand_motion_br(
     weights=(1, 1, 1, 5, 5, 5),
     resolutions=0.02 * np.ones(6),
     max_distance=MAX_DISTANCE,
+    rng=np.random.default_rng(23),
     **kwargs
 ):
     def sample_fn():
-        x, y, z = np.random.uniform(*hand_limits)
-        r, p, yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
+        x, y, z = (rng.random() * (hand_limits[1] - hand_limits[0])) + hand_limits[0] #np.random.uniform(*hand_limits)
+        # r, p, yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
+        r = (rng.random() * (2 * PI)) - PI
+        p = (rng.random() * (2 * PI)) - PI
+        yaw = (rng.random() * (2 * PI)) - PI
         return (x, y, z, r, p, yaw)
 
     difference_fn = get_hand_difference_fn()
