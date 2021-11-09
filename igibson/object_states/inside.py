@@ -10,6 +10,7 @@ from igibson.object_states.memoization import PositionalValidationMemoizedObject
 from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
 from igibson.object_states.pose import Pose
 from igibson.object_states.utils import clear_cached_states, sample_kinematics
+from igibson.utils.utils import restoreState
 
 
 class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, RelativeObjectState, BooleanState):
@@ -35,7 +36,7 @@ class Inside(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
             if sampling_success:
                 break
             else:
-                p.restoreState(state_id)
+                restoreState(state_id)
 
         p.removeState(state_id)
 

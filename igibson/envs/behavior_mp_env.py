@@ -14,6 +14,7 @@ from igibson.object_states.utils import sample_kinematics
 from igibson.objects.articulated_object import URDFObject
 from igibson.robots.behavior_robot import BRBody, BREye, BRHand
 from igibson.utils.behavior_robot_planning_utils import dry_run_base_plan, plan_base_motion_br, plan_hand_motion_br
+from igibson.utils.utils import restoreState
 
 
 class ActionPrimitives(IntEnum):
@@ -302,7 +303,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
                 obstacles=self.get_body_ids(include_self=True),
             )
-            p.restoreState(state)
+            restoreState(state)
             p.removeState(state)
 
             if plan is not None:
@@ -366,7 +367,7 @@ class BehaviorMPEnv(BehaviorEnv):
         obj_in_hand = self.scene.objects_by_id[obj_in_hand_id]
 
         pos = obj_in_hand.get_position()
-        p.restoreState(original_state)
+        restoreState(original_state)
         p.removeState(original_state)
         if not self.use_motion_planning:
             self.reset_and_release_hand(hand)
@@ -395,7 +396,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
                 obstacles=obstacles,
             )  #
-            p.restoreState(state)
+            restoreState(state)
             p.removeState(state)
 
             if plan:

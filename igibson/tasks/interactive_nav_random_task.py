@@ -3,6 +3,7 @@ import pybullet as p
 
 from igibson.objects.ycb_object import YCBObject
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.utils.utils import restoreState
 
 
 class InteractiveNavRandomTask(PointNavRandomTask):
@@ -53,7 +54,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
                 _, pos = env.scene.get_random_point(floor=self.floor_num)
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
                 reset_success = env.test_valid_position(obj, pos, orn)
-                p.restoreState(state_id)
+                restoreState(state_id)
                 if reset_success:
                     break
 
