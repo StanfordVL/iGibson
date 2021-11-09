@@ -13,7 +13,7 @@ _MAX_DISTANCE_HORIZONTAL = 1.0
 # How many 2-D bases to try during horizontal adjacency check. When 1, only the standard axes will be considered.
 # When 2, standard axes + 45 degree rotated will be considered. The tried axes will be equally spaced. The higher
 # this number, the lower the possibility of false negatives in Inside and NextTo.
-_HORIZONTAL_AXIS_COUNT = 6
+_HORIZONTAL_AXIS_COUNT = 5
 
 AxisAdjacencyList = namedtuple("AxisAdjacencyList", ("positive_neighbors", "negative_neighbors"))
 
