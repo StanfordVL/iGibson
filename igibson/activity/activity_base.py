@@ -25,6 +25,7 @@ from igibson.utils.constants import (
     NON_SAMPLEABLE_OBJECTS,
     TASK_RELEVANT_OBJS_OBS_DIM,
 )
+from igibson.utils.utils import restoreState
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
@@ -98,7 +99,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
-        p.restoreState(snapshot_id)
+        restoreState(snapshot_id)
         load_internal_states(self.simulator, self.state_history[snapshot_id])
 
     def check_scene(self):

@@ -23,7 +23,7 @@ from igibson.external.pybullet_tools.utils import (
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.utils import l2_distance, quatToXYZW, rotate_vector_2d
+from igibson.utils.utils import l2_distance, quatToXYZW, restoreState, rotate_vector_2d
 
 
 class MotionPlanningWrapper(object):
@@ -351,12 +351,12 @@ class MotionPlanningWrapper(object):
 
             # self.episode_metrics['arm_ik_time'] += time() - ik_start
             # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-            p.restoreState(state_id)
+            restoreState(state_id)
             p.removeState(state_id)
             return arm_joint_positions
 
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        p.restoreState(state_id)
+        restoreState(state_id)
         p.removeState(state_id)
         # self.episode_metrics['arm_ik_time'] += time() - ik_start
         return None
@@ -474,7 +474,7 @@ class MotionPlanningWrapper(object):
             allow_collision_links=allow_collision_links,
         )
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        p.restoreState(state_id)
+        restoreState(state_id)
         p.removeState(state_id)
         return arm_path
 

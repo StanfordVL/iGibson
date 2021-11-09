@@ -207,7 +207,7 @@ def brighten_texture(input_filename, output_filename, brightness=1):
 # Other
 
 
-def restoreState(state_id):
+def restoreState(*args, **kwargs):
     """Restore to a given pybullet state, with a mitigation for a known sleep state restore bug.
 
     When the pybullet state is restored, the object's wake zone (the volume around the object where
@@ -215,7 +215,9 @@ def restoreState(state_id):
     causing weird bugs around asleep objects. This function mitigates the issue by forcing the
     sleep code to update each object's wake zone.
     """
-    p.restoreState(state_id)
+    p.restoreState(*args, **kwargs)
     for body_id in range(p.getNumBodies()):
-        p.resetBasePositionAndOrientation(body_id, *p.getBasePositionAndOrientation(body_id))
-    return p.restoreState(body_id)
+        p.resetBasePositionAndOrientation(
+            body_id, *p.getBasePositionAndOrientation(body_id), physicsClientId=kwargs.get("physicsClientId", 0)
+        )
+    return p.restoreState(*args, **kwargs)
