@@ -12,13 +12,13 @@ if(MAC_PLATFORM)
   set(USE_EGL FALSE)
 elseif(WIN32)
   set(USE_CUDA FALSE)
-  set(USE_GLFW TRUE)
+  set(USE_GLFW FALSE)
   # iGibson on Windows is always in VR mode
   set(USE_VR TRUE)
   set(USE_EGL FALSE)
 elseif(UNIX)
   set(USE_CUDA TRUE)
-  set(USE_GLFW TRUE)
+  set(USE_GLFW FALSE)
   set(USE_EGL TRUE)
 else()
   message( FATAL_ERROR "Unsupported platform: iGibson only supports macOS, linux, and windows" )
@@ -50,7 +50,7 @@ include_directories(cryptopp)
 # Add GLM include directory
 include_directories("glm")
 
-if(USE_GLFW)
+if(USE_GLFW OR USE_VR)
   set(GLFW_DIR glfw)
   set(GLFW_BUILD_EXAMPLES
       OFF
