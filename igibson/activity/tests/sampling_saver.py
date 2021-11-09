@@ -9,6 +9,7 @@ import pybullet as p
 import igibson
 from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.simulator import Simulator
+from igibson.utils.utils import restoreState
 
 PARTIAL_RECACHE = {
     # 'sorting_books': ['Ihlen_0_int'],
@@ -34,7 +35,7 @@ def remove_newly_added_objects(igbhvr_act_inst, state_id):
         igbhvr_act_inst.scene.remove_object(sim_obj)
         for id in sim_obj.body_ids:
             p.removeBody(id)
-    p.restoreState(state_id)
+    restoreState(state_id)
 
 
 def main():

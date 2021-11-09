@@ -19,6 +19,7 @@ from igibson.external.pybullet_tools.utils import (
 from igibson.object_states.aabb import AABB
 from igibson.object_states.object_state_base import CachingEnabledObjectState
 from igibson.utils import sampling_utils, utils
+from igibson.utils.utils import restoreState
 
 _ON_TOP_RAY_CASTING_SAMPLING_PARAMS = {
     # "hit_to_plane_threshold": 0.1,  # TODO: Tune this parameter.
@@ -216,7 +217,7 @@ def sample_kinematics(
         if success:
             break
         else:
-            p.restoreState(state_id)
+            restoreState(state_id)
 
     p.removeState(state_id)
 
