@@ -1342,7 +1342,7 @@ class Simulator:
 
             # Process local transform adjustments
             prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
-            prev_local_pos, prev_local_orn = vr_part.local_pos, vr_part.local_orn
+            prev_local_pos, prev_local_orn = vr_part.get_local_position_orientation()
             _, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
             if part_name == "eye":
                 valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
