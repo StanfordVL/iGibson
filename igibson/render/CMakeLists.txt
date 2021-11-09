@@ -6,22 +6,42 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 set(OpenGL_GL_PREFERENCE GLVND)
 
 if(MAC_PLATFORM)
-  set(USE_CUDA FALSE)
   set(USE_GLFW TRUE)
   set(USE_VR FALSE)
   set(USE_EGL FALSE)
 elseif(WIN32)
-  set(USE_CUDA FALSE)
   set(USE_GLFW FALSE)
   # iGibson on Windows is always in VR mode
   set(USE_VR TRUE)
   set(USE_EGL FALSE)
 elseif(UNIX)
-  set(USE_CUDA TRUE)
   set(USE_GLFW FALSE)
   set(USE_EGL TRUE)
 else()
   message( FATAL_ERROR "Unsupported platform: iGibson only supports macOS, linux, and windows" )
+endif()
+
+# If a user is using a new enough cmake version (Ubuntu 18.04 or greater)
+# Automatically detect and enable/disable CUDA, otherwise assume true
+if (UNIX AND (CMAKE_VERSION VERSION_GREATER 3.8 OR CMAKE_VERSION VERSION_EQUAL 3.8))
+  include(CheckLanguage)
+  check_language(CUDA)
+  if (NOT CMAKE_CUDA_COMPILER)
+    message(WARNING [=[
+      nvcc not detected in path. iGibson will be built without CUDA support used
+      for rendering to tensors. If desired, please install cudatoolkit with your
+      package manager or cudatoolkit-dev with conda.
+    ]=])
+    set(USE_CUDA FALSE)
+  else ()
+    set(USE_CUDA TRUE)
+  endif ()
+elseif(UNIX)
+  # Assume CUDA true otherwise
+  set(USE_CUDA TRUE)
+else()
+  # Assume CUDA false otherwise (macOS, Windows)
+  set(USE_CUDA FALSE)
 endif()
 
 include_directories(glad)
