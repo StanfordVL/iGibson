@@ -35,7 +35,7 @@ RUN git clone --depth 1 --branch master https://github.com/StanfordVL/BDDL /opt/
 WORKDIR /opt/BDDL
 RUN pip install --no-cache-dir -e .
 
-RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp
-RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp
+RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
+RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
 
 WORKDIR /opt/iGibson/igibson
