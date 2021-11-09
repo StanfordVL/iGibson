@@ -21,7 +21,7 @@ from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config
+from igibson.utils.utils import parse_config, restoreState
 
 interactive = True
 NUM_REQUIRED_SUCCESSFUL_SCENES = 3
@@ -256,7 +256,7 @@ class ToyEnvInt(object):
         for body_id in range(self.num_body_ids, p.getNumBodies()):
             p.removeBody(body_id)
 
-        p.restoreState(self.state_id)
+        restoreState(self.state_id)
 
     def sample(self, behavior_activity, bddl):
         try:

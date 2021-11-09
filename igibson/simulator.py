@@ -30,7 +30,7 @@ from igibson.utils.assets_utils import get_ig_avg_category_specs
 from igibson.utils.constants import PyBulletSleepState, SemanticClass
 from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
 from igibson.utils.semantics_utils import get_class_name_to_class_id
-from igibson.utils.utils import quatXYZWFromRotMat
+from igibson.utils.utils import quatXYZWFromRotMat, restoreState
 from igibson.utils.vr_utils import VR_CONTROLLERS, VR_DEVICES, VrData, calc_offset, calc_z_rot_from_right
 
 
@@ -802,7 +802,7 @@ class Simulator:
             for body_id in body_ids:
                 p.removeBody(body_id)
 
-            p.restoreState(state_id)
+            restoreState(state_id)
 
         p.removeState(state_id)
 
