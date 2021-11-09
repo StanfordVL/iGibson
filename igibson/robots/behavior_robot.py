@@ -114,7 +114,7 @@ class BehaviorRobot(object):
         hands=("left", "right"),
         use_body=True,
         use_gripper=False,
-        use_ghost_hands=True,
+        use_ghost_hands=False,
         normal_color=True,
         show_visual_head=False,
         use_tracked_body_override=None,
@@ -693,9 +693,10 @@ class BRHandBase(ArticulatedObject):
         # Calculate new world position based on local transform and new body pose
         body = self.parent.parts["body"]
         self.new_pos, self.new_orn = p.multiplyTransforms(body.new_pos, body.new_orn, new_local_pos, new_local_orn)
+        
         # Round to avoid numerical inaccuracies
-        self.new_pos = np.round(self.new_pos, 5).tolist()
-        self.new_orn = np.round(self.new_orn, 5).tolist()
+        # self.new_pos = np.round(self.new_pos, 5).tolist()
+        # self.new_orn = np.round(self.new_orn, 5).tolist()
 
         # Reset agent activates the body and its collision filters
         if self.hand == "left":

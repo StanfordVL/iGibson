@@ -364,7 +364,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
         return True, feedback
 
-    def import_agent(self):
+    def import_agent(self, use_ghost_hands = False):
         cached_initial_pose = not self.online_sampling and self.scene.agent != {}
         if self.robot_type == BehaviorRobot:
             agent = BehaviorRobot(self.simulator)
@@ -381,12 +381,13 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 agent.parts["right_hand"].set_base_link_position_orientation(
                     self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
                 )
-                agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
-                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-                )
-                agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
-                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-                )
+                if use_ghost_hands:
+                    agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
+                        self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
+                    )
+                    agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
+                        self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
+                    )
                 agent.parts["eye"].set_base_link_position_orientation(
                     self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
                 )

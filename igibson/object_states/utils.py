@@ -347,8 +347,6 @@ def continuous_param_kinematics(
         else:
             p.restoreState(state_id)
 
-    p.removeState(state_id)
-
     if success and not skip_falling:
         objA.set_position_orientation(pos, orientation)
         # Let it fall for 0.2 second
@@ -357,5 +355,8 @@ def continuous_param_kinematics(
             p.stepSimulation()
             if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
                 break
+    
+    p.restoreState(state_id)
+    p.removeState(state_id)
 
     return success
