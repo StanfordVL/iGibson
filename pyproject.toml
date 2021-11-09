@@ -20,3 +20,18 @@ extend_skip = [
     'igibson/render/pybind11',
     'igibson/render/sranipal',
 ]
+
+[tool.pyright]
+exclude = [
+  'igibson/data',
+  'igibson/docs',
+  'igibson/docker',
+  'igibson/render/cryptopp',
+  'igibson/render/cpp',
+  'igibson/render/openvr',
+  'igibson/render/glfw',
+  'igibson/render/glad',
+  'igibson/render/glm',
+  'igibson/render/pybind11',
+  'igibson/render/sranipal'
+]

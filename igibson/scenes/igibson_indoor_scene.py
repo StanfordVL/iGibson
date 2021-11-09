@@ -27,7 +27,7 @@ from igibson.utils.assets_utils import (
     get_ig_model_path,
     get_ig_scene_path,
 )
-from igibson.utils.utils import rotate_vector_3d
+from igibson.utils.utils import restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
 
@@ -626,21 +626,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 j_high_perc = j_range * 0.66 + j_low
 
                 # check if j_default has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_default)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
                 joint_quality = joint_quality and (not has_collision)
 
                 # check if j_low_perc has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_low_perc)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
                 joint_quality = joint_quality and (not has_collision)
 
                 # check if j_high_perc has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_high_perc)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
@@ -653,7 +653,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         quality_check = quality_check and (joint_collision_so_far <= joint_collision_allowed)
 
         # restore state to the initial state before testing collision
-        p.restoreState(state_id)
+        restoreState(state_id)
         p.removeState(state_id)
 
         self.quality_check = quality_check
@@ -744,7 +744,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     p.resetJointState(body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(body_a=body_id, link_a=joint_id)
-                    p.restoreState(state_id)
+                    restoreState(state_id)
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_high - j_pos)
                         break
@@ -758,7 +758,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     p.resetJointState(body_id, joint_id, j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(body_a=body_id, link_a=joint_id)
-                    p.restoreState(state_id)
+                    restoreState(state_id)
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_pos)
                         reset_success = True

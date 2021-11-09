@@ -4,7 +4,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
-from igibson.utils.utils import l2_distance
+from igibson.utils.utils import l2_distance, restoreState
 
 
 class PointNavRandomTask(PointNavFixedTask):
@@ -70,7 +70,7 @@ class PointNavRandomTask(PointNavFixedTask):
             reset_success = env.test_valid_position(
                 env.robots[0], initial_pos, initial_orn
             ) and env.test_valid_position(env.robots[0], target_pos)
-            p.restoreState(state_id)
+            restoreState(state_id)
             if reset_success:
                 break
 
