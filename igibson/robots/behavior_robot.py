@@ -728,7 +728,7 @@ class BRHandBase(ArticulatedObject):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
         self.set_close_fraction(new_trig_frac)
         self.trigger_fraction = new_trig_frac
 
@@ -1002,7 +1002,7 @@ class BRHand(BRHandBase):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
 
         # Execute gradual release of object
         if self.release_counter is not None:
@@ -1019,7 +1019,7 @@ class BRHand(BRHandBase):
 
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
-            if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
+            if new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
@@ -1075,12 +1075,7 @@ class BRHand(BRHandBase):
                 return True
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if (
-                new_trig_frac >= 0.0
-                and new_trig_frac <= 1.0
-                and new_trig_frac <= TRIGGER_FRACTION_THRESHOLD
-                or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD
-            ):
+            if new_trig_frac <= TRIGGER_FRACTION_THRESHOLD or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD:
                 p.removeConstraint(self.obj_cid)
                 self.obj_cid = None
                 self.obj_cid_params = {}
@@ -1156,9 +1151,6 @@ class BRHand(BRHandBase):
         if self.should_freeze_joints:
             return
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
-
         for joint_index in range(p.getNumJoints(self.get_body_id())):
             jf = p.getJointInfo(self.get_body_id(), joint_index)
             j_name = jf[1]
@@ -1167,7 +1159,7 @@ class BRHand(BRHandBase):
                 close_pos = THUMB_CLOSE_POSITION
             else:
                 close_pos = FINGER_CLOSE_POSITION
-            interp_frac = (close_pos - HAND_OPEN_POSITION) * clipped_close_frac
+            interp_frac = (close_pos - HAND_OPEN_POSITION) * close_frac
             target_pos = HAND_OPEN_POSITION + interp_frac
             p.setJointMotorControl2(
                 self.get_body_id(), joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=HAND_CLOSE_FORCE
@@ -1320,11 +1312,8 @@ class BRGripper(BRHandBase):
         b = p.getJointState(self.get_body_id(), 2)[0]
         p.setJointMotorControl2(self.get_body_id(), 0, p.POSITION_CONTROL, targetPosition=b, force=3)
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
-
         # Change gear constraint to reflect trigger close fraction
-        p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - clipped_close_frac, maxForce=3)
+        p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - close_frac, maxForce=3)
 
 
 class BREye(ArticulatedObject):
