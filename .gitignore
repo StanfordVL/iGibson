@@ -80,3 +80,6 @@ igibson/utils/data_utils/mesh_decimation/final_videos
 
 # libcryptopp
 igibson/render/mesh_renderer/libcryptopp.so.8.6
+
+# Coverage
+.coverage

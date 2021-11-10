@@ -16,7 +16,7 @@ from igibson.utils.utils import parse_config
 
 
 def benchmark_scene(scene_name, optimized=False, import_robot=True):
-    config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))
+    config = parse_config(os.path.join(os.path.dirname(__file__), "..", "test.yaml"))
     assets_version = get_ig_assets_version()
     print("assets_version", assets_version)
     scene = InteractiveIndoorScene(

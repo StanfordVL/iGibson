@@ -9,7 +9,7 @@ from igibson.utils.assets_utils import download_assets, download_demo_data
 def test_env():
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(igibson.root_path, "test", "test_house.yaml")
+    config_filename = os.path.join(os.path.dirname(__file__), "test_house.yaml")
     env = iGibsonEnv(config_file=config_filename, mode="headless")
     try:
         for j in range(2):
@@ -29,7 +29,7 @@ def test_env():
 def test_env_reload():
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(igibson.root_path, "test", "test_house.yaml")
+    config_filename = os.path.join(os.path.dirname(__file__), "test_house.yaml")
     env = iGibsonEnv(config_file=config_filename, mode="headless")
     try:
         for i in range(3):
@@ -50,7 +50,7 @@ def test_env_reload():
 def test_env_reset():
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(igibson.root_path, "test", "test_house.yaml")
+    config_filename = os.path.join(os.path.dirname(__file__), "test_house.yaml")
     env = iGibsonEnv(config_file=config_filename, mode="headless")
 
     class DummyTask(object):
