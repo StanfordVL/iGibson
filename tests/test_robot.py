@@ -18,7 +18,7 @@ from igibson.utils.assets_utils import download_assets
 from igibson.utils.utils import parse_config
 
 download_assets()
-config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))
+config = parse_config(os.path.join(os.path.dirname(__file__), "test.yaml"))
 
 
 def test_fetch():

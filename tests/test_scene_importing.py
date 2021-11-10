@@ -48,7 +48,7 @@ def test_import_stadium():
 def test_import_building_viewing():
     download_assets()
     download_demo_data()
-    config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))
+    config = parse_config(os.path.join(os.path.dirname(__file__), "test.yaml"))
 
     s = Simulator(mode="headless")
     scene = StaticIndoorScene("Rs")

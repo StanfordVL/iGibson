@@ -3,7 +3,6 @@ line-length = 120
 target-version = ['py27', 'py36', 'py37']
 extend-exclude = 'igibson/(data|external|render/(cpp|cryptopp|glad|glfw|glm|openvr|pybind11|sranipal))'
 
-# WIP.
 [tool.isort]
 profile = "black"
 line_length = 120
@@ -35,3 +34,12 @@ exclude = [
   'igibson/render/pybind11',
   'igibson/render/sranipal'
 ]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+addopts = '--cov=igibson'
+
+[tool.coverage.run]
+omit = ["external/*"]

@@ -1,0 +1,39 @@
+name: Tests
+
+on: [pull_request, push]
+
+jobs:
+  test:
+    runs-on: [linux, gpu, dataset-enabled]
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Add CUDA to env
+        run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+          architecture: x64
+
+      - name: Install dev requirements
+        run: pip install -r requirements-dev.txt
+
+      - name: Install
+        run: pip install -e .
+
+      - name: Link Dataset
+        run: ln -s /scr/ig-data igibson/data
+
+      - name: Run tests
+        run: pytest
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2.1.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
