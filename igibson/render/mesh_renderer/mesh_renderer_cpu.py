@@ -104,7 +104,7 @@ class MeshRenderer(object):
             )
         else:
             if self.platform != "Windows":
-                available_devices = get_available_devices()
+                available_devices, _ = get_available_devices()
                 if device_idx < len(available_devices):
                     device = available_devices[device_idx]
                     logging.info("Using device {} for rendering".format(device))
@@ -175,6 +175,13 @@ class MeshRenderer(object):
 
         logging.debug("Is using fisheye camera: {}".format(self.fisheye))
 
+        if self.rendering_settings.glsl_version_override:
+            glsl_version = str(self.rendering_settings.glsl_version_override)
+            shader_available = glsl_version in ["450", "460"]
+            assert shader_available, "Error: only GLSL version 450 and 460 shaders are supported"
+        else:
+            glsl_version = "460"
+
         if self.fisheye:
             logging.error("Fisheye is currently not supported.")
             exit(1)
@@ -210,14 +217,20 @@ class MeshRenderer(object):
                         "".join(
                             open(
                                 os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__), "shaders", "450", "optimized_vert.shader"
+                                    os.path.dirname(mesh_renderer.__file__),
+                                    "shaders",
+                                    glsl_version,
+                                    "optimized_vert.shader",
                                 )
                             ).readlines()
                         ),
                         "".join(
                             open(
                                 os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__), "shaders", "450", "optimized_frag.shader"
+                                    os.path.dirname(mesh_renderer.__file__),
+                                    "shaders",
+                                    glsl_version,
+                                    "optimized_frag.shader",
                                 )
                             ).readlines()
                         ),
@@ -226,24 +239,32 @@ class MeshRenderer(object):
                     self.shaderProgram = self.r.compile_shader_meshrenderer(
                         "".join(
                             open(
-                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "vert.shader")
+                                os.path.join(
+                                    os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "vert.shader"
+                                )
                             ).readlines()
                         ),
                         "".join(
                             open(
-                                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "frag.shader")
+                                os.path.join(
+                                    os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "frag.shader"
+                                )
                             ).readlines()
                         ),
                     )
                 self.textShaderProgram = self.r.compile_shader_meshrenderer(
                     "".join(
                         open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "text_vert.shader")
+                            os.path.join(
+                                os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "text_vert.shader"
+                            )
                         ).readlines()
                     ),
                     "".join(
                         open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450", "text_frag.shader")
+                            os.path.join(
+                                os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "text_frag.shader"
+                            )
                         ).readlines()
                     ),
                 )
@@ -295,14 +316,14 @@ class MeshRenderer(object):
 
         self.skybox_size = rendering_settings.skybox_size
         if not self.platform == "Darwin" and rendering_settings.enable_pbr:
-            self.setup_pbr()
+            self.setup_pbr(glsl_version)
 
         self.setup_lidar_param()
 
         # Set up text FBO
         self.text_manager.gen_text_fbo()
 
-    def setup_pbr(self):
+    def setup_pbr(self, glsl_version):
         """
         Set up physics-based rendering
         """
@@ -312,7 +333,7 @@ class MeshRenderer(object):
             or os.path.exists(self.rendering_settings.env_texture_filename3)
         ):
             self.r.setup_pbr(
-                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "450"),
+                os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version),
                 self.rendering_settings.env_texture_filename,
                 self.rendering_settings.env_texture_filename2,
                 self.rendering_settings.env_texture_filename3,

@@ -15,6 +15,6 @@ def test_binding():
     else:
         from igibson.render.mesh_renderer import EGLRendererContext
 
-        r = EGLRendererContext.EGLRendererContext(256, 256, get_available_devices()[0])
+        r = EGLRendererContext.EGLRendererContext(256, 256, get_available_devices()[0][0])
     r.init()
     r.release()
