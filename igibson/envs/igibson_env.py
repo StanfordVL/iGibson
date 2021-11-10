@@ -350,7 +350,7 @@ class iGibsonEnv(BaseEnv):
             offset = self.initial_pos_z_offset
 
         is_robot = isinstance(obj, BaseRobot)
-        body_id = obj.robot_ids[0] if is_robot else obj.body_id
+        body_id = obj.robot_ids[0] if is_robot else obj.get_body_id()
         # first set the correct orientation
         obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), "wxyz"))
         # compute stable z based on this orientation
@@ -376,7 +376,7 @@ class iGibsonEnv(BaseEnv):
             obj.robot_specific_reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if is_robot else obj.body_id
+        body_id = obj.robot_ids[0] if is_robot else obj.get_body_id()
         has_collision = self.check_collision(body_id)
         return has_collision
 
@@ -396,7 +396,7 @@ class iGibsonEnv(BaseEnv):
             obj.robot_specific_reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if is_robot else obj.body_id
+        body_id = obj.robot_ids[0] if is_robot else obj.get_body_id()
 
         land_success = False
         # land for maximum 1 second, should fall down ~5 meters

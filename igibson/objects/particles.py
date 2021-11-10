@@ -7,14 +7,14 @@ import pybullet as p
 import igibson
 from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
-from igibson.objects.object_base import Object
+from igibson.objects.object_base import SingleBodyObject
 from igibson.utils import sampling_utils
 from igibson.utils.constants import PyBulletSleepState, SemanticClass
 
 _STASH_POSITION = [0, 0, -100]
 
 
-class Particle(Object):
+class Particle(SingleBodyObject):
     """
     A particle object, used to simulate water stream and dust/stain
     """
@@ -91,18 +91,18 @@ class Particle(Object):
 
         self.force_sleep(body_id)
 
-        return body_id
+        return [body_id]
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.body_id
+            body_id = self.get_body_id()
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
         activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.body_id, -1, activationState=activationState)
+        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
 
 
 class ParticleSystem(object):
@@ -207,10 +207,10 @@ class ParticleSystem(object):
             particle.force_sleep()
 
     def _load_particle(self, particle):
-        body_id = self._simulator.import_object(particle, **self._import_params)
+        body_ids = self._simulator.import_object(particle, **self._import_params)
         # Put loaded particles at the stash position initially.
         particle.set_position(_STASH_POSITION)
-        return body_id
+        return body_ids
 
     def unstash_particle(self, position, orientation, particle=None):
         # If the user wants a particular particle, give it to them. Otherwise, unstash one.
@@ -220,7 +220,7 @@ class ParticleSystem(object):
             particle = self._stashed_particles.popleft()
 
         # Lazy loading of the particle now if not already loaded
-        if not particle.loaded:
+        if not particle.get_body_id():
             self._load_particle(particle)
 
         particle.set_position_orientation(position, orientation)
@@ -431,16 +431,16 @@ class WaterStream(ParticleSystem):
 
     def _load_particle(self, particle):
         # First load the particle normally.
-        body_id = super(WaterStream, self)._load_particle(particle)
+        body_ids = super(WaterStream, self)._load_particle(particle)
 
         # Set renderer instance settings on the particles.
         instances = self._simulator.renderer.get_instances()
         for instance in instances:
-            if instance.pybullet_uuid == body_id:
+            if instance.pybullet_uuid in body_ids:
                 instance.roughness = 0
                 instance.metalness = 1
 
-        return body_id
+        return body_ids
 
     def set_running(self, on):
         self.on = on

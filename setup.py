@@ -1,4 +1,5 @@
 import codecs
+import os
 import os.path
 import platform
 import re
@@ -87,6 +88,9 @@ class CMakeBuild(build_ext):
         else:
             cmake_args += ["-DMAC_PLATFORM=FALSE"]
 
+        if os.getenv("USE_VR"):
+            cmake_args += ["-DUSE_VR=TRUE"]
+
         cfg = "Debug" if self.debug else "Release"
         build_args = ["--config", cfg]
 
@@ -126,7 +130,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.2",
+    version="2.0.3",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -150,17 +154,14 @@ setup(
         "aenum",
         "GPUtil",
         "ipython",
-        "pytest",
         "future",
         "trimesh",
-        "sphinx_markdown_tables",
-        "sphinx>=1.8.0",
-        "recommonmark",
-        "sphinx_rtd_theme",
         "h5py",
         "gitpython",
         "py360convert",
-        "bddl",
+        "six",
+        "pandas",
+        "packaging",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),

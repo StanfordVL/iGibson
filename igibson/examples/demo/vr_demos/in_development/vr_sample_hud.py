@@ -159,7 +159,7 @@ def main():
             )
             handle.set_position(new_pos)
             handle.set_orientation(orn)
-            p.changeDynamics(handle.body_id, -1, mass=masses[i])
+            p.changeDynamics(handle.get_body_id(), -1, mass=masses[i])
 
     title = s.add_vr_overlay_text(
         text_data="Welcome to iGibson VR!", font_size=85, font_style="Bold", color=[0, 0, 0.5], pos=[150, 900]

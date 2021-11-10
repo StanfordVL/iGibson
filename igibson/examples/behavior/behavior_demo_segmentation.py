@@ -118,7 +118,7 @@ def process_states(objects, state_types):
 
             assert issubclass(state_type, BooleanState)
             state = obj.states[state_type]
-            if isinstance(state, AbsoluteObjectState):
+            if issubclass(state_type, AbsoluteObjectState):
                 # Add only one instance of absolute state
                 try:
                     value = bool(state.get_value())
@@ -126,7 +126,7 @@ def process_states(objects, state_types):
                     predicate_states.add(record)
                 except ValueError:
                     pass
-            elif isinstance(state, RelativeObjectState):
+            elif issubclass(state_type, RelativeObjectState):
                 # Add one instance per state pair
                 for other in objects:
                     try:

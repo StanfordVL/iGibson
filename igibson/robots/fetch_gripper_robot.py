@@ -313,10 +313,9 @@ class FetchGripper(LocomotorRobot):
         relative_eef_pos = self.get_relative_eef_position()
         relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
         joint_states = np.array([j.get_state() for j in self.ordered_joints]).astype(np.float32).flatten()
-        ag_data = self.calculate_ag_object()
-        has_grasped = np.array([ag_data is not None]).astype(np.float32)
-        self.ag_data = ag_data
-        return np.concatenate([relative_eef_pos, relative_eef_orn, has_grasped, joint_states])
+        self.ag_data = self.calculate_ag_object()
+        is_grasping = np.array([self.object_in_hand is not None and self.release_counter is None]).astype(np.float32)
+        return np.concatenate([relative_eef_pos, relative_eef_orn, is_grasping, joint_states])
 
     def set_up_continuous_action_space(self):
         """

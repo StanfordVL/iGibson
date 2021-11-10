@@ -28,10 +28,14 @@ def verify_determinism(in_log_path, out_log_path):
             for attribute in original_file["physics_data"][obj]:
                 is_close = np.isclose(
                     original_file["physics_data"][obj][attribute], new_file["physics_data"][obj][attribute]
-                ).all()
-                is_deterministic = is_deterministic and is_close
-                if not is_close:
-                    print("Mismatch for obj {} with mismatched attribute {}".format(obj, attribute))
+                )
+                is_deterministic = is_deterministic and is_close.all()
+                if not is_close.all():
+                    print(
+                        "Mismatch for obj {} with mismatched attribute {} starting at timestep {}".format(
+                            obj, attribute, np.where(is_close == False)[0][0]
+                        )
+                    )
     return bool(is_deterministic)
 
 
@@ -72,6 +76,7 @@ def replay_demo(
     step_callbacks=[],
     end_callbacks=[],
     profile=False,
+    image_size=(1280, 720),
 ):
     """
     Replay a BEHAVIOR demo.
@@ -91,6 +96,7 @@ def replay_demo(
         take a single argument, an iGBEHAVIORActivityInstance.
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
         argument, an iGBEHAVIORActivityInstance.
+    @param image_size: The image size that should be used by the renderer.
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
@@ -116,7 +122,7 @@ def replay_demo(
     )
 
     # Check mode
-    assert mode in ["headless", "vr", "simple"]
+    assert mode in ["headless", "vr", "simple", "pbgui"]
 
     # Initialize settings to save action replay frames
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))
@@ -128,6 +134,14 @@ def replay_demo(
     physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
     render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
     filter_objects = IGLogReader.read_metadata_attr(in_log_path, "/metadata/filter_objects")
+    instance_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/instance_id")
+    urdf_file = IGLogReader.read_metadata_attr(in_log_path, "/metadata/urdf_file")
+
+    if urdf_file is None:
+        urdf_file = "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id)
+
+    if instance_id is None:
+        instance_id = 0
 
     logged_git_info = IGLogReader.read_metadata_attr(in_log_path, "/metadata/git_info")
     logged_git_info = parse_str_config(logged_git_info)
@@ -158,8 +172,8 @@ def replay_demo(
         render_timestep=render_timestep,
         rendering_settings=vr_rendering_settings,
         vr_settings=vr_settings,
-        image_width=1280,
-        image_height=720,
+        image_width=image_size[0],
+        image_height=image_size[1],
     )
 
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
@@ -167,7 +181,7 @@ def replay_demo(
         simulator=s,
         scene_id=scene,
         scene_kwargs={
-            "urdf_file": "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id),
+            "urdf_file": urdf_file,
         },
         load_clutter=True,
         online_sampling=False,
@@ -179,7 +193,7 @@ def replay_demo(
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         if out_log_path == None:
-            out_log_path = "{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, timestamp)
+            out_log_path = "{}_{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, instance_id, timestamp)
 
         log_writer = IGLogWriter(
             s,
@@ -192,39 +206,41 @@ def replay_demo(
         )
         log_writer.set_up_data_storage()
 
-    for callback in start_callbacks:
-        callback(igbhvr_act_inst, log_reader)
-
-    task_done = False
-    while log_reader.get_data_left_to_read():
-
-        igbhvr_act_inst.simulator.step(print_stats=profile)
-        task_done, _ = igbhvr_act_inst.check_success()
-
-        # Set camera each frame
-        if mode == "vr":
-            log_reader.set_replay_camera(s)
-
-        for callback in step_callbacks:
+    try:
+        for callback in start_callbacks:
             callback(igbhvr_act_inst, log_reader)
 
-        # Get relevant VR action data and update VR agent
-        vr_agent.apply_action(log_reader.get_agent_action("vr_robot"))
+        task_done = False
+        while log_reader.get_data_left_to_read():
 
+            igbhvr_act_inst.simulator.step(print_stats=profile)
+            task_done |= igbhvr_act_inst.check_success()[0]
+
+            # Set camera each frame
+            if mode == "vr":
+                log_reader.set_replay_camera(s)
+
+            for callback in step_callbacks:
+                callback(igbhvr_act_inst, log_reader)
+
+            # Get relevant VR action data and update VR agent
+            vr_agent.apply_action(log_reader.get_agent_action("vr_robot"))
+
+            if not disable_save:
+                log_writer.process_frame()
+
+        print("Demo was succesfully completed: ", task_done)
+
+        demo_statistics = {}
+        for callback in end_callbacks:
+            callback(igbhvr_act_inst, log_reader)
+    finally:
+        s.disconnect()
         if not disable_save:
-            log_writer.process_frame()
-
-    print("Demo was succesfully completed: ", task_done)
-
-    demo_statistics = {}
-    for callback in end_callbacks:
-        callback(igbhvr_act_inst, log_reader)
-
-    s.disconnect()
+            log_writer.end_log_session()
 
     is_deterministic = None
     if not disable_save:
-        log_writer.end_log_session()
         is_deterministic = verify_determinism(in_log_path, out_log_path)
         print("Demo was deterministic: ", is_deterministic)
 

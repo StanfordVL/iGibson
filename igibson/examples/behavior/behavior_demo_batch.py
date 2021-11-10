@@ -14,7 +14,15 @@ from igibson.examples.behavior.behavior_demo_replay import replay_demo
 
 
 def behavior_demo_batch(
-    demo_root, log_manifest, out_dir, get_callbacks_callback, skip_existing=True, save_frames=False
+    demo_root,
+    log_manifest,
+    out_dir,
+    get_callbacks_callback,
+    skip_existing=True,
+    ignore_errors=True,
+    save_frames=False,
+    debug_display=False,
+    image_size=(1280, 720),
 ):
     """
     Execute replay analysis functions (provided through callbacks) on a batch of BEHAVIOR demos.
@@ -28,8 +36,12 @@ def behavior_demo_batch(
         API and will be used for this purpose for that particular demo. The data callbacks should
         take no arguments and return a dictionary to be included in the demo's replay data that will
         be saved in the end.
+    @param ignore_errors: If an Error is raised, the batch will continue if this is True (with the error saved to the
+        log file). If False, the error will be propagated.
     @param skip_existing: Whether demos with existing output logs should be skipped.
     @param save_frames: Whether the demo's frames should be saved alongside statistics.
+    @param debug_display: Whether a debug display (the pybullet GUI) should be enabled.
+    @param image_size: The image size that should be used by the renderer.
     """
     logger = logging.getLogger()
     logger.disabled = True
@@ -58,7 +70,9 @@ def behavior_demo_batch(
             curr_frame_save_path = os.path.join(out_dir, demo_name + ".mp4")
 
         try:
-            start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_callbacks_callback()
+            start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_callbacks_callback(
+                demo_name=demo_name, out_dir=out_dir
+            )
             demo_information = replay_demo(
                 in_log_path=demo_path,
                 out_log_path=replay_path,
@@ -66,8 +80,9 @@ def behavior_demo_batch(
                 start_callbacks=start_callbacks,
                 step_callbacks=step_callbacks,
                 end_callbacks=end_callbacks,
-                mode="headless",
+                mode="pbgui" if debug_display else "headless",
                 verbose=False,
+                image_size=image_size,
             )
             demo_information["failed"] = False
             demo_information["filename"] = Path(demo).name
@@ -76,8 +91,11 @@ def behavior_demo_batch(
                 demo_information.update(callback())
 
         except Exception as e:
-            print("Demo failed withe error: ", e)
-            demo_information = {"demo_id": Path(demo).name, "failed": True, "failure_reason": str(e)}
+            if ignore_errors:
+                print("Demo failed with the error: ", str(e))
+                demo_information = {"demo_id": Path(demo).name, "failed": True, "failure_reason": str(e)}
+            else:
+                raise
 
         with open(log_path, "w") as file:
             json.dump(demo_information, file)
