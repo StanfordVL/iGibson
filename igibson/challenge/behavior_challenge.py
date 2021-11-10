@@ -89,7 +89,7 @@ class BehaviorChallenge(object):
 
         for task in tasks:
             assert task in activity_to_scenes
-            scenes = sorted(set(activity_to_scenes[tasks[0]]))
+            scenes = sorted(set(activity_to_scenes[task]))
             num_scenes = len(scenes)
             human_demo_mean_step = activity_metadata[task]["mean"]
             env_config["max_step"] = human_demo_mean_step * 2  # adjust env_config['max_step'] based on the human
@@ -97,16 +97,23 @@ class BehaviorChallenge(object):
 
             assert num_scenes <= 3
 
-            # Evaluate 9 activity instances in the training set for now
+            # Evaluate 9 episodes per task
+            # instance id 0-9: seen poses
+            # instance id 10-19: unseen poses
+            # instance id 20-29: unseen scenes
+            # If you don't have enough task instances in ig_dataset, that is because the behavior data bundle is outdated.
+            # You need to follow the participant guide and download again.
             if num_scenes == 3:
-                scene_instance_ids = {scenes[0]: range(3), scenes[1]: range(3), scenes[2]: range(3)}
+                scene_instance_ids = {scenes[0]: [0, 10, 20], scenes[1]: [0, 10, 20], scenes[2]: [0, 10, 20]}
             elif num_scenes == 2:
-                scene_instance_ids = {scenes[0]: range(4), scenes[1]: range(5)}
+                scene_instance_ids = {scenes[0]: [0, 1, 10, 20], scenes[1]: [0, 1, 10, 11, 20]}
             else:
-                scene_instance_ids = {scenes[0]: range(9)}
+                scene_instance_ids = {scenes[0]: [0, 1, 2, 10, 11, 12, 20, 21, 22]}
 
             for scene_id, instance_ids in scene_instance_ids.items():
                 env_config["scene_id"] = scene_id
+                env_config["task"] = task
+                env_config["task_id"] = 0
                 for instance_id in instance_ids:
                     env = BehaviorEnv(
                         config_file=env_config,
@@ -154,7 +161,7 @@ class BehaviorChallenge(object):
         task_scores = []
 
         for episode, metric in per_episode_metrics.items():
-            task_to_mean_success_score[metric["task"]].append(metric["q_score"]["timestep"][-1])
+            task_to_mean_success_score[metric["task"]].append(metric["q_score"]["final"])
 
         for task, scores in task_to_mean_success_score.items():
             task_scores.append(np.mean(scores))
@@ -162,7 +169,7 @@ class BehaviorChallenge(object):
         task_scores = sorted(task_scores, reverse=True)
 
         for episode, metric in per_episode_metrics.items():
-            success_score.append(metric["q_score"]["timestep"][-1])
+            success_score.append(metric["q_score"]["final"])
             simulator_time.append(metric["time"]["simulator_time"])
             kinematic_disarrangement.append(metric["kinematic_disarrangement"]["relative"])
             logical_disarrangement.append(metric["logical_disarrangement"]["relative"])

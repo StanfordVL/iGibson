@@ -25,6 +25,7 @@ from igibson.utils.constants import (
     NON_SAMPLEABLE_OBJECTS,
     TASK_RELEVANT_OBJS_OBS_DIM,
 )
+from igibson.utils.utils import restoreState
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
@@ -98,7 +99,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         return snapshot_id
 
     def reset_scene(self, snapshot_id):
-        p.restoreState(snapshot_id)
+        restoreState(snapshot_id)
         load_internal_states(self.simulator, self.state_history[snapshot_id])
 
     def check_scene(self):
@@ -186,7 +187,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 # We allow burners to be used as if they are stoves
                 categories = self.object_taxonomy.get_subtree_igibson_categories(obj_cat)
                 if obj_cat == "stove.n.01":
-                    categories += self.object_taxonomy.get_subtree_igibson_categories("burner.n.01")
+                    categories += self.object_taxonomy.get_subtree_igibson_categories("burner.n.02")
                 for room_inst in self.scene.room_sem_name_to_ins_name[room_type]:
                     if obj_cat == FLOOR_SYNSET:
                         # TODO: remove after split floors
@@ -396,11 +397,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent
             if cached_initial_pose:
-                # Use the cached pose of BehaviorRobot to initialize FetchGripper
-                pos = np.copy(self.scene.agent["BRBody_1"]["xyz"])
-                pos[2] = 0.0
-                pos[2] = stable_z_on_aabb(agent.get_body_id(), [pos, pos])
-                agent.set_position_orientation(pos, quat_from_euler(self.scene.agent["BRBody_1"]["rpy"]))
+                assert "fetch_gripper_robot_1" in self.scene.agent, "fetch gripper missing from scene cache"
+                agent.set_position_orientation(
+                    self.scene.agent["fetch_gripper_robot_1"]["xyz"],
+                    quat_from_euler(self.scene.agent["fetch_gripper_robot_1"]["rpy"]),
+                )
         else:
             Exception("Only BehaviorRobot and FetchGripper are supported")
 

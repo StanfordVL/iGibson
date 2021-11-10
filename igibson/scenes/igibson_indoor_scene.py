@@ -27,7 +27,7 @@ from igibson.utils.assets_utils import (
     get_ig_model_path,
     get_ig_scene_path,
 )
-from igibson.utils.utils import rotate_vector_3d
+from igibson.utils.utils import restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
 
@@ -123,6 +123,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             scene_dir = get_3dfront_scene_path(scene_id)
         self.scene_source = scene_source
         self.scene_dir = scene_dir
+        self.fname = fname
         self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
         self.scene_tree = ET.parse(self.scene_file)
         self.random_groups = {}
@@ -473,7 +474,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for id in obj.body_ids:
                 del self.objects_by_id[id]
         else:
-            del self.objects_by_id[obj.body_id]
+            del self.objects_by_id[obj.get_body_id()]
 
     def _add_object(self, obj):
         """
@@ -520,8 +521,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for id in obj.body_ids:
                 self.objects_by_id[id] = obj
         else:
-            if obj.body_id is not None:
-                self.objects_by_id[obj.body_id] = obj
+            if obj.get_body_id() is not None:
+                self.objects_by_id[obj.get_body_id()] = obj
 
     def randomize_texture(self):
         """
@@ -625,21 +626,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 j_high_perc = j_range * 0.66 + j_low
 
                 # check if j_default has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_default)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
                 joint_quality = joint_quality and (not has_collision)
 
                 # check if j_low_perc has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_low_perc)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
                 joint_quality = joint_quality and (not has_collision)
 
                 # check if j_high_perc has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_high_perc)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
@@ -652,7 +653,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         quality_check = quality_check and (joint_collision_so_far <= joint_collision_allowed)
 
         # restore state to the initial state before testing collision
-        p.restoreState(state_id)
+        restoreState(state_id)
         p.removeState(state_id)
 
         self.quality_check = quality_check
@@ -743,7 +744,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     p.resetJointState(body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(body_a=body_id, link_a=joint_id)
-                    p.restoreState(state_id)
+                    restoreState(state_id)
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_high - j_pos)
                         break
@@ -757,7 +758,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     p.resetJointState(body_id, joint_id, j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(body_a=body_id, link_a=joint_id)
-                    p.restoreState(state_id)
+                    restoreState(state_id)
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_pos)
                         reset_success = True
@@ -996,7 +997,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
 
         x, y = self.world_to_seg_map(xy)
-        if x > self.room_ins_map.shape[0] or y > self.room_ins_map.shape[1]:
+        if x >= self.room_ins_map.shape[0] or y >= self.room_ins_map.shape[1]:
             return None
         ins_id = self.room_ins_map[x, y]
         # room boundary
@@ -1013,8 +1014,14 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         ids = []
         for obj_name in self.objects_by_name:
-            if self.objects_by_name[obj_name].body_id is not None:
-                ids.extend(self.objects_by_name[obj_name].body_id)
+            # TODO: Remove URDFObject-specific logic
+            if (
+                hasattr(self.objects_by_name[obj_name], "body_ids")
+                and self.objects_by_name[obj_name].body_ids is not None
+            ):
+                ids.extend(self.objects_by_name[obj_name].body_ids)
+            elif self.objects_by_name[obj_name].get_body_id() is not None:
+                ids.append(self.objects_by_name[obj_name].get_body_id())
         return ids
 
     def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
@@ -1069,10 +1076,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
-        if hasattr(obj, "body_ids"):
-            body_id = obj.body_ids[obj.main_body]
-        else:
-            body_id = obj.body_id
+        body_id = obj.get_body_id()
 
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
@@ -1155,7 +1159,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Common logic for objects that are both in the scene & otherwise.
         # Add joints
-        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
+        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.get_body_id()]
         joint_data = []
         for bid in body_ids:
             this_joint_data = {}

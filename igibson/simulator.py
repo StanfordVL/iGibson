@@ -12,7 +12,7 @@ import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
-from igibson.objects.object_base import Object
+from igibson.objects.object_base import NonRobotObject
 from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.stateful_object import StatefulObject
 from igibson.objects.visual_marker import VisualMarker
@@ -30,7 +30,7 @@ from igibson.utils.assets_utils import get_ig_avg_category_specs
 from igibson.utils.constants import PyBulletSleepState, SemanticClass
 from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
 from igibson.utils.semantics_utils import get_class_name_to_class_id
-from igibson.utils.utils import quatXYZWFromRotMat
+from igibson.utils.utils import quatXYZWFromRotMat, restoreState
 from igibson.utils.vr_utils import VR_CONTROLLERS, VR_DEVICES, VrData, calc_offset, calc_z_rot_from_right
 
 
@@ -315,19 +315,18 @@ class Simulator:
 
         # Load the states of all the objects in the scene.
         for obj in scene.get_objects():
-            if isinstance(obj, StatefulObject):
-                if isinstance(obj, ObjectMultiplexer):
-                    for sub_obj in obj._multiplexed_objects:
-                        if isinstance(sub_obj, ObjectGrouper):
-                            for group_sub_obj in sub_obj.objects:
-                                for state in group_sub_obj.states.values():
-                                    state.initialize(self)
-                        else:
-                            for state in sub_obj.states.values():
+            if isinstance(obj, ObjectMultiplexer):
+                for sub_obj in obj._multiplexed_objects:
+                    if isinstance(sub_obj, ObjectGrouper):
+                        for group_sub_obj in sub_obj.objects:
+                            for state in group_sub_obj.states.values():
                                 state.initialize(self)
-                else:
-                    for state in obj.states.values():
-                        state.initialize(self)
+                    else:
+                        for state in sub_obj.states.values():
+                            state.initialize(self)
+            elif isinstance(obj, StatefulObject):
+                for state in obj.states.values():
+                    state.initialize(self)
 
         return new_object_pb_ids
 
@@ -378,19 +377,18 @@ class Simulator:
 
         # Load the states of all the objects in the scene.
         for obj in scene.get_objects():
-            if isinstance(obj, StatefulObject):
-                if isinstance(obj, ObjectMultiplexer):
-                    for sub_obj in obj._multiplexed_objects:
-                        if isinstance(sub_obj, ObjectGrouper):
-                            for group_sub_obj in sub_obj.objects:
-                                for state in group_sub_obj.states.values():
-                                    state.initialize(self)
-                        else:
-                            for state in sub_obj.states.values():
+            if isinstance(obj, ObjectMultiplexer):
+                for sub_obj in obj._multiplexed_objects:
+                    if isinstance(sub_obj, ObjectGrouper):
+                        for group_sub_obj in sub_obj.objects:
+                            for state in group_sub_obj.states.values():
                                 state.initialize(self)
-                else:
-                    for state in obj.states.values():
-                        state.initialize(self)
+                    else:
+                        for state in sub_obj.states.values():
+                            state.initialize(self)
+            elif isinstance(obj, StatefulObject):
+                for state in obj.states.values():
+                    state.initialize(self)
 
         return new_object_ids
 
@@ -419,25 +417,21 @@ class Simulator:
         :param use_pbr_mapping: Whether to use pbr mapping
         :param shadow_caster: Whether to cast shadow
         """
-        assert isinstance(obj, Object), "import_object can only be called with Object"
+        assert isinstance(obj, NonRobotObject), "import_object can only be called with NonRobotObject"
 
         if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
-            new_object_pb_id_or_ids = obj.load()
+            new_object_pb_ids = obj.load()
         else:
             # Non-marker objects require a Scene to be imported.
             assert self.scene is not None, "A scene must be imported before additional objects can be imported."
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-            new_object_pb_id_or_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
+            new_object_pb_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
 
         # If no new bodies are immediately imported into pybullet, we have no rendering steps.
-        if new_object_pb_id_or_ids is None:
+        if not new_object_pb_ids:
             return None
 
-        if isinstance(new_object_pb_id_or_ids, list):
-            new_object_pb_ids = new_object_pb_id_or_ids
-        else:
-            new_object_pb_ids = [new_object_pb_id_or_ids]
         self.objects += new_object_pb_ids
 
         for i, new_object_pb_id in enumerate(new_object_pb_ids):
@@ -470,21 +464,20 @@ class Simulator:
                 )
 
         # Finally, initialize the object's states
-        if isinstance(obj, StatefulObject):
-            if isinstance(obj, ObjectMultiplexer):
-                for sub_obj in obj._multiplexed_objects:
-                    if isinstance(sub_obj, ObjectGrouper):
-                        for group_sub_obj in sub_obj.objects:
-                            for state in group_sub_obj.states.values():
-                                state.initialize(self)
-                    else:
-                        for state in sub_obj.states.values():
+        if isinstance(obj, ObjectMultiplexer):
+            for sub_obj in obj._multiplexed_objects:
+                if isinstance(sub_obj, ObjectGrouper):
+                    for group_sub_obj in sub_obj.objects:
+                        for state in group_sub_obj.states.values():
                             state.initialize(self)
-            else:
-                for state in obj.states.values():
-                    state.initialize(self)
+                else:
+                    for state in sub_obj.states.values():
+                        state.initialize(self)
+        elif isinstance(obj, StatefulObject):
+            for state in obj.states.values():
+                state.initialize(self)
 
-        return new_object_pb_id_or_ids
+        return new_object_pb_ids
 
     @load_without_pybullet_vis
     def load_visual_sphere(self, radius, color=[1, 0, 0]):
@@ -809,7 +802,7 @@ class Simulator:
             for body_id in body_ids:
                 p.removeBody(body_id)
 
-            p.restoreState(state_id)
+            restoreState(state_id)
 
         p.removeState(state_id)
 
@@ -1194,7 +1187,7 @@ class Simulator:
 
         # Update haptics for body and hands
         if self.main_vr_robot:
-            vr_body_id = self.main_vr_robot.parts["body"].body_id
+            vr_body_id = self.main_vr_robot.parts["body"].get_body_id()
             vr_hands = [
                 ("left_controller", self.main_vr_robot.parts["left_hand"]),
                 ("right_controller", self.main_vr_robot.parts["right_hand"]),
@@ -1214,7 +1207,7 @@ class Simulator:
             for hand_device, hand_obj in vr_hands:
                 is_valid, _, _ = self.get_data_for_vr_device(hand_device)
                 if is_valid:
-                    if len(p.getContactPoints(hand_obj.body_id)) > 0 or (
+                    if len(p.getContactPoints(hand_obj.get_body_id())) > 0 or (
                         hasattr(hand_obj, "object_in_hand") and hand_obj.object_in_hand
                     ):
                         # Only use 30% strength for normal collisions, to help add realism to the experience
@@ -1349,7 +1342,7 @@ class Simulator:
 
             # Process local transform adjustments
             prev_world_pos, prev_world_orn = vr_part.get_position_orientation()
-            prev_local_pos, prev_local_orn = vr_part.local_pos, vr_part.local_orn
+            prev_local_pos, prev_local_orn = vr_part.get_local_position_orientation()
             _, inv_prev_local_orn = p.invertTransform(prev_local_pos, prev_local_orn)
             if part_name == "eye":
                 valid, world_pos, world_orn = hmd_is_valid, hmd_pos, hmd_orn
@@ -1733,7 +1726,7 @@ class Simulator:
         """
         # Find instance corresponding to this id in the renderer
         for instance in self.renderer.instances:
-            if obj.body_id == instance.pybullet_uuid:
+            if obj.get_body_id() == instance.pybullet_uuid:
                 instance.hidden = hide
                 self.renderer.update_hidden_highlight_state([instance])
                 return
@@ -1753,7 +1746,7 @@ class Simulator:
         Returns the current hidden state of the object - hidden (True) or not hidden (False)
         """
         for instance in self.renderer.instances:
-            if obj.body_id == instance.pybullet_uuid:
+            if obj.get_body_id() == instance.pybullet_uuid:
                 return instance.hidden
 
     def get_category_ids(self, category_name):
@@ -1787,36 +1780,29 @@ class Simulator:
 
             if activation_state != PyBulletSleepState.AWAKE:
                 return body_links_awake
-            # pos and orn of the inertial frame of the base link,
-            # instead of the base link frame
+
             pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
-
-            # Need to convert to the base link frame because that is
-            # what our own renderer keeps track of
-            # Based on pyullet docuementation:
-            # urdfLinkFrame = comLinkFrame * localInertialFrame.inverse().
-
             instance.set_position(pos)
             instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
             body_links_awake += 1
+
         elif isinstance(instance, InstanceGroup):
             for j, link_id in enumerate(instance.link_ids):
                 if link_id == -1:
                     dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
-                    if len(dynamics_info) == 13 and not self.first_sync:
+                    if len(dynamics_info) == 13 and not self.first_sync and not force_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE
 
                     if activation_state != PyBulletSleepState.AWAKE:
                         continue
-                    # same conversion is needed as above
-                    pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
 
+                    pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
                 else:
                     dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, link_id)
 
-                    if len(dynamics_info) == 13 and not self.first_sync:
+                    if len(dynamics_info) == 13 and not self.first_sync and not force_sync:
                         activation_state = dynamics_info[12]
                     else:
                         activation_state = PyBulletSleepState.AWAKE

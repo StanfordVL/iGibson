@@ -80,13 +80,13 @@ class Scene(with_metaclass(ABCMeta)):
 
         # If the scene is already loaded, we need to load this object separately. Otherwise, don't do anything now,
         # let scene._load() load the object when called later on.
-        body_id_or_ids = None
+        body_ids = None
         if self.loaded:
-            body_id_or_ids = obj.load()
+            body_ids = obj.load()
 
         self._add_object(obj)
 
-        return body_id_or_ids
+        return body_ids
 
     def get_random_floor(self):
         """

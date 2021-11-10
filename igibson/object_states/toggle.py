@@ -64,7 +64,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
 
         # swap two types of markers when toggled
         # when hud overlay is on, we show the toggle buttons, otherwise the buttons are hidden
-        if self.simulator.can_access_vr_context:
+        if self.simulator.can_access_vr_context and self.simulator.vr_overlay_initialized:
             hud_overlay_show_state = self.simulator.get_hud_show_state()
         else:
             hud_overlay_show_state = False

@@ -8,6 +8,7 @@ from igibson.objects.articulated_object import URDFObject
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_model_path
+from igibson.utils.utils import restoreState
 
 
 def main():
@@ -69,7 +70,7 @@ def main():
             print("Dirty: ", desk.states[object_states.Dusty].get_value())
 
         # Reset to the initial state
-        p.restoreState(state_dump)
+        restoreState(state_dump)
         p.removeState(state_dump)
         desk.load_state(dump)
         desk.force_wakeup()

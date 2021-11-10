@@ -4,6 +4,8 @@ import os
 
 import pybullet as p
 
+from igibson.utils.utils import restoreState
+
 
 def save_checkpoint(simulator, root_directory):
     bullet_path = os.path.join(root_directory, "%d.bullet" % simulator.frame_count)
@@ -22,7 +24,7 @@ def load_checkpoint(simulator, root_directory, frame):
     json_path = os.path.join(root_directory, "%d.json" % frame)
 
     # Restore the simulation state.
-    p.restoreState(fileName=bullet_path)
+    restoreState(fileName=bullet_path)
 
     with open(json_path, "r") as f:
         dump = json.load(f)
