@@ -1039,8 +1039,14 @@ class BRHand(BRHandBase):
                     return False
                 ag_bid, ag_link = ag_data
 
-                # If we grab a child link of a URDF that is a revolute or prismatic joint, create a p2p joint
-                if ag_link != -1 and p.getJointInfo(ag_bid, ag_link)[2] in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                # Create a p2p joint if it's a child link of a fixed URDF that is connected by a revolute or prismatic joint
+                if (
+                    ag_link != -1
+                    and p.getJointInfo(ag_bid, ag_link)[2] in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]
+                    and ag_bid in self.parent.simulator.scene.objects_by_id
+                    and hasattr(self.parent.simulator.scene.objects_by_id[ag_bid], "main_body_is_fixed")
+                    and self.parent.simulator.scene.objects_by_id[ag_bid].main_body_is_fixed
+                ):
                     joint_type = p.JOINT_POINT2POINT
                 else:
                     joint_type = p.JOINT_FIXED
