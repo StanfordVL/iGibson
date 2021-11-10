@@ -924,7 +924,7 @@ class BRHand(BRHandBase):
 
         return ray_data
 
-    def find_hand_contacts(self, find_all=False):
+    def find_hand_contacts(self, find_all=False, return_contact_positions=False):
         """
         Calculates the body ids and links that have force applied to them by the VR hand.
         """
@@ -941,7 +941,11 @@ class BRHand(BRHandBase):
                 continue
             c_bid = cpt[2]
             c_link = cpt[4]
-            contact_data.append((c_bid, c_link))
+            c_contact_pos = cpt[5]
+            if return_contact_positions:
+                contact_data.append((c_bid, c_link, c_contact_pos))
+            else:
+                contact_data.append((c_bid, c_link))
 
         return contact_data
 
@@ -1035,14 +1039,36 @@ class BRHand(BRHandBase):
                     return False
                 ag_bid, ag_link = ag_data
 
-                child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
-
-                # If we grab a child link of a URDF, create a p2p joint
-                if ag_link == -1:
-                    joint_type = p.JOINT_FIXED
-                else:
+                # If we grab a child link of a URDF that is a revolute or prismatic joint, create a p2p joint
+                if ag_link != -1 and p.getJointInfo(ag_bid, ag_link)[2] in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
                     joint_type = p.JOINT_POINT2POINT
+                else:
+                    joint_type = p.JOINT_FIXED
 
+                force_data = self.find_hand_contacts(return_contact_positions=True)
+                contact_pos = None
+                for c_bid, c_link, c_contact_pos in force_data:
+                    if (c_bid, c_link) == ag_data:
+                        contact_pos = c_contact_pos
+                        break
+                assert contact_pos is not None
+
+                # Joint frame set at the contact point
+                joint_frame_pos = contact_pos
+                joint_frame_orn = [0, 0, 0, 1]
+                palm_link_pos, palm_link_orn = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)[:2]
+                inv_palm_link_pos, inv_palm_link_orn = p.invertTransform(palm_link_pos, palm_link_orn)
+                parent_frame_pos, parent_frame_orn = p.multiplyTransforms(
+                    inv_palm_link_pos, inv_palm_link_orn, joint_frame_pos, joint_frame_orn
+                )
+                if ag_link == -1:
+                    obj_pos, obj_orn = p.getBasePositionAndOrientation(ag_bid)
+                else:
+                    obj_pos, obj_orn = p.getLinkState(ag_bid, ag_link)[:2]
+                inv_obj_pos, inv_obj_orn = p.invertTransform(obj_pos, obj_orn)
+                child_frame_pos, child_frame_orn = p.multiplyTransforms(
+                    inv_obj_pos, inv_obj_orn, joint_frame_pos, joint_frame_orn
+                )
                 self.obj_cid = p.createConstraint(
                     parentBodyUniqueId=self.get_body_id(),
                     parentLinkIndex=PALM_LINK_INDEX,
@@ -1050,12 +1076,13 @@ class BRHand(BRHandBase):
                     childLinkIndex=ag_link,
                     jointType=joint_type,
                     jointAxis=(0, 0, 0),
-                    parentFramePosition=(0, 0, 0),
+                    parentFramePosition=parent_frame_pos,
                     childFramePosition=child_frame_pos,
+                    parentFrameOrientation=parent_frame_orn,
                     childFrameOrientation=child_frame_orn,
                 )
                 # Modify max force based on user-determined assist parameters
-                if ag_link == -1:
+                if joint_type == p.JOINT_FIXED:
                     max_force = ASSIST_FORCE
                 else:
                     max_force = ASSIST_FORCE * ARTICULATED_ASSIST_FRACTION
@@ -1066,6 +1093,10 @@ class BRHand(BRHandBase):
                     "childLinkIndex": ag_link,
                     "jointType": joint_type,
                     "maxForce": max_force,
+                    "parentFramePosition": parent_frame_pos,
+                    "childFramePosition": child_frame_pos,
+                    "parentFrameOrientation": parent_frame_orn,
+                    "childFrameOrientation": child_frame_orn,
                 }
                 self.object_in_hand = ag_bid
                 self.should_freeze_joints = True
@@ -1173,39 +1204,8 @@ class BRHand(BRHandBase):
                 self.get_body_id(), joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=HAND_CLOSE_FORCE
             )
 
-    def get_child_frame_pose(self, ag_bid, ag_link):
-        # Different pos/orn calculations for base/links
-        if ag_link == -1:
-            body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
-        else:
-            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
-
-        # Get inverse world transform of body frame
-        inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-        link_state = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)
-        link_pos = link_state[0]
-        link_orn = link_state[1]
-        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-        child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
-
-        return child_frame_pos, child_frame_orn
-
     def dump_part_state(self):
         dump = super(BRHand, self).dump_part_state()
-
-        # Recompute child frame pose because it could have changed since the
-        # constraint has been created
-        if self.obj_cid is not None:
-            ag_bid = self.obj_cid_params["childBodyUniqueId"]
-            ag_link = self.obj_cid_params["childLinkIndex"]
-            child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
-            self.obj_cid_params.update(
-                {
-                    "childFramePosition": child_frame_pos,
-                    "childFrameOrientation": child_frame_orn,
-                }
-            )
-
         dump.update(
             {
                 "object_in_hand": self.object_in_hand,
@@ -1243,8 +1243,9 @@ class BRHand(BRHandBase):
                 childLinkIndex=dump["obj_cid_params"]["childLinkIndex"],
                 jointType=dump["obj_cid_params"]["jointType"],
                 jointAxis=(0, 0, 0),
-                parentFramePosition=(0, 0, 0),
+                parentFramePosition=dump["obj_cid_params"]["parentFramePosition"],
                 childFramePosition=dump["obj_cid_params"]["childFramePosition"],
+                parentFrameOrientation=dump["obj_cid_params"]["parentFrameOrientation"],
                 childFrameOrientation=dump["obj_cid_params"]["childFrameOrientation"],
             )
             p.changeConstraint(self.obj_cid, maxForce=dump["obj_cid_params"]["maxForce"])
