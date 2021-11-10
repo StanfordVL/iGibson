@@ -24,7 +24,7 @@ ENV PATH /miniconda/envs/igibson/bin:$PATH
 
 RUN pip install --no-cache-dir torch pytest ray[default,rllib] stable-baselines3 && rm -rf /root/.cache
 
-RUN git clone --depth 1 --branch ig-develop https://github.com/StanfordVL/iGibson /opt/iGibson --recursive && \
+RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive && \
         rm -rf /opt/iGibson/igibson/render/openvr/samples
 
 WORKDIR /opt/iGibson
