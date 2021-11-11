@@ -32,9 +32,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["headless", "gui", "iggui"],
-        default="iggui",
-        help="which mode for simulation (default: iggui)",
+        choices=["headless", "gui_non_interactive", "gui_interactive"],
+        default="gui_interactive",
+        help="which mode for simulation (default: gui_interactive)",
     )
 
     args = parser.parse_args()

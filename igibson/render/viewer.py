@@ -12,11 +12,11 @@ from igibson.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:
-    def __init__(self, use_companion_window, frame_save_path=None):
+    def __init__(self, use_companion_window, frame_save_path=None, renderer=None):
         """
         :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
         """
-        self.renderer = None
+        self.renderer = renderer
         self.use_companion_window = use_companion_window
         self.frame_save_path = frame_save_path
         self.frame_counter = 0

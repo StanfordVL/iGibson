@@ -26,7 +26,7 @@ def main():
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = Simulator(mode="iggui", rendering_settings=vr_rendering_settings, image_height=512, image_width=512)
+    s = Simulator(mode="gui_interactive", rendering_settings=vr_rendering_settings, image_height=512, image_width=512)
 
     scene = EmptyScene()
     # scene.load_object_categories(benchmark_names)

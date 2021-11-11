@@ -9,6 +9,14 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
 
+class SimulatorMode(IntEnum):
+    GUI_INTERACTIVE = 1
+    GUI_NON_INTERACTIVE = 2
+    HEADLESS = 3
+    HEADLESS_TORCH = 4
+    VR = 5
+
+
 class SemanticClass(IntEnum):
     BACKGROUND = 0
     ROBOTS = 1

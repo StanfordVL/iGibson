@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["headless", "simple", "gui", "iggui", "pbgui"],
+        choices=["headless", "headless_tensor", "gui_interactive", "gui_non_interactive"],
         default="simple",
         help="which mode for simulation (default: headless)",
     )

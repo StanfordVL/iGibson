@@ -102,7 +102,7 @@ def run_muvr(mode="server", host="localhost", port="8885"):
         vr_client = IGVRClient(host, port)
         vr_client.register_data(s, client_agent)
         # Disconnect pybullet since the client only renders
-        s.disconnect_pybullet()
+        s.disconnect(release_renderer=False)
 
     # Main networking loop
     while True:

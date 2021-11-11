@@ -55,7 +55,7 @@ def main():
 
     if VIEWER_MANIP:
         s = Simulator(
-            mode="iggui",
+            mode="gui_interactive",
             image_width=512,
             image_height=512,
             rendering_settings=vr_rendering_settings,

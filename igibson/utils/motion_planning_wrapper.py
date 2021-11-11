@@ -68,7 +68,7 @@ class MotionPlanningWrapper(object):
         self.marker = None
         self.marker_direction = None
 
-        if self.mode in ["gui", "iggui"]:
+        if self.mode in ["gui_non_interactive", "gui_interactive"]:
             self.marker = VisualMarker(radius=0.04, rgba_color=[0, 0, 1, 1])
             self.marker_direction = VisualMarker(
                 visual_shape=p.GEOM_CAPSULE,
@@ -232,7 +232,7 @@ class MotionPlanningWrapper(object):
         :param path: base waypoints or None if no plan can be found
         """
         if path is not None:
-            if self.mode in ["gui", "iggui", "pbgui"]:
+            if self.mode in ["gui_non_interactive", "gui_interactive"]:
                 for way_point in path:
                     set_base_values_with_z(
                         self.robot_id, [way_point[0], way_point[1], way_point[2]], z=self.initial_height
@@ -486,7 +486,7 @@ class MotionPlanningWrapper(object):
         """
         base_pose = get_base_values(self.robot_id)
         if arm_path is not None:
-            if self.mode in ["gui", "iggui", "pbgui"]:
+            if self.mode in ["gui_non_interactive", "gui_interactive"]:
                 for joint_way_point in arm_path:
                     set_joint_positions(self.robot_id, self.arm_joint_ids, joint_way_point)
                     set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
@@ -568,7 +568,7 @@ class MotionPlanningWrapper(object):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode in ["pbgui", "iggui", "gui"]:
+            if self.mode in ["gui_interactive", "gui"]:
                 sleep(0.02)  # for visualization
 
     def execute_arm_push(self, plan, hit_pos, hit_normal):

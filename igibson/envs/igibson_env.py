@@ -37,17 +37,15 @@ class iGibsonEnv(BaseEnv):
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
         device_idx=0,
-        render_to_tensor=False,
         automatic_reset=False,
     ):
         """
         :param config_file: config_file path
         :param scene_id: override scene_id in config file
-        :param mode: headless, gui, iggui
+        :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param device_idx: which GPU to run the simulation and rendering on
-        :param render_to_tensor: whether to render directly to pytorch tensors
         :param automatic_reset: whether to automatic reset after an episode finishes
         """
         super(iGibsonEnv, self).__init__(
@@ -57,7 +55,6 @@ class iGibsonEnv(BaseEnv):
             action_timestep=action_timestep,
             physics_timestep=physics_timestep,
             device_idx=device_idx,
-            render_to_tensor=render_to_tensor,
         )
         self.automatic_reset = automatic_reset
 
@@ -458,7 +455,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["headless", "gui", "iggui"],
+        choices=["headless", "headless_tensor", "gui_interactive", "gui_non_interactive"],
         default="headless",
         help="which mode for simulation (default: headless)",
     )
