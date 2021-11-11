@@ -23,6 +23,7 @@ import sys
 import sphinx_rtd_theme
 from recommonmark.parser import CommonMarkParser
 
+sys.path.append(os.path.abspath("../"))
 import igibson
 
 project = "iGibson"
