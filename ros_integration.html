@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROS Integration &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tests" href="tests.html" />
+    <link rel="prev" title="Learning Frameworks" href="learning_framework.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">ROS Integration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-setup">Environment Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#preparation">Preparation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sanity-check">Sanity check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running">Running</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#topics">Topics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>ROS Integration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/ros_integration.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="ros-integration">
+<h1>ROS Integration<a class="headerlink" href="#ros-integration" title="Permalink to this headline"></a></h1>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h2>
+<p><a class="reference external" href="http://www.ros.org">ROS</a> is a set of well-engineered software libraries for building robotics applications. It includes a wide variety of packages, from low level drivers to efficient implementations of state of the art algorithms. As we strive to build intelligent agents and transfer them to real-world (on a real robot), we need to take advantage of ROS packages to complete the robot application pipeline.</p>
+<p>There are three key applications of integrating iGibson with ROS.</p>
+<ul class="simple">
+<li><p>Benchmark existing algorithms in a controlled realistic simulation environment. This allows for comparing learning-based methods with classical methods in simulation environments.</p></li>
+<li><p>Comparing robots in simulation with robots in the real world. In simulation, iGibson can simulate sensors of a robot and publish as messages. In the real world, a real robot publish sensor messages from onboard sensors. Therefore, it is possible to only change the message subscribed and benchmark the performance of downstream applications. This helps locate domain gap and debug algorithms.</p></li>
+<li><p>Using ROS functions in simulation, such as many motion planning implementations.</p></li>
+</ul>
+<p>The possibility of using iGibson with ROS is unlimited. As a starter, we provide an example of integrating iGibson with ROS for navigation. This is a ROS package integrates iGibson Env with ROS navigation stack. It follows the same node topology and topics as <code class="docutils literal notranslate"><span class="pre">turtlebot_navigation</span></code> package. As shown below, so after a policy is trained in iGibson, it requires minimal changes to deploy onto a real turtlebot.</p>
+<p><img alt="" src="_images/node_topo.jpg" /></p>
+</div>
+<div class="section" id="environment-setup">
+<h2>Environment Setup<a class="headerlink" href="#environment-setup" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="preparation">
+<h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline"></a></h2>
+<ol class="simple">
+<li><p>Install ROS: in this package, we use navigation stack from ROS kinetic. Please follow the <a class="reference external" href="http://wiki.ros.org/kinetic/Installation/Ubuntu">instructions</a>.</p></li>
+<li><p>Install iGibson <strong>from source</strong> following <a class="reference internal" href="installation.html"><span class="doc std std-doc">installation guide</span></a> in <strong>python2.7</strong>. Note that ROS only supports <code class="docutils literal notranslate"><span class="pre">python2.7</span></code> at the moment, so you need to create python2.7 virtual environment to install iGibson instead of python3.x.</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
+<span class="nb">cd</span> iGibson
+
+conda create -n py2-igibson <span class="nv">python</span><span class="o">=</span><span class="m">2</span>.7 anaconda <span class="c1"># we support python 2.7, 3.5, 3.6, 3.7, 3.8</span>
+<span class="nb">source</span> activate py2-igibson
+pip install -e . <span class="c1"># This step takes about 4 minutes</span>
+<span class="nb">source</span> deactivate <span class="c1"># This step is important because we will NOT use &lt;anaconda installation root&gt;/envs/py2-igibson/bin/python</span>
+</pre></div>
+</div>
+<ol>
+<li><p>If you use anaconda for setting up python environment, some tweaks of <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> variable are required to avoid conflict. In particular:</p>
+<ol class="simple">
+<li><p>For <code class="docutils literal notranslate"><span class="pre">PATH</span></code>: conda related needs to be removed from <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="nv">$PATH</span> <span class="p">|</span> grep -oP <span class="s2">&quot;[^:;]+&quot;</span> <span class="p">|</span> grep conda	<span class="c1">## Remove these paths from $PATH</span>
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>For <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code>: <code class="docutils literal notranslate"><span class="pre">/usr/lib/python2.7/dist-packages/</span></code>, <code class="docutils literal notranslate"><span class="pre">/opt/ros/kinetic/lib/python2.7/dist-packages</span></code>(ROS python libraries), <code class="docutils literal notranslate"><span class="pre">&lt;anaconda</span> <span class="pre">installation</span> <span class="pre">root&gt;/envs/py2-igibson/lib/python2.7/site-packages</span></code>(iGibson dependencies) and <code class="docutils literal notranslate"><span class="pre">&lt;iGibson</span> <span class="pre">root&gt;</span></code> need to be in <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> <strong>in this exact order</strong>.</p></li>
+</ol>
+</li>
+<li><p>Create <code class="docutils literal notranslate"><span class="pre">catkin_ws</span></code> folder</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir -p ~/catkin_ws
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Soft-link <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> folder to your <code class="docutils literal notranslate"><span class="pre">catkin_ws/src</span></code> and run <code class="docutils literal notranslate"><span class="pre">catkin_make</span></code> to index <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> package.</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;iGibson root&gt;/igibson
+ln -s <span class="nv">$PWD</span>/examples/ros/igibson-ros/ ~/catkin_ws/src/
+<span class="nb">cd</span> ~/catkin_ws <span class="o">&amp;&amp;</span> catkin_make
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Install <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> dependencies:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~/catkin_ws
+rosdep install --from-paths src --ignore-src -r -y
+</pre></div>
+</div>
+</div>
+<div class="section" id="sanity-check">
+<h2>Sanity check<a class="headerlink" href="#sanity-check" title="Permalink to this headline"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which python <span class="c1"># Should give /usr/bin/python, NOT &lt;anaconda installation root&gt;/envs/py2-igibson/bin/python</span>
+python -c <span class="s1">&#39;import igibson, rospy, rospkg&#39;</span> <span class="c1"># Should run without errors</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="running">
+<h2>Running<a class="headerlink" href="#running" title="Permalink to this headline"></a></h2>
+<p>In order to run iGibson+ROS examples, you will need to perform the following steps:</p>
+<ol class="simple">
+<li><p>Prepare ROS environment</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> /opt/ros/kinetic/setup.bash
+<span class="nb">source</span> ~/catkin_ws/devel/setup.bash
+</pre></div>
+</div>
+<ol class="simple">
+<li><p>Repeat Step 3 from Preparation: sanitize <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code></p></li>
+<li><p>Here are some of the examples that you can run, including gmapping, hector mapping and navigation.</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>roslaunch igibson-ros turtlebot_rgbd.launch <span class="c1"># Bare minimal bringup example</span>
+roslaunch igibson-ros turtlebot_gmapping.launch <span class="c1"># Run gmapping</span>
+roslaunch igibson-ros turtlebot_hector_mapping.launch <span class="c1"># Run hector mapping</span>
+roslaunch igibson-ros turtlebot_navigation.launch <span class="c1"># Run the navigation stack, we have provided the map</span>
+roslaunch igibson-ros turtlebot_gt_navigation.launch <span class="c1"># Run the navigation stack with ground truth localization</span>
+</pre></div>
+</div>
+<p>The following screenshot is captured when running the bare minimal bringup example.</p>
+<p><img alt="" src="_images/sensing.png" /></p>
+<p>The following screenshot is captured when running the gmapping example.</p>
+<p><img alt="" src="_images/slam.png" /></p>
+</div>
+<div class="section" id="topics">
+<h2>Topics<a class="headerlink" href="#topics" title="Permalink to this headline"></a></h2>
+<p>Here are all the topics that <code class="docutils literal notranslate"><span class="pre">turtlebot_rgbd.py</span></code> publishes and subscribes.</p>
+<p>Publishes:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th align="center">Topic name</th>
+<th align="center">Type</th>
+<th align="center">Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>/gibson_ros/camera/depth/camera_info</code></td>
+<td align="center"><code>sensor_msgs/CameraInfo</code></td>
+<td align="center">Camera parameters used in iGibson, same for depth and rgb</td>
+</tr>
+<tr>
+<td align="center"><code>/gibson_ros/camera/rgb/image</code></td>
+<td align="center"><code>sensor_msgs/Image</code></td>
+<td align="center">RGB image captured in iGibson</td>
+</tr>
+<tr>
+<td align="center"><code>/gibson_ros/camera/rgb/depth</code></td>
+<td align="center"><code>sensor_msgs/Image</code></td>
+<td align="center">Depth image captured in iGibson, in meters, with dtype being float32</td>
+</tr>
+<tr>
+<td align="center"><code>/gibson_ros/camera/rgb/depth_raw</code></td>
+<td align="center"><code>sensor_msgs/Image</code></td>
+<td align="center">Depth image captured in iGibson, mimic raw depth data captured with OpenNI cameras, with dtype being uint16, see more <a href="http://www.ros.org/reps/rep-0118.html">here</a></td>
+</tr>
+<tr>
+<td align="center"><code>/gibson_ros/lidar/points</code></td>
+<td align="center"><code>sensor_msgs/PointCloud2</code></td>
+<td align="center">1-beam LiDAR scan captured in iGibson, in meters, with dtype being float32</td>
+</tr>
+<tr>
+<td align="center"><code>/odom</code></td>
+<td align="center"><code>nav_msgs/Odometry</code></td>
+<td align="center">The pose of <code>base_footprint</code> in <code>odom</code> frame, generated with groudtruth pose in iGibson</td>
+</tr>
+<tr>
+<td align="center"><code>/ground_truth_odom</code></td>
+<td align="center"><code>nav_msgs/Odometry</code></td>
+<td align="center">The pose of <code>base_footprint</code> in <code>world</code> frame, generated with groudtruth pose in iGibson</td>
+</tr>
+</tbody>
+</table>
+<p>Subscribes:</p>
+<table border="1" class="docutils">
+<thead>
+<tr>
+<th align="center">Topic name</th>
+<th align="center">Type</th>
+<th align="center">Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="center"><code>/mobile_base/commands/velocity</code></td>
+<td align="center"><code>geometry_msgs/Twist</code></td>
+<td align="center">Velocity command for turtlebot, <code>msg.linear.x</code> is the forward velocity, <code>msg.angular.z</code> is the angular velocity</td>
+</tr>
+<tr>
+<td align="center"><code>/reset_pose</code></td>
+<td align="center"><code>geometry_msgs/PoseStamped</code></td>
+<td align="center">Direct reset turtlebot's pose (i.e. teleportation)</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="references">
+<h3>References<a class="headerlink" href="#references" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="http://wiki.ros.org/turtlebot_navigation/Tutorials/Setup%20the%20Navigation%20Stack%20for%20TurtleBot">Turtlebot Navigation stack</a></p></li>
+<li><p><a class="reference external" href="http://wiki.ros.org/move_base"><code class="docutils literal notranslate"><span class="pre">Move_base</span></code> package</a></p></li>
+</ul>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="learning_framework.html" class="btn btn-neutral float-left" title="Learning Frameworks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tests.html" class="btn btn-neutral float-right" title="Tests" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

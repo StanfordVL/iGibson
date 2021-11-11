@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Datasets &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Assets" href="assets.html" />
+    <link rel="prev" title="Overview" href="overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Datasets</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#download-igibson-2-0-scenes-and-the-behavior-dataset-of-objects">Download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#download-igibson-1-0-scenes">Download iGibson 1.0 Scenes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#download-gibson-and-stanford-2d-3d-semantics-scenes">Download Gibson and Stanford 2D-3D-Semantics scenes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#download-matterport3d-scenes">Download Matterport3D Scenes</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Datasets</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/dataset.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="datasets">
+<h1>Datasets<a class="headerlink" href="#datasets" title="Permalink to this headline"></a></h1>
+<p>In this page you will find information about:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="#download-igibson-2-0-scenes-and-the-behavior-dataset-of-objects">How to download iGibson 2.0 scenes and the BEHAVIOR Dataset of Objects</a></p></li>
+<li><p><a class="reference external" href="#download-igibson-1-0-scenes">How to download iGibson 1.0 scenes</a></p></li>
+<li><p><a class="reference external" href="#download-gibson-and-stanford-2d-3d-semantics-scenes">How to download Gibson and Stanford 2D-3D-Semantics scenes</a></p></li>
+<li><p><a class="reference external" href="#download-matterport3d-scenes">How to download Matterport3D scenes</a></p></li>
+</ul>
+<div class="section" id="download-igibson-2-0-scenes-and-the-behavior-dataset-of-objects">
+<h2>Download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects<a class="headerlink" href="#download-igibson-2-0-scenes-and-the-behavior-dataset-of-objects" title="Permalink to this headline"></a></h2>
+<p>What will you download?</p>
+<ul class="simple">
+<li><p>iGibson 2.0 Dataset of Scenes: New versions of the fully interactive scenes, more densely populated with objects.</p></li>
+<li><p>BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists’ copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.</p></li>
+</ul>
+<p>To download both in a bundle, you need to follow the following steps:</p>
+<ul class="simple">
+<li><p>Fill out the license agreement in this <a class="reference external" href="https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform">form</a></p></li>
+<li><p>You will receive a key (igibson.key). Move it into the subfolder of the iGibson repository that contains the dataset, for example, iGibson/igibson/data</p></li>
+<li><p>Download the behavior data bundle (ig_dataset) from <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip">here</a></p></li>
+<li><p>Unzip ig_dataset into the folder: <code class="docutils literal notranslate"><span class="pre">unzip</span> <span class="pre">behavior_data_bundle.zip</span> <span class="pre">-d</span> <span class="pre">iGibson/igibson/data</span></code></p></li>
+</ul>
+<p>After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the <a class="reference external" href="https://behavior.stanford.edu/">BEHAVIOR benchmark</a>.</p>
+</div>
+<div class="section" id="download-igibson-1-0-scenes">
+<h2>Download iGibson 1.0 Scenes<a class="headerlink" href="#download-igibson-1-0-scenes" title="Permalink to this headline"></a></h2>
+<p>What will you download?</p>
+<ul class="simple">
+<li><p>iGibson 1.0 Dataset of Scenes: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets (<a class="reference external" href="https://www.shapenet.org/">ShapeNet Dataset</a>, <a class="reference external" href="http://motiondataset.zbuaa.com/">Motion Dataset</a>, <a class="reference external" href="https://sapien.ucsd.edu/">SAPIEN Dataset</a>) enriched with annotations of material and dynamic properties.</p></li>
+</ul>
+<p>The following image shows the fifteen fully interactive scenes:</p>
+<p><img alt="placeholder.jpg" src="_images/ig_scene.png" /></p>
+<p>To download the dataset, you need to first configure where the dataset is to be stored. You can change it in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default and recommended: <code class="docutils literal notranslate"><span class="pre">ig_dataset:</span> <span class="pre">your_installation_path/igibson/data/ig_dataset</span></code>). iGibson scenes can be downloaded with one single line:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_ig_dataset
+</pre></div>
+</div>
+<p>If the script fails to work, you can download from this <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz">direct link</a> and extract to <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data/ig_dataset</span></code>.</p>
+<p>A description of the file structure and format of the files in the dataset can be found <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils">here</a>.</p>
+<p><strong>Cubicasa / 3D Front Dataset Support:</strong> We provide support for Cubicasa and 3D Front Dataset providing more than 10000 additional scenes (with less furniture than our fifteen scenes). To import them into iGibson, follow the instructions <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene">here</a>.</p>
+</div>
+<div class="section" id="download-gibson-and-stanford-2d-3d-semantics-scenes">
+<h2>Download Gibson and Stanford 2D-3D-Semantics scenes<a class="headerlink" href="#download-gibson-and-stanford-2d-3d-semantics-scenes" title="Permalink to this headline"></a></h2>
+<p>What will you download?</p>
+<ul class="simple">
+<li><p>Gibson static scenes: more than 500 reconstructions of homes and offices with a Matterport device. These models keep the texture observed with the sensor, but contain some irregularities, specially with reflective surfaces and thin elements like chairs’ legs.</p></li>
+<li><p>Stanford 2D-3D-Semantics scenes: 7 reconstructions of Stanford offices.</p></li>
+</ul>
+<p>Files included in the dataset:</p>
+<ul class="simple">
+<li><p>All scenes, 572 scenes (108GB): gibson_v2_all.tar.gz</p></li>
+<li><p>4+ partition, 106 scenes, with textures better packed (2.6GB): gibson_v2_4+.tar.gz</p></li>
+<li><p>Stanford 2D-3D-Semantics, 7 scenes (1.4GB): 2d3ds_for_igibson.zip</p></li>
+</ul>
+<p>We have updated these datasets to be used with iGibson so that users can keep developing and studying pure navigation solutions. The following link will bring you to a license agreement and then to a downloading URL: <a class="reference external" href="https://forms.gle/36TW9uVpjrE1Mkf9A">form</a></p>
+<p>After filling in the agreement, you will obtain a downloading <code class="docutils literal notranslate"><span class="pre">URL</span></code>.
+You can download the data manually and store it in the path set in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default and recommended: <code class="docutils literal notranslate"><span class="pre">g_dataset:</span> <span class="pre">your_installation_path/igibson/data/g_dataset</span></code>).
+Alternatively, you can run a single command to download the dataset, decompress, and place it in the correct folder:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_dataset URL
+</pre></div>
+</div>
+<p>The Gibson Environment Dataset consists of 572 models and 1440 floors. We cover a diverse set of models including households, offices, hotels, venues, museums, hospitals, construction sites, etc. A diverse set of visualization of all spaces in Gibson can be seen <a class="reference external" href="http://gibsonenv.stanford.edu/database/">here</a>.
+The following image shows some of the environments:</p>
+<p><img alt="spaces.png" src="_images/spaces.png" /></p>
+<p><strong>Gibson Dataset Metadata:</strong> Each space in the database has some metadata with the following attributes associated with it. The metadata is available in this <a class="reference external" href="https://raw.githubusercontent.com/StanfordVL/GibsonEnv/master/gibson/data/data.json">JSON file</a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">id</span>                      <span class="c1"># the name of the space, e.g. &quot;&quot;Albertville&quot;&quot;</span>
+<span class="n">area</span>                    <span class="c1"># total metric area of the building, e.g. &quot;266.125&quot; sq. meters</span>
+<span class="n">floor</span>                   <span class="c1"># number of floors in the space, e.g. &quot;4&quot;</span>
+<span class="n">navigation_complexity</span>   <span class="c1"># navigation complexity metric, e.g. &quot;3.737&quot; (see the paper for definition)</span>
+<span class="n">room</span>                    <span class="c1"># number of rooms, e.g. &quot;16&quot;</span>
+<span class="n">ssa</span>                     <span class="c1"># Specific Surface Area (A measure of clutter), e.g. &quot;1.297&quot; (see the paper for definition)</span>
+<span class="n">split_full</span>              <span class="c1"># if the space is in train/val/test/none split of Full partition </span>
+<span class="n">split_full</span><span class="o">+</span>             <span class="c1"># if the space is in train/val/test/none split of Full+ partition </span>
+<span class="n">split_medium</span>            <span class="c1"># if the space is in train/val/test/none split of Medium partition </span>
+<span class="n">split_tiny</span>              <span class="c1"># if the space is in train/val/test/none split of Tiny partition </span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Floor Number: Total number of floors in each model. We calculate floor numbers using distinctive camera locations. We use <code class="docutils literal notranslate"><span class="pre">sklearn.cluster.DBSCAN</span></code> to cluster these locations by height and set minimum cluster size to <code class="docutils literal notranslate"><span class="pre">5</span></code>. This means areas with at least <code class="docutils literal notranslate"><span class="pre">5</span></code> sweeps are treated as one single floor. This helps us capture small building spaces such as backyard, attics, basements.</p></li>
+<li><p>Area: Total floor area of each model. We calculate total floor area by summing up area of each floor. This is done by sampling point cloud locations based on floor height, and fitting a <code class="docutils literal notranslate"><span class="pre">scipy.spatial.ConvexHull</span></code> on sample locations.</p></li>
+<li><p>SSA: Specific surface area. The ratio of inner mesh surface and volume of convex hull of the mesh. This is a measure of clutter in the models: if the inner space is placed with large number of furnitures, objects, etc, the model will have high SSA.</p></li>
+<li><p>Navigation Complexity: The highest complexity of navigating between arbitrary points within the model. We sample arbitrary point pairs inside the model, and calculate <code class="docutils literal notranslate"><span class="pre">A∗</span></code> navigation distance between them. <code class="docutils literal notranslate"><span class="pre">Navigation</span> <span class="pre">Complexity</span></code> is equal to <code class="docutils literal notranslate"><span class="pre">A*</span></code> distance divide by <code class="docutils literal notranslate"><span class="pre">straight</span> <span class="pre">line</span> <span class="pre">distance</span></code> between the two points. We compute the highest navigation complexity for every model. Note that all point pairs are sample within the <em>same floor</em>.</p></li>
+<li><p>Subjective Attributes: We examine each model manually, and note the subjective attributes of them. This includes their furnishing style, house shapes, whether they have long stairs, etc.</p></li>
+</ul>
+<p><strong>Gibson Dataset Format:</strong> Each space in the database has its own folder. All the modalities and metadata for each space are contained in that folder.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mesh_z_up</span><span class="o">.</span><span class="n">obj</span>             <span class="c1"># 3d mesh of the environment, it is also associated with an mtl file and a texture file, omitted here</span>
+<span class="n">floors</span><span class="o">.</span><span class="n">txt</span>                <span class="c1"># floor height</span>
+<span class="n">floor_render_</span><span class="p">{}</span><span class="o">.</span><span class="n">png</span>       <span class="c1"># top down views of each floor</span>
+<span class="n">floor_</span><span class="p">{}</span><span class="o">.</span><span class="n">png</span>              <span class="c1"># top down views of obstacles for each floor</span>
+<span class="n">floor_trav_</span><span class="p">{}</span><span class="o">.</span><span class="n">png</span>         <span class="c1"># top down views of traversable areas for each floor  </span>
+</pre></div>
+</div>
+<p>For the maps, each pixel represents 0.01m, and the center of the image correspond to <code class="docutils literal notranslate"><span class="pre">(0,0)</span></code> in the mesh, as well as in the pybullet coordinate system.</p>
+</div>
+<div class="section" id="download-matterport3d-scenes">
+<h2>Download Matterport3D Scenes<a class="headerlink" href="#download-matterport3d-scenes" title="Permalink to this headline"></a></h2>
+<p>What will you download?</p>
+<ul class="simple">
+<li><p>Matterport3D Dataset: 90 scenes (3.2GB)</p></li>
+</ul>
+<p>Please fill in this <a class="reference external" href="http://dovahkiin.stanford.edu/matterport/public/MP_TOS.pdf">form</a> and send it to <a class="reference external" href="mailto:matterport3d&#37;&#52;&#48;googlegroups&#46;com">matterport3d<span>&#64;</span>googlegroups<span>&#46;</span>com</a>. Please put “use with iGibson simulator” in your email.</p>
+<p>You’ll then recieve a python script via email in response. Run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">download_mp.py</span> <span class="pre">--task_data</span> <span class="pre">igibson</span> <span class="pre">-o</span> <span class="pre">.</span></code> with the received script to download the data (3.2GB). Afterwards, move each of the scenes to the path set in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default and recommended: <code class="docutils literal notranslate"><span class="pre">g_dataset:</span> <span class="pre">your_installation_path/igibson/data/g_dataset</span></code>).</p>
+<p>Reference: <a class="reference external" href="https://niessner.github.io/Matterport/">Matterport3D webpage</a>.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="overview.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="assets.html" class="btn btn-neutral float-right" title="Assets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

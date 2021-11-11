@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Renderer &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Physics Engine" href="physics_engine.html" />
+    <link rel="prev" title="Assets" href="assets.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Renderer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#simple-example">Simple Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interactive-example">Interactive Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pbr-physics-based-rendering-example">PBR (Physics-Based Rendering) Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#velodyne-vlp-16-example">Velodyne VLP-16 Example</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#render-to-pytorch-tensors">Render to PyTorch Tensors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#about-the-3d-image">About the 3D Image</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#about-the-semantic-segmentation-image">About the Semantic Segmentation Image</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Renderer</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/renderer.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="renderer">
+<h1>Renderer<a class="headerlink" href="#renderer" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>We developed our own MeshRenderer that supports customizable camera configuration and various image modalities, and renders at a lightening speed. Specifically, you can specify image width, height and vertical field of view in the constructor of <code class="docutils literal notranslate"><span class="pre">class</span> <span class="pre">MeshRenderer</span></code>. Then you can call <code class="docutils literal notranslate"><span class="pre">renderer.render(modes=('rgb',</span> <span class="pre">'normal',</span> <span class="pre">'seg',</span> <span class="pre">'3d',</span> <span class="pre">'optical_flow',</span> <span class="pre">'scene_flow'))</span></code> to retrieve the images. Currently we support six different image modalities: RGB, surface normal, segmentation, 3D point cloud (z-channel can be extracted as depth map), optical flow, and scene flow. We also support two types of LiDAR sensors: 1-beam and 16-beam (like Velodyne VLP-16). Most of the code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/render">igibson/render</a>.</p>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
+<div class="section" id="simple-example">
+<h3>Simple Example<a class="headerlink" href="#simple-example" title="Permalink to this headline"></a></h3>
+<p>In this example, we render an iGibson scene with a few lines of code. The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/mesh_renderer_simple_example.py">igibson/examples/demo/mesh_renderer_simple_example.py</a>.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">cv2</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_cpu</span> <span class="kn">import</span> <span class="n">MeshRenderer</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">get_scene_path</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_scene_path</span><span class="p">(</span><span class="s1">&#39;Rs&#39;</span><span class="p">),</span> <span class="s1">&#39;mesh_z_up.obj&#39;</span><span class="p">)</span>
+
+    <span class="n">renderer</span> <span class="o">=</span> <span class="n">MeshRenderer</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">512</span><span class="p">)</span>
+    <span class="n">renderer</span><span class="o">.</span><span class="n">load_object</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="n">renderer</span><span class="o">.</span><span class="n">add_instance</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">camera_pose</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">])</span>
+    <span class="n">view_direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+    <span class="n">renderer</span><span class="o">.</span><span class="n">set_camera</span><span class="p">(</span><span class="n">camera_pose</span><span class="p">,</span> <span class="n">camera_pose</span> <span class="o">+</span> <span class="n">view_direction</span><span class="p">,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">renderer</span><span class="o">.</span><span class="n">set_fov</span><span class="p">(</span><span class="mi">90</span><span class="p">)</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+        <span class="n">modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;rgb&#39;</span><span class="p">,</span> <span class="s1">&#39;normal&#39;</span><span class="p">,</span> <span class="s1">&#39;3d&#39;</span><span class="p">))</span>
+    <span class="n">frames</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">frames</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_RGB2BGR</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="s1">&#39;image&#39;</span><span class="p">,</span> <span class="n">frames</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>For <code class="docutils literal notranslate"><span class="pre">Rs</span></code> scene, the rendering results will look like this:
+<img alt="renderer.png" src="_images/renderer.png" /></p>
+</div>
+<div class="section" id="interactive-example">
+<h3>Interactive Example<a class="headerlink" href="#interactive-example" title="Permalink to this headline"></a></h3>
+<p>In this example, we show an interactive demo of MeshRenderer.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.demo.mesh_renderer_example
+</pre></div>
+</div>
+<p>You may translate the camera by pressing “WASD” on your keyboard and rotate the camera by dragging your mouse. Press <code class="docutils literal notranslate"><span class="pre">Q</span></code> to exit the rendering loop. The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/mesh_renderer_example.py">igibson/examples/demo/mesh_renderer_example.py</a>.</p>
+</div>
+<div class="section" id="pbr-physics-based-rendering-example">
+<h3>PBR (Physics-Based Rendering) Example<a class="headerlink" href="#pbr-physics-based-rendering-example" title="Permalink to this headline"></a></h3>
+<p>You can test the physically based renderer with the PBR demo. You can render any objects included in iG dataset, here
+we show a sink for example, as it includes different materials. You need to pass in a folder, since it will load all
+obj files in the folder.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.demo.mesh_renderer_example_pbr &lt;path to ig_dataset&gt;/objects/sink/sink_1/shape/visual
+</pre></div>
+</div>
+<p><img alt="pbr_renderer.png" src="_images/pbr_render.png" /></p>
+<p>You will get a nice rendering of the sink, and should see the metal parts have specular highlgihts, and shadows
+should be casted.</p>
+</div>
+<div class="section" id="velodyne-vlp-16-example">
+<h3>Velodyne VLP-16 Example<a class="headerlink" href="#velodyne-vlp-16-example" title="Permalink to this headline"></a></h3>
+<p>In this example, we show a demo of 16-beam Velodyne VLP-16 LiDAR placed on top of a virtual Turtlebot. The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/lidar_velodyne_example.py">igibson/examples/demo/lidar_velodyne_example.py</a>.</p>
+<p>The Velodyne VLP-16 LiDAR visualization will look like this:
+<img alt="lidar_velodyne.png" src="_images/lidar_velodyne.png" /></p>
+</div>
+<div class="section" id="render-to-pytorch-tensors">
+<h3>Render to PyTorch Tensors<a class="headerlink" href="#render-to-pytorch-tensors" title="Permalink to this headline"></a></h3>
+<p>In this example, we show that MeshRenderer can directly render into a PyTorch tensor to maximize efficiency. PyTorch installation is required (otherwise, iGibson does not depend on PyTorch). The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/mesh_renderer_gpu_example.py">igibson/examples/demo/mesh_renderer_gpu_example.py</a>.</p>
+</div>
+<div class="section" id="about-the-3d-image">
+<h3>About the 3D Image<a class="headerlink" href="#about-the-3d-image" title="Permalink to this headline"></a></h3>
+<p>The mode ‘3d’ provides a 4-channeled image where the first three channels correspond to the x, y, and z coordinates of the pixels in the image. Because our code internally uses OpenGL for rendering, the coordinates are defined in the common convention of this framework: for a given image, the x axis points from left to right, the y axis points from bottom to top, and the z axis points in the opposite direction of the viewing direction of the camera. The camera is located at the location of the link frame “eyes” of the robot, but the orientation is different and defined in the following way: the x axis points along the viewing direction of the camera, the y axis points from right to left and the z axis points from bottom to top. The following code can be helpful to transform points between reference frames:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pose of the camera of the simulated robot in world frame</span>
+<span class="n">eye_pos</span><span class="p">,</span> <span class="n">eye_orn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">robot</span><span class="o">.</span><span class="n">parts</span><span class="p">[</span><span class="s2">&quot;eyes&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">get_position_orientation</span><span class="p">()</span>
+<span class="n">camera_in_wf</span> <span class="o">=</span> <span class="n">quat2rotmat</span><span class="p">(</span><span class="n">xyzw2wxyz</span><span class="p">(</span><span class="n">eye_orn</span><span class="p">))</span>
+<span class="n">camera_in_wf</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">eye_pos</span>
+
+<span class="c1"># Transforming coordinates of points from opengl frame to camera frame</span>
+<span class="n">camera_in_openglf</span> <span class="o">=</span> <span class="n">quat2rotmat</span><span class="p">(</span><span class="n">euler2quat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">))</span>
+
+<span class="c1"># Pose of the simulated robot in world frame</span>
+<span class="n">robot_pos</span><span class="p">,</span> <span class="n">robot_orn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">robot</span><span class="o">.</span><span class="n">get_position_orientation</span><span class="p">()</span>
+<span class="n">robot_in_wf</span> <span class="o">=</span> <span class="n">quat2rotmat</span><span class="p">(</span><span class="n">xyzw2wxyz</span><span class="p">(</span><span class="n">robot_orn</span><span class="p">))</span>
+<span class="n">robot_in_wf</span><span class="p">[:</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">robot_pos</span>
+
+<span class="c1"># Pose of the camera in robot frame</span>
+<span class="n">cam_in_robot_frame</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">robot_in_wf</span><span class="p">),</span> <span class="n">camera_in_wf</span><span class="p">)</span>
+
+<span class="n">u</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">v</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="p">[</span><span class="n">td_image</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;3d&#39;</span><span class="p">))</span>
+<span class="n">point_in_openglf</span> <span class="o">=</span> <span class="n">td_image</span><span class="p">[</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">]</span>
+<span class="n">point_in_cf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">camera_in_openglf</span><span class="p">,</span> <span class="n">point_in_openglf</span><span class="p">)</span>
+<span class="n">point_in_rf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">cam_in_robot_frame</span><span class="p">,</span> <span class="n">point_in_cf</span><span class="p">)</span>
+<span class="n">point_in_wf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">robot_in_wf</span><span class="p">,</span> <span class="n">point_in_rf</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="about-the-semantic-segmentation-image">
+<h3>About the Semantic Segmentation Image<a class="headerlink" href="#about-the-semantic-segmentation-image" title="Permalink to this headline"></a></h3>
+<p>The mode ‘seg’ and ‘ins_seg’ provides a 4-channeled image where the first channel corresponds to the semantic segmentation and instance segmentation, respectively. The values are normalized between 0 and 1, with a normalizing constant of <code class="docutils literal notranslate"><span class="pre">MAX_CLASS_COUNT</span> <span class="pre">=</span> <span class="pre">512</span></code> and <code class="docutils literal notranslate"><span class="pre">MAX_INSTANCE_COUNT</span> <span class="pre">=</span> <span class="pre">1024</span></code> (defined in <code class="docutils literal notranslate"><span class="pre">utils/constants.py</span></code>). The following code is helpful to unnormalize the segmentation image:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">seg</span><span class="p">,</span> <span class="n">ins_seg</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">env</span><span class="o">.</span><span class="n">simulator</span><span class="o">.</span><span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">modes</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;seg&#39;</span><span class="p">,</span> <span class="s1">&#39;ins_seg&#39;</span><span class="p">))</span>
+<span class="n">seg</span> <span class="o">=</span> <span class="p">(</span><span class="n">seg</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">MAX_CLASS_COUNT</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">ins_seg</span> <span class="o">=</span> <span class="p">(</span><span class="n">ins_seg</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">MAX_INSTANCE_COUNT</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This transformation is directly performed if the segmentation is accessed through a <code class="docutils literal notranslate"><span class="pre">VisionSensor</span></code> (e.g., as part of the iGibsonEnv) using the method <code class="docutils literal notranslate"><span class="pre">get_seg</span></code> and <code class="docutils literal notranslate"><span class="pre">get_ins_seg</span></code>.</p>
+</div>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="assets.html" class="btn btn-neutral float-left" title="Assets" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="physics_engine.html" class="btn btn-neutral float-right" title="Physics Engine" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

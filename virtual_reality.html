@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Virtual Reality Overview &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Virtual Reality Overview</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/virtual_reality.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="virtual-reality-overview">
+<h1>Virtual Reality Overview<a class="headerlink" href="#virtual-reality-overview" title="Permalink to this headline"></a></h1>
+<p>Virtual reality is currently supported on Windows 10/11 on the HTC Vive and Oculus Rift/Quest (with link), and on Linux with the HTC Vive (there is no linux driver for Oculus).</p>
+<p>The HTC Vive Pro Eye tracking driver is not available for Linux. You must have the latest Nvidia driver 470.XX and SteamVR 1.19.7 as asynchronous reprojection (a form of motion smoothing necessary for a usable VR experience) was only added in mid 2021.</p>
+</div>
+<div class="section" id="setup">
+<h1>Setup<a class="headerlink" href="#setup" title="Permalink to this headline"></a></h1>
+<ol class="simple">
+<li><p>Set up the HTC Vive VR hardware according to the <a class="reference external" href="https://support.steampowered.com/steamvr/HTC_Vive/">setup guide</a></p></li>
+<li><p>(optional) if you plan to use eye tracking on Windows, create a <a class="reference external" href="https://hub.vive.com/sso/login">vive developer account</a> then download and install the <a class="reference external" href="https://developer.vive.com/resources/vive-sense/sdk/vive-eye-and-facial-tracking-sdk/">SRAnipal runtime</a>. Note you should <a class="reference external" href="https://developer.vive.com/us/support/sdk/category_howto/how-to-calibrate-eye-tracking.html">calibrate</a> the Vive eye tracker before each recording session.</p></li>
+<li><p>Ensure you have installed iGibson according to the installation <a class="reference external" href="http://svl.stanford.edu/igibson/docs/installation.html#installation-method">instructions</a>.</p>
+<ul class="simple">
+<li><p>Note: On Windows VR support is eanbled by default. On Linux, you must install with an additional environmental variable <code class="docutils literal notranslate"><span class="pre">USE_VR=TRUE</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code>. You must also have addition development headers installed: on Ubuntu <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">xorg-dev</span></code> and on Centos/Fedora: <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">libXinerama-devel</span> <span class="pre">libXi-devel</span> <span class="pre">libXrandr-devel</span> <span class="pre">libXcursor-devel</span></code>.</p></li>
+</ul>
+</li>
+</ol>
+</div>
+<div class="section" id="vr-examples">
+<h1>VR examples<a class="headerlink" href="#vr-examples" title="Permalink to this headline"></a></h1>
+<p>We have several examples showing how to use our VR interface:</p>
+<ul class="simple">
+<li><p>vr demo files: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos</span></code></p></li>
+<li><p>multi-user VR (experimental): <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/muvr</span></code></p></li>
+<li><p>benchmark: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/in_development</span></code></p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">vr_hand_dex_benchmark.py</span></code> – Demonstrates various challenging manipulation tasks</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">vr_hand_speed_benchmark.py</span></code> – Demonstrates various tasks to assess user speed at working in VR</p></li>
+</ul>
+</li>
+<li><p>data_save_replay: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/data_save_replay</span></code></p>
+<ul>
+<li><p>This folder demonstrates how to save VR recordings and “replay” them to reproduce the reorded trajectory</p></li>
+</ul>
+</li>
+<li><p>robot_embodiment: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/robot_embodiment</span></code></p>
+<ul>
+<li><p>This folder demonstrates the VR interface to the Fetch robot (WIP)</p></li>
+</ul>
+</li>
+</ul>
+<p>Benchmarks:</p>
+<p>We have two benchmarks - a hand and speed benchmark, both of which can be found in the top level of the vr_demos folder. In these demos, you can time yourself performing various challenges,
+such as putting objects away into specific containers/cabinets. Please see the comments in these demo files for more information.</p>
+</div>
+<div class="section" id="vr-config-and-button-mapping">
+<h1>VR config and button mapping:<a class="headerlink" href="#vr-config-and-button-mapping" title="Permalink to this headline"></a></h1>
+<p>You can find the global vr settings in the <code class="docutils literal notranslate"><span class="pre">vr_config.yaml</span></code> in the igibson folder. We highly recommend reading through the default config as it is heavily documented. The three most crucial settings are <strong>current_device</strong>, <strong>use_tracked_body</strong>, and <strong>torso_tracker_serial</strong>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">current_device</span></code>: determines which of the <code class="docutils literal notranslate"><span class="pre">device_settings</span></code> keys will be used, and is used to set options specific to Oculus or the HTC Vive. The currently available keys, as seen in <code class="docutils literal notranslate"><span class="pre">device_settings</span></code> are <code class="docutils literal notranslate"><span class="pre">HTC_VIVE_PRO_EYE</span></code> and <code class="docutils literal notranslate"><span class="pre">OCULUS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">use_tracked_body</span></code>: determines if we will use <a class="reference external" href="https://developer.vive.com/us/support/sdk/category_howto/how-to-calibrate-eye-tracking.html">HTC Vive Trackers</a> to track the body instead of inferring body position from the headset position.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">torso_tracker_serial</span></code>: is the serial number of the tracker used if <code class="docutils literal notranslate"><span class="pre">use_tracked_body</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+<p>Some additional options you may be interested in changing:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">use_vr</span></code> (default True): whether to render to the HMD and use VR system or just render to screen (used for debugging)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">eye_tracking</span></code> (default True): whether to use eye tracking. Turn this off if your headset does not support eye tracking (only the HTC Vive Pro Eye does)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">touchpad_movement</span></code> (default True): whether to enable use of touchpad to move - this will help you get around large scenes if your play area is small</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">movement_controller</span></code> (default ‘right’): device to controler movement - can be right or left (representing the corresponding controllers). Default is for right-handed people - please change to left if that is more comfortable.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">relative_movement_device</span></code> (default ‘hmd’): which device to use to control touchpad movement direction (can be any VR device). You should not need to change this.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">movement_speed</span></code> (default 0.01): how fast you move when using the touchpad. This number has been calibrated carefully, however feel free to change it if you want to speed up/slow down.</p></li>
+</ul>
+<p>We recommend looking at <code class="docutils literal notranslate"><span class="pre">igibson/render/mesh_renderer/mesh_renderer_vr.py</span></code> to see the VrSettings class which reads from <code class="docutils literal notranslate"><span class="pre">vr_config.yaml</span></code>. A single VrSettings object is created and passed in to the <code class="docutils literal notranslate"><span class="pre">Simulator</span></code> constructor.</p>
+<p>Note(optional): If you are using a device not already mapped, please run <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/in_development/vr_button_mapping.py</span></code> to figure out which physical controller buttons correspond to which indices in OpenVR.</p>
+</div>
+<div class="section" id="mirroring-the-vr-view-on-the-monitor">
+<h1>Mirroring the VR view on the monitor<a class="headerlink" href="#mirroring-the-vr-view-on-the-monitor" title="Permalink to this headline"></a></h1>
+<p>iGibson VR utilizes Steam VR’s built-in companion window to visualize what the user sees in their headset. To open this window:</p>
+<ul class="simple">
+<li><p>launch Steam VR</p></li>
+<li><p>click on the hamburger menu in the top-left corner of the VR status menu (the dark blue window with icons for the VR devices)</p></li>
+<li><p>then click “Display VR View” button.</p></li>
+</ul>
+<p>From this view, you can change which eye you are looking at (or look at both), and can make the window fullscreen.
+Note that this window will be black until an application is running, and the headset is detected by the lighthouse sensors. We also support a custom-build companion window that can run in iGibson - this can be enabled in the vr_config file, described below (although it is off by default).</p>
+<p>Note: Press ESCAPE to force the fullscreen rendering window to close during program execution (although fullscreen is disabled by default)</p>
+</div>
+<div class="section" id="contributing">
+<h1>Contributing<a class="headerlink" href="#contributing" title="Permalink to this headline"></a></h1>
+<ul class="simple">
+<li><p>Most VR functions can be found in <code class="docutils literal notranslate"><span class="pre">igibson/simulator.py</span></code></p></li>
+<li><p>The BehaviorRobot is located in <code class="docutils literal notranslate"><span class="pre">igibson/robots/behavior_robot.py</span></code></p></li>
+<li><p>VR utility functions are found in <code class="docutils literal notranslate"><span class="pre">igibson/utils/vr_utils.py</span></code></p></li>
+<li><p>The VR renderer can be found in <code class="docutils literal notranslate"><span class="pre">igibson/render/mesh_renderer.py</span></code></p></li>
+<li><p>The underlying VR C++ code (querying controller states from openvr, renderer for VR) can be found in `igibson/render/cpp/vr_mesh_renderer{.cpp,.h}</p></li>
+</ul>
+</div>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

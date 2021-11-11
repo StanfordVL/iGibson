@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Physics Engine &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Scenes" href="scenes.html" />
+    <link rel="prev" title="Renderer" href="renderer.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Physics Engine</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Physics Engine</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/physics_engine.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="physics-engine">
+<h1>Physics Engine<a class="headerlink" href="#physics-engine" title="Permalink to this headline"></a></h1>
+<div class="section" id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
+<p>We use the open-sourced <a class="reference external" href="http://www.pybullet.org/">PyBullet</a> as our underlying physics engine. It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner. Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time. Our code have already handled this for you.</p>
+<p>Typically, we use <code class="docutils literal notranslate"><span class="pre">p.createMultiBody</span></code> and <code class="docutils literal notranslate"><span class="pre">p.loadURDF</span></code> to load scenes, objects and robots into PyBullet, use <code class="docutils literal notranslate"><span class="pre">p.resetBasePositionAndOrientation</span></code> to set the base pose of robots and objects, <code class="docutils literal notranslate"><span class="pre">p.resetJointState</span></code> to set joint position of robots and articulated objects, and <code class="docutils literal notranslate"><span class="pre">p.setJointMotorControl2</span></code> to control the robots and articulated objects.</p>
+<p>More info can be found in here: <a class="reference external" href="https://docs.google.com/document/d/10sXEhzFRSnvFcl3XxNGhnD4N2SedqwdAvK3dsihxVUA">PyBullet documentation</a>.</p>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
+<p>In this example, we import a scene, a robot and an object into PyBullet and step through a few seconds of simulation. The code can be found here:<a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/physics_engine_example.py">igibson/examples/demo/physics_engine_example.py</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">get_scene_path</span><span class="p">,</span> <span class="n">get_texture_file</span>
+<span class="kn">import</span> <span class="nn">igibson</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">get_scene_path</span><span class="p">(</span><span class="s1">&#39;Rs&#39;</span><span class="p">),</span> <span class="s1">&#39;mesh_z_up.obj&#39;</span><span class="p">)</span>
+
+    <span class="n">p</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GUI</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">setGravity</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mf">9.8</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">setTimeStep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+
+    <span class="c1"># Load scenes</span>
+    <span class="n">collision_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createCollisionShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_MESH</span><span class="p">,</span>
+                                          <span class="n">fileName</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
+                                          <span class="n">meshScale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span>
+                                          <span class="n">flags</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_FORCE_CONCAVE_TRIMESH</span><span class="p">)</span>
+    <span class="n">visual_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createVisualShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_MESH</span><span class="p">,</span>
+                                    <span class="n">fileName</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
+                                    <span class="n">meshScale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">texture_filename</span> <span class="o">=</span> <span class="n">get_texture_file</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
+    <span class="n">texture_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">loadTexture</span><span class="p">(</span><span class="n">texture_filename</span><span class="p">)</span>
+
+    <span class="n">mesh_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createMultiBody</span><span class="p">(</span><span class="n">baseCollisionShapeIndex</span><span class="o">=</span><span class="n">collision_id</span><span class="p">,</span>
+                                <span class="n">baseVisualShapeIndex</span><span class="o">=</span><span class="n">visual_id</span><span class="p">)</span>
+
+    <span class="c1"># Load robots</span>
+    <span class="n">turtlebot_urdf</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">assets_path</span><span class="p">,</span> <span class="s1">&#39;models/turtlebot/turtlebot.urdf&#39;</span><span class="p">)</span>
+    <span class="n">robot_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">loadURDF</span><span class="p">(</span><span class="n">turtlebot_urdf</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">URDF_USE_MATERIAL_COLORS_FROM_MTL</span><span class="p">)</span>
+
+    <span class="c1"># Load objects</span>
+    <span class="n">obj_visual_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">assets_path</span><span class="p">,</span> <span class="s1">&#39;models/ycb/002_master_chef_can/textured_simple.obj&#39;</span><span class="p">)</span>
+    <span class="n">obj_collision_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">assets_path</span><span class="p">,</span> <span class="s1">&#39;models/ycb/002_master_chef_can/textured_simple_vhacd.obj&#39;</span><span class="p">)</span>
+    <span class="n">collision_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createCollisionShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_MESH</span><span class="p">,</span>
+                                          <span class="n">fileName</span><span class="o">=</span><span class="n">obj_collision_filename</span><span class="p">,</span>
+                                          <span class="n">meshScale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">visual_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createVisualShape</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GEOM_MESH</span><span class="p">,</span>
+                                    <span class="n">fileName</span><span class="o">=</span><span class="n">obj_visual_filename</span><span class="p">,</span>
+                                    <span class="n">meshScale</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">object_id</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">createMultiBody</span><span class="p">(</span><span class="n">baseCollisionShapeIndex</span><span class="o">=</span><span class="n">collision_id</span><span class="p">,</span>
+                                  <span class="n">baseVisualShapeIndex</span><span class="o">=</span><span class="n">visual_id</span><span class="p">,</span>
+                                  <span class="n">basePosition</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+                                  <span class="n">baseMass</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10000</span><span class="p">):</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">stepSimulation</span><span class="p">()</span>
+
+    <span class="n">p</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>You will see the PyBullet interface like this. In the scene, there is a Turtlebot, together with a blue food can next to the robot.
+<img alt="physics_engine.png" src="_images/physics_engine.png" /></p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="renderer.html" class="btn btn-neutral float-left" title="Renderer" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="scenes.html" class="btn btn-neutral float-right" title="Scenes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

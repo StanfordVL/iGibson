@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Overview &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Datasets" href="dataset.html" />
+    <link rel="prev" title="Quickstart" href="quickstart.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Overview</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/overview.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h1>
+<p>Next, we will give an overview of iGibson and briefly explain the different modules in our system.
+<img alt="quickstart.png" src="_images/overview.png" /></p>
+<p>First of all, we have <strong>Dataset</strong> and <strong>Assets</strong>. <strong>Dataset</strong> contain 3D reconstructed real-world environments. <strong>Assets</strong> contain models of robots and objects. Download guide can be found <a class="reference external" href="installation.html#downloading-the-assets">here</a>. More info can be found here: <a class="reference internal" href="dataset.html"><span class="doc std std-doc">Dataset</span></a> and <a class="reference internal" href="assets.html"><span class="doc std std-doc">Assets</span></a>.</p>
+<p>Next, we have <strong>Renderer</strong> and <strong>PhysicsEngine</strong>. These are the two pillars that ensure the visual and physics fidelity of iGibson. We developed our own MeshRenderer that supports customizable camera configuration, physics-based rendering (PBR) and various image modalities, and renders at a lightening speed. We use the open-sourced <a class="reference external" href="http://www.pybullet.org/">PyBullet</a> as our underlying physics engine. It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner. Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time. Our code have already handled this for you. More info can be found here: <a class="reference internal" href="renderer.html"><span class="doc std std-doc">Renderer</span></a> and <a class="reference internal" href="physics_engine.html"><span class="doc std std-doc">PhysicsEngine</span></a>.</p>
+<p>Furthermore, we have <strong>Scene</strong>, <strong>Object</strong>, <strong>Robot</strong>, and <strong>Simulator</strong>. <strong>Scene</strong> loads 3D scene meshes from <code class="docutils literal notranslate"><span class="pre">igibson.g_dataset_path,</span> <span class="pre">igibson.ig_dataset_path</span></code>. <strong>Object</strong> loads interactable objects from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>. <strong>Robot</strong> loads robots from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>. <strong>Simulator</strong> maintains an instance of <strong>Renderer</strong> and <strong>PhysicsEngine</strong> and provides APIs to import <strong>Scene</strong>, <strong>Object</strong> and <strong>Robot</strong> into both of them and keep them synchronized at all time. More info can be found here: <a class="reference internal" href="scenes.html"><span class="doc std std-doc">Scene</span></a>, <a class="reference internal" href="objects.html"><span class="doc std std-doc">Object</span></a>, <a class="reference internal" href="robots.html"><span class="doc std std-doc">Robot</span></a>, and <a class="reference internal" href="simulators.html"><span class="doc std std-doc">Simulator</span></a>.</p>
+<p>Moreover, we have <strong>Task</strong>, <strong>Sensor</strong> and <strong>Environment</strong>. <strong>Task</strong> defines the task setup and includes a list of <strong>Reward Function</strong> and <strong>Termination Condition</strong>. It also provides task-specific reset functions and task-relevant observation definition. <strong>Sensor</strong> provides a light wrapper around <strong>Render</strong> to retrieve sensory observation. <strong>Environment</strong> follows the <a class="reference external" href="https://github.com/openai/gym">OpenAI gym</a> convention and provides an API interface for external applications. More info can be found here: <a class="reference internal" href="environments.html"><span class="doc std std-doc">Environment</span></a>.</p>
+<p>Finally, any learning framework (e.g. RL, IL) or planning and control framework (e.g. ROS) can be used with <strong>Environment</strong> as long as they accommodate OpenAI gym interface. We provide tight integration with <strong>ROS</strong> that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: <a class="reference internal" href="learning_framework.html"><span class="doc std std-doc">Learning Framework</span></a> and <a class="reference internal" href="ros_integration.html"><span class="doc std std-doc">ROS</span></a>.</p>
+<p>We highly recommend you go through each of the Modules below for more details and code examples.</p>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="quickstart.html" class="btn btn-neutral float-left" title="Quickstart" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="dataset.html" class="btn btn-neutral float-right" title="Datasets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

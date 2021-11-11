@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Quickstart" href="quickstart.html" />
+    <link rel="prev" title="iGibson: the Interactive Gibson Environment" href="intro.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.3
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installing-the-environment">Installing the Environment</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#system-requirements">System Requirements</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-dependencies-in-linux-machines">Installing dependencies in Linux machines</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#installing-igibson">Installing iGibson</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#pip">1. pip</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#docker-image">2. Docker image</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#compile-from-source">3. Compile from source</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#the-svl-pybullet-fork">The SVL pybullet fork</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-the-assets">Downloading the Assets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#testing">Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uninstalling">Uninstalling</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Installation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/installation.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h1>
+<p>There are two steps to install iGibson, the Interactive Gibson Environment, on your computer.</p>
+<p>First, you need to install the simulation environment. This may require installing additional dependencies. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.</p>
+<div class="section" id="installing-the-environment">
+<h2>Installing the Environment<a class="headerlink" href="#installing-the-environment" title="Permalink to this headline"></a></h2>
+<div class="section" id="system-requirements">
+<h3>System Requirements<a class="headerlink" href="#system-requirements" title="Permalink to this headline"></a></h3>
+<p>The minimum system requirements are the following:</p>
+<ul class="simple">
+<li><p>Linux</p>
+<ul>
+<li><p>Ubuntu 16.04</p></li>
+<li><p>Nvidia GPU with VRAM &gt; 6.0GB</p></li>
+<li><p>Nvidia driver &gt;= 384</p></li>
+<li><p>CUDA &gt;= 9.0, CuDNN &gt;= v7</p></li>
+<li><p>CMake &gt;= 2.8.12 (can install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code>)</p></li>
+<li><p>g++ (GNU C++ compiler)</p></li>
+<li><p>libegl-dev (Debian/Ubuntu: vendor neutral GL dispatch library – EGL support)</p></li>
+</ul>
+</li>
+<li><p>Windows</p>
+<ul>
+<li><p>Windows 10</p></li>
+<li><p>Nvidia GPU with VRAM &gt; 6.0GB</p></li>
+<li><p>Nvidia driver &gt;= 384</p></li>
+<li><p>CUDA &gt;= 9.0, CuDNN &gt;= v7</p></li>
+<li><p>CMake &gt;= 2.8.12 (can install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code>)</p></li>
+<li><p>Microsoft Visual Studio 2017 with visual C++ tool and latest Windows 10 SDK</p></li>
+</ul>
+</li>
+<li><p>Mac OS X</p>
+<ul>
+<li><p>Tested on 10.15</p></li>
+<li><p>PBR features not supported</p></li>
+<li><p>CMake &gt;= 2.8.12 (can install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code>)</p></li>
+</ul>
+</li>
+</ul>
+<p>Other system configurations may work, but we haven’t tested them extensively and we probably won’t be able to provide as much support as we want.</p>
+</div>
+<div class="section" id="installing-dependencies-in-linux-machines">
+<h3>Installing dependencies in Linux machines<a class="headerlink" href="#installing-dependencies-in-linux-machines" title="Permalink to this headline"></a></h3>
+<p>As most Python packages, we recommend to install iGibson in a virtual environment.
+We suggest to use Conda instead of a standard virtual environment.
+To setup anaconda with the right dependencies, run the following as your user account (<strong>not as root/superuser</strong>):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install miniconda</span>
+curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+bash Miniconda-latest-Linux-x86_64.sh
+rm Miniconda-latest-Linux-x86_64.sh
+
+<span class="c1"># Add conda to your PATH</span>
+<span class="nb">echo</span> <span class="s2">&quot;export PATH=</span><span class="nv">$HOME</span><span class="s2">/.miniconda/bin:</span><span class="nv">$PATH</span><span class="s2">&quot;</span> &gt;&gt; .bashrc 
+
+<span class="c1"># Update conda and create a virtual environment for iGibson</span>
+conda update -y conda
+conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+conda activate igibson
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Careful, this may change your GPU drivers!</p>
+There are several system dependencies to correctly run iGibson on Linux, mostly related to Nvidia drivers and Cuda.
+In case your system is a clean Ubuntu 20.04, you can run the following commands as root/superuser to install all required dependencies:
+<details>
+  <summary>Click to expand the code to install the dependencies including Nvidia drivers in headless mode to use for example in a cluster:</summary>
+<p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add the nvidia ubuntu repositories</span>
+apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
+    gnupg2 curl ca-certificates <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub <span class="p">|</span> apt-key add - <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/cuda.list <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/nvidia-ml.list
+
+<span class="c1"># The following cuda libraries are required to compile igibson</span>
+apt-get update <span class="o">&amp;&amp;</span> apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
+    nvidia-headless-470 <span class="se">\</span>
+    cuda-cudart-11-1<span class="o">=</span><span class="m">11</span>.1.74-1 <span class="se">\</span>
+    cuda-compat-11-1 <span class="se">\</span>
+    cuda-command-line-tools-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
+    cuda-libraries-dev-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
+
+<span class="c1"># For building and running igibson</span>
+apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
+    cmake <span class="se">\</span>
+    git <span class="se">\</span>
+    g++ <span class="se">\</span>
+    libegl-dev
+</pre></div>
+</div>
+</p>
+</details>
+<details>
+  <summary>Click to expand the code to install the dependencies including Nvidia drivers to render on screen for example on a desktop computer:</summary>
+<p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Add the nvidia ubuntu repositories</span>
+apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
+    gnupg2 curl ca-certificates <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/7fa2af80.pub <span class="p">|</span> apt-key add - <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/cuda.list <span class="o">&amp;&amp;</span> <span class="se">\</span>
+    <span class="nb">echo</span> <span class="s2">&quot;deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64 /&quot;</span> &gt; /etc/apt/sources.list.d/nvidia-ml.list
+
+<span class="c1"># The following cuda libraries are required to compile igibson</span>
+apt-get update <span class="o">&amp;&amp;</span> apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
+    xserver-xorg-video-nvidia-470 <span class="se">\</span>
+    cuda-cudart-11-1<span class="o">=</span><span class="m">11</span>.1.74-1 <span class="se">\</span>
+    cuda-compat-11-1 <span class="se">\</span>
+    cuda-command-line-tools-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
+    cuda-libraries-dev-11-1<span class="o">=</span><span class="m">11</span>.1.1-1 <span class="se">\</span>
+
+<span class="c1"># For building and running igibson</span>
+apt-get update <span class="o">&amp;&amp;</span> apt-get install -y --no-install-recommends <span class="se">\</span>
+    cmake <span class="se">\</span>
+    git <span class="se">\</span>
+    g++ <span class="se">\</span>
+    libegl-dev
+</pre></div>
+</div>
+</p>
+</details>
+</div>
+<p>By default, iGibson builds with CUDA support which requires that <code class="docutils literal notranslate"><span class="pre">nvcc</span></code> is on your path (or CUDA 11 is symlinked to <code class="docutils literal notranslate"><span class="pre">/usr/local/cuda</span></code> from <code class="docutils literal notranslate"><span class="pre">/usr/local/cuda-11.1</span></code>). Cmake uses <code class="docutils literal notranslate"><span class="pre">nvcc</span></code> to find the CUDA libraries and headers when building iGibson. Add the following to your shell rc (<code class="docutils literal notranslate"><span class="pre">.bashrc</span></code>, <code class="docutils literal notranslate"><span class="pre">.zshrc</span></code>, etc.) and re-login to your shell (<code class="docutils literal notranslate"><span class="pre">exec</span> <span class="pre">bash</span></code>, <code class="docutils literal notranslate"><span class="pre">exec</span> <span class="pre">zsh</span></code>, etc.):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span> <span class="nv">PATH</span><span class="o">=</span>/usr/local/cuda-11.1/bin:<span class="nv">$PATH</span>
+</pre></div>
+</div>
+<p>Then verify nvcc is on your PATH:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$ nvcc --version
+nvcc: NVIDIA <span class="o">(</span>R<span class="o">)</span> Cuda compiler driver
+Copyright <span class="o">(</span>c<span class="o">)</span> <span class="m">2005</span>-2020 NVIDIA Corporation
+Built on Mon_Oct_12_20:09:46_PDT_2020
+Cuda compilation tools, release <span class="m">11</span>.1, V11.1.105
+Build cuda_11.1.TC455_06.29190527_0
+</pre></div>
+</div>
+<p>In case you want to build without CUDA support (used for the “rendering to GPU tensor” feature), you will have to set <code class="docutils literal notranslate"><span class="pre">USE_CUDA</span></code> to <code class="docutils literal notranslate"><span class="pre">False</span></code> in <code class="docutils literal notranslate"><span class="pre">iGibson/igibson/render/CMakeLists.txt</span></code>.</p>
+</div>
+<div class="section" id="installing-igibson">
+<h3>Installing iGibson<a class="headerlink" href="#installing-igibson" title="Permalink to this headline"></a></h3>
+<p>We provide 3 methods to install the simulator.</p>
+<div class="section" id="pip">
+<h4>1. pip<a class="headerlink" href="#pip" title="Permalink to this headline"></a></h4>
+<p>iGibson’s simulator can be installed as a python package using pip:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install igibson  <span class="c1"># This step takes about 4 minutes</span>
+<span class="c1"># run the demo</span>
+python -m igibson.examples.demo.demo_static
+</pre></div>
+</div>
+</div>
+<div class="section" id="docker-image">
+<h4>2. Docker image<a class="headerlink" href="#docker-image" title="Permalink to this headline"></a></h4>
+<p>Docker provides an easy way to reproduce the development environment across platforms without manually installing the software dependencies. We have prepared docker images that contain everything you need to get started with iGibson.</p>
+<p>First, install Docker from the <a class="reference external" href="https://www.docker.com/">official website</a>. Please make sure that the docker version is at least v19.0 to enable native GPU support.</p>
+<p>Next, download our pre-built images with the script in the <code class="docutils literal notranslate"><span class="pre">iGibson</span></code> repo:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">iGibson</span>
+<span class="o">./</span><span class="n">docker</span><span class="o">/</span><span class="n">pull</span><span class="o">-</span><span class="n">images</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+<p>Two images will be downloaded:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">igibson/igibson:latest</span></code>: smaller image, but does not support GUI.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">igibson/igibson-gui:latest</span></code>: supports GUI and remote desktop access via VNC.</p></li>
+</ul>
+<p>We also provide scripts to build the images from scratch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># image without GUI:</span>
+<span class="n">cd</span> <span class="n">iGibson</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">base</span>
+<span class="o">./</span><span class="n">build</span><span class="o">.</span><span class="n">sh</span>
+
+<span class="c1"># image with GUI and VNC:</span>
+<span class="n">cd</span> <span class="n">iGibson</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">headless</span><span class="o">-</span><span class="n">gui</span>
+<span class="o">./</span><span class="n">build</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="compile-from-source">
+<h4>3. Compile from source<a class="headerlink" href="#compile-from-source" title="Permalink to this headline"></a></h4>
+<p>Alternatively, iGibson can be compiled from source: <a class="reference external" href="https://github.com/StanfordVL/iGibson">iGibson GitHub Repo</a>. First, you need to install anaconda following the guide on <a class="reference external" href="https://www.anaconda.com/">their website</a>.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
+<span class="nb">cd</span> iGibson
+
+<span class="c1"># if you didn&#39;t create the conda environment before:</span>
+conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+conda activate igibson
+
+pip install -e . <span class="c1"># This step takes about 4 minutes</span>
+</pre></div>
+</div>
+<p>We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.</p>
+<p>Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).</p>
+</div>
+</div>
+<div class="section" id="the-svl-pybullet-fork">
+<h3>The SVL pybullet fork<a class="headerlink" href="#the-svl-pybullet-fork" title="Permalink to this headline"></a></h3>
+<p>To optimize and accelerate physics simulation, we use a custom version of pybullet in iGibson. This is installed automatically if you install iGibson in a fresh conda environment, but if you already have a regular pybullet, you should manually remove it and install our fork as follows (otherwise your ‘pip install -e .’ will fail):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip uninstall pybullet
+pip install pybullet-svl
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="downloading-the-assets">
+<h2>Downloading the Assets<a class="headerlink" href="#downloading-the-assets" title="Permalink to this headline"></a></h2>
+<p>Once the environment has been installed, we need to download the assets to enable the simulation including models of the robotic agents, objects, 3D scenes, etc. This process requires three simple steps.</p>
+<p>First, we need to configure where the iGibson’s assets are going to be stored. The desired path should be indicated in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code>. The default place to store the data is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>assets_path: your_installation_path/igibson/data/assets 
+g_dataset_path: your_installation_path/igibson/data/g_dataset
+ig_dataset_path: your_installation_path/igibson/data/ig_dataset
+threedfront_dataset_path: your_installation_path/igibson/data/threedfront_dataset 
+cubicasa_dataset_path: your_installation_path/igibson/data/assetscubicasa_dataset 
+</pre></div>
+</div>
+<p>In case you prefer to store the assets in a different location, you can run the command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --change_data_path
+</pre></div>
+</div>
+<p>Second, we need to download the robot models and some small objects from <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz">here</a> and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_assets
+</pre></div>
+</div>
+<p>Third, we need to download datasets of scenes, and, possibly, more object models. For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
+For navigation tasks, we provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset and Matterport3D Dataset.
+In any case, please, follow the instructions <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a> to download the datasets.</p>
+<p>Alternatively, to avoid downloading the entire dataset, you can download a single <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/Rs.tar.gz">high quality small environment R’s</a> for demo and testing purposes.
+To download the demo data, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_demo_data
+</pre></div>
+</div>
+</div>
+<div class="section" id="testing">
+<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline"></a></h2>
+<p>To test iGibson is properly installed, you can run</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python
+&gt;&gt; import igibson
+</pre></div>
+</div>
+<p>For a full suite of tests and benchmarks, you can refer to <a class="reference internal" href="tests.html"><span class="doc std std-doc">tests</span></a> for more details.</p>
+</div>
+<div class="section" id="uninstalling">
+<h2>Uninstalling<a class="headerlink" href="#uninstalling" title="Permalink to this headline"></a></h2>
+<p>Uninstalling iGibson is easy: <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">uninstall</span> <span class="pre">igibson</span></code></p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="intro.html" class="btn btn-neutral float-left" title="iGibson: the Interactive Gibson Environment" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="quickstart.html" class="btn btn-neutral float-right" title="Quickstart" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
