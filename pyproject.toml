@@ -39,7 +39,7 @@ exclude = [
 testpaths = [
     "tests",
 ]
-addopts = '--cov=igibson'
+addopts = '--cov=igibson --cov-report=xml'
 
 [tool.coverage.run]
-omit = ["external/*"]
+omit = ["igibson/external/*"]
