@@ -20,18 +20,24 @@ def get_available_devices():
 
     FNULL = open(os.devnull, "w")
 
-    available_devices = []
+    device_list = []
+    device_info = {}
     for i in range(num_devices):
         try:
             if b"NVIDIA" in subprocess.check_output(["{}/test_device".format(executable_path), str(i)], stderr=FNULL):
-                available_devices.append(i)
+                device_list.append(i)
+                device_info[i] = {"device_type": "nvidia"}
+                logging.info("Device {} is available for rendering".format(i))
+            elif b"Intel" in subprocess.check_output(["{}/test_device".format(executable_path), str(i)], stderr=FNULL):
+                device_list.append(i)
+                device_info[i] = {"device_type": "intel"}
                 logging.info("Device {} is available for rendering".format(i))
         except subprocess.CalledProcessError as e:
             logging.info(e)
             logging.info("Device {} is not available for rendering".format(i))
     FNULL.close()
 
-    return available_devices
+    return device_list, device_info
 
 
 def get_cuda_device(minor_idx):
@@ -63,6 +69,6 @@ def get_cuda_device(minor_idx):
 
 
 if __name__ == "__main__":
-    graphics_devices = get_available_devices()
+    graphics_devices, device_info = get_available_devices()
     logging.info("Graphics Devices: {}".format(graphics_devices))
     logging.info("Graphics Device Ids: {}".format([get_cuda_device(item) for item in graphics_devices]))

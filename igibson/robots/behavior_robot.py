@@ -722,7 +722,7 @@ class BRHandBase(ArticulatedObject):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
         self.set_close_fraction(new_trig_frac)
         self.trigger_fraction = new_trig_frac
 
@@ -922,7 +922,7 @@ class BRHand(BRHandBase):
 
         return ray_data
 
-    def find_hand_contacts(self, find_all=False):
+    def find_hand_contacts(self, find_all=False, return_contact_positions=False):
         """
         Calculates the body ids and links that have force applied to them by the VR hand.
         """
@@ -939,7 +939,11 @@ class BRHand(BRHandBase):
                 continue
             c_bid = cpt[2]
             c_link = cpt[4]
-            contact_data.append((c_bid, c_link))
+            c_contact_pos = cpt[5]
+            if return_contact_positions:
+                contact_data.append((c_bid, c_link, c_contact_pos))
+            else:
+                contact_data.append((c_bid, c_link))
 
         return contact_data
 
@@ -1000,7 +1004,7 @@ class BRHand(BRHandBase):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
 
         # Execute gradual release of object
         if self.release_counter is not None:
@@ -1017,7 +1021,7 @@ class BRHand(BRHandBase):
 
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
-            if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
+            if new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
@@ -1033,14 +1037,42 @@ class BRHand(BRHandBase):
                     return False
                 ag_bid, ag_link = ag_data
 
-                child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
-
-                # If we grab a child link of a URDF, create a p2p joint
-                if ag_link == -1:
-                    joint_type = p.JOINT_FIXED
-                else:
+                # Create a p2p joint if it's a child link of a fixed URDF that is connected by a revolute or prismatic joint
+                if (
+                    ag_link != -1
+                    and p.getJointInfo(ag_bid, ag_link)[2] in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]
+                    and ag_bid in self.parent.simulator.scene.objects_by_id
+                    and hasattr(self.parent.simulator.scene.objects_by_id[ag_bid], "main_body_is_fixed")
+                    and self.parent.simulator.scene.objects_by_id[ag_bid].main_body_is_fixed
+                ):
                     joint_type = p.JOINT_POINT2POINT
+                else:
+                    joint_type = p.JOINT_FIXED
 
+                force_data = self.find_hand_contacts(return_contact_positions=True)
+                contact_pos = None
+                for c_bid, c_link, c_contact_pos in force_data:
+                    if (c_bid, c_link) == ag_data:
+                        contact_pos = c_contact_pos
+                        break
+                assert contact_pos is not None
+
+                # Joint frame set at the contact point
+                joint_frame_pos = contact_pos
+                joint_frame_orn = [0, 0, 0, 1]
+                palm_link_pos, palm_link_orn = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)[:2]
+                inv_palm_link_pos, inv_palm_link_orn = p.invertTransform(palm_link_pos, palm_link_orn)
+                parent_frame_pos, parent_frame_orn = p.multiplyTransforms(
+                    inv_palm_link_pos, inv_palm_link_orn, joint_frame_pos, joint_frame_orn
+                )
+                if ag_link == -1:
+                    obj_pos, obj_orn = p.getBasePositionAndOrientation(ag_bid)
+                else:
+                    obj_pos, obj_orn = p.getLinkState(ag_bid, ag_link)[:2]
+                inv_obj_pos, inv_obj_orn = p.invertTransform(obj_pos, obj_orn)
+                child_frame_pos, child_frame_orn = p.multiplyTransforms(
+                    inv_obj_pos, inv_obj_orn, joint_frame_pos, joint_frame_orn
+                )
                 self.obj_cid = p.createConstraint(
                     parentBodyUniqueId=self.get_body_id(),
                     parentLinkIndex=PALM_LINK_INDEX,
@@ -1048,12 +1080,13 @@ class BRHand(BRHandBase):
                     childLinkIndex=ag_link,
                     jointType=joint_type,
                     jointAxis=(0, 0, 0),
-                    parentFramePosition=(0, 0, 0),
+                    parentFramePosition=parent_frame_pos,
                     childFramePosition=child_frame_pos,
+                    parentFrameOrientation=parent_frame_orn,
                     childFrameOrientation=child_frame_orn,
                 )
                 # Modify max force based on user-determined assist parameters
-                if ag_link == -1:
+                if joint_type == p.JOINT_FIXED:
                     max_force = ASSIST_FORCE
                 else:
                     max_force = ASSIST_FORCE * ARTICULATED_ASSIST_FRACTION
@@ -1064,6 +1097,10 @@ class BRHand(BRHandBase):
                     "childLinkIndex": ag_link,
                     "jointType": joint_type,
                     "maxForce": max_force,
+                    "parentFramePosition": parent_frame_pos,
+                    "childFramePosition": child_frame_pos,
+                    "parentFrameOrientation": parent_frame_orn,
+                    "childFrameOrientation": child_frame_orn,
                 }
                 self.object_in_hand = ag_bid
                 self.should_freeze_joints = True
@@ -1073,12 +1110,7 @@ class BRHand(BRHandBase):
                 return True
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if (
-                new_trig_frac >= 0.0
-                and new_trig_frac <= 1.0
-                and new_trig_frac <= TRIGGER_FRACTION_THRESHOLD
-                or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD
-            ):
+            if new_trig_frac <= TRIGGER_FRACTION_THRESHOLD or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD:
                 p.removeConstraint(self.obj_cid)
                 self.obj_cid = None
                 self.obj_cid_params = {}
@@ -1154,9 +1186,6 @@ class BRHand(BRHandBase):
         if self.should_freeze_joints:
             return
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
-
         for joint_index in range(p.getNumJoints(self.get_body_id())):
             jf = p.getJointInfo(self.get_body_id(), joint_index)
             j_name = jf[1]
@@ -1165,45 +1194,14 @@ class BRHand(BRHandBase):
                 close_pos = THUMB_CLOSE_POSITION
             else:
                 close_pos = FINGER_CLOSE_POSITION
-            interp_frac = (close_pos - HAND_OPEN_POSITION) * clipped_close_frac
+            interp_frac = (close_pos - HAND_OPEN_POSITION) * close_frac
             target_pos = HAND_OPEN_POSITION + interp_frac
             p.setJointMotorControl2(
                 self.get_body_id(), joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=HAND_CLOSE_FORCE
             )
 
-    def get_child_frame_pose(self, ag_bid, ag_link):
-        # Different pos/orn calculations for base/links
-        if ag_link == -1:
-            body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
-        else:
-            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
-
-        # Get inverse world transform of body frame
-        inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-        link_state = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)
-        link_pos = link_state[0]
-        link_orn = link_state[1]
-        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-        child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
-
-        return child_frame_pos, child_frame_orn
-
     def dump_part_state(self):
         dump = super(BRHand, self).dump_part_state()
-
-        # Recompute child frame pose because it could have changed since the
-        # constraint has been created
-        if self.obj_cid is not None:
-            ag_bid = self.obj_cid_params["childBodyUniqueId"]
-            ag_link = self.obj_cid_params["childLinkIndex"]
-            child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
-            self.obj_cid_params.update(
-                {
-                    "childFramePosition": child_frame_pos,
-                    "childFrameOrientation": child_frame_orn,
-                }
-            )
-
         dump.update(
             {
                 "object_in_hand": self.object_in_hand,
@@ -1241,8 +1239,9 @@ class BRHand(BRHandBase):
                 childLinkIndex=dump["obj_cid_params"]["childLinkIndex"],
                 jointType=dump["obj_cid_params"]["jointType"],
                 jointAxis=(0, 0, 0),
-                parentFramePosition=(0, 0, 0),
+                parentFramePosition=dump["obj_cid_params"]["parentFramePosition"],
                 childFramePosition=dump["obj_cid_params"]["childFramePosition"],
+                parentFrameOrientation=dump["obj_cid_params"]["parentFrameOrientation"],
                 childFrameOrientation=dump["obj_cid_params"]["childFrameOrientation"],
             )
             p.changeConstraint(self.obj_cid, maxForce=dump["obj_cid_params"]["maxForce"])
@@ -1307,11 +1306,8 @@ class BRGripper(BRHandBase):
         b = p.getJointState(self.get_body_id(), 2)[0]
         p.setJointMotorControl2(self.get_body_id(), 0, p.POSITION_CONTROL, targetPosition=b, force=3)
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
-
         # Change gear constraint to reflect trigger close fraction
-        p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - clipped_close_frac, maxForce=3)
+        p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - close_frac, maxForce=3)
 
 
 class BREye(ArticulatedObject):

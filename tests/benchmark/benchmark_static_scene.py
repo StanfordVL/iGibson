@@ -11,7 +11,7 @@ from igibson.utils.utils import parse_config
 
 
 def benchmark(render_to_tensor=False, resolution=512):
-    config = parse_config(os.path.join(igibson.root_path, "test", "test.yaml"))
+    config = parse_config(os.path.join(os.path.dirname(__file__), "..", "test.yaml"))
     s = Simulator(mode="headless", image_width=resolution, image_height=resolution, render_to_tensor=render_to_tensor)
     scene = StaticIndoorScene("Rs", build_graph=True, pybullet_load_texture=True)
     s.import_scene(scene)

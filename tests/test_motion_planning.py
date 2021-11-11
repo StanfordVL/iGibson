@@ -13,7 +13,7 @@ def test_occupancy_grid():
     print("Test env")
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(igibson.root_path, "test", "test_house_occupancy_grid.yaml")
+    config_filename = os.path.join(os.path.dirname(__file__), "test_house_occupancy_grid.yaml")
 
     nav_env = iGibsonEnv(config_file=config_filename, mode="headless")
     nav_env.reset()
@@ -34,7 +34,7 @@ def test_base_planning():
     print("Test env")
     download_assets()
     download_demo_data()
-    config_filename = os.path.join(igibson.root_path, "test", "test_house_occupancy_grid.yaml")
+    config_filename = os.path.join(os.path.dirname(__file__), "test_house_occupancy_grid.yaml")
 
     nav_env = iGibsonEnv(config_file=config_filename, mode="headless")
     motion_planner = MotionPlanningWrapper(nav_env)

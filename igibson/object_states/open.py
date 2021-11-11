@@ -42,8 +42,6 @@ def _get_relevant_joints(obj):
 
     both_sides = obj.metadata[_BOTH_SIDES_METADATA_FIELD] if _BOTH_SIDES_METADATA_FIELD in obj.metadata else False
 
-    both_sides = obj.metadata[_BOTH_SIDES_METADATA_FIELD] if _BOTH_SIDES_METADATA_FIELD in obj.metadata else False
-
     # Get joint IDs and names from metadata annotation. If object doesn't have the openable metadata,
     # we stop here and return Open=False.
     if _METADATA_FIELD not in obj.metadata:
