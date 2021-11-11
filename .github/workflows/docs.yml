@@ -34,7 +34,7 @@ jobs:
     name: Deploy prod documentation
     needs: build-docs
     runs-on: ubuntu-latest
-    if: github.repository == 'StanfordVL/iGibson' and github.ref == 'refs/heads/master'
+    if: github.repository == 'StanfordVL/iGibson' && github.ref == 'refs/heads/master'
     
     steps:
     - name: Download artifact
