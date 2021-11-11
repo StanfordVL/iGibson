@@ -23,10 +23,9 @@ endif()
 
 # If a user is using a new enough cmake version (Ubuntu 18.04 or greater)
 # Automatically detect and enable/disable CUDA, otherwise assume true
-if (UNIX AND (CMAKE_VERSION VERSION_GREATER 3.8 OR CMAKE_VERSION VERSION_EQUAL 3.8))
-  include(CheckLanguage)
-  check_language(CUDA)
-  if (NOT CMAKE_CUDA_COMPILER)
+if (UNIX AND (CMAKE_VERSION VERSION_GREATER 3.17 OR CMAKE_VERSION VERSION_EQUAL 3.17))
+  find_package(CUDAToolkit)
+  if (NOT CUDAToolkit_FOUND)
     message(WARNING [=[
       nvcc not detected in path. iGibson will be built without CUDA support used
       for rendering to tensors. If desired, please install cudatoolkit with your

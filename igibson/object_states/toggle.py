@@ -1,11 +1,10 @@
-import numpy as np
 import pybullet as p
 
 from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.objects.visual_marker import VisualMarker
-from igibson.utils.constants import PyBulletSleepState
+from igibson.utils.constants import PyBulletSleepState, SimulatorMode
 from igibson.utils.utils import brighten_texture
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
@@ -64,7 +63,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
 
         # swap two types of markers when toggled
         # when hud overlay is on, we show the toggle buttons, otherwise the buttons are hidden
-        if self.simulator.can_access_vr_context and self.simulator.vr_overlay_initialized:
+        if self.simulator.mode == SimulatorMode.VR:
             hud_overlay_show_state = self.simulator.get_hud_show_state()
         else:
             hud_overlay_show_state = False

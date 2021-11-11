@@ -28,6 +28,7 @@ from igibson import assets_path
 from igibson.external.pybullet_tools.utils import set_all_collisions
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils.constants import SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 
 # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
@@ -136,7 +137,7 @@ class BehaviorRobot(object):
         self.robot_num = robot_num
         self.hands = hands
         self.use_body = use_body
-        if use_tracked_body_override is None:
+        if sim.mode == SimulatorMode.VR and use_tracked_body_override is None:
             self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
         else:
             self.use_tracked_body = use_tracked_body_override
@@ -268,7 +269,7 @@ class BehaviorRobot(object):
             # Either trigger press will activate robot, and teleport the user to the robot if they are using VR
             if action[19] > 0 or action[27] > 0:
                 self.activated = True
-                if self.simulator.can_access_vr_context:
+                if self.simulator.mode == SimulatorMode.VR:
                     body_pos = self.parts["body"].get_position()
                     self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
         else:
@@ -278,7 +279,7 @@ class BehaviorRobot(object):
             # Disable colliders
             self.set_colliders(enabled=False)
             # Move user close to the body to start with
-            if self.simulator.can_access_vr_context:
+            if self.simulator.mode == SimulatorMode.VR:
                 body_pos = self.parts["body"].get_position()
                 self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
             # Body constraint is the last one we need to activate

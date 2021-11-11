@@ -39,8 +39,8 @@ def parse_args():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["headless", "vr", "simple"],
-        help="Whether to disable replay through VR and use iggui instead.",
+        choices=["headless", "vr", "gui_non_interactive"],
+        help="Mode for replaying",
     )
     return parser.parse_args()
 

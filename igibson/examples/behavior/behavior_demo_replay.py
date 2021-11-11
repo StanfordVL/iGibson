@@ -59,8 +59,8 @@ def parse_args():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["headless", "vr", "simple"],
-        help="Whether to disable replay through VR and use iggui instead.",
+        choices=["headless", "vr", "gui_non_interactive"],
+        help="Mode to run simulator in",
     )
     return parser.parse_args()
 
@@ -171,7 +171,6 @@ def replay_demo(
         physics_timestep=physics_timestep,
         render_timestep=render_timestep,
         rendering_settings=vr_rendering_settings,
-        vr_settings=vr_settings,
         image_width=image_size[0],
         image_height=image_size[1],
     )
@@ -213,7 +212,7 @@ def replay_demo(
         task_done = False
         while log_reader.get_data_left_to_read():
 
-            igbhvr_act_inst.simulator.step(print_stats=profile)
+            igbhvr_act_inst.simulator.step()
             task_done |= igbhvr_act_inst.check_success()[0]
 
             # Set camera each frame

@@ -15,6 +15,7 @@ from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from igibson.simulator import Simulator
+from igibson.simulator_vr import SimulatorVR
 from igibson.utils.ig_logging import IGLogWriter
 
 POST_TASK_STEPS = 200
@@ -127,14 +128,20 @@ def collect_demo(
     )
 
     # VR system settings
-    mode = "headless" if no_vr else "vr"
-    s = Simulator(
-        mode=mode,
-        rendering_settings=vr_rendering_settings,
-        vr_settings=VrSettings(use_vr=True),
-        physics_timestep=1 / 300.0,
-        render_timestep=1 / 30.0,
-    )
+    if no_vr:
+        s = Simulator(
+            mode="headless",
+            rendering_settings=vr_rendering_settings,
+            physics_timestep=1 / 300.0,
+            render_timestep=1 / 30.0,
+        )
+    else:
+        s = SimulatorVR(
+            rendering_settings=vr_rendering_settings,
+            vr_settings=VrSettings(use_vr=True),
+            physics_timestep=1 / 300.0,
+            render_timestep=1 / 30.0,
+        )
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
 
     scene_kwargs = None
@@ -179,7 +186,7 @@ def collect_demo(
 
     steps = 0
     while max_steps < 0 or steps < max_steps:
-        igbhvr_act_inst.simulator.step(print_stats=profile)
+        igbhvr_act_inst.simulator.step()
         task_done, satisfied_predicates = igbhvr_act_inst.check_success()
 
         if no_vr:

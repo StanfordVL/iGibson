@@ -490,8 +490,8 @@ class IGLogWriter(object):
         -- updating pybullet data
         -- incrementing frame counter by 1
         """
-        self.write_frame_data_to_map()
         if self.store_vr:
+            self.write_frame_data_to_map()
             self.write_vr_data_to_map()
         self.write_pybullet_data_to_map()
         if self.task:

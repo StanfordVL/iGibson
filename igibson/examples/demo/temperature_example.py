@@ -13,7 +13,7 @@ download_assets()
 
 
 def main():
-    s = Simulator(mode="iggui", image_width=1280, image_height=720)
+    s = Simulator(mode="gui_interactive", image_width=1280, image_height=720)
 
     try:
         scene = EmptyScene()

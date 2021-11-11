@@ -47,7 +47,11 @@ if VR_MODE:
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
     s = Simulator(
-        mode="iggui", image_width=960, image_height=720, device_idx=0, rendering_settings=vr_rendering_settings
+        mode="gui_interactive",
+        image_width=960,
+        image_height=720,
+        device_idx=0,
+        rendering_settings=vr_rendering_settings,
     )
     s.viewer.min_cam_z = 1.0
 

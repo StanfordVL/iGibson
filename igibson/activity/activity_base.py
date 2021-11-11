@@ -406,7 +406,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             Exception("Only BehaviorRobot and FetchGripper are supported")
 
         agent.robot_specific_reset()
-        self.simulator.register_main_vr_robot(agent)
+        self.simulator.robots = [agent]
         assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
 
     def move_agent(self):

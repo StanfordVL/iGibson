@@ -32,7 +32,6 @@ class BaseEnv(gym.Env):
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
-        render_to_tensor=False,
         device_idx=0,
     ):
         """
@@ -72,7 +71,6 @@ class BaseEnv(gym.Env):
             image_height=self.config.get("image_height", 128),
             vertical_fov=self.config.get("vertical_fov", 90),
             device_idx=device_idx,
-            render_to_tensor=render_to_tensor,
             rendering_settings=settings,
         )
         self.load()
