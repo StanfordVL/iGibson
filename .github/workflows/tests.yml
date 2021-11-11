@@ -5,6 +5,7 @@ on: [pull_request, push]
 jobs:
   test:
     runs-on: [linux, gpu, dataset-enabled]
+    if: github.repository == 'StanfordVL/iGibson-dev'
 
     steps:
       - name: Checkout source
