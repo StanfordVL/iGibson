@@ -84,26 +84,56 @@ class MeshRenderer(object):
         self.text_manager = TextManager(self)
         self.texts = []
 
-        device = None
-        """
-        device_idx is the major id
-        device is the minor id
-        you can get it from nvidia-smi -a
+        self.msaa = rendering_settings.msaa
 
-        The minor number for the device is such that the Nvidia device node file for each GPU will have the form
-        /dev/nvidia[minor number]. Available only on Linux platform.
+        if self.platform == "Darwin":
+            if self.optimized:
+                logging.error("Optimized renderer is not supported on Mac")
+                exit()
+            from igibson.render.mesh_renderer import GLFWRendererContext  # type: ignore
 
-        TODO: add device management for windows platform.
-        """
-
-        if os.environ.get("GIBSON_DEVICE_ID", None):
-            device = int(os.environ.get("GIBSON_DEVICE_ID"))
-            logging.info(
-                "GIBSON_DEVICE_ID environment variable has been manually set. "
-                "Using device {} for rendering".format(device)
+            self.r = GLFWRendererContext.GLFWRendererContext(
+                width,
+                height,
+                int(self.rendering_settings.glfw_gl_version[0]),
+                int(self.rendering_settings.glfw_gl_version[1]),
+                self.rendering_settings.show_glfw_window,
+                rendering_settings.fullscreen,
             )
-        else:
-            if self.platform != "Windows":
+
+        elif self.platform == "Windows" or self.__class__.__name__ == "MeshRendererVR":
+            from igibson.render.mesh_renderer import VRRendererContext  # type: ignore
+
+            self.r = VRRendererContext.VRRendererContext(
+                width,
+                height,
+                int(self.rendering_settings.glfw_gl_version[0]),
+                int(self.rendering_settings.glfw_gl_version[1]),
+                self.rendering_settings.show_glfw_window,
+                rendering_settings.fullscreen,
+            )
+
+        elif self.platform == "Linux":
+            from igibson.render.mesh_renderer import EGLRendererContext
+
+            """
+            device_idx is the major id
+            device is the minor id
+            you can get it from nvidia-smi -a
+
+            The minor number for the device is such that the Nvidia device node file for each GPU will have the form
+            /dev/nvidia[minor number]. Available only on Linux platform.
+
+            """
+
+            device = os.environ.get("GIBSON_DEVICE_ID", None)
+            if device:
+                device = int(device)
+                logging.info(
+                    "GIBSON_DEVICE_ID environment variable has been manually set. "
+                    "Using device {} for rendering".format(device)
+                )
+            else:
                 available_devices, _ = get_available_devices()
                 if device_idx < len(available_devices):
                     device = available_devices[device_idx]
@@ -117,47 +147,8 @@ class MeshRenderer(object):
 
                     device = 0
 
-        self.device_idx = device_idx
-        self.device_minor = device
-        self.msaa = rendering_settings.msaa
-        if self.platform == "Darwin" and self.optimized:
-            logging.error("Optimized renderer is not supported on Mac")
-            exit()
-        if self.platform == "Darwin":
-            from igibson.render.mesh_renderer import GLFWRendererContext
-
-            self.r = GLFWRendererContext.GLFWRendererContext(
-                width,
-                height,
-                int(self.rendering_settings.glfw_gl_version[0]),
-                int(self.rendering_settings.glfw_gl_version[1]),
-                self.rendering_settings.show_glfw_window,
-                rendering_settings.fullscreen,
-            )
-        elif self.platform == "Windows":
-            from igibson.render.mesh_renderer import VRRendererContext
-
-            self.r = VRRendererContext.VRRendererContext(
-                width,
-                height,
-                int(self.rendering_settings.glfw_gl_version[0]),
-                int(self.rendering_settings.glfw_gl_version[1]),
-                self.rendering_settings.show_glfw_window,
-                rendering_settings.fullscreen,
-            )
-        elif self.platform == "Linux" and self.__class__.__name__ == "MeshRendererVR":
-            from igibson.render.mesh_renderer import VRRendererContext
-
-            self.r = VRRendererContext.VRRendererContext(
-                width,
-                height,
-                int(self.rendering_settings.glfw_gl_version[0]),
-                int(self.rendering_settings.glfw_gl_version[1]),
-                self.rendering_settings.show_glfw_window,
-                rendering_settings.fullscreen,
-            )
-        elif self.platform == "Linux":
-            from igibson.render.mesh_renderer import EGLRendererContext
+            self.device_idx = device_idx
+            self.device_minor = device
 
             self.r = EGLRendererContext.EGLRendererContext(width, height, device)
         else:
