@@ -117,7 +117,7 @@ class BehaviorRobot(object):
         use_ghost_hands=True,
         normal_color=True,
         show_visual_head=False,
-        use_tracked_body_override=None,
+        use_tracked_body=True,
     ):
         """
         Initializes BehaviorRobot:
@@ -129,18 +129,16 @@ class BehaviorRobot(object):
         :parm use_gripper: whether the agent should use the pybullet gripper or the iGibson VR hand
         :parm normal_color: whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
         :param show_visual_head: whether to render a head cone where the BREye is
-        :param use_tracked_body_override: sets use_tracked_body no matter what is set in the VR settings. Can be
-        used to initialize a BehaviorRobot in a robotics environment.
+        :param use_tracked_body: sets use_tracked_body to decide on which URDF to load, and which local transforms to use
         """
         # Basic parameters
         self.simulator = sim
         self.robot_num = robot_num
         self.hands = hands
         self.use_body = use_body
-        if sim.mode == SimulatorMode.VR and use_tracked_body_override is None:
+        self.use_tracked_body = use_tracked_body
+        if sim.mode == SimulatorMode.VR:
             self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
-        else:
-            self.use_tracked_body = use_tracked_body_override
         self.use_gripper = use_gripper
         self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
