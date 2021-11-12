@@ -1,3 +1,6 @@
+"""
+    Generate example top-down segmentation map via renderer
+"""
 import numpy as np
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
