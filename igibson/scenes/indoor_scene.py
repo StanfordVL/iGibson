@@ -14,7 +14,7 @@ from igibson.scenes.scene_base import Scene
 from igibson.utils.utils import l2_distance
 
 
-class IndoorScene(with_metaclass(ABCMeta, Scene)):
+class IndoorScene(Scene):
     """
     Indoor scene class for Gibson and iGibson.
     Contains the functionalities for navigation such as shortest path computation
@@ -46,15 +46,6 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         super(IndoorScene, self).__init__()
         logging.info("IndoorScene model: {}".format(scene_id))
         self.scene_id = scene_id
-        self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
-        self.trav_map_resolution = trav_map_resolution
-        self.trav_map_original_size = None
-        self.trav_map_size = None
-        self.trav_map_erosion = trav_map_erosion
-        self.trav_map_type = trav_map_type
-        self.build_graph = build_graph
-        self.num_waypoints = num_waypoints
-        self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
         self.pybullet_load_texture = pybullet_load_texture
         self.floor_heights = [0.0]
@@ -65,6 +56,17 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
 
         :param maps_path: String with the path to the folder containing the traversability maps
         """
+
+    #     self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
+    #     self.trav_map_resolution = trav_map_resolution
+    #     self.trav_map_original_size = None
+    #     self.trav_map_size = None
+    #     self.trav_map_erosion = trav_map_erosion
+    #     self.trav_map_type = trav_map_type
+    #     self.build_graph = build_graph
+    #     self.num_waypoints = num_waypoints
+    #     self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
+
         if not os.path.exists(maps_path):
             logging.warning("trav map does not exist: {}".format(maps_path))
             return

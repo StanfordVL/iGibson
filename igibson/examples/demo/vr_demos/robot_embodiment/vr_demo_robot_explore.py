@@ -10,7 +10,7 @@ from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.fetch_vr_robot import FetchVR
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 # IMPORTANT: Change this value if you have a more powerful machine
@@ -55,7 +55,7 @@ else:
     )
     s.viewer.min_cam_z = 1.0
 
-scene = InteractiveIndoorScene("Rs_int")
+scene = HomeScene("Rs_int")
 # Turn this on when debugging to speed up loading
 if LOAD_PARTIAL:
     scene._set_first_n_objects(10)

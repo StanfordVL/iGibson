@@ -1,4 +1,4 @@
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
 
 
@@ -24,7 +24,7 @@ class OutOfBound(BaseTerminationCondition):
 
         done = False
         # fall off the cliff of valid region
-        if isinstance(env.scene, InteractiveIndoorScene):
+        if isinstance(env.scene, HomeScene):
             robot_z = env.robots[0].get_position()[2]
             if robot_z < (env.scene.get_floor_height() - self.fall_off_thresh):
                 done = True

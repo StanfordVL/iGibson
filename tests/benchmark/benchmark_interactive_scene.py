@@ -9,7 +9,7 @@ import numpy as np
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_assets_version
 from igibson.utils.utils import parse_config
@@ -19,7 +19,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
     config = parse_config(os.path.join(os.path.dirname(__file__), "..", "test.yaml"))
     assets_version = get_ig_assets_version()
     print("assets_version", assets_version)
-    scene = InteractiveIndoorScene(
+    scene = HomeScene(
         scene_name, texture_randomization=False, object_randomization=False, ignore_visual_shape=True
     )
     settings = MeshRendererSettings(msaa=False, enable_shadow=False, optimized=optimized)

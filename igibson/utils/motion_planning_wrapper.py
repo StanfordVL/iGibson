@@ -22,7 +22,7 @@ from igibson.external.pybullet_tools.utils import (
 )
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.utils.utils import l2_distance, quatToXYZW, restoreState, rotate_vector_2d
 
 
@@ -171,7 +171,7 @@ class MotionPlanningWrapper(object):
         if type(self.env.scene) == StaticIndoorScene:
             if self.env.scene.mesh_body_id is not None:
                 self.mp_obstacles.append(self.env.scene.mesh_body_id)
-        elif type(self.env.scene) == InteractiveIndoorScene:
+        elif type(self.env.scene) == HomeScene:
             self.mp_obstacles.extend(self.env.scene.get_body_ids())
 
     def plan_base_motion(self, goal):

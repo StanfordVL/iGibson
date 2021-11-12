@@ -9,7 +9,7 @@ import numpy as np
 
 import igibson
 from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_assets_version
 from igibson.utils.constants import AVAILABLE_MODALITIES, NamedRenderingPresets
@@ -23,7 +23,7 @@ def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
     result = {}
     for scene_name in scene_list:
         for rendering_preset in rendering_presets_list:
-            scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=False)
+            scene = HomeScene(scene_name, texture_randomization=False, object_randomization=False)
             settings = NamedRenderingPresets[rendering_preset]
             if rendering_preset == "VISUAL_RL":
                 image_width = 128

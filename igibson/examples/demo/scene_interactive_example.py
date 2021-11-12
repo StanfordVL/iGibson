@@ -1,12 +1,12 @@
 import numpy as np
 
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 
 def main():
     s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0)
-    scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
+    scene = HomeScene("Rs_int", texture_randomization=False, object_randomization=False)
     s.import_ig_scene(scene)
 
     np.random.seed(0)

@@ -4,7 +4,7 @@ import argparse
 import os
 import random
 
-from igibson.scenes.igibson_indoor_scene import SCENE_SOURCE, InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import SCENE_SOURCE, HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_3dfront_scene_path, get_cubicasa_scene_path, get_ig_scene_path
 from igibson.utils.map_utils import gen_trav_map
@@ -31,7 +31,7 @@ def generate_trav_map(scene_name, scene_source, load_full_scene=True):
     else:
         scene_dir = get_3dfront_scene_path(scene_name)
     random.seed(0)
-    scene = InteractiveIndoorScene(
+    scene = HomeScene(
         scene_name, build_graph=False, texture_randomization=False, scene_source=scene_source
     )
     if not load_full_scene:

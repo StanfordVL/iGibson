@@ -16,7 +16,7 @@ from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.muvr_utils import IGVRClient, IGVRServer
 
@@ -65,7 +65,7 @@ def run_muvr(mode="server", host="localhost", port="8885"):
         light_dimming_factor=1.0,
     )
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
-    scene = InteractiveIndoorScene("Rs_int")
+    scene = HomeScene("Rs_int")
     if LOAD_PARTIAL:
         scene._set_first_n_objects(10)
     s.import_ig_scene(scene)

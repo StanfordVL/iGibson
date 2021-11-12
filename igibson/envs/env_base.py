@@ -12,7 +12,7 @@ from igibson.robots.locobot_robot import Locobot
 from igibson.robots.turtlebot_robot import Turtlebot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
@@ -139,7 +139,7 @@ class BaseEnv(gym.Env):
             )
             self.simulator.import_scene(scene, load_texture=self.config.get("load_texture", True))
         elif self.config["scene"] == "igibson":
-            scene = InteractiveIndoorScene(
+            scene = HomeScene(
                 self.config["scene_id"],
                 waypoint_resolution=self.config.get("waypoint_resolution", 0.2),
                 num_waypoints=self.config.get("num_waypoints", 10),

@@ -14,7 +14,7 @@ from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch_gripper_robot import FetchGripper
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
 from igibson.utils.checkpoint_utils import load_internal_states, save_internal_states
@@ -84,7 +84,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         if online_sampling:
             scene_kwargs["merge_fixed_links"] = False
         result = self.initialize(
-            InteractiveIndoorScene,
+            HomeScene,
             scene_id=scene_id,
             scene_kwargs=scene_kwargs,
             online_sampling=online_sampling,
@@ -914,7 +914,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         scene_id = self.scene.scene_id
         clutter_ids = [""] + list(range(2, 5))
         clutter_id = np.random.choice(clutter_ids)
-        clutter_scene = InteractiveIndoorScene(scene_id, "{}_clutter{}".format(scene_id, clutter_id))
+        clutter_scene = HomeScene(scene_id, "{}_clutter{}".format(scene_id, clutter_id))
         existing_objects = [value for key, value in self.object_scope.items() if "floor.n.01" not in key]
         self.simulator.import_non_colliding_objects(
             objects=clutter_scene.objects_by_name, existing_objects=existing_objects, min_distance=0.5

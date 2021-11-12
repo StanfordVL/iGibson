@@ -22,7 +22,7 @@ from igibson.render.viewer import Viewer, ViewerSimple
 # REMOVE
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs
 from igibson.utils.constants import PyBulletSleepState, SemanticClass, SimulatorMode
@@ -229,7 +229,7 @@ class Simulator:
         :return: pybullet body ids from scene.load function
         """
         assert isinstance(scene, Scene) and not isinstance(
-            scene, InteractiveIndoorScene
+            scene, HomeScene
         ), "import_scene can only be called with Scene that is not InteractiveIndoorScene"
         # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
         # load them in the renderer
@@ -278,7 +278,7 @@ class Simulator:
         :return: pybullet body ids from scene.load function
         """
         assert isinstance(
-            scene, InteractiveIndoorScene
+            scene, HomeScene
         ), "import_ig_scene can only be called with InteractiveIndoorScene"
         if not self.use_pb_gui:
             scene.set_ignore_visual_shape(True)

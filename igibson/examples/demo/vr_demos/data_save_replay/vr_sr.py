@@ -24,7 +24,7 @@ from igibson.objects.articulated_object import ArticulatedObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 
@@ -72,7 +72,7 @@ def run_action_sr(mode):
         vr_settings = VrSettings(use_vr=True)
 
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
-    scene = InteractiveIndoorScene(
+    scene = HomeScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
     )
     s.import_ig_scene(scene)

@@ -19,7 +19,7 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.robots.fetch_robot import Fetch
 from igibson.robots.turtlebot_robot import Turtlebot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
@@ -239,7 +239,7 @@ class ToyEnvInt(object):
         )
         background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
-        scene = InteractiveIndoorScene(scene, texture_randomization=False, object_randomization=False)
+        scene = HomeScene(scene, texture_randomization=False, object_randomization=False)
         # scene._set_first_n_objects(5)
         scene.open_all_doors()
 

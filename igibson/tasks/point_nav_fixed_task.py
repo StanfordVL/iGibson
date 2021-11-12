@@ -6,7 +6,7 @@ from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.tasks.task_base import BaseTask
 from igibson.termination_conditions.max_collision import MaxCollision
 from igibson.termination_conditions.out_of_bound import OutOfBound
@@ -132,7 +132,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if isinstance(env.scene, InteractiveIndoorScene):
+        if isinstance(env.scene, HomeScene):
             env.scene.reset_scene_objects()
         elif isinstance(env.scene, StaticIndoorScene):
             env.scene.reset_floor(floor=self.floor_num)

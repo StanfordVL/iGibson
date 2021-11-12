@@ -4,7 +4,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.reward_functions.potential_reward import PotentialReward
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.tasks.task_base import BaseTask
 from igibson.termination_conditions.max_collision import MaxCollision
 from igibson.termination_conditions.out_of_bound import OutOfBound
@@ -21,7 +21,7 @@ class RoomRearrangementTask(BaseTask):
     def __init__(self, env):
         super(RoomRearrangementTask, self).__init__(env)
         assert isinstance(
-            env.scene, InteractiveIndoorScene
+            env.scene, HomeScene
         ), "room rearrangement can only be done in InteractiveIndoorScene"
         self.prismatic_joint_reward_scale = self.config.get("prismatic_joint_reward_scale", 1.0)
         self.revolute_joint_reward_scale = self.config.get("revolute_joint_reward_scale", 1.0)

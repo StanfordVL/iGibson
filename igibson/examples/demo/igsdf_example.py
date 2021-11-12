@@ -2,7 +2,7 @@ import argparse
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.profiler import Profiler
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 
@@ -13,7 +13,7 @@ def main():
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
     s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
 
-    scene = InteractiveIndoorScene(args.scene)
+    scene = HomeScene(args.scene)
     s.import_ig_scene(scene)
 
     for i in range(10000):

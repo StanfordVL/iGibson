@@ -16,7 +16,7 @@ from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 # Objects in the benchmark - corresponds to Rs kitchen environment, for range of items and
@@ -76,7 +76,7 @@ def main():
     )
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings)
 
-    scene = InteractiveIndoorScene(
+    scene = HomeScene(
         "Rs_int", load_object_categories=benchmark_names, load_room_types=["kitchen", "lobby"]
     )
     # scene.load_object_categories(benchmark_names)

@@ -2,12 +2,12 @@
 
 import time
 
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 
 def test_import_igsdf():
-    scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
+    scene = HomeScene("Rs_int", texture_randomization=False, object_randomization=False)
     s = Simulator(mode="headless", image_width=512, image_height=512, device_idx=0)
     s.import_ig_scene(scene)
 

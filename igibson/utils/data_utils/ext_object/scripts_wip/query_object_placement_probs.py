@@ -3,7 +3,7 @@ import json
 import os
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 
@@ -91,7 +91,7 @@ def main(args):
             settings = MeshRendererSettings(enable_shadow=False, msaa=False, enable_pbr=False)
             s = Simulator(mode="headless", image_width=800, image_height=800, rendering_settings=settings)
             simulator = s
-            scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=False)
+            scene = HomeScene(scene_name, texture_randomization=False, object_randomization=False)
             s.import_ig_scene(scene)
 
             for obj_name in scene.objects_by_name:

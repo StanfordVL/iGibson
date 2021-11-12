@@ -9,7 +9,7 @@ import pybullet as p
 
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_3dfront_scene_path, get_cubicasa_scene_path, get_ig_scene_path
 
@@ -30,7 +30,7 @@ def test_import_igsdf(scene_name, scene_source):
     light_modulation_map_filename = os.path.join(scene_dir, "layout", "floor_lighttype_0.png")
     background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
-    scene = InteractiveIndoorScene(
+    scene = HomeScene(
         scene_name, texture_randomization=False, object_randomization=False, scene_source=scene_source
     )
 

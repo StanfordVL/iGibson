@@ -9,7 +9,7 @@ from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 
 # Set to true to use viewer manipulation instead of VR
@@ -53,7 +53,7 @@ else:
     vr_settings = VrSettings(use_vr=True)
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
 
-scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
+scene = HomeScene("Rs_int", texture_randomization=False, object_randomization=False)
 s.import_ig_scene(scene)
 
 if not VIEWER_MANIP:

@@ -9,7 +9,7 @@ import numpy as np
 from igibson.object_states.utils import sample_kinematics
 from igibson.objects.articulated_object import URDFObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs
 
@@ -81,7 +81,7 @@ def main(args):
             "carpet",
         ]
         simulator = s
-        scene = InteractiveIndoorScene(
+        scene = HomeScene(
             scene_name,
             texture_randomization=False,
             object_randomization=False,

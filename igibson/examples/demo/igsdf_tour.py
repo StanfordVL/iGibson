@@ -9,7 +9,7 @@ from PIL import Image
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.profiler import Profiler
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.scenes.igibson_indoor_scene import HomeScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_scene_path
 
@@ -46,7 +46,7 @@ def main():
     s = Simulator(mode="headless", image_width=1080, image_height=720, vertical_fov=60, rendering_settings=settings)
 
     random.seed(args.seed)
-    scene = InteractiveIndoorScene(
+    scene = HomeScene(
         args.scene, texture_randomization=args.domain_rand, object_randomization=args.object_rand
     )
 
