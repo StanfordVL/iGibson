@@ -216,7 +216,7 @@ if __name__ == "__main__":
     scene.objects_by_id = {}
     s.import_scene(scene, render_floor_plane=True)
 
-    agent = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True, use_ghost_hands=False)
+    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
     s.import_behavior_robot(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
