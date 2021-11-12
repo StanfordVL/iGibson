@@ -33,9 +33,9 @@ init_success = igbhvr_act_inst.initialize_simulator(
     scene_id=scene,
     simulator=simulator,
     load_clutter=True,
-    should_debug_sampling=False,
     scene_kwargs=scene_kwargs,
     online_sampling=False,
+    debug_obj_inst=None,
 )
 print("success")
 embed()

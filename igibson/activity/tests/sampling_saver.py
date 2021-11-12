@@ -30,14 +30,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def remove_newly_added_objects(igbhvr_act_inst, state_id):
-    for sim_obj in igbhvr_act_inst.newly_added_objects:
-        igbhvr_act_inst.scene.remove_object(sim_obj)
-        for id in sim_obj.body_ids:
-            p.removeBody(id)
-    restoreState(state_id)
-
-
 def main():
     args = parse_args()
     bddl.set_backend("iGibson")
@@ -81,9 +73,9 @@ def main():
                     scene_id=scene_id,
                     mode="headless",
                     load_clutter=True,
-                    should_debug_sampling=False,
                     scene_kwargs=scene_kwargs,
                     online_sampling=True,
+                    debug_obj_inst=None,
                 )
                 if success:
                     break
