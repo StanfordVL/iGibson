@@ -1,4 +1,5 @@
 # scene
+scene: igibson
 scene_id: Beechwood_1_int
 clutter: false
 build_graph: true

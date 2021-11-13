@@ -2,6 +2,8 @@ import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.ant_robot import Ant
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.robots.fetch_robot import Fetch
 from igibson.robots.freight_robot import Freight
 from igibson.robots.humanoid_robot import Humanoid
@@ -72,6 +74,7 @@ class BaseEnv(gym.Env):
             vertical_fov=self.config.get("vertical_fov", 90),
             device_idx=device_idx,
             rendering_settings=settings,
+            use_pb_gui=self.config.get("use_pb_gui", False),
         )
         self.load()
 
@@ -139,8 +142,17 @@ class BaseEnv(gym.Env):
             )
             self.simulator.import_scene(scene, load_texture=self.config.get("load_texture", True))
         elif self.config["scene"] == "igibson":
+            urdf_file = self.config.get("urdf_file", None)
+            if urdf_file is None and not self.config.get("online_sampling", True):
+                urdf_file = "{}_task_{}_{}_{}_fixed_furniture".format(
+                    self.config["scene_id"],
+                    self.config["task"],
+                    self.config["task_id"],
+                    self.config.get("instance_id", 0),
+                )
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
+                urdf_file=urdf_file,
                 waypoint_resolution=self.config.get("waypoint_resolution", 0.2),
                 num_waypoints=self.config.get("num_waypoints", 10),
                 build_graph=self.config.get("build_graph", False),
@@ -153,8 +165,11 @@ class BaseEnv(gym.Env):
                 object_randomization_idx=self.object_randomization_idx,
                 should_open_all_doors=self.config.get("should_open_all_doors", False),
                 load_object_categories=self.config.get("load_object_categories", None),
+                not_load_object_categories=self.config.get("not_load_object_categories", None),
                 load_room_types=self.config.get("load_room_types", None),
                 load_room_instances=self.config.get("load_room_instances", None),
+                merge_fixed_links=self.config.get("merge_fixed_links", True)
+                and not self.config.get("online_sampling", False),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             first_n = self.config.get("_set_first_n_objects", -1)
@@ -180,13 +195,20 @@ class BaseEnv(gym.Env):
             robot = Fetch(self.config)
         elif self.config["robot"] == "Locobot":
             robot = Locobot(self.config)
+        elif self.config["robot"] == "BehaviorRobot":
+            robot = BehaviorRobot(self.simulator)
+        elif self.config["robot"] == "FetchGripper":
+            robot = FetchGripper(self.simulator, self.config)
         else:
             raise Exception("unknown robot type: {}".format(self.config["robot"]))
 
-        self.scene = scene
-        self.robots = [robot]
-        for robot in self.robots:
+        if isinstance(robot, BehaviorRobot):
+            self.simulator.import_behavior_robot(robot)
+        else:
             self.simulator.import_robot(robot)
+
+        self.scene = self.simulator.scene
+        self.robots = self.simulator.robots
 
     def clean(self):
         """

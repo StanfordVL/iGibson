@@ -14,6 +14,7 @@ from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
+from igibson.tasks.behavior_task import BehaviorTask
 from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
@@ -93,7 +94,7 @@ class iGibsonEnv(BaseEnv):
         elif self.config["task"] == "room_rearrangement":
             self.task = RoomRearrangementTask(self)
         else:
-            self.task = None
+            self.task = BehaviorTask(self)
 
     def build_obs_space(self, shape, low, high):
         """
@@ -185,6 +186,10 @@ class iGibsonEnv(BaseEnv):
         if "bump" in self.output:
             observation_space["bump"] = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
             sensors["bump"] = BumpSensor(self)
+        if "proprioception" in self.output:
+            observation_space["proprioception"] = self.build_obs_space(
+                shape=(self.robots[0].proprioception_dim,), low=-np.inf, high=np.inf
+            )
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -240,6 +245,8 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
             state["bump"] = self.sensors["bump"].get_obs(self)
+        if "proprioception" in self.sensors:
+            state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
 
