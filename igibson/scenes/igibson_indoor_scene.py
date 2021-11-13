@@ -1026,8 +1026,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
     def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
         if not isinstance(obj, ObjectMultiplexer):
-            self.save_obj(obj, tree_root, additional_attribs_by_name)
-            return
+            return self.save_obj(obj, tree_root, additional_attribs_by_name)
 
         multiplexer_link = ET.SubElement(tree_root, "link")
 

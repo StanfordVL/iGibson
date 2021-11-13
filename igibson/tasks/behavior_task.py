@@ -3,108 +3,170 @@ from collections import OrderedDict
 
 import networkx as nx
 import pybullet as p
-from bddl.activity_base import BEHAVIORActivityInstance
+from bddl.activity import *
 from bddl.condition_evaluation import Negation
 from bddl.logic_base import AtomicFormula
+from bddl.object_taxonomy import ObjectTaxonomy
 
 import igibson
+from igibson.activity.bddl_backend import IGibsonBDDLBackend
 from igibson.external.pybullet_tools.utils import *
 from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
+from igibson.tasks.task_base import BaseTask
+from igibson.termination_conditions.predicate_goal import PredicateGoal
+from igibson.termination_conditions.timeout import Timeout
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
-from igibson.utils.checkpoint_utils import load_internal_states, save_internal_states
+from igibson.utils.checkpoint_utils import load_checkpoint, load_internal_states, save_internal_states
 from igibson.utils.constants import (
     AGENT_POSE_DIM,
     FLOOR_SYNSET,
     MAX_TASK_RELEVANT_OBJS,
     NON_SAMPLEABLE_OBJECTS,
     TASK_RELEVANT_OBJS_OBS_DIM,
+    SimulatorMode,
 )
-from igibson.utils.utils import restoreState
+from igibson.utils.utils import quatXYZWFromRotMat, restoreState
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
 
-class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
-    def __init__(
-        self,
-        behavior_activity,
-        activity_definition=0,
-        predefined_problem=None,
-        robot_type=BehaviorRobot,
-        robot_config={},
-    ):
-        """
-        Initialize simulator with appropriate scene and sampled objects.
-        :param behavior_activity: string, official ATUS activity label
-        :param activity_definition: int, specific instance of behavior_activity init/final conditions
-                                   optional, randomly generated if not specified
-        :param predefined_problem: string, in format of a BEHAVIOR problem file read
-        """
-        super().__init__(
-            behavior_activity,
-            activity_definition=activity_definition,
-            scene_path=os.path.join(igibson.ig_dataset_path, "scenes"),
-            predefined_problem=predefined_problem,
-        )
-        self.state_history = {}
-        self.robot_type = robot_type
-        self.robot_config = robot_config
+class BehaviorTask(BaseTask):
+    def __init__(self, env):
+        super(BehaviorTask, self).__init__(env)
+        self.scene = env.scene
 
-    def initialize_simulator(
-        self,
-        simulator=None,
-        mode="headless",
-        scene_id=None,
-        scene_kwargs=None,
-        load_clutter=False,
-        online_sampling=True,
-        debug_obj_inst=None,
-    ):
-        """
-        Get scene populated with objects such that scene satisfies initial conditions
-        :param simulator: Simulator class, populated simulator that should completely
-                                   replace this function. Use if you would like to bypass internal
-                                   Simulator instantiation and population based on initial conditions
-                                   and use your own. Warning that if you use this option, we cannot
-                                   guarantee that the final conditions will be reachable.
-        """
-        if simulator is None:
-            self.simulator = Simulator(mode=mode, image_width=960, image_height=720, device_idx=0)
-        else:
-            self.simulator = simulator
-        self.load_clutter = load_clutter
-        self.debug_obj_inst = debug_obj_inst
-        if online_sampling:
-            scene_kwargs["merge_fixed_links"] = False
-        result = self.initialize(
-            InteractiveIndoorScene,
-            scene_id=scene_id,
-            scene_kwargs=scene_kwargs,
-            online_sampling=online_sampling,
+        self.termination_conditions = [
+            Timeout(self.config),
+            PredicateGoal(self.config),
+        ]
+        self.reward_functions = [
+            PotentialReward(self.config),
+        ]
+
+        self.object_taxonomy = ObjectTaxonomy()
+        self.backend = IGibsonBDDLBackend()
+        self.update_problem(
+            behavior_activity=self.config.get("task", None),
+            activity_definition=self.config.get("task_id", 0),
+            predefined_problem=self.config.get("predefined_problem", None),
         )
-        self.initial_state = self.save_scene()
+        self.load_clutter = self.config.get("load_clutter", True)
+        self.debug_obj_inst = self.config.get("debug_obj_inst", None)
+        self.online_sampling = self.config.get("online_sampling", False)
+        self.reset_checkpoint_idx = self.config.get("reset_checkpoint_idx", -1)
+        self.reset_checkpoint_dir = self.config.get("reset_checkpoint_dir", None)
         self.task_obs_dim = MAX_TASK_RELEVANT_OBJS * TASK_RELEVANT_OBJS_OBS_DIM + AGENT_POSE_DIM
-        return result
 
-    def save_scene(self):
+        self.initialized = self.initialize(env)
+        self.state_history = {}
+        self.initial_state = self.save_scene(env)
+        if env.simulator.mode != SimulatorMode.VR:
+            self.highlight_task_relevant_objs(env)
+            self.activate_behavior_robot(env)
+
+    def highlight_task_relevant_objs(self, env):
+        for _, obj in self.object_scope.items():
+            if obj.category in ["agent", "room_floor"]:
+                continue
+            obj.highlight()
+
+    def activate_behavior_robot(self, env):
+        if isinstance(env.robots[0], BehaviorRobot):
+            env.robots[0].activate()
+
+    def update_problem(self, behavior_activity, activity_definition, predefined_problem=None):
+        self.behavior_activity = behavior_activity
+        self.activity_definition = activity_definition
+        if predefined_problem is None:
+            assert self.behavior_activity is not None
+        self.conds = Conditions(behavior_activity, activity_definition, simulator_name="igibson")
+        self.object_scope = get_object_scope(self.conds)
+        self.obj_inst_to_obj_cat = {
+            obj_inst: obj_cat
+            for obj_cat in self.conds.parsed_objects
+            for obj_inst in self.conds.parsed_objects[obj_cat]
+        }
+
+        # Generate initial and goal conditions
+        self.initial_conditions = get_initial_conditions(self.conds, self.backend, self.object_scope)
+        self.goal_conditions = get_goal_conditions(self.conds, self.backend, self.object_scope)
+        self.ground_goal_state_options = get_ground_goal_state_options(
+            self.conds, self.backend, self.object_scope, self.goal_conditions
+        )
+
+        # Demo attributes
+        self.instruction_order = np.arange(len(self.conds.parsed_goal_conditions))
+        np.random.shuffle(self.instruction_order)
+        self.currently_viewed_index = 0
+        self.currently_viewed_instruction = self.instruction_order[self.currently_viewed_index]
+        self.current_success = False
+        self.current_goal_status = {"satisfied": [], "unsatisfied": []}
+        self.natural_language_goal_conditions = get_natural_goal_conditions(self.conds)
+
+    def get_potential(self, env):
+        # Evaluate the first ground goal state option as the potential
+        _, satisfied_predicates = evaluate_goal_conditions(self.ground_goal_state_options[0])
+        success_score = len(satisfied_predicates["satisfied"]) / (
+            len(satisfied_predicates["satisfied"]) + len(satisfied_predicates["unsatisfied"])
+        )
+        return -success_score
+
+    def save_scene(self, env):
         snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = save_internal_states(self.simulator)
+        self.state_history[snapshot_id] = save_internal_states(env.simulator)
         return snapshot_id
 
-    def reset_scene(self, snapshot_id):
-        restoreState(snapshot_id)
-        load_internal_states(self.simulator, self.state_history[snapshot_id])
+    def reset_scene(self, env):
+        if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
+            load_checkpoint(env.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
+        else:
+            restoreState(self.initial_state)
+            load_internal_states(env.simulator, self.state_history[self.initial_state])
+
+    def reset_agent(self, env):
+        if isinstance(env.robots[0], BehaviorRobot):
+            # set the constraints to the current poses
+            env.robots[0].apply_action(np.zeros(env.robots[0].action_dim))
+
+    def initialize(self, env):
+        accept_scene = True
+
+        if self.online_sampling:
+            # Reject scenes with missing non-sampleable objects
+            # Populate object_scope with sampleable objects and the robot
+            accept_scene, feedback = self.check_scene(env)
+            if not accept_scene:
+                return accept_scene
+            # Sample objects to satisfy initial conditions
+            accept_scene, feedback = self.sample(env)
+            if not accept_scene:
+                return accept_scene
+
+            if self.load_clutter:
+                # Add clutter objects into the scenes
+                self.clutter_scene(env)
+        else:
+            # Load existing scene cache and assign object scope accordingly
+            self.assign_object_scope_with_cache(env)
+
+        # Generate goal condition with the fully populated self.object_scope
+        self.goal_conditions = get_goal_conditions(self.conds, self.backend, self.object_scope)
+        self.ground_goal_state_options = get_ground_goal_state_options(
+            self.conds, self.backend, self.object_scope, self.goal_conditions
+        )
+        return accept_scene
 
     def parse_non_sampleable_object_room_assignment(self):
         self.room_type_to_obj_inst = {}
         self.non_sampleable_object_inst = set()
-        for cond in self.parsed_initial_conditions:
+        for cond in self.conds.parsed_initial_conditions:
             if cond[0] == "inroom":
                 obj_inst, room_type = cond[1], cond[2]
                 obj_cat = self.obj_inst_to_obj_cat[obj_inst]
@@ -126,10 +188,10 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
                 self.non_sampleable_object_inst.add(obj_inst)
 
-        for obj_cat in self.objects:
+        for obj_cat in self.conds.parsed_objects:
             if obj_cat not in NON_SAMPLEABLE_OBJECTS:
                 continue
-            for obj_inst in self.objects[obj_cat]:
+            for obj_inst in self.conds.parsed_objects[obj_cat]:
                 if obj_inst not in self.non_sampleable_object_inst:
                     # Missing room assignment
                     return "All non-sampleable objects should have room assignment. [{}] does not have one.".format(
@@ -147,7 +209,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         while len(cur_batch) > 0:
             self.sampling_orders.append(cur_batch)
             next_batch = set()
-            for cond in self.parsed_initial_conditions:
+            for cond in self.conds.parsed_initial_conditions:
                 if len(cond) == 3 and cond[2] in cur_batch:
                     next_batch.add(cond[1])
             cur_batch = next_batch
@@ -220,12 +282,12 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             return error_msg
         self.non_sampleable_object_scope = room_type_to_scene_objs
 
-    def import_sampleable_objects(self):
+    def import_sampleable_objects(self, env):
         self.newly_added_objects = set()
         num_new_obj = 0
         # Only populate self.object_scope for sampleable objects
         avg_category_spec = get_ig_avg_category_specs()
-        for obj_cat in self.objects:
+        for obj_cat in self.conds.parsed_objects:
             if obj_cat == "agent.n.01":
                 continue
             if obj_cat in NON_SAMPLEABLE_OBJECTS:
@@ -247,7 +309,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             if is_sliceable:
                 categories = [cat for cat in categories if "half_" not in cat]
 
-            for obj_inst in self.objects[obj_cat]:
+            for obj_inst in self.conds.parsed_objects[obj_cat]:
                 category = np.random.choice(categories)
                 category_path = get_ig_category_path(category)
                 model_choices = os.listdir(category_path)
@@ -330,11 +392,11 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                 if not self.scene.loaded:
                     self.scene.add_object(simulator_obj)
                 else:
-                    self.simulator.import_object(simulator_obj)
+                    env.simulator.import_object(simulator_obj)
                 self.newly_added_objects.add(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
 
-    def check_scene(self):
+    def check_scene(self, env):
         error_msg = self.parse_non_sampleable_object_room_assignment()
         if error_msg:
             logging.warning(error_msg)
@@ -350,95 +412,63 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
             logging.warning(error_msg)
             return False, error_msg
 
-        error_msg = self.import_sampleable_objects()
+        error_msg = self.import_sampleable_objects(env)
         if error_msg:
             logging.warning(error_msg)
             return False, error_msg
 
+        self.object_scope["agent.n.01_1"] = self.get_agent(env)
+
         return True, None
 
-    def import_agent(self):
-        cached_initial_pose = not self.online_sampling and self.scene.agent != {}
-        if self.robot_type == BehaviorRobot:
-            agent = BehaviorRobot(self.simulator)
-            self.simulator.import_behavior_robot(agent)
-            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
-            self.object_scope["agent.n.01_1"] = agent.parts["body"]
-            if cached_initial_pose:
-                agent.parts["body"].set_base_link_position_orientation(
-                    self.scene.agent["BRBody_1"]["xyz"], quat_from_euler(self.scene.agent["BRBody_1"]["rpy"])
-                )
-                agent.parts["left_hand"].set_base_link_position_orientation(
-                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-                )
-                agent.parts["right_hand"].set_base_link_position_orientation(
-                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-                )
-                agent.parts["left_hand"].ghost_hand.set_base_link_position_orientation(
-                    self.scene.agent["left_hand_1"]["xyz"], quat_from_euler(self.scene.agent["left_hand_1"]["rpy"])
-                )
-                agent.parts["right_hand"].ghost_hand.set_base_link_position_orientation(
-                    self.scene.agent["right_hand_1"]["xyz"], quat_from_euler(self.scene.agent["right_hand_1"]["rpy"])
-                )
-                agent.parts["eye"].set_base_link_position_orientation(
-                    self.scene.agent["BREye_1"]["xyz"], quat_from_euler(self.scene.agent["BREye_1"]["rpy"])
-                )
-        elif self.robot_type == FetchGripper:
-            agent = FetchGripper(self.simulator, self.robot_config)
-            self.simulator.import_robot(agent)
-            agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
-            self.object_scope["agent.n.01_1"] = agent
-            if cached_initial_pose:
-                assert "fetch_gripper_robot_1" in self.scene.agent, "fetch gripper missing from scene cache"
-                agent.set_position_orientation(
-                    self.scene.agent["fetch_gripper_robot_1"]["xyz"],
-                    quat_from_euler(self.scene.agent["fetch_gripper_robot_1"]["rpy"]),
-                )
+    def get_agent(self, env):
+        if isinstance(env.robots[0], BehaviorRobot):
+            return env.robots[0].parts["body"]
         else:
-            Exception("Only BehaviorRobot and FetchGripper are supported")
+            return env.robots[0]
 
-        agent.robot_specific_reset()
-        self.simulator.robots = [agent]
-        assert len(self.simulator.robots) == 1, "Error, multiple agents is not currently supported"
-
-    def move_agent(self):
-        """
-        Backwards compatibility, to be deprecated
-        """
-        pass
-
-    def import_scene(self):
-        self.simulator.reload()
-        self.simulator.import_ig_scene(self.scene)
-
+    def assign_object_scope_with_cache(self, env):
         # Assign object_scope based on a cached scene
-        if not self.online_sampling:
-            for obj_inst in self.object_scope:
-                matched_sim_obj = None
-                # TODO: remove after split floors
-                if "floor.n.01" in obj_inst:
-                    floor_obj = self.scene.objects_by_name["floors"]
-                    bddl_object_scope = floor_obj.bddl_object_scope.split(",")
-                    bddl_object_scope = {item.split(":")[0]: item.split(":")[1] for item in bddl_object_scope}
-                    assert obj_inst in bddl_object_scope
-                    room_inst = bddl_object_scope[obj_inst].replace("room_floor_", "")
-                    matched_sim_obj = RoomFloor(
-                        category="room_floor",
-                        name=bddl_object_scope[obj_inst],
-                        scene=self.scene,
-                        room_instance=room_inst,
-                        floor_obj=floor_obj,
-                    )
-                elif obj_inst == "agent.n.01_1":
-                    # Skip adding agent to object scope, handled later by import_agent()
-                    continue
+        for obj_inst in self.object_scope:
+            matched_sim_obj = None
+            # TODO: remove after split floors
+            if "floor.n.01" in obj_inst:
+                floor_obj = self.scene.objects_by_name["floors"]
+                bddl_object_scope = floor_obj.bddl_object_scope.split(",")
+                bddl_object_scope = {item.split(":")[0]: item.split(":")[1] for item in bddl_object_scope}
+                assert obj_inst in bddl_object_scope
+                room_inst = bddl_object_scope[obj_inst].replace("room_floor_", "")
+                matched_sim_obj = RoomFloor(
+                    category="room_floor",
+                    name=bddl_object_scope[obj_inst],
+                    scene=self.scene,
+                    room_instance=room_inst,
+                    floor_obj=floor_obj,
+                )
+            elif obj_inst == "agent.n.01_1":
+                matched_sim_obj = self.get_agent(env)
+                agent = matched_sim_obj
+                if isinstance(env.robots[0], BehaviorRobot):
+                    agent = matched_sim_obj.parent
+
+                if isinstance(env.robots[0], BehaviorRobot):
+                    agent_key = "BRBody_1"
+                elif isinstance(env.robots[0], FetchGripper):
+                    agent_key = "fetch_gripper_robot_1"
                 else:
-                    for _, sim_obj in self.scene.objects_by_name.items():
-                        if sim_obj.bddl_object_scope == obj_inst:
-                            matched_sim_obj = sim_obj
-                            break
-                assert matched_sim_obj is not None, obj_inst
-                self.object_scope[obj_inst] = matched_sim_obj
+                    raise Exception("Only BehaviorRobot and FetchGripper have scene caches")
+
+                agent.set_position_orientation(
+                    self.scene.agent[agent_key]["xyz"],
+                    quat_from_euler(self.scene.agent[agent_key]["rpy"]),
+                )
+            else:
+                for _, sim_obj in self.scene.objects_by_name.items():
+                    if sim_obj.bddl_object_scope == obj_inst:
+                        matched_sim_obj = sim_obj
+                        break
+            assert matched_sim_obj is not None, obj_inst
+            self.object_scope[obj_inst] = matched_sim_obj
 
     def process_single_condition(self, condition):
         if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicFormula):
@@ -695,7 +725,9 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
                         if not success:
                             return "Sampleable object conditions failed: {}".format(condition.body)
 
-    def sample(self, validate_goal=True):
+    def sample(self, env, validate_goal=True):
+        # Before sampling, set robot to be far away
+        env.robots[0].set_position_orientation([300, 300, 300], [0, 0, 0, 1])
         error_msg = self.group_initial_conditions()
         if error_msg:
             logging.warning(error_msg)
@@ -719,20 +751,93 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
         return True, None
 
-    def clutter_scene(self):
+    def import_non_colliding_objects(self, env, objects, existing_objects=[], min_distance=0.5):
+        """
+        Loads objects into the scene such that they don't collide with existing objects.
+
+        :param env: iGibsonEnv
+        :param objects: A dictionary with objects, from a scene loaded with a particular URDF
+        :param existing_objects: A list of objects that needs to be kept min_distance away when loading the new objects
+        :param min_distance: A minimum distance to require for objects to load
+        """
+        state_id = p.saveState()
+        objects_to_add = []
+
+        for obj_name in objects:
+            obj = objects[obj_name]
+
+            # Do not allow duplicate object categories
+            if obj.category in env.simulator.scene.objects_by_category:
+                continue
+
+            add = True
+            body_ids = []
+
+            # Filter based on the minimum distance to any existing object
+            for idx in range(len(obj.urdf_paths)):
+                body_id = p.loadURDF(obj.urdf_paths[idx])
+                body_ids.append(body_id)
+                transformation = obj.poses[idx]
+                pos = transformation[0:3, 3]
+                orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+                dynamics_info = p.getDynamicsInfo(body_id, -1)
+                inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+                pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
+                pos = list(pos)
+                min_distance_to_existing_object = None
+                for existing_object in existing_objects:
+                    # If a sliced obj is an existing_object, get_position will not work
+                    if isinstance(existing_object, ObjectMultiplexer) and isinstance(
+                        existing_object.current_selection(), ObjectGrouper
+                    ):
+                        obj_pos = np.array([obj.get_position() for obj in existing_object.objects]).mean(axis=0)
+                    else:
+                        obj_pos = existing_object.get_position()
+                    distance = np.linalg.norm(np.array(pos) - np.array(obj_pos))
+                    if min_distance_to_existing_object is None or min_distance_to_existing_object > distance:
+                        min_distance_to_existing_object = distance
+
+                if min_distance_to_existing_object < min_distance:
+                    add = False
+                    break
+
+                pos[2] += 0.01  # slighly above to not touch furniture
+                p.resetBasePositionAndOrientation(body_id, pos, orn)
+
+            # Filter based on collisions with any existing object
+            if add:
+                p.stepSimulation()
+
+                for body_id in body_ids:
+                    in_collision = len(p.getContactPoints(body_id)) > 0
+                    if in_collision:
+                        add = False
+                        break
+
+            if add:
+                objects_to_add.append(obj)
+
+            for body_id in body_ids:
+                p.removeBody(body_id)
+
+            restoreState(state_id)
+
+        p.removeState(state_id)
+
+        for obj in objects_to_add:
+            env.simulator.import_object(obj)
+
+    def clutter_scene(self, env):
         """
         Load clutter objects into the scene from a random clutter scene
         """
-        if not self.load_clutter:
-            return
-
         scene_id = self.scene.scene_id
         clutter_ids = [""] + list(range(2, 5))
         clutter_id = np.random.choice(clutter_ids)
         clutter_scene = InteractiveIndoorScene(scene_id, "{}_clutter{}".format(scene_id, clutter_id))
         existing_objects = [value for key, value in self.object_scope.items() if "floor.n.01" not in key]
-        self.simulator.import_non_colliding_objects(
-            objects=clutter_scene.objects_by_name, existing_objects=existing_objects, min_distance=0.5
+        self.import_non_colliding_objects(
+            env=env, objects=clutter_scene.objects_by_name, existing_objects=existing_objects, min_distance=0.5
         )
 
     def get_task_obs(self, env):
@@ -770,19 +875,6 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
         return task_obs
 
-
-def main():
-    igbhvr_act_inst = iGBEHAVIORActivityInstance("assembling_gift_baskets", 0)
-    igbhvr_act_inst.initialize_simulator(mode="headless", scene_id="Rs_int")
-
-    for i in range(500):
-        igbhvr_act_inst.simulator.step()
-    success, failed_conditions = igbhvr_act_inst.check_success()
-    print("ACTIVITY SUCCESS:", success)
-    if not success:
-        print("FAILED CONDITIONS:", failed_conditions)
-    igbhvr_act_inst.simulator.disconnect()
-
-
-if __name__ == "__main__":
-    main()
+    def check_success(self):
+        self.current_success, self.current_goal_status = evaluate_goal_conditions(self.goal_conditions)
+        return self.current_success, self.current_goal_status

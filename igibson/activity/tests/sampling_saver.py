@@ -3,13 +3,13 @@ import json
 import logging
 import os
 
-import bddl
 import pybullet as p
+from IPython import embed
 
 import igibson
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.simulator import Simulator
-from igibson.utils.utils import restoreState
+from igibson.utils.utils import parse_config, restoreState
 
 PARTIAL_RECACHE = {
     # 'sorting_books': ['Ihlen_0_int'],
@@ -32,7 +32,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-    bddl.set_backend("iGibson")
     task = args.task
     task_id = args.task_id
     start_initialization = args.start_initialization
@@ -55,37 +54,42 @@ def main():
     logging.warning(("SCENE CHOICES", scene_choices))
     num_initializations = args.num_initializations
     num_trials = args.max_trials
-    simulator = Simulator(mode="headless", image_width=960, image_height=720, device_idx=0)
-    scene_kwargs = {}
-    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
+
+    config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+    env_config = parse_config(config_file)
+    env_config["task"] = task
+    env_config["task_id"] = task_id
+    env_config["online_sampling"] = True
+
     for scene_id in scene_choices:
         logging.warning(("TRY SCENE:", scene_id))
-
+        env_config["scene_id"] = scene_id
         for init_id in range(start_initialization, start_initialization + num_initializations):
             urdf_path = "{}_task_{}_{}_{}".format(scene_id, task, task_id, init_id)
             full_path = os.path.join(igibson.ig_dataset_path, "scenes", scene_id, "urdf", urdf_path + ".urdf")
             if os.path.isfile(full_path):
                 logging.warning("Already cached: {}".format(full_path))
                 continue
+
             for _ in range(num_trials):
-                success = igbhvr_act_inst.initialize_simulator(
-                    simulator=simulator,
-                    scene_id=scene_id,
+                env = iGibsonEnv(
+                    config_file=env_config,
                     mode="headless",
-                    load_clutter=True,
-                    scene_kwargs=scene_kwargs,
-                    online_sampling=True,
-                    debug_obj_inst=None,
                 )
+                success = env.task.initialized
                 if success:
                     break
+                else:
+                    env.close()
 
             if success:
                 sim_obj_to_bddl_obj = {
-                    value.name: {"object_scope": key} for key, value in igbhvr_act_inst.object_scope.items()
+                    value.name: {"object_scope": key} for key, value in env.task.object_scope.items()
                 }
-                igbhvr_act_inst.scene.save_modified_urdf(urdf_path, sim_obj_to_bddl_obj)
+                env.scene.save_modified_urdf(urdf_path, sim_obj_to_bddl_obj)
                 logging.warning(("Saved:", urdf_path))
+                env.close()
+                embed()
 
 
 if __name__ == "__main__":

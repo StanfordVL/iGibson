@@ -1,10 +1,11 @@
-import bddl
+import os
+
 from IPython import embed
 
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.simulator import Simulator
-
-bddl.set_backend("iGibson")
+from igibson.utils.utils import parse_config
 
 task_choices = [
     "packing_lunches_filtered",
@@ -20,29 +21,31 @@ task_choices = [
 task = "assembling_gift_baskets"
 task_id = 0
 scene = "Rs_int"
-num_init = 0
+num_init = 104
 
-igbhvr_act_inst = iGBEHAVIORActivityInstance(task, activity_definition=task_id)
-scene_kwargs = {
-    # 'load_object_categories': ['oven', 'fridge', 'countertop', 'cherry', 'sausage', 'tray'],
-    "not_load_object_categories": ["ceilings"],
-    "urdf_file": "{}_task_{}_{}_{}".format(scene, task, task_id, num_init),
-}
-simulator = Simulator(mode="headless", image_width=960, image_height=720)
-init_success = igbhvr_act_inst.initialize_simulator(
-    scene_id=scene,
-    simulator=simulator,
-    load_clutter=True,
-    scene_kwargs=scene_kwargs,
-    online_sampling=False,
-    debug_obj_inst=None,
+config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+env_config = parse_config(config_file)
+env_config["scene_id"] = scene
+env_config["task"] = task
+env_config["task_id"] = task_id
+env_config["instance_id"] = num_init
+env_config["online_sampling"] = False
+env_config["not_load_object_categories"] = ["ceilings"]
+urdf_file = "{}_task_{}_{}_{}".format(scene, task, task_id, num_init)
+env_config["urdf_file"] = urdf_file
+env_config["use_pb_gui"] = True
+
+env = iGibsonEnv(
+    config_file=env_config,
+    mode="headless",
 )
-print("success")
+
+print("success", env.task.initialized)
 embed()
 
 while True:
-    igbhvr_act_inst.simulator.step()
-    success, sorted_conditions = igbhvr_act_inst.check_success()
+    env.simulator.step()
+    success, sorted_conditions = env.task.check_success()
     print("TASK SUCCESS:", success)
     if not success:
         print("FAILED CONDITIONS:", sorted_conditions["unsatisfied"])

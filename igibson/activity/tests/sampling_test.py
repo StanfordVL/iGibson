@@ -1,35 +1,37 @@
-import bddl
+import os
+
 from IPython import embed
 
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.simulator import Simulator
-
-bddl.set_backend("iGibson")
+from igibson.utils.utils import parse_config
 
 activity = "assembling_gift_baskets"
 scene_id = "Rs_int"
 
-igbhvr_act_inst = iGBEHAVIORActivityInstance(activity, activity_definition=0)
-scene_kwargs = {
-    "not_load_object_categories": ["ceilings"],
-}
-settings = MeshRendererSettings(texture_scale=1)
-simulator = Simulator(mode="headless", image_width=960, image_height=720, rendering_settings=settings)
-init_success = igbhvr_act_inst.initialize_simulator(
-    scene_id=scene_id,
-    simulator=simulator,
-    load_clutter=False,
-    scene_kwargs=scene_kwargs,
-    debug_obj_inst=None,
+config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+env_config = parse_config(config_file)
+env_config["scene_id"] = scene_id
+env_config["task"] = activity
+env_config["task_id"] = 0
+env_config["instance_id"] = 0
+env_config["online_sampling"] = True
+env_config["not_load_object_categories"] = ["ceilings"]
+env_config["use_pb_gui"] = False
+env_config["load_clutter"] = False
+
+env = iGibsonEnv(
+    config_file=env_config,
+    mode="headless",
 )
-assert init_success
-print("success")
+
+print("success", env.task.initialized)
 embed()
 
 while True:
-    igbhvr_act_inst.simulator.step()
-    success, sorted_conditions = igbhvr_act_inst.check_success()
+    env.simulator.step()
+    success, sorted_conditions = env.task.check_success()
     print("TASK SUCCESS:", success)
     if not success:
         print("FAILED CONDITIONS:", sorted_conditions["unsatisfied"])
