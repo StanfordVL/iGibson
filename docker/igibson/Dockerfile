@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	make \
 	vim \
 	wget \
-	cuda-command-line-tools-11-1 && \
+	cuda-command-line-tools-11-3 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
