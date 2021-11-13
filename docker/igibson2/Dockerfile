@@ -1,15 +1,16 @@
-FROM nvidia/cudagl:11.1.1-devel-ubuntu20.04
+FROM nvidia/cudagl:11.3.1-base-ubuntu20.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	cmake \
-	git \
-	wget \
 	curl \
-	python3-dev \
-	python3-opencv \
-	python3-pip && \
+	g++ \
+	git \
+	make \
+	vim \
+	wget \
+	cuda-command-line-tools-11-3 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
@@ -22,13 +23,17 @@ RUN conda create -y -n igibson python=3.8.0
 ENV PATH /miniconda/envs/igibson/bin:$PATH
 
 RUN pip install --no-cache-dir https://github.com/StanfordVL/bullet3/archive/master.zip
-RUN pip install torch pytest ray[default,rllib] stable-baselines3
+RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
+RUN pip install --no-cache-dir pytest ray[default,rllib] stable-baselines3 && rm -rf /root/.cache
 
-RUN git clone --branch master https://github.com/StanfordVL/iGibson /opt/igibson --recursive
-WORKDIR /opt/igibson
-RUN pip install -e .
+RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive && \
+        rm -rf /opt/iGibson/igibson/render/openvr/samples
 
-RUN python3 -m igibson.utils.assets_utils --download_assets
-RUN python3 -m igibson.utils.assets_utils --download_demo_data
+WORKDIR /opt/iGibson
+
+RUN pip install --no-cache-dir -e .
+
+RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
+RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
 
 WORKDIR /opt/igibson/igibson/examples/demo

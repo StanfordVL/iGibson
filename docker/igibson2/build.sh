@@ -1,9 +1,10 @@
 #!/bin/bash
 
 IMAGE=igibson/igibson
+VERSION=v2.0.3
 
-docker build -t $IMAGE:v2.0.0 . \
-    && docker tag $IMAGE:v2.0.0 $IMAGE:latest \
+podman build -t $IMAGE:$VERSION . \
+    && podman tag $IMAGE:$VERSION $IMAGE:latest \
     && echo BUILD SUCCESSFUL
 
 # podman build -t $IMAGE:v2.0.0 . \
