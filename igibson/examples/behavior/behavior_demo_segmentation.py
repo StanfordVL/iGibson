@@ -165,7 +165,7 @@ class DemoSegmentationProcessor(object):
         label_by_instance=False,
         hierarchical=False,
         diff_initial=False,
-        state_directions=STATE_DIRECTIONS,
+        state_directions=None,
         profiler=None,
     ):
         self.state_history = []
@@ -297,12 +297,13 @@ class DemoSegmentationProcessor(object):
                 continue
 
             # Check if any object in the record is on our list.
-            mode = self.state_directions[state_record.state_type]
             accept = True
-            if mode == SegmentationStateDirection.FALSE_TO_TRUE:
-                accept = state_record.value
-            elif mode == SegmentationStateDirection.TRUE_TO_FALSE:
-                accept = not state_record.value
+            if self.state_directions is not None:
+                mode = self.state_directions[state_record.state_type]
+                if mode == SegmentationStateDirection.FALSE_TO_TRUE:
+                    accept = state_record.value
+                elif mode == SegmentationStateDirection.TRUE_TO_FALSE:
+                    accept = not state_record.value
 
             # If an object in our list is part of the record, keep the record.
             if accept:
@@ -385,7 +386,7 @@ def parse_args():
 def get_default_segmentation_processors(profiler=None):
     # This applies a "flat" segmentation (e.g. not hierarchical) using only the states supported by our magic motion
     # primitives.
-    flat_states = [
+    mp_states = [
         object_states.Open,
         object_states.OnFloor,
         object_states.OnTop,
@@ -393,8 +394,12 @@ def get_default_segmentation_processors(profiler=None):
         object_states.InHandOfRobot,
         # object_states.InReachOfRobot,
     ]
-    flat_object_segmentation = DemoSegmentationProcessor(
-        flat_states, SegmentationObjectSelection.TASK_RELEVANT_OBJECTS, label_by_instance=True, profiler=profiler
+    mp_segmentation = DemoSegmentationProcessor(
+        mp_states,
+        SegmentationObjectSelection.TASK_RELEVANT_OBJECTS,
+        label_by_instance=True,
+        profiler=profiler,
+        state_directions=STATE_DIRECTIONS,
     )
 
     # This applies a hierarchical segmentation based on goal condition states. It's WIP and currently unused.
@@ -404,16 +409,31 @@ def get_default_segmentation_processors(profiler=None):
         hierarchical=True,
         label_by_instance=True,
         profiler=profiler,
+        state_directions=STATE_DIRECTIONS,
     )
 
     # This applies a flat segmentation that allows us to see what room the agent is in during which frames.
     room_presence_segmentation = DemoSegmentationProcessor(
-        ROOM_STATES, SegmentationObjectSelection.ROBOTS, diff_initial=True, profiler=profiler
+        ROOM_STATES,
+        SegmentationObjectSelection.ROBOTS,
+        diff_initial=True,
+        profiler=profiler,
+        state_directions=STATE_DIRECTIONS,
+    )
+
+    # This applies a flat segmentation that saves *every* state change.
+    full_segmentation = DemoSegmentationProcessor(
+        SegmentationStateSelection.ALL_STATES,
+        SegmentationObjectSelection.ALL_OBJECTS,
+        diff_initial=False,
+        label_by_instance=True,
+        profiler=profiler,
     )
 
     return {
+        "full": full_segmentation,
         # "goal": goal_segmentation,
-        "flat": flat_object_segmentation,
+        # "motion_primitives": mp_segmentation,
         # "room": room_presence_segmentation,
     }
 
