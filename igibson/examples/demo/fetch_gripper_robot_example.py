@@ -11,7 +11,7 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 if __name__ == "__main__":
-    s = Simulator(mode="pbgui")
+    s = Simulator(mode="gui_interactive")
     scene = EmptyScene()
     s.import_scene(scene)
 

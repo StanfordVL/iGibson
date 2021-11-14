@@ -28,7 +28,7 @@ def main():
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = Simulator(mode="pbgui", rendering_settings=rendering_settings, image_height=512, image_width=512)
+    s = Simulator(mode="gui_noninteractive", rendering_settings=rendering_settings, image_height=512, image_width=512)
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, enable=0)
 
     scene = EmptyScene()
