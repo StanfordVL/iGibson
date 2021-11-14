@@ -15,4 +15,4 @@ jobs:
       - name: Sync iGibson-dev/master to iGibson/master
         if: github.repository == 'StanfordVL/iGibson-dev' && startsWith(github.ref, 'refs/tags')
         run:
-          git push https://${GITHUB_ACTOR}:${PERSONAL_ACCESS_TOKEN}@github.com/StanfordVL/iGibson.git master:master
+          git push https://$PERSONAL_ACCESS_TOKEN:x-oauth-basic@github.com/StanfordVL/iGibson.git master:master
