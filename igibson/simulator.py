@@ -104,8 +104,8 @@ class Simulator:
 
         plt = platform.system()
         if plt == "Darwin" and self.mode == SimulatorMode.GUI_INTERACTIVE and use_pb_gui:
-            use_pb_gui = False  # for mac os disable pybullet rendering
-            logging.warn("Simulator mode gui_interactive is not supported when `use_pb_gui` is true on macOS")
+            self.use_pb_gui = False  # for mac os disable pybullet rendering
+            logging.warn("Simulator mode gui_interactive is not supported when `use_pb_gui` is true on macOS. Default to use_pb_gui = False.")
 
         self.frame_count = 0
         self.body_links_awake = 0
