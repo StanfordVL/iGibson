@@ -13,7 +13,7 @@ from igibson.utils.utils import restoreState
 
 
 def main():
-    s = Simulator(mode="gui", image_width=1280, image_height=720)
+    s = Simulator(mode="gui_interactive", use_pb_gui=True, image_width=1280, image_height=720)
     scene = EmptyScene()
     s.import_scene(scene)
 

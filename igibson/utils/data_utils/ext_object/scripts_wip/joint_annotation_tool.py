@@ -206,7 +206,7 @@ def main():
     sorted_joint_counts = sorted(relevant_joint_counts.items(), key=lambda x: x[0])
     print("Objects per joint count:\n%s" % "\n".join(["%d joints: %d" % pair for pair in sorted_joint_counts]))
 
-    s = Simulator(mode="gui")
+    s = Simulator(mode="gui_interactive", use_pb_gui=True)
     scene = EmptyScene()
     s.import_scene(scene)
     i = 0
