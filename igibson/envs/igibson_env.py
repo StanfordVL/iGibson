@@ -10,6 +10,7 @@ from transforms3d.euler import euler2quat
 
 from igibson.envs.env_base import BaseEnv
 from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
@@ -257,7 +258,12 @@ class iGibsonEnv(BaseEnv):
         :return: collision_links: collisions from last physics timestep
         """
         self.simulator_step()
-        collision_links = list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        # TODO: remove this temporary hack once we make BehaviorRobot inherit BaseRobot
+        if isinstance(self.robots[0], BehaviorRobot):
+            robot_body_id = self.robots[0].parts["body"].get_body_id()
+        else:
+            robot_body_id = self.robots[0].robot_ids[0]
+        collision_links = list(p.getContactPoints(bodyA=robot_body_id))
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
@@ -447,9 +453,8 @@ class iGibsonEnv(BaseEnv):
         self.randomize_domain()
         # move robot away from the scene
         self.robots[0].set_position([100.0, 100.0, 100.0])
-        self.task.reset_scene(self)
-        self.task.reset_agent(self)
-        self.simulator.sync()
+        self.task.reset(self)
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 

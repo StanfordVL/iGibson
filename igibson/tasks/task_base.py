@@ -34,6 +34,23 @@ class BaseTask:
         """
         raise NotImplementedError()
 
+    def reset_variables(self, env):
+        """
+        Task-specific variable reset
+
+        :param env: environment instance
+        """
+        return
+
+    def reset(self, env):
+        self.reset_scene(env)
+        self.reset_agent(env)
+        self.reset_variables(env)
+        for reward_function in self.reward_functions:
+            reward_function.reset(self, env)
+        for reward_function in self.termination_conditions:
+            reward_function.reset(self, env)
+
     def get_reward(self, env, collision_links=[], action=None, info={}):
         """
         Aggreate reward functions

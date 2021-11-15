@@ -213,6 +213,12 @@ class BehaviorRobot(object):
         if self.constraints_active["body"]:
             self.parts["body"].move(pos, orn)
 
+    def set_position(self, pos):
+        self.set_position_orientation(pos, self.get_orientation())
+
+    def set_orientation(self, orn):
+        self.set_position_orientation(self.get_position(), orn)
+
     def get_position(self):
         return self.parts["body"].get_position()
 

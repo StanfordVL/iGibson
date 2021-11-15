@@ -1,3 +1,4 @@
+import datetime
 import logging
 from collections import OrderedDict
 
@@ -32,6 +33,7 @@ from igibson.utils.constants import (
     TASK_RELEVANT_OBJS_OBS_DIM,
     SimulatorMode,
 )
+from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import quatXYZWFromRotMat, restoreState
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
@@ -70,6 +72,11 @@ class BehaviorTask(BaseTask):
         if env.simulator.mode != SimulatorMode.VR:
             self.highlight_task_relevant_objs(env)
             self.activate_behavior_robot(env)
+
+        self.episode_save_dir = self.config.get("episode_save_dir", None)
+        if self.episode_save_dir is not None:
+            os.makedirs(self.episode_save_dir, exist_ok=True)
+        self.log_writer = None
 
     def highlight_task_relevant_objs(self, env):
         for _, obj in self.object_scope.items():
@@ -134,6 +141,42 @@ class BehaviorTask(BaseTask):
         if isinstance(env.robots[0], BehaviorRobot):
             # set the constraints to the current poses
             env.robots[0].apply_action(np.zeros(env.robots[0].action_dim))
+
+    def reset_variables(self, env):
+        if self.log_writer is not None:
+            self.log_writer.end_log_session()
+            del self.log_writer
+            self.log_writer = None
+
+        if self.episode_save_dir:
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            task = self.config["task"]
+            task_id = self.config["task_id"]
+            scene = self.config["scene_id"]
+            vr_log_path = os.path.join(
+                self.episode_save_dir,
+                "{}_{}_{}_{}_{}.hdf5".format(
+                    self.behavior_activity,
+                    self.activity_definition,
+                    env.scene.scene_id,
+                    timestamp,
+                    env.current_episode,
+                ),
+            )
+            self.log_writer = IGLogWriter(
+                env.simulator,
+                frames_before_write=200,
+                log_filepath=vr_log_path,
+                task=self,
+                store_vr=False,
+                vr_robot=env.robots[0],
+                filter_objects=True,
+            )
+            self.log_writer.set_up_data_storage()
+
+    def step(self, env):
+        if self.log_writer is not None:
+            self.log_writer.process_frame()
 
     def initialize(self, env):
         accept_scene = True
