@@ -4,7 +4,7 @@ from igibson.render.mesh_renderer.get_available_devices import get_available_dev
 
 
 def test_device():
-    assert len(get_available_devices()) > 0
+    assert len(get_available_devices()[0]) > 0
 
 
 def test_binding():

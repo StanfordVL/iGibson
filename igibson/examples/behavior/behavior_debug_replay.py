@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["headless", "vr", "gui_non_interactive"],
+        choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
         help="Mode for replaying",
     )
     return parser.parse_args()
@@ -66,7 +66,8 @@ def replay_demo(
     @param in_log_path: the path of the BEHAVIOR demo log to replay.
     @param out_log_path: the path of the new BEHAVIOR demo log to save from the replay.
     @param frame_save_path: the path to save frame images to. None to disable frame image saving.
-    @param mode: which rendering mode ("headless", "simple", "vr"). In simple mode, the demo will be replayed with simple robot view.
+    @param mode: which rendering mode ("headless", "headless_tensor", "gui_non_interactive", "vr"). In gui_non_interactive
+        mode, the demo will be replayed with simple robot view.
     @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
     @param profile: Whether the replay should be profiled, with profiler output to stdout.
     @param start_callback: A callback function that will be called immediately before starting to replay steps. Should
@@ -100,7 +101,7 @@ def replay_demo(
     )
 
     # Check mode
-    assert mode in ["headless", "vr", "simple"]
+    assert mode in ["headless", "headless_tensor", "vr", "gui_non_interactive"]
 
     # Initialize settings to save action replay frames
     vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))

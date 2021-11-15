@@ -160,7 +160,7 @@ class FetchRobotMetric(MetricBase):
         gripper_distance = np.abs(delta_pos)
         self.delta_agent_distance["gripper"].append(gripper_distance)
 
-        self.agent_local_pos["gripper"].append(list(robot.get_relative_eef_position()))
+        self.agent_local_pos["gripper"].append(robot.get_relative_eef_position().tolist())
 
         contacts = p.getContactPoints(bodyA=robot.robot_ids[0], linkIndexA=robot.eef_link_id)
         if len(contacts) > 0:
