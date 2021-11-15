@@ -568,7 +568,7 @@ class MotionPlanningWrapper(object):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode in ["gui_interactive", "gui"]:
+            if self.mode == "gui_interactive":
                 sleep(0.02)  # for visualization
 
     def execute_arm_push(self, plan, hit_pos, hit_normal):

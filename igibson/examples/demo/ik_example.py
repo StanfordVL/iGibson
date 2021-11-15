@@ -19,7 +19,7 @@ from igibson.utils.utils import parse_config
 
 def main():
     config = parse_config(os.path.join(igibson.example_config_path, "fetch_reaching.yaml"))
-    s = Simulator(mode="gui", physics_timestep=1 / 240.0)
+    s = Simulator(mode="gui_interactive", use_pb_gui=True, physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)
     fetch = Fetch(config)

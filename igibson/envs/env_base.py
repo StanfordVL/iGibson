@@ -33,6 +33,7 @@ class BaseEnv(gym.Env):
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
         device_idx=0,
+        use_pb_gui=False,
     ):
         """
         :param config_file: config_file path
@@ -41,6 +42,7 @@ class BaseEnv(gym.Env):
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
+        :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
         self.config = parse_config(config_file)
         if scene_id is not None:
@@ -72,6 +74,7 @@ class BaseEnv(gym.Env):
             vertical_fov=self.config.get("vertical_fov", 90),
             device_idx=device_idx,
             rendering_settings=settings,
+            use_pb_gui=use_pb_gui,
         )
         self.load()
 

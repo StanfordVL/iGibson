@@ -54,7 +54,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if env.mode != "gui":
+        if env.mode != "gui_interactive":
             return
 
         cyl_length = 0.2
@@ -215,7 +215,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if env.mode != "gui":
+        if env.mode != "gui_interactive":
             return
 
         self.initial_pos_vis_obj.set_position(self.initial_pos)
