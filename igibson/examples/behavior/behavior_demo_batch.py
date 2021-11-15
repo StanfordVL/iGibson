@@ -80,7 +80,8 @@ def behavior_demo_batch(
                 start_callbacks=start_callbacks,
                 step_callbacks=step_callbacks,
                 end_callbacks=end_callbacks,
-                mode="gui_interactive" if debug_display else "headless",
+                mode="headless",
+                use_pb_gui=debug_display,
                 verbose=False,
                 image_size=image_size,
             )
