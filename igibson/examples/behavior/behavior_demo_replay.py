@@ -77,6 +77,7 @@ def replay_demo(
     end_callbacks=[],
     profile=False,
     image_size=(1280, 720),
+    use_pb_gui=False,
 ):
     """
     Replay a BEHAVIOR demo.
@@ -98,6 +99,7 @@ def replay_demo(
     @param end_callback: A callback function that will be called when replay has finished. Should take a single
         argument, an iGBEHAVIORActivityInstance.
     @param image_size: The image size that should be used by the renderer.
+    @param use_pb_gui: display the interactive pybullet gui (for debugging)
     @return if disable_save is True, returns None. Otherwise, returns a boolean indicating if replay was deterministic.
     """
     # HDR files for PBR rendering
@@ -174,6 +176,7 @@ def replay_demo(
         rendering_settings=vr_rendering_settings,
         image_width=image_size[0],
         image_height=image_size[1],
+        use_pb_gui=use_pb_gui,
     )
 
     igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
