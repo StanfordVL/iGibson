@@ -6,7 +6,7 @@ Assume you finished installation and assets downloading. Let's get our hands dir
 ```bash
 python -m igibson.examples.demo.env_example
 ```
-You should see something like this:
+You should see something like this. If you are on Mac OS X, you will only see the two small windows. 
 ![quickstart.png](images/quickstart.png)
 
 The main window shows PyBullet visualization. The robot (TurtleBot) is moving around with random actions in a realistic house (called "Rs", the one you just downloaded!).
