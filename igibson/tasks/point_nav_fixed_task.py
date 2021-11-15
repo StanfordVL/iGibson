@@ -144,11 +144,11 @@ class PointNavFixedTask(BaseTask):
         :param env: environment instance
         """
         env.land(env.robots[0], self.initial_pos, self.initial_orn)
+
+    def reset_variables(self, env):
         self.path_length = 0.0
         self.robot_pos = self.initial_pos[:2]
         self.geodesic_dist = self.get_geodesic_potential(env)
-        for reward_function in self.reward_functions:
-            reward_function.reset(self, env)
 
     def get_termination(self, env, collision_links=[], action=None, info={}):
         """

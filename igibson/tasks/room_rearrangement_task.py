@@ -112,9 +112,6 @@ class RoomRearrangementTask(BaseTask):
         env.land(env.robots[0], initial_pos, initial_orn)
         p.removeState(state_id)
 
-        for reward_function in self.reward_functions:
-            reward_function.reset(self, env)
-
     def get_task_obs(self, env):
         """
         No task-specific observation
