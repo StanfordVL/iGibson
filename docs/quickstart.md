@@ -6,6 +6,9 @@ Assume you finished installation and assets downloading. Let's get our hands dir
 ```bash
 python -m igibson.examples.demo.env_example
 ```
+
+If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/examples/configs/turtlebot_demo.yaml) to avoid out-of-memory error.
+
 You should see something like this. If you are on Mac OS X, you will only see the two small windows. 
 ![quickstart.png](images/quickstart.png)
 
