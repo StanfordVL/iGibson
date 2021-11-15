@@ -73,3 +73,6 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
+
+# Need to reduce the texture size for machines that have less memory (e.g. older versions of Macbooks)
+texture_scale: 0.5

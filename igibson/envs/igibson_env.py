@@ -40,6 +40,7 @@ class iGibsonEnv(BaseEnv):
         physics_timestep=1 / 240.0,
         device_idx=0,
         automatic_reset=False,
+        use_pb_gui=False,
     ):
         """
         :param config_file: config_file path
@@ -49,6 +50,7 @@ class iGibsonEnv(BaseEnv):
         :param physics_timestep: physics timestep for pybullet
         :param device_idx: which GPU to run the simulation and rendering on
         :param automatic_reset: whether to automatic reset after an episode finishes
+        :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
         super(iGibsonEnv, self).__init__(
             config_file=config_file,
@@ -57,6 +59,7 @@ class iGibsonEnv(BaseEnv):
             action_timestep=action_timestep,
             physics_timestep=physics_timestep,
             device_idx=device_idx,
+            use_pb_gui=use_pb_gui,
         )
         self.automatic_reset = automatic_reset
 

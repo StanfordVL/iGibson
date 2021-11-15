@@ -15,7 +15,9 @@ from igibson.utils.utils import parse_config
 def main():
     config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_demo.yaml"))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
+    )
 
     scene = StaticIndoorScene("Rs", build_graph=True, pybullet_load_texture=True)
     s.import_scene(scene)
