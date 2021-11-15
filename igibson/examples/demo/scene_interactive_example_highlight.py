@@ -10,7 +10,14 @@ from igibson.simulator import Simulator
 
 def main():
     settings = MeshRendererSettings(optimized=True)
-    s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive",
+        use_pb_gui=True,
+        image_width=512,
+        image_height=512,
+        device_idx=0,
+        rendering_settings=settings,
+    )
     scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
     s.import_ig_scene(scene)
     np.random.seed(0)

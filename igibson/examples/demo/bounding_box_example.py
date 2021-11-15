@@ -14,7 +14,7 @@ from igibson.utils import utils
 
 
 def main():
-    s = Simulator(mode="gui")
+    s = Simulator(mode="gui_interactive", use_pb_gui=True)
     scene = EmptyScene()
     s.import_scene(scene)
 

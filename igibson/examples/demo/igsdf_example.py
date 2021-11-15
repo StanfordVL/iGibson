@@ -11,7 +11,9 @@ def main():
     parser.add_argument("--scene", type=str, help="Name of the scene in the iG Dataset")
     args = parser.parse_args()
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
-    s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
+    )
 
     scene = InteractiveIndoorScene(args.scene)
     s.import_ig_scene(scene)
