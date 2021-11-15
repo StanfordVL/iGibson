@@ -16,7 +16,7 @@ def get_available_devices():
     try:
         num_devices = int(subprocess.check_output(["{}/query_devices".format(executable_path)]))
     except subprocess.CalledProcessError as e:
-        return [0]
+        return [0], {0: {}}
 
     FNULL = open(os.devnull, "w")
 
