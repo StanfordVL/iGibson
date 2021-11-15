@@ -51,7 +51,7 @@ if __name__ == "__main__":
         "--mode",
         "-m",
         choices=["headless", "headless_tensor", "gui_interactive", "gui_non_interactive"],
-        default="simple",
+        default="gui_non_interactive",
         help="which mode for simulation (default: headless)",
     )
     args = parser.parse_args()
