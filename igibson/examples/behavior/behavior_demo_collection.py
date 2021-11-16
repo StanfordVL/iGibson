@@ -74,7 +74,11 @@ def parse_args():
         "--no_vr", action="store_true", help="Whether to turn off VR recording and save random actions."
     )
     parser.add_argument("--max_steps", type=int, default=-1, help="Maximum number of steps to record before stopping.")
-    parser.add_argument("--config", help="which config file to use [default: use yaml files in examples/configs]")
+    parser.add_argument(
+        "--config",
+        help="which config file to use [default: use yaml files in examples/configs]",
+        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+    )
     return parser.parse_args()
 
 
@@ -106,7 +110,7 @@ def collect_demo(
     no_vr=False,
     disable_scene_cache=False,
     profile=False,
-    config_file=None,
+    config_file=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
 ):
     # HDR files for PBR rendering
     hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
