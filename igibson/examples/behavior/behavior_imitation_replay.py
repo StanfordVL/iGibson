@@ -143,8 +143,8 @@ def replay_imitation_demo(
     vision_sensor = VisionSensor(env, ["rgb", "highlight", "depth", "seg", "ins_seg"])
 
     episode_identifier = "_".join(os.path.splitext(in_log_path)[0].split("_")[-2:])
-    episode_out_log_path = "processed_hdf5s/{}_{}_{}_{}_episode.hdf5".format(
-        activity, activity_id, scene, episode_identifier
+    episode_out_log_path = "processed_hdf5s/{}_{}_{}_{}_{}_episode.hdf5".format(
+        activity, activity_id, scene, instance_id, episode_identifier
     )
     hf = h5py.File(episode_out_log_path, "w")
     # hf.attrs["/metadata/collection_date"] = IGLogReader.read_metadata_attr(in_log_path, "/metadata/start_time")
