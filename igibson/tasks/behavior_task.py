@@ -10,7 +10,6 @@ from bddl.logic_base import AtomicFormula
 from bddl.object_taxonomy import ObjectTaxonomy
 
 import igibson
-from igibson.activity.bddl_backend import IGibsonBDDLBackend
 from igibson.external.pybullet_tools.utils import *
 from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.articulated_object import URDFObject
@@ -20,6 +19,7 @@ from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
+from igibson.tasks.bddl_backend import IGibsonBDDLBackend
 from igibson.tasks.task_base import BaseTask
 from igibson.termination_conditions.predicate_goal import PredicateGoal
 from igibson.termination_conditions.timeout import Timeout
@@ -66,12 +66,12 @@ class BehaviorTask(BaseTask):
         self.reset_checkpoint_dir = self.config.get("reset_checkpoint_dir", None)
         self.task_obs_dim = MAX_TASK_RELEVANT_OBJS * TASK_RELEVANT_OBJS_OBS_DIM + AGENT_POSE_DIM
 
-        self.initialized = self.initialize(env)
+        self.initialized, self.feedback = self.initialize(env)
         self.state_history = {}
         self.initial_state = self.save_scene(env)
+        self.behavior_robot_activated = False
         if env.simulator.mode != SimulatorMode.VR:
             self.highlight_task_relevant_objs(env)
-            self.activate_behavior_robot(env)
 
         self.episode_save_dir = self.config.get("episode_save_dir", None)
         if self.episode_save_dir is not None:
@@ -83,10 +83,6 @@ class BehaviorTask(BaseTask):
             if obj.category in ["agent", "room_floor"]:
                 continue
             obj.highlight()
-
-    def activate_behavior_robot(self, env):
-        if isinstance(env.robots[0], BehaviorRobot):
-            env.robots[0].activate()
 
     def update_problem(self, behavior_activity, activity_definition, predefined_problem=None):
         self.behavior_activity = behavior_activity
@@ -139,6 +135,10 @@ class BehaviorTask(BaseTask):
 
     def reset_agent(self, env):
         if isinstance(env.robots[0], BehaviorRobot):
+            if not self.behavior_robot_activated and env.simulator.mode != SimulatorMode.VR:
+                env.robots[0].activate()
+                self.behavior_robot_activated = True
+
             # set the constraints to the current poses
             env.robots[0].apply_action(np.zeros(env.robots[0].action_dim))
 
@@ -180,17 +180,18 @@ class BehaviorTask(BaseTask):
 
     def initialize(self, env):
         accept_scene = True
+        feedback = None
 
         if self.online_sampling:
             # Reject scenes with missing non-sampleable objects
             # Populate object_scope with sampleable objects and the robot
             accept_scene, feedback = self.check_scene(env)
             if not accept_scene:
-                return accept_scene
+                return accept_scene, feedback
             # Sample objects to satisfy initial conditions
             accept_scene, feedback = self.sample(env)
             if not accept_scene:
-                return accept_scene
+                return accept_scene, feedback
 
             if self.load_clutter:
                 # Add clutter objects into the scenes
@@ -204,7 +205,7 @@ class BehaviorTask(BaseTask):
         self.ground_goal_state_options = get_ground_goal_state_options(
             self.conds, self.backend, self.object_scope, self.goal_conditions
         )
-        return accept_scene
+        return accept_scene, feedback
 
     def parse_non_sampleable_object_room_assignment(self):
         self.room_type_to_obj_inst = {}

@@ -21,7 +21,7 @@ task_choices = [
 task = "assembling_gift_baskets"
 task_id = 0
 scene = "Rs_int"
-num_init = 104
+num_init = 0
 
 config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
 env_config = parse_config(config_file)
@@ -29,15 +29,16 @@ env_config["scene_id"] = scene
 env_config["task"] = task
 env_config["task_id"] = task_id
 env_config["instance_id"] = num_init
-env_config["online_sampling"] = False
-env_config["not_load_object_categories"] = ["ceilings"]
 urdf_file = "{}_task_{}_{}_{}".format(scene, task, task_id, num_init)
 env_config["urdf_file"] = urdf_file
-env_config["use_pb_gui"] = True
+env_config["online_sampling"] = False
+env_config["not_load_object_categories"] = ["ceilings"]
+
 
 env = iGibsonEnv(
     config_file=env_config,
     mode="headless",
+    use_pb_gui=True,
 )
 
 print("success", env.task.initialized)

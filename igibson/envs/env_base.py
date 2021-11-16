@@ -1,6 +1,7 @@
 import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.ant_robot import Ant
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch_gripper_robot import FetchGripper
@@ -34,6 +35,7 @@ class BaseEnv(gym.Env):
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
+        rendering_settings=None,
         device_idx=0,
         use_pb_gui=False,
     ):
@@ -43,6 +45,7 @@ class BaseEnv(gym.Env):
         :param mode: headless or gui mode
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
+        :param rendering_settings: rendering_settings to override the default one
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
@@ -53,6 +56,7 @@ class BaseEnv(gym.Env):
         self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
+        self.rendering_settings = rendering_settings
         self.texture_randomization_freq = self.config.get("texture_randomization_freq", None)
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
         self.object_randomization_idx = 0
@@ -62,22 +66,40 @@ class BaseEnv(gym.Env):
         enable_pbr = self.config.get("enable_pbr", True)
         texture_scale = self.config.get("texture_scale", 1.0)
 
-        # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
-        settings = MeshRendererSettings(
-            enable_shadow=enable_shadow, enable_pbr=enable_pbr, msaa=False, texture_scale=texture_scale, optimized=True
-        )
+        if self.rendering_settings is None:
+            # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
+            self.rendering_settings = MeshRendererSettings(
+                enable_shadow=enable_shadow,
+                enable_pbr=enable_pbr,
+                msaa=False,
+                texture_scale=texture_scale,
+                optimized=True,
+            )
 
-        self.simulator = Simulator(
-            mode=mode,
-            physics_timestep=physics_timestep,
-            render_timestep=action_timestep,
-            image_width=self.config.get("image_width", 128),
-            image_height=self.config.get("image_height", 128),
-            vertical_fov=self.config.get("vertical_fov", 90),
-            device_idx=device_idx,
-            rendering_settings=settings,
-            use_pb_gui=use_pb_gui,
-        )
+        if mode == "vr":
+            self.simulator = SimulatorVR(
+                physics_timestep=physics_timestep,
+                render_timestep=action_timestep,
+                image_width=self.config.get("image_width", 128),
+                image_height=self.config.get("image_height", 128),
+                vertical_fov=self.config.get("vertical_fov", 90),
+                device_idx=device_idx,
+                rendering_settings=self.rendering_settings,
+                vr_settings=VrSettings(use_vr=True),
+                use_pb_gui=use_pb_gui,
+            )
+        else:
+            self.simulator = Simulator(
+                mode=mode,
+                physics_timestep=physics_timestep,
+                render_timestep=action_timestep,
+                image_width=self.config.get("image_width", 128),
+                image_height=self.config.get("image_height", 128),
+                vertical_fov=self.config.get("vertical_fov", 90),
+                device_idx=device_idx,
+                rendering_settings=self.rendering_settings,
+                use_pb_gui=use_pb_gui,
+            )
         self.load()
 
     def reload(self, config_file):
@@ -150,7 +172,7 @@ class BaseEnv(gym.Env):
                     self.config["scene_id"],
                     self.config["task"],
                     self.config["task_id"],
-                    self.config.get("instance_id", 0),
+                    self.config["instance_id"],
                 )
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],

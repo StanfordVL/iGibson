@@ -17,7 +17,7 @@ from flask_apscheduler import APScheduler
 from flask_cors import CORS
 
 import igibson
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.simulator import Simulator
@@ -226,32 +226,27 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene="Rs_int"):
-        bddl.set_backend("iGibson")
-        self.task = iGBEHAVIORActivityInstance("trivial", activity_definition=0)
-
+        config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+        env_config = parse_config(config_file)
+        env_config["scene_id"] = scene
+        env_config["task"] = "trivial"
+        env_config["task_id"] = 0
+        env_config["online_sampling"] = True
+        env_config["load_clutter"] = False
         settings = MeshRendererSettings(texture_scale=0.01)
-        simulator = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
-        self.task.initialize_simulator(
-            simulator=simulator,
-            scene_id=scene,
-            mode="headless",
-            load_clutter=False,
-            scene_kwargs={},
-            online_sampling=True,
-            debug_obj_inst=None,
-        )
+        self.env = iGibsonEnv(config_file=env_config, mode="headless", rendering_settings=settings, use_pb_gui=False)
         self.state_id = p.saveState()
         self.num_body_ids = p.getNumBodies()
-        self.num_particle_systems = len(self.task.simulator.particle_systems)
+        self.num_particle_systems = len(self.env.simulator.particle_systems)
 
     def step(self, a):
         pass
 
     def restore_scene(self):
-        for sim_obj in self.task.newly_added_objects:
-            self.task.scene.remove_object(sim_obj)
+        for sim_obj in self.env.task.newly_added_objects:
+            self.env.scene.remove_object(sim_obj)
 
-        self.task.simulator.particle_systems = self.task.simulator.particle_systems[: self.num_particle_systems]
+        self.env.simulator.particle_systems = self.env.simulator.particle_systems[: self.num_particle_systems]
 
         for body_id in range(self.num_body_ids, p.getNumBodies()):
             p.removeBody(body_id)
@@ -260,8 +255,7 @@ class ToyEnvInt(object):
 
     def sample(self, behavior_activity, bddl):
         try:
-            self.task.update_problem(behavior_activity, "tester", predefined_problem=bddl)
-            self.task.object_scope["agent.n.01_1"] = self.task.agent.parts["body"]
+            self.env.task.update_problem(behavior_activity, 0, predefined_problem=bddl)
         except UncontrolledCategoryError:
             accept_scene = False
             feedback = "Goal state has uncontrolled categories."
@@ -281,32 +275,18 @@ class ToyEnvInt(object):
             return accept_scene, feedback
 
         try:
-            accept_scene, feedback = self.task.check_scene()
+            accept_scene, feedback = self.env.task.initialize(self.env)
         except AssertionError as message:
             accept_scene = False
-            if "Invalid" in str(message):
-                feedback = f"We do not currently support {str(message).split(' ')[3]}. Please try a different object!"
-            else:
-                feedback = ("Let Sanjana know there was an indeterminate assertion error during scene checking.",)
-
-            return accept_scene, feedback
-
-        if not accept_scene:
-            self.restore_scene()
-            return accept_scene, feedback
-
-        accept_scene, feedback = self.task.sample(kinematic_only=True)
-        if not accept_scene:
+            feedback = f"Let Sanjana know there was an assertion error during scene checking/sampling: {str(message)}"
             self.restore_scene()
             return accept_scene, feedback
 
         self.restore_scene()
-
-        # self.last_active_time = time.time()
         return accept_scene, feedback
 
     def close(self):
-        self.task.simulator.disconnect()
+        self.env.close()
 
 
 class iGFlask(Flask):

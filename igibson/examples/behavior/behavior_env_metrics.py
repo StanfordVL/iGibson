@@ -6,7 +6,7 @@ import parser
 import bddl
 
 import igibson
-from igibson.envs.behavior_env import BehaviorEnv
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.metrics.agent import BehaviorRobotMetric, FetchRobotMetric
 from igibson.metrics.disarrangement import KinematicDisarrangement, LogicalDisarrangement
 from igibson.metrics.task import TaskMetric
@@ -36,9 +36,6 @@ def get_metrics_callbacks(config):
 
 
 if __name__ == "__main__":
-
-    bddl.set_backend("iGibson")
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -56,18 +53,17 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    env = BehaviorEnv(
-        config_file=args.config,
-        mode=args.mode,
-        action_timestep=1.0 / 10.0,
-        physics_timestep=1.0 / 120.0,
+    config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+    env = iGibsonEnv(
+        config_file=config_file,
+        mode="headless",
     )
 
     start_callbacks, step_callbacks, end_callbacks, data_callbacks = get_metrics_callbacks(env.config)
 
     per_episode_metrics = {}
     for callback in start_callbacks:
-        callback(env.task, None)
+        callback(env, None)
 
     for episode in range(10):
         env.reset()
@@ -75,12 +71,12 @@ if __name__ == "__main__":
             action = env.action_space.sample()
             state, reward, done, _ = env.step(action)
             for callback in step_callbacks:
-                callback(env.task, None)
+                callback(env, None)
             if done:
                 break
 
         for callback in end_callbacks:
-            callback(env.task, None)
+            callback(env, None)
 
         metrics_summary = {}
 
