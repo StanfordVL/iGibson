@@ -62,7 +62,11 @@ def parse_args():
         choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
         help="Mode to run simulator in",
     )
-    parser.add_argument("--config", help="which config file to use [default: use yaml files in examples/configs]")
+    parser.add_argument(
+        "--config",
+        help="which config file to use [default: use yaml files in examples/configs]",
+        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+    )
     return parser.parse_args()
 
 
@@ -73,7 +77,7 @@ def replay_demo(
     frame_save_path=None,
     verbose=True,
     mode="headless",
-    config_file=None,
+    config_file=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
     start_callbacks=[],
     step_callbacks=[],
     end_callbacks=[],

@@ -3,6 +3,7 @@ from time import time
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.tasks.task_base import BaseTask
 from igibson.utils.assets_utils import download_assets, download_demo_data
 
 
@@ -53,8 +54,9 @@ def test_env_reset():
     config_filename = os.path.join(os.path.dirname(__file__), "test_house.yaml")
     env = iGibsonEnv(config_file=config_filename, mode="headless")
 
-    class DummyTask(object):
-        def __init__(self):
+    class DummyTask(BaseTask):
+        def __init__(self, env):
+            super(DummyTask, self).__init__(env)
             self.reset_scene_called = False
             self.reset_agent_called = False
             self.get_task_obs_called = False
@@ -68,7 +70,7 @@ def test_env_reset():
         def reset_agent(self, env):
             self.reset_agent_called = True
 
-    env.task = DummyTask()
+    env.task = DummyTask(env)
     env.reset()
     assert env.task.reset_scene_called
     assert env.task.reset_agent_called

@@ -264,12 +264,7 @@ class iGibsonEnv(BaseEnv):
         :return: collision_links: collisions from last physics timestep
         """
         self.simulator_step()
-        # TODO: remove this temporary hack once we make BehaviorRobot inherit BaseRobot
-        if isinstance(self.robots[0], BehaviorRobot):
-            robot_body_id = self.robots[0].parts["body"].get_body_id()
-        else:
-            robot_body_id = self.robots[0].robot_ids[0]
-        collision_links = list(p.getContactPoints(bodyA=robot_body_id))
+        collision_links = list(p.getContactPoints(bodyA=self.robot_body_id))
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
@@ -290,7 +285,7 @@ class iGibsonEnv(BaseEnv):
                 continue
 
             # ignore self collision with robot link a (body b is also robot itself)
-            if item[2] == self.robots[0].robot_ids[0] and item[4] in self.collision_ignore_link_a_ids:
+            if item[2] == self.robot_body_id and item[4] in self.collision_ignore_link_a_ids:
                 continue
             new_collision_links.append(item)
         return new_collision_links

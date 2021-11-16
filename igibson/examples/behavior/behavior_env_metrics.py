@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default=os.path.join(igibson.root_path, "examples", "configs", "behavior_onboard_sensing_fetch.yaml"),
+        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
         help="which config file to use [default: use yaml files in examples/configs]",
     )
     parser.add_argument(
@@ -53,9 +53,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
     env = iGibsonEnv(
-        config_file=config_file,
+        config_file=args.config,
         mode="headless",
     )
 
