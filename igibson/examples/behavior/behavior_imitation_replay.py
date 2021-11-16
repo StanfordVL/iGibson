@@ -29,8 +29,8 @@ from igibson.utils.utils import parse_str_config
 
 def save_episode(in_log_path, dataset_metric):
     episode_identifier = "_".join(os.path.splitext(in_log_path)[0].split("_")[-2:])
-    episode_out_log_path = "processed_hdf5s/{}_{}_{}_{}_episode.hdf5".format(
-        activity, activity_id, scene, episode_identifier
+    episode_out_log_path = "processed_hdf5s/{}_{}_{}_{}_{}_episode.hdf5".format(
+        activity, activity_id, scene, instance_id, episode_identifier
     )
     hf = h5py.File(episode_out_log_path, "w")
 
