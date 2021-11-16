@@ -46,8 +46,6 @@ def behavior_demo_batch(
     logger = logging.getLogger()
     logger.disabled = True
 
-    bddl.set_backend("iGibson")
-
     demo_list = pd.read_csv(log_manifest)
 
     for idx, demo in enumerate(demo_list["demos"]):

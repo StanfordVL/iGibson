@@ -249,7 +249,7 @@ class BehaviorRobot(object):
         """
         Activate BehaviorRobot and all its body parts.
         This bypasses the activate mechanism used in VR with the trigger press
-        This is useful for non-VR setting, e.g. BehaviorEnv
+        This is useful for non-VR setting, e.g. iGibsonEnv
         """
         self.first_frame = False
         self.activated = True

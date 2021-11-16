@@ -31,8 +31,8 @@ class SimulatorVR(Simulator):
         vertical_fov=90,
         device_idx=0,
         rendering_settings=MeshRendererSettings(),
-        use_pb_renderer=False,
         vr_settings=VrSettings(),
+        use_pb_gui=False,
     ):
         """
         :param gravity: gravity on z direction.
@@ -49,6 +49,7 @@ class SimulatorVR(Simulator):
         disable it when you want to run multiple physics step but don't need to visualize each frame
         :param rendering_settings: settings to use for mesh renderer
         :param vr_settings: settings to use for VR in simulator and MeshRendererVR
+        :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
         if platform.system() == "Windows":
             # By default, windows does not provide ms level timing accuracy
@@ -86,7 +87,7 @@ class SimulatorVR(Simulator):
             vertical_fov,
             device_idx,
             rendering_settings,
-            use_pb_renderer,
+            use_pb_gui,
         )
 
         # Get expected number of vsync frames per iGibson frame Note: currently assumes a 90Hz VR system

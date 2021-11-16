@@ -10,7 +10,6 @@ import pyinstrument
 
 import igibson
 from igibson import object_states
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.activity.bddl_backend import ObjectStateBinaryPredicate, ObjectStateUnaryPredicate
 from igibson.examples.behavior import behavior_demo_replay
 from igibson.object_states import ROOM_STATES, factory
@@ -141,11 +140,11 @@ def process_states(objects, state_types):
     return predicate_states
 
 
-def _get_goal_condition_states(igbhvr_act_inst: iGBEHAVIORActivityInstance):
+def _get_goal_condition_states(env):
     state_types = set()
 
     q = deque()
-    q.extend(igbhvr_act_inst.goal_conditions)
+    q.extend(env.task.goal_conditions)
 
     while q:
         pred = q.popleft()
@@ -186,7 +185,7 @@ class DemoSegmentationProcessor(object):
 
         self.profiler = profiler
 
-    def start_callback(self, igbhvr_act_inst, _):
+    def start_callback(self, env, _):
         self.all_state_types = [
             state
             for state in factory.get_all_states()
@@ -201,20 +200,20 @@ class DemoSegmentationProcessor(object):
         elif self.state_types_option == SegmentationStateSelection.ALL_STATES:
             self.state_types = self.all_state_types
         elif self.state_types_option == SegmentationStateSelection.GOAL_CONDITION_RELEVANT_STATES:
-            self.state_types = _get_goal_condition_states(igbhvr_act_inst)
+            self.state_types = _get_goal_condition_states(env)
         else:
             raise ValueError("Unknown segmentation state selection.")
 
-    def step_callback(self, igbhvr_act_inst, _):
+    def step_callback(self, env, _):
         if self.profiler:
             self.profiler.start()
 
         if self.object_selection == SegmentationObjectSelection.TASK_RELEVANT_OBJECTS:
-            objects = [obj for obj in igbhvr_act_inst.object_scope.values() if not isinstance(obj, BRBody)]
+            objects = [obj for obj in env.task.object_scope.values() if not isinstance(obj, BRBody)]
         elif self.object_selection == SegmentationObjectSelection.ROBOTS:
-            objects = [obj for obj in igbhvr_act_inst.object_scope.values() if isinstance(obj, BRBody)]
+            objects = [obj for obj in env.task.object_scope.values() if isinstance(obj, BRBody)]
         elif self.object_selection == SegmentationObjectSelection.ALL_OBJECTS:
-            objects = igbhvr_act_inst.simulator.scene.get_objects()
+            objects = env.scene.get_objects()
         else:
             raise ValueError("Incorrect SegmentationObjectSelection %r" % self.object_selection)
 
@@ -222,7 +221,7 @@ class DemoSegmentationProcessor(object):
         state_types_to_use = self.state_types if not self.hierarchical else self.all_state_types
         processed_state = process_states(objects, state_types_to_use)
         if self.last_state is None or (processed_state - self.last_state):
-            self.state_history.append(StateEntry(igbhvr_act_inst.simulator.frame_count, processed_state))
+            self.state_history.append(StateEntry(env.simulator.frame_count, processed_state))
 
         self.last_state = processed_state
 
@@ -413,7 +412,6 @@ def get_default_segmentation_processors(profiler=None):
 
 
 def main():
-    bddl.set_backend("iGibson")
     args = parse_args()
 
     # Select the demo to apply segmentation on.

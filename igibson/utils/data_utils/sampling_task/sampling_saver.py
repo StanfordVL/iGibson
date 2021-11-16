@@ -60,6 +60,7 @@ def main():
     env_config["task"] = task
     env_config["task_id"] = task_id
     env_config["online_sampling"] = True
+    env_config["load_clutter"] = True
 
     for scene_id in scene_choices:
         logging.warning(("TRY SCENE:", scene_id))

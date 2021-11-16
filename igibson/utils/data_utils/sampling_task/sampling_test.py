@@ -15,15 +15,15 @@ env_config = parse_config(config_file)
 env_config["scene_id"] = scene_id
 env_config["task"] = activity
 env_config["task_id"] = 0
-env_config["instance_id"] = 0
 env_config["online_sampling"] = True
-env_config["not_load_object_categories"] = ["ceilings"]
-env_config["use_pb_gui"] = False
 env_config["load_clutter"] = False
+env_config["not_load_object_categories"] = ["ceilings"]
+
 
 env = iGibsonEnv(
     config_file=env_config,
     mode="headless",
+    use_pb_gui=True,
 )
 
 print("success", env.task.initialized)

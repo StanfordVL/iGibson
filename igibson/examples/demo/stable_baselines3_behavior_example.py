@@ -2,7 +2,7 @@ import os
 from typing import Callable
 
 import igibson
-from igibson.envs.behavior_env import BehaviorEnv
+from igibson.envs.igibson_env import iGibsonEnv
 
 try:
     import gym
@@ -102,8 +102,8 @@ def main():
     num_cpu = 8
 
     def make_env(rank: int, seed: int = 0) -> Callable:
-        def _init() -> BehaviorEnv:
-            env = BehaviorEnv(
+        def _init() -> iGibsonEnv:
+            env = iGibsonEnv(
                 config_file=os.path.join(igibson.example_config_path, config_file),
                 mode="headless",
                 action_timestep=1 / 30.0,
@@ -118,7 +118,7 @@ def main():
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
     env = VecMonitor(env)
 
-    eval_env = BehaviorEnv(
+    eval_env = iGibsonEnv(
         config_file=os.path.join(igibson.example_config_path, config_file),
         mode="headless",
         action_timestep=1 / 30.0,
