@@ -28,25 +28,15 @@ from igibson.utils.utils import parse_str_config
 
 
 def save_episode(in_log_path, dataset_metric):
-    activity = IGLogReader.read_metadata_attr(in_log_path, "/metadata/atus_activity")
-    activity_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/activity_definition")
-    scene = IGLogReader.read_metadata_attr(in_log_path, "/metadata/scene_id")
-    physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
-    render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
-    instance_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/instance_id")
-    urdf_file = IGLogReader.read_metadata_attr(in_log_path, "/metadata/urdf_file")
-
     episode_identifier = "_".join(os.path.splitext(in_log_path)[0].split("_")[-2:])
-
     episode_out_log_path = "processed_hdf5s/{}_{}_{}_{}_episode.hdf5".format(
         activity, activity_id, scene, episode_identifier
     )
     hf = h5py.File(episode_out_log_path, "w")
-    hf.attrs["/metadata/physics_timestep"] = physics_timestep
-    hf.attrs["/metadata/render_timestep"] = render_timestep
-    hf.attrs["/metadata/activity"] = activity
-    hf.attrs["/metadata/activity_id"] = activity_id
-    hf.attrs["/metadata/scene_id"] = scene
+
+    # Copy the metadata
+    for attr in IGLogReader.get_all_metadata_attrs(in_log_path):
+        hf.attrs[attr] = IGLogReader.read_metadata_attr(in_log_path, attr)
 
     for key, value in dataset_metric.gather_results().items():
         if key == "action":

@@ -580,6 +580,14 @@ class IGLogReader(object):
         return attr_name in f.attrs
 
     @staticmethod
+    def get_all_metadata_attrs(vr_log_path):
+        """
+        Returns a list of available metadata attributes
+        """
+        f = h5py.File(vr_log_path, "r")
+        return f.attrs
+
+    @staticmethod
     def read_metadata_attr(vr_log_path, attr_name):
         """
         Reads a metadata attribute from a given HDF5 log path.
