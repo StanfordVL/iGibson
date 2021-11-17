@@ -37,8 +37,8 @@ def plan_base_motion_br(
     **kwargs
 ):
     def sample_fn():
-        x, y = (rng.random() * (base_limits[1] - base_limits[0])) + base_limits[0] # np.random.uniform(*base_limits)
-        theta = (rng.random() * (CIRCULAR_LIMITS[1] - CIRCULAR_LIMITS[0])) + CIRCULAR_LIMITS[0] # np.random.uniform(*CIRCULAR_LIMITS)
+        x, y = (rng.random() * (base_limits[1] - base_limits[0])) + base_limits[0]
+        theta = (rng.random() * (CIRCULAR_LIMITS[1] - CIRCULAR_LIMITS[0])) + CIRCULAR_LIMITS[0]
         return (x, y, theta)
 
     if override_sample_fn is not None:

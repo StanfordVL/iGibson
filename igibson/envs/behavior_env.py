@@ -80,7 +80,8 @@ class BehaviorEnv(iGibsonEnv):
         self.log_writer = None
 
         # Make sure different parallel environments will have different random seeds
-        np.random.seed(os.getpid())
+        # np.random.seed(os.getpid())
+        np.random.seed(0) # For now, force this to be 0 so we have reproducible behavior!
 
     def load_action_space(self):
         """
