@@ -3,16 +3,14 @@ name: Remove old artifacts
 on:
   workflow_dispatch:
   schedule:
-    # Every day at 1am
+    # Every day at 1am PT
     - cron: '0 9 * * *'
 
 jobs:
-  remove-old-artifacts:
+  delete-artifacts:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
     steps:
-    - name: Remove old artifacts
-      uses: c-hive/gha-remove-artifacts@v1
-      with:
-        age: '1 minute'  # Remove everything
+      - uses: kolpav/purge-artifacts-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          expire-in: 0days # Delete everything
