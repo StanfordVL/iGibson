@@ -189,7 +189,7 @@ def download_assets():
     if not os.path.exists(igibson.assets_path):
         os.system(
             "wget -c --retry-connrefused --tries=5 --timeout=5 "
-            "https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz -O {}".format(tmp_file)
+            "https://download.cs.stanford.edu/downloads/igibson/assets_igibson.tar.gz -O {}".format(tmp_file)
         )
         os.system("tar -zxf {} --directory {}".format(tmp_file, os.path.dirname(igibson.assets_path)))
 
@@ -207,7 +207,7 @@ def download_demo_data():
     if not os.path.exists(os.path.join(igibson.g_dataset_path, "Rs")):
         os.system(
             "wget -c --retry-connrefused --tries=5 --timeout=5  "
-            "https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O {}".format(tmp_file)
+            "https://download.cs.stanford.edu/downloads/igibson/Rs.tar.gz -O {}".format(tmp_file)
         )
         os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.g_dataset_path))
 
@@ -232,8 +232,7 @@ def download_dataset(url):
 def download_ext_scene_assets():
     os.makedirs(igibson.threedfront_dataset_path, exist_ok=True)
     os.makedirs(igibson.cubicasa_dataset_path, exist_ok=True)
-    url = "https://storage.googleapis.com/gibson_scenes/default_materials.tar.gz"
-
+    url = "https://download.cs.stanford.edu/downloads/igibson/default_materials.tar.gz"
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
@@ -241,7 +240,7 @@ def download_ext_scene_assets():
     os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.cubicasa_dataset_path))
     os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.threedfront_dataset_path))
 
-    url = "https://storage.googleapis.com/gibson_scenes/threedfront_urdfs.tar.gz"
+    url = "https://download.cs.stanford.edu/downloads/igibson/threedfront_urdfs.tar.gz"
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
@@ -263,7 +262,7 @@ def download_ig_dataset():
 
     if not os.path.exists(igibson.ig_dataset_path):
         os.makedirs(igibson.ig_dataset_path)
-    url = "https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz"
+    url = "https://download.cs.stanford.edu/downloads/igibson/ig_dataset.tar.gz"
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
