@@ -203,7 +203,6 @@ class ToyEnv(object):
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
-        # self.s.import_ig_scene(scene)
         self.robot = Turtlebot(config)
         self.s.import_robot(self.robot)
 
@@ -255,7 +254,7 @@ class ToyEnvInt(object):
         )
 
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
-        self.s.import_ig_scene(scene)
+        self.s.import_scene(scene)
 
         if robot == "turtlebot":
             self.robot = Turtlebot(config)

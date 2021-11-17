@@ -1,42 +1,42 @@
 import os
-import time
 
-import pybullet as p
-import pybullet_data
+import numpy as np
 
 import igibson
-from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.ycb_object import YCBObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.profiler import Profiler
+from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
+from igibson.simulator import Simulator
+from igibson.utils.utils import parse_config
 
 
 def main():
-    p.connect(p.GUI)
-    p.setGravity(0, 0, -9.8)
-    p.setTimeStep(1.0 / 240.0)
+    config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_demo.yaml"))
+    settings = MeshRendererSettings(enable_shadow=False, msaa=False)
+    s = Simulator(
+        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
+    )
 
-    floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
-    p.loadMJCF(floor)
+    scene = StaticIndoorScene("Rs", build_graph=True, pybullet_load_texture=True)
+    s.import_scene(scene)
+    turtlebot = Turtlebot(config)
+    s.import_robot(turtlebot)
 
-    cabinet_0007 = os.path.join(igibson.assets_path, "models/cabinet2/cabinet_0007.urdf")
-    cabinet_0004 = os.path.join(igibson.assets_path, "models/cabinet/cabinet_0004.urdf")
+    for _ in range(10):
+        obj = YCBObject("003_cracker_box")
+        s.import_object(obj)
+        obj.set_position_orientation(np.random.uniform(low=0, high=2, size=3), [0, 0, 0, 1])
 
-    obj1 = ArticulatedObject(filename=cabinet_0007)
-    obj1.load()
-    obj1.set_position([0, 0, 0.5])
+    print(s.renderer.instances)
 
-    obj2 = ArticulatedObject(filename=cabinet_0004)
-    obj2.load()
-    obj2.set_position([0, 0, 2])
-
-    obj3 = YCBObject("003_cracker_box")
-    obj3.load()
-    obj3.set_position_orientation([0, 0, 1.2], [0, 0, 0, 1])
-
-    for _ in range(24000):  # at least 100 seconds
-        p.stepSimulation()
-        time.sleep(1.0 / 240.0)
-
-    p.disconnect()
+    for i in range(10000):
+        with Profiler("Simulator step"):
+            turtlebot.apply_action([0.1, 0.1])
+            s.step()
+            rgb = s.renderer.render_robot_cameras(modes=("rgb"))
+    s.disconnect()
 
 
 if __name__ == "__main__":

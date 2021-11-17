@@ -34,13 +34,13 @@ def main():
     settings = MeshRendererSettings(env_texture_filename=hdr_texture, enable_shadow=True, msaa=True)
 
     s = Simulator(mode="headless", image_width=1800, image_height=1200, vertical_fov=70, rendering_settings=settings)
-    scene = EmptyScene()
-    s.import_scene(scene, render_floor_plane=False)
+    scene = EmptyScene(render_floor_plane=False)
+    s.import_scene(scene)
 
     s.renderer.set_light_position_direction([0, 0, 10], [0, 0, 0])
 
     s.renderer.load_object("plane/plane_z_up_0.obj", scale=[3, 3, 3])
-    s.renderer.add_instance(0)
+    s.renderer.add_instance_group([0])
     s.renderer.set_pose([0, 0, -1.5, 1, 0, 0.0, 0.0], -1)
 
     ###########################

@@ -57,7 +57,7 @@ else:
 
 scene = InteractiveIndoorScene("Rs_int")
 scene._set_first_n_objects(2)
-s.import_ig_scene(scene)
+s.import_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 if not VR_MODE:
@@ -87,8 +87,8 @@ for item in objects:
     fpath = item[0]
     pos = item[1]
     orn = item[2]
-    item_ob = ArticulatedObject(fpath, scale=1)
-    s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+    item_ob = ArticulatedObject(fpath, scale=1, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+    s.import_object(item_ob)
     item_ob.set_position(pos)
     item_ob.set_orientation(orn)
 

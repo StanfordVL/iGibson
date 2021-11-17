@@ -138,10 +138,10 @@ class ObjectGrouper(NonRobotObject):
 
         return attrs[0]
 
-    def _load(self):
+    def _load(self, simulator):
         body_ids = []
         for obj in self.objects:
-            body_ids += obj._load()
+            body_ids += obj.load(simulator)
         return body_ids
 
     def get_body_id(self):
@@ -213,10 +213,10 @@ class ObjectMultiplexer(NonRobotObject):
 
         return getattr(self.current_selection(), item)
 
-    def _load(self):
+    def _load(self, simulator):
         body_ids = []
         for obj in self._multiplexed_objects:
-            body_ids += obj._load()
+            body_ids += obj.load(simulator)
         return body_ids
 
     def get_body_id(self):

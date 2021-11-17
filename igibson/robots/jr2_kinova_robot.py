@@ -13,7 +13,7 @@ class JR2_Kinova(LocomotorRobot):
     Uses joint velocity control
     """
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
         self.wheel_velocity = config.get("wheel_velocity", 0.3)
         self.wheel_dim = 2
@@ -28,6 +28,7 @@ class JR2_Kinova(LocomotorRobot):
             is_discrete=config.get("is_discrete", False),
             control="velocity",
             self_collision=True,
+            **kwargs
         )
 
     def set_up_continuous_action_space(self):
@@ -62,12 +63,12 @@ class JR2_Kinova(LocomotorRobot):
         self.ordered_joints[5].reset_joint_state(np.pi / 2.0, 0.0)
         self.ordered_joints[6].reset_joint_state(0.0, 0.0)
 
-    def load(self):
+    def load(self, simulator):
         """
         Load the robot into pybullet. Filter out unnecessary self collision
         due to modeling imperfection in the URDF
         """
-        ids = super(JR2_Kinova, self).load()
+        ids = super(JR2_Kinova, self).load(simulator)
         robot_id = self.robot_ids[0]
 
         disable_collision_names = [

@@ -7,6 +7,7 @@ from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 
 
 def main():
+    # TODO: Update
     p.connect(p.GUI)
     p.setGravity(0, 0, -9.8)
     p.setTimeStep(1.0 / 240.0)

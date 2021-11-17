@@ -8,7 +8,7 @@ def main():
     scene = InteractiveIndoorScene(
         "Rs_int", texture_randomization=False, object_randomization=False, merge_fixed_links=False
     )
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     # Set everything that can go dirty.
     stateful_objects = set(

@@ -33,11 +33,11 @@ def main():
     )
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, enable=0)
 
-    scene = EmptyScene()
+    scene = EmptyScene(render_floor_plane=True)
     s.scene = scene
     scene.objects_by_id = {}
 
-    s.import_scene(scene, render_floor_plane=True)
+    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     config = parse_config(os.path.join(igibson.root_path, "examples", "configs", "behavior_onboard_sensing_fetch.yaml"))
@@ -96,8 +96,7 @@ def main():
             initial_pos=obj["pos"],
             initial_orn=[0, 0, 90],
         )
-        obj_id = s.import_object(simulator_obj)
-        s.scene.objects_by_id[simulator_obj.get_body_id()] = simulator_obj
+        s.import_object(simulator_obj)
         simulator_obj.set_orientation(obj["orn"])
 
     vr_agent.robot_specific_reset()

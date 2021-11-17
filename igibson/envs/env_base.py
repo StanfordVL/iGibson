@@ -62,7 +62,12 @@ class BaseEnv(gym.Env):
 
         # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
         settings = MeshRendererSettings(
-            enable_shadow=enable_shadow, enable_pbr=enable_pbr, msaa=False, texture_scale=texture_scale, optimized=True
+            enable_shadow=enable_shadow,
+            enable_pbr=enable_pbr,
+            msaa=False,
+            texture_scale=texture_scale,
+            optimized=True,
+            load_textures=self.config.get("load_texture", True),
         )
 
         self.simulator = Simulator(
@@ -123,13 +128,9 @@ class BaseEnv(gym.Env):
         Load the scene and robot
         """
         if self.config["scene"] == "empty":
-            scene = EmptyScene()
-            self.simulator.import_scene(
-                scene, load_texture=self.config.get("load_texture", True), render_floor_plane=True
-            )
+            scene = EmptyScene(render_floor_plane=True)
         elif self.config["scene"] == "stadium":
             scene = StadiumScene()
-            self.simulator.import_scene(scene, load_texture=self.config.get("load_texture", True))
         elif self.config["scene"] == "gibson":
             scene = StaticIndoorScene(
                 self.config["scene_id"],
@@ -140,7 +141,6 @@ class BaseEnv(gym.Env):
                 trav_map_erosion=self.config.get("trav_map_erosion", 2),
                 pybullet_load_texture=self.config.get("pybullet_load_texture", False),
             )
-            self.simulator.import_scene(scene, load_texture=self.config.get("load_texture", True))
         elif self.config["scene"] == "igibson":
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
@@ -163,7 +163,8 @@ class BaseEnv(gym.Env):
             first_n = self.config.get("_set_first_n_objects", -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
-            self.simulator.import_ig_scene(scene)
+
+        self.simulator.import_scene(scene)
 
         if self.config["robot"] == "Turtlebot":
             robot = Turtlebot(self.config)

@@ -70,7 +70,7 @@ def main():
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings)
     scene = InteractiveIndoorScene("Rs_int")
     scene._set_obj_names_to_load(benchmark_names)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
@@ -146,11 +146,13 @@ def main():
         fpath, obj_type, scale, orn, pos, space_vec, space_val = obj_to_load[name]
         for i in range(len(masses)):
             if obj_type == "ycb":
-                handle = YCBObject(fpath, scale=scale)
+                handle = YCBObject(fpath, scale=scale, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
             elif obj_type == "pb":
-                handle = ArticulatedObject(fpath, scale=scale)
+                handle = ArticulatedObject(
+                    fpath, scale=scale, renderer_params={"use_pbr": False, "use_pbr_mapping": False}
+                )
 
-            s.import_object(handle, use_pbr=False, use_pbr_mapping=False)
+            s.import_object(handle)
             # Calculate new position along spacing vector
             new_pos = (
                 pos[0] + space_vec[0] * space_val * i,

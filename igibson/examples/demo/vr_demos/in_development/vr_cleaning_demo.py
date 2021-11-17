@@ -54,7 +54,7 @@ else:
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
 
 scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
-s.import_ig_scene(scene)
+s.import_scene(scene)
 
 if not VIEWER_MANIP:
     vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER, normal_color=False)

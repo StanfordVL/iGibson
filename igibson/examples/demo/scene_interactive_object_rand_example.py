@@ -9,7 +9,7 @@ def main():
         scene = InteractiveIndoorScene(
             "Rs_int", texture_randomization=False, object_randomization=True, object_randomization_idx=random_seed
         )
-        s.import_ig_scene(scene)
+        s.import_scene(scene)
         for i in range(1000):
             s.step()
         s.reload()

@@ -4,7 +4,7 @@ from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.objects.visual_marker import VisualMarker
-from igibson.utils.constants import PyBulletSleepState, SimulatorMode
+from igibson.utils.constants import PyBulletSleepState, SemanticClass, SimulatorMode
 from igibson.utils.utils import brighten_texture
 
 _TOGGLE_DISTANCE_THRESHOLD = 0.1
@@ -34,8 +34,18 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
     def _initialize(self):
         super(ToggledOn, self)._initialize()
         if self.initialize_link_mixin():
-            self.visual_marker_on = VisualMarker(rgba_color=[0, 1, 0, 0.5], radius=_TOGGLE_BUTTON_RADIUS)
-            self.visual_marker_off = VisualMarker(rgba_color=[1, 0, 0, 0.5], radius=_TOGGLE_BUTTON_RADIUS)
+            self.visual_marker_on = VisualMarker(
+                rgba_color=[0, 1, 0, 0.5],
+                radius=_TOGGLE_BUTTON_RADIUS,
+                class_id=SemanticClass.SCENE_OBJS,
+                rendering_params={"use_pbr": True, "use_pbr_mapping": True},
+            )
+            self.visual_marker_off = VisualMarker(
+                rgba_color=[1, 0, 0, 0.5],
+                radius=_TOGGLE_BUTTON_RADIUS,
+                class_id=SemanticClass.SCENE_OBJS,
+                rendering_params={"use_pbr": True, "use_pbr_mapping": True},
+            )
             self.simulator.import_object(self.visual_marker_on)
             self.visual_marker_on.set_position(_TOGGLE_MARKER_OFF_POSITION)
             self.simulator.import_object(self.visual_marker_off)

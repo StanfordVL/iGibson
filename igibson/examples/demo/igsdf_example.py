@@ -16,7 +16,7 @@ def main():
     )
 
     scene = InteractiveIndoorScene(args.scene)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     for i in range(10000):
         with Profiler("Simulator step"):

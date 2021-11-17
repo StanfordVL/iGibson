@@ -16,7 +16,7 @@ def main():
 
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)
-    renderer.add_instance(0)
+    renderer.add_instance_group([0])
     camera_pose = np.array([0, 0, 1.2])
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
