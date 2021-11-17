@@ -41,7 +41,7 @@ def main():
     vr_settings = VrSettings()
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=vr_settings)
     scene = InteractiveIndoorScene("Rs_int")
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     # Create a BehaviorRobot and it will handle all initialization and importing under-the-hood
     # Change USE_GRIPPER to switch between the BRHand and the BRGripper (see robots/behavior_robot.py for more details)
@@ -57,8 +57,8 @@ def main():
     mass_list = [5, 10, 100, 500]
     mustard_start = [-1, 1.55, 1.2]
     for i in range(len(mass_list)):
-        mustard = YCBObject("006_mustard_bottle")
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        mustard = YCBObject("006_mustard_bottle", renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        s.import_object(mustard)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.get_body_id(), -1, mass=mass_list[i])
 

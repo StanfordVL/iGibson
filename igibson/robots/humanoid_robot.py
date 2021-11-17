@@ -13,7 +13,7 @@ class Humanoid(LocomotorRobot):
     Uses joint torque control
     """
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
         self.torque = config.get("torque", 0.1)
         self.glass_id = None
@@ -27,6 +27,7 @@ class Humanoid(LocomotorRobot):
             is_discrete=config.get("is_discrete", False),
             control="torque",
             self_collision=True,
+            **kwargs
         )
 
     def set_up_continuous_action_space(self):

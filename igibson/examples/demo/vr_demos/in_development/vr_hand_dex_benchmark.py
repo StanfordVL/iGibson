@@ -68,7 +68,7 @@ def main():
     )
     # scene.load_object_categories(benchmark_names)
 
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
@@ -144,11 +144,13 @@ def main():
         fpath, obj_type, scale, orn, pos, space_vec, space_val = obj_to_load[name]
         for i in range(len(masses)):
             if obj_type == "ycb":
-                handle = YCBObject(fpath, scale=scale)
+                handle = YCBObject(fpath, scale=scale, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
             elif obj_type == "pb":
-                handle = ArticulatedObject(fpath, scale=scale)
+                handle = ArticulatedObject(
+                    fpath, scale=scale, renderer_params={"use_pbr": False, "use_pbr_mapping": False}
+                )
 
-            s.import_object(handle, use_pbr=False, use_pbr_mapping=False)
+            s.import_object(handle)
             # Calculate new position along spacing vector
             new_pos = (
                 pos[0] + space_vec[0] * space_val * i,
@@ -284,8 +286,8 @@ def main():
         orn = item["orn"]
         scale = item["scale"]
         mass = item["mass"]
-        item_ob = ArticulatedObject(fpath, scale=scale)
-        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+        item_ob = ArticulatedObject(fpath, scale=scale, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
         objs_loaded.append(item_ob)

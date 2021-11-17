@@ -66,7 +66,7 @@ class MinitaurBase(LocomotorRobot):
     """The minitaur class that simulates a quadruped robot from Ghost Robotics.
     """
 
-    def __init__(self, config, env=None, pd_control_enabled=True, accurate_motor_model_enabled=True):
+    def __init__(self, config, env=None, pd_control_enabled=True, accurate_motor_model_enabled=True, **kwargs):
         """Constructs a minitaur and reset it to the initial states.
 
         Properties:
@@ -105,6 +105,7 @@ class MinitaurBase(LocomotorRobot):
             target_pos=config["target_pos"],
             resolution=config["resolution"],
             env=env,
+            **kwargs
         )
 
         self.r_f = 0.1

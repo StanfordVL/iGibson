@@ -12,7 +12,7 @@ class Quadrotor(LocomotorRobot):
     Uses joint torque control
     """
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
         self.torque = config.get("torque", 0.02)
         LocomotorRobot.__init__(
@@ -23,6 +23,7 @@ class Quadrotor(LocomotorRobot):
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
             control="torque",
+            **kwargs
         )
 
     def set_up_continuous_action_space(self):

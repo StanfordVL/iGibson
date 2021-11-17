@@ -19,7 +19,7 @@ def main():
         rendering_settings=settings,
     )
     scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_randomization=False)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     np.random.seed(0)
     for _ in range(10):
         pt = scene.get_random_point_by_room_type("living_room")[1]

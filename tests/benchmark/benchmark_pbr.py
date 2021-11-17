@@ -21,7 +21,7 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num=100, optimized=Tru
         renderer = MeshRenderer(width=resolution, height=resolution, vertical_fov=90, rendering_settings=settings)
 
     renderer.load_object("plane/plane_z_up_0.obj", scale=[3, 3, 3])
-    renderer.add_instance(0)
+    renderer.add_instance_group([0])
     renderer.instances[-1].use_pbr = True
     renderer.instances[-1].use_pbr_mapping = True
     renderer.set_pose([0, 0, -1.5, 1, 0, 0.0, 0.0], -1)
@@ -47,7 +47,7 @@ def benchmark(render_to_tensor=False, resolution=512, obj_num=100, optimized=Tru
             renderer.load_object(os.path.join(model_path, fn), scale=[scale, scale, scale])
             for obj_i in range(obj_count_x):
                 for obj_j in range(obj_count_x):
-                    renderer.add_instance(i)
+                    renderer.add_instance_group([i])
                     renderer.set_pose(
                         [
                             obj_i - obj_count_x / 2.0,

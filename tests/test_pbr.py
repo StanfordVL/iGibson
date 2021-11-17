@@ -23,7 +23,7 @@ def test_render_pbr():
     for fn in os.listdir(model_path):
         if fn.endswith("obj"):
             renderer.load_object(os.path.join(model_path, fn), scale=[1, 1, 1])
-            renderer.add_instance(i)
+            renderer.add_instance_group([i])
             i += 1
             renderer.instances[-1].use_pbr = True
             renderer.instances[-1].use_pbr_mapping = True
@@ -59,7 +59,7 @@ def test_render_pbr_optimized():
     for fn in os.listdir(model_path):
         if fn.endswith("obj"):
             renderer.load_object(os.path.join(model_path, fn), scale=[1, 1, 1])
-            renderer.add_instance(i)
+            renderer.add_instance_group([i])
             i += 1
             renderer.instances[-1].use_pbr = True
             renderer.instances[-1].use_pbr_mapping = True

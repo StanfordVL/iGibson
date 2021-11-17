@@ -39,7 +39,7 @@ def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
                 rendering_settings=settings,
                 physics_timestep=1 / 240.0,
             )
-            s.import_ig_scene(scene)
+            s.import_scene(scene)
             turtlebot = Turtlebot(config)
             s.import_robot(turtlebot)
 

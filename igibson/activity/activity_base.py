@@ -328,7 +328,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
                 # Load the object into the simulator
                 if not self.scene.loaded:
-                    self.scene.add_object(simulator_obj)
+                    self.scene.add_object(simulator_obj, simulator=None)
                 else:
                     self.simulator.import_object(simulator_obj)
                 self.newly_added_objects.add(simulator_obj)
@@ -361,7 +361,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         cached_initial_pose = not self.online_sampling and self.scene.agent != {}
         if self.robot_type == BehaviorRobot:
             agent = BehaviorRobot(self.simulator)
-            self.simulator.import_behavior_robot(agent)
+            self.simulator.import_robot(agent)
             agent.set_position_orientation([300, 300, 300], [0, 0, 0, 1])
             self.object_scope["agent.n.01_1"] = agent.parts["body"]
             if cached_initial_pose:
@@ -409,7 +409,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
 
     def import_scene(self):
         self.simulator.reload()
-        self.simulator.import_ig_scene(self.scene)
+        self.simulator.import_scene(self.scene)
 
         # Assign object_scope based on a cached scene
         if not self.online_sampling:

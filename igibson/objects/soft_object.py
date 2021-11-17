@@ -2,6 +2,7 @@ import pybullet as p
 
 from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
+from igibson.utils.constants import SemanticClass
 
 
 class SoftObject(StatefulObject, SingleBodyObject):
@@ -51,7 +52,7 @@ class SoftObject(StatefulObject, SingleBodyObject):
         self.useFaceContact = useFaceContact
         self.useSelfCollision = useSelfCollision
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -78,6 +79,8 @@ class SoftObject(StatefulObject, SingleBodyObject):
 
         # Set signed distance function voxel size (integrate to Simulator class?)
         p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params, softbody=True)
 
         return [body_id]
 

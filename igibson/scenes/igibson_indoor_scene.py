@@ -65,6 +65,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         scene_source="IG",
         merge_fixed_links=True,
         ignore_visual_shape=False,
+        rendering_params=None,
     ):
         """
         :param scene_id: Scene id
@@ -87,6 +88,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
         :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT
+        :param rendering_params: additional rendering params to be passed into object initializers (e.g. texture scale)
         """
 
         super(InteractiveIndoorScene, self).__init__(
@@ -295,6 +297,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     joint_positions=joint_positions,
                     merge_fixed_links=self.merge_fixed_links,
                     ignore_visual_shape=ignore_visual_shape,
+                    rendering_params=rendering_params,
                 )
 
                 # Load object states.
@@ -312,7 +315,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         self.object_groupers[link.attrib["grouper"]]["object_parts"] = []
                     self.object_groupers[link.attrib["grouper"]]["object_parts"].append(obj)
                 else:
-                    self.add_object(obj)
+                    self.add_object(obj, simulator=None)
 
             elif link.attrib["name"] != "world":
                 logging.error("iGSDF should only contain links that represent embedded URDF objects")
@@ -326,7 +329,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             pose_offsets = grouper["pose_offsets"]
             grouped_obj_parts = ObjectGrouper(list(zip(object_parts, pose_offsets)))
             obj = ObjectMultiplexer(multiplexer, [whole_object, grouped_obj_parts], current_index)
-            self.add_object(obj)
+            self.add_object(obj, simulator=None)
 
     def set_ignore_visual_shape(self, value):
         self.ignore_visual_shape = value
@@ -816,26 +819,20 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         return self.open_all_objs_by_category("door", mode="max")
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load all scene objects into pybullet
         """
         # Load all the objects
         body_ids = []
         fixed_body_ids = []
-        visual_mesh_to_material = []
-        link_name_to_vm = []
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
-            new_ids = obj.load()
+            new_ids = obj.load(simulator)
             for id in new_ids:
                 self.objects_by_id[id] = obj
             body_ids += new_ids
-            visual_mesh_to_material += obj.visual_mesh_to_material
-            link_name_to_vm += obj.link_name_to_vm
             fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.body_ids, obj.is_fixed) if is_fixed]
-        assert len(visual_mesh_to_material) == len(body_ids)
-        assert len(link_name_to_vm) == len(body_ids)
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -849,8 +846,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if self.build_graph:
             self.load_trav_map(maps_path)
 
-        self.visual_mesh_to_material = visual_mesh_to_material
-        self.link_name_to_vm = link_name_to_vm
         self.check_scene_quality(body_ids, fixed_body_ids)
 
         # force wake up each body once
