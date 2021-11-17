@@ -16,7 +16,7 @@ What will you download?
 To download both in a bundle, you need to follow the following steps:
 - Fill out the license agreement in this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
 - You will receive a key (igibson.key). Move it into the subfolder of the iGibson repository that contains the dataset, for example, iGibson/igibson/data
-- Download the behavior data bundle (ig_dataset) from [here](https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip)
+- Download the behavior data bundle (ig_dataset) from [here](https://download.cs.stanford.edu/downloads/behavior/behavior_data_bundle.zip)
 - Unzip ig_dataset into the folder: `unzip behavior_data_bundle.zip -d iGibson/igibson/data`
 
 After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the [BEHAVIOR benchmark](https://behavior.stanford.edu/).
@@ -36,7 +36,7 @@ To download the dataset, you need to first configure where the dataset is to be 
 python -m igibson.utils.assets_utils --download_ig_dataset
 ```
 
-If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/igibson/data/ig_dataset`.
+If the script fails to work, you can download from this [direct link](https://download.cs.stanford.edu/downloads/igibson/ig_dataset.zip) and extract to `your_installation_path/igibson/data/ig_dataset`.
 
 A description of the file structure and format of the files in the dataset can be found [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils). 
 

@@ -225,7 +225,7 @@ In case you prefer to store the assets in a different location, you can run the 
 python -m igibson.utils.assets_utils --change_data_path
 ```
 
-Second, we need to download the robot models and some small objects from [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:
+Second, we need to download the robot models and some small objects from [here](https://download.cs.stanford.edu/downloads/igibson/assets_igibson.tar.gz) and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:
 
 ```bash
 python -m igibson.utils.assets_utils --download_assets
@@ -235,7 +235,7 @@ Third, we need to download datasets of scenes, and, possibly, more object models
 For navigation tasks, we provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset and Matterport3D Dataset.
 In any case, please, follow the instructions [here](dataset.md) to download the datasets.
 
-Alternatively, to avoid downloading the entire dataset, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo and testing purposes.
+Alternatively, to avoid downloading the entire dataset, you can download a single [high quality small environment R's](https://download.cs.stanford.edu/downloads/igibson/Rs.tar.gz) for demo and testing purposes.
 To download the demo data, run:
 
 ```bash
