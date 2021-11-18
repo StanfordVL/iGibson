@@ -31,7 +31,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
         rendering_settings=settings,
     )
     start = time.time()
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     print(time.time() - start)
 
     if import_robot:

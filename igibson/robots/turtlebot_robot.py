@@ -11,7 +11,7 @@ class Turtlebot(LocomotorRobot):
     Uses joint velocity control
     """
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
         self.velocity = config.get("velocity", 1.0)
         LocomotorRobot.__init__(
@@ -21,6 +21,7 @@ class Turtlebot(LocomotorRobot):
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
             control="velocity",
+            **kwargs
         )
 
     def set_up_continuous_action_space(self):

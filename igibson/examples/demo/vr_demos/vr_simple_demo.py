@@ -43,7 +43,7 @@ def main():
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
     )
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     objects = [
@@ -64,8 +64,8 @@ def main():
         fpath = item[0]
         pos = item[1]
         orn = item[2]
-        item_ob = ArticulatedObject(fpath, scale=1)
-        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+        item_ob = ArticulatedObject(fpath, scale=1, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 
@@ -83,7 +83,7 @@ def main():
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
     bvr_robot = BehaviorRobot(s)
-    s.import_behavior_robot(bvr_robot)
+    s.import_robot(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 

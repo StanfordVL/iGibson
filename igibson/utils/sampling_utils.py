@@ -52,9 +52,10 @@ def draw_debug_markers(hit_positions):
     color = np.concatenate([np.random.rand(3), [1]])
     for vec in hit_positions:
         m = VisualMarker(rgba_color=color, radius=0.001, initial_offset=vec)
-        # This is normally very illegal - the simulator should do it.
-        # But since this is debug mode only I think we'll be fine.
-        m.load()
+        # This feature is not usable out-of-the-box since this function (or its callers) don't have access to a
+        # simulator instance to be able to load this marker into. You can work around this by creating a variable
+        # inside the simulator.py file called SIMULATOR and making it refer to the global simulator instance.
+        # simulator.SIMULATOR.import_object(m)
 
 
 def get_parallel_rays(

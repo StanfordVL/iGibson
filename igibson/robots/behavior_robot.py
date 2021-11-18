@@ -29,7 +29,7 @@ from igibson import assets_path
 from igibson.external.pybullet_tools.utils import set_all_collisions
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.visual_marker import VisualMarker
-from igibson.utils.constants import SimulatorMode
+from igibson.utils.constants import SemanticClass, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 
 # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
@@ -119,6 +119,7 @@ class BehaviorRobot(object):
         normal_color=True,
         show_visual_head=False,
         use_tracked_body=True,
+        **kwargs
     ):
         """
         Initializes BehaviorRobot:
@@ -161,18 +162,25 @@ class BehaviorRobot(object):
         self.parts = dict()
 
         if "left" in self.hands:
-            self.parts["left_hand"] = BRHand(self, hand="left") if not use_gripper else BRGripper(self, hand="left")
+            self.parts["left_hand"] = (
+                BRHand(self, hand="left", **kwargs) if not use_gripper else BRGripper(self, hand="left", **kwargs)
+            )
         if "right" in self.hands:
-            self.parts["right_hand"] = BRHand(self, hand="right") if not use_gripper else BRGripper(self, hand="right")
+            self.parts["right_hand"] = (
+                BRHand(self, hand="right", **kwargs) if not use_gripper else BRGripper(self, hand="right", **kwargs)
+            )
 
         # Store reference between hands
         if "left" in self.hands and "right" in self.hands:
             self.parts["left_hand"].set_other_hand(self.parts["right_hand"])
             self.parts["right_hand"].set_other_hand(self.parts["left_hand"])
         if self.use_body:
-            self.parts["body"] = BRBody(self)
+            self.parts["body"] = BRBody(self, **kwargs)
 
-        self.parts["eye"] = BREye(self)
+        self.parts["eye"] = BREye(self, **kwargs)
+
+    def load(self, simulator):
+        return [id for part in self.parts.values() for id in part.load(simulator)]
 
     def set_colliders(self, enabled=False):
         self.parts["left_hand"].set_colliders(enabled)
@@ -403,7 +411,12 @@ class BRBody(ArticulatedObject):
     A simple ellipsoid representing the robot's body.
     """
 
-    def __init__(self, parent):
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+    }
+
+    def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
         # Set up class
         self.parent = parent
         self.name = "BRBody_{}".format(self.parent.robot_num)
@@ -418,9 +431,11 @@ class BRBody(ArticulatedObject):
         body_path = "normal_color" if self.parent.normal_color else "alternative_color"
         body_path_suffix = "vr_body.urdf" if not self.parent.use_tracked_body else "vr_body_tracker.urdf"
         self.vr_body_fpath = os.path.join(assets_path, "models", "vr_agent", "vr_body", body_path, body_path_suffix)
-        super(BRBody, self).__init__(filename=self.vr_body_fpath, scale=1, abilities={"robot": {}})
+        super(BRBody, self).__init__(
+            filename=self.vr_body_fpath, scale=1, abilities={"robot": {}}, class_id=class_id, **kwargs
+        )
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Overidden load that keeps BRBody awake upon initialization.
         """
@@ -432,7 +447,8 @@ class BRBody(ArticulatedObject):
         # The actual body is at link 0, the base link is a "virtual" link
         p.changeDynamics(body_id, 0, mass=self.mass)
         p.changeDynamics(body_id, -1, mass=1e-9)
-        self.create_link_name_to_vm_map(body_id)
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
 
@@ -487,7 +503,11 @@ class BRBody(ArticulatedObject):
         Sets BRBody's collision filters.
         """
         # Get body ids of the floor and carpets
-        no_col_ids = self.parent.simulator.get_category_ids("floors") + self.parent.simulator.get_category_ids("carpet")
+        no_col_objs = (
+            self.parent.simulator.scene.objects_by_category["floors"]
+            + self.parent.simulator.scene.objects_by_category["carpet"]
+        )
+        no_col_ids = [x.get_body_id() for x in no_col_objs]
         body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.get_body_id()))]
 
         for col_id in no_col_ids:
@@ -550,6 +570,11 @@ class BRHandBase(ArticulatedObject):
     that subclasses override most of the methods to implement their own functionality.
     """
 
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+    }
+
     def __init__(
         self,
         parent,
@@ -557,6 +582,8 @@ class BRHandBase(ArticulatedObject):
         hand="right",
         base_rot=(0, 0, 0, 1),
         ghost_hand_appear_threshold=HAND_GHOST_HAND_APPEAR_THRESHOLD,
+        class_id=SemanticClass.ROBOTS,
+        **kwargs
     ):
         """
         Initializes BRHandBase.
@@ -594,22 +621,29 @@ class BRHandBase(ArticulatedObject):
                     assets_path, "models", "vr_agent", "vr_hand", "ghost_hand_{}.obj".format(self.hand)
                 ),
                 scale=[0.001] * 3,
+                class_id=class_id,
             )
             self.ghost_hand.category = "agent"
             self.ghost_hand_appear_threshold = ghost_hand_appear_threshold
 
         if self.hand not in ["left", "right"]:
             raise ValueError("ERROR: BRHandBase can only accept left or right as a hand argument!")
-        super(BRHandBase, self).__init__(filename=self.fpath, scale=1)
+        super(BRHandBase, self).__init__(filename=self.fpath, scale=1, class_id=class_id, **kwargs)
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Overidden load that keeps BRHandBase awake upon initialization.
         """
         body_id = p.loadURDF(self.fpath, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
-        self.create_link_name_to_vm_map(body_id)
-        return [body_id]
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        body_ids = [body_id]
+        if self.parent.use_ghost_hands:
+            body_ids.extend(self.ghost_hand.load(simulator))
+
+        return body_ids
 
     def set_other_hand(self, other_hand):
         """
@@ -791,7 +825,7 @@ class BRHand(BRHandBase):
     Represents the human hand used for VR programs and robotics applications.
     """
 
-    def __init__(self, parent, hand="right"):
+    def __init__(self, parent, hand="right", **kwargs):
         hand_path = "normal_color" if parent.normal_color else "alternative_color"
         self.vr_hand_folder = os.path.join(assets_path, "models", "vr_agent", "vr_hand", hand_path)
         final_suffix = "{}_{}.urdf".format("vr_hand_vhacd", hand)
@@ -802,6 +836,7 @@ class BRHand(BRHandBase):
             hand=hand,
             base_rot=base_rot_handed,
             ghost_hand_appear_threshold=HAND_GHOST_HAND_APPEAR_THRESHOLD,
+            **kwargs
         )
 
         # Variables for assisted grasping
@@ -1276,7 +1311,7 @@ class BRGripper(BRHandBase):
     Gripper utilizing the pybullet gripper URDF.
     """
 
-    def __init__(self, parent, hand="right"):
+    def __init__(self, parent, hand="right", **kwargs):
         gripper_path = "normal_color" if self.parent.normal_color else "alternative_color"
         vr_gripper_fpath = os.path.join(
             assets_path, "models", "vr_agent", "vr_gripper", gripper_path, "vr_gripper.urdf"
@@ -1287,6 +1322,7 @@ class BRGripper(BRHandBase):
             hand=hand,
             base_rot=p.getQuaternionFromEuler([0, 0, 0]),
             ghost_hand_appear_threshold=GRIPPER_GHOST_HAND_APPEAR_THRESHOLD,
+            **kwargs
         )
 
     def activate_constraints(self):
@@ -1337,7 +1373,7 @@ class BREye(ArticulatedObject):
     to move the camera and render the same thing that the VR users see.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
         # Set up class
         self.parent = parent
 
@@ -1349,19 +1385,24 @@ class BREye(ArticulatedObject):
         color_folder = "normal_color" if self.parent.normal_color else "alternative_color"
         self.head_visual_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", color_folder, "vr_head.obj")
         self.eye_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", "vr_eye.urdf")
-        super(BREye, self).__init__(filename=self.eye_path, scale=1)
+        super(BREye, self).__init__(filename=self.eye_path, scale=1, class_id=class_id, **kwargs)
 
         self.should_hide = True
         self.head_visual_marker = VisualMarker(
-            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3
+            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3, class_id=class_id
         )
 
-    def _load(self):
-        body_ids = super(BREye, self)._load()
-        assert len(body_ids) == 1
+    def _load(self, simulator):
+        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
 
         # Set mass to 0 so that the eye isn't continuously falling.
-        p.changeDynamics(body_ids[0], -1, 0)
+        self.mass = 0
+        p.changeDynamics(body_id, -1, self.mass)
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        body_ids = [body_id] + self.head_visual_marker.load(simulator)
 
         return body_ids
 

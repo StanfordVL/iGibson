@@ -300,7 +300,7 @@ class SimulatorVR(Simulator):
             ]
 
             # Check for body haptics
-            wall_ids = self.get_category_ids("walls")
+            wall_ids = [x.get_body_id() for x in self.scene.objects_by_category["walls"]]
             for c_info in p.getContactPoints(vr_body_id):
                 if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
                     for controller in ["left_controller", "right_controller"]:

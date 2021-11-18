@@ -3,6 +3,7 @@ import pybullet as p
 
 from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
+from igibson.utils.constants import SemanticClass
 
 
 class ShapeNetObject(StatefulObject, SingleBodyObject):
@@ -34,7 +35,7 @@ class ShapeNetObject(StatefulObject, SingleBodyObject):
             "orientation_quat": pose[1],
         }
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -46,4 +47,6 @@ class ShapeNetObject(StatefulObject, SingleBodyObject):
             baseCollisionShapeIndex=collision_id,
             baseVisualShapeIndex=-1,
         )
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
         return [body_id]

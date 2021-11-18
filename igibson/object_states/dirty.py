@@ -1,6 +1,7 @@
 from igibson.object_states import AABB
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
 from igibson.objects.particles import Dust, Stain
+from igibson.utils.constants import SemanticClass
 
 CLEAN_THRESHOLD = 0.5
 FLOOR_CLEAN_THRESHOLD = 0.75
@@ -25,7 +26,7 @@ class _Dirty(AbsoluteObjectState, BooleanState):
         self.initial_dump = None
 
     def _initialize(self):
-        self.dirt = self.DIRT_CLASS(self.obj, initial_dump=self.initial_dump)
+        self.dirt = self.DIRT_CLASS(self.obj, initial_dump=self.initial_dump, class_id=SemanticClass.SCENE_OBJS)
         self.simulator.import_particle_system(self.dirt)
 
     def _get_value(self):

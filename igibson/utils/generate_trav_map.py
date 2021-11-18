@@ -37,7 +37,7 @@ def generate_trav_map(scene_name, scene_source, load_full_scene=True):
     if not load_full_scene:
         scene._set_first_n_objects(3)
     s = Simulator(mode="headless", image_width=512, image_height=512, device_idx=0)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     if load_full_scene:
         scene.open_all_doors()

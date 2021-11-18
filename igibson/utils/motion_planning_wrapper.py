@@ -77,8 +77,8 @@ class MotionPlanningWrapper(object):
                 initial_offset=[0, 0, -0.1],
                 rgba_color=[0, 0, 1, 1],
             )
-            self.env.simulator.import_object(self.marker, use_pbr=False)
-            self.env.simulator.import_object(self.marker_direction, use_pbr=False)
+            self.env.simulator.import_object(self.marker)
+            self.env.simulator.import_object(self.marker_direction)
 
     def set_marker_position(self, pos):
         """

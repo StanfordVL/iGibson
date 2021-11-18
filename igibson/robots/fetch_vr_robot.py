@@ -24,7 +24,9 @@ class FetchVR(Fetch):
     Fetch robot used in VR embodiment demos.
     """
 
-    def __init__(self, s, start_pos, update_freq=1, control_hand="right", use_ns_ik=True, use_gaze_marker=True):
+    def __init__(
+        self, s, start_pos, update_freq=1, control_hand="right", use_ns_ik=True, use_gaze_marker=True, **kwargs
+    ):
         config = parse_config(os.path.join(assets_path, "models", "fetch", "fetcH_embodiment.yaml"))
         self.wheel_velocity = config.get("wheel_velocity", 1.0)
         self.torso_lift_velocity = config.get("torso_lift_velocity", 1.0)
@@ -53,6 +55,7 @@ class FetchVR(Fetch):
             is_discrete=config.get("is_discrete", False),
             control=["differential_drive", "differential_drive"] + ["position"] * (self.torso_lift_dim + self.arm_dim),
             self_collision=True,
+            **kwargs
         )
 
         self.sim = s
@@ -75,7 +78,7 @@ class FetchVR(Fetch):
 
         # Load end effector
         self.effector_marker = VisualMarker(rgba_color=[1, 0, 1, 0.2], radius=0.025)
-        self.sim.import_object(self.effector_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
+        self.sim.import_object(self.effector_marker)
         # Hide marker upon initialization
         self.effector_marker.set_position([0, 0, -5])
         # Arm joints excluding wheels and gripper

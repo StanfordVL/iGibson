@@ -7,6 +7,7 @@ import pybullet_data
 
 from igibson.scenes.indoor_scene import IndoorScene
 from igibson.utils.assets_utils import get_scene_path, get_texture_file
+from igibson.utils.constants import SemanticClass
 
 
 class StaticIndoorScene(IndoorScene):
@@ -96,7 +97,7 @@ class StaticIndoorScene(IndoorScene):
         p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
         self.floor_body_ids.append(floor_body_id)
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the scene (including scene mesh and floor plane) into pybullet
         """
@@ -106,7 +107,10 @@ class StaticIndoorScene(IndoorScene):
 
         self.load_trav_map(get_scene_path(self.scene_id))
 
-        additional_object_body_ids = [x for obj in self.objects for x in obj.load()]
+        for id in [self.mesh_body_id] + self.floor_body_ids:
+            simulator.load_object_in_renderer(None, id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False)
+
+        additional_object_body_ids = [x for obj in self.objects for x in obj.load(simulator)]
         return [self.mesh_body_id] + self.floor_body_ids + additional_object_body_ids
 
     def get_objects(self):

@@ -2,6 +2,7 @@ import pybullet as p
 
 from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
+from igibson.utils.constants import SemanticClass
 
 
 class Cube(StatefulObject, SingleBodyObject):
@@ -17,7 +18,7 @@ class Cube(StatefulObject, SingleBodyObject):
         self.mass = mass
         self.color = color
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -32,5 +33,7 @@ class Cube(StatefulObject, SingleBodyObject):
             )
 
         p.resetBasePositionAndOrientation(body_id, self.basePos, baseOrientation)
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]

@@ -14,7 +14,7 @@ def test_tensor_render_rendering():
     renderer = MeshRendererG2G(w, h, rendering_settings=setting)
     test_dir = os.path.join(igibson.assets_path, "test")
     renderer.load_object(os.path.join(test_dir, "mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj"))
-    renderer.add_instance(0)
+    renderer.add_instance_group([0])
 
     renderer.set_camera([0, 0, 1.2], [0, 1, 1.2], [0, 1, 0])
     renderer.set_fov(90)

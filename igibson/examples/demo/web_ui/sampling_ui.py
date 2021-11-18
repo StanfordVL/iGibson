@@ -213,7 +213,6 @@ class ToyEnv(object):
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
-        # self.s.import_ig_scene(scene)
 
     def step(self, a):
         self.s.step()

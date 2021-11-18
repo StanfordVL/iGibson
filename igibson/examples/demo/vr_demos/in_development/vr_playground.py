@@ -65,7 +65,7 @@ def main():
     # Turn this on when debugging to speed up loading
     if LOAD_PARTIAL:
         scene._set_first_n_objects(10)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     if not VR_MODE:
         camera_pose = np.array([0, -3, 1.2])
@@ -84,8 +84,8 @@ def main():
     mass_list = [5, 10, 100, 500]
     mustard_start = [-1, 1.55, 1.2]
     for i in range(len(mass_list)):
-        mustard = YCBObject("006_mustard_bottle")
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        mustard = YCBObject("006_mustard_bottle", renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        s.import_object(mustard)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.get_body_id(), -1, mass=mass_list[i])
 

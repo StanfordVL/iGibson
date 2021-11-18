@@ -68,7 +68,7 @@ def run_muvr(mode="server", host="localhost", port="8885"):
     scene = InteractiveIndoorScene("Rs_int")
     if LOAD_PARTIAL:
         scene._set_first_n_objects(10)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     # Default camera for non-VR MUVR users
     if not vr_settings.use_vr:
@@ -85,8 +85,8 @@ def run_muvr(mode="server", host="localhost", port="8885"):
     mass_list = [5, 10, 20, 30]
     mustard_start = [-1, 1.55, 1.2]
     for i in range(len(mass_list)):
-        mustard = YCBObject("006_mustard_bottle")
-        s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+        mustard = YCBObject("006_mustard_bottle", renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        s.import_object(mustard)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
         p.changeDynamics(mustard.get_body_id(), -1, mass=mass_list[i])
 

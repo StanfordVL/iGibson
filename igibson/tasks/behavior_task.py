@@ -434,7 +434,7 @@ class BehaviorTask(BaseTask):
 
                 # Load the object into the simulator
                 if not self.scene.loaded:
-                    self.scene.add_object(simulator_obj)
+                    self.scene.add_object(simulator_obj, simulator=None)
                 else:
                     env.simulator.import_object(simulator_obj)
                 self.newly_added_objects.add(simulator_obj)
