@@ -297,7 +297,8 @@ class BehaviorRobot(object):
         renderer = self.simulator.renderer
         mat = quat2rotmat(xyzw2wxyz(eye_orn))[:3, :3]
         view_direction = mat.dot(np.array([1, 0, 0]))
-        renderer.set_camera(eye_pos, eye_pos + view_direction, [0, 0, 1], cache=True)
+        up_direction = mat.dot(np.array([0, 0, 1]))
+        renderer.set_camera(eye_pos, eye_pos + view_direction, up_direction, cache=True)
         frames = []
         for item in renderer.render(modes=modes):
             frames.append(item)
