@@ -220,7 +220,6 @@ def replay_demo(
             callback(env, log_reader)
 
         task_done = False
-        from IPython import embed
 
         while log_reader.get_data_left_to_read():
             env.step(log_reader.get_agent_action("vr_robot"))
