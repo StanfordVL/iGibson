@@ -12,12 +12,13 @@ import igibson
 import igibson.render.mesh_renderer as mesh_renderer
 from igibson.render.mesh_renderer import tinyobjloader
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
-from igibson.render.mesh_renderer.instances import Instance, InstanceGroup, Robot
+from igibson.render.mesh_renderer.instances import InstanceGroup
 from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.text import Text, TextManager
 from igibson.render.mesh_renderer.visual_object import VisualObject
 from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.robot_base import BaseRobot
 from igibson.utils.constants import AVAILABLE_MODALITIES, MAX_CLASS_COUNT, MAX_INSTANCE_COUNT, ShadowPass
 from igibson.utils.mesh_util import lookat, mat2xyz, ortho, perspective, quat2rotmat, safemat2quat, xyz2mat, xyzw2wxyz
 
@@ -46,7 +47,7 @@ class MeshRenderer(object):
         :param height: width of the renderer output
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
-        :param render_settings: rendering settings
+        :param rendering_settings: rendering settings
         :param simulator: Simulator object.
         """
         self.simulator = simulator
@@ -377,11 +378,12 @@ class MeshRenderer(object):
 
         self.depth_tex_shadow = self.r.allocateTexture(self.width, self.height)
 
-    def load_texture_file(self, tex_filename):
+    def load_texture_file(self, tex_filename, texture_scale):
         """
         Load the texture file into the renderer
 
         :param tex_filename: texture file filename
+        :param texture_scale: a file-specific texture scale to be multiplied with the global scale in the settings.
         :return texture_id: texture id of this texture in the renderer
         """
         # if texture is None or does not exist, return None
@@ -396,32 +398,36 @@ class MeshRenderer(object):
             # assume optimized renderer will have texture id starting from 0
             texture_id = len(self.texture_files)
         else:
-            texture_id = self.r.loadTexture(tex_filename, self.rendering_settings.texture_scale, igibson.key_path)
+            texture_id = self.r.loadTexture(
+                tex_filename, texture_scale * self.rendering_settings.texture_scale, igibson.key_path
+            )
             self.textures.append(texture_id)
 
         self.texture_files[tex_filename] = texture_id
         return texture_id
 
-    def load_procedural_material(self, material):
+    def load_procedural_material(self, material, texture_scale):
         material.lookup_or_create_transformed_texture()
         has_encrypted_texture = os.path.exists(os.path.join(material.material_folder, "DIFFUSE.encrypted.png"))
         suffix = ".encrypted.png" if has_encrypted_texture else ".png"
-        material.texture_id = self.load_texture_file(os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)))
+        material.texture_id = self.load_texture_file(
+            os.path.join(material.material_folder, "DIFFUSE{}".format(suffix)), texture_scale
+        )
         material.metallic_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "METALLIC{}".format(suffix))
+            os.path.join(material.material_folder, "METALLIC{}".format(suffix)), texture_scale
         )
         material.roughness_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix))
+            os.path.join(material.material_folder, "ROUGHNESS{}".format(suffix)), texture_scale
         )
         material.normal_texture_id = self.load_texture_file(
-            os.path.join(material.material_folder, "NORMAL{}".format(suffix))
+            os.path.join(material.material_folder, "NORMAL{}".format(suffix)), texture_scale
         )
         for state in material.states:
-            transformed_diffuse_id = self.load_texture_file(material.texture_filenames[state])
+            transformed_diffuse_id = self.load_texture_file(material.texture_filenames[state], texture_scale)
             material.texture_ids[state] = transformed_diffuse_id
         material.default_texture_id = material.texture_id
 
-    def load_randomized_material(self, material):
+    def load_randomized_material(self, material, texture_scale):
         """
         Load all the texture files in the RandomizedMaterial.
         Populate material_ids with the texture id assigned by the renderer.
@@ -438,7 +444,7 @@ class MeshRenderer(object):
             for material_instance in material.material_files[material_class]:
                 material_id_instance = {}
                 for key in material_instance:
-                    material_id_instance[key] = self.load_texture_file(material_instance[key])
+                    material_id_instance[key] = self.load_texture_file(material_instance[key], texture_scale)
                 material.material_ids[material_class].append(material_id_instance)
         material.randomize()
 
@@ -450,7 +456,6 @@ class MeshRenderer(object):
         transform_pos=None,
         input_kd=None,
         texture_scale=1.0,
-        load_texture=True,
         overwrite_material=None,
     ):
         """
@@ -462,7 +467,6 @@ class MeshRenderer(object):
         :param transform_pos: translation for loading, it is a list of length 3
         :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
         :param texture_scale: texture scale for the object, downsample to save memory.
-        :param load_texture: load texture or not
         :param overwrite_material: whether to overwrite the default Material (usually with a RandomizedMaterial for material randomization)
         :return: VAO_ids
         """
@@ -516,9 +520,9 @@ class MeshRenderer(object):
         num_existing_mats = len(self.material_idx_to_material_instance_mapping)  # Number of current Material elements
         if overwrite_material is not None:
             if isinstance(overwrite_material, RandomizedMaterial):
-                self.load_randomized_material(overwrite_material)
+                self.load_randomized_material(overwrite_material, texture_scale)
             elif isinstance(overwrite_material, ProceduralMaterial):
-                self.load_procedural_material(overwrite_material)
+                self.load_procedural_material(overwrite_material, texture_scale)
 
         # No MTL is supplied, or MTL is empty
         if len(materials) == 0:
@@ -535,12 +539,16 @@ class MeshRenderer(object):
             for i, item in enumerate(materials):
                 if overwrite_material is not None:
                     material = overwrite_material
-                elif item.diffuse_texname != "" and load_texture:
+                elif item.diffuse_texname != "" and self.rendering_settings.load_textures:
                     obj_dir = os.path.dirname(obj_path)
-                    texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname))
-                    texture_metallic = self.load_texture_file(os.path.join(obj_dir, item.metallic_texname))
-                    texture_roughness = self.load_texture_file(os.path.join(obj_dir, item.roughness_texname))
-                    texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname))
+                    texture = self.load_texture_file(os.path.join(obj_dir, item.diffuse_texname), texture_scale)
+                    texture_metallic = self.load_texture_file(
+                        os.path.join(obj_dir, item.metallic_texname), texture_scale
+                    )
+                    texture_roughness = self.load_texture_file(
+                        os.path.join(obj_dir, item.roughness_texname), texture_scale
+                    )
+                    texture_normal = self.load_texture_file(os.path.join(obj_dir, item.bump_texname), texture_scale)
                     material = Material(
                         "texture",
                         texture_id=texture,
@@ -682,71 +690,17 @@ class MeshRenderer(object):
         self.visual_objects.append(new_obj)
         return VAO_ids
 
-    def add_instance(
-        self,
-        object_id,
-        pybullet_uuid=None,
-        class_id=0,
-        pose_trans=np.eye(4),
-        pose_rot=np.eye(4),
-        dynamic=False,
-        softbody=False,
-        use_pbr=True,
-        use_pbr_mapping=True,
-        shadow_caster=True,
-        parent_body=None,
-    ):
-        """
-        Create instance for a visual object and link it to pybullet
-
-        :param object_id: id of visual object
-        :param pybullet_uuid: body id in pybullet
-        :param class_id: class_id to render semantics
-        :param pose_trans: initial translations for the visual object
-        :param pose_rot: initial rotation matrix for the visual object
-        :param dynamic: whether the instance is dynamic
-        :param softbody: whether the instance is soft body
-        :param use_pbr: whether to use PBR
-        :param use_pbr_mapping: whether to use PBR mapping
-        :param shadow_caster: whether to cast shadow
-        :param parent_body: parent body name of current xml element (MuJoCo XML)
-        """
-        if self.optimization_process_executed and self.optimized:
-            logging.error(
-                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
-            )
-            return
-
-        use_pbr = use_pbr and self.rendering_settings.enable_pbr
-        use_pbr_mapping = use_pbr_mapping and self.rendering_settings.enable_pbr
-
-        instance = Instance(
-            self.visual_objects[object_id],
-            id=len(self.instances),
-            pybullet_uuid=pybullet_uuid,
-            class_id=class_id,
-            pose_trans=pose_trans,
-            pose_rot=pose_rot,
-            dynamic=dynamic,
-            softbody=softbody,
-            use_pbr=use_pbr,
-            use_pbr_mapping=use_pbr_mapping,
-            shadow_caster=shadow_caster,
-            parent_body=parent_body,
-        )
-        self.instances.append(instance)
-        self.update_instance_id_to_pb_id_map()
-
     def add_instance_group(
         self,
         object_ids,
-        link_ids,
-        poses_trans,
-        poses_rot,
+        link_ids=[-1],
+        poses_trans=[np.eye(4)],
+        poses_rot=[np.eye(4)],
         pybullet_uuid=None,
+        ig_object=None,
         class_id=0,
         dynamic=False,
-        robot=None,
+        softbody=False,
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
@@ -759,9 +713,9 @@ class MeshRenderer(object):
         :param poses_trans: initial translations for each visual object
         :param poses_rot: initial rotation matrix for each visual object
         :param pybullet_uuid: body id in pybullet
+        :param ig_object: iGibson object associated with this instance group
         :param class_id: class_id to render semantics
         :param dynamic: whether the instance group is dynamic
-        :param robot: The robot associated with this InstanceGroup
         :param use_pbr: whether to use PBR
         :param use_pbr_mapping: whether to use PBR mapping
         :param shadow_caster: whether to cast shadow
@@ -781,54 +735,17 @@ class MeshRenderer(object):
             id=len(self.instances),
             link_ids=link_ids,
             pybullet_uuid=pybullet_uuid,
+            ig_object=ig_object,
             class_id=class_id,
             poses_trans=poses_trans,
             poses_rot=poses_rot,
             dynamic=dynamic,
-            robot=robot,
+            softbody=softbody,
             use_pbr=use_pbr,
             use_pbr_mapping=use_pbr_mapping,
             shadow_caster=shadow_caster,
         )
         self.instances.append(instance_group)
-        self.update_instance_id_to_pb_id_map()
-
-    def add_robot(
-        self, object_ids, link_ids, poses_trans, poses_rot, pybullet_uuid=None, class_id=0, dynamic=False, robot=None
-    ):
-        """
-        Create an instance group (a robot) for a list of visual objects and link it to pybullet
-
-        :param object_ids: object ids of the visual objects
-        :param link_ids: link_ids in pybullet
-        :param poses_trans: initial translations for each visual object
-        :param poses_rot: initial rotation matrix for each visual object
-        :param pybullet_uuid: body id in pybullet
-        :param class_id: class_id to render semantics
-        :param dynamic: whether the instance group is dynamic
-        :param robot: The robot associated with this InstanceGroup
-        """
-
-        if self.optimization_process_executed and self.optimized:
-            logging.error(
-                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
-            )
-            return
-
-        robot = Robot(
-            [self.visual_objects[object_id] for object_id in object_ids],
-            id=len(self.instances),
-            link_ids=link_ids,
-            pybullet_uuid=pybullet_uuid,
-            class_id=class_id,
-            poses_trans=poses_trans,
-            poses_rot=poses_rot,
-            dynamic=dynamic,
-            robot=robot,
-            use_pbr=False,
-            use_pbr_mapping=False,
-        )
-        self.instances.append(robot)
         self.update_instance_id_to_pb_id_map()
 
     def add_text(
@@ -1332,8 +1249,8 @@ class MeshRenderer(object):
         frames = []
         hide_robot = self.rendering_settings.hide_robot
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                for camera in instance.robot.cameras:
+            if isinstance(instance.ig_object, BaseRobot):
+                for camera in instance.ig_object.cameras:
                     if camera.is_active():
                         camera_pose = camera.get_pose()
                         camera_pos = camera_pose[:3]
@@ -1355,9 +1272,9 @@ class MeshRenderer(object):
         """
         frames = []
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position()
-                orn = instance.robot.eyes.get_orientation()
+            if isinstance(instance.ig_object, BaseRobot):
+                camera_pos = instance.ig_object.eyes.get_position()
+                orn = instance.ig_object.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1], cache=True)
@@ -1385,8 +1302,8 @@ class MeshRenderer(object):
         """
         names = []
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                for camera in instance.robot.cameras:
+            if isinstance(instance.ig_object, BaseRobot):
+                for camera in instance.ig_object.cameras:
                     if camera.is_active():
                         names.append(camera.camera_name)
         return names
@@ -1397,8 +1314,8 @@ class MeshRenderer(object):
         Applicable for integration with iGibson.
         """
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                instance.robot.cameras[idx].switch()
+            if isinstance(instance.ig_object, BaseRobot):
+                instance.ig_object.cameras[idx].switch()
 
     def _is_camera_active(self, idx):
         """
@@ -1406,8 +1323,8 @@ class MeshRenderer(object):
         Applicable for integration with iGibson.
         """
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                return instance.robot.cameras[idx].is_active()
+            if isinstance(instance.ig_object, BaseRobot):
+                return instance.ig_object.cameras[idx].is_active()
 
     def _get_camera_name(self, idx):
         """
@@ -1415,8 +1332,8 @@ class MeshRenderer(object):
         Applicable for integration with iGibson.
         """
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                return instance.robot.cameras[idx].camera_name
+            if isinstance(instance.ig_object, BaseRobot):
+                return instance.ig_object.cameras[idx].camera_name
 
     def optimize_vertex_and_texture(self):
         """
@@ -1461,34 +1378,22 @@ class MeshRenderer(object):
         hidden_array = []
 
         for instance in self.instances:
-            if isinstance(instance, Instance):
-                ids = instance.object.VAO_ids
+            id_sum = 0
+            # Collect OR buffer indices over all visual objects in this group
+            temp_or_buffer_indices = []
+            for vo in instance.objects:
+                ids = vo.VAO_ids
                 or_buffer_idx_start = len(duplicate_vao_ids)
                 duplicate_vao_ids.extend(ids)
                 or_buffer_idx_end = len(duplicate_vao_ids)
-                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
-                instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end))
-                class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * len(ids))
-                instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * len(ids))
-                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
-                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
-            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                id_sum = 0
-                # Collect OR buffer indices over all visual objects in this group
-                temp_or_buffer_indices = []
-                for vo in instance.objects:
-                    ids = vo.VAO_ids
-                    or_buffer_idx_start = len(duplicate_vao_ids)
-                    duplicate_vao_ids.extend(ids)
-                    or_buffer_idx_end = len(duplicate_vao_ids)
-                    # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
-                    temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
-                    id_sum += len(ids)
-                instance.or_buffer_indices = list(temp_or_buffer_indices)
-                class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * id_sum)
-                instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * id_sum)
-                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
-                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
+                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
+                temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
+                id_sum += len(ids)
+            instance.or_buffer_indices = list(temp_or_buffer_indices)
+            class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * id_sum)
+            instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * id_sum)
+            pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
+            hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Number of shapes in the OR buffer is equal to the number of duplicate vao_ids
         self.or_buffer_shape_num = len(duplicate_vao_ids)
@@ -1663,34 +1568,22 @@ class MeshRenderer(object):
         hidden_array = []
 
         for instance in self.instances:
-            if isinstance(instance, Instance):
-                ids = instance.object.VAO_ids
+            id_sum = 0
+            # Collect OR buffer indices over all visual objects in this group
+            temp_or_buffer_indices = []
+            for vo in instance.objects:
+                ids = vo.VAO_ids
                 or_buffer_idx_start = len(duplicate_vao_ids)
                 duplicate_vao_ids.extend(ids)
                 or_buffer_idx_end = len(duplicate_vao_ids)
-                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this Instance will use
-                instance.or_buffer_indices = list(np.arange(or_buffer_idx_start, or_buffer_idx_end))
-                class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * len(ids))
-                instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * len(ids))
-                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * len(ids))
-                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * len(ids))
-            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                id_sum = 0
-                # Collect OR buffer indices over all visual objects in this group
-                temp_or_buffer_indices = []
-                for vo in instance.objects:
-                    ids = vo.VAO_ids
-                    or_buffer_idx_start = len(duplicate_vao_ids)
-                    duplicate_vao_ids.extend(ids)
-                    or_buffer_idx_end = len(duplicate_vao_ids)
-                    # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
-                    temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
-                    id_sum += len(ids)
-                instance.or_buffer_indices = list(temp_or_buffer_indices)
-                class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * id_sum)
-                instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * id_sum)
-                pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
-                hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
+                # Store indices in the duplicate vao ids array, and hence the optimized rendering buffers, that this InstanceGroup will use
+                temp_or_buffer_indices.extend(list(np.arange(or_buffer_idx_start, or_buffer_idx_end)))
+                id_sum += len(ids)
+            instance.or_buffer_indices = list(temp_or_buffer_indices)
+            class_id_array.extend([float(instance.class_id) / MAX_CLASS_COUNT] * id_sum)
+            instance_id_array.extend([float(instance.id) / MAX_INSTANCE_COUNT] * id_sum)
+            pbr_data_array.extend([[float(instance.use_pbr), 1.0, 1.0, 1.0]] * id_sum)
+            hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Variables needed for multi draw elements call
         index_ptr_offsets = []
@@ -1834,21 +1727,12 @@ class MeshRenderer(object):
         :param need_flow_info: whether flow information is required
         """
         for instance in self.instances:
-            # if instance.dynamic:
-            if isinstance(instance, Instance):
-                buf_idxs = instance.or_buffer_indices
-                # Continue if instance has no visual objects
-                if not buf_idxs:
-                    continue
-                self.trans_data[buf_idxs] = np.array(instance.pose_trans)
-                self.rot_data[buf_idxs] = np.array(instance.pose_rot)
-            elif isinstance(instance, InstanceGroup) or isinstance(instance, Robot):
-                buf_idxs = instance.or_buffer_indices
-                # Continue if instance has no visual objects
-                if not buf_idxs:
-                    continue
-                self.trans_data[buf_idxs] = np.array(instance.poses_trans)
-                self.rot_data[buf_idxs] = np.array(instance.poses_rot)
+            buf_idxs = instance.or_buffer_indices
+            # Continue if instance has no visual objects
+            if not buf_idxs:
+                continue
+            self.trans_data[buf_idxs] = np.array(instance.poses_trans)
+            self.rot_data[buf_idxs] = np.array(instance.poses_rot)
 
         if need_flow_info:
             # this part could be expensive
@@ -1931,9 +1815,9 @@ class MeshRenderer(object):
         :return: complete 360 degree LiDAR readings
         """
         for instance in self.instances:
-            if isinstance(instance, Robot):
-                camera_pos = instance.robot.eyes.get_position() + offset_with_camera
-                orn = instance.robot.eyes.get_orientation()
+            if isinstance(instance.ig_object, BaseRobot):
+                camera_pos = instance.ig_object.eyes.get_position() + offset_with_camera
+                orn = instance.ig_object.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
@@ -1984,9 +1868,9 @@ class MeshRenderer(object):
 
         if use_robot_camera:
             for instance in self.instances:
-                if isinstance(instance, Robot):
-                    camera_pos = instance.robot.eyes.get_position()
-                    orn = instance.robot.eyes.get_orientation()
+                if isinstance(instance.ig_object, BaseRobot):
+                    camera_pos = instance.ig_object.eyes.get_position()
+                    orn = instance.ig_object.eyes.get_orientation()
                     mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                     view_direction = mat.dot(np.array([1, 0, 0]))
                     self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])

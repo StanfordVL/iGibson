@@ -73,12 +73,13 @@ class PointNavFixedTask(BaseTask):
             initial_offset=[0, 0, cyl_length / 2.0],
         )
 
+        env.simulator.import_object(self.initial_pos_vis_obj)
+        env.simulator.import_object(self.target_pos_vis_obj)
         if self.target_visual_object_visible_to_agent:
-            env.simulator.import_object(self.initial_pos_vis_obj)
-            env.simulator.import_object(self.target_pos_vis_obj)
-        else:
-            self.initial_pos_vis_obj.load()
-            self.target_pos_vis_obj.load()
+            for instance in self.initial_pos_vis_obj.renderer_instances:
+                instance.hidden = False
+            for instance in self.target_pos_vis_obj.renderer_instances:
+                instance.hidden = False
 
         if env.scene.build_graph:
             self.num_waypoints_vis = 250
@@ -93,7 +94,9 @@ class PointNavFixedTask(BaseTask):
                 for _ in range(self.num_waypoints_vis)
             ]
             for waypoint in self.waypoints_vis:
-                waypoint.load()
+                env.simulator.import_object(waypoint)
+                for instance in waypoint.renderer_instances:
+                    instance.hidden = False
 
     def get_geodesic_potential(self, env):
         """

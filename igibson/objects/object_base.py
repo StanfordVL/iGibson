@@ -4,20 +4,38 @@ import numpy as np
 import pybullet as p
 from future.utils import with_metaclass
 
+from igibson.utils.constants import SemanticClass
+
 
 class BaseObject(with_metaclass(ABCMeta, object)):
-    """This is simply an interface that all objects must implement that does not implement any features on its own."""
+    """This is the interface that all iGibson objects must implement."""
 
-    def __init__(self):
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": True,
+        "use_pbr_mapping": True,
+        "shadow_caster": True,
+    }
+
+    def __init__(self, class_id=SemanticClass.USER_ADDED_OBJS, rendering_params=None):
+        """
+        Create an object instance with the minimum information of class ID and rendering parameters.
+
+        @param class_id: What class ID the object should be assigned in semantic segmentation rendering mode.
+        @param rendering_params: Any keyword arguments to be passed into simulator.load_object_into_renderer(...).
+        """
         self.states = {}
         self._loaded = False
+        self.class_id = class_id
+        self._rendering_params = dict(self.DEFAULT_RENDERING_PARAMS)
+        if rendering_params is not None:
+            self._rendering_params.update(rendering_params)
 
-    def load(self):
+    def load(self, simulator):
         """Load object into pybullet and return list of loaded body ids."""
         if self._loaded:
             raise ValueError("Cannot load a single object multiple times.")
         self._loaded = True
-        return self._load()
+        return self._load(simulator)
 
     @abstractmethod
     def get_body_id(self):
@@ -30,7 +48,7 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def _load(self):
+    def _load(self, simulator):
         pass
 
     def get_position(self):
@@ -101,12 +119,11 @@ class SingleBodyObject(NonRobotObject):
     # TODO: Merge this into BaseObject once URDFObject also becomes single-body.
 
     def __init__(self, **kwargs):
-        super(SingleBodyObject, self).__init__(*kwargs)
+        super(SingleBodyObject, self).__init__(**kwargs)
         self._body_id = None
 
-    def load(self):
-        body_ids = super(NonRobotObject, self).load()
-        assert len(body_ids) == 1, "SingleBodyObject loaded more than a single body ID."
+    def load(self, simulator):
+        body_ids = super(NonRobotObject, self).load(simulator)
         self._body_id = body_ids[0]
         return body_ids
 

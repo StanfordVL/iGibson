@@ -35,7 +35,7 @@ class FetchGripper(LocomotorRobot):
     Uses joint velocity control
     """
 
-    def __init__(self, simulator, config):
+    def __init__(self, simulator, config, **kwargs):
         self.simulator = simulator
         self.config = config
         self.linear_velocity = config.get("linear_velocity", 1.0)  # m/s
@@ -83,6 +83,7 @@ class FetchGripper(LocomotorRobot):
             is_discrete=config.get("is_discrete", False),
             control=["differential_drive"] * 2 + ["velocity"] * 12,
             self_collision=False,
+            **kwargs
         )
 
         # Assistive grasp params
@@ -380,12 +381,12 @@ class FetchGripper(LocomotorRobot):
         """
         return T.mat2quat(self.get_relative_eef_pose()[:3, :3])
 
-    def load(self):
+    def load(self, simulator):
         """
         Load the robot into pybullet. Filter out unnecessary self collision
         due to modeling imperfection in the URDF
         """
-        ids = super(FetchGripper, self).load()
+        ids = super(FetchGripper, self).load(simulator)
         robot_id = self.robot_ids[0]
 
         disable_collision_names = [

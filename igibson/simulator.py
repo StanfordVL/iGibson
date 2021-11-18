@@ -7,27 +7,20 @@ import pybullet as p
 
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
-from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.objects.object_base import NonRobotObject
 from igibson.objects.particles import Particle, ParticleSystem
-from igibson.objects.stateful_object import StatefulObject
 from igibson.objects.visual_marker import VisualMarker
-from igibson.render.mesh_renderer.instances import Instance, InstanceGroup
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.viewer import Viewer, ViewerSimple
-
-# REMOVE
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs
-from igibson.utils.constants import PyBulletSleepState, SemanticClass, SimulatorMode
+from igibson.utils.constants import PyBulletSleepState, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
-from igibson.utils.semantics_utils import get_class_name_to_class_id
 from igibson.utils.utils import quatXYZWFromRotMat, restoreState
 
 
@@ -123,7 +116,6 @@ class Simulator:
         self.first_sync = True
 
         # Set of categories that can be grasped by assisted grasping
-        self.class_name_to_class_id = get_class_name_to_class_id()
         self.object_state_types = get_states_by_dependency_order()
 
         self.assist_grasp_category_allow_list = self.gen_assisted_grasping_categories()
@@ -212,441 +204,50 @@ class Simulator:
             self.viewer = Viewer(simulator=self, renderer=self.renderer)
 
     @load_without_pybullet_vis
-    def import_scene(
-        self,
-        scene,
-        texture_scale=1.0,
-        load_texture=True,
-        render_floor_plane=False,
-        class_id=SemanticClass.SCENE_OBJS,
-    ):
+    def import_scene(self, scene):
         """
         Import a scene into the simulator. A scene could be a synthetic one or a realistic Gibson Environment.
 
         :param scene: Scene object
-        :param texture_scale: Option to scale down the texture for rendering
-        :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
-        :param render_floor_plane: Whether to render the additionally added floor plane
-        :param class_id: Class id for rendering semantic segmentation
         :return: pybullet body ids from scene.load function
         """
-        assert isinstance(scene, Scene) and not isinstance(
-            scene, InteractiveIndoorScene
-        ), "import_scene can only be called with Scene that is not InteractiveIndoorScene"
-        # Load the scene. Returns a list of pybullet ids of the objects loaded that we can use to
-        # load them in the renderer
-        new_object_pb_ids = scene.load()
-        self.objects += new_object_pb_ids
-
-        # Load the objects in the renderer
-        for new_object_pb_id in new_object_pb_ids:
-            self.load_object_in_renderer(
-                new_object_pb_id,
-                class_id=class_id,
-                texture_scale=texture_scale,
-                load_texture=load_texture,
-                render_floor_plane=render_floor_plane,
-                use_pbr=False,
-                use_pbr_mapping=False,
-            )
-
-            # TODO: add instance renferencing for iG v1 scenes
-
+        assert isinstance(scene, Scene), "import_scene can only be called with Scene"
+        scene.load(self)
         self.scene = scene
 
-        # Load the states of all the objects in the scene.
-        for obj in scene.get_objects():
-            if isinstance(obj, ObjectMultiplexer):
-                for sub_obj in obj._multiplexed_objects:
-                    if isinstance(sub_obj, ObjectGrouper):
-                        for group_sub_obj in sub_obj.objects:
-                            for state in group_sub_obj.states.values():
-                                state.initialize(self)
-                    else:
-                        for state in sub_obj.states.values():
-                            state.initialize(self)
-            elif isinstance(obj, StatefulObject):
-                for state in obj.states.values():
-                    state.initialize(self)
-
-        return new_object_pb_ids
-
     @load_without_pybullet_vis
-    def import_ig_scene(self, scene):
-        """
-        Import scene from iGSDF class
-
-        :param scene: iGSDFScene instance
-        :return: pybullet body ids from scene.load function
-        """
-        assert isinstance(
-            scene, InteractiveIndoorScene
-        ), "import_ig_scene can only be called with InteractiveIndoorScene"
-        if not self.use_pb_gui:
-            scene.set_ignore_visual_shape(True)
-            # skip loading visual shape if not using pybullet visualizer
-
-        new_object_ids = scene.load()
-        self.objects += new_object_ids
-
-        for body_id, visual_mesh_to_material, link_name_to_vm in zip(
-            new_object_ids, scene.visual_mesh_to_material, scene.link_name_to_vm
-        ):
-            use_pbr = True
-            use_pbr_mapping = True
-            shadow_caster = True
-            physical_object = scene.objects_by_id[body_id]
-            if scene.scene_source == "IG":
-                if physical_object.category in ["walls", "floors", "ceilings"]:
-                    use_pbr = False
-                    use_pbr_mapping = False
-                if physical_object.category == "ceilings":
-                    shadow_caster = False
-            class_id = self.class_name_to_class_id.get(physical_object.category, SemanticClass.SCENE_OBJS)
-            self.load_articulated_object_in_renderer(
-                body_id,
-                class_id=class_id,
-                visual_mesh_to_material=visual_mesh_to_material,
-                link_name_to_vm=link_name_to_vm,
-                use_pbr=use_pbr,
-                use_pbr_mapping=use_pbr_mapping,
-                shadow_caster=shadow_caster,
-                physical_object=physical_object,
-            )
-
-        self.scene = scene
-
-        # Load the states of all the objects in the scene.
-        for obj in scene.get_objects():
-            if isinstance(obj, ObjectMultiplexer):
-                for sub_obj in obj._multiplexed_objects:
-                    if isinstance(sub_obj, ObjectGrouper):
-                        for group_sub_obj in sub_obj.objects:
-                            for state in group_sub_obj.states.values():
-                                state.initialize(self)
-                    else:
-                        for state in sub_obj.states.values():
-                            state.initialize(self)
-            elif isinstance(obj, StatefulObject):
-                for state in obj.states.values():
-                    state.initialize(self)
-
-        return new_object_ids
-
-    @load_without_pybullet_vis
-    def import_particle_system(self, obj):
+    def import_particle_system(self, particle_system):
         """
         Import an object into the simulator. Called by objects owning a particle-system, via reference to the Simulator instance.
         :param obj: ParticleSystem to load
         """
 
-        assert isinstance(obj, ParticleSystem), "import_particle_system can only be called with ParticleSystem"
+        assert isinstance(
+            particle_system, ParticleSystem
+        ), "import_particle_system can only be called with ParticleSystem"
 
-        self.particle_systems.append(obj)
-        obj.initialize(self)
+        self.particle_systems.append(particle_system)
+        particle_system.initialize(self)
 
     @load_without_pybullet_vis
-    def import_object(
-        self, obj, class_id=SemanticClass.USER_ADDED_OBJS, use_pbr=True, use_pbr_mapping=True, shadow_caster=True
-    ):
+    def import_object(self, obj):
         """
         Import an object into the simulator
 
         :param obj: Object to load
-        :param class_id: Class id for rendering semantic segmentation
-        :param use_pbr: Whether to use pbr
-        :param use_pbr_mapping: Whether to use pbr mapping
-        :param shadow_caster: Whether to cast shadow
         """
         assert isinstance(obj, NonRobotObject), "import_object can only be called with NonRobotObject"
 
         if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
-            new_object_pb_ids = obj.load()
+            obj.load(self)
         else:
             # Non-marker objects require a Scene to be imported.
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
-            new_object_pb_ids = self.scene.add_object(obj, _is_call_from_simulator=True)
-
-        # If no new bodies are immediately imported into pybullet, we have no rendering steps.
-        if not new_object_pb_ids:
-            return None
-
-        self.objects += new_object_pb_ids
-
-        for i, new_object_pb_id in enumerate(new_object_pb_ids):
-            if isinstance(obj, ArticulatedObject) or isinstance(obj, URDFObject):
-                if isinstance(obj, ArticulatedObject):
-                    visual_mesh_to_material = None
-                else:
-                    visual_mesh_to_material = obj.visual_mesh_to_material[i]
-                link_name_to_vm = obj.link_name_to_vm[i]
-                self.load_articulated_object_in_renderer(
-                    new_object_pb_id,
-                    class_id=class_id,
-                    use_pbr=use_pbr,
-                    use_pbr_mapping=use_pbr_mapping,
-                    visual_mesh_to_material=visual_mesh_to_material,
-                    link_name_to_vm=link_name_to_vm,
-                    shadow_caster=shadow_caster,
-                    physical_object=obj,
-                )
-            else:
-                softbody = obj.__class__.__name__ == "SoftObject"
-                self.load_object_in_renderer(
-                    new_object_pb_id,
-                    class_id=class_id,
-                    softbody=softbody,
-                    use_pbr=use_pbr,
-                    use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster,
-                    physical_object=obj,
-                )
-
-        # Finally, initialize the object's states
-        if isinstance(obj, ObjectMultiplexer):
-            for sub_obj in obj._multiplexed_objects:
-                if isinstance(sub_obj, ObjectGrouper):
-                    for group_sub_obj in sub_obj.objects:
-                        for state in group_sub_obj.states.values():
-                            state.initialize(self)
-                else:
-                    for state in sub_obj.states.values():
-                        state.initialize(self)
-        elif isinstance(obj, StatefulObject):
-            for state in obj.states.values():
-                state.initialize(self)
-
-        return new_object_pb_ids
+            self.scene.add_object(obj, self, _is_call_from_simulator=True)
 
     @load_without_pybullet_vis
-    def load_object_in_renderer(
-        self,
-        object_pb_id,
-        class_id=None,
-        softbody=False,
-        texture_scale=1.0,
-        load_texture=True,
-        render_floor_plane=False,
-        use_pbr=True,
-        use_pbr_mapping=True,
-        shadow_caster=True,
-        physical_object=None,
-    ):
-        """
-        Load the object into renderer
-        :param object_pb_id: pybullet body id
-        :param class_id: Class id for rendering semantic segmentation
-        :param softbody: Whether the object is soft body
-        :param texture_scale: Texture scale
-        :param load_texture: If you don't need rgb output, texture loading could be skipped to make rendering faster
-        :param render_floor_plane: Whether to render the additionally added floor plane
-        :param use_pbr: Whether to use pbr
-        :param use_pbr_mapping: Whether to use pbr mapping
-        :param shadow_caster: Whether to cast shadow
-        :param physical_object: The reference to Object class
-        """
-
-        # Load object in renderer, use visual shape and base_link frame
-        # not CoM frame
-        # Do not load URDFObject or ArticulatedObject with this function
-        if physical_object is not None and (
-            isinstance(physical_object, ArticulatedObject) or isinstance(physical_object, URDFObject)
-        ):
-            raise ValueError("loading articulated object with load_object_in_renderer function")
-
-        for shape in p.getVisualShapeData(object_pb_id):
-            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-            dynamics_info = p.getDynamicsInfo(id, link_id)
-            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-            rel_pos, rel_orn = p.multiplyTransforms(*p.invertTransform(inertial_pos, inertial_orn), rel_pos, rel_orn)
-            # visual meshes frame are transformed from the urdfLinkFrame as origin to comLinkFrame as origin
-            visual_object = None
-            if type == p.GEOM_MESH:
-                filename = filename.decode("utf-8")
-                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
-                    self.renderer.load_object(
-                        filename,
-                        transform_orn=rel_orn,
-                        transform_pos=rel_pos,
-                        input_kd=color[:3],
-                        scale=np.array(dimensions),
-                        texture_scale=texture_scale,
-                        load_texture=load_texture,
-                    )
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
-                        len(self.renderer.visual_objects) - 1
-                    )
-                visual_object = self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
-            elif type == p.GEOM_SPHERE:
-                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/sphere8.obj")
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5],
-                )
-                visual_object = len(self.renderer.get_visual_objects()) - 1
-            elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]],
-                )
-                visual_object = len(self.renderer.get_visual_objects()) - 1
-            elif type == p.GEOM_BOX:
-                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=np.array(dimensions),
-                )
-                visual_object = len(self.renderer.visual_objects) - 1
-            elif type == p.GEOM_PLANE:
-                # By default, we add an additional floor surface to "smooth out" that of the original mesh.
-                # Normally you don't need to render this additionally added floor surface.
-                # However, if you do want to render it for some reason, you can set render_floor_plane to be True.
-                if render_floor_plane:
-                    filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
-                    self.renderer.load_object(
-                        filename,
-                        transform_orn=rel_orn,
-                        transform_pos=rel_pos,
-                        input_kd=color[:3],
-                        scale=[100, 100, 0.01],
-                    )
-                    visual_object = len(self.renderer.visual_objects) - 1
-            if visual_object is not None:
-                self.renderer.add_instance(
-                    visual_object,
-                    pybullet_uuid=object_pb_id,
-                    class_id=class_id,
-                    dynamic=True,
-                    softbody=softbody,
-                    use_pbr=use_pbr,
-                    use_pbr_mapping=use_pbr_mapping,
-                    shadow_caster=shadow_caster,
-                )
-                if physical_object is not None:
-                    physical_object.renderer_instances.append(self.renderer.instances[-1])
-
-    @load_without_pybullet_vis
-    def load_articulated_object_in_renderer(
-        self,
-        object_pb_id,
-        physical_object,
-        link_name_to_vm,
-        class_id=None,
-        visual_mesh_to_material=None,
-        use_pbr=True,
-        use_pbr_mapping=True,
-        shadow_caster=True,
-    ):
-        """
-        Load the articulated object into renderer
-
-        :param object_pb_id: pybullet body id
-        :param physical_object: The reference to Object class
-        :param link_name_to_vm: mapping from link name to a list of visual mesh file paths
-        :param class_id: Class id for rendering semantic segmentation
-        :param visual_mesh_to_material: mapping from visual mesh to randomizable materials
-        :param use_pbr: Whether to use pbr
-        :param use_pbr_mapping: Whether to use pbr mapping
-        :param shadow_caster: Whether to cast shadow
-        """
-        # Load object in renderer, use visual shape from physical_object class
-        # using CoM frame
-        # only load URDFObject or ArticulatedObject with this function
-        if not (
-            isinstance(physical_object, ArticulatedObject)
-            or isinstance(physical_object, URDFObject)
-            or isinstance(physical_object, ObjectMultiplexer)
-        ):
-            raise ValueError("loading non-articulated object with load_articulated_object_in_renderer function")
-
-        visual_objects = []
-        link_ids = []
-        poses_rot = []
-        poses_trans = []
-        color = [0, 0, 0]
-        for link_id in list(range(p.getNumJoints(object_pb_id))) + [-1]:
-            if link_id == -1:
-                link_name = p.getBodyInfo(object_pb_id)[0].decode("utf-8")
-            else:
-                link_name = p.getJointInfo(object_pb_id, link_id)[12].decode("utf-8")
-
-            collision_shapes = p.getCollisionShapeData(object_pb_id, link_id)
-            collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
-            # a link can have multiple collision meshes due to boxification,
-            # and we want to query the original collision mesh for information
-
-            if len(collision_shapes) == 0:
-                continue
-            else:
-                _, _, _, dimensions, filename, rel_pos, rel_orn = collision_shapes[0]
-
-            filenames = link_name_to_vm[link_name]
-            for filename in filenames:
-                overwrite_material = None
-                if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
-                    overwrite_material = visual_mesh_to_material[filename]
-
-                if (
-                    filename,
-                    tuple(dimensions),
-                    tuple(rel_pos),
-                    tuple(rel_orn),
-                ) not in self.visual_objects.keys() or overwrite_material is not None:
-                    # if the object has an overwrite material, always create a
-                    # new visual object even if the same visual shape exsits
-                    self.renderer.load_object(
-                        filename,
-                        transform_orn=rel_orn,
-                        transform_pos=rel_pos,
-                        input_kd=color[:3],
-                        scale=np.array(dimensions),
-                        overwrite_material=overwrite_material,
-                    )
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
-                        len(self.renderer.visual_objects) - 1
-                    )
-                visual_objects.append(
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
-                )
-                link_ids.append(link_id)
-
-                if link_id == -1:
-                    pos, orn = p.getBasePositionAndOrientation(object_pb_id)
-                else:
-                    pos, orn = p.getLinkState(object_pb_id, link_id)[:2]
-                poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
-                poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
-
-        self.renderer.add_instance_group(
-            object_ids=visual_objects,
-            link_ids=link_ids,
-            pybullet_uuid=object_pb_id,
-            class_id=class_id,
-            poses_trans=poses_trans,
-            poses_rot=poses_rot,
-            dynamic=True,
-            robot=None,
-            use_pbr=use_pbr,
-            use_pbr_mapping=use_pbr_mapping,
-            shadow_caster=shadow_caster,
-        )
-
-        if physical_object is not None:
-            physical_object.renderer_instances.append(self.renderer.instances[-1])
-
-    @load_without_pybullet_vis
-    def import_robot(self, robot, class_id=SemanticClass.ROBOTS):
+    def import_robot(self, robot):
         """
         Import a robot into the simulator
 
@@ -654,95 +255,138 @@ class Simulator:
         :param class_id: Class id for rendering semantic segmentation
         :return: pybullet id
         """
-        assert isinstance(robot, BaseRobot), "import_robot can only be called with BaseRobot"
-        ids = robot.load()
-        assert ids
+        assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
+        robot.load(self)
+        self.robots.append(robot)
+
+    @load_without_pybullet_vis
+    def load_object_in_renderer(
+        self,
+        obj,
+        body_id,
+        class_id,
+        link_name_to_vm=None,
+        visual_mesh_to_material=None,
+        use_pbr=True,
+        use_pbr_mapping=True,
+        shadow_caster=True,
+        softbody=False,
+        texture_scale=1.0,
+    ):
+        # First, grab all the visual shapes.
+        if link_name_to_vm:
+            # If a manual link-name-to-visual-mesh mapping is given, use that to generate list of shapes.
+            shapes = []
+            for link_id in list(range(p.getNumJoints(body_id))) + [-1]:
+                if link_id == -1:
+                    link_name = p.getBodyInfo(body_id)[0].decode("utf-8")
+                else:
+                    link_name = p.getJointInfo(body_id, link_id)[12].decode("utf-8")
+
+                collision_shapes = p.getCollisionShapeData(body_id, link_id)
+                collision_shapes = [item for item in collision_shapes if item[2] == p.GEOM_MESH]
+                # a link can have multiple collision meshes due to boxification,
+                # and we want to query the original collision mesh for information
+
+                if len(collision_shapes) == 0:
+                    continue
+                else:
+                    _, _, _, dimensions, filename, rel_pos, rel_orn = collision_shapes[0]
+
+                filenames = link_name_to_vm[link_name]
+                for filename in filenames:
+                    overwrite_material = None
+                    if visual_mesh_to_material is not None and filename in visual_mesh_to_material:
+                        overwrite_material = visual_mesh_to_material[filename]
+
+                    shapes.append(
+                        (link_id, p.GEOM_MESH, dimensions, filename, rel_pos, rel_orn, [0, 0, 0], overwrite_material)
+                    )
+        else:
+            # Pull the visual shapes from pybullet
+            shapes = []
+            for shape in p.getVisualShapeData(body_id):
+                link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[1:8]
+
+                if filename:
+                    filename = filename.decode("utf-8")
+
+                # visual meshes frame are transformed from the urdfLinkFrame as origin to comLinkFrame as origin
+                dynamics_info = p.getDynamicsInfo(body_id, link_id)
+                inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+                rel_pos, rel_orn = p.multiplyTransforms(
+                    *p.invertTransform(inertial_pos, inertial_orn), rel_pos, rel_orn
+                )
+                shapes.append((link_id, type, dimensions, filename, rel_pos, rel_orn, color, None))
+
+        # Now that we have the visual shapes, let's add them to the renderer.
         visual_objects = []
         link_ids = []
         poses_rot = []
         poses_trans = []
-        self.robots.append(robot)
+        for shape in shapes:
+            link_id, type, dimensions, filename, rel_pos, rel_orn, color, overwrite_material = shape
 
-        for shape in p.getVisualShapeData(ids[0]):
-            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = shape[:8]
-            dynamics_info = p.getDynamicsInfo(id, link_id)
-            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-            rel_pos, rel_orn = p.multiplyTransforms(*p.invertTransform(inertial_pos, inertial_orn), rel_pos, rel_orn)
-            # visual meshes frame are transformed from the urdfLinkFrame as origin to comLinkFrame as origin
-
-            if type == p.GEOM_MESH:
-                filename = filename.decode("utf-8")
-                if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
-                    self.renderer.load_object(
-                        filename,
-                        transform_orn=rel_orn,
-                        transform_pos=rel_pos,
-                        input_kd=color[:3],
-                        scale=np.array(dimensions),
-                    )
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
-                        len(self.renderer.visual_objects) - 1
-                    )
-                visual_objects.append(
-                    self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
-                )
-                link_ids.append(link_id)
-            elif type == p.GEOM_SPHERE:
+            # Specify a filename if our object is not a mesh
+            if type == p.GEOM_SPHERE:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/sphere8.obj")
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=[dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5],
-                )
-                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
-                link_ids.append(link_id)
+                dimensions = [dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5]
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
-                self.renderer.load_object(
-                    filename,
-                    transform_orn=rel_orn,
-                    transform_pos=rel_pos,
-                    input_kd=color[:3],
-                    scale=[dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]],
-                )
-                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
-                link_ids.append(link_id)
+                dimensions = [dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]]
             elif type == p.GEOM_BOX:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
+            elif type == p.GEOM_PLANE:
+                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
+                dimensions = [100, 100, 0.01]
+
+            # Load the visual object if it doesn't already exist.
+            if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
                     transform_pos=rel_pos,
                     input_kd=color[:3],
                     scale=np.array(dimensions),
+                    texture_scale=texture_scale,
+                    overwrite_material=overwrite_material,
                 )
-                visual_objects.append(len(self.renderer.get_visual_objects()) - 1)
-                link_ids.append(link_id)
+                self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
+                    len(self.renderer.visual_objects) - 1
+                )
 
+            # Keep track of the objects we just loaded.
+            visual_objects.append(self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
+            link_ids.append(link_id)
+
+            # Keep track of the positions.
             if link_id == -1:
-                pos, orn = p.getBasePositionAndOrientation(id)
+                pos, orn = p.getBasePositionAndOrientation(body_id)
             else:
-                pos, orn = p.getLinkState(id, link_id)[:2]
+                pos, orn = p.getLinkState(body_id, link_id)[:2]
             poses_rot.append(np.ascontiguousarray(quat2rotmat(xyzw2wxyz(orn))))
             poses_trans.append(np.ascontiguousarray(xyz2mat(pos)))
 
-        self.renderer.add_robot(
+        # Finally, create and add the instance group for this object.
+        self.renderer.add_instance_group(
             object_ids=visual_objects,
             link_ids=link_ids,
-            pybullet_uuid=ids[0],
+            pybullet_uuid=body_id,
+            ig_object=obj,
             class_id=class_id,
-            poses_rot=poses_rot,
             poses_trans=poses_trans,
+            poses_rot=poses_rot,
+            softbody=softbody,
             dynamic=True,
-            robot=robot,
+            use_pbr=use_pbr,
+            use_pbr_mapping=use_pbr_mapping,
+            shadow_caster=shadow_caster,
         )
 
-        for state in robot.states.values():
-            state.initialize(self)
-
-        return ids
+        # Add the instance onto the object as well.
+        # TODO: Remove condition and/or migrate to owning classes.
+        if hasattr(obj, "renderer_instances"):
+            obj.renderer_instances.append(self.renderer.instances[-1])
 
     def _non_physics_step(self):
         """
@@ -785,23 +429,6 @@ class Simulator:
             self.viewer.update()
         if self.first_sync:
             self.first_sync = False
-
-    def import_behavior_robot(self, bvr_robot):
-        """
-        Import registered behavior robot into the simulator.
-        """
-        assert isinstance(bvr_robot, BehaviorRobot), "import_robot can only be called with BaseRobot"
-        self.robots.append(bvr_robot)
-        for part_name, part_obj in bvr_robot.parts.items():
-            self.import_object(part_obj, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
-            if bvr_robot.use_ghost_hands and part_name in ["left_hand", "right_hand"]:
-                # Ghost hands don't cast shadows
-                self.import_object(part_obj.ghost_hand, use_pbr=False, use_pbr_mapping=False, shadow_caster=False)
-            if part_name == "eye":
-                # BREye doesn't cast shadows either
-                self.import_object(
-                    part_obj.head_visual_marker, use_pbr=False, use_pbr_mapping=False, shadow_caster=False
-                )
 
     def gen_assisted_grasping_categories(self):
         """
@@ -847,32 +474,6 @@ class Simulator:
                 self.renderer.update_hidden_highlight_state([instance])
                 return
 
-    def get_hidden_state(self, obj):
-        """
-        Returns the current hidden state of the object - hidden (True) or not hidden (False)
-        """
-        for instance in self.renderer.instances:
-            if obj.get_body_id() == instance.pybullet_uuid:
-                return instance.hidden
-
-    def get_category_ids(self, category_name):
-        """
-        Gets ids for all instances of a specific category (floors, walls, etc.) in a scene
-        """
-        assert self.scene is not None, "Category IDs require a loaded scene"
-
-        if not hasattr(self.scene, "objects_by_id"):
-            return []
-        return [
-            body_id
-            for body_id in self.objects
-            if (
-                body_id in self.scene.objects_by_id.keys()
-                and hasattr(self.scene.objects_by_id[body_id], "category")
-                and self.scene.objects_by_id[body_id].category == category_name
-            )
-        ]
-
     @staticmethod
     def update_position(instance, force_sync=False):
         """
@@ -880,48 +481,32 @@ class Simulator:
         :param instance: Instance in the renderer
         """
         body_links_awake = 0
-        if isinstance(instance, Instance):
-            dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
-            if len(dynamics_info) == 13 and not force_sync:
-                activation_state = dynamics_info[12]
-            else:
-                activation_state = PyBulletSleepState.AWAKE
-
-            if activation_state != PyBulletSleepState.AWAKE:
-                return body_links_awake
-
-            pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
-            instance.set_position(pos)
-            instance.set_rotation(quat2rotmat(xyzw2wxyz(orn)))
-            body_links_awake += 1
-
-        elif isinstance(instance, InstanceGroup):
-            for j, link_id in enumerate(instance.link_ids):
-                if link_id == -1:
-                    dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
-                    if len(dynamics_info) == 13 and not force_sync:
-                        activation_state = dynamics_info[12]
-                    else:
-                        activation_state = PyBulletSleepState.AWAKE
-
-                    if activation_state != PyBulletSleepState.AWAKE:
-                        continue
-
-                    pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
+        for j, link_id in enumerate(instance.link_ids):
+            if link_id == -1:
+                dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
+                if len(dynamics_info) == 13 and not force_sync:
+                    activation_state = dynamics_info[12]
                 else:
-                    dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+                    activation_state = PyBulletSleepState.AWAKE
 
-                    if len(dynamics_info) == 13 and not force_sync:
-                        activation_state = dynamics_info[12]
-                    else:
-                        activation_state = PyBulletSleepState.AWAKE
+                if activation_state != PyBulletSleepState.AWAKE:
+                    continue
 
-                    if activation_state != PyBulletSleepState.AWAKE:
-                        continue
+                pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
+            else:
+                dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, link_id)
 
-                    pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)[:2]
+                if len(dynamics_info) == 13 and not force_sync:
+                    activation_state = dynamics_info[12]
+                else:
+                    activation_state = PyBulletSleepState.AWAKE
 
-                instance.set_position_for_part(xyz2mat(pos), j)
-                instance.set_rotation_for_part(quat2rotmat(xyzw2wxyz(orn)), j)
-                body_links_awake += 1
+                if activation_state != PyBulletSleepState.AWAKE:
+                    continue
+
+                pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)[:2]
+
+            instance.set_position_for_part(xyz2mat(pos), j)
+            instance.set_rotation_for_part(quat2rotmat(xyzw2wxyz(orn)), j)
+            body_links_awake += 1
         return body_links_awake

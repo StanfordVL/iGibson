@@ -27,6 +27,7 @@ class MeshRendererSettings(object):
         blend_highlight=False,
         is_robosuite=False,
         glsl_version_override=460,
+        load_textures=True,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
@@ -48,6 +49,7 @@ class MeshRendererSettings(object):
         :param blend_highlight: blend highlight of objects into RGB image
         :param is_robosuite: whether the environment is of robosuite.
         :param glsl_version_override: for backwards compatibility only. Options are 450 or 460.
+        :param load_textures: Whether textures should be loaded. Set to False if not using RGB modality to save memory.
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
@@ -72,6 +74,7 @@ class MeshRendererSettings(object):
         self.show_glfw_window = show_glfw_window
         self.blend_highlight = blend_highlight
         self.is_robosuite = is_robosuite
+        self.load_textures = load_textures
         self.glsl_version_override = glsl_version_override
 
         if glfw_gl_version is not None:

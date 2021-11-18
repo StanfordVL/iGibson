@@ -1,6 +1,9 @@
 import os
 
+import pybullet as p
+
 import igibson
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots.turtlebot_robot import Turtlebot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.stadium_scene import StadiumScene
@@ -13,12 +16,12 @@ def test_import_building():
     download_assets()
     download_demo_data()
 
-    s = Simulator(mode="headless")
+    s = Simulator(mode="headless", rendering_settings=MeshRendererSettings(texture_scale=0.4))
     scene = StaticIndoorScene("Rs")
-    s.import_scene(scene, texture_scale=0.4)
+    s.import_scene(scene)
     for i in range(15):
         s.step()
-    assert s.objects == list(range(2))
+    assert p.getNumBodies() == 2
     s.disconnect()
 
 
@@ -28,8 +31,8 @@ def test_import_building_big():
 
     s = Simulator(mode="headless")
     scene = StaticIndoorScene("Rs")
-    s.import_scene(scene, texture_scale=1)
-    assert s.objects == list(range(2))
+    s.import_scene(scene)
+    assert p.getNumBodies() == 2
     s.disconnect()
 
 
@@ -40,8 +43,7 @@ def test_import_stadium():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    print(s.objects)
-    assert s.objects == list(range(4))
+    assert p.getNumBodies() == 4
     s.disconnect()
 
 
@@ -53,7 +55,7 @@ def test_import_building_viewing():
     s = Simulator(mode="headless")
     scene = StaticIndoorScene("Rs")
     s.import_scene(scene)
-    assert s.objects == list(range(2))
+    assert p.getNumBodies() == 2
 
     turtlebot1 = Turtlebot(config)
     turtlebot2 = Turtlebot(config)

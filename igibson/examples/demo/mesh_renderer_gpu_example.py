@@ -17,7 +17,7 @@ def main():
 
     renderer = MeshRendererG2G(width=512, height=512, device_idx=0)
     renderer.load_object(model_path)
-    renderer.add_instance(0)
+    renderer.add_instance_group([0])
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)

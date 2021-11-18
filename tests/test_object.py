@@ -1,5 +1,7 @@
 import os
 
+import pybullet as p
+
 import igibson
 from igibson.objects.articulated_object import ArticulatedObject, RBOObject
 from igibson.objects.cube import Cube
@@ -20,9 +22,8 @@ def test_import_object():
 
     obj = YCBObject("003_cracker_box")
     s.import_object(obj)
-    objs = s.objects
+    assert p.getNumBodies() == 5
     s.disconnect()
-    assert objs == list(range(5))
 
 
 def test_import_many_object():
@@ -34,11 +35,12 @@ def test_import_many_object():
         obj = YCBObject("003_cracker_box")
         s.import_object(obj)
 
-    for j in range(1000):
+    for j in range(100):
         s.step()
-    last_obj = s.objects[-1]
+
+    assert p.getNumBodies() == 34
+
     s.disconnect()
-    assert last_obj == 33
 
 
 def test_import_rbo_object():
@@ -69,7 +71,6 @@ def test_import_box():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    print(s.objects)
     # wall = [pos, dim]
     wall = [
         [[0, 7, 1.01], [10, 0.2, 1]],

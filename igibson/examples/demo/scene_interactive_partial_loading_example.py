@@ -11,7 +11,7 @@ def main():
         load_object_categories=["chair"],
         load_room_types=["living_room"],
     )
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     for _ in range(1000):
         s.step()

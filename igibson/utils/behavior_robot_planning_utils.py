@@ -214,12 +214,12 @@ if __name__ == "__main__":
         mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
     )
 
-    scene = EmptyScene()
+    scene = EmptyScene(render_floor_plane=True)
     scene.objects_by_id = {}
-    s.import_scene(scene, render_floor_plane=True)
+    s.import_scene(scene)
 
     agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
-    s.import_behavior_robot(agent)
+    s.import_robot(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
 

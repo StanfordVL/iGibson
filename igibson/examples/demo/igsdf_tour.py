@@ -50,7 +50,7 @@ def main():
         args.scene, texture_randomization=args.domain_rand, object_randomization=args.object_rand
     )
 
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     traj_path = os.path.join(get_ig_scene_path(args.scene), "misc", "tour_cam_trajectory.txt")
     save_dir = os.path.join(get_ig_scene_path(args.scene), args.save_dir)

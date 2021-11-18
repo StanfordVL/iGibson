@@ -6,6 +6,7 @@ import pybullet as p
 
 import igibson
 from igibson.object_states.factory import prepare_object_states
+from igibson.utils.constants import SemanticClass
 
 
 class BaseRobot(object):
@@ -14,7 +15,21 @@ class BaseRobot(object):
     Handles object loading
     """
 
-    def __init__(self, model_file, base_name=None, scale=1, self_collision=False):
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": True,
+        "use_pbr_mapping": True,
+        "shadow_caster": True,
+    }
+
+    def __init__(
+        self,
+        model_file,
+        base_name=None,
+        scale=1,
+        self_collision=False,
+        class_id=SemanticClass.ROBOTS,
+        rendering_params=None,
+    ):
         """
         :param model_file: model filename
         :param base_name: name of the base link
@@ -48,11 +63,18 @@ class BaseRobot(object):
         # For BEHAVIOR compatibility -- may be removed eventually
         self.category = "agent"
 
+        # This logic is repeated because Robot does not inherit from Object.
+        # TODO: Remove this logic once the object refactoring is complete.
+        self.class_id = class_id
+        self._rendering_params = dict(self.DEFAULT_RENDERING_PARAMS)
+        if rendering_params is not None:
+            self._rendering_params.update(rendering_params)
+
         self.self_collision = self_collision
 
-    def load(self):
+    def load(self, simulator):
         """
-        Load the robot model into pybullet
+        Load the robot model into simulator
 
         :return: body id in pybullet
         """
@@ -75,6 +97,12 @@ class BaseRobot(object):
             "eyes" in self.parts
         ), 'Please add a link named "eyes" in your robot URDF file with the same pose as the onboard camera. Feel free to check out assets/models/turtlebot/turtlebot.urdf for an example.'
         self.eyes = self.parts["eyes"]
+
+        for body_id in self.robot_ids:
+            simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        for state in self.states.values():
+            state.initialize(simulator)
 
         return self.robot_ids
 
