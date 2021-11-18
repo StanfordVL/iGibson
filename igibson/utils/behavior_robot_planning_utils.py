@@ -214,7 +214,7 @@ if __name__ == "__main__":
         mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
     )
 
-    scene = EmptyScene(render_floor_plane=True)
+    scene = EmptyScene()
     scene.objects_by_id = {}
     s.import_scene(scene)
 

@@ -29,7 +29,6 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         build_graph=True,
         num_waypoints=10,
         waypoint_resolution=0.2,
-        pybullet_load_texture=False,
     ):
         """
         Load an indoor scene and compute traversability
@@ -41,7 +40,6 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
-        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
         super(IndoorScene, self).__init__()
         logging.info("IndoorScene model: {}".format(scene_id))
@@ -56,7 +54,6 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         self.num_waypoints = num_waypoints
         self.waypoint_interval = int(waypoint_resolution / trav_map_resolution)
         self.mesh_body_id = None
-        self.pybullet_load_texture = pybullet_load_texture
         self.floor_heights = [0.0]
 
     def load_trav_map(self, maps_path):
