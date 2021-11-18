@@ -1,10 +1,10 @@
 name: Tests
 
-on: [pull_request, push]
+on: [pull_request]
 
 jobs:
   test:
-    runs-on: [linux, gpu, dataset-enabled]
+    runs-on: [self-hosted, linux, gpu]
     if: github.repository == 'StanfordVL/iGibson-dev'
 
     steps:
@@ -12,6 +12,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           submodules: true
+          path: igibson
 
       - name: Add CUDA to env
         run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH
@@ -23,15 +24,56 @@ jobs:
           architecture: x64
 
       - name: Install dev requirements
+        working-directory: igibson
         run: pip install -r requirements-dev.txt
 
       - name: Install
+        working-directory: igibson
+        run: pip install -e .
+
+      - name: Checkout BDDL
+        uses: actions/checkout@v2
+        with:
+          # TODO: Update this to the appropriate repo & ref when the dev repo exists.
+          repository: StanfordVL/bddl
+          ref: e0b44a18e4840bd163a1cbca9f9810c05ca79931
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
+          path: bddl
+          submodules: recursive
+          lfs: true
+
+      - name: Install BDDL
+        working-directory: bddl
         run: pip install -e .
 
       - name: Link Dataset
+        working-directory: igibson
         run: ln -s /scr/ig-data igibson/data
 
+      # The below method of checking out ig-dataset is currently unused due to poor speed.
+      # - name: Create data directory
+      #   run: mkdir -p igibson/igibson/data
+      #
+      # - name: Checkout ig_dataset
+      #   uses: actions/checkout@v2
+      #   with:
+      #     repository: StanfordVL/ig_dataset
+      #     token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
+      #     path: igibson/igibson/data/ig_dataset
+      #     submodules: recursive
+      #     lfs: true
+      #
+      # - name: Checkout ig_assets
+      #   uses: actions/checkout@v2
+      #   with:
+      #     repository: StanfordVL/ig_assets
+      #     token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
+      #     path: igibson/igibson/data/assets
+      #     submodules: recursive
+      #     lfs: true
+
       - name: Run tests
+        working-directory: igibson
         run: pytest
 
       - name: Upload coverage to Codecov
