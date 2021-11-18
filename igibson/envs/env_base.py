@@ -223,11 +223,10 @@ class BaseEnv(gym.Env):
         else:
             raise Exception("unknown robot type: {}".format(self.config["robot"]))
 
+        self.simulator.import_robot(robot)
         if isinstance(robot, BehaviorRobot):
-            self.simulator.import_behavior_robot(robot)
             self.robot_body_id = robot.parts["body"].get_body_id()
         else:
-            self.simulator.import_robot(robot)
             self.robot_body_id = robot.robot_ids[0]
 
         self.scene = self.simulator.scene
