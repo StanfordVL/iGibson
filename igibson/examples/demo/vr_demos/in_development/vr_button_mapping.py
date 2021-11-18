@@ -14,7 +14,7 @@ from igibson.simulator import Simulator
 
 def main():
     s = Simulator(mode="vr", rendering_settings=MeshRendererSettings(enable_shadow=True, optimized=True))
-    scene = EmptyScene(render_floor_plane=True)
+    scene = EmptyScene()
     s.import_scene(scene)
 
     # Main simulation loop
