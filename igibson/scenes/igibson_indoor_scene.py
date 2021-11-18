@@ -51,7 +51,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         build_graph=True,
         num_waypoints=10,
         waypoint_resolution=0.2,
-        pybullet_load_texture=False,
         texture_randomization=False,
         link_collision_tolerance=0.03,
         object_randomization=False,
@@ -76,7 +75,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
-        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         :param texture_randomization: whether to randomize material/texture
         :param link_collision_tolerance: tolerance of the percentage of links that cannot be fully extended after object randomization
         :param object_randomization: whether to randomize object
@@ -99,7 +97,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
             build_graph,
             num_waypoints,
             waypoint_resolution,
-            pybullet_load_texture,
         )
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
