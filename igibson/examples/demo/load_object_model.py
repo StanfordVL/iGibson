@@ -28,7 +28,7 @@ def main():
     )
     s = Simulator(mode="gui_interactive", rendering_settings=vr_rendering_settings, image_height=512, image_width=512)
 
-    scene = EmptyScene(render_floor_plane=True)
+    scene = EmptyScene()
     # scene.load_object_categories(benchmark_names)
 
     s.import_scene(scene)

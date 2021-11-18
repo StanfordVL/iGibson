@@ -128,7 +128,7 @@ class BaseEnv(gym.Env):
         Load the scene and robot
         """
         if self.config["scene"] == "empty":
-            scene = EmptyScene(render_floor_plane=True)
+            scene = EmptyScene()
         elif self.config["scene"] == "stadium":
             scene = StadiumScene()
         elif self.config["scene"] == "gibson":
@@ -150,7 +150,6 @@ class BaseEnv(gym.Env):
                 trav_map_resolution=self.config.get("trav_map_resolution", 0.1),
                 trav_map_erosion=self.config.get("trav_map_erosion", 2),
                 trav_map_type=self.config.get("trav_map_type", "with_obj"),
-                pybullet_load_texture=self.config.get("pybullet_load_texture", False),
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
                 object_randomization_idx=self.object_randomization_idx,

@@ -33,7 +33,7 @@ def main():
     )
     p.configureDebugVisualizer(p.COV_ENABLE_GUI, enable=0)
 
-    scene = EmptyScene(render_floor_plane=True)
+    scene = EmptyScene()
     s.scene = scene
     scene.objects_by_id = {}
 
