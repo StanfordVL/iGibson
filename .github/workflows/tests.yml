@@ -36,7 +36,7 @@ jobs:
         with:
           # TODO: Update this to the appropriate repo & ref when the dev repo exists.
           repository: StanfordVL/bddl
-          ref: e0b44a18e4840bd163a1cbca9f9810c05ca79931
+          ref: b7a159fb0615d7b6610cb9abccac83425ea5262a
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
           path: bddl
           submodules: recursive
