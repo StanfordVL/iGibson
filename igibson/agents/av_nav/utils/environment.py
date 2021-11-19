@@ -124,11 +124,11 @@ class AVNavRLEnv(iGibsonEnv):
 
         if 'task_obs' in self.output:
             observation_space['task_obs'] = self.build_obs_space(
-                shape=(self.task.task_obs_dim,), low=-np.inf, high=-np.inf)
+                shape=(self.task.task_obs_dim,), low=-np.inf, high=np.inf)
         if 'audio' in self.output:
             spectrogram = self.compute_spectrogram(np.ones(int(self.SR / (1 / self.simulator.render_timestep)) * 2))
             observation_space['audio'] = self.build_obs_space(
-                shape=spectrogram.shape, low=-np.inf, high=-np.inf)
+                shape=spectrogram.shape, low=-np.inf, high=np.inf)
         if 'rgb' in self.output:
             observation_space['rgb'] = self.build_obs_space(
                 shape=(self.image_height, self.image_width, 3),
