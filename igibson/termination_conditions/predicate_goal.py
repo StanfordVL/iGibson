@@ -1,4 +1,4 @@
-from bddl.activity import *
+from bddl.activity import evaluate_goal_conditions
 
 from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
 from igibson.utils.utils import l2_distance

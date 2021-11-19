@@ -4,7 +4,15 @@ from collections import OrderedDict
 
 import networkx as nx
 import pybullet as p
-from bddl.activity import *
+from bddl.activity import (
+    Conditions,
+    evaluate_goal_conditions,
+    get_goal_conditions,
+    get_ground_goal_state_options,
+    get_initial_conditions,
+    get_natural_goal_conditions,
+    get_object_scope,
+)
 from bddl.condition_evaluation import Negation
 from bddl.logic_base import AtomicFormula
 from bddl.object_taxonomy import ObjectTaxonomy
@@ -922,3 +930,17 @@ class BehaviorTask(BaseTask):
     def check_success(self):
         self.current_success, self.current_goal_status = evaluate_goal_conditions(self.goal_conditions)
         return self.current_success, self.current_goal_status
+
+    def show_instruction(self):
+        satisfied = self.currently_viewed_instruction in self.current_goal_status["satisfied"]
+        natural_language_condition = self.natural_language_goal_conditions[self.currently_viewed_instruction]
+        objects = self.goal_conditions[self.currently_viewed_instruction].get_relevant_objects()
+        text_color = (
+            [83.0 / 255.0, 176.0 / 255.0, 72.0 / 255.0] if satisfied else [255.0 / 255.0, 51.0 / 255.0, 51.0 / 255.0]
+        )
+
+        return natural_language_condition, text_color, objects
+
+    def iterate_instruction(self):
+        self.currently_viewed_index = (self.currently_viewed_index + 1) % len(self.conds.parsed_goal_conditions)
+        self.currently_viewed_instruction = self.instruction_order[self.currently_viewed_index]
