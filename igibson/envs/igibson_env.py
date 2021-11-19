@@ -104,7 +104,18 @@ class iGibsonEnv(BaseEnv):
         elif self.config["task"] == "room_rearrangement":
             self.task = RoomRearrangementTask(self)
         else:
-            self.task = BehaviorTask(self)
+            try:
+                import bddl
+
+                with open(os.path.join(os.path.dirname(bddl.__file__), "activity_manifest.txt")) as f:
+                    all_activities = [line.strip() for line in f.readlines()]
+
+                if self.config["task"] in all_activities:
+                    self.task = BehaviorTask(self)
+                else:
+                    raise Exception("Invalid task: {}".format(self.config["task"]))
+            except ImportError:
+                raise Exception("Invalid task: {}".format(self.config["task"]))
 
     def build_obs_space(self, shape, low, high):
         """
