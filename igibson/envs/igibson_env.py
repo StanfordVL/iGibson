@@ -16,6 +16,7 @@ from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
 from igibson.tasks.behavior_task import BehaviorTask
+from igibson.tasks.dummy_task import DummyTask
 from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
@@ -88,7 +89,9 @@ class iGibsonEnv(BaseEnv):
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
 
         # task
-        if self.config["task"] == "point_nav_fixed":
+        if "task" not in self.config:
+            self.task = DummyTask(self)
+        elif self.config["task"] == "point_nav_fixed":
             self.task = PointNavFixedTask(self)
         elif self.config["task"] == "point_nav_random":
             self.task = PointNavRandomTask(self)

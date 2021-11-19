@@ -48,8 +48,8 @@ class BaseTask:
         self.reset_variables(env)
         for reward_function in self.reward_functions:
             reward_function.reset(self, env)
-        for reward_function in self.termination_conditions:
-            reward_function.reset(self, env)
+        for termination_condition in self.termination_conditions:
+            termination_condition.reset(self, env)
 
     def get_reward(self, env, collision_links=[], action=None, info={}):
         """
