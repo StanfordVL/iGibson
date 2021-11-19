@@ -134,13 +134,13 @@ class BehaviorTask(BaseTask):
             load_internal_states(env.simulator, self.state_history[self.initial_state])
 
     def reset_agent(self, env):
-        if isinstance(env.robots[0], BehaviorRobot):
-            if not self.behavior_robot_activated and env.simulator.mode != SimulatorMode.VR:
-                env.robots[0].activate()
-                self.behavior_robot_activated = True
-
-            # set the constraints to the current poses
-            env.robots[0].apply_action(np.zeros(env.robots[0].action_dim))
+        if (
+            isinstance(env.robots[0], BehaviorRobot)
+            and not self.behavior_robot_activated
+            and env.simulator.mode != SimulatorMode.VR
+        ):
+            env.robots[0].activate()
+            self.behavior_robot_activated = True
 
     def reset_variables(self, env):
         if self.log_writer is not None:
