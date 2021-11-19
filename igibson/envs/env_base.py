@@ -73,7 +73,7 @@ class BaseEnv(gym.Env):
                 enable_pbr=enable_pbr,
                 msaa=False,
                 texture_scale=texture_scale,
-                optimized=True,
+                optimized=self.config.get("optimized_renderer", True),
                 load_textures=self.config.get("load_texture", True),
             )
 
