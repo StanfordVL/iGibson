@@ -41,7 +41,7 @@ class SimulatorVR(Simulator):
         :param solver_iterations: number of solver iterations to feed into pybullet, can be reduced to increase speed.
             pybullet default value is 50.
         :param use_variable_step_num: whether to use a fixed (1) or variable physics step number
-        :param mode: choose mode from gui_interactive, gui_non_interactive, headless, headless_tensor
+        :param mode: choose mode from headless, headless_tensor, gui_interactive, gui_non_interactive, 
         :param image_width: width of the camera image
         :param image_height: height of the camera image
         :param vertical_fov: vertical field of view of the camera image in degrees
