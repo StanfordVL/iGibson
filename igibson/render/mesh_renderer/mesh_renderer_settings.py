@@ -53,16 +53,20 @@ class MeshRendererSettings(object):
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
-        self.enable_shadow = enable_shadow
         self.env_texture_filename = env_texture_filename
         self.env_texture_filename2 = env_texture_filename2
         self.env_texture_filename3 = env_texture_filename3
 
         if platform.system() == "Darwin":
+            if optimized:
+                logging.warn("Darwin does not support optimized renderer, automatically disabling")
+            if enable_shadow:
+                logging.warn("Darwin does not support shadow, automatically disabling")
             self.optimized = False
-            logging.warn("Darwin does not support optimized renderer, automatically disabling")
+            self.enable_shadow = False
         else:
             self.optimized = optimized
+            self.enable_shadow = enable_shadow
 
         self.skybox_size = skybox_size
         self.light_modulation_map_filename = light_modulation_map_filename
