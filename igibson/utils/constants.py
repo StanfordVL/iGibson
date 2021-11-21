@@ -13,7 +13,7 @@ class SimulatorMode(IntEnum):
     GUI_INTERACTIVE = 1
     GUI_NON_INTERACTIVE = 2
     HEADLESS = 3
-    HEADLESS_TORCH = 4
+    HEADLESS_TENSOR = 4
     VR = 5
 
 
