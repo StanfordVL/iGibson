@@ -5,8 +5,8 @@ and adapted by iGibson team.
 from collections import deque
 from heapq import heappop, heappush
 
-from recordclass import recordclass
 import numpy as np
+from recordclass import recordclass
 
 from .utils import INF
 

@@ -1,4 +1,5 @@
 import sys
+
 import tinyobjloader
 
 filename = "../models/cornell_box.obj";

@@ -2,12 +2,11 @@
 Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
 and adapted by iGibson team.
 """
-from collections import namedtuple, Mapping
-from heapq import heappop, heappush
 import operator
+from collections import Mapping, namedtuple
+from heapq import heappop, heappush
 
-from .utils import INF, pairs, merge_dicts, flatten
-
+from .utils import INF, flatten, merge_dicts, pairs
 
 # TODO - Lazy-PRM, Visibility-PRM, PRM*
 
@@ -68,6 +67,7 @@ class Edge(object):
         if self._path is None:
             return
         from manipulation.primitives.display import draw_edge
+
         #self._handle = draw_edge(env, self.v1.q, self.v2.q, color=color)
         for q1, q2 in pairs(self.configs()):
             self._handles.append(draw_edge(env, q1, q2, color=color))

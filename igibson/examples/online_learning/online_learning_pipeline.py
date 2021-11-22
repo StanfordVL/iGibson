@@ -19,7 +19,7 @@ feedback_gui = None
 
 
 class OLNet_taskObs(nn.Module):
-    def __init__(self, task_obs_dim=456, proprioception_dim=20, num_actions=26):
+    def __init__(self, task_obs_dim=456, proprioception_dim=20, num_actions=11):
         super(OLNet_taskObs, self).__init__()
         # image feature
         self.fc1 = nn.Linear(task_obs_dim + proprioception_dim, 1024)
@@ -96,10 +96,10 @@ if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     iterations = 100
     ol_agent = None
-    config_file = "behavior_full_observability.yaml"
+    config_file = "behavior_full_observability_fetch.yaml"
     env = BehaviorEnv(
         config_file=os.path.join("../configs/", config_file),
-        mode="gui",
+        mode="gui_interactive",
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
         action_filter="all",

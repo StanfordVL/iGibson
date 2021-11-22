@@ -4,12 +4,29 @@ and adapted by iGibson team.
 """
 import random
 
-from ..utils import get_ik_limits, compute_forward_kinematics, compute_inverse_kinematics, select_solution, \
-    USE_ALL, USE_CURRENT
-from ...pr2_utils import PR2_TOOL_FRAMES, get_torso_arm_joints, get_gripper_link, get_arm_joints
-from ...utils import multiply, get_link_pose, link_from_name, get_joint_positions, \
-    joint_from_name, invert, get_custom_limits, all_between, sub_inverse_kinematics, set_joint_positions, \
-    get_joint_positions, pairwise_collision, wait_for_user
+from ...pr2_utils import PR2_TOOL_FRAMES, get_arm_joints, get_gripper_link, get_torso_arm_joints
+from ...utils import (
+    all_between,
+    get_custom_limits,
+    get_joint_positions,
+    get_link_pose,
+    invert,
+    joint_from_name,
+    link_from_name,
+    multiply,
+    pairwise_collision,
+    set_joint_positions,
+    sub_inverse_kinematics,
+    wait_for_user,
+)
+from ..utils import (
+    USE_ALL,
+    USE_CURRENT,
+    compute_forward_kinematics,
+    compute_inverse_kinematics,
+    get_ik_limits,
+    select_solution,
+)
 
 IK_FRAME = {
     'left': 'l_gripper_tool_frame',

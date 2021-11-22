@@ -5,10 +5,13 @@ and adapted by iGibson team.
 """
 from __future__ import print_function
 
-import os, shutil, sys
+import os
+import shutil
+import sys
+from distutils.core import Extension, setup
+
 #sys.args.append('build')
 
-from distutils.core import setup, Extension
 
 # pr2_without_sensor_ik_files
 # python setup.py build
@@ -59,7 +62,8 @@ build_folder = os.path.join(os.getcwd(), 'build')
 shutil.rmtree(build_folder)
 
 try:
-	import ikLeft, ikRight
+	import ikLeft
+	import ikRight
 	print('IK Successful')
 except ImportError as e:
 	print('IK Failed')

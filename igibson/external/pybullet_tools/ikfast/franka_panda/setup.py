@@ -5,13 +5,12 @@ and adapted by iGibson team.
 """
 from __future__ import print_function
 
-import os
-import shutil
 import fnmatch
 import importlib
-
+import os
+import shutil
+from distutils.core import Extension, setup
 from distutils.dir_util import copy_tree
-from distutils.core import setup, Extension
 
 # Build C++ extension by running: 'python setup.py build'
 # see: https://docs.python.org/3/extending/building.html

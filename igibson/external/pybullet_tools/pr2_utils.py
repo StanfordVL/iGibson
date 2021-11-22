@@ -12,17 +12,74 @@ from itertools import combinations
 import numpy as np
 
 from .pr2_never_collisions import NEVER_COLLISIONS
-from .utils import multiply, get_link_pose, joint_from_name, set_joint_position, joints_from_names, \
-    set_joint_positions, get_joint_positions, get_min_limit, get_max_limit, quat_from_euler, read_pickle, set_pose, set_base_values, \
-    get_pose, euler_from_quat, link_from_name, has_link, point_from_pose, invert, Pose, \
-    unit_pose, joints_from_names, PoseSaver, get_aabb, get_joint_limits, get_joints, \
-    ConfSaver, get_bodies, create_mesh, remove_body, single_collision, unit_from_theta, angle_between, violates_limit, \
-    violates_limits, add_line, get_body_name, get_num_joints, approximate_as_cylinder, \
-    approximate_as_prism, unit_quat, unit_point, clip, get_joint_info, tform_point, get_yaw, \
-    get_pitch, wait_for_user, quat_angle_between, angle_between, quat_from_pose, compute_jacobian, \
-    movable_from_joints, quat_from_axis_angle, LockRenderer, Euler, get_links, get_link_name,\
-    draw_point, draw_pose, get_extend_fn, get_moving_links, link_pairs_collision, draw_point, get_link_subtree, \
-    clone_body, get_all_links, set_color, pairwise_collision, tform_point
+from .utils import (
+    ConfSaver,
+    Euler,
+    LockRenderer,
+    Pose,
+    PoseSaver,
+    add_line,
+    angle_between,
+    approximate_as_cylinder,
+    approximate_as_prism,
+    clip,
+    clone_body,
+    compute_jacobian,
+    create_mesh,
+    draw_point,
+    draw_pose,
+    euler_from_quat,
+    get_aabb,
+    get_all_links,
+    get_bodies,
+    get_body_name,
+    get_extend_fn,
+    get_joint_info,
+    get_joint_limits,
+    get_joint_positions,
+    get_joints,
+    get_link_name,
+    get_link_pose,
+    get_link_subtree,
+    get_links,
+    get_max_limit,
+    get_min_limit,
+    get_moving_links,
+    get_num_joints,
+    get_pitch,
+    get_pose,
+    get_yaw,
+    has_link,
+    invert,
+    joint_from_name,
+    joints_from_names,
+    link_from_name,
+    link_pairs_collision,
+    movable_from_joints,
+    multiply,
+    pairwise_collision,
+    point_from_pose,
+    quat_angle_between,
+    quat_from_axis_angle,
+    quat_from_euler,
+    quat_from_pose,
+    read_pickle,
+    remove_body,
+    set_base_values,
+    set_color,
+    set_joint_position,
+    set_joint_positions,
+    set_pose,
+    single_collision,
+    tform_point,
+    unit_from_theta,
+    unit_point,
+    unit_pose,
+    unit_quat,
+    violates_limit,
+    violates_limits,
+    wait_for_user,
+)
 
 # TODO: restrict number of pr2 rotations to prevent from wrapping too many times
 

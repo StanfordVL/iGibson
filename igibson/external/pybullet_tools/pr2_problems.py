@@ -2,15 +2,46 @@
 Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
 and adapted by iGibson team.
 """
-import numpy as np
 from itertools import product
 
-from .pr2_utils import set_arm_conf, REST_LEFT_ARM, open_arm, \
-    close_arm, get_carry_conf, arm_conf, get_other_arm, set_group_conf, PR2_URDF, DRAKE_PR2_URDF, create_gripper
-from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
-    get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, \
-    get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, Pose, \
-    Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path
+import numpy as np
+
+from .pr2_utils import (
+    DRAKE_PR2_URDF,
+    PR2_URDF,
+    REST_LEFT_ARM,
+    arm_conf,
+    close_arm,
+    create_gripper,
+    get_carry_conf,
+    get_other_arm,
+    open_arm,
+    set_arm_conf,
+    set_group_conf,
+)
+from .utils import (
+    FLOOR_URDF,
+    TABLE_URDF,
+    HideOutput,
+    LockRenderer,
+    Point,
+    Pose,
+    add_data_path,
+    create_body,
+    create_box,
+    create_shape_array,
+    get_bodies,
+    get_box_geometry,
+    get_cylinder_geometry,
+    get_pose,
+    load_model,
+    load_pybullet,
+    set_base_values,
+    set_point,
+    set_pose,
+    unit_pose,
+    z_rotation,
+)
 
 
 class Problem(object):

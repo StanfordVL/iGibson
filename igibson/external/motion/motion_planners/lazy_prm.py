@@ -2,16 +2,17 @@
 Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
 and adapted by iGibson team.
 """
-from scipy.spatial.kdtree import KDTree
-from heapq import heappush, heappop
-from collections import namedtuple
-from igibson.external.motion.motion_planners.utils import INF, elapsed_time
-from igibson.external.motion.motion_planners.rrt_connect import direct_path
-from igibson.external.motion.motion_planners.smoothing import smooth_path
-
 import random
 import time
+from collections import namedtuple
+from heapq import heappop, heappush
+
 import numpy as np
+from scipy.spatial.kdtree import KDTree
+
+from igibson.external.motion.motion_planners.rrt_connect import direct_path
+from igibson.external.motion.motion_planners.smoothing import smooth_path
+from igibson.external.motion.motion_planners.utils import INF, elapsed_time
 
 Node = namedtuple('Node', ['g', 'parent'])
 def unit_cost_fn(v1, v2): return 1.

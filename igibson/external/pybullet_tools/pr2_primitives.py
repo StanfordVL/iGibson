@@ -5,30 +5,96 @@ and adapted by iGibson team.
 from __future__ import print_function
 
 import copy
-import pybullet as p
 import random
 import time
 from itertools import islice
 
 import numpy as np
+import pybullet as p
 
 from .ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
-from .ikfast.utils import USE_CURRENT, USE_ALL
+from .ikfast.utils import USE_ALL, USE_CURRENT
 from .pr2_problems import get_fixed_bodies
-from .pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
-    get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
-    learned_pose_generator, PR2_TOOL_FRAMES, get_x_presses, PR2_GROUPS, joints_from_names, \
-    is_drake_pr2, get_group_joints, get_group_conf, compute_grasp_width, PR2_GRIPPER_ROOTS
-from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_placement, \
-    pairwise_collision, set_joint_positions, get_joint_positions, sample_placement, get_pose, waypoints_from_path, \
-    unit_quat, plan_base_motion, plan_joint_motion, base_values_from_pose, pose_from_base_values, \
-    uniform_pose_generator, sub_inverse_kinematics, add_fixed_constraint, remove_debug, remove_fixed_constraint, \
-    disable_real_time, enable_gravity, joint_controller_hold, get_distance, \
-    get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, \
-    add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, Attachment, interpolate_poses, \
-    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, get_unit_vector, wait_for_user, \
-    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links
+from .pr2_utils import (
+    GET_GRASPS,
+    PR2_GRIPPER_ROOTS,
+    PR2_GROUPS,
+    PR2_TOOL_FRAMES,
+    SIDE_HOLDING_LEFT_ARM,
+    TOP_HOLDING_LEFT_ARM,
+    arm_conf,
+    compute_grasp_width,
+    get_arm_joints,
+    get_carry_conf,
+    get_gripper_joints,
+    get_gripper_link,
+    get_group_conf,
+    get_group_joints,
+    get_side_grasps,
+    get_top_grasps,
+    get_x_presses,
+    is_drake_pr2,
+    joints_from_names,
+    learned_pose_generator,
+    open_arm,
+)
+from .utils import (
+    BASE_LINK,
+    INF,
+    Attachment,
+    BodySaver,
+    add_fixed_constraint,
+    add_segments,
+    all_between,
+    base_values_from_pose,
+    create_attachment,
+    disable_real_time,
+    elapsed_time,
+    enable_gravity,
+    euler_from_quat,
+    flatten_links,
+    get_aabb,
+    get_bodies,
+    get_body_name,
+    get_custom_limits,
+    get_distance,
+    get_extend_fn,
+    get_joint_positions,
+    get_link_pose,
+    get_max_limit,
+    get_min_limit,
+    get_moving_links,
+    get_name,
+    get_pose,
+    get_unit_vector,
+    has_gui,
+    interpolate_poses,
+    invert,
+    is_placement,
+    joint_controller_hold,
+    link_from_name,
+    multiply,
+    pairwise_collision,
+    plan_base_motion,
+    plan_direct_joint_motion,
+    plan_joint_motion,
+    pose_from_base_values,
+    remove_debug,
+    remove_fixed_constraint,
+    sample_placement,
+    set_base_values,
+    set_joint_positions,
+    set_pose,
+    set_renderer,
+    step_simulation,
+    sub_inverse_kinematics,
+    uniform_pose_generator,
+    unit_quat,
+    user_input,
+    wait_for_duration,
+    wait_for_user,
+    waypoints_from_path,
+)
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))

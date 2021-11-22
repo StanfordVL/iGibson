@@ -3,14 +3,42 @@ Developed by Caelen Garrett in pybullet-planning repository (https://github.com/
 and adapted by iGibson team.
 """
 import os
-import pybullet as p
-import numpy as np
 import time
 from itertools import product
 
-from .utils import unit_pose, safe_zip, multiply, Pose, AABB, create_box, set_pose, get_all_links, LockRenderer, \
-    get_aabb, pairwise_link_collision, remove_body, draw_aabb, get_box_geometry, create_shape, create_body, STATIC_MASS, \
-    unit_quat, unit_point, CLIENT, create_shape_array, set_color, get_point, clip, load_model, TEMP_DIR, NULL_ID, elapsed_time
+import numpy as np
+import pybullet as p
+
+from .utils import (
+    AABB,
+    CLIENT,
+    NULL_ID,
+    STATIC_MASS,
+    TEMP_DIR,
+    LockRenderer,
+    Pose,
+    clip,
+    create_body,
+    create_box,
+    create_shape,
+    create_shape_array,
+    draw_aabb,
+    elapsed_time,
+    get_aabb,
+    get_all_links,
+    get_box_geometry,
+    get_point,
+    load_model,
+    multiply,
+    pairwise_link_collision,
+    remove_body,
+    safe_zip,
+    set_color,
+    set_pose,
+    unit_point,
+    unit_pose,
+    unit_quat,
+)
 
 MAX_TEXTURE_WIDTH = 418 # max square dimension
 MAX_PIXEL_VALUE = 255

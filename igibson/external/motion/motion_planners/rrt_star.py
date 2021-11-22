@@ -4,7 +4,9 @@ and adapted by iGibson team.
 """
 from random import random
 from time import time
+
 import numpy as np
+
 from .utils import INF, argmin
 
 
@@ -60,7 +62,7 @@ class OptimalNode(object):
         self.edge_handle = None
 
     def draw(self, env):
-        from manipulation.primitives.display import draw_node, draw_edge
+        from manipulation.primitives.display import draw_edge, draw_node
         color = (0, 0, 1, .5) if self.solution else (1, 0, 0, .5)
         self.node_handle = draw_node(env, self.config, color=color)
         if self.parent is not None:

@@ -2,9 +2,10 @@
 Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
 and adapted by iGibson team.
 """
-from .smoothing import smooth_path
 from .rrt import TreeNode, configs
-from .utils import irange, argmin, RRT_ITERATIONS, RRT_RESTARTS, RRT_SMOOTHING
+from .smoothing import smooth_path
+from .utils import RRT_ITERATIONS, RRT_RESTARTS, RRT_SMOOTHING, argmin, irange
+
 
 def asymmetric_extend(q1, q2, extend_fn, backward=False):
     if backward:

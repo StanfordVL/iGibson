@@ -3,15 +3,45 @@ Developed by Caelen Garrett in pybullet-planning repository (https://github.com/
 and adapted by iGibson team.
 """
 import time
-# dump_body(robot)
 
 from .pr2_utils import get_top_grasps
-from .utils import get_pose, set_pose, get_movable_joints, \
-    set_joint_positions, add_fixed_constraint, enable_real_time, disable_real_time, joint_controller, \
-    enable_gravity, get_refine_fn, user_input, wait_for_duration, link_from_name, get_body_name, sample_placement, \
-    end_effector_from_body, approach_from_grasp, plan_joint_motion, GraspInfo, Pose, INF, Point, \
-    inverse_kinematics, pairwise_collision, remove_fixed_constraint, Attachment, get_sample_fn, \
-    step_simulation, refine_path, plan_direct_joint_motion, get_joint_positions, dump_world
+from .utils import (
+    INF,
+    Attachment,
+    GraspInfo,
+    Point,
+    Pose,
+    add_fixed_constraint,
+    approach_from_grasp,
+    disable_real_time,
+    dump_world,
+    enable_gravity,
+    enable_real_time,
+    end_effector_from_body,
+    get_body_name,
+    get_joint_positions,
+    get_movable_joints,
+    get_pose,
+    get_refine_fn,
+    get_sample_fn,
+    inverse_kinematics,
+    joint_controller,
+    link_from_name,
+    pairwise_collision,
+    plan_direct_joint_motion,
+    plan_joint_motion,
+    refine_path,
+    remove_fixed_constraint,
+    sample_placement,
+    set_joint_positions,
+    set_pose,
+    step_simulation,
+    user_input,
+    wait_for_duration,
+)
+
+# dump_body(robot)
+
 
 GRASP_INFO = {
     'top': GraspInfo(lambda body: get_top_grasps(body, under=True, tool_pose=Pose(), max_width=INF,  grasp_length=0),

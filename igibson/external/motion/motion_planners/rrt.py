@@ -3,8 +3,10 @@ Developed by Caelen Garrett in pybullet-planning repository (https://github.com/
 and adapted by iGibson team.
 """
 from random import random
+
 import numpy as np
-from .utils import irange, argmin, RRT_ITERATIONS
+
+from .utils import RRT_ITERATIONS, argmin, irange
 
 
 class TreeNode(object):
@@ -31,7 +33,7 @@ class TreeNode(object):
         self.edge_handle = None
 
     def draw(self, env, color=(1, 0, 0, .5)):
-        from manipulation.primitives.display import draw_node, draw_edge
+        from manipulation.primitives.display import draw_edge, draw_node
         self.node_handle = draw_node(env, self.config, color=color)
         if self.parent is not None:
             self.edge_handle = draw_edge(

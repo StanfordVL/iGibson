@@ -4,6 +4,7 @@ and adapted by iGibson team.
 """
 from collections import Mapping
 
+
 #class StarRoadmap(Mapping, object):
 class StarRoadmap(Mapping, object):
 

@@ -5,8 +5,16 @@ and adapted by iGibson team.
 import random
 from collections import namedtuple
 
-from ..utils import matrix_from_quat, point_from_pose, quat_from_pose, quat_from_matrix, \
-    get_joint_limits, get_joint_position, get_joint_positions, get_distance
+from ..utils import (
+    get_distance,
+    get_joint_limits,
+    get_joint_position,
+    get_joint_positions,
+    matrix_from_quat,
+    point_from_pose,
+    quat_from_matrix,
+    quat_from_pose,
+)
 
 # TODO: lookup robot & tool in dictionary and use if exists
 

@@ -6,7 +6,7 @@ from collections import Mapping
 from random import random
 
 from .rrt import TreeNode, configs
-from .utils import irange, argmin, pairs, randomize, take, enum
+from .utils import argmin, enum, irange, pairs, randomize, take
 
 ts = enum('ALL', 'SUCCESS', 'PATH', 'NONE')
 

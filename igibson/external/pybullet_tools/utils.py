@@ -5,30 +5,31 @@ and adapted by iGibson team.
 from __future__ import print_function
 
 import colorsys
+import datetime
 import json
 import math
 import os
 import pickle
 import platform
-import numpy as np
-import pybullet as p
 import random
 import sys
 import time
-import datetime
 from collections import defaultdict, deque, namedtuple
-from itertools import product, combinations, count
+from itertools import combinations, count, product
 
-from .transformations import quaternion_from_matrix, unit_vector
-
-from igibson.external.motion.motion_planners.rrt_connect import birrt, direct_path
-from igibson.external.motion.motion_planners.rrt_star import rrt_star
-from igibson.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
-from igibson.external.motion.motion_planners.rrt import rrt
-from igibson.external.motion.motion_planners.smoothing import optimize_path
-from igibson.utils.constants import OccupancyGridState
 #from ..motion.motion_planners.rrt_connect import birrt, direct_path
 import cv2
+import numpy as np
+import pybullet as p
+
+from igibson.external.motion.motion_planners.lazy_prm import lazy_prm_replan_loop
+from igibson.external.motion.motion_planners.rrt import rrt
+from igibson.external.motion.motion_planners.rrt_connect import birrt, direct_path
+from igibson.external.motion.motion_planners.rrt_star import rrt_star
+from igibson.external.motion.motion_planners.smoothing import optimize_path
+from igibson.utils.constants import OccupancyGridState
+
+from .transformations import quaternion_from_matrix, unit_vector
 
 # from future_builtins import map, filter
 # from builtins import input # TODO - use future
@@ -4263,6 +4264,7 @@ def sample_edge_pose(polygon, world_from_surface, mesh):
 
 def convex_hull(points):
     from scipy.spatial import ConvexHull
+
     # TODO: cKDTree is faster, but KDTree can do all pairs closest
     hull = ConvexHull(points)
     new_indices = {i: ni for ni, i in enumerate(hull.vertices)}
