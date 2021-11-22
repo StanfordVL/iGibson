@@ -23,8 +23,9 @@ class LocomotorRobot(BaseRobot):
         torque_coef=1.0,
         velocity_coef=1.0,
         self_collision=False,
+        **kwargs
     ):
-        BaseRobot.__init__(self, filename, base_name, scale, self_collision)
+        BaseRobot.__init__(self, filename, base_name, scale, self_collision, **kwargs)
         self.control = control
         self.is_discrete = is_discrete
 

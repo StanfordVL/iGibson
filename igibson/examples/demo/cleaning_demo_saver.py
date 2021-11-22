@@ -4,11 +4,11 @@ from igibson.simulator import Simulator
 
 
 def main():
-    s = Simulator(mode="gui", device_idx=0)
+    s = Simulator(mode="gui_interactive", use_pb_gui=True, device_idx=0)
     scene = InteractiveIndoorScene(
         "Rs_int", texture_randomization=False, object_randomization=False, merge_fixed_links=False
     )
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     # Set everything that can go dirty.
     stateful_objects = set(

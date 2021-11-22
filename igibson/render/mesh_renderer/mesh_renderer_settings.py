@@ -26,6 +26,8 @@ class MeshRendererSettings(object):
         show_glfw_window=False,
         blend_highlight=False,
         is_robosuite=False,
+        glsl_version_override=460,
+        load_textures=True,
     ):
         """
         :param use_fisheye: whether to use fisheye camera
@@ -46,19 +48,25 @@ class MeshRendererSettings(object):
         :param show_glfw_window: whether to show glfw window (default false)
         :param blend_highlight: blend highlight of objects into RGB image
         :param is_robosuite: whether the environment is of robosuite.
+        :param glsl_version_override: for backwards compatibility only. Options are 450 or 460.
+        :param load_textures: Whether textures should be loaded. Set to False if not using RGB modality to save memory.
         """
         self.use_fisheye = use_fisheye
         self.msaa = msaa
-        self.enable_shadow = enable_shadow
         self.env_texture_filename = env_texture_filename
         self.env_texture_filename2 = env_texture_filename2
         self.env_texture_filename3 = env_texture_filename3
 
         if platform.system() == "Darwin":
+            if optimized:
+                logging.warn("Darwin does not support optimized renderer, automatically disabling")
+            if enable_shadow:
+                logging.warn("Darwin does not support shadow, automatically disabling")
             self.optimized = False
-            logging.warn("Darwin does not support optimized renderer, automatically disabling")
+            self.enable_shadow = False
         else:
             self.optimized = optimized
+            self.enable_shadow = enable_shadow
 
         self.skybox_size = skybox_size
         self.light_modulation_map_filename = light_modulation_map_filename
@@ -70,6 +78,8 @@ class MeshRendererSettings(object):
         self.show_glfw_window = show_glfw_window
         self.blend_highlight = blend_highlight
         self.is_robosuite = is_robosuite
+        self.load_textures = load_textures
+        self.glsl_version_override = glsl_version_override
 
         if glfw_gl_version is not None:
             self.glfw_gl_version = glfw_gl_version
@@ -77,7 +87,7 @@ class MeshRendererSettings(object):
             if platform.system() == "Darwin":
                 self.glfw_gl_version = [4, 1]
             else:
-                self.glfw_gl_version = [4, 5]
+                self.glfw_gl_version = [4, 6]
 
     def get_fastest(self):
         self.msaa = False

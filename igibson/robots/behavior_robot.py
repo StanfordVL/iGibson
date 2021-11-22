@@ -28,6 +28,7 @@ from igibson import assets_path
 from igibson.external.pybullet_tools.utils import set_all_collisions
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils.constants import SemanticClass, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 
 # Helps eliminate effect of numerical error on distance threshold calculations, especially when part is at the threshold
@@ -116,7 +117,8 @@ class BehaviorRobot(object):
         use_ghost_hands=True,
         normal_color=True,
         show_visual_head=False,
-        use_tracked_body_override=None,
+        use_tracked_body=True,
+        **kwargs
     ):
         """
         Initializes BehaviorRobot:
@@ -128,18 +130,16 @@ class BehaviorRobot(object):
         :parm use_gripper: whether the agent should use the pybullet gripper or the iGibson VR hand
         :parm normal_color: whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
         :param show_visual_head: whether to render a head cone where the BREye is
-        :param use_tracked_body_override: sets use_tracked_body no matter what is set in the VR settings. Can be
-        used to initialize a BehaviorRobot in a robotics environment.
+        :param use_tracked_body: sets use_tracked_body to decide on which URDF to load, and which local transforms to use
         """
         # Basic parameters
         self.simulator = sim
         self.robot_num = robot_num
         self.hands = hands
         self.use_body = use_body
-        if use_tracked_body_override is None:
+        self.use_tracked_body = use_tracked_body
+        if sim.mode == SimulatorMode.VR:
             self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
-        else:
-            self.use_tracked_body = use_tracked_body_override
         self.use_gripper = use_gripper
         self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
@@ -160,18 +160,25 @@ class BehaviorRobot(object):
         self.parts = dict()
 
         if "left" in self.hands:
-            self.parts["left_hand"] = BRHand(self, hand="left") if not use_gripper else BRGripper(self, hand="left")
+            self.parts["left_hand"] = (
+                BRHand(self, hand="left", **kwargs) if not use_gripper else BRGripper(self, hand="left", **kwargs)
+            )
         if "right" in self.hands:
-            self.parts["right_hand"] = BRHand(self, hand="right") if not use_gripper else BRGripper(self, hand="right")
+            self.parts["right_hand"] = (
+                BRHand(self, hand="right", **kwargs) if not use_gripper else BRGripper(self, hand="right", **kwargs)
+            )
 
         # Store reference between hands
         if "left" in self.hands and "right" in self.hands:
             self.parts["left_hand"].set_other_hand(self.parts["right_hand"])
             self.parts["right_hand"].set_other_hand(self.parts["left_hand"])
         if self.use_body:
-            self.parts["body"] = BRBody(self)
+            self.parts["body"] = BRBody(self, **kwargs)
 
-        self.parts["eye"] = BREye(self)
+        self.parts["eye"] = BREye(self, **kwargs)
+
+    def load(self, simulator):
+        return [id for part in self.parts.values() for id in part.load(simulator)]
 
     def set_colliders(self, enabled=False):
         self.parts["left_hand"].set_colliders(enabled)
@@ -268,7 +275,7 @@ class BehaviorRobot(object):
             # Either trigger press will activate robot, and teleport the user to the robot if they are using VR
             if action[19] > 0 or action[27] > 0:
                 self.activated = True
-                if self.simulator.can_access_vr_context:
+                if self.simulator.mode == SimulatorMode.VR:
                     body_pos = self.parts["body"].get_position()
                     self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
         else:
@@ -278,7 +285,7 @@ class BehaviorRobot(object):
             # Disable colliders
             self.set_colliders(enabled=False)
             # Move user close to the body to start with
-            if self.simulator.can_access_vr_context:
+            if self.simulator.mode == SimulatorMode.VR:
                 body_pos = self.parts["body"].get_position()
                 self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
             # Body constraint is the last one we need to activate
@@ -322,12 +329,19 @@ class BehaviorRobot(object):
 
     def get_proprioception(self):
         state = OrderedDict()
-        state["left_hand_position_local"] = self.parts["left_hand"].local_pos
-        state["left_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["left_hand"].local_orn)
-        state["right_hand_position_local"] = self.parts["right_hand"].local_pos
-        state["right_hand_orientation_local"] = p.getEulerFromQuaternion(self.parts["right_hand"].local_orn)
-        state["eye_position_local"] = self.parts["eye"].local_pos
-        state["eye_orientation_local"] = p.getEulerFromQuaternion(self.parts["eye"].local_orn)
+
+        lh_local_pos, lh_local_orn = self.parts["left_hand"].get_local_position_orientation()
+        state["left_hand_position_local"] = lh_local_pos
+        state["left_hand_orientation_local"] = p.getEulerFromQuaternion(lh_local_orn)
+
+        rh_local_pos, rh_local_orn = self.parts["right_hand"].get_local_position_orientation()
+        state["right_hand_position_local"] = rh_local_pos
+        state["right_hand_orientation_local"] = p.getEulerFromQuaternion(rh_local_orn)
+
+        eye_local_pos, eye_local_orn = self.parts["right_hand"].get_local_position_orientation()
+        state["eye_position_local"] = eye_local_pos
+        state["eye_orientation_local"] = p.getEulerFromQuaternion(eye_local_orn)
+
         state["left_hand_trigger_fraction"] = self.parts["left_hand"].trigger_fraction
         state["left_hand_is_grasping"] = float(
             self.parts["left_hand"].object_in_hand is not None and self.parts["left_hand"].release_counter is None
@@ -388,7 +402,12 @@ class BRBody(ArticulatedObject):
     A simple ellipsoid representing the robot's body.
     """
 
-    def __init__(self, parent):
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+    }
+
+    def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
         # Set up class
         self.parent = parent
         self.name = "BRBody_{}".format(self.parent.robot_num)
@@ -403,9 +422,11 @@ class BRBody(ArticulatedObject):
         body_path = "normal_color" if self.parent.normal_color else "alternative_color"
         body_path_suffix = "vr_body.urdf" if not self.parent.use_tracked_body else "vr_body_tracker.urdf"
         self.vr_body_fpath = os.path.join(assets_path, "models", "vr_agent", "vr_body", body_path, body_path_suffix)
-        super(BRBody, self).__init__(filename=self.vr_body_fpath, scale=1, abilities={"robot": {}})
+        super(BRBody, self).__init__(
+            filename=self.vr_body_fpath, scale=1, abilities={"robot": {}}, class_id=class_id, **kwargs
+        )
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Overidden load that keeps BRBody awake upon initialization.
         """
@@ -417,7 +438,8 @@ class BRBody(ArticulatedObject):
         # The actual body is at link 0, the base link is a "virtual" link
         p.changeDynamics(body_id, 0, mass=self.mass)
         p.changeDynamics(body_id, -1, mass=1e-9)
-        self.create_link_name_to_vm_map(body_id)
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
 
@@ -472,7 +494,11 @@ class BRBody(ArticulatedObject):
         Sets BRBody's collision filters.
         """
         # Get body ids of the floor and carpets
-        no_col_ids = self.parent.simulator.get_category_ids("floors") + self.parent.simulator.get_category_ids("carpet")
+        no_col_objs = (
+            self.parent.simulator.scene.objects_by_category["floors"]
+            + self.parent.simulator.scene.objects_by_category["carpet"]
+        )
+        no_col_ids = [x.get_body_id() for x in no_col_objs]
         body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.get_body_id()))]
 
         for col_id in no_col_ids:
@@ -535,6 +561,11 @@ class BRHandBase(ArticulatedObject):
     that subclasses override most of the methods to implement their own functionality.
     """
 
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+    }
+
     def __init__(
         self,
         parent,
@@ -542,6 +573,8 @@ class BRHandBase(ArticulatedObject):
         hand="right",
         base_rot=(0, 0, 0, 1),
         ghost_hand_appear_threshold=HAND_GHOST_HAND_APPEAR_THRESHOLD,
+        class_id=SemanticClass.ROBOTS,
+        **kwargs
     ):
         """
         Initializes BRHandBase.
@@ -561,7 +594,6 @@ class BRHandBase(ArticulatedObject):
         # This base rotation is applied before any actual rotation is applied to the hand. This adjusts
         # for the hand model's rotation to make it appear in the right place.
         self.base_rot = base_rot
-        self.local_pos, self.local_orn = [0, 0, 0], [0, 0, 0, 1]
         self.trigger_fraction = 0
 
         # Bool indicating whether the hands have been spwaned by pressing the trigger reset
@@ -580,22 +612,29 @@ class BRHandBase(ArticulatedObject):
                     assets_path, "models", "vr_agent", "vr_hand", "ghost_hand_{}.obj".format(self.hand)
                 ),
                 scale=[0.001] * 3,
+                class_id=class_id,
             )
             self.ghost_hand.category = "agent"
             self.ghost_hand_appear_threshold = ghost_hand_appear_threshold
 
         if self.hand not in ["left", "right"]:
             raise ValueError("ERROR: BRHandBase can only accept left or right as a hand argument!")
-        super(BRHandBase, self).__init__(filename=self.fpath, scale=1)
+        super(BRHandBase, self).__init__(filename=self.fpath, scale=1, class_id=class_id, **kwargs)
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Overidden load that keeps BRHandBase awake upon initialization.
         """
         body_id = p.loadURDF(self.fpath, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
-        self.create_link_name_to_vm_map(body_id)
-        return [body_id]
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        body_ids = [body_id]
+        if self.parent.use_ghost_hands:
+            body_ids.extend(self.ghost_hand.load(simulator))
+
+        return body_ids
 
     def set_other_hand(self, other_hand):
         """
@@ -615,20 +654,18 @@ class BRHandBase(ArticulatedObject):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BRHandBase, self).set_position_orientation(pos, orn)
-        body = self.parent.parts["body"]
-        if body.new_pos is None:
-            inv_body_pos, inv_body_orn = p.invertTransform(*body.get_position_orientation())
-        else:
-            inv_body_pos, inv_body_orn = p.invertTransform(body.new_pos, body.new_orn)
-        new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos, orn)
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
         # Update pos and orientation of ghost hands as well
         if self.parent.use_ghost_hands:
             self.ghost_hand.set_position(self.new_pos)
             self.ghost_hand.set_orientation(self.new_orn)
+
+    def get_local_position_orientation(self):
+        body = self.parent.parts["body"]
+        return p.multiplyTransforms(
+            *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
+        )
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -661,7 +698,8 @@ class BRHandBase(ArticulatedObject):
 
         shoulder_point = left_shoulder_rel_pos if self.hand == "left" else right_shoulder_rel_pos
         shoulder_point = np.array(shoulder_point)
-        desired_local_pos = np.array(self.local_pos) + np.array(clipped_delta_pos)
+        current_local_pos = np.array(self.get_local_position_orientation()[0])
+        desired_local_pos = current_local_pos + np.array(clipped_delta_pos)
         shoulder_to_hand = desired_local_pos - shoulder_point
         dist_to_shoulder = np.linalg.norm(shoulder_to_hand)
         if dist_to_shoulder > (HAND_DISTANCE_THRESHOLD + THRESHOLD_EPSILON):
@@ -672,7 +710,7 @@ class BRHandBase(ArticulatedObject):
             # Add to shoulder position to get final local position
             reduced_local_pos = shoulder_point + reduced_shoulder_to_hand
             # Calculate new delta to get to this point
-            clipped_delta_pos = reduced_local_pos - np.array(self.local_pos)
+            clipped_delta_pos = reduced_local_pos - current_local_pos
 
         return clipped_delta_pos, clipped_delta_orn
 
@@ -693,12 +731,9 @@ class BRHandBase(ArticulatedObject):
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new local transform
-        old_local_pos, old_local_orn = self.local_pos, self.local_orn
+        old_local_pos, old_local_orn = self.get_local_position_orientation()
         _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], old_local_orn)
         new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
-
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
 
         # Calculate new world position based on local transform and new body pose
         body = self.parent.parts["body"]
@@ -726,7 +761,7 @@ class BRHandBase(ArticulatedObject):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
         self.set_close_fraction(new_trig_frac)
         self.trigger_fraction = new_trig_frac
 
@@ -769,14 +804,10 @@ class BRHandBase(ArticulatedObject):
 
     def dump_part_state(self):
         return {
-            "local_pos": list(self.local_pos),
-            "local_orn": list(self.local_orn),
             "trigger_fraction": self.trigger_fraction,
         }
 
     def load_part_state(self, dump):
-        self.local_pos = np.array(dump["local_pos"])
-        self.local_orn = np.array(dump["local_orn"])
         self.trigger_fraction = dump["trigger_fraction"]
 
 
@@ -785,7 +816,7 @@ class BRHand(BRHandBase):
     Represents the human hand used for VR programs and robotics applications.
     """
 
-    def __init__(self, parent, hand="right"):
+    def __init__(self, parent, hand="right", **kwargs):
         hand_path = "normal_color" if parent.normal_color else "alternative_color"
         self.vr_hand_folder = os.path.join(assets_path, "models", "vr_agent", "vr_hand", hand_path)
         final_suffix = "{}_{}.urdf".format("vr_hand_vhacd", hand)
@@ -796,6 +827,7 @@ class BRHand(BRHandBase):
             hand=hand,
             base_rot=base_rot_handed,
             ghost_hand_appear_threshold=HAND_GHOST_HAND_APPEAR_THRESHOLD,
+            **kwargs
         )
 
         # Variables for assisted grasping
@@ -926,7 +958,7 @@ class BRHand(BRHandBase):
 
         return ray_data
 
-    def find_hand_contacts(self, find_all=False):
+    def find_hand_contacts(self, find_all=False, return_contact_positions=False):
         """
         Calculates the body ids and links that have force applied to them by the VR hand.
         """
@@ -943,7 +975,11 @@ class BRHand(BRHandBase):
                 continue
             c_bid = cpt[2]
             c_link = cpt[4]
-            contact_data.append((c_bid, c_link))
+            c_contact_pos = cpt[5]
+            if return_contact_positions:
+                contact_data.append((c_bid, c_link, c_contact_pos))
+            else:
+                contact_data.append((c_bid, c_link))
 
         return contact_data
 
@@ -1004,7 +1040,7 @@ class BRHand(BRHandBase):
         else:
             delta_trig_frac = action[26]
 
-        new_trig_frac = self.trigger_fraction + delta_trig_frac
+        new_trig_frac = np.clip(self.trigger_fraction + delta_trig_frac, 0.0, 1.0)
 
         # Execute gradual release of object
         if self.release_counter is not None:
@@ -1021,7 +1057,7 @@ class BRHand(BRHandBase):
 
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
-            if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
+            if new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
@@ -1037,14 +1073,42 @@ class BRHand(BRHandBase):
                     return False
                 ag_bid, ag_link = ag_data
 
-                child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
-
-                # If we grab a child link of a URDF, create a p2p joint
-                if ag_link == -1:
-                    joint_type = p.JOINT_FIXED
-                else:
+                # Create a p2p joint if it's a child link of a fixed URDF that is connected by a revolute or prismatic joint
+                if (
+                    ag_link != -1
+                    and p.getJointInfo(ag_bid, ag_link)[2] in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]
+                    and ag_bid in self.parent.simulator.scene.objects_by_id
+                    and hasattr(self.parent.simulator.scene.objects_by_id[ag_bid], "main_body_is_fixed")
+                    and self.parent.simulator.scene.objects_by_id[ag_bid].main_body_is_fixed
+                ):
                     joint_type = p.JOINT_POINT2POINT
+                else:
+                    joint_type = p.JOINT_FIXED
 
+                force_data = self.find_hand_contacts(return_contact_positions=True)
+                contact_pos = None
+                for c_bid, c_link, c_contact_pos in force_data:
+                    if (c_bid, c_link) == ag_data:
+                        contact_pos = c_contact_pos
+                        break
+                assert contact_pos is not None
+
+                # Joint frame set at the contact point
+                joint_frame_pos = contact_pos
+                joint_frame_orn = [0, 0, 0, 1]
+                palm_link_pos, palm_link_orn = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)[:2]
+                inv_palm_link_pos, inv_palm_link_orn = p.invertTransform(palm_link_pos, palm_link_orn)
+                parent_frame_pos, parent_frame_orn = p.multiplyTransforms(
+                    inv_palm_link_pos, inv_palm_link_orn, joint_frame_pos, joint_frame_orn
+                )
+                if ag_link == -1:
+                    obj_pos, obj_orn = p.getBasePositionAndOrientation(ag_bid)
+                else:
+                    obj_pos, obj_orn = p.getLinkState(ag_bid, ag_link)[:2]
+                inv_obj_pos, inv_obj_orn = p.invertTransform(obj_pos, obj_orn)
+                child_frame_pos, child_frame_orn = p.multiplyTransforms(
+                    inv_obj_pos, inv_obj_orn, joint_frame_pos, joint_frame_orn
+                )
                 self.obj_cid = p.createConstraint(
                     parentBodyUniqueId=self.get_body_id(),
                     parentLinkIndex=PALM_LINK_INDEX,
@@ -1052,12 +1116,13 @@ class BRHand(BRHandBase):
                     childLinkIndex=ag_link,
                     jointType=joint_type,
                     jointAxis=(0, 0, 0),
-                    parentFramePosition=(0, 0, 0),
+                    parentFramePosition=parent_frame_pos,
                     childFramePosition=child_frame_pos,
+                    parentFrameOrientation=parent_frame_orn,
                     childFrameOrientation=child_frame_orn,
                 )
                 # Modify max force based on user-determined assist parameters
-                if ag_link == -1:
+                if joint_type == p.JOINT_FIXED:
                     max_force = ASSIST_FORCE
                 else:
                     max_force = ASSIST_FORCE * ARTICULATED_ASSIST_FRACTION
@@ -1068,6 +1133,10 @@ class BRHand(BRHandBase):
                     "childLinkIndex": ag_link,
                     "jointType": joint_type,
                     "maxForce": max_force,
+                    "parentFramePosition": parent_frame_pos,
+                    "childFramePosition": child_frame_pos,
+                    "parentFrameOrientation": parent_frame_orn,
+                    "childFrameOrientation": child_frame_orn,
                 }
                 self.object_in_hand = ag_bid
                 self.should_freeze_joints = True
@@ -1077,12 +1146,7 @@ class BRHand(BRHandBase):
                 return True
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
-            if (
-                new_trig_frac >= 0.0
-                and new_trig_frac <= 1.0
-                and new_trig_frac <= TRIGGER_FRACTION_THRESHOLD
-                or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD
-            ):
+            if new_trig_frac <= TRIGGER_FRACTION_THRESHOLD or constraint_violation > CONSTRAINT_VIOLATION_THRESHOLD:
                 p.removeConstraint(self.obj_cid)
                 self.obj_cid = None
                 self.obj_cid_params = {}
@@ -1158,9 +1222,6 @@ class BRHand(BRHandBase):
         if self.should_freeze_joints:
             return
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
-
         for joint_index in range(p.getNumJoints(self.get_body_id())):
             jf = p.getJointInfo(self.get_body_id(), joint_index)
             j_name = jf[1]
@@ -1169,45 +1230,14 @@ class BRHand(BRHandBase):
                 close_pos = THUMB_CLOSE_POSITION
             else:
                 close_pos = FINGER_CLOSE_POSITION
-            interp_frac = (close_pos - HAND_OPEN_POSITION) * clipped_close_frac
+            interp_frac = (close_pos - HAND_OPEN_POSITION) * close_frac
             target_pos = HAND_OPEN_POSITION + interp_frac
             p.setJointMotorControl2(
                 self.get_body_id(), joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=HAND_CLOSE_FORCE
             )
 
-    def get_child_frame_pose(self, ag_bid, ag_link):
-        # Different pos/orn calculations for base/links
-        if ag_link == -1:
-            body_pos, body_orn = p.getBasePositionAndOrientation(ag_bid)
-        else:
-            body_pos, body_orn = p.getLinkState(ag_bid, ag_link)[:2]
-
-        # Get inverse world transform of body frame
-        inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-        link_state = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)
-        link_pos = link_state[0]
-        link_orn = link_state[1]
-        # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-        child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
-
-        return child_frame_pos, child_frame_orn
-
     def dump_part_state(self):
         dump = super(BRHand, self).dump_part_state()
-
-        # Recompute child frame pose because it could have changed since the
-        # constraint has been created
-        if self.obj_cid is not None:
-            ag_bid = self.obj_cid_params["childBodyUniqueId"]
-            ag_link = self.obj_cid_params["childLinkIndex"]
-            child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
-            self.obj_cid_params.update(
-                {
-                    "childFramePosition": child_frame_pos,
-                    "childFrameOrientation": child_frame_orn,
-                }
-            )
-
         dump.update(
             {
                 "object_in_hand": self.object_in_hand,
@@ -1245,8 +1275,9 @@ class BRHand(BRHandBase):
                 childLinkIndex=dump["obj_cid_params"]["childLinkIndex"],
                 jointType=dump["obj_cid_params"]["jointType"],
                 jointAxis=(0, 0, 0),
-                parentFramePosition=(0, 0, 0),
+                parentFramePosition=dump["obj_cid_params"]["parentFramePosition"],
                 childFramePosition=dump["obj_cid_params"]["childFramePosition"],
+                parentFrameOrientation=dump["obj_cid_params"]["parentFrameOrientation"],
                 childFrameOrientation=dump["obj_cid_params"]["childFrameOrientation"],
             )
             p.changeConstraint(self.obj_cid, maxForce=dump["obj_cid_params"]["maxForce"])
@@ -1271,7 +1302,7 @@ class BRGripper(BRHandBase):
     Gripper utilizing the pybullet gripper URDF.
     """
 
-    def __init__(self, parent, hand="right"):
+    def __init__(self, parent, hand="right", **kwargs):
         gripper_path = "normal_color" if self.parent.normal_color else "alternative_color"
         vr_gripper_fpath = os.path.join(
             assets_path, "models", "vr_agent", "vr_gripper", gripper_path, "vr_gripper.urdf"
@@ -1282,6 +1313,7 @@ class BRGripper(BRHandBase):
             hand=hand,
             base_rot=p.getQuaternionFromEuler([0, 0, 0]),
             ghost_hand_appear_threshold=GRIPPER_GHOST_HAND_APPEAR_THRESHOLD,
+            **kwargs
         )
 
     def activate_constraints(self):
@@ -1322,11 +1354,8 @@ class BRGripper(BRHandBase):
         b = p.getJointState(self.get_body_id(), 2)[0]
         p.setJointMotorControl2(self.get_body_id(), 0, p.POSITION_CONTROL, targetPosition=b, force=3)
 
-        # Clip close fraction to make sure it stays within [0, 1] range
-        clipped_close_frac = np.clip([close_frac], 0, 1)[0]
-
         # Change gear constraint to reflect trigger close fraction
-        p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - clipped_close_frac, maxForce=3)
+        p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - close_frac, maxForce=3)
 
 
 class BREye(ArticulatedObject):
@@ -1335,9 +1364,8 @@ class BREye(ArticulatedObject):
     to move the camera and render the same thing that the VR users see.
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
         # Set up class
-        self.local_pos, self.local_orn = [0, 0, 0], [0, 0, 0, 1]
         self.parent = parent
 
         self.name = "BREye_{}".format(self.parent.robot_num)
@@ -1348,25 +1376,37 @@ class BREye(ArticulatedObject):
         color_folder = "normal_color" if self.parent.normal_color else "alternative_color"
         self.head_visual_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", color_folder, "vr_head.obj")
         self.eye_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", "vr_eye.urdf")
-        super(BREye, self).__init__(filename=self.eye_path, scale=1)
+        super(BREye, self).__init__(filename=self.eye_path, scale=1, class_id=class_id, **kwargs)
 
         self.should_hide = True
         self.head_visual_marker = VisualMarker(
-            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3
+            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3, class_id=class_id
+        )
+
+    def _load(self, simulator):
+        flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
+        body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
+
+        # Set mass to 0 so that the eye isn't continuously falling.
+        self.mass = 0
+        p.changeDynamics(body_id, -1, self.mass)
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        body_ids = [body_id] + self.head_visual_marker.load(simulator)
+
+        return body_ids
+
+    def get_local_position_orientation(self):
+        body = self.parent.parts["body"]
+        return p.multiplyTransforms(
+            *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
         )
 
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
         super(BREye, self).set_position_orientation(pos, orn)
-        body = self.parent.parts["body"]
-        if body.new_pos is None:
-            inv_body_pos, inv_body_orn = p.invertTransform(*body.get_position_orientation())
-        else:
-            inv_body_pos, inv_body_orn = p.invertTransform(body.new_pos, body.new_orn)
-        new_local_pos, new_local_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, pos, orn)
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
         self.new_pos = pos
         self.new_orn = orn
         self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
@@ -1393,7 +1433,8 @@ class BREye(ArticulatedObject):
         else:
             neck_base_rel_pos = NECK_BASE_REL_POS_UNTRACKED
         neck_base_point = np.array(neck_base_rel_pos)
-        desired_local_pos = np.array(self.local_pos) + np.array(clipped_delta_pos)
+        current_local_pos = np.array(self.get_local_position_orientation()[0])
+        desired_local_pos = current_local_pos + np.array(clipped_delta_pos)
         neck_to_head = desired_local_pos - neck_base_point
         dist_to_neck = np.linalg.norm(neck_to_head)
         if dist_to_neck > (HEAD_DISTANCE_THRESHOLD + THRESHOLD_EPSILON):
@@ -1401,7 +1442,7 @@ class BREye(ArticulatedObject):
             shrink_factor = HEAD_DISTANCE_THRESHOLD / dist_to_neck
             reduced_neck_to_head = neck_to_head * shrink_factor
             reduced_local_pos = neck_base_point + reduced_neck_to_head
-            clipped_delta_pos = reduced_local_pos - np.array(self.local_pos)
+            clipped_delta_pos = reduced_local_pos - current_local_pos
 
         return clipped_delta_pos, clipped_delta_orn
 
@@ -1422,12 +1463,9 @@ class BREye(ArticulatedObject):
         clipped_delta_orn = p.getQuaternionFromEuler(clipped_delta_orn)
 
         # Calculate new local transform
-        old_local_pos, old_local_orn = self.local_pos, self.local_orn
-        _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], old_local_orn)
-        new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
-
-        self.local_pos = new_local_pos
-        self.local_orn = new_local_orn
+        current_local_pos, current_local_orn = self.get_local_position_orientation()
+        _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], current_local_orn)
+        new_local_pos = np.array(current_local_pos) + np.array(clipped_delta_pos)
 
         # Calculate new world position based on local transform and new body pose
         body = self.parent.parts["body"]
@@ -1437,11 +1475,7 @@ class BREye(ArticulatedObject):
         self.set_position_orientation(self.new_pos, self.new_orn)
 
     def dump_part_state(self):
-        return {
-            "local_pos": list(self.local_pos),
-            "local_orn": list(self.local_orn),
-        }
+        pass
 
     def load_part_state(self, dump):
-        self.local_pos = np.array(dump["local_pos"])
-        self.local_orn = np.array(dump["local_orn"])
+        pass

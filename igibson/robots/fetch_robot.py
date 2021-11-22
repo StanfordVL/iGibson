@@ -13,7 +13,7 @@ class Fetch(LocomotorRobot):
     Uses joint velocity control
     """
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
         self.wheel_velocity = config.get("wheel_velocity", 1.0)
         self.torso_lift_velocity = config.get("torso_lift_velocity", 1.0)
@@ -29,6 +29,7 @@ class Fetch(LocomotorRobot):
             is_discrete=config.get("is_discrete", False),
             control="velocity",
             self_collision=True,
+            **kwargs
         )
 
     def set_up_continuous_action_space(self):
@@ -93,12 +94,12 @@ class Fetch(LocomotorRobot):
         """
         return self.parts["gripper_link"].body_part_index
 
-    def load(self):
+    def load(self, simulator):
         """
         Load the robot into pybullet. Filter out unnecessary self collision
         due to modeling imperfection in the URDF
         """
-        ids = super(Fetch, self).load()
+        ids = super(Fetch, self).load(simulator)
         robot_id = self.robot_ids[0]
 
         disable_collision_names = [

@@ -6,6 +6,7 @@ import pybullet as p
 import pybullet_data
 
 from igibson.scenes.scene_base import Scene
+from igibson.utils.constants import SemanticClass
 from igibson.utils.utils import l2_distance
 
 
@@ -14,9 +15,10 @@ class EmptyScene(Scene):
     A empty scene for debugging
     """
 
-    def __init__(self):
+    def __init__(self, render_floor_plane=False):
         super(EmptyScene, self).__init__()
         self.objects = []
+        self.render_floor_plane = render_floor_plane
 
     def get_objects(self):
         return list(self.objects)
@@ -24,7 +26,7 @@ class EmptyScene(Scene):
     def _add_object(self, obj):
         self.objects.append(obj)
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the scene into pybullet
         """
@@ -34,8 +36,14 @@ class EmptyScene(Scene):
         # white floor plane for visualization purpose if needed
         p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 1])
 
+        if self.render_floor_plane:
+            for id in self.floor_body_ids:
+                simulator.load_object_in_renderer(
+                    None, id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False
+                )
+
         # Load additional objects & merge body IDs
-        additional_object_body_ids = [x for obj in self.objects for x in obj.load()]
+        additional_object_body_ids = [x for obj in self.objects for x in obj.load(simulator)]
         return self.floor_body_ids + additional_object_body_ids
 
     def get_random_point(self, floor=None):

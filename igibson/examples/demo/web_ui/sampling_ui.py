@@ -21,7 +21,7 @@ from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config
+from igibson.utils.utils import parse_config, restoreState
 
 interactive = True
 NUM_REQUIRED_SUCCESSFUL_SCENES = 3
@@ -124,7 +124,7 @@ class ProcessPyEnvironment(object):
 
         :param bddl (str): the bddl being sampled in the environment
         :param blocking (bool): whether to wait for the result
-        :return (bool, dict): (success, feedback) from the sampling process
+        :return (bool, str): (success, feedback) from the sampling process
         """
         self.last_active_time = time.time()
         promise = self.call("sample", behavior_activity, bddl)
@@ -213,7 +213,6 @@ class ToyEnv(object):
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
-        # self.s.import_ig_scene(scene)
 
     def step(self, a):
         self.s.step()
@@ -236,9 +235,9 @@ class ToyEnvInt(object):
             scene_id=scene,
             mode="headless",
             load_clutter=False,
-            should_debug_sampling=False,
             scene_kwargs={},
             online_sampling=True,
+            debug_obj_inst=None,
         )
         self.state_id = p.saveState()
         self.num_body_ids = p.getNumBodies()
@@ -256,7 +255,7 @@ class ToyEnvInt(object):
         for body_id in range(self.num_body_ids, p.getNumBodies()):
             p.removeBody(body_id)
 
-        p.restoreState(self.state_id)
+        restoreState(self.state_id)
 
     def sample(self, behavior_activity, bddl):
         try:
@@ -264,60 +263,31 @@ class ToyEnvInt(object):
             self.task.object_scope["agent.n.01_1"] = self.task.agent.parts["body"]
         except UncontrolledCategoryError:
             accept_scene = False
-            feedback = {
-                "init_success": "no",
-                "goal_success": "no",
-                "init_feedback": "Cannot check until goal state is fixed.",
-                "goal_feedback": "Goal state has uncontrolled categories.",
-            }
+            feedback = "Goal state has uncontrolled categories."
             return accept_scene, feedback
         except UnsupportedPredicateError as e:
             accept_scene = False
-            feedback = {
-                "init_success": "no",
-                "goal_success": "no",
-                "init_feedback": f"We don't yet support the [{e.predicate}] adjective for any objects. We will soon!",
-                "goal_feedback": "",
-            }
+            feedback = f"We don't yet support the [{e.predicate}] adjective for any objects. We will soon!"
             return accept_scene, feedback
         except AssertionError as message:
+            accept_scene = False
             if message == "No ground goal options":
-                accept_scene = False
-                feedback = {
-                    "init_success": "no",
-                    "goal_success": "no",
-                    "init_feedback": "",
-                    "goal_feedback": "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time).",
-                }
+                feedback = (
+                    "The goal conditions are logically impossible (there is no solution). Check for a contradiction (e.g. asking for the floor to be stained and not stained at the same time).",
+                )
             else:
-                accept_scene = False
-                feedback = {
-                    "init_success": "no",
-                    "goal_success": "no",
-                    "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during problem update.",
-                    "goal_feedback": "",
-                }
+                feedback = "Let Sanjana know there was an indeterminate assertion error during problem update."
             return accept_scene, feedback
 
         try:
             accept_scene, feedback = self.task.check_scene()
         except AssertionError as message:
+            accept_scene = False
             if "Invalid" in str(message):
-                accept_scene = False
-                feedback = {
-                    "init_success": "no",
-                    "goal_success": "no",
-                    "init_feedback": f"We do not currently support {str(message).split(' ')[3]}. Please try a different object!",
-                    "goal_feedback": "",
-                }
+                feedback = f"We do not currently support {str(message).split(' ')[3]}. Please try a different object!"
             else:
-                accept_scene = False
-                feedback = {
-                    "init_success": "no",
-                    "goal_success": "no",
-                    "init_feedback": f"Let Sanjana know there was an indeterminate assertion error during scene checking.",
-                    "goal_feedback": "",
-                }
+                feedback = ("Let Sanjana know there was an indeterminate assertion error during scene checking.",)
+
             return accept_scene, feedback
 
         if not accept_scene:
@@ -456,14 +426,7 @@ def check_sampling():
         success, feedback = app.envs[new_unique_id].sample(behavior_activity, bddl)
         if success:
             num_successful_scenes += 1
-            """
-            init_success, goal_success: one of the three values ['yes', 'no', 'untested']
-            init_feedback, goal_feedback: feedback for the initial and goal conditions. They will be empty strings
-            if the conditions are not tested or the conditions are sampled successfully.
-            """
-        feedback_instances.append(
-            (feedback["init_success"], feedback["goal_success"], feedback["init_feedback"], feedback["goal_feedback"])
-        )
+        feedback_instances.append(feedback)
 
     success = num_successful_scenes >= min(NUM_REQUIRED_SUCCESSFUL_SCENES, len(ids))
     full_feedback = feedback_instances

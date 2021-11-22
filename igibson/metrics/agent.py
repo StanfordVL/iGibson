@@ -71,7 +71,7 @@ class BehaviorRobotMetric(MetricBase):
 
             distance = np.abs(delta_pos)
             if part in ["left_hand", "right_hand"]:
-                self.agent_local_pos[part].append(list(robot.parts[part].local_pos))
+                self.agent_local_pos[part].append(list(robot.parts[part].get_local_position_orientation()[0]))
             if part in ["left_hand", "right_hand"] and (
                 len(p.getContactPoints(robot.parts[part].get_body_id())) > 0
                 or robot.parts[part].object_in_hand is not None
@@ -160,7 +160,7 @@ class FetchRobotMetric(MetricBase):
         gripper_distance = np.abs(delta_pos)
         self.delta_agent_distance["gripper"].append(gripper_distance)
 
-        self.agent_local_pos["gripper"].append(list(robot.get_relative_eef_position()))
+        self.agent_local_pos["gripper"].append(robot.get_relative_eef_position().tolist())
 
         contacts = p.getContactPoints(bodyA=robot.robot_ids[0], linkIndexA=robot.eef_link_id)
         if len(contacts) > 0:

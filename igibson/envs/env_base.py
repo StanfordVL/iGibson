@@ -32,8 +32,8 @@ class BaseEnv(gym.Env):
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
-        render_to_tensor=False,
         device_idx=0,
+        use_pb_gui=False,
     ):
         """
         :param config_file: config_file path
@@ -42,6 +42,7 @@ class BaseEnv(gym.Env):
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
+        :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
         self.config = parse_config(config_file)
         if scene_id is not None:
@@ -61,7 +62,12 @@ class BaseEnv(gym.Env):
 
         # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
         settings = MeshRendererSettings(
-            enable_shadow=enable_shadow, enable_pbr=enable_pbr, msaa=False, texture_scale=texture_scale, optimized=True
+            enable_shadow=enable_shadow,
+            enable_pbr=enable_pbr,
+            msaa=False,
+            texture_scale=texture_scale,
+            optimized=True,
+            load_textures=self.config.get("load_texture", True),
         )
 
         self.simulator = Simulator(
@@ -72,8 +78,8 @@ class BaseEnv(gym.Env):
             image_height=self.config.get("image_height", 128),
             vertical_fov=self.config.get("vertical_fov", 90),
             device_idx=device_idx,
-            render_to_tensor=render_to_tensor,
             rendering_settings=settings,
+            use_pb_gui=use_pb_gui,
         )
         self.load()
 
@@ -123,12 +129,8 @@ class BaseEnv(gym.Env):
         """
         if self.config["scene"] == "empty":
             scene = EmptyScene()
-            self.simulator.import_scene(
-                scene, load_texture=self.config.get("load_texture", True), render_floor_plane=True
-            )
         elif self.config["scene"] == "stadium":
             scene = StadiumScene()
-            self.simulator.import_scene(scene, load_texture=self.config.get("load_texture", True))
         elif self.config["scene"] == "gibson":
             scene = StaticIndoorScene(
                 self.config["scene_id"],
@@ -139,7 +141,6 @@ class BaseEnv(gym.Env):
                 trav_map_erosion=self.config.get("trav_map_erosion", 2),
                 pybullet_load_texture=self.config.get("pybullet_load_texture", False),
             )
-            self.simulator.import_scene(scene, load_texture=self.config.get("load_texture", True))
         elif self.config["scene"] == "igibson":
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
@@ -149,7 +150,6 @@ class BaseEnv(gym.Env):
                 trav_map_resolution=self.config.get("trav_map_resolution", 0.1),
                 trav_map_erosion=self.config.get("trav_map_erosion", 2),
                 trav_map_type=self.config.get("trav_map_type", "with_obj"),
-                pybullet_load_texture=self.config.get("pybullet_load_texture", False),
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
                 object_randomization_idx=self.object_randomization_idx,
@@ -162,7 +162,8 @@ class BaseEnv(gym.Env):
             first_n = self.config.get("_set_first_n_objects", -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
-            self.simulator.import_ig_scene(scene)
+
+        self.simulator.import_scene(scene)
 
         if self.config["robot"] == "Turtlebot":
             robot = Turtlebot(self.config)

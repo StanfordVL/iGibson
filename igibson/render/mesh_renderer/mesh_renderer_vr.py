@@ -277,8 +277,6 @@ class MeshRendererVR(MeshRenderer):
 
         # Always turn MSAA off for VR
         self.msaa = False
-        # The VrTextOverlay that serves as the VR HUD (heads-up-display)
-        self.vr_hud = None
 
     def gen_vr_hud(self):
         """

@@ -14,6 +14,7 @@ from igibson.object_states.utils import sample_kinematics
 from igibson.objects.articulated_object import URDFObject
 from igibson.robots.behavior_robot import BRBody, BREye, BRHand
 from igibson.utils.behavior_robot_planning_utils import dry_run_base_plan, plan_base_motion_br, plan_hand_motion_br
+from igibson.utils.utils import restoreState
 
 
 class ActionPrimitives(IntEnum):
@@ -68,7 +69,6 @@ class BehaviorMPEnv(BehaviorEnv):
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
         device_idx=0,
-        render_to_tensor=False,
         automatic_reset=False,
         seed=0,
         action_filter="mobile_manipulation",
@@ -78,11 +78,10 @@ class BehaviorMPEnv(BehaviorEnv):
         """
         @param config_file: config_file path
         @param scene_id: override scene_id in config file
-        @param mode: headless, simple, iggui
+        :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive
         @param action_timestep: environment executes action per action_timestep second
         @param physics_timestep: physics timestep for pybullet
         @param device_idx: which GPU to run the simulation and rendering on
-        @param render_to_tensor: whether to render directly to pytorch tensors
         @param automatic_reset: whether to automatic reset after an episode finishes
         @param seed: RNG seed for sampling
         @param action_filter: see BehaviorEnv
@@ -96,7 +95,6 @@ class BehaviorMPEnv(BehaviorEnv):
             action_timestep=action_timestep,
             physics_timestep=physics_timestep,
             device_idx=device_idx,
-            render_to_tensor=render_to_tensor,
             action_filter=action_filter,
             seed=seed,
             automatic_reset=automatic_reset,
@@ -302,7 +300,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
                 obstacles=self.get_body_ids(include_self=True),
             )
-            p.restoreState(state)
+            restoreState(state)
             p.removeState(state)
 
             if plan is not None:
@@ -366,7 +364,7 @@ class BehaviorMPEnv(BehaviorEnv):
         obj_in_hand = self.scene.objects_by_id[obj_in_hand_id]
 
         pos = obj_in_hand.get_position()
-        p.restoreState(original_state)
+        restoreState(original_state)
         p.removeState(original_state)
         if not self.use_motion_planning:
             self.reset_and_release_hand(hand)
@@ -395,7 +393,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 hand_limits=((minx, miny, minz), (maxx, maxy, maxz)),
                 obstacles=obstacles,
             )  #
-            p.restoreState(state)
+            restoreState(state)
             p.removeState(state)
 
             if plan:
@@ -526,9 +524,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["headless", "gui", "iggui", "pbgui"],
-        default="gui",
-        help="which mode for simulation (default: headless)",
+        choices=["headless", "headless_tensor", "gui_interactive", "gui_non_interactive"],
+        default="gui_interactive",
+        help="which mode for simulation (default: gui_interactive)",
     )
     args = parser.parse_args()
 

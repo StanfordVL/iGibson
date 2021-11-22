@@ -54,8 +54,8 @@ def collect_demo(scene_id, vr_log_path=None, disable_save=False, no_vr=False, pr
     )
 
     vr_agent = BehaviorRobot(s)
-    s.import_ig_scene(scene)
-    s.import_behavior_robot(vr_agent)
+    s.import_scene(scene)
+    s.import_robot(vr_agent)
     s.register_main_vr_robot(vr_agent)
     vr_agent.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 

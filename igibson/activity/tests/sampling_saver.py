@@ -9,6 +9,7 @@ import pybullet as p
 import igibson
 from igibson.activity.activity_base import iGBEHAVIORActivityInstance
 from igibson.simulator import Simulator
+from igibson.utils.utils import restoreState
 
 PARTIAL_RECACHE = {
     # 'sorting_books': ['Ihlen_0_int'],
@@ -27,14 +28,6 @@ def parse_args():
     )
     parser.add_argument("--start_initialization", type=int, default=0, help="Starting idx for initialization")
     return parser.parse_args()
-
-
-def remove_newly_added_objects(igbhvr_act_inst, state_id):
-    for sim_obj in igbhvr_act_inst.newly_added_objects:
-        igbhvr_act_inst.scene.remove_object(sim_obj)
-        for id in sim_obj.body_ids:
-            p.removeBody(id)
-    p.restoreState(state_id)
 
 
 def main():
@@ -80,9 +73,9 @@ def main():
                     scene_id=scene_id,
                     mode="headless",
                     load_clutter=True,
-                    should_debug_sampling=False,
                     scene_kwargs=scene_kwargs,
                     online_sampling=True,
+                    debug_obj_inst=None,
                 )
                 if success:
                     break

@@ -8,7 +8,7 @@ from igibson.render.profiler import Profiler
 
 def main():
     config_filename = os.path.join(igibson.example_config_path, "turtlebot_point_nav.yaml")
-    env = iGibsonEnv(config_file=config_filename, mode="gui")
+    env = iGibsonEnv(config_file=config_filename, mode="gui_interactive", use_pb_gui=True)
     for j in range(10):
         env.reset()
         for i in range(100):

@@ -11,7 +11,7 @@ class Locobot(LocomotorRobot):
     Uses differentiable_drive / twist command control
     """
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         self.config = config
         # https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx
         # Maximum translational velocity: 70 cm/s
@@ -29,6 +29,7 @@ class Locobot(LocomotorRobot):
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
             control="differential_drive",
+            **kwargs
         )
 
     def set_up_continuous_action_space(self):

@@ -210,14 +210,16 @@ def plan_hand_motion_br(
 if __name__ == "__main__":
     config = parse_config(os.path.join(igibson.example_config_path, "behavior.yaml"))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
+    )
 
     scene = EmptyScene()
     scene.objects_by_id = {}
-    s.import_scene(scene, render_floor_plane=True)
+    s.import_scene(scene)
 
-    agent = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True, use_ghost_hands=False)
-    s.import_behavior_robot(agent)
+    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
+    s.import_robot(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
 

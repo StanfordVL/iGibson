@@ -11,6 +11,13 @@ class StatefulObject(BaseObject):
         super(StatefulObject, self).__init__(**kwargs)
         prepare_object_states(self, abilities=abilities)
 
+    def load(self, simulator):
+        body_ids = super(StatefulObject, self).load(simulator)
+        for state in self.states.values():
+            state.initialize(simulator)
+
+        return body_ids
+
     def dump_state(self):
         return {
             get_state_name(state_type): state_instance.dump()

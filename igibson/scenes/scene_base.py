@@ -18,7 +18,7 @@ class Scene(with_metaclass(ABCMeta)):
         self.floor_body_ids = []  # List of ids of the floor_heights
 
     @abstractmethod
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the scene into pybullet
         The elements to load may include: floor, building, objects, etc
@@ -27,7 +27,7 @@ class Scene(with_metaclass(ABCMeta)):
         """
         raise NotImplementedError()
 
-    def load(self):
+    def load(self, simulator):
         """
         Load the scene into pybullet
         The elements to load may include: floor, building, objects, etc
@@ -37,8 +37,9 @@ class Scene(with_metaclass(ABCMeta)):
         # Do not override this function. Override _load instead.
         if self.loaded:
             raise ValueError("This scene is already loaded.")
+
         self.loaded = True
-        return self._load()
+        return self._load(simulator)
 
     @abstractmethod
     def get_objects(self):
@@ -59,7 +60,7 @@ class Scene(with_metaclass(ABCMeta)):
         """
         raise NotImplementedError()
 
-    def add_object(self, obj, _is_call_from_simulator=False):
+    def add_object(self, obj, simulator, _is_call_from_simulator=False):
         """
         Add an object to the scene, loading it if the scene is already loaded.
 
@@ -82,7 +83,7 @@ class Scene(with_metaclass(ABCMeta)):
         # let scene._load() load the object when called later on.
         body_ids = None
         if self.loaded:
-            body_ids = obj.load()
+            body_ids = obj.load(simulator)
 
         self._add_object(obj)
 

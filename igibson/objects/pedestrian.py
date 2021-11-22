@@ -5,6 +5,7 @@ import pybullet as p
 import igibson
 from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
+from igibson.utils.constants import SemanticClass
 
 
 class Pedestrian(StatefulObject, SingleBodyObject):
@@ -23,7 +24,7 @@ class Pedestrian(StatefulObject, SingleBodyObject):
         self.cid = None
         self.pos = pos
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -44,6 +45,8 @@ class Pedestrian(StatefulObject, SingleBodyObject):
             self.pos,
             parentFrameOrientation=[-0.5, -0.5, -0.5, 0.5],
         )  # facing x axis
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
 

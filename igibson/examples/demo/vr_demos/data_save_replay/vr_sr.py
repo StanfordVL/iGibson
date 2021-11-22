@@ -75,7 +75,7 @@ def run_action_sr(mode):
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
     )
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     # Note: uncomment these lines during replay to see the scene from an external perspective
@@ -88,7 +88,7 @@ def run_action_sr(mode):
     # Data replay uses constraints during both save and replay modes
     # Note: set show_visual_head to True upon replay to see the VR head
     bvr_robot = BehaviorRobot(s, show_visual_head=False)
-    s.import_behavior_robot(bvr_robot)
+    s.import_robot(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
@@ -111,8 +111,8 @@ def run_action_sr(mode):
         fpath = item[0]
         pos = item[1]
         orn = item[2]
-        item_ob = ArticulatedObject(fpath, scale=1)
-        s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+        item_ob = ArticulatedObject(fpath, scale=1, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
 

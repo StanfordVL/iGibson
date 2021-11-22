@@ -83,3 +83,6 @@ igibson/render/mesh_renderer/libcryptopp.so.8.6
 
 # trained online learning models
 igibson/examples/online_learning/models/
+# Coverage
+.coverage
+coverage.xml
