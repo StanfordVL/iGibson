@@ -277,6 +277,7 @@ class MeshRendererVR(MeshRenderer):
 
         # Always turn MSAA off for VR
         self.msaa = False
+        self.vr_hud = None
 
     def gen_vr_hud(self):
         """
@@ -332,7 +333,7 @@ class MeshRendererVR(MeshRenderer):
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
             # Update HUD so it renders in the HMD
-            if self.vr_hud:
+            if self.vr_hud is not None:
                 self.vr_hud.refresh_text()
         else:
             if return_frame:
