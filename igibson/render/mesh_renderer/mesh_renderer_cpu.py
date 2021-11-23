@@ -153,7 +153,7 @@ class MeshRenderer(object):
 
             self.r = EGLRendererContext.EGLRendererContext(width, height, device)
         else:
-            Exception("Unsupported platform and renderer combination")
+            raise Exception("Unsupported platform and renderer combination")
 
         self.r.init()
 
