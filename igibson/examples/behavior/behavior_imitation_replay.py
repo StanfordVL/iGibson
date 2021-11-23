@@ -48,7 +48,14 @@ def save_episode(in_log_path, dataset_metric):
     hf.close()
 
 
-def generate_imitation_dataset(demo_root, log_manifest, out_dir, config_file, skip_existing=True, save_frames=False):
+def generate_imitation_dataset(
+    demo_root,
+    log_manifest,
+    out_dir,
+    config_file=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+    skip_existing=True,
+    save_frames=False,
+):
     """
     Execute imitation dataset generation on a batch of BEHAVIOR demos.
 
@@ -113,7 +120,11 @@ def parse_args():
     parser.add_argument("--log_manifest", type=str, help="Plain text file consisting of list of demos to replay.")
     parser.add_argument("--out_dir", type=str, help="Directory to store results in.")
     parser.add_argument("--vr_log_path", type=str, help="Path (and filename) of vr log to replay")
-    parser.add_argument("--config", help="which config file to use [default: use yaml files in examples/configs]")
+    parser.add_argument(
+        "--config",
+        help="which config file to use [default: use yaml files in examples/configs]",
+        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+    )
 
     return parser.parse_args()
 

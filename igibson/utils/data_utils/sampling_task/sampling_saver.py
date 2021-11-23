@@ -55,7 +55,7 @@ def main():
     num_initializations = args.num_initializations
     num_trials = args.max_trials
 
-    config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+    config_file = os.path.join(igibson.example_config_path, "behavior_vr.yaml")
     env_config = parse_config(config_file)
     env_config["task"] = task
     env_config["task_id"] = task_id
