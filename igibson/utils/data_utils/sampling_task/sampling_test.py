@@ -10,7 +10,7 @@ from igibson.utils.utils import parse_config
 activity = "assembling_gift_baskets"
 scene_id = "Rs_int"
 
-config_file = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+config_file = os.path.join(igibson.example_config_path, "behavior_vr.yaml")
 env_config = parse_config(config_file)
 env_config["scene_id"] = scene_id
 env_config["task"] = activity

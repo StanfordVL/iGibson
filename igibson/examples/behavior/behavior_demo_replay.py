@@ -65,7 +65,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         help="which config file to use [default: use yaml files in examples/configs]",
-        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
     )
     return parser.parse_args()
 
@@ -77,7 +77,7 @@ def replay_demo(
     frame_save_path=None,
     verbose=True,
     mode="headless",
-    config_file=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+    config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
     start_callbacks=[],
     step_callbacks=[],
     end_callbacks=[],
@@ -192,6 +192,7 @@ def replay_demo(
         action_timestep=render_timestep,
         physics_timestep=physics_timestep,
         rendering_settings=vr_rendering_settings,
+        vr_settings=vr_settings,
         use_pb_gui=use_pb_gui,
     )
     env.reset()

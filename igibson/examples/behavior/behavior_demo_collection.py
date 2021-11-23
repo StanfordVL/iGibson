@@ -77,7 +77,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         help="which config file to use [default: use yaml files in examples/configs]",
-        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
     )
     return parser.parse_args()
 
@@ -110,7 +110,7 @@ def collect_demo(
     no_vr=False,
     disable_scene_cache=False,
     profile=False,
-    config_file=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+    config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
 ):
     # HDR files for PBR rendering
     hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
@@ -151,6 +151,7 @@ def collect_demo(
     )
     env.reset()
     vr_agent = env.robots[0]
+    env.simulator.register_main_vr_robot(vr_agent)
 
     if not no_vr:
         vr_cs = VrConditionSwitcher(env.simulator, env.task.show_instruction, env.task.iterate_instruction)

@@ -37,6 +37,7 @@ class BaseEnv(gym.Env):
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
         rendering_settings=None,
+        vr_settings=None,
         device_idx=0,
         use_pb_gui=False,
     ):
@@ -47,6 +48,7 @@ class BaseEnv(gym.Env):
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param rendering_settings: rendering_settings to override the default one
+        :param vr_settings: vr_settings to override the default one
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
@@ -58,6 +60,7 @@ class BaseEnv(gym.Env):
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
         self.rendering_settings = rendering_settings
+        self.vr_settings = vr_settings
         self.texture_randomization_freq = self.config.get("texture_randomization_freq", None)
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
         self.object_randomization_idx = 0
@@ -78,6 +81,9 @@ class BaseEnv(gym.Env):
                 load_textures=self.config.get("load_texture", True),
             )
 
+        if self.vr_settings is None:
+            self.vr_settings = VrSettings(use_vr=True)
+
         if mode == "vr":
             self.simulator = SimulatorVR(
                 physics_timestep=physics_timestep,
@@ -87,7 +93,7 @@ class BaseEnv(gym.Env):
                 vertical_fov=self.config.get("vertical_fov", 90),
                 device_idx=device_idx,
                 rendering_settings=self.rendering_settings,
-                vr_settings=VrSettings(use_vr=True),
+                vr_settings=self.vr_settings,
                 use_pb_gui=use_pb_gui,
             )
         else:
