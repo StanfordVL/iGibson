@@ -18,6 +18,7 @@ from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
+from igibson.simulator_vr import SimulatorVR
 from igibson.utils.utils import parse_config
 
 
