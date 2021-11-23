@@ -178,6 +178,25 @@ class SimulatorVR(Simulator):
         """
         return self.renderer.vr_hud.get_overlay_show_state()
 
+    def step_vr_system(self):
+        # Update VR compositor and VR data
+        vr_system_start = time.perf_counter()
+        # First sync VR compositor - this is where Oculus blocks (as opposed to Vive, which blocks in update_vr_data)
+        self.sync_vr_compositor()
+        # Note: this should only be called once per frame - use get_vr_events to read the event data list in
+        # subsequent read operations
+        self.poll_vr_events()
+        # This is necessary to fix the eye tracking value for the current frame, since it is multi-threaded
+        self.fix_eye_tracking_value()
+        # Move user to their starting location
+        self.perform_vr_start_pos_move()
+        # Update VR data and wait until 3ms before the next vsync
+        self.renderer.update_vr_data()
+        # Update VR system data - eg. offsets, haptics, etc.
+        self.vr_system_update()
+        vr_system_dur = time.perf_counter() - vr_system_start
+        return vr_system_dur
+
     def step(self, print_stats=False):
         """
         Step the simulation when using VR. Order of function calls:
@@ -216,22 +235,7 @@ class SimulatorVR(Simulator):
             sleep(self.non_block_frame_time - pre_sleep_dur)
         sleep_dur = time.perf_counter() - sleep_start_time
 
-        # Update VR compositor and VR data
-        vr_system_start = time.perf_counter()
-        # First sync VR compositor - this is where Oculus blocks (as opposed to Vive, which blocks in update_vr_data)
-        self.sync_vr_compositor()
-        # Note: this should only be called once per frame - use get_vr_events to read the event data list in
-        # subsequent read operations
-        self.poll_vr_events()
-        # This is necessary to fix the eye tracking value for the current frame, since it is multi-threaded
-        self.fix_eye_tracking_value()
-        # Move user to their starting location
-        self.perform_vr_start_pos_move()
-        # Update VR data and wait until 3ms before the next vsync
-        self.renderer.update_vr_data()
-        # Update VR system data - eg. offsets, haptics, etc.
-        self.vr_system_update()
-        vr_system_dur = time.perf_counter() - vr_system_start
+        vr_system_dur = self.step_vr_system()
 
         # Calculate final frame duration
         # Make sure it is non-zero for FPS calculation (set to max of 1000 if so)
