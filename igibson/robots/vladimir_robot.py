@@ -111,7 +111,36 @@ HEAD_DISTANCE_THRESHOLD = 0.5  # distance threshold in meters
 SIXDOF_JOINT_NAMES = ["shoulder_x", "shoulder_y", "shoulder_z", "arm", "wrist_x", "wrist_y", "wrist_z"]
 
 
-class BehaviorRobot(ArticulatedObject):
+def createConstraint(*args, **kwargs):
+    id = p.createConstraint(*args, **kwargs)
+    info = p.getConstraintInfo(id)
+    if info[0] == -1:
+        pos = info[6]
+    elif info[2] == -1:
+        pos = info[7]
+    else:
+        return id
+
+    p.addUserDebugLine(np.array(pos) - 0.05, np.array(pos) + 0.05, lineWidth=1)
+    return id
+
+
+def changeConstraint(*args, **kwargs):
+    p.changeConstraint(*args, **kwargs)
+    id = args[0]
+    info = p.getConstraintInfo(id)
+    if info[0] == -1:
+        pos = info[6]
+    elif info[2] == -1:
+        pos = info[7]
+    else:
+        return
+
+    p.addUserDebugLine(pos, np.array(pos) + 0.01, lineWidth=0.05)
+    return id
+
+
+class Vladimir(ArticulatedObject):
     """
     A class representing all the VR objects comprising a single agent.
     The individual parts of an agent can be used separately, however
@@ -138,10 +167,10 @@ class BehaviorRobot(ArticulatedObject):
         :parm robot_num: the number of the agent - used in multi-user VR
         :parm use_constraints: whether to use constraints to move agent (normally set to True - set to false in state replay mode)
         :parm hands: list containing left, right or no hands
-        :parm use_body: true if using BehaviorRobotBody
+        :parm use_body: true if using VladimirBody
         :parm use_gripper: whether the agent should use the pybullet gripper or the iGibson VR hand
         :parm normal_color: whether to use normal color (grey) (when True) or alternative color (blue-tinted). The alternative
-        :param show_visual_head: whether to render a head cone where the BehaviorRobotEye is
+        :param show_visual_head: whether to render a head cone where the VladimirEye is
         :param use_tracked_body: sets use_tracked_body to decide on which URDF to load, and which local transforms to use
         """
         # Basic parameters
@@ -173,15 +202,15 @@ class BehaviorRobot(ArticulatedObject):
 
         if "left" in self.hands:
             self.parts["left_hand"] = (
-                BehaviorRobotHand(self, hand="left", **kwargs)
+                VladimirHand(self, hand="left", **kwargs)
                 if not use_gripper
-                else BehaviorRobotGripper(self, hand="left", **kwargs)
+                else VladimirGripper(self, hand="left", **kwargs)
             )
         if "right" in self.hands:
             self.parts["right_hand"] = (
-                BehaviorRobotHand(self, hand="right", **kwargs)
+                VladimirHand(self, hand="right", **kwargs)
                 if not use_gripper
-                else BehaviorRobotGripper(self, hand="right", **kwargs)
+                else VladimirGripper(self, hand="right", **kwargs)
             )
 
         # Store reference between hands
@@ -189,18 +218,18 @@ class BehaviorRobot(ArticulatedObject):
             self.parts["left_hand"].set_other_hand(self.parts["right_hand"])
             self.parts["right_hand"].set_other_hand(self.parts["left_hand"])
         if self.use_body:
-            self.parts["body"] = BehaviorRobotBody(self, **kwargs)
+            self.parts["body"] = VladimirBody(self, **kwargs)
 
-        self.parts["eye"] = BehaviorRobotEye(self, **kwargs)
+        self.parts["eye"] = VladimirEye(self, **kwargs)
 
-        super(BehaviorRobot, self).__init__(
-            os.path.join(igibson.assets_path, "models/vr_agent/behavior_robot.urdf"),
+        super(Vladimir, self).__init__(
+            os.path.join(igibson.assets_path, "models/vr_agent/vladimir_revolute.urdf"),
             class_id=SemanticClass.ROBOTS,
             merge_fixed_links=False,
         )
 
     def load(self, simulator):
-        res = super(BehaviorRobot, self).load(simulator)
+        res = super(Vladimir, self).load(simulator)
 
         p.changeDynamics(self.get_body_id(), -1, mass=0.01, linearDamping=0, angularDamping=0)
 
@@ -424,7 +453,7 @@ class BehaviorRobot(ArticulatedObject):
             self.parts[part_name].load_part_state(part_state)
 
 
-class BehaviorRobotPart(object):
+class VladimirPart(object):
     def get_position_orientation(self):
         if self.link_id == -1:
             return self.parent.get_position_orientation()
@@ -501,7 +530,7 @@ class BehaviorRobotPart(object):
         )
 
 
-class BehaviorRobotBody(BehaviorRobotPart):
+class VladimirBody(VladimirPart):
     """
     A simple ellipsoid representing the robot's body.
     """
@@ -514,7 +543,7 @@ class BehaviorRobotBody(BehaviorRobotPart):
     def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
         # Set up class
         self.parent = parent
-        self.name = "BehaviorRobotBody_{}".format(self.parent.robot_num)
+        self.name = "VladimirBody_{}".format(self.parent.robot_num)
         self.category = "agent"
         self.model = self.name
         self.movement_cid = None
@@ -529,7 +558,7 @@ class BehaviorRobotBody(BehaviorRobotPart):
 
     def load(self, simulator):
         """
-        Overidden load that keeps BehaviorRobotBody awake upon initialization.
+        Overidden load that keeps VladimirBody awake upon initialization.
         """
         parent_bid = self.parent.get_body_id()
         self.link_id = link_from_name(parent_bid, "torso_parent")
@@ -546,7 +575,7 @@ class BehaviorRobotBody(BehaviorRobotPart):
 
     def activate_constraints(self):
         """
-        Initializes BehaviorRobotBody to start in a specific location.
+        Initializes VladimirBody to start in a specific location.
         """
         if self.movement_cid is not None:
             raise ValueError(
@@ -572,7 +601,7 @@ class BehaviorRobotBody(BehaviorRobotPart):
 
     def set_body_collision_filters(self):
         """
-        Sets BehaviorRobotBody's collision filters.
+        Sets VladimirBody's collision filters.
         """
         # Get body ids of the floor and carpets
         no_col_objs = (
@@ -601,7 +630,7 @@ class BehaviorRobotBody(BehaviorRobotPart):
 
     def update(self, action):
         """
-        Updates BehaviorRobotBody to new position and rotation, via constraints.
+        Updates VladimirBody to new position and rotation, via constraints.
         :param action: numpy array of actions.
         """
         delta_pos = action[:3]
@@ -633,9 +662,9 @@ class BehaviorRobotBody(BehaviorRobotPart):
         pass
 
 
-class BehaviorRobotHandBase(BehaviorRobotPart):
+class VladimirHandBase(VladimirPart):
     """
-    The base BehaviorRobotHand class from which other BehaviorRobotHand objects derive. It is intended
+    The base VladimirHand class from which other VladimirHand objects derive. It is intended
     that subclasses override most of the methods to implement their own functionality.
     """
 
@@ -655,8 +684,8 @@ class BehaviorRobotHandBase(BehaviorRobotPart):
         **kwargs
     ):
         """
-        Initializes BehaviorRobotHandBase.
-        s is the simulator, fpath is the filepath of the BehaviorRobotHandBase, hand is either left or right
+        Initializes VladimirHandBase.
+        s is the simulator, fpath is the filepath of the VladimirHandBase, hand is either left or right
         This is left on by default, and is only turned off in special circumstances, such as in state replay mode.
         The base rotation of the hand base is also supplied. Note that this init function must be followed by
         an import statement to actually load the hand into the simulator.
@@ -696,11 +725,11 @@ class BehaviorRobotHandBase(BehaviorRobotPart):
             self.ghost_hand_appear_threshold = ghost_hand_appear_threshold
 
         if self.hand not in ["left", "right"]:
-            raise ValueError("ERROR: BehaviorRobotHandBase can only accept left or right as a hand argument!")
+            raise ValueError("ERROR: VladimirHandBase can only accept left or right as a hand argument!")
 
     def load(self, simulator):
         """
-        Overidden load that keeps BehaviorRobotHandBase awake upon initialization.
+        Overidden load that keeps VladimirHandBase awake upon initialization.
         """
         parent_bid = self.parent.get_body_id()
         prefix = "lh_" if self.hand == "left" else "rh_"
@@ -713,7 +742,7 @@ class BehaviorRobotHandBase(BehaviorRobotPart):
     def set_other_hand(self, other_hand):
         """
         Sets reference to the other hand - eg. right hand if this is the left hand
-        :param other_hand: reference to another BehaviorRobotHandBase instance
+        :param other_hand: reference to another VladimirHandBase instance
         """
         self.other_hand = other_hand
 
@@ -725,9 +754,9 @@ class BehaviorRobotHandBase(BehaviorRobotPart):
             # change it to transparent for visualization
 
     def set_position_orientation(self, pos, orn):
-        # set position and orientation of BehaviorRobot body part and update
+        # set position and orientation of VladimirRobot body part and update
         # local transforms, note this function gets around state bound
-        super(BehaviorRobotHandBase, self).set_position_orientation(pos, orn)
+        super(VladimirHandBase, self).set_position_orientation(pos, orn)
         self.new_pos = pos
         self.new_orn = orn
         # Update pos and orientation of ghost hands as well
@@ -878,7 +907,7 @@ class BehaviorRobotHandBase(BehaviorRobotPart):
         self.trigger_fraction = dump["trigger_fraction"]
 
 
-class BehaviorRobotHand(BehaviorRobotHandBase):
+class VladimirHand(VladimirHandBase):
     """
     Represents the human hand used for VR programs and robotics applications.
     """
@@ -888,7 +917,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
         self.vr_hand_folder = os.path.join(assets_path, "models", "vr_agent", "vr_hand", hand_path)
         final_suffix = "{}_{}.urdf".format("vr_hand_vhacd", hand)
         base_rot_handed = p.getQuaternionFromEuler([0, 160, -80 if hand == "right" else 80])
-        super(BehaviorRobotHand, self).__init__(
+        super(VladimirHand, self).__init__(
             parent,
             os.path.join(self.vr_hand_folder, final_suffix),
             hand=hand,
@@ -910,7 +939,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
         self.movement_cid = None
 
     def load(self, simulator):
-        ids = super(BehaviorRobotHand, self).load(simulator)
+        ids = super(VladimirHand, self).load(simulator)
 
         parent_bid = self.parent.get_body_id()
         prefix = "lh_" if self.hand == "left" else "rh_"
@@ -945,7 +974,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
             [0.0, 0.0, 0.0, 1.0],
             self.get_orientation(),
         )
-        super(BehaviorRobotHand, self).activate_constraints()
+        super(VladimirHand, self).activate_constraints()
 
     def set_hand_coll_filter(self, target_id, enable):
         """
@@ -1268,14 +1297,14 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
 
     def update(self, action):
         """
-        Overriden update that can handle assisted grasping. AG is only enabled for BehaviorRobotHand and not BehaviorRobotGripper.
+        Overriden update that can handle assisted grasping. AG is only enabled for VladimirHand and not VladimirGripper.
         :param action: numpy array of actions.
         """
         # AG is only enable for the reduced joint hand
         if ASSIST_FRACTION > 0:
             self.handle_assisted_grasping(action)
 
-        super(BehaviorRobotHand, self).update(action)
+        super(VladimirHand, self).update(action)
 
         # Freeze joints if object is actively being assistively grasping
         if self.should_freeze_joints:
@@ -1308,7 +1337,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
             )
 
     def dump_part_state(self):
-        dump = super(BehaviorRobotHand, self).dump_part_state()
+        dump = super(VladimirHand, self).dump_part_state()
         dump.update(
             {
                 "object_in_hand": self.object_in_hand,
@@ -1323,7 +1352,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
         return dump
 
     def load_part_state(self, dump):
-        super(BehaviorRobotHand, self).load_part_state(dump)
+        super(VladimirHand, self).load_part_state(dump)
 
         # Cancel the previous AG if exists
         if self.obj_cid is not None:
@@ -1358,7 +1387,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
 
     def set_position_orientation(self, pos, orn):
         original_pos, original_orn = self.get_position_orientation()
-        super(BehaviorRobotHand, self).set_position_orientation(pos, orn)
+        super(VladimirHand, self).set_position_orientation(pos, orn)
         if self.object_in_hand is not None:
             inv_original_pos, inv_original_orn = p.invertTransform(original_pos, original_orn)
             local_pos, local_orn = p.multiplyTransforms(
@@ -1368,7 +1397,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
             p.resetBasePositionAndOrientation(self.object_in_hand, new_pos, new_orn)
 
 
-# class BehaviorRobotGripper(BehaviorRobotHandBase):
+# class VladimirGripper(VladimirHandBase):
 #     """
 #     Gripper utilizing the pybullet gripper URDF.
 #     """
@@ -1378,7 +1407,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
 #         vr_gripper_fpath = os.path.join(
 #             assets_path, "models", "vr_agent", "vr_gripper", gripper_path, "vr_gripper.urdf"
 #         )
-#         super(BehaviorRobotGripper, self).__init__(
+#         super(VladimirGripper, self).__init__(
 #             parent,
 #             vr_gripper_fpath,
 #             hand=hand,
@@ -1418,7 +1447,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
 #             childFramePosition=[0, 0, 0],
 #         )
 #         changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
-#         super(BehaviorRobotGripper, self).activate_constraints()
+#         super(VladimirGripper, self).activate_constraints()
 #
 #     def set_close_fraction(self, close_frac):
 #         # PyBullet recommmends doing this to keep the gripper centered/symmetric
@@ -1429,7 +1458,7 @@ class BehaviorRobotHand(BehaviorRobotHandBase):
 #         changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - close_frac, maxForce=3)
 
 
-class BehaviorRobotEye(BehaviorRobotPart):
+class VladimirEye(VladimirPart):
     """
     Class representing the eye of the robot - robots can use this eye's position
     to move the camera and render the same thing that the VR users see.
@@ -1439,7 +1468,7 @@ class BehaviorRobotEye(BehaviorRobotPart):
         # Set up class
         self.parent = parent
 
-        self.name = "BehaviorRobotEye_{}".format(self.parent.robot_num)
+        self.name = "VladimirEye_{}".format(self.parent.robot_num)
         self.category = "agent"
         self.new_pos = None
         self.new_orn = None
@@ -1473,7 +1502,7 @@ class BehaviorRobotEye(BehaviorRobotPart):
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
-        super(BehaviorRobotEye, self).set_position_orientation(pos, orn)
+        super(VladimirEye, self).set_position_orientation(pos, orn)
         self.new_pos = pos
         self.new_orn = orn
 
@@ -1514,7 +1543,7 @@ class BehaviorRobotEye(BehaviorRobotPart):
 
     def update(self, action):
         """
-        Updates BehaviorRobotEye to be where HMD is.
+        Updates VladimirEye to be where HMD is.
         :param action: numpy array of actions.
         """
         delta_pos = action[6:9]
