@@ -29,7 +29,7 @@ class ViewerVR:
         if not self.renderer:
             raise RuntimeError("Unable to render without a renderer attached to the ViewerVR!")
         if self.frame_save_path:
-            frame = cv2.cvtColor(self.renderer.render(return_frame=True)[0], cv2.COLOR_RGB2BGR)
+            frame = cv2.cvtColor(self.renderer.render(return_buffer=True)[0], cv2.COLOR_RGB2BGR)
             frame = (frame * 255).astype(np.uint8)
             # Save as a video
             if self.frame_save_path.endswith(".mp4"):

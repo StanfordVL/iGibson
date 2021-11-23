@@ -303,7 +303,7 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vrsys.updateVRData()
 
-    def render(self, return_frame=False):
+    def render(self, return_buffer=False):
         """
         Renders VR scenes.
         """
@@ -336,10 +336,7 @@ class MeshRendererVR(MeshRenderer):
             if self.vr_hud is not None:
                 self.vr_hud.refresh_text()
         else:
-            if return_frame:
-                return super().render(modes=("rgb"), return_buffer=return_frame, render_shadow_pass=True)
-            else:
-                super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=True)
+            return super().render(modes=("rgb"), return_buffer=return_buffer, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """
