@@ -9,6 +9,12 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
 
+class ViewerMode(IntEnum):
+    NAVIGATION = 0
+    MANIPULATION = 1
+    PLANNING = 2
+
+
 class SimulatorMode(IntEnum):
     GUI_INTERACTIVE = 1
     GUI_NON_INTERACTIVE = 2
