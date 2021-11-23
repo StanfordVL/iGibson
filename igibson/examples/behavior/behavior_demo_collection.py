@@ -204,10 +204,10 @@ def collect_demo(
                 vr_cs.refresh_condition(switch=False)
                 satisfied_predicates_cached = satisfied_predicates
 
-            if env.task.simulator.query_vr_event("right_controller", "overlay_toggle"):
+            if env.simulator.query_vr_event("right_controller", "overlay_toggle"):
                 vr_cs.refresh_condition()
 
-            if env.task.simulator.query_vr_event("left_controller", "overlay_toggle"):
+            if env.simulator.query_vr_event("left_controller", "overlay_toggle"):
                 vr_cs.toggle_show_state()
 
         if log_writer and not disable_save:
