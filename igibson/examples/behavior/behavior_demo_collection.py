@@ -176,6 +176,7 @@ def collect_demo(
 
     steps = 0
     steps_after_done = 0
+    env.simulator.step_vr_system()
     while True:
         if max_steps >= 0 and steps >= max_steps:
             break
