@@ -11,6 +11,7 @@ from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplex
 from igibson.objects.object_base import NonRobotObject
 from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.visual_marker import VisualMarker
+from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
@@ -414,6 +415,13 @@ class Simulator:
             elif type == p.GEOM_PLANE:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
                 dimensions = [100, 100, 0.01]
+
+            # Always load overwrite material
+            if overwrite_material is not None:
+                if isinstance(overwrite_material, RandomizedMaterial):
+                    self.renderer.load_randomized_material(overwrite_material, texture_scale)
+                elif isinstance(overwrite_material, ProceduralMaterial):
+                    self.renderer.load_procedural_material(overwrite_material, texture_scale)
 
             # Load the visual object if it doesn't already exist.
             if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
