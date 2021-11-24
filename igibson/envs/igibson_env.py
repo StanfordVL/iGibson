@@ -41,6 +41,7 @@ class iGibsonEnv(BaseEnv):
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
         rendering_settings=None,
+        vr_settings=None,
         device_idx=0,
         automatic_reset=False,
         use_pb_gui=False,
@@ -52,6 +53,7 @@ class iGibsonEnv(BaseEnv):
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param rendering_settings: rendering_settings to override the default one
+        :param vr_settings: vr_settings to override the default one
         :param device_idx: which GPU to run the simulation and rendering on
         :param automatic_reset: whether to automatic reset after an episode finishes
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
@@ -63,6 +65,7 @@ class iGibsonEnv(BaseEnv):
             action_timestep=action_timestep,
             physics_timestep=physics_timestep,
             rendering_settings=rendering_settings,
+            vr_settings=vr_settings,
             device_idx=device_idx,
             use_pb_gui=use_pb_gui,
         )
