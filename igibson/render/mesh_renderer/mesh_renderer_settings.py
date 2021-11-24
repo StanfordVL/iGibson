@@ -59,9 +59,9 @@ class MeshRendererSettings(object):
 
         if platform.system() == "Darwin":
             if optimized:
-                logging.warn("Darwin does not support optimized renderer, automatically disabling")
+                logging.warning("Darwin does not support optimized renderer, automatically disabling")
             if enable_shadow:
-                logging.warn("Darwin does not support shadow, automatically disabling")
+                logging.warning("Darwin does not support shadow, automatically disabling")
             self.optimized = False
             self.enable_shadow = False
         else:

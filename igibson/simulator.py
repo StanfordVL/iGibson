@@ -71,7 +71,6 @@ class Simulator:
         :param image_height: height of the camera image
         :param vertical_fov: vertical field of view of the camera image in degrees
         :param device_idx: GPU device index to run rendering on
-        disable it when you want to run multiple physics step but don't need to visualize each frame
         :param rendering_settings: settings to use for mesh renderer
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
@@ -99,9 +98,12 @@ class Simulator:
         plt = platform.system()
         if plt == "Darwin" and self.mode == SimulatorMode.GUI_INTERACTIVE and use_pb_gui:
             self.use_pb_gui = False  # for mac os disable pybullet rendering
-            logging.warn(
+            logging.warning(
                 "Simulator mode gui_interactive is not supported when `use_pb_gui` is true on macOS. Default to use_pb_gui = False."
             )
+        if plt != "Linux" and self.mode == SimulatorMode.HEADLESS_TENSOR:
+            self.mode = SimulatorMode.HEADLESS
+            logging.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
 
         self.frame_count = 0
         self.body_links_awake = 0

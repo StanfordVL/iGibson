@@ -1,6 +1,9 @@
+import logging
 import os
+import platform
 
 import numpy as np
+import torch
 
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
@@ -8,6 +11,9 @@ from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 
 
 def test_tensor_render_rendering():
+    if platform.system() != "Linux":
+        logging.warning("Skip test_tensor_render_rendering on non-Linux platforms.")
+        return
     w = 800
     h = 600
     setting = MeshRendererSettings(enable_pbr=False, msaa=True)
@@ -23,7 +29,7 @@ def test_tensor_render_rendering():
     img_np = tensor.flip(0).data.cpu().numpy().reshape(h, w, 4)
     img_np2 = tensor2.flip(0).data.cpu().numpy().reshape(h, w, 4)
 
-    print(np.mean(img_np.astype(np.float32), axis=(0, 1)))
+    # print(np.mean(img_np.astype(np.float32), axis=(0, 1)))
     # plt.subplot(1,2,1)
     # plt.imshow(img_np)
     # plt.subplot(1,2,2)

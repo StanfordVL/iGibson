@@ -1,4 +1,5 @@
 import logging
+import platform
 
 from igibson.render.mesh_renderer.get_available_devices import get_cuda_device
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
@@ -22,6 +23,8 @@ try:
             rendering_settings=MeshRendererSettings(),
             simulator=None,
         ):
+            if platform.system() != "Linux":
+                raise Exception("Rendering to pytorch tensor is only available on Linux.")
             super(MeshRendererG2G, self).__init__(
                 width, height, vertical_fov, device_idx, rendering_settings, simulator
             )
@@ -109,5 +112,5 @@ try:
 
 
 except ImportError:
-    print("torch is not available, falling back to rendering to memory(instead of tensor)")
+    logging.warning("torch is not available, falling back to rendering to memory (instead of tensor)")
     MeshRendererG2G = MeshRenderer

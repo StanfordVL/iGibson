@@ -30,15 +30,18 @@ def test_render_pbr():
 
     renderer.set_camera([1.5, 1.5, 1.5], [0, 0, 0], [0, 0, 1], cache=True)
     frame = renderer.render(modes=("rgb", "normal"))
-    Image.fromarray((255 * np.concatenate(frame, axis=1)[:, :, :3]).astype(np.uint8)).save("test_render.png")
+    Image.fromarray((255 * np.concatenate(frame, axis=1)[:, :, :3]).astype(np.uint8)).save(
+        os.path.join(os.path.dirname(__file__), "test_render.png")
+    )
 
     renderer.set_camera([1.49, 1.49, 1.49], [0, 0.05, 0.05], [0, 0, 1], cache=True)  # simulate camera movement
     frame = renderer.render(modes=("optical_flow", "scene_flow"))
-    plt.subplot(1, 2, 1)
-    plt.imshow(np.abs(frame[0][:, :, :3]) / np.max(np.abs(frame[0][:, :, :3])))
-    plt.subplot(1, 2, 2)
-    plt.imshow(np.abs(frame[1][:, :, :3]) / np.max(np.abs(frame[1][:, :, :3])))
-    plt.savefig("test_render_flow.png")
+    plt.figure()
+    ax1 = plt.subplot(1, 2, 1)
+    ax1.imshow(np.abs(frame[0][:, :, :3]) / np.max(np.abs(frame[0][:, :, :3])))
+    ax2 = plt.subplot(1, 2, 2)
+    ax2.imshow(np.abs(frame[1][:, :, :3]) / np.max(np.abs(frame[1][:, :, :3])))
+    plt.savefig(os.path.join(os.path.dirname(__file__), "test_render_flow.png"))
     renderer.release()
 
 
@@ -67,13 +70,16 @@ def test_render_pbr_optimized():
     renderer.set_camera([1.5, 1.5, 1.5], [0, 0, 0], [0, 0, 1], cache=True)
     frame = renderer.render(modes=("rgb", "normal"))
 
-    Image.fromarray((255 * np.concatenate(frame, axis=1)[:, :, :3]).astype(np.uint8)).save("test_render_optimized.png")
+    Image.fromarray((255 * np.concatenate(frame, axis=1)[:, :, :3]).astype(np.uint8)).save(
+        os.path.join(os.path.dirname(__file__), "test_render_optimized.png")
+    )
     renderer.set_camera([1.49, 1.49, 1.49], [0, 0.05, 0.05], [0, 0, 1], cache=True)  # simulate camera movement
     frame = renderer.render(modes=("optical_flow", "scene_flow"))
-    plt.subplot(1, 2, 1)
-    plt.imshow(np.abs(frame[0][:, :, :3]) / np.max(np.abs(frame[0][:, :, :3])))
-    plt.subplot(1, 2, 2)
-    plt.imshow(np.abs(frame[1][:, :, :3]) / np.max(np.abs(frame[1][:, :, :3])))
-    plt.savefig("test_render_optimized_flow.png")
+    plt.figure()
+    ax1 = plt.subplot(1, 2, 1)
+    ax1.imshow(np.abs(frame[0][:, :, :3]) / np.max(np.abs(frame[0][:, :, :3])))
+    ax2 = plt.subplot(1, 2, 2)
+    ax2.imshow(np.abs(frame[1][:, :, :3]) / np.max(np.abs(frame[1][:, :, :3])))
+    plt.savefig(os.path.join(os.path.dirname(__file__), "test_render_optimized_flow.png"))
 
     renderer.release()
