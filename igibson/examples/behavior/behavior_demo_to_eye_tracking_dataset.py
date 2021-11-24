@@ -77,12 +77,10 @@ class EyeTrackingExtractor(object):
             self.directly_attended[frame_count] = seg[gaze2D]
 
             # Get the approximately-attended objects.
-            radius = 4 * img_w // 120  # 120: FOV
-            row_min, row_max = (
-                gaze2D[0] - radius,
-                gaze2D[0] + radius,
-            )
-            col_min, col_max = gaze2D[1] - radius, gaze2D[1] + radius
+            radius_r = 3 * img_w // 90  # 90: FOV
+            row_min, row_max = (gaze2D[0] - radius_r, gaze2D[0] + radius_r)
+            radius_c = 3 * img_h // 90  # 90: FOV
+            col_min, col_max = (gaze2D[1] - radius_c, gaze2D[1] + radius_c)
             sub_seg = seg[row_min:row_max, col_min:col_max]
             attended_ids = igbhvr_act_inst.simulator.renderer.get_pb_ids_for_instance_ids(sub_seg)
             attended_ids = list(set(np.unique(attended_ids)) - {-1})
