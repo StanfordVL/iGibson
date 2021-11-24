@@ -142,6 +142,9 @@ class BehaviorTask(BaseTask):
             restoreState(self.initial_state)
             load_internal_states(env.simulator, self.state_history[self.initial_state])
 
+    def reset_agent(self, env):
+        return
+
     def reset_variables(self, env):
         if self.log_writer is not None:
             self.log_writer.end_log_session()
