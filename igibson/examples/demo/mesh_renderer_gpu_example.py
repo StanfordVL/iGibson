@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 
 import matplotlib.pyplot as plt
@@ -10,6 +11,10 @@ from igibson.utils.assets_utils import get_scene_path
 
 
 def main():
+    if platform.system() != "Linux":
+        print("Rendering to pytorch tensor is only available on Linux.")
+        exit(1)
+
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:

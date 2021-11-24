@@ -26,7 +26,7 @@ def test_occupancy_grid():
     assert np.sum(ts[0]["occupancy_grid"] == 1) > 0
     plt.imshow(ts[0]["occupancy_grid"][:, :, 0])
     plt.colorbar()
-    plt.savefig("occupancy_grid.png")
+    plt.savefig(os.path.join(os.path.dirname(__file__), "occupancy_grid.png"))
     nav_env.clean()
 
 
@@ -38,7 +38,7 @@ def test_base_planning():
 
     nav_env = iGibsonEnv(config_file=config_filename, mode="headless")
     motion_planner = MotionPlanningWrapper(nav_env)
-    state = nav_env.reset()
+    nav_env.reset()
     nav_env.robots[0].set_position_orientation([0, 0, 0], [0, 0, 0, 1])
     nav_env.simulator.step()
     plan = None
