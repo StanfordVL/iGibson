@@ -154,8 +154,6 @@ def collect_demo(
 
     if not no_vr:
         env.simulator.register_main_vr_robot(vr_agent)
-
-    if not no_vr:
         vr_cs = VrConditionSwitcher(env.simulator, env.task.show_instruction, env.task.iterate_instruction)
 
     log_writer = None
