@@ -35,16 +35,16 @@ from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
 THRESHOLD_EPSILON = 0.001
 
 # Part offset parameters
-NECK_BASE_REL_POS_UNTRACKED = [-0.15, 0, 0.3]
-RIGHT_SHOULDER_REL_POS_UNTRACKED = [-0.15, -0.15, 0.3]
-LEFT_SHOULDER_REL_POS_UNTRACKED = [-0.15, 0.15, 0.3]
+NECK_BASE_REL_POS_UNTRACKED = [-0.15, 0, -0.15]
+RIGHT_SHOULDER_REL_POS_UNTRACKED = [-0.15, -0.15, -0.15]
+LEFT_SHOULDER_REL_POS_UNTRACKED = [-0.15, 0.15, -0.15]
 EYE_LOC_POSE_UNTRACKED = ([0.05, 0, 0], [0, 0, 0, 1])
 RIGHT_HAND_LOC_POSE_UNTRACKED = ([0.1, -0.12, -0.4], [-0.7, 0.7, 0.0, 0.15])
 LEFT_HAND_LOC_POSE_UNTRACKED = ([0.1, 0.12, -0.4], [0.7, 0.7, 0.0, 0.15])
 
-NECK_BASE_REL_POS_TRACKED = [-0.15, 0, -0.15]
-RIGHT_SHOULDER_REL_POS_TRACKED = [-0.15, -0.15, -0.15]
-LEFT_SHOULDER_REL_POS_TRACKED = [-0.15, 0.15, -0.15]
+NECK_BASE_REL_POS_TRACKED = [-0.15, 0, 0.3]
+RIGHT_SHOULDER_REL_POS_TRACKED = [-0.15, -0.15, 0.3]
+LEFT_SHOULDER_REL_POS_TRACKED = [-0.15, 0.15, 0.3]
 EYE_LOC_POSE_TRACKED = ([0.05, 0, 0.4], [0, 0, 0, 1])
 RIGHT_HAND_LOC_POSE_TRACKED = ([0.1, -0.12, 0.05], [-0.7, 0.7, 0.0, 0.15])
 LEFT_HAND_LOC_POSE_TRACKED = ([0.1, 0.12, 0.05], [0.7, 0.7, 0.0, 0.15])
@@ -690,7 +690,7 @@ class BRHandBase(ArticulatedObject):
         clipped_delta_orn = clipped_delta_orn.tolist()
 
         # Constraint position so hand doesn't go further than hand_thresh from corresponding shoulder
-        if not self.parent.use_tracked_body:
+        if self.parent.use_tracked_body:
             left_shoulder_rel_pos = LEFT_SHOULDER_REL_POS_TRACKED
             right_shoulder_rel_pos = RIGHT_SHOULDER_REL_POS_TRACKED
         else:
@@ -1429,10 +1429,11 @@ class BREye(ArticulatedObject):
         clipped_delta_orn = np.clip(delta_orn, -HEAD_ANGULAR_VELOCITY, HEAD_ANGULAR_VELOCITY)
         clipped_delta_orn = clipped_delta_orn.tolist()
 
-        if not self.parent.use_tracked_body:
+        if self.parent.use_tracked_body:
             neck_base_rel_pos = NECK_BASE_REL_POS_TRACKED
         else:
             neck_base_rel_pos = NECK_BASE_REL_POS_UNTRACKED
+
         neck_base_point = np.array(neck_base_rel_pos)
         current_local_pos = np.array(self.get_local_position_orientation()[0])
         desired_local_pos = current_local_pos + np.array(clipped_delta_pos)
