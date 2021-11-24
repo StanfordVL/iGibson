@@ -21,9 +21,9 @@ class KinematicDisarrangement(MetricBase):
         self.delta_obj_disp_dict = {}
         self.int_obj_disp_dict = {}
 
-    def update_state_cache(self, task):
+    def update_state_cache(self, env):
         state_cache = {}
-        for obj_id, obj in task.scene.objects_by_name.items():
+        for obj_id, obj in env.scene.objects_by_name.items():
             if obj.category == "agent":
                 continue
             if type(obj) == ObjectMultiplexer:
@@ -87,9 +87,9 @@ class KinematicDisarrangement(MetricBase):
             raise Exception
         return obj_disarrangement
 
-    def step_callback(self, igbhvr_act_inst, _):
+    def step_callback(self, env, _):
         total_disarrangement = 0
-        self.cur_state_cache = self.update_state_cache(igbhvr_act_inst)
+        self.cur_state_cache = self.update_state_cache(env)
 
         if not self.initialized:
             self.prev_state_cache = copy.deepcopy(self.cur_state_cache)
@@ -144,7 +144,7 @@ class LogicalDisarrangement(MetricBase):
         self.next_state_cache = {}
 
     @staticmethod
-    def cache_single_object(obj_id, obj, room_floors, task):
+    def cache_single_object(obj_id, obj, room_floors, env):
         obj_cache = {}
         for state_class, state in obj.states.items():
             if not isinstance(state, BooleanState):
@@ -160,7 +160,7 @@ class LogicalDisarrangement(MetricBase):
                 obj_cache[state_class] = relational_state_cache
             else:
                 relational_state_cache = {}
-                for target_obj_id, target_obj in task.scene.objects_by_name.items():
+                for target_obj_id, target_obj in env.scene.objects_by_name.items():
                     if obj_id == target_obj_id or target_obj.category == "agent":
                         continue
                     relational_state_cache[target_obj_id] = False
@@ -173,36 +173,36 @@ class LogicalDisarrangement(MetricBase):
                 obj_cache[state_class] = relational_state_cache
         return obj_cache
 
-    def create_object_logical_state_cache(self, task):
+    def create_object_logical_state_cache(self, env):
         room_floors = {
             "room_floor_"
             + room_inst: RoomFloor(
                 category="room_floor",
                 name="room_floor_" + room_inst,
-                scene=task.scene,
+                scene=env.scene,
                 room_instance=room_inst,
-                floor_obj=task.scene.objects_by_name["floors"],
+                floor_obj=env.scene.objects_by_name["floors"],
             )
-            for room_inst in task.scene.room_ins_name_to_ins_id.keys()
+            for room_inst in env.scene.room_ins_name_to_ins_id.keys()
         }
 
         state_cache = {}
-        for obj_id, obj in task.scene.objects_by_name.items():
+        for obj_id, obj in env.scene.objects_by_name.items():
             if obj.category == "agent":
                 continue
             state_cache[obj_id] = {}
             if type(obj) == ObjectMultiplexer:
                 if obj.current_index == 0:
-                    cache_base = self.cache_single_object(obj_id, obj._multiplexed_objects[0], room_floors, task)
+                    cache_base = self.cache_single_object(obj_id, obj._multiplexed_objects[0], room_floors, env)
                     cache_part_1 = None
                     cache_part_2 = None
                 else:
                     cache_base = None
                     cache_part_1 = self.cache_single_object(
-                        obj_id, obj._multiplexed_objects[1].objects[0], room_floors, task
+                        obj_id, obj._multiplexed_objects[1].objects[0], room_floors, env.task
                     )
                     cache_part_2 = self.cache_single_object(
-                        obj_id, obj._multiplexed_objects[1].objects[1], room_floors, task
+                        obj_id, obj._multiplexed_objects[1].objects[1], room_floors, env.task
                     )
                 state_cache[obj_id] = {
                     "base_states": cache_base,
@@ -211,7 +211,7 @@ class LogicalDisarrangement(MetricBase):
                     "type": "multiplexer",
                 }
             else:
-                cache_base = self.cache_single_object(obj_id, obj, room_floors, task)
+                cache_base = self.cache_single_object(obj_id, obj, room_floors, env.task)
                 state_cache[obj_id] = {
                     "base_states": cache_base,
                     "type": "standard",
@@ -328,25 +328,25 @@ class LogicalDisarrangement(MetricBase):
             "total_states": total_states,
         }
 
-    def step_callback(self, igbhvr_act_inst, _):
-        if not self.initialized and igbhvr_act_inst.simulator.frame_count == SIMULATOR_SETTLE_TIME:
-            self.initial_state_cache = self.create_object_logical_state_cache(igbhvr_act_inst)
+    def step_callback(self, env, _):
+        if not self.initialized and env.simulator.frame_count == SIMULATOR_SETTLE_TIME:
+            self.initial_state_cache = self.create_object_logical_state_cache(env)
             self.initialized = True
         else:
             return
 
-    def end_callback(self, igbhvr_act_inst, _):
+    def end_callback(self, env, _):
         """
         When pybullet sleeps objects, getContactPoints is no longer refreshed
         Setting collision groups on the agent (which happens when users first activate the agent)
         Wipes active collision groups. To get the logical disarrangement, we must wake up all objects in the scene
         This can only be done at the end of the scene so as to not affect determinism.
         """
-        for obj in igbhvr_act_inst.scene.objects_by_name.values():
+        for obj in env.scene.objects_by_name.values():
             obj.force_wakeup()
-        igbhvr_act_inst.simulator.step()
+        env.simulator.step()
 
-        self.cur_state_cache = self.create_object_logical_state_cache(igbhvr_act_inst)
+        self.cur_state_cache = self.create_object_logical_state_cache(env)
 
         self.relative_logical_disarrangement = self.compute_logical_disarrangement(
             self.initial_state_cache, self.cur_state_cache

@@ -11,12 +11,13 @@ import bddl
 import numpy as np
 
 import igibson
-from igibson.activity.activity_base import iGBEHAVIORActivityInstance
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher, VrSettings
 from igibson.simulator import Simulator
 from igibson.simulator_vr import SimulatorVR
 from igibson.utils.ig_logging import IGLogWriter
+from igibson.utils.utils import parse_config
 
 POST_TASK_STEPS = 200
 PHYSICS_WARMING_STEPS = 200
@@ -73,12 +74,16 @@ def parse_args():
         "--no_vr", action="store_true", help="Whether to turn off VR recording and save random actions."
     )
     parser.add_argument("--max_steps", type=int, default=-1, help="Maximum number of steps to record before stopping.")
+    parser.add_argument(
+        "--config",
+        help="which config file to use [default: use yaml files in examples/configs]",
+        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    bddl.set_backend("iGibson")
     collect_demo(
         args.task,
         args.task_id,
@@ -90,6 +95,7 @@ def main():
         args.no_vr,
         args.disable_scene_cache,
         args.profile,
+        args.config,
     )
 
 
@@ -104,6 +110,7 @@ def collect_demo(
     no_vr=False,
     disable_scene_cache=False,
     profile=False,
+    config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
 ):
     # HDR files for PBR rendering
     hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
@@ -127,41 +134,28 @@ def collect_demo(
         light_dimming_factor=1.0,
     )
 
-    # VR system settings
-    if no_vr:
-        s = Simulator(
-            mode="headless",
-            rendering_settings=vr_rendering_settings,
-            physics_timestep=1 / 300.0,
-            render_timestep=1 / 30.0,
-        )
-    else:
-        s = SimulatorVR(
-            rendering_settings=vr_rendering_settings,
-            vr_settings=VrSettings(use_vr=True),
-            physics_timestep=1 / 300.0,
-            render_timestep=1 / 30.0,
-        )
-    igbhvr_act_inst = iGBEHAVIORActivityInstance(task, task_id)
-
-    scene_kwargs = None
-    online_sampling = True
-
-    if not disable_scene_cache:
-        scene_kwargs = {
-            "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene, task, task_id, instance_id),
-        }
-        online_sampling = False
-
-    igbhvr_act_inst.initialize_simulator(
-        simulator=s, scene_id=scene, scene_kwargs=scene_kwargs, load_clutter=True, online_sampling=online_sampling
+    config = parse_config(config_file)
+    config["task"] = task
+    config["task_id"] = task_id
+    config["scene_id"] = scene
+    config["instance_id"] = instance_id
+    config["online_sampling"] = disable_scene_cache
+    config["load_clutter"] = True
+    env = iGibsonEnv(
+        config_file=config,
+        mode="headless" if no_vr else "vr",
+        action_timestep=1 / 30.0,
+        physics_timestep=1 / 300.0,
+        rendering_settings=vr_rendering_settings,
+        use_pb_gui=False,
     )
-    vr_agent = igbhvr_act_inst.simulator.robots[0]
+    env.reset()
+    vr_agent = env.robots[0]
 
     if not no_vr:
-        vr_cs = VrConditionSwitcher(
-            igbhvr_act_inst.simulator, igbhvr_act_inst.show_instruction, igbhvr_act_inst.iterate_instruction
-        )
+        env.simulator.register_main_vr_robot(vr_agent)
+        vr_cs = VrConditionSwitcher(env.simulator, env.task.show_instruction, env.task.iterate_instruction)
+        env.simulator.step_vr_system()
 
     log_writer = None
     if not disable_save:
@@ -169,10 +163,10 @@ def collect_demo(
         if vr_log_path is None:
             vr_log_path = "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, instance_id, timestamp)
         log_writer = IGLogWriter(
-            s,
+            env.simulator,
             log_filepath=vr_log_path,
-            task=igbhvr_act_inst,
-            store_vr=False if no_vr else True,
+            task=env.task,
+            store_vr=not no_vr,
             vr_robot=vr_agent,
             profiling_mode=profile,
             filter_objects=True,
@@ -181,15 +175,19 @@ def collect_demo(
         log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
     satisfied_predicates_cached = {}
-    post_task_steps = copy.deepcopy(POST_TASK_STEPS)
-    physics_warming_steps = copy.deepcopy(PHYSICS_WARMING_STEPS)
 
     steps = 0
-    while max_steps < 0 or steps < max_steps:
-        igbhvr_act_inst.simulator.step()
-        task_done, satisfied_predicates = igbhvr_act_inst.check_success()
+    steps_after_done = 0
+
+    while True:
+        if max_steps >= 0 and steps >= max_steps:
+            break
+
+        if steps_after_done >= POST_TASK_STEPS:
+            break
 
         if no_vr:
+            # Use the first 2 steps to activate BehaviorRobot
             if steps < 2:
                 action = np.zeros((28,))
                 action[19] = 1
@@ -197,37 +195,39 @@ def collect_demo(
             else:
                 action = np.random.uniform(-0.01, 0.01, size=(28,))
         else:
-            action = igbhvr_act_inst.simulator.gen_vr_robot_action()
-            if steps < physics_warming_steps:
+            action = env.simulator.gen_vr_robot_action()
+            if steps < PHYSICS_WARMING_STEPS:
                 action = np.zeros_like(action)
 
-        vr_agent.apply_action(action)
+        env.step(action)
+        task_done, satisfied_predicates = env.task.check_success()
 
         if not no_vr:
             if satisfied_predicates != satisfied_predicates_cached:
                 vr_cs.refresh_condition(switch=False)
                 satisfied_predicates_cached = satisfied_predicates
 
-            if igbhvr_act_inst.simulator.query_vr_event("right_controller", "overlay_toggle"):
+            if env.simulator.query_vr_event("right_controller", "overlay_toggle"):
                 vr_cs.refresh_condition()
 
-            if igbhvr_act_inst.simulator.query_vr_event("left_controller", "overlay_toggle"):
+            if env.simulator.query_vr_event("left_controller", "overlay_toggle"):
                 vr_cs.toggle_show_state()
 
         if log_writer and not disable_save:
             log_writer.process_frame()
 
         if task_done:
-            post_task_steps -= 1
-            if post_task_steps == 0:
-                break
+            steps_after_done += 1
+        else:
+            # If the task failed again after being successful (e.g. the user knocks off something), reset the counter
+            steps_after_done = 0
 
         steps += 1
 
     if log_writer and not disable_save:
         log_writer.end_log_session()
 
-    s.disconnect()
+    env.close()
 
 
 if __name__ == "__main__":

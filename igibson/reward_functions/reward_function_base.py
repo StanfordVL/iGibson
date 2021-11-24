@@ -32,3 +32,12 @@ class BaseRewardFunction:
         :return: reward, info
         """
         raise NotImplementedError()
+
+    def reset(self, task, env):
+        """
+        Reward function-specific reset
+
+        :param task: task instance
+        :param env: environment instance
+        """
+        return

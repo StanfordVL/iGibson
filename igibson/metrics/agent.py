@@ -26,8 +26,8 @@ class BehaviorRobotMetric(MetricBase):
 
         self.clip = 0.2
 
-    def step_callback(self, igbhvr_act_inst, _):
-        robot = igbhvr_act_inst.simulator.robots[0]
+    def step_callback(self, env, _):
+        robot = env.robots[0]
         agent_work = {part: 0 for part in ["left_hand", "right_hand", "body"]}
         agent_distance = {part: 0 for part in ["left_hand", "right_hand", "body"]}
 
@@ -133,8 +133,8 @@ class FetchRobotMetric(MetricBase):
 
         self.clip = 0.2
 
-    def step_callback(self, igbhvr_act_inst, _):
-        robot = igbhvr_act_inst.simulator.robots[0]
+    def step_callback(self, env, _):
+        robot = env.robots[0]
         agent_distance = {part: 0 for part in self.agent_pos}
 
         self.next_state_cache = {
