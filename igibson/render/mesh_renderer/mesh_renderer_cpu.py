@@ -13,7 +13,7 @@ import igibson.render.mesh_renderer as mesh_renderer
 from igibson.render.mesh_renderer import tinyobjloader
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
 from igibson.render.mesh_renderer.instances import InstanceGroup
-from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial, RandomizedMaterial
+from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.text import Text, TextManager
 from igibson.render.mesh_renderer.visual_object import VisualObject
@@ -518,11 +518,6 @@ class MeshRenderer(object):
 
         # set the default values of variable before being modified later.
         num_existing_mats = len(self.material_idx_to_material_instance_mapping)  # Number of current Material elements
-        if overwrite_material is not None:
-            if isinstance(overwrite_material, RandomizedMaterial):
-                self.load_randomized_material(overwrite_material, texture_scale)
-            elif isinstance(overwrite_material, ProceduralMaterial):
-                self.load_procedural_material(overwrite_material, texture_scale)
 
         # No MTL is supplied, or MTL is empty
         if len(materials) == 0:
