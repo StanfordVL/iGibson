@@ -11,6 +11,7 @@ from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplex
 from igibson.objects.object_base import NonRobotObject
 from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.visual_marker import VisualMarker
+from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
@@ -65,7 +66,7 @@ class Simulator:
         :param solver_iterations: number of solver iterations to feed into pybullet, can be reduced to increase speed.
             pybullet default value is 50.
         :param use_variable_step_num: whether to use a fixed (1) or variable physics step number
-        :param mode: choose mode from gui_interactive, gui_non_interactive, headless, headless_tensor
+        :param mode: choose mode from headless, headless_tensor, gui_interactive, gui_non_interactive
         :param image_width: width of the camera image
         :param image_height: height of the camera image
         :param vertical_fov: vertical field of view of the camera image in degrees
@@ -175,7 +176,7 @@ class Simulator:
 
     def initialize_renderer(self):
         self.visual_objects = {}
-        if self.mode == SimulatorMode.HEADLESS_TORCH:
+        if self.mode == SimulatorMode.HEADLESS_TENSOR:
             self.renderer = MeshRendererG2G(
                 width=self.image_width,
                 height=self.image_height,
@@ -195,7 +196,7 @@ class Simulator:
             )
         else:
             raise Exception(
-                "The available render modes are headless_torch, gui_interactive, gui_non_interactive, and headless"
+                "The available render modes are headless, headless_tensor, gui_interactive, and gui_non_interactive."
             )
 
         if self.mode == SimulatorMode.GUI_NON_INTERACTIVE:
@@ -339,6 +340,13 @@ class Simulator:
             elif type == p.GEOM_PLANE:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
                 dimensions = [100, 100, 0.01]
+
+            # Always load overwrite material
+            if overwrite_material is not None:
+                if isinstance(overwrite_material, RandomizedMaterial):
+                    self.renderer.load_randomized_material(overwrite_material, texture_scale)
+                elif isinstance(overwrite_material, ProceduralMaterial):
+                    self.renderer.load_procedural_material(overwrite_material, texture_scale)
 
             # Load the visual object if it doesn't already exist.
             if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
