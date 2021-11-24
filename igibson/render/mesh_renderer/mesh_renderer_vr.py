@@ -2,6 +2,7 @@ import os
 import time
 
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
+from igibson.utils.constants import AVAILABLE_MODALITIES
 from igibson.utils.utils import dump_config, parse_config, parse_str_config
 
 
