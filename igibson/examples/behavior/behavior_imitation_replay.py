@@ -24,7 +24,7 @@ from igibson.sensors.vision_sensor import VisionSensor
 from igibson.simulator import Simulator
 from igibson.utils.git_utils import project_git_info
 from igibson.utils.ig_logging import IGLogReader
-from igibson.utils.utils import parse_str_config
+from igibson.utils.utils import parse_config, parse_str_config
 
 
 def save_episode(in_log_path, dataset_metric):
@@ -70,6 +70,12 @@ def generate_imitation_dataset(
     logger.disabled = True
 
     demo_list = pd.read_csv(log_manifest)
+
+    config = parse_config(config_file)
+    # should NOT activate behavior robot to be consistent with VR demo collection setup
+    config["should_activate_behavior_robot"] = False
+    # highlight task relevant objects because the observation includes "highlight"
+    config["should_highlight_task_relevant_objs"] = True
 
     for idx, demo in enumerate(demo_list["demos"]):
         if "replay" in demo:
@@ -123,7 +129,7 @@ def parse_args():
     parser.add_argument(
         "--config",
         help="which config file to use [default: use yaml files in examples/configs]",
-        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
+        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
     )
 
     return parser.parse_args()

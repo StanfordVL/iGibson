@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+        default=os.path.join(igibson.example_config_path, "behavior_full_observability.yaml"),
         help="which config file to use [default: use yaml files in examples/configs]",
     )
     parser.add_argument(
