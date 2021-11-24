@@ -3,6 +3,7 @@ import json
 import logging
 import os
 
+import bddl
 import pybullet as p
 from IPython import embed
 

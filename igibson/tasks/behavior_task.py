@@ -77,11 +77,10 @@ class BehaviorTask(BaseTask):
         self.initialized, self.feedback = self.initialize(env)
         self.state_history = {}
         self.initial_state = self.save_scene(env)
-        self.should_activate_behavior_robot = self.config.get("should_activate_behavior_robot", True)
-        self.should_highlight_task_relevant_objs = self.config.get("should_highlight_task_relevant_objs", True)
-        self.behavior_robot_activated = False
-        if self.should_highlight_task_relevant_objs:
+        if self.config.get("should_highlight_task_relevant_objs", True):
             self.highlight_task_relevant_objs(env)
+        if self.config.get("should_activate_behavior_robot", True):
+            env.robots[0].activate()
 
         self.episode_save_dir = self.config.get("episode_save_dir", None)
         if self.episode_save_dir is not None:
@@ -142,15 +141,6 @@ class BehaviorTask(BaseTask):
         else:
             restoreState(self.initial_state)
             load_internal_states(env.simulator, self.state_history[self.initial_state])
-
-    def reset_agent(self, env):
-        if (
-            isinstance(env.robots[0], BehaviorRobot)
-            and not self.behavior_robot_activated
-            and self.should_activate_behavior_robot
-        ):
-            env.robots[0].activate()
-            self.behavior_robot_activated = True
 
     def reset_variables(self, env):
         if self.log_writer is not None:
