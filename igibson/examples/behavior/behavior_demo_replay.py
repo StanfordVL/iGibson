@@ -202,7 +202,7 @@ def replay_demo(
     log_writer = None
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        if out_log_path == None:
+        if out_log_path is None:
             out_log_path = "{}_{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, instance_id, timestamp)
 
         log_writer = IGLogWriter(

@@ -77,8 +77,10 @@ class BehaviorTask(BaseTask):
         self.initialized, self.feedback = self.initialize(env)
         self.state_history = {}
         self.initial_state = self.save_scene(env)
+        self.should_activate_behavior_robot = self.config.get("should_activate_behavior_robot", True)
+        self.should_highlight_task_relevant_objs = self.config.get("should_highlight_task_relevant_objs", True)
         self.behavior_robot_activated = False
-        if env.simulator.mode != SimulatorMode.VR:
+        if self.should_highlight_task_relevant_objs:
             self.highlight_task_relevant_objs(env)
 
         self.episode_save_dir = self.config.get("episode_save_dir", None)
@@ -145,7 +147,7 @@ class BehaviorTask(BaseTask):
         if (
             isinstance(env.robots[0], BehaviorRobot)
             and not self.behavior_robot_activated
-            and env.simulator.mode != SimulatorMode.VR
+            and self.should_activate_behavior_robot
         ):
             env.robots[0].activate()
             self.behavior_robot_activated = True
