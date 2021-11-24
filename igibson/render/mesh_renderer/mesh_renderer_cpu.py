@@ -48,7 +48,7 @@ class MeshRenderer(object):
         :param vertical_fov: vertical field of view for the renderer
         :param device_idx: which GPU to run the renderer on
         :param rendering_settings: rendering settings
-        :param simulator: Simulator object.
+        :param simulator: simulator object
         """
         self.simulator = simulator
         self.rendering_settings = rendering_settings
@@ -179,100 +179,18 @@ class MeshRenderer(object):
             exit(1)
         else:
             if self.platform == "Darwin":
-                self.shaderProgram = self.r.compile_shader_meshrenderer(
-                    "".join(
-                        open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "vert.shader")
-                        ).readlines()
-                    ),
-                    "".join(
-                        open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "frag.shader")
-                        ).readlines()
-                    ),
-                )
-                self.textShaderProgram = self.r.compile_shader_meshrenderer(
-                    "".join(
-                        open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "text_vert.shader")
-                        ).readlines()
-                    ),
-                    "".join(
-                        open(
-                            os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "text_frag.shader")
-                        ).readlines()
-                    ),
-                )
+                self.shaderProgram = self.get_shader_program("410", "vert.shader", "frag.shader")
+                self.textShaderProgram = self.get_shader_program("410", "text_vert.shader", "text_frag.shader")
             else:
                 if self.optimized:
-                    self.shaderProgram = self.r.compile_shader_meshrenderer(
-                        "".join(
-                            open(
-                                os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__),
-                                    "shaders",
-                                    glsl_version,
-                                    "optimized_vert.shader",
-                                )
-                            ).readlines()
-                        ),
-                        "".join(
-                            open(
-                                os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__),
-                                    "shaders",
-                                    glsl_version,
-                                    "optimized_frag.shader",
-                                )
-                            ).readlines()
-                        ),
+                    self.shaderProgram = self.get_shader_program(
+                        glsl_version, "optimized_vert.shader", "optimized_frag.shader"
                     )
                 else:
-                    self.shaderProgram = self.r.compile_shader_meshrenderer(
-                        "".join(
-                            open(
-                                os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "vert.shader"
-                                )
-                            ).readlines()
-                        ),
-                        "".join(
-                            open(
-                                os.path.join(
-                                    os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "frag.shader"
-                                )
-                            ).readlines()
-                        ),
-                    )
-                self.textShaderProgram = self.r.compile_shader_meshrenderer(
-                    "".join(
-                        open(
-                            os.path.join(
-                                os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "text_vert.shader"
-                            )
-                        ).readlines()
-                    ),
-                    "".join(
-                        open(
-                            os.path.join(
-                                os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, "text_frag.shader"
-                            )
-                        ).readlines()
-                    ),
-                )
+                    self.shaderProgram = self.get_shader_program(glsl_version, "vert.shader", "frag.shader")
+                self.textShaderProgram = self.get_shader_program(glsl_version, "text_vert.shader", "text_frag.shader")
 
-            self.skyboxShaderProgram = self.r.compile_shader_meshrenderer(
-                "".join(
-                    open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "skybox_vs.glsl")
-                    ).readlines()
-                ),
-                "".join(
-                    open(
-                        os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", "410", "skybox_fs.glsl")
-                    ).readlines()
-                ),
-            )
+            self.skyboxShaderProgram = self.get_shader_program("410", "skybox_vs.glsl", "skybox_fs.glsl")
 
         # default light looking down and tilted
         self.set_light_position_direction([0, 0, 2], [0, 0.5, 0])
@@ -315,9 +233,33 @@ class MeshRenderer(object):
         # Set up text FBO
         self.text_manager.gen_text_fbo()
 
+    def get_shader_program(self, glsl_version, vertex_source, fragment_source):
+        """
+        Get shader program.
+
+        :param glsl_version: GLSL version
+        :param vertex_source: vertex shader source
+        :param fragment_source: fragment shader source
+        :return: a program object to which vertex shader and fragment shader are attached
+        """
+        return self.r.compile_shader_meshrenderer(
+            "".join(
+                open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, vertex_source)
+                ).readlines()
+            ),
+            "".join(
+                open(
+                    os.path.join(os.path.dirname(mesh_renderer.__file__), "shaders", glsl_version, fragment_source)
+                ).readlines()
+            ),
+        )
+
     def setup_pbr(self, glsl_version):
         """
-        Set up physics-based rendering
+        Set up physics-based rendering.
+
+        :param glsl_version: GLSL version
         """
         if (
             os.path.exists(self.rendering_settings.env_texture_filename)
@@ -339,7 +281,7 @@ class MeshRenderer(object):
 
     def set_light_position_direction(self, position, target):
         """
-        Set light position and orientation
+        Set light position and orientation.
 
         :param position: light position
         :param target: light target
@@ -349,7 +291,7 @@ class MeshRenderer(object):
 
     def setup_framebuffer(self):
         """
-        Set up framebuffers for the renderer
+        Set up framebuffers for the renderer.
         """
         [
             self.fbo,
@@ -380,11 +322,11 @@ class MeshRenderer(object):
 
     def load_texture_file(self, tex_filename, texture_scale):
         """
-        Load the texture file into the renderer
+        Load the texture file into the renderer.
 
         :param tex_filename: texture file filename
-        :param texture_scale: a file-specific texture scale to be multiplied with the global scale in the settings.
-        :return texture_id: texture id of this texture in the renderer
+        :param texture_scale: a file-specific texture scale to be multiplied with the global scale in the settings
+        :return: texture id of this texture in the renderer
         """
         # if texture is None or does not exist, return None
         if tex_filename is None or (not os.path.isfile(tex_filename)):
@@ -472,7 +414,7 @@ class MeshRenderer(object):
         """
         if self.optimization_process_executed and self.optimized:
             logging.error(
-                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
+                "Using optimized renderer and optimization process is already excuted, cannot add new objects"
             )
             return
 
@@ -636,13 +578,13 @@ class MeshRenderer(object):
                 # Translate the shape after they are scaled
                 shape_vertex += np.array(transform_pos)
 
+            # Compute tangents and bitangents for tangent space normal mapping.
             v0 = shape_vertex[0::3, :]
             v1 = shape_vertex[1::3, :]
             v2 = shape_vertex[2::3, :]
             uv0 = shape_texcoord[0::3, :]
             uv1 = shape_texcoord[1::3, :]
             uv2 = shape_texcoord[2::3, :]
-
             delta_pos1 = v1 - v0
             delta_pos2 = v2 - v0
             delta_uv1 = uv1 - uv0
@@ -650,8 +592,10 @@ class MeshRenderer(object):
             r = 1.0 / (delta_uv1[:, 0] * delta_uv2[:, 1] - delta_uv1[:, 1] * delta_uv2[:, 0])
             tangent = (delta_pos1 * delta_uv2[:, 1][:, None] - delta_pos2 * delta_uv1[:, 1][:, None]) * r[:, None]
             bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] - delta_pos1 * delta_uv2[:, 0][:, None]) * r[:, None]
-            bitangent = bitangent.repeat(3, axis=0)
+            # Set the same tangent and bitangent for all three vertices of the triangle.
             tangent = tangent.repeat(3, axis=0)
+            bitangent = bitangent.repeat(3, axis=0)
+
             vertices = np.concatenate([shape_vertex, shape_normal, shape_texcoord, tangent, bitangent], axis=-1)
             faces = np.array(range(len(vertices))).reshape((len(vertices) // 3, 3))
             vertexData = vertices.astype(np.float32)
@@ -701,7 +645,7 @@ class MeshRenderer(object):
         shadow_caster=True,
     ):
         """
-        Create an instance group for a list of visual objects and link it to pybullet
+        Create an instance group for a list of visual objects and link it to pybullet.
 
         :param object_ids: object ids of the visual objects
         :param link_ids: link_ids in pybullet
@@ -759,6 +703,7 @@ class MeshRenderer(object):
         """
         Creates a Text object with the given parameters. Returns the text object to the caller,
         so various settings can be changed - eg. text content, position, scale, etc.
+
         :param text_data: starting text to display (can be changed at a later time by set_text)
         :param font_name: name of font to render - same as font folder in iGibson assets
         :param font_style: style of font - one of [regular, italic, bold]
@@ -789,7 +734,7 @@ class MeshRenderer(object):
 
     def set_camera(self, camera, target, up, cache=False):
         """
-        Set camera pose
+        Set camera pose.
 
         :param camera: camera position
         :param target: camera target
@@ -811,7 +756,7 @@ class MeshRenderer(object):
 
     def set_z_near_z_far(self, znear, zfar):
         """
-        Set z limit for camera
+        Set z limit for camera.
 
         :param znear: lower limit for z
         :param zfar: upper limit for z
@@ -835,7 +780,7 @@ class MeshRenderer(object):
 
     def set_light_color(self, color):
         """
-        Set light color
+        Set light color.
 
         :param color: light color
         """
@@ -843,7 +788,7 @@ class MeshRenderer(object):
 
     def get_intrinsics(self):
         """
-        Get camera intrinsics
+        Get camera intrinsics.
 
         :return: camera instrincs
         """
@@ -867,7 +812,7 @@ class MeshRenderer(object):
 
     def set_projection_matrix(self, fu, fv, u0, v0, znear, zfar):
         """
-        Set projection matrix, given camera intrincs parameters
+        Set projection matrix, given camera intrincs parameters.
         """
         w = self.width
         h = self.height
@@ -927,7 +872,7 @@ class MeshRenderer(object):
         """
         A function to render all the instances in the renderer and read the output from framebuffer.
 
-        :param modes: a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow').
+        :param modes: a tuple consisting of a subset of ('rgb', 'normal', 'seg', '3d', 'scene_flow', 'optical_flow')
         :param hidden: hidden instances to skip. When rendering from a robot's perspective, it's own body can be hidden
         :param return_buffer: whether to return the frame buffers as numpy arrays
         :param render_shadow_pass: whether to render shadow
@@ -1072,19 +1017,19 @@ class MeshRenderer(object):
 
     def get_visual_objects(self):
         """
-        Return visual objects
+        Return visual objects.
         """
         return self.visual_objects
 
     def get_instances(self):
         """
-        Return instances
+        Return instances.
         """
         return self.instances
 
     def dump(self):
         """
-        Dump instance vertex and face information
+        Dump instance vertex and face information.
         """
         instances_vertices = []
         instances_faces = []
@@ -1102,7 +1047,7 @@ class MeshRenderer(object):
 
     def set_light_pos(self, light):
         """
-        Set light position
+        Set light position.
 
         :param light: light position
         """
@@ -1110,13 +1055,13 @@ class MeshRenderer(object):
 
     def get_num_objects(self):
         """
-        Return the number of objects
+        Return the number of objects.
         """
         return len(self.objects)
 
     def set_pose(self, pose, idx):
         """
-        Set pose for a specific instance
+        Set pose for a specific instance.
 
         :param pose: instance pose
         :param idx: instance id
@@ -1136,7 +1081,7 @@ class MeshRenderer(object):
 
     def clean(self):
         """
-        Clean all the framebuffers, objects and instances
+        Clean all the framebuffers, objects and instances.
         """
         clean_list = [
             self.color_tex_rgb,
@@ -1224,7 +1169,7 @@ class MeshRenderer(object):
 
     def transform_pose(self, pose):
         """
-        Transform pose from world frame to camera frame
+        Transform pose from world frame to camera frame.
 
         :param pose: pose in world frame
         :return: pose in camera frame
@@ -1237,7 +1182,7 @@ class MeshRenderer(object):
     def render_active_cameras(self, modes=("rgb")):
         """
         Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
-        where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB)
+        where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB).
 
         :return: a list of frames (number of modalities x number of robots)
         """
@@ -1261,7 +1206,7 @@ class MeshRenderer(object):
 
     def render_robot_cameras(self, modes=("rgb")):
         """
-        Render robot camera images
+        Render robot camera images.
 
         :return: a list of frames (number of modalities x number of robots)
         """
@@ -1333,7 +1278,7 @@ class MeshRenderer(object):
 
     def optimize_vertex_and_texture(self):
         """
-        Optimize vertex and texture for optimized renderer
+        Optimize vertex and texture for optimized renderer.
         """
         for tex_file in self.texture_files:
             print("Texture: ", tex_file)
@@ -1550,7 +1495,7 @@ class MeshRenderer(object):
 
     def update_optimized_texture_internal(self):
         """
-        Update the texture_id for optimized renderer
+        Update the texture_id for optimized renderer.
         """
         # Some of these may share visual data, but have unique transforms
         duplicate_vao_ids = []
@@ -1582,9 +1527,6 @@ class MeshRenderer(object):
             hidden_array.extend([[float(instance.hidden), 1.0, 1.0, 1.0]] * id_sum)
 
         # Variables needed for multi draw elements call
-        index_ptr_offsets = []
-        index_counts = []
-        indices = []
         diffuse_color_array = []
         tex_num_array = []
         tex_layer_array = []
@@ -1695,7 +1637,7 @@ class MeshRenderer(object):
 
     def update_hidden_highlight_state(self, instances):
         """
-        Updates the hidden state of a list of instances
+        Update the hidden state of a list of instances.
         This function is called by instances and not every frame, since hiding is a very infrequent operation.
         """
 
@@ -1750,7 +1692,7 @@ class MeshRenderer(object):
 
     def use_pbr(self, use_pbr, use_pbr_mapping):
         """
-        Apply PBR setting to every instance
+        Apply PBR setting to every instance.
 
         :param use_pbr: whether to use pbr
         :param use_pbr_mapping: whether to use pbr mapping
@@ -1761,7 +1703,7 @@ class MeshRenderer(object):
 
     def setup_lidar_param(self):
         """
-        Set up LiDAR params
+        Set up LiDAR params.
         """
         lidar_vertical_low = -15 / 180.0 * np.pi
         lidar_vertical_high = 15 / 180.0 * np.pi
@@ -1793,7 +1735,8 @@ class MeshRenderer(object):
 
     def get_lidar_from_depth(self):
         """
-        Get partial LiDAR readings from depth sensors with limited FOV
+        Get partial LiDAR readings from depth sensors with limited FOV.
+
         :return: partial LiDAR readings with limited FOV
         """
         lidar_readings = self.render(modes=("3d"))[0]
@@ -1805,9 +1748,10 @@ class MeshRenderer(object):
 
     def get_lidar_all(self, offset_with_camera=np.array([0, 0, 0])):
         """
-        Get complete LiDAR readings by patching together partial ones
+        Get complete LiDAR readings by patching together partial ones.
+
         :param offset_with_camera: optionally place the lidar scanner
-        with an offset to the camera
+            with an offset to the camera
         :return: complete 360 degree LiDAR readings
         """
         for instance in self.instances:
@@ -1855,7 +1799,6 @@ class MeshRenderer(object):
         """
         :param mode: simulator rendering mode, 'rgb' or '3d'
         :param use_robot_camera: use the camera pose from robot
-
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
 
