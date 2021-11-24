@@ -8,16 +8,16 @@ class TaskMetric(MetricBase):
         self.satisfied_predicates = []
         self.timesteps = 0
 
-    def start_callback(self, igbhvr_act_instance, _):
-        self.render_timestep = igbhvr_act_instance.simulator.render_timestep
+    def start_callback(self, env, _):
+        self.render_timestep = env.simulator.render_timestep
 
-    def step_callback(self, igbhvr_act_inst, _):
+    def step_callback(self, env, _):
         self.timesteps += 1
-        self.satisfied_predicates.append(igbhvr_act_inst.current_goal_status)
+        self.satisfied_predicates.append(env.task.current_goal_status)
 
-    def end_callback(self, igbhvr_act_inst, _):
+    def end_callback(self, env, _):
         candidate_q_score = []
-        for option in igbhvr_act_inst.ground_goal_state_options:
+        for option in env.task.ground_goal_state_options:
             predicate_truth_values = []
             for predicate in option:
                 predicate_truth_values.append(predicate.evaluate())

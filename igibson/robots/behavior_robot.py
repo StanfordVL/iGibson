@@ -21,6 +21,7 @@ Total size: 28
 import os
 from collections import OrderedDict
 
+import gym
 import numpy as np
 import pybullet as p
 
@@ -144,8 +145,9 @@ class BehaviorRobot(object):
         self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
-        self.action = np.zeros((28,))
         self.action_dim = 28
+        self.action = np.zeros((self.action_dim,))
+        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
 
         # Activation parameters
         self.activated = False
@@ -219,6 +221,12 @@ class BehaviorRobot(object):
         if self.constraints_active["body"]:
             self.parts["body"].move(pos, orn)
 
+    def set_position(self, pos):
+        self.set_position_orientation(pos, self.get_orientation())
+
+    def set_orientation(self, orn):
+        self.set_position_orientation(self.get_position(), orn)
+
     def get_position(self):
         return self.parts["body"].get_position()
 
@@ -249,7 +257,7 @@ class BehaviorRobot(object):
         """
         Activate BehaviorRobot and all its body parts.
         This bypasses the activate mechanism used in VR with the trigger press
-        This is useful for non-VR setting, e.g. BehaviorEnv
+        This is useful for non-VR setting, e.g. iGibsonEnv
         """
         self.first_frame = False
         self.activated = True
@@ -325,7 +333,8 @@ class BehaviorRobot(object):
     def robot_specific_reset(self):
         pass
 
-    def get_proprioception_dim(self):
+    @property
+    def proprioception_dim(self):
         return 6 * 3 + 4
 
     def get_proprioception(self):

@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import time
 from collections import OrderedDict
 
@@ -10,10 +11,13 @@ from transforms3d.euler import euler2quat
 
 from igibson.envs.env_base import BaseEnv
 from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
+from igibson.tasks.behavior_task import BehaviorTask
+from igibson.tasks.dummy_task import DummyTask
 from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
@@ -36,6 +40,8 @@ class iGibsonEnv(BaseEnv):
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
+        rendering_settings=None,
+        vr_settings=None,
         device_idx=0,
         automatic_reset=False,
         use_pb_gui=False,
@@ -46,6 +52,8 @@ class iGibsonEnv(BaseEnv):
         :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
+        :param rendering_settings: rendering_settings to override the default one
+        :param vr_settings: vr_settings to override the default one
         :param device_idx: which GPU to run the simulation and rendering on
         :param automatic_reset: whether to automatic reset after an episode finishes
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
@@ -56,6 +64,8 @@ class iGibsonEnv(BaseEnv):
             mode=mode,
             action_timestep=action_timestep,
             physics_timestep=physics_timestep,
+            rendering_settings=rendering_settings,
+            vr_settings=vr_settings,
             device_idx=device_idx,
             use_pb_gui=use_pb_gui,
         )
@@ -83,7 +93,9 @@ class iGibsonEnv(BaseEnv):
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
 
         # task
-        if self.config["task"] == "point_nav_fixed":
+        if "task" not in self.config:
+            self.task = DummyTask(self)
+        elif self.config["task"] == "point_nav_fixed":
             self.task = PointNavFixedTask(self)
         elif self.config["task"] == "point_nav_random":
             self.task = PointNavRandomTask(self)
@@ -96,7 +108,18 @@ class iGibsonEnv(BaseEnv):
         elif self.config["task"] == "room_rearrangement":
             self.task = RoomRearrangementTask(self)
         else:
-            self.task = None
+            try:
+                import bddl
+
+                with open(os.path.join(os.path.dirname(bddl.__file__), "activity_manifest.txt")) as f:
+                    all_activities = [line.strip() for line in f.readlines()]
+
+                if self.config["task"] in all_activities:
+                    self.task = BehaviorTask(self)
+                else:
+                    raise Exception("Invalid task: {}".format(self.config["task"]))
+            except ImportError:
+                raise Exception("Invalid task: {}".format(self.config["task"]))
 
     def build_obs_space(self, shape, low, high):
         """
@@ -188,6 +211,10 @@ class iGibsonEnv(BaseEnv):
         if "bump" in self.output:
             observation_space["bump"] = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
             sensors["bump"] = BumpSensor(self)
+        if "proprioception" in self.output:
+            observation_space["proprioception"] = self.build_obs_space(
+                shape=(self.robots[0].proprioception_dim,), low=-np.inf, high=np.inf
+            )
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -243,6 +270,8 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
             state["bump"] = self.sensors["bump"].get_obs(self)
+        if "proprioception" in self.sensors:
+            state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
 
@@ -253,7 +282,7 @@ class iGibsonEnv(BaseEnv):
         :return: collision_links: collisions from last physics timestep
         """
         self.simulator_step()
-        collision_links = list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = list(p.getContactPoints(bodyA=self.robot_body_id))
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
@@ -274,7 +303,7 @@ class iGibsonEnv(BaseEnv):
                 continue
 
             # ignore self collision with robot link a (body b is also robot itself)
-            if item[2] == self.robots[0].robot_ids[0] and item[4] in self.collision_ignore_link_a_ids:
+            if item[2] == self.robot_body_id and item[4] in self.collision_ignore_link_a_ids:
                 continue
             new_collision_links.append(item)
         return new_collision_links
@@ -443,9 +472,8 @@ class iGibsonEnv(BaseEnv):
         self.randomize_domain()
         # move robot away from the scene
         self.robots[0].set_position([100.0, 100.0, 100.0])
-        self.task.reset_scene(self)
-        self.task.reset_agent(self)
-        self.simulator.sync()
+        self.task.reset(self)
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 

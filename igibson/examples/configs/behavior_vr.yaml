@@ -19,6 +19,8 @@ task: cleaning_cupboards
 task_id: 0
 instance_id: 0
 online_sampling: false
+should_activate_behavior_robot: false
+should_highlight_task_relevant_objs: false
 
 # discount factor
 discount_factor: 0.99
@@ -27,7 +29,7 @@ discount_factor: 0.99
 max_step: 500
 
 # sensor spec
-output: [proprioception, rgb, highlight, depth, seg, ins_seg]
+output: [proprioception]
 # image
 fisheye: false
 image_width: 128

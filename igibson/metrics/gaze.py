@@ -32,16 +32,14 @@ class GazeMetric(MetricBase):
         self.obj_info_map = None
         self.gaze_marker = None
 
-    def start_callback(self, igbhvr_act_inst, _):
-        self.name_to_category = {
-            obj.name: obj.category for obj in igbhvr_act_inst.simulator.scene.objects_by_name.values()
-        }
-        self.task_obj_info = {obj.name: obj.category for obj in igbhvr_act_inst.object_scope.values()}
+    def start_callback(self, env, _):
+        self.name_to_category = {obj.name: obj.category for obj in env.scene.objects_by_name.values()}
+        self.task_obj_info = {obj.name: obj.category for obj in env.task.object_scope.values()}
 
-        self.gaze_marker = GazeVizMarker(igbhvr_act_inst.simulator, 0.02)
+        self.gaze_marker = GazeVizMarker(env.simulator, 0.02)
 
-    def step_callback(self, igbhvr_act_inst, log_reader):
-        s = igbhvr_act_inst.simulator
+    def step_callback(self, env, log_reader):
+        s = env.simulator
         eye_data = log_reader.get_vr_data().query("eye_data")
         if eye_data[0]:
             if self.target_obj in s.scene.objects_by_id:

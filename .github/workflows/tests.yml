@@ -34,9 +34,8 @@ jobs:
       - name: Checkout BDDL
         uses: actions/checkout@v2
         with:
-          # TODO: Update this to the appropriate repo & ref when the dev repo exists.
-          repository: StanfordVL/bddl
-          ref: e0b44a18e4840bd163a1cbca9f9810c05ca79931
+          repository: StanfordVL/bddl-dev
+          ref: 581be50e7cfd2b3a1447aaa1b4fc2424b673339c
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}  # PAT is required since this is a different repo
           path: bddl
           submodules: recursive

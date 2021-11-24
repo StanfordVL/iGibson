@@ -1,7 +1,10 @@
 import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
+from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.ant_robot import Ant
+from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots.fetch_gripper_robot import FetchGripper
 from igibson.robots.fetch_robot import Fetch
 from igibson.robots.freight_robot import Freight
 from igibson.robots.humanoid_robot import Humanoid
@@ -15,6 +18,7 @@ from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
+from igibson.simulator_vr import SimulatorVR
 from igibson.utils.utils import parse_config
 
 
@@ -32,6 +36,8 @@ class BaseEnv(gym.Env):
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
+        rendering_settings=None,
+        vr_settings=None,
         device_idx=0,
         use_pb_gui=False,
     ):
@@ -41,6 +47,8 @@ class BaseEnv(gym.Env):
         :param mode: headless or gui mode
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
+        :param rendering_settings: rendering_settings to override the default one
+        :param vr_settings: vr_settings to override the default one
         :param device_idx: device_idx: which GPU to run the simulation and rendering on
         :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
@@ -51,6 +59,8 @@ class BaseEnv(gym.Env):
         self.mode = mode
         self.action_timestep = action_timestep
         self.physics_timestep = physics_timestep
+        self.rendering_settings = rendering_settings
+        self.vr_settings = vr_settings
         self.texture_randomization_freq = self.config.get("texture_randomization_freq", None)
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
         self.object_randomization_idx = 0
@@ -60,27 +70,44 @@ class BaseEnv(gym.Env):
         enable_pbr = self.config.get("enable_pbr", True)
         texture_scale = self.config.get("texture_scale", 1.0)
 
-        # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
-        settings = MeshRendererSettings(
-            enable_shadow=enable_shadow,
-            enable_pbr=enable_pbr,
-            msaa=False,
-            texture_scale=texture_scale,
-            optimized=True,
-            load_textures=self.config.get("load_texture", True),
-        )
+        if self.rendering_settings is None:
+            # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
+            self.rendering_settings = MeshRendererSettings(
+                enable_shadow=enable_shadow,
+                enable_pbr=enable_pbr,
+                msaa=False,
+                texture_scale=texture_scale,
+                optimized=self.config.get("optimized_renderer", True),
+                load_textures=self.config.get("load_texture", True),
+            )
 
-        self.simulator = Simulator(
-            mode=mode,
-            physics_timestep=physics_timestep,
-            render_timestep=action_timestep,
-            image_width=self.config.get("image_width", 128),
-            image_height=self.config.get("image_height", 128),
-            vertical_fov=self.config.get("vertical_fov", 90),
-            device_idx=device_idx,
-            rendering_settings=settings,
-            use_pb_gui=use_pb_gui,
-        )
+        if self.vr_settings is None:
+            self.vr_settings = VrSettings(use_vr=True)
+
+        if mode == "vr":
+            self.simulator = SimulatorVR(
+                physics_timestep=physics_timestep,
+                render_timestep=action_timestep,
+                image_width=self.config.get("image_width", 128),
+                image_height=self.config.get("image_height", 128),
+                vertical_fov=self.config.get("vertical_fov", 90),
+                device_idx=device_idx,
+                rendering_settings=self.rendering_settings,
+                vr_settings=self.vr_settings,
+                use_pb_gui=use_pb_gui,
+            )
+        else:
+            self.simulator = Simulator(
+                mode=mode,
+                physics_timestep=physics_timestep,
+                render_timestep=action_timestep,
+                image_width=self.config.get("image_width", 128),
+                image_height=self.config.get("image_height", 128),
+                vertical_fov=self.config.get("vertical_fov", 90),
+                device_idx=device_idx,
+                rendering_settings=self.rendering_settings,
+                use_pb_gui=use_pb_gui,
+            )
         self.load()
 
     def reload(self, config_file):
@@ -142,8 +169,17 @@ class BaseEnv(gym.Env):
                 pybullet_load_texture=self.config.get("pybullet_load_texture", False),
             )
         elif self.config["scene"] == "igibson":
+            urdf_file = self.config.get("urdf_file", None)
+            if urdf_file is None and not self.config.get("online_sampling", True):
+                urdf_file = "{}_task_{}_{}_{}_fixed_furniture".format(
+                    self.config["scene_id"],
+                    self.config["task"],
+                    self.config["task_id"],
+                    self.config["instance_id"],
+                )
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
+                urdf_file=urdf_file,
                 waypoint_resolution=self.config.get("waypoint_resolution", 0.2),
                 num_waypoints=self.config.get("num_waypoints", 10),
                 build_graph=self.config.get("build_graph", False),
@@ -155,8 +191,11 @@ class BaseEnv(gym.Env):
                 object_randomization_idx=self.object_randomization_idx,
                 should_open_all_doors=self.config.get("should_open_all_doors", False),
                 load_object_categories=self.config.get("load_object_categories", None),
+                not_load_object_categories=self.config.get("not_load_object_categories", None),
                 load_room_types=self.config.get("load_room_types", None),
                 load_room_instances=self.config.get("load_room_instances", None),
+                merge_fixed_links=self.config.get("merge_fixed_links", True)
+                and not self.config.get("online_sampling", False),
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             first_n = self.config.get("_set_first_n_objects", -1)
@@ -183,13 +222,21 @@ class BaseEnv(gym.Env):
             robot = Fetch(self.config)
         elif self.config["robot"] == "Locobot":
             robot = Locobot(self.config)
+        elif self.config["robot"] == "BehaviorRobot":
+            robot = BehaviorRobot(self.simulator)
+        elif self.config["robot"] == "FetchGripper":
+            robot = FetchGripper(self.simulator, self.config)
         else:
             raise Exception("unknown robot type: {}".format(self.config["robot"]))
 
-        self.scene = scene
-        self.robots = [robot]
-        for robot in self.robots:
-            self.simulator.import_robot(robot)
+        self.simulator.import_robot(robot)
+        if isinstance(robot, BehaviorRobot):
+            self.robot_body_id = robot.parts["body"].get_body_id()
+        else:
+            self.robot_body_id = robot.robot_ids[0]
+
+        self.scene = self.simulator.scene
+        self.robots = self.simulator.robots
 
     def clean(self):
         """

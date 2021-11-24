@@ -22,3 +22,12 @@ class BaseTerminationCondition:
         :return: done, info
         """
         raise NotImplementedError()
+
+    def reset(self, task, env):
+        """
+        Termination condition-specific reset
+
+        :param task: task instance
+        :param env: environment instance
+        """
+        return

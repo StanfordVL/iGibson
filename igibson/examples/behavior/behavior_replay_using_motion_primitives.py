@@ -123,7 +123,7 @@ def get_actions_from_segmentation(demo_data):
     return actions
 
 
-def run_demonstration(demo_path, segmentation_path, output_path):
+def run_demonstration(demo_path, segmentation_path, output_path, config_file):
     task = IGLogReader.read_metadata_attr(demo_path, "/metadata/atus_activity")
     task_id = IGLogReader.read_metadata_attr(demo_path, "/metadata/activity_definition")
     scene_id = IGLogReader.read_metadata_attr(demo_path, "/metadata/scene_id")
@@ -136,7 +136,6 @@ def run_demonstration(demo_path, segmentation_path, output_path):
     actions = get_actions_from_segmentation(selected_demo_data)
 
     # Prepare the environment
-    config_file = os.path.join(igibson.example_config_path, "behavior_segmentation_replay.yaml")
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
 
@@ -201,9 +200,10 @@ def main():
     parser.add_argument("demo_path", type=str, help="Path of the demo hdf5 to replay.")
     parser.add_argument("segmentation_path", type=str, help="Path of the segmentation of the demo.")
     parser.add_argument("output_path", type=str, help="Path to output result JSON file to.")
+    parser.add_argument("--config", help="which config file to use [default: use yaml files in examples/configs]")
     args = parser.parse_args()
 
-    run_demonstration(args.demo_path, args.segmentation_path, args.output_path)
+    run_demonstration(args.demo_path, args.segmentation_path, args.output_path, args.config)
 
 
 if __name__ == "__main__":
