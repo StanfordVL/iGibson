@@ -155,6 +155,7 @@ def collect_demo(
     if not no_vr:
         env.simulator.register_main_vr_robot(vr_agent)
         vr_cs = VrConditionSwitcher(env.simulator, env.task.show_instruction, env.task.iterate_instruction)
+        env.simulator.step_vr_system()
 
     log_writer = None
     if not disable_save:
@@ -177,7 +178,7 @@ def collect_demo(
 
     steps = 0
     steps_after_done = 0
-    env.simulator.step_vr_system()
+
     while True:
         if max_steps >= 0 and steps >= max_steps:
             break
