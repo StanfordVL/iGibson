@@ -70,16 +70,16 @@ class EyeTrackingExtractor(object):
             eye_pose = (eye_pos, eye_orn)
 
             # Actually render & grab the directly-attended object.
-            img_w, img_h = igbhvr_act_inst.simulator.image_width, igbhvr_act_inst.simulator.image_height
-            gaze2D = (img_w // 2, img_h // 2)
             seg = robot.render_camera_image(modes="ins_seg", eye_pose=eye_pose)[0][:, :, 0]
-            seg = np.transpose(np.round(seg * MAX_INSTANCE_COUNT).astype(int))
+            seg = np.round(seg * MAX_INSTANCE_COUNT).astype(int)
+            img_r, img_c = seg.shape
+            gaze2D = (img_r // 2, img_c // 2)
             self.directly_attended[frame_count] = seg[gaze2D]
 
             # Get the approximately-attended objects.
-            radius_r = 3 * img_w // 90  # 90: FOV
+            radius_r = 3 * img_r // 90  # 90: FOV
             row_min, row_max = (gaze2D[0] - radius_r, gaze2D[0] + radius_r)
-            radius_c = 3 * img_h // 90  # 90: FOV
+            radius_c = 3 * img_c // 90  # 90: FOV
             col_min, col_max = (gaze2D[1] - radius_c, gaze2D[1] + radius_c)
             sub_seg = seg[row_min:row_max, col_min:col_max]
             attended_ids = igbhvr_act_inst.simulator.renderer.get_pb_ids_for_instance_ids(sub_seg)
