@@ -9,6 +9,7 @@ import wave
 import numpy as np
 import pybullet as p
 from scipy.io.wavfile import write
+import pyaudio
 
 # Mesh object required to be populated for AudioSystem
 class AcousticMesh:
@@ -26,7 +27,7 @@ class AudioSystem(object):
     It manages a set of audio objects and their corresponding audio buffers.
     It also interfaces with ResonanceAudio to perform the simulaiton to the listener.
     """
-    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, writeToFile="", SR=44100, num_probes=10, renderAmbisonics=False, renderReverbReflections=True):
+    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, is_VR_Viewer=False, writeToFile="", SR=44100, num_probes=10, renderAmbisonics=False, renderReverbReflections=True, vrViewerSource=False):
         """
         :param scene: iGibson scene
         :param pybullet: pybullet client
@@ -55,6 +56,9 @@ class AudioSystem(object):
         if is_Viewer:
             self.get_pos = lambda: [self.listener.px, self.listener.py, self.listener.pz]
             self.get_ori = getViewerOrientation 
+        elif is_VR_Viewer:
+            self.get_pos = lambda: self.s.get_data_for_vr_device("hmd")[1]
+            self.get_ori = lambda: self.s.get_data_for_vr_device("hmd")[2]
         else:
             self.get_pos = self.listener.eyes.get_position
             self.get_ori = self.listener.eyes.get_orientation
@@ -103,6 +107,17 @@ class AudioSystem(object):
         self.sourceToEnabled, self.sourceToBuffer, self.sourceToRepeat,  self.sourceToResonanceID = {}, {}, {}, {}
         self.current_output, self.complete_output = [], []
 
+        # Try to stream audio live
+        self.streaming_input = []
+        def pyaudOutputCallback(in_data, frame_count, time_info, status):
+            return (bytes(self.current_output), pyaudio.paContinue)
+        def pyaudInputCallback(in_data, frame_count, time_info, status):
+            self.streaming_input = in_data
+            return (None, pyaudio.paContinue)
+        pyaud = pyaudio.PyAudio()
+        out_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudOutputCallback)
+        in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
+
     def getClosestReverbProbe(self, pos):
         floor = 0
         for i in range(len(self.scene.floor_heights)):
@@ -125,14 +140,16 @@ class AudioSystem(object):
         if source_obj_id in self.sourceToEnabled:
             raise Exception('Object {} has already been registered with source {}, and we currently only support one audio stream per source.'.format(source_obj_id, audio_fname))
 
-        buffer =  wave.open(audio_fname, 'rb')
-        if buffer.getframerate() != self.SR:
-            raise Exception('Object {} with source {} has SR {}, which does not match the system SR of {}.'.format(source_obj_id, audio_fname, buffer.getframerate(),self.SR))
-        if buffer.getnchannels() != 1:
-            raise Exception('Source {} has {} channels, 1 expected.'.format(audio_fname, buffer.getnchannels()))
-
         source_pos,_ = p.getBasePositionAndOrientation(source_obj_id)
         source_id = audio.InitializeSource(source_pos, 0.1, 10, reverb_gain)
+        buffer = None
+        if audio_fname:
+            buffer =  wave.open(audio_fname, 'rb')
+            if buffer.getframerate() != self.SR:
+                raise Exception('Object {} with source {} has SR {}, which does not match the system SR of {}.'.format(source_obj_id, audio_fname, buffer.getframerate(),self.SR))
+            if buffer.getnchannels() != 1:
+                raise Exception('Source {} has {} channels, 1 expected.'.format(audio_fname, buffer.getnchannels()))
+
         self.sourceToResonanceID[source_obj_id] = source_id
         self.sourceToEnabled[source_obj_id] = enabled
         self.sourceToRepeat[source_obj_id] = repeat
@@ -152,6 +169,9 @@ class AudioSystem(object):
         #This conversion to numpy is inefficient and unnecessary
         #TODO: is np.int16 limiting?
         buffer = self.sourceToBuffer[source]
+        if buffer is None:
+            # streaming input
+            return self.streaming_input
         return np.frombuffer(buffer.readframes(nframes), dtype=np.int16)
 
     def step(self):
@@ -160,7 +180,7 @@ class AudioSystem(object):
             if self.sourceToEnabled[source]:
                 source_audio = self.readSource(source, self.framesPerBuf)
                 if source_audio.size < self.framesPerBuf:
-                    if self.sourceToRepeat[source]:
+                    if self.sourceToRepeat[source] and buffer is not None:
                         buffer.rewind()
                         audio_to_append = self.readSource(source, self.framesPerBuf - source_audio.size)
                         source_audio = np.append(source_audio, audio_to_append)
