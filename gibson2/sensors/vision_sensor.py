@@ -67,10 +67,10 @@ class VisionSensor(BaseSensor):
 
     def get_rgb(self, raw_vision_obs):
         """
-        :return: RGB sensor reading, normalized to [0.0, 1.0]
+        :return: RGB sensor reading, de-normalized to [0, 255] uint8 values
         """
         return {
-            f"rgb{eye.body_name.split('eyes')[1]}": frame[:, :, :3] for
+            f"rgb{eye.body_name.split('eyes')[1]}": (frame[:, :, :3] * 255.0).astype(np.uint8) for
             eye, frame in zip(self.env.robots[0].eyes, raw_vision_obs['rgb'])
         }
 
