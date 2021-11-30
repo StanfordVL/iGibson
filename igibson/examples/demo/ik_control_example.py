@@ -12,7 +12,7 @@ import pybullet_data
 import igibson
 from igibson.objects.articulated_object import URDFObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from igibson.robots.fetch_gripper_robot import FetchGripper
+from igibson.robots.fetch import Fetch
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
@@ -41,7 +41,7 @@ def main():
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     config = parse_config(os.path.join(igibson.root_path, "examples", "configs", "behavior_onboard_sensing_fetch.yaml"))
-    vr_agent = FetchGripper(simulator=s, config=config)
+    vr_agent = Fetch(config)
     s.import_robot(vr_agent)
 
     table_objects_to_load = {
@@ -99,13 +99,14 @@ def main():
         s.import_object(simulator_obj)
         simulator_obj.set_orientation(obj["orn"])
 
-    vr_agent.robot_specific_reset()
+    vr_agent.reset()
     i = 0
     actions = []
     print("Press ctrl-q to quit")
     while True:
         i += 1
         action = np.zeros(11)
+        action[-1] = -1.0
 
         # 0  - forward/backwards (good) (up/down)
         # 1  - rotate robot base (good) (left/right)

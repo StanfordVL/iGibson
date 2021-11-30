@@ -1,18 +1,39 @@
 import logging
 import os
+from abc import ABCMeta, abstractmethod
+from collections import OrderedDict
+from copy import deepcopy
 
+import gym
 import numpy as np
 import pybullet as p
+from future.utils import with_metaclass
+from transforms3d.euler import euler2quat
+from transforms3d.quaternions import qmult, quat2mat
 
 import igibson
+from igibson.controllers import ControlType, create_controller
+from igibson.external.pybullet_tools.utils import (
+    get_child_frame_pose,
+    get_constraint_violation,
+    get_joint_info,
+    get_relative_pose,
+    joints_from_names,
+    set_coll_filter,
+    set_joint_positions,
+)
 from igibson.object_states.factory import prepare_object_states
 from igibson.utils.constants import SemanticClass
+from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
+from igibson.utils.utils import rotate_vector_3d
 
 
-class BaseRobot(object):
+class BaseRobot(with_metaclass(ABCMeta, object)):
     """
-    Base class for mujoco xml/ROS urdf based agents.
-    Handles object loading
+    Base class for mujoco xml/ROS urdf based robot agents.
+
+    This class handles object loading, and provides method interfaces that should be
+    implemented by subclassed robots.
     """
 
     DEFAULT_RENDERING_PARAMS = {
@@ -24,44 +45,67 @@ class BaseRobot(object):
     def __init__(
         self,
         model_file,
+        control_freq=10.0,
+        action_config=None,
+        controller_config=None,
         base_name=None,
-        scale=1,
-        self_collision=False,
+        scale=1.0,
+        self_collision=True,
         class_id=SemanticClass.ROBOTS,
         rendering_params=None,
     ):
         """
-        :param model_file: model filename
-        :param base_name: name of the base link
-        :param scale: scale, default to 1
-        :param self_collision: whether to enable self collision
+        :param model_file: str, absolute path to robot model's URDF / MJCF file
+        :param control_freq: float, control frequency (in Hz) at which to control the robot
+        :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
+            to action-related values. Should, at the minimum, contain:
+                type: one of {discrete, continuous} - what type of action space to use
+                normalize: either {True, False} - whether to normalize inputted actions
+            This will override any default values specified by this class.
+        :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
+            configurations for this robot. This will override any default values specified by this class.
+        :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
+            this should correspond to one of the link names found in this robot's corresponding URDF / MJCF file.
+            None defaults to the base link name used in @model_file
+        :param scale: int, scaling factor for model (default is 1)
+        :param self_collision: bool, whether to enable self collision
+        :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
+        :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
+            See DEFAULT_RENDERING_PARAMS for the values passed by default.
         """
-        self.parts = None
-        self.jdict = None
-        self.ordered_joints = None
-        self.robot_body = None
-        self.robot_name = None
+        # Store arguments
         self.base_name = base_name
-
-        self.robot_ids = None
-        self.robot_mass = None
         self.model_file = model_file
-        self.physics_model_dir = os.path.join(igibson.assets_path, "models")
+        self.control_freq = control_freq
         self.scale = scale
-        self.eyes = None
-        logging.info("Loading robot model file: {}".format(self.model_file))
-        if self.model_file[-4:] == "urdf":
-            self.model_type = "URDF"
-        else:
-            self.model_type = "MJCF"
-            assert self.scale == 1, "pybullet does not support scaling for MJCF model (p.loadMJCF)"
+        self.self_collision = self_collision
+        self.action_config = {} if action_config is None else action_config
+        self.controller_config = {} if controller_config is None else controller_config
+
+        # Initialize internal attributes that will be loaded later
+        # These will have public interfaces
+        self.model_type = None
+        self.action_list = None  # Array of discrete actions to deploy
+        self._links = None
+        self._joints = None
+        self._controllers = None
+        self._mass = None
+        self._joint_state = {  # This is filled in periodically every time self.update_state() is called
+            "unnormalized": {
+                "position": None,
+                "velocity": None,
+                "torque": None,
+            },
+            "normalized": {
+                "position": None,
+                "velocity": None,
+                "torque": None,
+            },
+            "at_limits": None,
+        }
 
         # TODO: Replace this with a reasonable StatefulObject inheritance.
-        self.states = {}
         prepare_object_states(self, abilities={"robot": {}})
-
-        # For BEHAVIOR compatibility -- may be removed eventually
-        self.category = "agent"
 
         # This logic is repeated because Robot does not inherit from Object.
         # TODO: Remove this logic once the object refactoring is complete.
@@ -70,271 +114,984 @@ class BaseRobot(object):
         if rendering_params is not None:
             self._rendering_params.update(rendering_params)
 
-        self.self_collision = self_collision
+        self._loaded = False
+        self._body_ids = None  # this is the unique pybullet body id(s) representing this model
+        self.states = {}
 
     def load(self, simulator):
         """
-        Load the robot model into simulator
+        Load object into pybullet and return list of loaded body ids.
 
-        :return: body id in pybullet
+        :param simulator: Simulator, iGibson simulator reference
+
+        :return Array[int]: List of unique pybullet IDs corresponding to this model. This will usually
+            only be a single value
         """
+        if self._loaded:
+            raise ValueError("Cannot load a single model multiple times.")
+        self._loaded = True
+
+        # Store body ids and return them
+        _body_ids = self._load(simulator)
+
+        return _body_ids
+
+    def _load(self, simulator):
+        """
+        Loads this pybullet model into the simulation. Should return a list of unique body IDs corresponding
+        to this model.
+
+        :param simulator: Simulator, iGibson simulator reference
+
+        :return Array[int]: List of unique pybullet IDs corresponding to this model. This will usually
+            only be a single value
+        """
+        logging.info("Loading robot model file: {}".format(self.model_file))
+
+        # Set flags for loading model
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
         if self.self_collision:
             flags = flags | p.URDF_USE_SELF_COLLISION | p.URDF_USE_SELF_COLLISION_EXCLUDE_PARENT
 
-        if self.model_type == "MJCF":
-            self.robot_ids = p.loadMJCF(os.path.join(self.physics_model_dir, self.model_file), flags=flags)
-        if self.model_type == "URDF":
-            self.robot_ids = (
-                p.loadURDF(
-                    os.path.join(self.physics_model_dir, self.model_file), globalScaling=self.scale, flags=flags
-                ),
+        # Run some sanity checks and load the model
+        model_file_type = self.model_file.split(".")[-1]
+        if model_file_type == "urdf":
+            self.model_type = "URDF"
+            body_ids = (p.loadURDF(self.model_file, globalScaling=self.scale, flags=flags),)
+        else:
+            self.model_type = "MJCF"
+            assert self.scale == 1.0, (
+                "robot scale must be 1.0 because pybullet does not support scaling " "for MJCF model (p.loadMJCF)"
             )
+            body_ids = p.loadMJCF(self.model_file, flags=flags)
 
-        self.parts, self.jdict, self.ordered_joints, self.robot_body, self.robot_mass = self.parse_robot(self.robot_ids)
+        # Store body ids
+        self._body_ids = body_ids
 
-        assert (
-            "eyes" in self.parts
-        ), 'Please add a link named "eyes" in your robot URDF file with the same pose as the onboard camera. Feel free to check out assets/models/turtlebot/turtlebot.urdf for an example.'
-        self.eyes = self.parts["eyes"]
-
-        for body_id in self.robot_ids:
+        # Load into simulator and initialize states
+        for body_id in self._body_ids:
             simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         for state in self.states.values():
             state.initialize(simulator)
 
-        return self.robot_ids
+        # Grab relevant references from the body IDs
+        self._setup_references()
 
-    def parse_robot(self, bodies):
+        # Disable collisions
+        for names in self.disabled_collision_pairs:
+            link_a, link_b = joints_from_names(self.get_body_id(), names)
+            p.setCollisionFilterPair(self.get_body_id(), self.get_body_id(), link_a, link_b, 0)
+
+        # Load controllers
+        self._load_controllers()
+
+        # Setup action space
+        self._action_space = (
+            self._create_discrete_action_space()
+            if self.action_type == "discrete"
+            else self._create_continuous_action_space()
+        )
+
+        # Validate this robot configuration
+        self._validate_configuration()
+
+        # Return the body IDs
+        return body_ids
+
+    def _setup_references(self):
         """
-        Parse the robot to get properties including joint information and mass
-
-        :param bodies: body ids in pybullet
-        :return: parts, joints, ordered_joints, robot_body, robot_mass
+        Parse the set of robot @body_ids to get properties including joint information and mass
         """
-        assert len(bodies) == 1, "robot body has length > 1"
+        assert len(self._body_ids) == 1, "Only one robot body ID was expected, but got {}!".format(len(self._body_ids))
+        robot_id = self.get_body_id()
 
-        if self.parts is not None:
-            parts = self.parts
-        else:
-            parts = {}
+        # Initialize link and joint dictionaries for this robot
+        self._links, self._joints, self._mass = OrderedDict(), OrderedDict(), 0.0
 
-        if self.jdict is not None:
-            joints = self.jdict
-        else:
-            joints = {}
-
-        if self.ordered_joints is not None:
-            ordered_joints = self.ordered_joints
-        else:
-            ordered_joints = []
-
-        robot_mass = 0.0
-
-        base_name, robot_name = p.getBodyInfo(bodies[0])
-        base_name = base_name.decode("utf8")
-        robot_name = robot_name.decode("utf8")
-        parts[base_name] = BodyPart(base_name, bodies, 0, -1)
-        self.robot_name = robot_name
-        # if base_name is unspecified or equal to the base_name returned by p.getBodyInfo, use this link as robot_body (base_link).
-        if self.base_name is None or self.base_name == base_name:
-            self.robot_body = parts[base_name]
+        # Grab model base info
+        base_name = p.getBodyInfo(robot_id)[0].decode("utf8")
+        self._links[base_name] = RobotLink(base_name, -1, robot_id)
+        # if base_name is unspecified, use this link as robot_body (base_link).
+        if self.base_name is None:
             self.base_name = base_name
 
-        for j in range(p.getNumJoints(bodies[0])):
-            robot_mass += p.getDynamicsInfo(bodies[0], j)[0]
-            p.setJointMotorControl2(bodies[0], j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
-            _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, part_name, _, _, _, _ = p.getJointInfo(bodies[0], j)
-            logging.debug("Robot joint: {}".format(p.getJointInfo(bodies[0], j)))
+        # Loop through all robot links and infer relevant link / joint / mass references
+        for j in range(p.getNumJoints(robot_id)):
+            self._mass += p.getDynamicsInfo(robot_id, j)[0]
+            p.setJointMotorControl2(robot_id, j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
+            _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, link_name, _, _, _, _ = p.getJointInfo(robot_id, j)
+            logging.debug("Robot joint: {}".format(p.getJointInfo(robot_id, j)))
             joint_name = joint_name.decode("utf8")
-            part_name = part_name.decode("utf8")
+            link_name = link_name.decode("utf8")
+            self._links[link_name] = RobotLink(link_name, j, robot_id)
 
-            parts[part_name] = BodyPart(part_name, bodies, 0, j)
-
-            # otherwise, use the specified base_name link as robot_body (base_link).
-            if self.robot_body is None and self.base_name == part_name:
-                self.robot_body = parts[part_name]
-
+            # We additionally create joint references if they are (not) of certain types
             if joint_name[:6] == "ignore":
-                Joint(joint_name, bodies, 0, j).disable_motor()
-                continue
+                # We don't save a reference to this joint, but we disable its motor
+                RobotJoint(joint_name, j, robot_id).disable_motor()
+            elif joint_name[:8] == "jointfix" or joint_type == p.JOINT_FIXED:
+                # Fixed joint, so we don't save a reference to this joint
+                pass
+            else:
+                # Default case, we store a reference
+                self._joints[joint_name] = RobotJoint(joint_name, j, robot_id)
 
-            if joint_name[:8] != "jointfix" and joint_type != p.JOINT_FIXED:
-                joints[joint_name] = Joint(joint_name, bodies, 0, j)
-                ordered_joints.append(joints[joint_name])
+        # Populate the joint states
+        self.update_state()
 
-        if self.robot_body is None:
-            raise Exception("robot body not initialized.")
+        # Update the configs
+        self.action_config = merge_nested_dicts(base_dict=self._default_action_config, extra_dict=self.action_config)
+        for group in self.controller_order:
+            group_controller_name = (
+                self.controller_config[group]["name"]
+                if group in self.controller_config and "name" in self.controller_config[group]
+                else self._default_controllers[group]
+            )
+            self.controller_config[group] = merge_nested_dicts(
+                base_dict=self._default_controller_config[group][group_controller_name],
+                extra_dict=self.controller_config.get(group, {}),
+            )
 
-        return parts, joints, ordered_joints, self.robot_body, robot_mass
-
-    def robot_specific_reset(self):
+    def _validate_configuration(self):
         """
-        Reset function for each specific robot. Overwritten by subclasses
+        Run any needed sanity checks to make sure this robot was created correctly.
         """
-        raise NotImplementedError
+        pass
+
+    def update_state(self):
+        """
+        Updates the internal proprioceptive state of this robot, and returns the raw values
+
+        :return Tuple[Array[float], Array[float]]: The raw joint states, normalized joint states
+            for this robot
+        """
+        # Grab raw values
+        joint_states = np.array([j.get_state() for j in self._joints.values()]).astype(np.float32).flatten()
+        joint_states_normalized = (
+            np.array([j.get_relative_state() for j in self._joints.values()]).astype(np.float32).flatten()
+        )
+
+        # Get raw joint values and normalized versions
+        self._joint_state["unnormalized"]["position"] = joint_states[0::3]
+        self._joint_state["unnormalized"]["velocity"] = joint_states[1::3]
+        self._joint_state["unnormalized"]["torque"] = joint_states[2::3]
+        self._joint_state["normalized"]["position"] = joint_states_normalized[0::3]
+        self._joint_state["normalized"]["velocity"] = joint_states_normalized[1::3]
+        self._joint_state["normalized"]["torque"] = joint_states_normalized[2::3]
+
+        # Infer whether joints are at their limits
+        self._joint_state["at_limits"] = 1.0 * (np.abs(self.joint_positions_normalized) > 0.99)
+
+        # Return the raw joint states
+        return joint_states, joint_states_normalized
 
     def calc_state(self):
         """
-        Calculate proprioceptive states for each specific robot.
-        Overwritten by subclasses
-        """
-        raise NotImplementedError
+        Calculate proprioceptive states for the robot. By default, this is:
+            [pos, rpy, lin_vel, ang_vel, joint_states]
 
-    def is_grasping(self, candidate_obj):
+        :return Array[float]: Flat array of proprioceptive states (e.g.: [position, orientation, ...])
         """
-        Returns True if the robot is grasping the target option.
-        """
-        raise NotImplementedError
+        # Update states
+        joint_states, _ = self.update_state()
+        pos = self.get_position()
+        rpy = self.get_rpy()
+
+        # rotate linear and angular velocities to local frame
+        lin_vel = rotate_vector_3d(self.base_link.get_linear_velocity(), *rpy)
+        ang_vel = rotate_vector_3d(self.base_link.get_angular_velocity(), *rpy)
+
+        state = np.concatenate([pos, rpy, lin_vel, ang_vel, joint_states])
+        return state
 
     def can_toggle(self, toggle_position, toggle_distance_threshold):
         """
-        Returns True if the part of the robot that can toggle a toggleable is within the given range of a point corresponding to a toggle marker
+        Returns True if the part of the robot that can toggle a toggleable is within the given range of a
+        point corresponding to a toggle marker
         by default, we assume robot cannot toggle toggle markers
+
+        :param toggle_position: Array[float], (x,y,z) cartesian position values as a reference point for evaluating
+            whether a toggle can occur
+        :param toggle_distance_threshold: float, distance value below which a toggle is allowed
+
+        :return bool: True if the part of the robot that can toggle a toggleable is within the given range of a
+            point corresponding to a toggle marker. By default, we assume robot cannot toggle toggle markers
         """
         return False
 
+    def get_body_id(self):
+        """
+        Gets the body ID for this robot.
+
+        If the object somehow has multiple bodies, this will be the default body that the default manipulation functions
+        will manipulate.
+
+        Should be implemented by all subclasses.
+
+        :return None or int: Body ID representing this model in simulation if it exists, else None
+        """
+        return None if self._body_ids is None else self._body_ids[0]
+
+    def reset(self):
+        """
+        Reset function for each specific robot. Can be overwritten by subclass
+
+        By default, sets all joint states (pos, vel) to 0, and resets all controllers.
+        """
+        for joint in self._joints.values():
+            joint.reset_state(0.0, 0.0)
+
+        for controller in self._controllers.values():
+            controller.reset()
+
+    def _load_controllers(self):
+        """
+        Loads controller(s) to map inputted actions into executable (pos, vel, and / or torque) signals on this robot.
+        Stores created controllers as dictionary mapping controller names to specific controller
+        instances used by this robot.
+        """
+        # Initialize controllers to create
+        self._controllers = OrderedDict()
+        # Loop over all controllers, in the order corresponding to @action dim
+        for name in self.controller_order:
+            assert_valid_key(key=name, valid_keys=self.controller_config, name="controller name")
+            cfg = self.controller_config[name]
+            # If we're using normalized action space, override the inputs for all controllers
+            if self.action_config["normalize"]:
+                cfg["command_input_limits"] = "default"  # default is normalized (-1, 1)
+            # Create the controller
+            self._controllers[name] = create_controller(**cfg)
+
+    @abstractmethod
+    def _create_discrete_action_space(self):
+        """
+        Create a discrete action space for this robot. Should be implemented by the subclass (if a subclass does not
+        support this type of action space, it should raise an error).
+
+        :return gym.space: Robot-specific discrete action space
+        """
+        raise NotImplementedError
+
+    def _create_continuous_action_space(self):
+        """
+        Create a continuous action space for this robot. By default, this loops over all controllers and
+        appends their respective input command limits to set the action space.
+        Any custom behavior should be implemented by the subclass (e.g.: if a subclass does not
+        support this type of action space, it should raise an error).
+
+        :return gym.space.Box: Robot-specific continuous action space
+        """
+        # Action space is ordered according to the order in _default_controller_config control
+        low, high = [], []
+        for controller in self._controllers.values():
+            limits = controller.command_input_limits
+            low.append(np.array([-np.inf]) if limits is None else limits[0])
+            high.append(np.array([np.inf]) if limits is None else limits[1])
+
+        return gym.spaces.Box(
+            shape=(self.action_dim,), low=np.concatenate(low), high=np.concatenate(high), dtype=np.float32
+        )
+
+    def apply_action(self, action):
+        """
+        Converts inputted actions into low-level control signals and deploys them on the robot
+
+        :param action: Array[float], n-DOF length array of actions to convert and deploy on the robot
+        """
+        # Update state
+        self.update_state()
+
+        # If we're using discrete action space, we grab the specific action and use that to convert to control
+        if self.action_type == "discrete":
+            action = np.array(self.action_list[action])
+
+        # Run convert actions to controls
+        control, control_type = self._actions_to_control(action=action)
+
+        # Deploy control signals
+        self._deploy_control(control=control, control_type=control_type)
+
+    def _actions_to_control(self, action):
+        """
+        Converts inputted @action into low level control signals to deploy directly on the robot.
+        This returns two arrays: the converted low level control signals and an array corresponding
+        to the specific ControlType for each signal.
+
+        :param action: Array[float], n-DOF length array of actions to convert and deploy on the robot
+        :return Tuple[Array[float], Array[ControlType]]: The (1) raw control signals to send to the robot's joints
+            and (2) control types for each joint
+        """
+        # First, loop over all controllers, and calculate the computed control
+        control = OrderedDict()
+        idx = 0
+        for name, controller in self._controllers.items():
+            # Compose control_dict
+            control_dict = self.get_control_dict()
+            # Set command, then take a controller step
+            controller.update_command(command=action[idx : idx + controller.command_dim])
+            control[name] = {
+                "value": controller.step(control_dict=control_dict),
+                "type": controller.control_type,
+            }
+            # Update idx
+            idx += controller.command_dim
+
+        # Compose controls
+        u_vec = np.zeros(self.n_joints)
+        u_type_vec = np.array([ControlType.POSITION] * self.n_joints)
+        for group, ctrl in control.items():
+            idx = self._controllers[group].joint_idx
+            u_vec[idx] = ctrl["value"]
+            u_type_vec[idx] = ctrl["type"]
+
+        # Return control
+        return u_vec, u_type_vec
+
+    def _deploy_control(self, control, control_type):
+        """
+        Deploys control signals @control with corresponding @control_type on this robot
+
+        :param control: Array[float], raw control signals to send to the robot's joints
+        :param control_type: Array[ControlType], control types for each joint
+        """
+        # Run sanity check
+        joints = self._joints.values()
+        assert len(control) == len(control_type) == len(joints), (
+            "Control signals, control types, and number of joints should all be the same!"
+            "Got {}, {}, and {} respectively.".format(len(control), len(control_type), len(joints))
+        )
+
+        # Loop through all control / types, and deploy the signal
+        for joint, ctrl, ctrl_type in zip(joints, control, control_type):
+            if ctrl_type == ControlType.TORQUE:
+                joint.set_torque(ctrl)
+            elif ctrl_type == ControlType.VELOCITY:
+                joint.set_vel(ctrl)
+            elif ctrl_type == ControlType.POSITION:
+                joint.set_pos(ctrl)
+            else:
+                raise ValueError("Invalid control type specified: {}".format(ctrl_type))
+
+    @abstractmethod
+    def get_proprioception(self):
+        """
+        Must be implemented by subclass.
+
+        :return Array[float]: numpy array of all robot-specific proprioceptive observations.
+        """
+        raise NotImplementedError
+
+    def get_position(self):
+        """
+        :return Array[float]: (x,y,z) global cartesian coordinates of this model's body (as taken at its body_id)
+        """
+        return self.get_position_orientation()[0]
+
+    def get_orientation(self):
+        """
+        :return Array[float]: (x,y,z,w) global orientation in quaternion form of this model's body
+            (as taken at its body_id)
+        """
+        return self.get_position_orientation()[1]
+
+    def get_position_orientation(self):
+        """
+        :return Tuple[Array[float], Array[float]]: pos (x,y,z) global cartesian coordinates, quat (x,y,z,w) global
+            orientation in quaternion form of this model's body (as taken at its body_id)
+        """
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_id())
+        return np.array(pos), np.array(orn)
+
+    def get_rpy(self):
+        """
+        Return robot orientation in roll, pitch, yaw
+        :return: roll, pitch, yaw
+        """
+        return self.base_link.get_rpy()
+
+    def get_velocity(self):
+        """
+        Get velocity of this robot (velocity associated with base link)
+
+        :return Tuple[Array[float], Array[float]]: linear (x,y,z) velocity, angular (ax,ay,az)
+            velocity of this robot
+        """
+        return self.base_link.get_velocity()
+
+    def get_linear_velocity(self):
+        """
+        Get linear velocity of this robot (velocity associated with base link)
+
+        :return Array[float]: linear (x,y,z) velocity of this robot
+        """
+        return self.base_link.get_linear_velocity()
+
+    def get_angular_velocity(self):
+        """
+        Get angular velocity of this robot (velocity associated with base link)
+
+        :return Array[float]: angular (ax,ay,az) velocity of this robot
+        """
+        return self.base_link.get_angular_velocity()
+
+    def set_position(self, pos):
+        """
+        Sets the model's global position
+
+        :param pos: Array[float], corresponding to (x,y,z) global cartesian coordinates to set
+        """
+        old_quat = self.get_orientation()
+        self.set_position_orientation(pos, old_quat)
+
+    def set_orientation(self, quat):
+        """
+        Set the model's global orientation
+
+        :param quat: Array[float], corresponding to (x,y,z,w) global quaternion orientation to set
+        """
+        old_pos = self.get_position()
+        self.set_position_orientation(old_pos, quat)
+
+    def set_position_orientation(self, pos, quat):
+        """
+        Set model's global position and orientation
+
+        :param pos: Array[float], corresponding to (x,y,z) global cartesian coordinates to set
+        :param quat: Array[float], corresponding to (x,y,z,w) global quaternion orientation to set
+        """
+        p.resetBasePositionAndOrientation(self.get_body_id(), pos, quat)
+
+    def get_control_dict(self):
+        """
+        Grabs all relevant information that should be passed to each controller during each controller step.
+
+        :return Dict[str, Array[float]]: Keyword-mapped control values for this robot.
+            By default, returns the following:
+
+            - joint_position: (n_dof,) joint positions
+            - joint_velocity: (n_dof,) joint velocities
+            - joint_torque: (n_dof,) joint torques
+            - base_pos: (3,) (x,y,z) global cartesian position of the robot's base link
+            - base_quat: (4,) (x,y,z,w) global cartesian orientation of ths robot's base link
+        """
+        return {
+            "joint_position": self.joint_positions,
+            "joint_velocity": self.joint_velocities,
+            "joint_torque": self.joint_torques,
+            "base_pos": self.get_position(),
+            "base_quat": self.get_orientation(),
+        }
+
     def dump_state(self):
+        """
+        Dump the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
+        """
         pass
 
     def load_state(self, dump):
+        """
+        Load the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
+        """
         pass
 
-    def get_body_id(self):
-        body_id = None
-        if self.robot_ids:
-            body_id = self.robot_ids[0]
-        return body_id
+    @property
+    def proprioception_dim(self):
+        """
+        :return int: Size of self.get_proprioception() vector
+        """
+        return len(self.get_proprioception())
+
+    @property
+    def links(self):
+        """
+        Links belonging to this robot.
+
+        :return OrderedDict[str, RobotLink]: Ordered Dictionary mapping robot link names to corresponding
+            RobotLink objects owned by this robot
+        """
+        return self._links
+
+    @property
+    def joints(self):
+        """
+        Joints belonging to this robot.
+
+        :return OrderedDict[str, RobotJoint]: Ordered Dictionary mapping robot joint names to corresponding
+            RobotJoint objects owned by this robot
+        """
+        return self._joints
+
+    @property
+    def n_links(self):
+        """
+        :return int: Number of links for this robot
+        """
+        return len(list(self._links.keys()))
+
+    @property
+    def n_joints(self):
+        """
+        :return int: Number of joints for this robot
+        """
+        return len(list(self._joints.keys()))
+
+    @property
+    def base_link(self):
+        """
+        Returns the RobotLink body corresponding to the link as defined by self.base_name.
+
+        Note that if base_name was not specified during this robot's initialization, this will default to be the
+        first link in the underlying robot model file.
+
+        :return RobotLink: robot's base link corresponding to self.base_name.
+        """
+        assert self.base_name in self._links, "Cannot find base link '{}' in links! Valid options are: {}".format(
+            self.base_name, list(self._links.keys())
+        )
+        return self._links[self.base_name]
+
+    @property
+    def eyes(self):
+        """
+        Returns the RobotLink corresponding to the robot's camera. Assumes that there is a link
+        with name "eyes" in the underlying robot model. If not, an error will be raised.
+
+        :return RobotLink: link containing the robot's camera
+        """
+        assert "eyes" in self._links, "Cannot find 'eyes' in links, current link names are: {}".format(
+            list(self._links.keys())
+        )
+        return self._links["eyes"]
+
+    @property
+    def mass(self):
+        """
+        Returns the mass of this robot. Default is 0.0 kg
+
+        :return float: Mass of this robot, in kg
+        """
+        return self._mass
+
+    @property
+    def joint_position_limits(self):
+        """
+        :return Tuple[Array[float], Array[float]]: (min, max) joint position limits, where each is an n-DOF length array
+        """
+        return (self.joint_lower_limits, self.joint_upper_limits)
+
+    @property
+    def joint_velocity_limits(self):
+        """
+        :return Tuple[Array[float], Array[float]]: (min, max) joint velocity limits, where each is an n-DOF length array
+        """
+        return (
+            -np.array([j.max_velocity for j in self._joints.values()]),
+            np.array([j.max_velocity for j in self._joints.values()]),
+        )
+
+    @property
+    def joint_torque_limits(self):
+        """
+        :return Tuple[Array[float], Array[float]]: (min, max) joint torque limits, where each is an n-DOF length array
+        """
+        return (
+            -np.array([j.max_torque for j in self._joints.values()]),
+            np.array([j.max_torque for j in self._joints.values()]),
+        )
+
+    @property
+    def joint_positions(self):
+        """
+        :return Array[float]: n-DOF length array of this robot's joint positions
+        """
+        return deepcopy(self._joint_state["unnormalized"]["position"])
+
+    @property
+    def joint_velocities(self):
+        """
+        :return Array[float]: n-DOF length array of this robot's joint velocities
+        """
+        return deepcopy(self._joint_state["unnormalized"]["velocity"])
+
+    @property
+    def joint_torques(self):
+        """
+        :return Array[float]: n-DOF length array of this robot's joint torques
+        """
+        return deepcopy(self._joint_state["unnormalized"]["torque"])
+
+    @property
+    def joint_positions_normalized(self):
+        """
+        :return Array[float]: n-DOF length array of this robot's normalized joint positions in range [-1, 1]
+        """
+        return deepcopy(self._joint_state["normalized"]["position"])
+
+    @property
+    def joint_velocities_normalized(self):
+        """
+        :return Array[float]: n-DOF length array of this robot's normalized joint velocities in range [-1, 1]
+        """
+        return deepcopy(self._joint_state["normalized"]["velocity"])
+
+    @property
+    def joint_torques_normalized(self):
+        """
+        :return Array[float]: n-DOF length array of this robot's normalized joint torques in range [-1, 1]
+        """
+        return deepcopy(self._joint_state["normalized"]["torque"])
+
+    @property
+    def joint_at_limits(self):
+        """
+        :return Array[float]: n-DOF length array specifying whether joint is at its limit,
+            with 1.0 --> at limit, otherwise 0.0
+        """
+        return deepcopy(self._joint_state["at_limits"])
+
+    @property
+    def joint_has_limits(self):
+        """
+        :return Array[bool]: n-DOF length array specifying whether joint has a limit or not
+        """
+        return np.array([j.has_limit for j in self._joints.values()])
+
+    @property
+    def category(self):
+        """
+        :return str: Semantic category for robots
+        """
+        return "agent"
+
+    @property
+    def action_dim(self):
+        """
+        :return int: Dimension of action space for this robot. By default,
+            is the sum over all controller action dimensions
+        """
+        return sum([controller.command_dim for controller in self._controllers.values()])
+
+    @property
+    def action_type(self):
+        """
+        :return str: Type of action space. One of {discrete, continuous}
+        """
+        assert "type" in self.action_config, "'type' should be specified in action_config!"
+        assert_valid_key(key=self.action_config["type"], valid_keys={"discrete", "continuous"}, name="action type")
+        return self.action_config["type"]
+
+    @property
+    def action_space(self):
+        """
+        Action space for this robot.
+
+        :return gym.space: Action space, either discrete (Discrete) or continuous (Box)
+        """
+        return deepcopy(self._action_space)
+
+    @property
+    @abstractmethod
+    def controller_order(self):
+        """
+        :return Tuple[str]: Ordering of the actions, corresponding to the controllers. e.g., ["base", "arm", "gripper"],
+            to denote that the action vector should be interpreted as first the base action, then arm command, then
+            gripper command
+        """
+        raise NotImplementedError
+
+    @property
+    def controller_action_idx(self):
+        """
+        :return: Dict[str, Array[int]]: Mapping from controller names (e.g.: head, base, arm, etc.) to corresponding
+            indices in the action vector
+        """
+        dic = {}
+        idx = 0
+        for controller in self.controller_order:
+            cmd_dim = self._controllers[controller].command_dim
+            dic[controller] = np.arange(idx, idx + cmd_dim)
+            idx += cmd_dim
+
+        return dic
+
+    @property
+    def normalize_actions(self):
+        """
+        :return bool: Whether to normalize actions or not.
+        """
+        assert "normalize" in self.action_config, "'normalize' should be specified in action_config!"
+        return self.action_config["normalize"]
+
+    @property
+    def control_limits(self):
+        """
+        :return: Dict[str, Any]: Keyword-mapped limits for this robot. Dict contains:
+            position: (min, max) joint limits, where min and max are N-DOF arrays
+            velocity: (min, max) joint velocity limits, where min and max are N-DOF arrays
+            torque: (min, max) joint torque limits, where min and max are N-DOF arrays
+            has_limit: (n_dof,) array where each element is True if that corresponding joint has a position limit
+                (otherwise, joint is assumed to be limitless)
+        """
+        return {
+            "position": (self.joint_lower_limits, self.joint_upper_limits),
+            "velocity": (-self.max_joint_velocities, self.max_joint_velocities),
+            "torque": (-self.max_joint_torques, self.max_joint_torques),
+            "has_limit": self.joint_has_limits,
+        }
+
+    @property
+    @abstractmethod
+    def default_joint_pos(self):
+        """
+        :return Array[float]: Default joint positions for this robot
+        """
+        raise NotImplementedError
+
+    @property
+    def _default_action_config(self):
+        """
+        :return Dict[str, Any]: default nested dictionary for specific action keyword arguments for this robot
+        """
+        return {
+            "type": "continuous",
+            "normalize": True,
+        }
+
+    @property
+    @abstractmethod
+    def _default_controller_config(self):
+        """
+        :return Dict[str, Any]: default nested dictionary mapping controller name(s) to specific controller
+            configurations for this robot. Note that the order specifies the sequence of actions to be received
+            from the environment.
+
+            Expected structure is as follows:
+                group1:
+                    controller_name1:
+                        controller_name1_params
+                        ...
+                    controller_name2:
+                        ...
+                group2:
+                    ...
+
+            The @group keys specify the control type for various aspects of the robot, e.g.: "head", "arm", "base", etc.
+            @controller_name keys specify the supported controllers for that group. A default specification MUST be
+            specified for each controller_name. e.g.: IKController, DifferentialDriveController, JointController, etc.
+        """
+        return {}
+
+    @property
+    @abstractmethod
+    def _default_controllers(self):
+        """
+        :return Dict[str, str]: Maps robot group (e.g. base, arm, etc.) to default controller class name to use
+            (e.g. IKController, JointController, etc.)
+        """
+        return {}
+
+    @property
+    def joint_ids(self):
+        """
+        :return: Array[int], joint IDs for this robot
+        """
+        return np.array([joint.joint_id for joint in self._joints.values()])
+
+    @property
+    def joint_damping(self):
+        """
+        :return: Array[float], joint damping values for this robot
+        """
+        return np.array([get_joint_info(self.get_body_id(), joint_id)[6] for joint_id in self.joint_ids])
+
+    @property
+    def joint_lower_limits(self):
+        """
+        :return: Array[float], minimum values for this robot's joints. If joint does not have a range, returns -1000
+            for that joint
+        """
+        return np.array([joint.lower_limit if joint.has_limit else -1000.0 for joint in self._joints.values()])
+
+    @property
+    def joint_upper_limits(self):
+        """
+        :return: Array[float], maximum values for this robot's joints. If joint does not have a range, returns 1000
+            for that joint
+        """
+        return np.array([joint.upper_limit if joint.has_limit else 1000.0 for joint in self._joints.values()])
+
+    @property
+    def joint_range(self):
+        """
+        :return: Array[float], joint range values for this robot's joints
+        """
+        return self.joint_upper_limits - self.joint_lower_limits
+
+    @property
+    def max_joint_velocities(self):
+        """
+        :return: Array[float], maximum velocities for this robot's joints
+        """
+        return np.array([joint.max_velocity for joint in self._joints.values()])
+
+    @property
+    def max_joint_torques(self):
+        """
+        :return: Array[float], maximum torques for this robot's joints
+        """
+        return np.array([joint.max_torque for joint in self._joints.values()])
+
+    @property
+    def disabled_collision_pairs(self):
+        """
+        :return Tuple[Tuple[str, str]]: List of collision pairs to disable. Default is None (empty list)
+        """
+        return []
 
 
-class BodyPart:
+class RobotLink:
     """
     Body part (link) of Robots
     """
 
-    def __init__(self, body_name, bodies, body_index, body_part_index):
-        self.bodies = bodies
-        self.body_name = body_name
-        self.body_index = body_index
-        self.body_part_index = body_part_index
-        self.initialPosition = self.get_position()
-        self.initialOrientation = self.get_orientation()
+    def __init__(self, link_name, link_id, body_id):
+        """
+        :param link_name: str, name of the link corresponding to @link_id
+        :param link_id: int, ID of this link within the link(s) found in the body corresponding to @body_id
+        :param body_id: Robot body ID containing this link
+        """
+        # Store args and initialize state
+        self.link_name = link_name
+        self.link_id = link_id
+        self.body_id = body_id
+        self.initial_pos, self.initial_quat = self.get_position_orientation()
         self.movement_cid = -1
 
     def get_name(self):
-        """Get name of body part"""
-        return self.body_name
-
-    def _state_fields_of_pose_of(self, body_id, link_id=-1):
-        """Get pose of body part"""
-        if link_id == -1:
-            (x, y, z), (a, b, c, d) = p.getBasePositionAndOrientation(body_id)
-        else:
-            _, _, _, _, (x, y, z), (a, b, c, d) = p.getLinkState(body_id, link_id)
-        return np.array([x, y, z, a, b, c, d])
-
-    def _set_fields_of_pose_of(self, pos, orn):
-        """Set pose of body part"""
-        p.resetBasePositionAndOrientation(self.bodies[self.body_index], pos, orn)
-
-    def get_pose(self):
-        """Get pose of body part"""
-        return self._state_fields_of_pose_of(self.bodies[self.body_index], self.body_part_index)
-
-    def get_position(self):
-        """Get position of body part"""
-        return self.get_pose()[:3]
-
-    def get_orientation(self):
-        """Get orientation of body part
-        Orientation is by default defined in [x,y,z,w]"""
-        return self.get_pose()[3:]
+        """
+        Get name of this link
+        """
+        return self.link_name
 
     def get_position_orientation(self):
-        """Get position and orientation of the body part
-        Redundant with get_pose"""
-        return self.get_position(), self.get_orientation()
+        """
+        Get pose of this link
+
+        :return Tuple[Array[float], Array[float]]: pos (x,y,z) cartesian coordinates, quat (x,y,z,w)
+            orientation in quaternion form of this link
+        """
+        if self.link_id == -1:
+            pos, quat = p.getBasePositionAndOrientation(self.body_id)
+        else:
+            _, _, _, _, pos, quat = p.getLinkState(self.body_id, self.link_id)
+        return np.array(pos), np.array(quat)
+
+    def get_position(self):
+        """
+        :return Array[float]: (x,y,z) cartesian coordinates of this link
+        """
+        return self.get_position_orientation()[0]
+
+    def get_orientation(self):
+        """
+        :return Array[float]: (x,y,z,w) orientation in quaternion form of this link
+        """
+        return self.get_position_orientation()[1]
 
     def get_rpy(self):
-        """Get roll, pitch and yaw of body part
-        [roll, pitch, yaw]"""
+        """
+        :return Array[float]: (r,p,y) orientation in euler form of this link
+        """
         return p.getEulerFromQuaternion(self.get_orientation())
 
-    def set_position(self, position):
-        """Get position of body part"""
-        self._set_fields_of_pose_of(position, self.get_orientation())
+    def set_position(self, pos):
+        """
+        Sets the link's position
 
-    def set_orientation(self, orientation):
-        """Get position of body part
-        Orientation is defined in [x,y,z,w]"""
-        self._set_fields_of_pose_of(self.current_position(), orientation)
+        :param pos: Array[float], corresponding to (x,y,z) cartesian coordinates to set
+        """
+        old_quat = self.get_orientation()
+        self.set_position_orientation(pos, old_quat)
 
-    def set_pose(self, position, orientation):
-        """Set pose of body part"""
-        self._set_fields_of_pose_of(position, orientation)
+    def set_orientation(self, quat):
+        """
+        Set the link's global orientation
 
-    def current_position(self):
-        """Synonym method for get_position"""
-        return self.get_position()
+        :param quat: Array[float], corresponding to (x,y,z,w) quaternion orientation to set
+        """
+        old_pos = self.get_position()
+        self.set_position_orientation(old_pos, quat)
 
-    def current_orientation(self):
-        """Synonym method for get_orientation"""
-        return self.get_orientation()
+    def set_position_orientation(self, pos, quat):
+        """
+        Set model's global position and orientation. Note: only supported if this is the base link (ID = -1!)
 
-    def reset_position(self, position):  # Backward compatibility
-        """Synonym method for set_position"""
-        self.set_position(position)
+        :param pos: Array[float], corresponding to (x,y,z) global cartesian coordinates to set
+        :param quat: Array[float], corresponding to (x,y,z,w) global quaternion orientation to set
+        """
+        assert self.link_id == -1, "Can only set pose for a base link (id = -1)! Got link id: {}.".format(self.link_id)
+        p.resetBasePositionAndOrientation(self.body_id, pos, quat)
 
-    def reset_orientation(self, orientation):  # Backward compatibility
-        """Synonym method for set_orientation"""
-        self.set_orientation(orientation)
+    def get_velocity(self):
+        """
+        Get velocity of this link
 
-    def reset_pose(self, position, orientation):  # Backward compatibility
-        """Synonym method for set_pose"""
-        self.set_pose(position, orientation)
+        :return Tuple[Array[float], Array[float]]: linear (x,y,z) velocity, angular (ax,ay,az)
+            velocity of this link
+        """
+        if self.link_id == -1:
+            lin, ang = p.getBaseVelocity(self.body_id)
+        else:
+            _, _, _, _, _, _, lin, ang = p.getLinkState(self.body_id, self.link_id, computeLinkVelocity=1)
+        return np.array(lin), np.array(ang)
 
     def get_linear_velocity(self):
         """
-        Get linear velocity of the body part
+        Get linear velocity of this link
+
+        :return Array[float]: linear (x,y,z) velocity of this link
         """
-        if self.body_part_index == -1:
-            (vx, vy, vz), _ = p.getBaseVelocity(self.bodies[self.body_index])
-        else:
-            _, _, _, _, _, _, (vx, vy, vz), _ = p.getLinkState(
-                self.bodies[self.body_index], self.body_part_index, computeLinkVelocity=1
-            )
-        return np.array([vx, vy, vz])
+        return self.get_velocity()[0]
 
     def get_angular_velocity(self):
         """
-        Get angular velocity of the body part
+        Get angular velocity of this link
+
+        :return Array[float]: angular (ax,ay,az) velocity of this link
         """
-        if self.body_part_index == -1:
-            _, (vr, vp, vyaw) = p.getBaseVelocity(self.bodies[self.body_index])
-        else:
-            _, _, _, _, _, _, _, (vr, vp, vyaw) = p.getLinkState(
-                self.bodies[self.body_index], self.body_part_index, computeLinkVelocity=1
-            )
-        return np.array([vr, vp, vyaw])
+        return self.get_velocity()[1]
 
     def contact_list(self):
         """
         Get contact points of the body part
+
+        :return Array[ContactPoints]: list of contact points seen by this link
         """
-        return p.getContactPoints(self.bodies[self.body_index], -1, self.body_part_index, -1)
+        return p.getContactPoints(self.body_id, -1, self.link_id, -1)
+
+    def force_wakeup(self):
+        """
+        Forces a wakeup for this robot. Defaults to no-op.
+        """
+        pass
 
 
-class Joint:
+class RobotJoint:
     """
-    Joint of Robots
+    Joint of a robot
     """
 
-    def __init__(self, joint_name, bodies, body_index, joint_index):
-        self.bodies = bodies
-        self.body_index = body_index
-        self.joint_index = joint_index
+    def __init__(self, joint_name, joint_id, body_id):
+        """
+        :param joint_name: str, name of the joint corresponding to @joint_id
+        :param joint_id: int, ID of this joint within the joint(s) found in the body corresponding to @body_id
+        :param body_id: Robot body ID containing this link
+        """
+        # Store args and initialize state
         self.joint_name = joint_name
+        self.joint_id = joint_id
+        self.body_id = body_id
 
         # read joint type and joint limit from the URDF file
         # lower_limit, upper_limit, max_velocity, max_torque = <limit lower=... upper=... velocity=... effort=.../>
@@ -359,8 +1116,7 @@ class Joint:
             _,
             _,
             _,
-        ) = p.getJointInfo(self.bodies[self.body_index], self.joint_index)
-        self.joint_has_limit = self.lower_limit < self.upper_limit
+        ) = p.getJointInfo(self.body_id, self.joint_id)
 
         # if joint torque and velocity limits cannot be found in the model file, set a default value for them
         if self.max_torque == 0.0:
@@ -368,25 +1124,30 @@ class Joint:
         if self.max_velocity == 0.0:
             # if max_velocity and joint limit are missing for a revolute joint,
             # it's likely to be a wheel joint and a high max_velocity is usually supported.
-            if self.joint_type == p.JOINT_REVOLUTE and not self.joint_has_limit:
-                self.max_velocity = 15.0
-            else:
-                self.max_velocity = 1.0
+            self.max_velocity = 15.0 if self.joint_type == p.JOINT_REVOLUTE and not self.has_limit else 1.0
 
     def __str__(self):
-        return "idx: {}, name: {}".format(self.joint_index, self.joint_name)
+        return "idx: {}, name: {}".format(self.joint_id, self.joint_name)
 
     def get_state(self):
-        """Get state of joint"""
-        x, vx, _, trq = p.getJointState(self.bodies[self.body_index], self.joint_index)
+        """
+        Get the current state of the joint
+
+        :return Tuple[float, float, float]: (joint_pos, joint_vel, joint_tor) observed for this joint
+        """
+        x, vx, _, trq = p.getJointState(self.body_id, self.joint_id)
         return x, vx, trq
 
     def get_relative_state(self):
-        """Get normalized state of joint"""
+        """
+        Get the normalized current state of the joint
+
+        :return Tuple[float, float, float]: Normalized (joint_pos, joint_vel, joint_tor) observed for this joint
+        """
         pos, vel, trq = self.get_state()
 
         # normalize position to [-1, 1]
-        if self.joint_has_limit:
+        if self.has_limit:
             mean = (self.lower_limit + self.upper_limit) / 2.0
             magnitude = (self.upper_limit - self.lower_limit) / 2.0
             pos = (pos - mean) / magnitude
@@ -399,45 +1160,56 @@ class Joint:
 
         return pos, vel, trq
 
-    def set_position(self, position):
-        """Set position of joint"""
-        if self.joint_has_limit:
-            position = np.clip(position, self.lower_limit, self.upper_limit)
-        p.setJointMotorControl2(
-            self.bodies[self.body_index], self.joint_index, p.POSITION_CONTROL, targetPosition=position
-        )
+    def set_pos(self, pos):
+        """
+        Set position of joint (in metric space)
 
-    def set_velocity(self, velocity):
-        """Set velocity of joint"""
-        velocity = np.clip(velocity, -self.max_velocity, self.max_velocity)
-        p.setJointMotorControl2(
-            self.bodies[self.body_index], self.joint_index, p.VELOCITY_CONTROL, targetVelocity=velocity
-        )
+        :param pos: float, desired position for this joint, in metric space
+        """
+        if self.has_limit:
+            pos = np.clip(pos, self.lower_limit, self.upper_limit)
+        p.setJointMotorControl2(self.body_id, self.joint_id, p.POSITION_CONTROL, targetPosition=pos)
+
+    def set_vel(self, vel):
+        """
+        Set velocity of joint (in metric space)
+
+        :param vel: float, desired velocity for this joint, in metric space
+        """
+        vel = np.clip(vel, -self.max_velocity, self.max_velocity)
+        p.setJointMotorControl2(self.body_id, self.joint_id, p.VELOCITY_CONTROL, targetVelocity=vel)
 
     def set_torque(self, torque):
-        """Set torque of joint"""
+        """
+        Set torque of joint (in metric space)
+
+        :param torque: float, desired torque for this joint, in metric space
+        """
         torque = np.clip(torque, -self.max_torque, self.max_torque)
         p.setJointMotorControl2(
-            bodyIndex=self.bodies[self.body_index],
-            jointIndex=self.joint_index,
+            bodyIndex=self.body_id,
+            jointIndex=self.joint_id,
             controlMode=p.TORQUE_CONTROL,
             force=torque,
         )
 
     def reset_state(self, pos, vel):
         """
-        Reset pos and vel of joint
+        Reset pos and vel of joint in metric space
+
+        :param pos: float, desired position for this joint, in metric space
+        :param vel: float, desired velocity for this joint, in metric space
         """
-        p.resetJointState(self.bodies[self.body_index], self.joint_index, targetValue=pos, targetVelocity=vel)
+        p.resetJointState(self.body_id, self.joint_id, targetValue=pos, targetVelocity=vel)
         self.disable_motor()
 
     def disable_motor(self):
         """
-        disable the motor of joint
+        Disable the motor of this joint
         """
         p.setJointMotorControl2(
-            self.bodies[self.body_index],
-            self.joint_index,
+            self.body_id,
+            self.joint_id,
             controlMode=p.POSITION_CONTROL,
             targetPosition=0,
             targetVelocity=0,
@@ -446,38 +1218,9 @@ class Joint:
             force=0,
         )
 
-    def get_joint_relative_state(self):  # Synonym method
-        """Synonym method for get_relative_state"""
-        return self.get_relative_state()
-
-    def set_motor_position(self, pos):  # Synonym method
-        """Synonym method for set_position"""
-        return self.set_position(pos)
-
-    def set_motor_torque(self, torque):  # Synonym method
-        """Synonym method for set_torque"""
-        return self.set_torque(torque)
-
-    def set_motor_velocity(self, vel):  # Synonym method
-        """Synonym method for set_velocity"""
-        return self.set_velocity(vel)
-
-    def reset_joint_state(self, position, velocity):  # Synonym method
-        """Synonym method for reset_state"""
-        return self.reset_state(position, velocity)
-
-    def current_position(self):  # Backward compatibility
-        """Synonym method for get_state"""
-        return self.get_state()
-
-    def current_relative_position(self):  # Backward compatibility
-        """Synonym method for get_relative_state"""
-        return self.get_relative_state()
-
-    def reset_current_position(self, position, velocity):  # Backward compatibility
-        """Synonym method for reset_state"""
-        self.reset_state(position, velocity)
-
-    def reset_position(self, position, velocity):  # Backward compatibility
-        """Synonym method for reset_state"""
-        self.reset_state(position, velocity)
+    @property
+    def has_limit(self):
+        """
+        :return bool: True if this joint has a limit, else False
+        """
+        return self.lower_limit < self.upper_limit

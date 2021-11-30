@@ -4,10 +4,10 @@ import gym
 import numpy as np
 import pybullet as p
 
-from igibson.robots.robot_locomotor import LocomotorRobot
+from igibson.robots.locomotion_robot import LocomotionRobot
 
 
-class Humanoid(LocomotorRobot):
+class Humanoid(LocomotionRobot):
     """
     OpenAI Humanoid robot
     Uses joint torque control
@@ -15,14 +15,12 @@ class Humanoid(LocomotorRobot):
 
     def __init__(self, config, **kwargs):
         self.config = config
-        self.torque = config.get("torque", 0.1)
         self.glass_id = None
         self.glass_offset = 0.3
-        LocomotorRobot.__init__(
+        LocomotionRobot.__init__(
             self,
             "humanoid/humanoid.xml",
             action_dim=17,
-            torque_coef=0.41,
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
             control="torque",
@@ -30,23 +28,17 @@ class Humanoid(LocomotorRobot):
             **kwargs
         )
 
-    def set_up_continuous_action_space(self):
-        """
-        Set up continuous action space
-        """
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
-        self.action_high = self.torque * np.ones([self.action_dim])
-        self.action_low = -self.action_high
-
     def set_up_discrete_action_space(self):
         """
         Set up discrete action space
         """
-        self.action_list = [[self.torque] * self.action_dim, [0.0] * self.action_dim]
+        if not self.normalize_robot_action:
+            raise ValueError("discrete action only works with normalized action space")
+        self.action_list = [[1.0] * self.action_dim, [0.0] * self.action_dim]
         self.action_space = gym.spaces.Discrete(len(self.action_list))
         self.setup_keys_to_action()
 
-    def robot_specific_reset(self):
+    def reset(self):
         """
         Humanoid robot specific reset
         Add spherical radiance/glass shield to protect the robot's camera
@@ -59,7 +51,7 @@ class Humanoid(LocomotorRobot):
                 humanoidId = i
 
         # Spherical radiance/glass shield to protect the robot's camera
-        super(Humanoid, self).robot_specific_reset()
+        super(Humanoid, self).reset()
 
         if self.glass_id is None:
             glass_path = os.path.join(self.physics_model_dir, "humanoid/glass.xml")
@@ -104,7 +96,7 @@ class Humanoid(LocomotorRobot):
             self.apply_robot_action(real_action)
         else:
             for i, m, joint_torque_coef in zip(range(17), self.motors, self.motor_power):
-                m.set_motor_torque(float(joint_torque_coef * self.torque_coef * real_action[i]))
+                m.set_torque(float(joint_torque_coef * real_action[i]))
 
     def setup_keys_to_action(self):
         self.keys_to_action = {(ord("w"),): 0, (): 1}

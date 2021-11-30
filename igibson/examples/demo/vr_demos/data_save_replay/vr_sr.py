@@ -185,7 +185,7 @@ def run_action_sr(mode):
 
             # Get relevant VR action data and update VR agent
             bvr_robot.update(log_reader.get_agent_action("vr_robot"))
-            # vr_agent.parts['eye'].show_eye()
+            # vr_agent.links['eye'].show_eye()
 
             # Print debugging information
             if PRINT_PB:

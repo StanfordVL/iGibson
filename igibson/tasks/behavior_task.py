@@ -24,7 +24,7 @@ from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.fetch_gripper_robot import FetchGripper
+from igibson.robots.fetch import Fetch
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.tasks.bddl_backend import IGibsonBDDLBackend
@@ -470,7 +470,7 @@ class BehaviorTask(BaseTask):
 
     def get_agent(self, env):
         if isinstance(env.robots[0], BehaviorRobot):
-            return env.robots[0].parts["body"]
+            return env.robots[0].links["body"]
         else:
             return env.robots[0]
 

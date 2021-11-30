@@ -348,8 +348,8 @@ class IGLogWriter(object):
 
         if self.vr_robot:
             forces = {
-                "left_controller": p.getConstraintState(self.vr_robot.parts["left_hand"].movement_cid),
-                "right_controller": p.getConstraintState(self.vr_robot.parts["right_hand"].movement_cid),
+                "left_controller": p.getConstraintState(self.vr_robot.links["left_hand"].movement_cid),
+                "right_controller": p.getConstraintState(self.vr_robot.links["right_hand"].movement_cid),
             }
         for device in ["hmd", "left_controller", "right_controller"]:
             is_valid, trans, rot = self.sim.get_data_for_vr_device(device)
@@ -369,9 +369,9 @@ class IGLogWriter(object):
                     else:
                         # Calculate model rotation and store
                         if device == "left_controller":
-                            base_rot = self.vr_robot.parts["left_hand"].base_rot
+                            base_rot = self.vr_robot.links["left_hand"].base_rot
                         else:
-                            base_rot = self.vr_robot.parts["right_hand"].base_rot
+                            base_rot = self.vr_robot.links["right_hand"].base_rot
                         controller_rot = rot
                         # Use dummy translation to calculation final rotation
                         final_rot = p.multiplyTransforms([0, 0, 0], controller_rot, [0, 0, 0], base_rot)[1]
@@ -395,7 +395,7 @@ class IGLogWriter(object):
         vr_pos_data.extend(list(self.sim.get_vr_pos()))
         vr_pos_data.extend(list(self.sim.get_vr_offset()))
         if self.vr_robot:
-            vr_pos_data.extend(p.getConstraintState(self.vr_robot.parts["body"].movement_cid))
+            vr_pos_data.extend(p.getConstraintState(self.vr_robot.links["body"].movement_cid))
         self.data_map["vr"]["vr_device_data"]["vr_position_data"][self.frame_counter, ...] = np.array(vr_pos_data)
 
         # On systems where eye tracking is not supported, we get dummy data and a guaranteed False validity reading

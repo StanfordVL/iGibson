@@ -9,12 +9,12 @@ import numpy as np
 import pybullet as p
 
 from igibson.physics import motor
-from igibson.robots.robot_locomotor import LocomotorRobot
+from igibson.robots.locomotion_robot import LocomotionRobot
 
 tracking_camera = {"yaw": 20, "z_offset": 0.3, "distance": 2, "pitch": -20}
 
 
-class MinitaurBase(LocomotorRobot):
+class MinitaurBase(LocomotionRobot):
     """
     Minitaur robot
     Reference: https://www.ghostrobotics.io/
@@ -93,7 +93,7 @@ class MinitaurBase(LocomotorRobot):
         self.robot_name = "base_chassis_link"
         scale = config["robot_scale"] if "robot_scale" in config.keys() else self.default_scale
 
-        LocomotorRobot.__init__(
+        LocomotionRobot.__init__(
             self,
             "quadruped/minitaur.urdf",
             self.robot_name,
@@ -170,13 +170,13 @@ class MinitaurBase(LocomotorRobot):
     def _BuildMotorIdList(self):
         self._motor_id_list = [self.joint_name_to_id[motor_name] for motor_name in self.MOTOR_NAMES]
 
-    def robot_specific_reset(self, reload_urdf=True):
+    def reset(self, reload_urdf=True):
         """Reset the minitaur to its initial states.
 
         :param reload_urdf: whether to reload the urdf file. If not, reset() just place the minitaur back to its starting position.
         """
         if self.minitaur is None:
-            self.minitaur = self.robot_ids[0]
+            self.minitaur = self.get_body_id()
 
         if self.joint_name_to_id is None:
             self._BuildJointNameToIdDict()

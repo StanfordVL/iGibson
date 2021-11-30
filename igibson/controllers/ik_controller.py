@@ -2,168 +2,221 @@ import numpy as np
 import pybullet as p
 
 import igibson.utils.transform_utils as T
+from igibson.controllers import ControlType, ManipulationController
 from igibson.utils.filters import MovingAverageFilter
 
 # Different modes
-IK_MODES = {
-    "pose_absolute_ori",  # 6DOF (dx,dy,dz,ax,ay,az) control over pose, where the orientation is given in absolute axis-angle coordinates
-    "pose_delta_ori",  # 6DOF (dx,dy,dz,dax,day,daz) control over pose
-    "position_fixed_ori",  # 3DOF (dx,dy,dz) control over position, with orientation commands being kept as fixed initial absolute orientation
-    "position_compliant_ori",  # 3DOF (dx,dy,dz) control over position, with orientation commands automatically being sent as 0s (so can drift over time)
+IK_MODE_COMMAND_DIMS = {
+    "pose_absolute_ori": 6,  # 6DOF (dx,dy,dz,ax,ay,az) control over pose, where the orientation is given in absolute axis-angle coordinates
+    "pose_delta_ori": 6,  # 6DOF (dx,dy,dz,dax,day,daz) control over pose
+    "position_fixed_ori": 3,  # 3DOF (dx,dy,dz) control over position, with orientation commands being kept as fixed initial absolute orientation
+    "position_compliant_ori": 3,  # 3DOF (dx,dy,dz) control over position, with orientation commands automatically being sent as 0s (so can drift over time)
 }
+IK_MODES = set(IK_MODE_COMMAND_DIMS.keys())
 
 
-class IKController:
+class InverseKinematicsController(ManipulationController):
     """
-    Simple controller class to convert (delta) EEF commands into joint velocities
+    Controller class to convert (delta) EEF commands into joint velocities using Inverse Kinematics (IK).
 
-    Args:
-        robot (BaseRobot): Robot to control
-        config (dict): Config associated with this iG setup
+    Each controller step consists of the following:
+        1. Clip + Scale inputted command according to @command_input_limits and @command_output_limits
+        2. Run Inverse Kinematics to back out joint velocities for a desired task frame command
+        3. Clips the resulting command by the motor (velocity) limits
     """
 
-    def __init__(self, robot, config):
-        # Store internal variables
-        self.robot = robot
-        self.config = config
-        self.input_max = np.array(config["controller"]["input_max"])
-        self.input_min = np.array(config["controller"]["input_min"])
-        self.output_max = np.array(config["controller"]["output_max"])
-        self.output_min = np.array(config["controller"]["output_min"])
-        self.ik_with_trunk = config.get("controller", {}).get("ik_with_trunk", True)
-        self.action_scale = abs(self.output_max - self.output_min) / abs(self.input_max - self.input_min)
-        self.action_output_transform = (self.output_max + self.output_min) / 2.0
-        self.action_input_transform = (self.input_max + self.input_min) / 2.0
-        self.lpf = MovingAverageFilter(obs_dim=len(self.robot.upper_joint_limits), filter_width=2)
+    def __init__(
+        self,
+        base_body_id,
+        task_link_id,
+        control_freq,
+        default_joint_pos,
+        joint_damping,
+        control_limits,
+        joint_idx,
+        command_input_limits="default",
+        command_output_limits=((-0.2, -0.2, -0.2, -0.5, -0.5, -0.5), (0.2, 0.2, 0.2, 0.5, 0.5, 0.5)),
+        kv=2.0,
+        mode="pose_delta_ori",
+        smoothing_filter_size=None,
+        workspace_pose_limiter=None,
+        joint_range_tolerance=0.01,
+    ):
+        """
+        :param base_body_id: int, unique pybullet ID corresponding to the pybullet body being controlled by IK
+        :param task_link_id: int, pybullet link ID corresponding to the link within the body being controlled by IK
+        :param control_freq: int, controller loop frequency
+        :param default_joint_pos: Array[float], default joint positions, used as part of nullspace controller in IK
+        :param joint_damping: Array[float], joint damping parameters associated with each joint
+            in the body being controlled
+        :param control_limits: Dict[str, Tuple[Array[float], Array[float]]]: The min/max limits to the outputted
+            control signal. Should specify per-actuator type limits, i.e.:
 
-        # Set mode and make sure it's valid
-        self.mode = config["controller"].get("mode", "pose_delta_ori")
-        assert self.mode in IK_MODES, f"Invalid IK mode specified. Valid options: {IK_MODES}. Got: {self.mode}"
+            "position": [[min], [max]]
+            "velocity": [[min], [max]]
+            "torque": [[min], [max]]
+            "has_limit": [...bool...]
 
-        # Store global limits
-        self.eef_always_in_frame = config["controller"].get("eef_always_in_frame", False)
-        self.neutral_xy = config["controller"].get("neutral_xy", [0.25, 0])
-        self.radius_limit = config["controller"].get("radius_limit", 0.5)
-        self.height_limits = config["controller"].get("height_limits", [0.2, 1.5])
+            Values outside of this range will be clipped, if the corresponding joint index in has_limit is True.
+        :param joint_idx: Array[int], specific joint indices controlled by this robot. Used for inferring
+            controller-relevant values during control computations
+        :param command_input_limits: None or "default" or Tuple[float, float] or Tuple[Array[float], Array[float]],
+            if set, is the min/max acceptable inputted command. Values outside of this range will be clipped.
+            If None, no clipping will be used. If "default", range will be set to (-1, 1)
+        :param command_output_limits: None or "default" or Tuple[float, float] or Tuple[Array[float], Array[float]], if set,
+            is the min/max scaled command. If both this value and @command_input_limits is not None,
+            then all inputted command values will be scaled from the input range to the output range.
+            If either is None, no scaling will be used. If "default", then this range will automatically be set
+            to the @control_limits entry corresponding to self.control_type
+        :param kv: float, Gain applied to error between IK-commanded joint positions and current joint positions
+        :param mode: str, mode to use when computing IK. In all cases, position commands are 3DOF delta (dx,dy,dz)
+            cartesian values, relative to the robot base frame. Valid options are:
+                - "pose_absolute_ori": 6DOF (dx,dy,dz,ax,ay,az) control over pose,
+                    where the orientation is given in absolute axis-angle coordinates
+                - "pose_delta_ori": 6DOF (dx,dy,dz,dax,day,daz) control over pose
+                - "position_fixed_ori": 3DOF (dx,dy,dz) control over position,
+                    with orientation commands being kept as fixed initial absolute orientation
+                - "position_compliant_ori": 3DOF (dx,dy,dz) control over position,
+                    with orientation commands automatically being sent as 0s (so can drift over time)
+        :param smoothing_filter_size: None or int, if specified, sets the size of a moving average filter to apply
+            on all outputted IK joint positions.
+        :param workspace_pose_limiter: None or function, if specified, callback method that should clip absolute
+            target (x,y,z) cartesian position and absolute quaternion orientation (x,y,z,w) to a specific workspace
+            range (i.e.: this can be unique to each robot, and implemented by each embodiment).
+            Function signature should be:
 
-        # Get vertical and horizontal fov
-        self.vertical_fov = config["vertical_fov"] * np.pi / 180.0
-        width, height = config["image_width"], config["image_height"]
-        self.horizontal_fov = 2 * np.arctan(np.tan(self.vertical_fov / 2.0) * width / height)
+                def limiter(command_pos: Array[float], command_quat: Array[float], control_dict: Dict[str, Any]) --> Tuple[Array[float], Array[float]]
 
-        # Create var to store orientation reference (may be necessary based on mode)
-        self.ori_target = None  # quaternion
+            where pos_command is (x,y,z) cartesian position values, command_quat is (x,y,z,w) quarternion orientation
+            values, and the returned tuple is the processed (pos, quat) command.
+        :param joint_range_tolerance: float, amount to add to each side of the inputted joint range, to improve IK
+            convergence stability (e.g.: for joint_ranges = 0 for no limits, prevents NaNs from occurring)
+        """
+        # Store arguments
+        control_dim = len(joint_damping)
+        self.control_filter = (
+            None
+            if smoothing_filter_size in {None, 0}
+            else MovingAverageFilter(obs_dim=control_dim, filter_width=smoothing_filter_size)
+        )
+        assert mode in IK_MODES, "Invalid ik mode specified! Valid options are: {IK_MODES}, got: {mode}"
+        self.mode = mode
+        self.kv = kv
+        self.workspace_pose_limiter = workspace_pose_limiter
+        self.base_body_id = base_body_id
+        self.task_link_id = task_link_id
+        self.default_joint_pos = np.array(default_joint_pos)
+        self.joint_damping = np.array(joint_damping)
+        self.joint_range_tolerance = joint_range_tolerance
+
+        # Other variables that will be filled in at runtime
+        self._quat_target = None
+
+        # Run super init
+        super().__init__(
+            control_freq=control_freq,
+            control_limits=control_limits,
+            joint_idx=joint_idx,
+            command_input_limits=command_input_limits,
+            command_output_limits=command_output_limits,
+        )
 
     def reset(self):
-        """
-        Reset this controller
-        """
-        self.lpf = MovingAverageFilter(obs_dim=len(self.robot.upper_joint_limits), filter_width=2)
-        self.ori_target = None
+        # Reset the filter and clear internal control state
+        if self.control_filter is not None:
+            self.control_filter.reset()
+        self._quat_target = None
 
-    def scale_command(self, command):
-        """
-        Scales the inputted action based on internal limits
-
-        Args:
-            command (6-array): Inputted raw command
-
-        Returns:
-            6-array: Scaled command
-        """
-        # Clip command
-        command = np.clip(command, self.input_min, self.input_max)
-        return (command - self.action_input_transform) * self.action_scale + self.action_output_transform
-
-    def get_current_error(self, current, set_point):
-        """
-        Returns an array of differences between the desired joint positions and current joint positions.
-        Useful for PID control.
-
-        :param current: the current joint positions
-        :param set_point: the joint positions that are desired as a numpy array
-        :return: the current error in the joint positions
-        """
-        error = current - set_point
-        return error
-
-    def bullet_base_pose_to_world_pose(self, pose_in_base):
+    @staticmethod
+    def _pose_in_base_to_pose_in_world(pose_in_base, base_in_world):
         """
         Convert a pose in the base frame to a pose in the world frame.
 
-        :param pose_in_base: a (pos, orn) tuple
-        :return pose_in world: a (pos, orn) tuple
+        :param pose_in_base: Tuple[Array[float], Array[float]], Cartesian xyz position,
+            quaternion xyzw orientation tuple corresponding to the desired pose in its local base frame
+        :param base_in_world: Tuple[Array[float], Array[float]], Cartesian xyz position,
+            quaternion xyzw orientation tuple corresponding to the base pose in the global static frame
+
+        :return Tuple[Array[float], Array[float]]: Cartesian xyz position,
+            quaternion xyzw orientation tuple corresponding to the desired pose in the global static frame
         """
-
         pose_in_base_mat = T.pose2mat(pose_in_base)
-
-        base_pos_in_world = np.array(p.getBasePositionAndOrientation(self.robot.robot_ids[0])[0])
-        base_orn_in_world = np.array(p.getBasePositionAndOrientation(self.robot.robot_ids[0])[1])
-        base_pose_in_world_mat = T.pose2mat((base_pos_in_world, base_orn_in_world))
-
+        base_pose_in_world_mat = T.pose2mat(base_in_world)
         pose_in_world_mat = T.pose_in_A_to_pose_in_B(pose_A=pose_in_base_mat, pose_A_in_B=base_pose_in_world_mat)
         return T.mat2pose(pose_in_world_mat)
 
-    def joint_positions_for_delta_command(self, delta):
+    def _command_to_control(self, command, control_dict):
         """
-        This function runs inverse kinematics to back out target joint positions
-        from the inputted delta command.
+        Converts the (already preprocessed) inputted @command into deployable (non-clipped!) joint control signal.
+        This processes the command based on self.mode, possibly clips the command based on self.workspace_pose_limiter,
 
-        :param delta: a relative pose command defined by (dx, dy, dz, and optionally [dar, dap, day])
+        :param command: Array[float], desired (already preprocessed) command to convert into control signals
+            Is one of:
+                (dx,dy,dz) - desired delta cartesian position
+                (dx,dy,dz,dax,day,daz) - desired delta cartesian position and delta axis-angle orientation
+                (dx,dy,dz,ax,ay,az) - desired delta cartesian position and global axis-angle orientation
+        :param control_dict: Dict[str, Any], dictionary that should include any relevant keyword-mapped
+            states necessary for controller computation. Must include the following keys:
+                joint_position: Array of current joint positions
+                base_pos: (x,y,z) cartesian position of the robot's base relative to the static global frame
+                base_quat: (x,y,z,w) quaternion orientation of the robot's base relative to the static global frame
+                task_pos_relative: (x,y,z) relative cartesian position of the desired task frame to control, computed
+                    in its local frame (e.g.: robot base frame)
+                task_quat_relative: (x,y,z,w) relative quaternion orientation of the desired task frame to control,
+                    computed in its local frame (e.g.: robot base frame)
 
-        :return: A list of size @num_joints corresponding to the target joint angles.
+        :return: Array[float], outputted (non-clipped!) velocity control signal to deploy
         """
-        # Compute position
-        dpos = delta[:3]
-        target_pos = self.robot.get_relative_eef_position() + dpos
+        # Grab important info from control dict
+        pos_relative = np.array(control_dict["task_pos_relative"])
+        quat_relative = np.array(control_dict["task_quat_relative"])
 
-        # Clip values if they're past the limits
-        xy_vec = target_pos[:2] - self.neutral_xy  # second value is "neutral" location
-        d = np.linalg.norm(xy_vec)
-        target_pos[:2] = (min(self.radius_limit, d) / d) * xy_vec + self.neutral_xy
-        target_pos[2] = np.clip(target_pos[2], *self.height_limits)
-
-        # Also clip the target pos if we want to keep the eef in frame
-        if self.eef_always_in_frame:
-            # Calculate angle from base to eef in xy plane
-            angle = np.arctan2(target_pos[1], target_pos[0])
-            # Clip angle appropriately
-            angle_clipped = np.clip(angle, -self.horizontal_fov / 2, self.horizontal_fov / 2)
-            # Project the original vector onto a unit vector pointing in the direction of the clipped angle
-            unit_xy_angle_clipped = np.array([np.cos(angle_clipped), np.sin(angle_clipped)])
-            target_pos[:2] = np.dot(target_pos[:2], unit_xy_angle_clipped) * unit_xy_angle_clipped
-
-        # print(f"target pos: {target_pos}")
+        # The first three values of the command are always the (delta) position, convert to absolute values
+        dpos = command[:3]
+        target_pos = pos_relative + dpos
 
         # Compute orientation
         if self.mode == "position_fixed_ori":
             # We need to grab the current robot orientation as the commanded orientation if there is none saved
-            if self.ori_target is None:
-                self.ori_target = self.robot.get_relative_eef_orientation()
-            target_quat = self.ori_target
+            if self._quat_target is None:
+                self._quat_target = quat_relative
+            target_quat = self._quat_target
         elif self.mode == "position_compliant_ori":
             # Target quat is simply the current robot orientation
-            target_quat = self.robot.get_relative_eef_orientation()
+            target_quat = quat_relative
         elif self.mode == "pose_absolute_ori":
             # Received "delta" ori is in fact the desired absolute orientation
-            target_quat = T.axisangle2quat(delta[3:])
+            target_quat = T.axisangle2quat(command[3:])
         else:  # pose_delta_ori control
             # Grab dori and compute target ori
-            dori = T.quat2mat(T.axisangle2quat(delta[3:]))
-            target_quat = T.mat2quat(dori @ T.quat2mat(self.robot.get_relative_eef_orientation()))
+            dori = T.quat2mat(T.axisangle2quat(command[3:]))
+            target_quat = T.mat2quat(dori @ T.quat2mat(quat_relative))
+
+        # Possibly limit to workspace if specified
+        if self.workspace_pose_limiter is not None:
+            target_pos, target_quat = self.workspace_pose_limiter(target_pos, target_quat, control_dict)
 
         # Convert to world frame
-        target_pos, target_quat = self.bullet_base_pose_to_world_pose((target_pos, target_quat))
+        target_pos, target_quat = self._pose_in_base_to_pose_in_world(
+            pose_in_base=(target_pos, target_quat),
+            base_in_world=(np.array(control_dict["base_pos"]), np.array(control_dict["base_quat"])),
+        )
 
         # Calculate and return IK-backed out joint angles
-        return self.calc_joint_angles_from_ik(target_pos=target_pos, target_quat=target_quat)
+        joint_targets = self._calc_joint_angles_from_ik(target_pos=target_pos, target_quat=target_quat)
 
-    def calc_joint_angles_from_ik(self, target_pos, target_quat):
+        # Grab the resulting error and scale it by the velocity gain
+        u = -self.kv * (control_dict["joint_position"] - joint_targets)
+
+        # Return these commanded velocities, (only the relevant joint idx)
+        return u[self.joint_idx]
+
+    def _calc_joint_angles_from_ik(self, target_pos, target_quat):
         """
         Solves for joint angles given the ik target position and orientation
 
         Note that this outputs joint angles for the entire pybullet robot body! It is the responsibility of the
-        associated BaseRobot class to filter out the redundant / non-impact joints from the computation
+        associated Robot class to filter out the redundant / non-impact joints from the computation
 
         Args:
             target_pos (3-array): absolute (x, y, z) eef position command (in robot base frame)
@@ -172,62 +225,35 @@ class IKController:
         Returns:
             n-array: corresponding joint positions to match the inputted targets
         """
-        # Update robot state
-        self.robot.calc_state()
-
-        lower_joint_limits = self.robot.lower_joint_limits
-        upper_joint_limits = self.robot.upper_joint_limits
-        joint_range = self.robot.joint_range
-
-        if not self.ik_with_trunk:
-            # Set the joint limits of the torso joint around the current state and adapt the range
-            lower_joint_limits[2] = self.robot.joint_position[2] - 0.01
-            upper_joint_limits[2] = self.robot.joint_position[2] + 0.01
-            joint_range[2] = 0.02
-
         # Run IK
         cmd_joint_pos = np.array(
             p.calculateInverseKinematics(
-                bodyIndex=self.robot.robot_ids[0],
-                endEffectorLinkIndex=self.robot.eef_link_id,
+                bodyIndex=self.base_body_id,
+                endEffectorLinkIndex=self.task_link_id,
                 targetPosition=target_pos.tolist(),
                 targetOrientation=target_quat.tolist(),
-                lowerLimits=lower_joint_limits.tolist(),
-                upperLimits=upper_joint_limits.tolist(),
-                jointRanges=joint_range.tolist(),
-                restPoses=self.robot.untucked_default_joints.tolist(),
-                jointDamping=self.robot.joint_damping.tolist(),
+                lowerLimits=(self.control_limits[ControlType.POSITION][0] - self.joint_range_tolerance).tolist(),
+                upperLimits=(self.control_limits[ControlType.POSITION][1] + self.joint_range_tolerance).tolist(),
+                jointRanges=(
+                    self.control_limits[ControlType.POSITION][1]
+                    - self.control_limits[ControlType.POSITION][0]
+                    + 2 * self.joint_range_tolerance
+                ).tolist(),
+                restPoses=self.default_joint_pos.tolist(),
+                jointDamping=self.joint_damping.tolist(),
             )
         )
 
-        if not self.ik_with_trunk:
-            # Set the goal torso state to be EXACTLY the state before (avoids drifting)
-            cmd_joint_pos[2] = self.robot.joint_position[2]
-
-        cmd_joint_pos = self.lpf.estimate(np.array(cmd_joint_pos))
+        # Optionally pass through smoothing filter for better stability
+        if self.control_filter is not None:
+            cmd_joint_pos = self.control_filter.estimate(cmd_joint_pos)
 
         return cmd_joint_pos
 
-    def control(self, command):
-        """
-        Execute IK control, given @command.
+    @property
+    def control_type(self):
+        return ControlType.VELOCITY
 
-        Args:
-            command (6-array): a DELTA relative pose command defined by (dx, dy, dz, dar, dap, day)
-
-        Returns:
-            n-array: commanded joint velocities to achieve the inputted @command.
-        """
-        # First, scale command
-        command = self.scale_command(command)
-
-        # Get desired joint positions from IK solver
-        cmd_joint_pos = self.joint_positions_for_delta_command(delta=command)
-
-        # Grab the resulting error and scale it by the velocity gain
-        cmd_joint_vel = self.config["controller"]["kv_vel"] * self.get_current_error(
-            current=self.robot.joint_position, set_point=cmd_joint_pos
-        )
-
-        # Return these commanded velocities
-        return cmd_joint_vel
+    @property
+    def command_dim(self):
+        return IK_MODE_COMMAND_DIMS[self.mode]

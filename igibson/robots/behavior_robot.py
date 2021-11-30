@@ -159,37 +159,37 @@ class BehaviorRobot(object):
         }
 
         # Set up body parts
-        self.parts = dict()
+        self.links = dict()
 
         if "left" in self.hands:
-            self.parts["left_hand"] = (
+            self.links["left_hand"] = (
                 BRHand(self, hand="left", **kwargs) if not use_gripper else BRGripper(self, hand="left", **kwargs)
             )
         if "right" in self.hands:
-            self.parts["right_hand"] = (
+            self.links["right_hand"] = (
                 BRHand(self, hand="right", **kwargs) if not use_gripper else BRGripper(self, hand="right", **kwargs)
             )
 
         # Store reference between hands
         if "left" in self.hands and "right" in self.hands:
-            self.parts["left_hand"].set_other_hand(self.parts["right_hand"])
-            self.parts["right_hand"].set_other_hand(self.parts["left_hand"])
+            self.links["left_hand"].set_other_hand(self.links["right_hand"])
+            self.links["right_hand"].set_other_hand(self.links["left_hand"])
         if self.use_body:
-            self.parts["body"] = BRBody(self, **kwargs)
+            self.links["body"] = BRBody(self, **kwargs)
 
-        self.parts["eye"] = BREye(self, **kwargs)
+        self.links["eye"] = BREye(self, **kwargs)
 
     def load(self, simulator):
-        return [id for part in self.parts.values() for id in part.load(simulator)]
+        return [id for part in self.links.values() for id in part.load(simulator)]
 
     def set_colliders(self, enabled=False):
-        self.parts["left_hand"].set_colliders(enabled)
-        self.parts["right_hand"].set_colliders(enabled)
-        self.parts["body"].set_colliders(enabled)
+        self.links["left_hand"].set_colliders(enabled)
+        self.links["right_hand"].set_colliders(enabled)
+        self.links["body"].set_colliders(enabled)
 
     def set_position_orientation(self, pos, orn):
-        self.parts["body"].set_position_orientation_unwrapped(pos, orn)
-        self.parts["body"].new_pos, self.parts["body"].new_orn = pos, orn
+        self.links["body"].set_position_orientation_unwrapped(pos, orn)
+        self.links["body"].new_pos, self.links["body"].new_orn = pos, orn
 
         # Local transforms for hands and eye
         if self.use_tracked_body:
@@ -202,24 +202,24 @@ class BehaviorRobot(object):
             eye_loc_pose = EYE_LOC_POSE_UNTRACKED
 
         left_hand_pos, left_hand_orn = p.multiplyTransforms(pos, orn, left_hand_loc_pose[0], left_hand_loc_pose[1])
-        self.parts["left_hand"].set_position_orientation(left_hand_pos, left_hand_orn)
+        self.links["left_hand"].set_position_orientation(left_hand_pos, left_hand_orn)
         right_hand_pos, right_hand_orn = p.multiplyTransforms(pos, orn, right_hand_loc_pose[0], right_hand_loc_pose[1])
-        self.parts["right_hand"].set_position_orientation(right_hand_pos, right_hand_orn)
+        self.links["right_hand"].set_position_orientation(right_hand_pos, right_hand_orn)
         eye_pos, eye_orn = p.multiplyTransforms(pos, orn, eye_loc_pose[0], eye_loc_pose[1])
-        self.parts["eye"].set_position_orientation(eye_pos, eye_orn)
+        self.links["eye"].set_position_orientation(eye_pos, eye_orn)
 
         for constraint, activated in self.constraints_active.items():
             if not activated and constraint != "body":
-                self.parts[constraint].activate_constraints()
+                self.links[constraint].activate_constraints()
                 self.constraints_active[constraint] = True
 
-        left_pos, left_orn = self.parts["left_hand"].get_position_orientation()
-        right_pos, right_orn = self.parts["right_hand"].get_position_orientation()
+        left_pos, left_orn = self.links["left_hand"].get_position_orientation()
+        right_pos, right_orn = self.links["right_hand"].get_position_orientation()
 
-        self.parts["left_hand"].move(left_pos, left_orn)
-        self.parts["right_hand"].move(right_pos, right_orn)
+        self.links["left_hand"].move(left_pos, left_orn)
+        self.links["right_hand"].move(right_pos, right_orn)
         if self.constraints_active["body"]:
-            self.parts["body"].move(pos, orn)
+            self.links["body"].move(pos, orn)
 
     def set_position(self, pos):
         self.set_position_orientation(pos, self.get_orientation())
@@ -228,24 +228,24 @@ class BehaviorRobot(object):
         self.set_position_orientation(self.get_position(), orn)
 
     def get_position(self):
-        return self.parts["body"].get_position()
+        return self.links["body"].get_position()
 
     def get_rpy(self):
         return p.getEulerFromQuaternion(self.get_orientation())
 
     def get_orientation(self):
-        return self.parts["body"].get_orientation()
+        return self.links["body"].get_orientation()
 
     def get_linear_velocity(self):
-        (vx, vy, vz), _ = p.getBaseVelocity(self.parts["body"].get_body_id())
+        (vx, vy, vz), _ = p.getBaseVelocity(self.links["body"].get_body_id())
         return np.array([vx, vy, vz])
 
     def get_angular_velocity(self):
-        _, (vr, vp, vyaw) = p.getBaseVelocity(self.parts["body"].get_body_id())
+        _, (vr, vp, vyaw) = p.getBaseVelocity(self.links["body"].get_body_id())
         return np.array([vr, vp, vyaw])
 
     def get_end_effector_position(self):
-        return self.parts["right_hand"].get_position()
+        return self.links["right_hand"].get_position()
 
     def dump_action(self):
         """
@@ -263,9 +263,9 @@ class BehaviorRobot(object):
         self.activated = True
         for part_name in self.constraints_active:
             self.constraints_active[part_name] = True
-            self.parts[part_name].activated = True
-            if self.parts[part_name].movement_cid is None:
-                self.parts[part_name].activate_constraints()
+            self.links[part_name].activated = True
+            if self.links[part_name].movement_cid is None:
+                self.links[part_name].activate_constraints()
 
     def apply_action(self, action):
         """
@@ -284,7 +284,7 @@ class BehaviorRobot(object):
             if action[19] > 0 or action[27] > 0:
                 self.activated = True
                 if self.simulator.mode == SimulatorMode.VR:
-                    body_pos = self.parts["body"].get_position()
+                    body_pos = self.links["body"].get_position()
                     self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
         else:
             frame_action = action
@@ -294,22 +294,22 @@ class BehaviorRobot(object):
             self.set_colliders(enabled=False)
             # Move user close to the body to start with
             if self.simulator.mode == SimulatorMode.VR:
-                body_pos = self.parts["body"].get_position()
+                body_pos = self.links["body"].get_position()
                 self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
             # Body constraint is the last one we need to activate
-            self.parts["body"].activate_constraints()
+            self.links["body"].activate_constraints()
             self.first_frame = False
 
         # Must update body first before other Vr objects, since they
         # rely on its transform to calculate their own transforms,
         # as an action only contains local transforms relative to the body
-        self.parts["body"].update(frame_action)
+        self.links["body"].update(frame_action)
         for vr_obj_name in ["left_hand", "right_hand", "eye"]:
-            self.parts[vr_obj_name].update(frame_action)
+            self.links[vr_obj_name].update(frame_action)
 
     def render_camera_image(self, modes=("rgb")):
         # render frames from current eye position
-        eye_pos, eye_orn = self.parts["eye"].get_position_orientation()
+        eye_pos, eye_orn = self.links["eye"].get_position_orientation()
         renderer = self.simulator.renderer
         mat = quat2rotmat(xyzw2wxyz(eye_orn))[:3, :3]
         view_direction = mat.dot(np.array([1, 0, 0]))
@@ -326,11 +326,11 @@ class BehaviorRobot(object):
         """
         print("Data for BehaviorRobot number {}".format(self.robot_num))
         print("Using hands: {}, using body: {}, using gripper: {}".format(self.hands, self.use_body, self.use_gripper))
-        for k, v in self.parts.items():
+        for k, v in self.links.items():
             print("{} at position {}".format(k, v.get_position()))
         print("-------------------------------")
 
-    def robot_specific_reset(self):
+    def reset(self):
         pass
 
     @property
@@ -340,25 +340,25 @@ class BehaviorRobot(object):
     def get_proprioception(self):
         state = OrderedDict()
 
-        lh_local_pos, lh_local_orn = self.parts["left_hand"].get_local_position_orientation()
+        lh_local_pos, lh_local_orn = self.links["left_hand"].get_local_position_orientation()
         state["left_hand_position_local"] = lh_local_pos
         state["left_hand_orientation_local"] = p.getEulerFromQuaternion(lh_local_orn)
 
-        rh_local_pos, rh_local_orn = self.parts["right_hand"].get_local_position_orientation()
+        rh_local_pos, rh_local_orn = self.links["right_hand"].get_local_position_orientation()
         state["right_hand_position_local"] = rh_local_pos
         state["right_hand_orientation_local"] = p.getEulerFromQuaternion(rh_local_orn)
 
-        eye_local_pos, eye_local_orn = self.parts["right_hand"].get_local_position_orientation()
+        eye_local_pos, eye_local_orn = self.links["right_hand"].get_local_position_orientation()
         state["eye_position_local"] = eye_local_pos
         state["eye_orientation_local"] = p.getEulerFromQuaternion(eye_local_orn)
 
-        state["left_hand_trigger_fraction"] = self.parts["left_hand"].trigger_fraction
+        state["left_hand_trigger_fraction"] = self.links["left_hand"].trigger_fraction
         state["left_hand_is_grasping"] = float(
-            self.parts["left_hand"].object_in_hand is not None and self.parts["left_hand"].release_counter is None
+            self.links["left_hand"].object_in_hand is not None and self.links["left_hand"].release_counter is None
         )
-        state["right_hand_trigger_fraction"] = self.parts["right_hand"].trigger_fraction
+        state["right_hand_trigger_fraction"] = self.links["right_hand"].trigger_fraction
         state["right_hand_is_grasping"] = float(
-            self.parts["right_hand"].object_in_hand is not None and self.parts["right_hand"].release_counter is None
+            self.links["right_hand"].object_in_hand is not None and self.links["right_hand"].release_counter is None
         )
 
         state_list = []
@@ -379,13 +379,13 @@ class BehaviorRobot(object):
     def is_grasping(self, candidate_obj):
         return np.array(
             [
-                self.parts["left_hand"].object_in_hand == candidate_obj,
-                self.parts["right_hand"].object_in_hand == candidate_obj,
+                self.links["left_hand"].object_in_hand == candidate_obj,
+                self.links["right_hand"].object_in_hand == candidate_obj,
             ]
         )
 
     def can_toggle(self, toggle_position, toggle_distance_threshold):
-        for part_name, part in self.parts.items():
+        for part_name, part in self.links.items():
             if part_name in ["left_hand", "right_hand"]:
                 if (
                     np.linalg.norm(np.array(part.get_position()) - np.array(toggle_position))
@@ -400,11 +400,11 @@ class BehaviorRobot(object):
         return False
 
     def dump_state(self):
-        return {part_name: part.dump_part_state() for part_name, part in self.parts.items()}
+        return {part_name: part.dump_part_state() for part_name, part in self.links.items()}
 
     def load_state(self, dump):
         for part_name, part_state in dump.items():
-            self.parts[part_name].load_part_state(part_state)
+            self.links[part_name].load_part_state(part_state)
 
 
 class BRBody(ArticulatedObject):
@@ -672,7 +672,7 @@ class BRHandBase(ArticulatedObject):
             self.ghost_hand.set_orientation(self.new_orn)
 
     def get_local_position_orientation(self):
-        body = self.parent.parts["body"]
+        body = self.parent.links["body"]
         return p.multiplyTransforms(
             *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
         )
@@ -746,7 +746,7 @@ class BRHandBase(ArticulatedObject):
         new_local_pos = np.array(old_local_pos) + np.array(clipped_delta_pos)
 
         # Calculate new world position based on local transform and new body pose
-        body = self.parent.parts["body"]
+        body = self.parent.links["body"]
         self.new_pos, self.new_orn = p.multiplyTransforms(body.new_pos, body.new_orn, new_local_pos, new_local_orn)
         # Round to avoid numerical inaccuracies
         self.new_pos = np.round(self.new_pos, 5).tolist()
@@ -1033,7 +1033,7 @@ class BRHand(BRHandBase):
         if (
             not self.parent.simulator.can_assisted_grasp(ag_bid, ag_link)
             or (self.other_hand and self.other_hand.object_in_hand == ag_bid)
-            or ("body" in self.parent.parts and self.parent.parts["body"].get_body_id() == ag_bid)
+            or ("body" in self.parent.links and self.parent.links["body"].get_body_id() == ag_bid)
             or (self.other_hand and self.other_hand.get_body_id() == ag_bid)
         ):
             return None
@@ -1408,7 +1408,7 @@ class BREye(ArticulatedObject):
         return body_ids
 
     def get_local_position_orientation(self):
-        body = self.parent.parts["body"]
+        body = self.parent.links["body"]
         return p.multiplyTransforms(
             *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
         )
@@ -1479,7 +1479,7 @@ class BREye(ArticulatedObject):
         new_local_pos = np.array(current_local_pos) + np.array(clipped_delta_pos)
 
         # Calculate new world position based on local transform and new body pose
-        body = self.parent.parts["body"]
+        body = self.parent.links["body"]
         self.new_pos, self.new_orn = p.multiplyTransforms(body.new_pos, body.new_orn, new_local_pos, new_local_orn)
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()

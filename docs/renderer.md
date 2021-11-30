@@ -87,7 +87,7 @@ The mode '3d' provides a 4-channeled image where the first three channels corres
 
 ```
 # Pose of the camera of the simulated robot in world frame
-eye_pos, eye_orn = self.robot.parts["eyes"].get_position_orientation()
+eye_pos, eye_orn = self.robot.links["eyes"].get_position_orientation()
 camera_in_wf = quat2rotmat(xyzw2wxyz(eye_orn))
 camera_in_wf[:3,3] = eye_pos
 
