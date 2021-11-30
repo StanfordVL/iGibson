@@ -48,7 +48,7 @@ def plan_base_motion_br(
 
     body_ids = []
     for part in ["body", "left_hand", "right_hand"]:
-        body_ids.append(robot.parts[part].get_body_id())
+        body_ids.append(robot.links[part].get_body_id())
 
     def extend_fn(q1, q2):
         target_theta = np.arctan2(q2[1] - q1[1], q2[0] - q1[0])
@@ -107,7 +107,7 @@ def dry_run_base_plan(robot: BehaviorRobot, plan):
 
 def dry_run_arm_plan(robot: BehaviorRobot, plan):
     for (x, y, z, roll, pitch, yaw) in plan:
-        robot.parts["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+        robot.links["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
         time.sleep(0.01)
 
 
@@ -152,8 +152,8 @@ def plan_hand_motion_br(
     difference_fn = get_hand_difference_fn()
     distance_fn = get_hand_distance_fn(weights=weights)
 
-    pos = robot.parts["right_hand"].get_position()
-    orn = robot.parts["right_hand"].get_orientation()
+    pos = robot.links["right_hand"].get_position()
+    orn = robot.links["right_hand"].get_orientation()
     rpy = p.getEulerFromQuaternion(orn)
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
 
@@ -174,7 +174,7 @@ def plan_hand_motion_br(
     def collision_fn(q):
         # TODO: update this function
         # set_base_values(body, q)
-        robot.parts["right_hand"].set_position_orientation(
+        robot.links["right_hand"].set_position_orientation(
             [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
         )
         if obj_in_hand is not None:
@@ -185,7 +185,7 @@ def plan_hand_motion_br(
             )
 
         collision = any(
-            pairwise_collision(robot.parts["right_hand"].get_body_id(), obs, max_distance=max_distance)
+            pairwise_collision(robot.links["right_hand"].get_body_id(), obs, max_distance=max_distance)
             for obs in obstacles
         )
 
@@ -230,7 +230,7 @@ if __name__ == "__main__":
     plan = plan_hand_motion_br(agent, [3, 3, 3, 0, 0, 0], ((-5, -5, -5), (5, 5, 5)))
     print(plan)
     for q in plan:
-        agent.parts["right_hand"].set_position_orientation(
+        agent.links["right_hand"].set_position_orientation(
             [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
         )
         time.sleep(0.05)

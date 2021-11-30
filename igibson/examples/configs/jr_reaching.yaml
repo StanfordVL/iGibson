@@ -16,8 +16,6 @@ object_randomization_freq: null
 # robot
 robot: JR2_Kinova
 is_discrete: false
-wheel_velocity: 0.3
-arm_velocity: 1.0
 
 # task
 task: reaching_random

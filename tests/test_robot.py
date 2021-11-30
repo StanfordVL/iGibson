@@ -5,12 +5,11 @@ import pybullet as p
 
 import igibson
 from igibson.robots.ant_robot import Ant
-from igibson.robots.fetch_robot import Fetch
+from igibson.robots.fetch import Fetch
 from igibson.robots.humanoid_robot import Humanoid
 from igibson.robots.husky_robot import Husky
 from igibson.robots.jr2_kinova_robot import JR2_Kinova
 from igibson.robots.jr2_robot import JR2
-from igibson.robots.quadrotor_robot import Quadrotor
 from igibson.robots.turtlebot_robot import Turtlebot
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
@@ -88,17 +87,6 @@ def test_humanoid():
     s.import_scene(scene)
     humanoid = Humanoid(config)
     s.import_robot(humanoid)
-    nbody = p.getNumBodies()
-    s.disconnect()
-    assert nbody == 5
-
-
-def test_quadrotor():
-    s = Simulator(mode="headless")
-    scene = StadiumScene()
-    s.import_scene(scene)
-    quadrotor = Quadrotor(config)
-    s.import_robot(quadrotor)
     nbody = p.getNumBodies()
     s.disconnect()
     assert nbody == 5
@@ -193,7 +181,7 @@ def show_action_sensor_space():
     quad.set_position([0, 7, 0.5])
 
     for robot in s.robots:
-        print(type(robot), len(robot.ordered_joints), robot.calc_state().shape)
+        print(type(robot), len(robot.joints), robot.calc_state().shape)
 
     for i in range(100):
         s.step()

@@ -6,7 +6,7 @@ import pybullet as p
 import pybullet_data
 
 import igibson
-from igibson.robots.fetch_robot import Fetch
+from igibson.robots.fetch import Fetch
 from igibson.robots.jr2_kinova_robot import JR2_Kinova
 from igibson.robots.locobot_robot import Locobot
 from igibson.robots.turtlebot_robot import Turtlebot
@@ -44,7 +44,7 @@ def main():
     for robot, position in zip(robots, positions):
         robot.load()
         robot.set_position(position)
-        robot.robot_specific_reset()
+        robot.reset()
         robot.keep_still()
 
     for _ in range(2400):  # keep still for 10 seconds

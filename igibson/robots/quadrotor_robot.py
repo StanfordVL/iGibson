@@ -2,10 +2,10 @@ import gym
 import numpy as np
 import pybullet as p
 
-from igibson.robots.robot_locomotor import LocomotorRobot
+from igibson.robots.robot_locomotor import LocomotionRobot
 
 
-class Quadrotor(LocomotorRobot):
+class Quadrotor(LocomotionRobot):
     """
     Quadrotor robot
     Reference: https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1705&context=edissertations
@@ -15,7 +15,7 @@ class Quadrotor(LocomotorRobot):
     def __init__(self, config, **kwargs):
         self.config = config
         self.torque = config.get("torque", 0.02)
-        LocomotorRobot.__init__(
+        LocomotionRobot.__init__(
             self,
             "quadrotor/quadrotor.urdf",
             action_dim=6,
@@ -56,7 +56,7 @@ class Quadrotor(LocomotorRobot):
         """
         real_action = self.policy_action_to_robot_action(action)
         p.setGravity(0, 0, 0)
-        p.resetBaseVelocity(self.robot_ids[0], real_action[:3], real_action[3:])
+        p.resetBaseVelocity(self.get_body_id(), real_action[:3], real_action[3:])
 
     def setup_keys_to_action(self):
         self.keys_to_action = {

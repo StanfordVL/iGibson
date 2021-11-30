@@ -47,12 +47,12 @@ def detect_collision(bodyA, object_in_hand=None):
 
 
 def detect_robot_collision(robot):
-    left_object_in_hand = robot.parts["left_hand"].object_in_hand
-    right_object_in_hand = robot.parts["right_hand"].object_in_hand
+    left_object_in_hand = robot.links["left_hand"].object_in_hand
+    right_object_in_hand = robot.links["right_hand"].object_in_hand
     return (
-        detect_collision(robot.parts["body"].get_body_id())
-        or detect_collision(robot.parts["left_hand"].get_body_id(), left_object_in_hand)
-        or detect_collision(robot.parts["right_hand"].get_body_id(), right_object_in_hand)
+        detect_collision(robot.links["body"].get_body_id())
+        or detect_collision(robot.links["left_hand"].get_body_id(), left_object_in_hand)
+        or detect_collision(robot.links["right_hand"].get_body_id(), right_object_in_hand)
     )
 
 
@@ -126,16 +126,16 @@ class BehaviorMPEnv(BehaviorEnv):
                 ids.extend(object.body_ids)
 
         if include_self:
-            ids.append(self.robots[0].parts["left_hand"].get_body_id())
-            ids.append(self.robots[0].parts["body"].get_body_id())
+            ids.append(self.robots[0].links["left_hand"].get_body_id())
+            ids.append(self.robots[0].links["body"].get_body_id())
 
         return ids
 
     def reset_and_release_hand(self, hand):
         self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
         for _ in range(100):
-            self.robots[0].parts[hand].set_close_fraction(0)
-            self.robots[0].parts[hand].trigger_fraction = 0
+            self.robots[0].links[hand].set_close_fraction(0)
+            self.robots[0].links[hand].trigger_fraction = 0
             p.stepSimulation()
 
     def step(self, action):
@@ -152,7 +152,7 @@ class BehaviorMPEnv(BehaviorEnv):
 
             elif action_primitive == ActionPrimitives.RIGHT_GRASP or action_primitive == ActionPrimitives.LEFT_GRASP:
                 hand = "right_hand" if action_primitive == ActionPrimitives.RIGHT_GRASP else "left_hand"
-                obj_in_hand_id = self.robots[0].parts[hand].object_in_hand
+                obj_in_hand_id = self.robots[0].links[hand].object_in_hand
                 obj_in_hand = self.scene.objects_by_id[obj_in_hand_id] if obj_in_hand_id is not None else None
                 if obj_in_hand is None:
                     if isinstance(obj, URDFObject) and hasattr(obj, "states") and object_states.AABB in obj.states:
@@ -161,7 +161,7 @@ class BehaviorMPEnv(BehaviorEnv):
                         if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed:  # we can only grasp small objects
                             self.navigate_if_needed(obj)
                             self.grasp_obj(obj, hand)
-                            obj_in_hand_id = self.robots[0].parts[hand].object_in_hand
+                            obj_in_hand_id = self.robots[0].links[hand].object_in_hand
                             obj_in_hand = (
                                 self.scene.objects_by_id[obj_in_hand_id] if obj_in_hand_id is not None else None
                             )
@@ -173,7 +173,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 or action_primitive == ActionPrimitives.RIGHT_PLACE_ONTOP
             ):
                 hand = "right_hand" if action_primitive == ActionPrimitives.RIGHT_PLACE_ONTOP else "left_hand"
-                obj_in_hand_id = self.robots[0].parts[hand].object_in_hand
+                obj_in_hand_id = self.robots[0].links[hand].object_in_hand
                 obj_in_hand = self.scene.objects_by_id[obj_in_hand_id] if obj_in_hand_id is not None else None
                 if obj_in_hand is not None and obj_in_hand != obj:
                     print("PRIMITIVE:attempt to place {} ontop {}".format(obj_in_hand.name, obj.name))
@@ -218,7 +218,7 @@ class BehaviorMPEnv(BehaviorEnv):
                 or action_primitive == ActionPrimitives.RIGHT_PLACE_INSIDE
             ):
                 hand = "right_hand" if action_primitive == ActionPrimitives.RIGHT_PLACE_INSIDE else "left_hand"
-                obj_in_hand_id = self.robots[0].parts[hand].object_in_hand
+                obj_in_hand_id = self.robots[0].links[hand].object_in_hand
                 obj_in_hand = self.scene.objects_by_id[obj_in_hand_id] if obj_in_hand_id is not None else None
                 if obj_in_hand is not None and obj_in_hand != obj and isinstance(obj, URDFObject):
                     print("PRIMITIVE:attempt to place {} inside {}".format(obj_in_hand.name, obj.name))
@@ -277,7 +277,7 @@ class BehaviorMPEnv(BehaviorEnv):
         if self.use_motion_planning:
             x, y, _ = obj.get_position()
             z = obj.states[object_states.AABB].get_value()[1][2]
-            hand_x, hand_y, hand_z = self.robots[0].parts[hand].get_position()
+            hand_x, hand_y, hand_z = self.robots[0].links[hand].get_position()
 
             # add a little randomness to avoid getting stuck
             x += np.random.uniform(-0.025, 0.025)
@@ -314,12 +314,12 @@ class BehaviorMPEnv(BehaviorEnv):
                 self.reset_and_release_hand(hand)
                 # reset hand
         else:
-            obj.set_position(np.array(self.robots[0].parts[hand].get_position()))  #  - np.array([0,0,0.05])
-            self.robots[0].parts[hand].set_close_fraction(1)
-            self.robots[0].parts[hand].trigger_fraction = 1
+            obj.set_position(np.array(self.robots[0].links[hand].get_position()))  #  - np.array([0,0,0.05])
+            self.robots[0].links[hand].set_close_fraction(1)
+            self.robots[0].links[hand].trigger_fraction = 1
             p.stepSimulation()
-            obj.set_position(np.array(self.robots[0].parts[hand].get_position()))
-            self.robots[0].parts[hand].handle_assisted_grasping(
+            obj.set_position(np.array(self.robots[0].links[hand].get_position()))
+            self.robots[0].links[hand].handle_assisted_grasping(
                 np.zeros(
                     28,
                 ),
@@ -328,23 +328,23 @@ class BehaviorMPEnv(BehaviorEnv):
 
     def execute_grasp_plan(self, plan, obj, hand):
         for x, y, z, roll, pitch, yaw in plan:
-            self.robots[0].parts[hand].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+            self.robots[0].links[hand].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
             p.stepSimulation()
 
         x, y, z, roll, pitch, yaw = plan[-1]
 
         for i in range(25):
-            self.robots[0].parts[hand].move([x, y, z - i * 0.005], p.getQuaternionFromEuler([roll, pitch, yaw]))
+            self.robots[0].links[hand].move([x, y, z - i * 0.005], p.getQuaternionFromEuler([roll, pitch, yaw]))
             p.stepSimulation()
 
         for _ in range(50):
-            self.robots[0].parts[hand].set_close_fraction(1)
-            self.robots[0].parts[hand].trigger_fraction = 1
+            self.robots[0].links[hand].set_close_fraction(1)
+            self.robots[0].links[hand].trigger_fraction = 1
             p.stepSimulation()
 
         grasp_success = (
             self.robots[0]
-            .parts[hand]
+            .links[hand]
             .handle_assisted_grasping(
                 np.zeros(
                     28,
@@ -354,13 +354,13 @@ class BehaviorMPEnv(BehaviorEnv):
         )
 
         for x, y, z, roll, pitch, yaw in plan[::-1]:
-            self.robots[0].parts[hand].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+            self.robots[0].links[hand].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
             p.stepSimulation()
 
         return grasp_success
 
     def place_obj(self, original_state, target_pos, target_orn, hand):
-        obj_in_hand_id = self.robots[0].parts[hand].object_in_hand
+        obj_in_hand_id = self.robots[0].links[hand].object_in_hand
         obj_in_hand = self.scene.objects_by_id[obj_in_hand_id]
 
         pos = obj_in_hand.get_position()
@@ -369,12 +369,12 @@ class BehaviorMPEnv(BehaviorEnv):
         if not self.use_motion_planning:
             self.reset_and_release_hand(hand)
 
-            self.robots[0].parts[hand].force_release_obj()
+            self.robots[0].links[hand].force_release_obj()
             obj_in_hand.set_position_orientation(target_pos, target_orn)
 
         else:
             x, y, z = target_pos
-            hand_x, hand_y, hand_z = self.robots[0].parts[hand].get_position()
+            hand_x, hand_y, hand_z = self.robots[0].links[hand].get_position()
 
             minx = min(x, hand_x) - 1
             miny = min(y, hand_y) - 1
@@ -398,13 +398,13 @@ class BehaviorMPEnv(BehaviorEnv):
 
             if plan:
                 for x, y, z, roll, pitch, yaw in plan:
-                    self.robots[0].parts[hand].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+                    self.robots[0].links[hand].move([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
                     p.stepSimulation()
 
                 self.reset_and_release_hand(hand)
 
                 # force release object to avoid dealing with stateful AG release mechanism
-                self.robots[0].parts[hand].force_release_obj()
+                self.robots[0].links[hand].force_release_obj()
                 self.robots[0].set_position_orientation(self.robots[0].get_position(), self.robots[0].get_orientation())
 
                 # reset the released object to zero velocity
@@ -435,7 +435,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     pos = [obj_pos[0] + distance * np.cos(yaw), obj_pos[1] + distance * np.sin(yaw), 0.7]
                     orn = [0, 0, yaw - np.pi]
                     self.robots[0].set_position_orientation(pos, p.getQuaternionFromEuler(orn))
-                    eye_pos = self.robots[0].parts["eye"].get_position()
+                    eye_pos = self.robots[0].links["eye"].get_position()
                     obj_pos = obj.get_position()
                     ray_test_res = p.rayTest(eye_pos, obj_pos)
                     blocked = False
@@ -507,9 +507,9 @@ class BehaviorMPEnv(BehaviorEnv):
     def reset(self, resample_objects=False):
         obs = super(BehaviorMPEnv, self).reset()
         for hand in ["left_hand", "right_hand"]:
-            self.robots[0].parts[hand].set_close_fraction(0)
-            self.robots[0].parts[hand].trigger_fraction = 0
-            self.robots[0].parts[hand].force_release_obj()
+            self.robots[0].links[hand].set_close_fraction(0)
+            self.robots[0].links[hand].trigger_fraction = 0
+            self.robots[0].links[hand].force_release_obj()
         return obs
 
 

@@ -296,10 +296,10 @@ class SimulatorVR(Simulator):
 
         # Update haptics for body and hands
         if self.main_vr_robot:
-            vr_body_id = self.main_vr_robot.parts["body"].get_body_id()
+            vr_body_id = self.main_vr_robot.links["body"].get_body_id()
             vr_hands = [
-                ("left_controller", self.main_vr_robot.parts["left_hand"]),
-                ("right_controller", self.main_vr_robot.parts["right_hand"]),
+                ("left_controller", self.main_vr_robot.links["left_hand"]),
+                ("right_controller", self.main_vr_robot.links["right_hand"]),
             ]
 
             # Check for body haptics
@@ -346,7 +346,7 @@ class SimulatorVR(Simulator):
         # Store final rotations of hands, with model rotation applied
         for hand in ["right", "left"]:
             # Base rotation quaternion
-            base_rot = self.main_vr_robot.parts["{}_hand".format(hand)].base_rot
+            base_rot = self.main_vr_robot.links["{}_hand".format(hand)].base_rot
             # Raw rotation of controller
             controller_rot = v["{}_controller".format(hand)][2]
             # Use dummy translation to calculation final rotation
@@ -391,7 +391,7 @@ class SimulatorVR(Simulator):
         # Update body action space
         hmd_is_valid, hmd_pos, hmd_orn, hmd_r = v.query("hmd")[:4]
         torso_is_valid, torso_pos, torso_orn = v.query("torso_tracker")
-        vr_body = self.main_vr_robot.parts["body"]
+        vr_body = self.main_vr_robot.links["body"]
         prev_body_pos, prev_body_orn = vr_body.get_position_orientation()
         inv_prev_body_pos, inv_prev_body_orn = p.invertTransform(prev_body_pos, prev_body_orn)
 
@@ -425,9 +425,9 @@ class SimulatorVR(Simulator):
         body_relative_parts = ["right", "left", "eye"]
         for part_name in body_relative_parts:
             vr_part = (
-                self.main_vr_robot.parts[part_name]
+                self.main_vr_robot.links[part_name]
                 if part_name == "eye"
-                else self.main_vr_robot.parts["{}_hand".format(part_name)]
+                else self.main_vr_robot.links["{}_hand".format(part_name)]
             )
 
             # Process local transform adjustments

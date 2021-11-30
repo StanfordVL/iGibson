@@ -1,0 +1,29 @@
+from igibson.controllers.controller_base import (
+    REGISTERED_CONTROLLERS,
+    REGISTERED_LOCOMOTION_CONTROLLERS,
+    REGISTERED_MANIPULATION_CONTROLLERS,
+    ControlType,
+    LocomotionController,
+    ManipulationController,
+)
+from igibson.controllers.dd_controller import DifferentialDriveController
+from igibson.controllers.ik_controller import InverseKinematicsController
+from igibson.controllers.joint_controller import JointController
+from igibson.controllers.null_gripper_controller import NullGripperController
+from igibson.controllers.parallel_jaw_gripper_controller import ParallelJawGripperController
+from igibson.utils.python_utils import assert_valid_key, extract_class_init_kwargs_from_dict
+
+
+def create_controller(name, **kwargs):
+    """
+    Creates a controller of type @name with corresponding necessary keyword arguments @kwargs
+
+    :param name: str, type of controller to use (e.g. JointController, InverseKinematicsController, etc.)
+    :param kwargs: Any relevant keyword arguments to pass to the controller
+
+    :return Controller: created controller
+    """
+    assert_valid_key(key=name, valid_keys=REGISTERED_CONTROLLERS, name="controller")
+    controller_cls = REGISTERED_CONTROLLERS[name]
+
+    return controller_cls(**kwargs)

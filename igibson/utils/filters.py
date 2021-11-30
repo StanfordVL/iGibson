@@ -17,6 +17,12 @@ class Filter(object):
         """
         raise NotImplementedError
 
+    def reset(self):
+        """
+        Resets this filter. Default is no-op.
+        """
+        pass
+
 
 class MovingAverageFilter(Filter):
     """
@@ -51,6 +57,12 @@ class MovingAverageFilter(Filter):
         self.num_samples += 1
 
         return self.past_samples_sum / self.num_samples
+
+    def reset(self):
+        # Clear internal state
+        self.past_samples = []
+        self.past_samples_sum *= 0.0
+        self.num_samples = 0
 
 
 class ExponentialAverageFilter(Filter):

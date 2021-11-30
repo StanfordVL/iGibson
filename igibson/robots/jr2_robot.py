@@ -1,10 +1,10 @@
 import gym
 import numpy as np
 
-from igibson.robots.robot_locomotor import LocomotorRobot
+from igibson.robots.locomotion_robot import LocomotionRobot
 
 
-class JR2(LocomotorRobot):
+class JR2(LocomotionRobot):
     """
     JR2 robot (no arm)
     Reference: https://cvgl.stanford.edu/projects/jackrabbot/
@@ -13,8 +13,7 @@ class JR2(LocomotorRobot):
 
     def __init__(self, config, **kwargs):
         self.config = config
-        self.velocity = config.get("velocity", 1.0)
-        LocomotorRobot.__init__(
+        LocomotionRobot.__init__(
             self,
             "jr2_urdf/jr2.urdf",
             action_dim=4,
@@ -24,23 +23,17 @@ class JR2(LocomotorRobot):
             **kwargs
         )
 
-    def set_up_continuous_action_space(self):
-        """
-        Set up continuous action space
-        """
-        self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
-        self.action_high = self.velocity * np.ones([self.action_dim])
-        self.action_low = -self.action_high
-
     def set_up_discrete_action_space(self):
         """
         Set up discrete action space
         """
+        if not self.normalize_robot_action:
+            raise ValueError("discrete action only works with normalized action space")
         self.action_list = [
-            [self.velocity, self.velocity, 0, self.velocity],
-            [-self.velocity, -self.velocity, 0, -self.velocity],
-            [self.velocity, -self.velocity, -self.velocity, 0],
-            [-self.velocity, self.velocity, self.velocity, 0],
+            [1, 1, 0, 1],
+            [-1, -1, 0, -1],
+            [1, -1, -1, 0],
+            [-1, 1, 1, 0],
             [0, 0, 0, 0],
         ]
         self.action_space = gym.spaces.Discrete(len(self.action_list))

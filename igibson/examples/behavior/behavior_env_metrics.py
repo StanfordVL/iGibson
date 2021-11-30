@@ -20,12 +20,12 @@ def get_metrics_callbacks(config):
     ]
 
     robot_type = config["robot"]
-    if robot_type == "FetchGripper":
+    if robot_type == "Fetch":
         metrics.append(FetchRobotMetric())
     elif robot_type == "BehaviorRobot":
         metrics.append(BehaviorRobotMetric())
     else:
-        raise Exception("Metrics only implemented for FetchGripper and BehaviorRobot")
+        Exception("Metrics only implemented for Fetch and BehaviorRobot")
 
     return (
         [metric.start_callback for metric in metrics],

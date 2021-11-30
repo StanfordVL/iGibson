@@ -4,8 +4,7 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.ant_robot import Ant
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.fetch_gripper_robot import FetchGripper
-from igibson.robots.fetch_robot import Fetch
+from igibson.robots.fetch import Fetch
 from igibson.robots.freight_robot import Freight
 from igibson.robots.humanoid_robot import Humanoid
 from igibson.robots.husky_robot import Husky
@@ -204,6 +203,8 @@ class BaseEnv(gym.Env):
 
         self.simulator.import_scene(scene)
 
+        # TODO: modify way of instantiating robots (pass specific configs, not monolithic)
+
         if self.config["robot"] == "Turtlebot":
             robot = Turtlebot(self.config)
         elif self.config["robot"] == "Husky":
@@ -224,16 +225,14 @@ class BaseEnv(gym.Env):
             robot = Locobot(self.config)
         elif self.config["robot"] == "BehaviorRobot":
             robot = BehaviorRobot(self.simulator)
-        elif self.config["robot"] == "FetchGripper":
-            robot = FetchGripper(self.simulator, self.config)
         else:
             raise Exception("unknown robot type: {}".format(self.config["robot"]))
 
         self.simulator.import_robot(robot)
         if isinstance(robot, BehaviorRobot):
-            self.robot_body_id = robot.parts["body"].get_body_id()
+            self.robot_body_id = robot.links["body"].get_body_id()
         else:
-            self.robot_body_id = robot.robot_ids[0]
+            self.robot_body_id = robot.get_body_id()
 
         self.scene = self.simulator.scene
         self.robots = self.simulator.robots
