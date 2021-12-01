@@ -12,7 +12,7 @@ from igibson.utils.utils import l2_distance
 
 class EmptyScene(Scene):
     """
-    A empty scene for debugging
+    An empty scene for debugging.
     """
 
     def __init__(self, render_floor_plane=False):
@@ -27,13 +27,10 @@ class EmptyScene(Scene):
         self.objects.append(obj)
 
     def _load(self, simulator):
-        """
-        Load the scene into pybullet
-        """
         plane_file = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
         self.floor_body_ids += [p.loadMJCF(plane_file)[0]]
         p.changeDynamics(self.floor_body_ids[0], -1, lateralFriction=1)
-        # white floor plane for visualization purpose if needed
+        # White floor plane for visualization purpose if needed.
         p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 1])
 
         if self.render_floor_plane:
@@ -42,13 +39,13 @@ class EmptyScene(Scene):
                     None, id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False
                 )
 
-        # Load additional objects & merge body IDs
+        # Load additional objects & merge body IDs.
         additional_object_body_ids = [x for obj in self.objects for x in obj.load(simulator)]
         return self.floor_body_ids + additional_object_body_ids
 
     def get_random_point(self, floor=None):
         """
-        Get a random point in the region of [-5, 5] x [-5, 5]
+        Get a random point in the region of [-5, 5] x [-5, 5].
         """
         return floor, np.array(
             [
@@ -60,7 +57,7 @@ class EmptyScene(Scene):
 
     def get_shortest_path(self, floor, source_world, target_world, entire_path=False):
         """
-        Get a trivial shortest path because the scene is empty
+        Get a trivial shortest path because the scene is empty.
         """
         logging.warning("WARNING: trying to compute the shortest path in EmptyScene (assuming empty space)")
         shortest_path = np.stack((source_world, target_world))
