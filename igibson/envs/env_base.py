@@ -23,9 +23,8 @@ from igibson.utils.utils import parse_config
 
 class BaseEnv(gym.Env):
     """
-    Base Env class, follows OpenAI Gym interface
-    Handles loading scene and robot
-    Functions like reset and step are not implemented
+    Base Env class that handles loading scene and robot, following OpenAI Gym interface.
+    Functions like reset and step are not implemented.
     """
 
     def __init__(
@@ -43,7 +42,7 @@ class BaseEnv(gym.Env):
         """
         :param config_file: config_file path
         :param scene_id: override scene_id in config file
-        :param mode: headless or gui mode
+        :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive, vr
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
         :param rendering_settings: rendering_settings to override the default one
@@ -70,7 +69,7 @@ class BaseEnv(gym.Env):
         texture_scale = self.config.get("texture_scale", 1.0)
 
         if self.rendering_settings is None:
-            # TODO: We currently only support the optimized renderer due to some issues with obj highlighting
+            # TODO: We currently only support the optimized renderer due to some issues with obj highlighting.
             self.rendering_settings = MeshRendererSettings(
                 enable_shadow=enable_shadow,
                 enable_pbr=enable_pbr,
@@ -80,10 +79,9 @@ class BaseEnv(gym.Env):
                 load_textures=self.config.get("load_texture", True),
             )
 
-        if self.vr_settings is None:
-            self.vr_settings = VrSettings(use_vr=True)
-
         if mode == "vr":
+            if self.vr_settings is None:
+                self.vr_settings = VrSettings(use_vr=True)
             self.simulator = SimulatorVR(
                 physics_timestep=physics_timestep,
                 render_timestep=action_timestep,
@@ -111,8 +109,8 @@ class BaseEnv(gym.Env):
 
     def reload(self, config_file):
         """
-        Reload another config file
-        Thhis allows one to change the configuration on the fly
+        Reload another config file.
+        This allows one to change the configuration on the fly.
 
         :param config_file: new config file path
         """
@@ -122,8 +120,8 @@ class BaseEnv(gym.Env):
 
     def reload_model(self, scene_id):
         """
-        Reload another scene model
-        This allows one to change the scene on the fly
+        Reload another scene model.
+        This allows one to change the scene on the fly.
 
         :param scene_id: new scene_id
         """
@@ -133,7 +131,7 @@ class BaseEnv(gym.Env):
 
     def reload_model_object_randomization(self):
         """
-        Reload the same model, with the next object randomization random seed
+        Reload the same model, with the next object randomization random seed.
         """
         if self.object_randomization_freq is None:
             return
@@ -141,17 +139,9 @@ class BaseEnv(gym.Env):
         self.simulator.reload()
         self.load()
 
-    def get_next_scene_random_seed(self):
-        """
-        Get the next scene random seed
-        """
-        if self.object_randomization_freq is None:
-            return None
-        return self.scene_random_seeds[self.scene_random_seed_idx]
-
     def load(self):
         """
-        Load the scene and robot
+        Load the scene and robot specified in the config file.
         """
         if self.config["scene"] == "empty":
             scene = EmptyScene()
@@ -196,7 +186,7 @@ class BaseEnv(gym.Env):
                 merge_fixed_links=self.config.get("merge_fixed_links", True)
                 and not self.config.get("online_sampling", False),
             )
-            # TODO: Unify the function import_scene and take out of the if-else clauses
+            # TODO: Unify the function import_scene and take out of the if-else clauses.
             first_n = self.config.get("_set_first_n_objects", -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
@@ -239,14 +229,14 @@ class BaseEnv(gym.Env):
 
     def clean(self):
         """
-        Clean up
+        Clean up the environment.
         """
         if self.simulator is not None:
             self.simulator.disconnect()
 
     def close(self):
         """
-        Synonymous function with clean
+        Synonymous function with clean.
         """
         self.clean()
 
@@ -260,18 +250,12 @@ class BaseEnv(gym.Env):
 
     def step(self, action):
         """
-        Overwritten by subclasses
+        Overwritten by subclasses.
         """
         return NotImplementedError()
 
     def reset(self):
         """
-        Overwritten by subclasses
+        Overwritten by subclasses.
         """
         return NotImplementedError()
-
-    def set_mode(self, mode):
-        """
-        Set simulator mode
-        """
-        self.simulator.mode = mode
