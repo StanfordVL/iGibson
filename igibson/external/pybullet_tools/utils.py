@@ -2598,7 +2598,7 @@ def set_coll_filter(target_id, body_id, body_links, enable):
     Sets collision filters for body - to enable or disable them
     :param target_id: physics body to enable/disable collisions with
     :param body_id: physics body to enable/disable collisions from
-    :param body_id: physics links on body to enable/disable collisions from
+    :param body_links: physics links on body to enable/disable collisions from
     :param enable: whether to enable/disable collisions
     """
     target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]

@@ -408,7 +408,7 @@ class MeshRenderer(object):
         :param transform_orn: rotation quaternion, convention xyzw
         :param transform_pos: translation for loading, it is a list of length 3
         :param input_kd: if loading material fails, use this default material. input_kd should be a list of length 3
-        :param texture_scale: texture scale for the object, downsample to save memory.
+        :param texture_scale: texture scale for the object, downsample to save memory
         :param overwrite_material: whether to overwrite the default Material (usually with a RandomizedMaterial for material randomization)
         :return: VAO_ids
         """
