@@ -7,7 +7,6 @@ import pybullet as p
 
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
-from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.objects.object_base import NonRobotObject
 from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.visual_marker import VisualMarker
@@ -20,14 +19,13 @@ from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs
-from igibson.utils.constants import PyBulletSleepState, SimulatorMode
+from igibson.utils.constants import PYBULLET_BASE_LINK_INDEX, PyBulletSleepState, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
-from igibson.utils.utils import quatXYZWFromRotMat, restoreState
 
 
 def load_without_pybullet_vis(load_func):
     """
-    Load without pybullet visualizer
+    Load without pybullet visualizer.
     """
 
     def wrapped_load_func(*args, **kwargs):
@@ -126,7 +124,7 @@ class Simulator:
 
     def set_timestep(self, physics_timestep, render_timestep):
         """
-        Set physics timestep and render (action) timestep
+        Set physics timestep and render (action) timestep.
 
         :param physics_timestep: physics timestep for pybullet
         :param render_timestep: rendering timestep for renderer
@@ -135,15 +133,11 @@ class Simulator:
         self.render_timestep = render_timestep
         p.setTimeStep(self.physics_timestep)
 
-    def set_render_timestep(self, render_timestep):
-        """
-        :param render_timestep: render timestep to set in the Simulator
-        """
-        self.render_timestep = render_timestep
-
     def disconnect(self, release_renderer=True):
         """
-        Clean up the simulator
+        Clean up the simulator.
+
+        :param release_renderer: whether to release the MeshRenderer
         """
         if p.getConnectionInfo(self.cid)["isConnected"]:
             # print("******************PyBullet Logging Information:")
@@ -162,6 +156,9 @@ class Simulator:
         self.initialize_renderer()
 
     def initialize_physics_engine(self):
+        """
+        Initialize the physics engine (pybullet).
+        """
         if self.use_pb_gui:
             self.cid = p.connect(p.GUI)
         else:
@@ -177,6 +174,9 @@ class Simulator:
         p.setPhysicsEngineParameter(enableFileCaching=0)
 
     def initialize_renderer(self):
+        """
+        Initialize the MeshRenderer.
+        """
         self.visual_objects = {}
         if self.mode == SimulatorMode.HEADLESS_TENSOR:
             self.renderer = MeshRendererG2G(
@@ -211,8 +211,7 @@ class Simulator:
         """
         Import a scene into the simulator. A scene could be a synthetic one or a realistic Gibson Environment.
 
-        :param scene: Scene object
-        :return: pybullet body ids from scene.load function
+        :param scene: a scene object to load
         """
         assert isinstance(scene, Scene), "import_scene can only be called with Scene"
         scene.load(self)
@@ -221,8 +220,9 @@ class Simulator:
     @load_without_pybullet_vis
     def import_particle_system(self, particle_system):
         """
-        Import an object into the simulator. Called by objects owning a particle-system, via reference to the Simulator instance.
-        :param obj: ParticleSystem to load
+        Import a particle system into the simulator. Called by objects owning a particle-system, via reference to the Simulator instance.
+
+        :param particle_system: a ParticleSystem object to load
         """
 
         assert isinstance(
@@ -235,9 +235,9 @@ class Simulator:
     @load_without_pybullet_vis
     def import_object(self, obj):
         """
-        Import an object into the simulator
+        Import a non-robot object into the simulator.
 
-        :param obj: Object to load
+        :param obj: a non-robot object to load
         """
         assert isinstance(obj, NonRobotObject), "import_object can only be called with NonRobotObject"
 
@@ -252,11 +252,9 @@ class Simulator:
     @load_without_pybullet_vis
     def import_robot(self, robot):
         """
-        Import a robot into the simulator
+        Import a robot into the simulator.
 
-        :param robot: Robot
-        :param class_id: Class id for rendering semantic segmentation
-        :return: pybullet id
+        :param robot: a robot object to load
         """
         assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
         robot.load(self)
@@ -276,12 +274,26 @@ class Simulator:
         softbody=False,
         texture_scale=1.0,
     ):
+        """
+        Load an object into the MeshRenderer. The object should be already loaded into pybullet.
+
+        :param obj: an object to load
+        :param body_id: pybullet body id
+        :param class_id: class id to render semantics
+        :param link_name_to_vm: a link-name-to-visual-mesh mapping
+        :param visual_mesh_to_material: a visual-mesh-to-material mapping
+        :param use_pbr: whether to use PBR
+        :param use_pbr_mapping: whether to use PBR mapping
+        :param shadow_caster: whether to cast shadow
+        :param softbody: whether the instance group is for a soft body
+        :param texture_scale: texture scale for the object, downsample to save memory
+        """
         # First, grab all the visual shapes.
         if link_name_to_vm:
             # If a manual link-name-to-visual-mesh mapping is given, use that to generate list of shapes.
             shapes = []
             for link_id in list(range(p.getNumJoints(body_id))) + [-1]:
-                if link_id == -1:
+                if link_id == PYBULLET_BASE_LINK_INDEX:
                     link_name = p.getBodyInfo(body_id)[0].decode("utf-8")
                 else:
                     link_name = p.getJointInfo(body_id, link_id)[12].decode("utf-8")
@@ -370,7 +382,7 @@ class Simulator:
             link_ids.append(link_id)
 
             # Keep track of the positions.
-            if link_id == -1:
+            if link_id == PYBULLET_BASE_LINK_INDEX:
                 pos, orn = p.getBasePositionAndOrientation(body_id)
             else:
                 pos, orn = p.getLinkState(body_id, link_id)[:2]
@@ -411,14 +423,14 @@ class Simulator:
             for obj in self.scene.get_objects_with_state(state_type):
                 obj.states[state_type].update()
 
-        # Step the object procedural materials based on the updated object states
+        # Step the object procedural materials based on the updated object states.
         for obj in self.scene.get_objects():
             if hasattr(obj, "procedural_material") and obj.procedural_material is not None:
                 obj.procedural_material.update()
 
     def step(self):
         """
-        Step the simulation at self.render_timestep and update positions in renderer
+        Step the simulation at self.render_timestep and update positions in renderer.
         """
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
@@ -429,7 +441,9 @@ class Simulator:
 
     def sync(self, force_sync=False):
         """
-        Update positions in renderer without stepping the simulation. Usually used in the reset() function
+        Update positions in renderer without stepping the simulation. Usually used in the reset() function.
+
+        :param force_sync: whether to force sync the objects in renderer
         """
         self.body_links_awake = 0
         for instance in self.renderer.instances:
@@ -442,7 +456,7 @@ class Simulator:
 
     def gen_assisted_grasping_categories(self):
         """
-        Generates list of categories that can be grasped using assisted grasping,
+        Generate a list of categories that can be grasped using assisted grasping,
         using labels provided in average category specs file.
         """
         assisted_grasp_category_allow_list = set()
@@ -454,8 +468,11 @@ class Simulator:
 
     def can_assisted_grasp(self, body_id, c_link):
         """
-        Checks to see if an object with the given body_id can be grasped. This is done
+        Check whether an object with the given body_id can be grasped. This is done
         by checking its category to see if is in the allowlist.
+
+        :param body_id: pybullet body id
+        :param c_link: link index or -1 for the base
         """
         if (
             not hasattr(self.scene, "objects_by_id")
@@ -470,12 +487,15 @@ class Simulator:
 
     def set_hidden_state(self, obj, hide=True):
         """
-        Sets the hidden state of an object to be either hidden or not hidden.
-        The object passed in must inherent from Object at the top level
+        Set the hidden state of an object to be either hidden or not hidden.
+        The object passed in must inherent from Object at the top level.
 
-        Note: this function must be called after step() in the rendering loop
+        Note: this function must be called after step() in the rendering loop.
         Note 2: this function only works with the optimized renderer - please use the renderer hidden
-        list to hide objects in the non-optimized renderer
+        list to hide objects in the non-optimized renderer.
+
+        :param obj: an object to set the hidden state
+        :param hide: the hidden state to set
         """
         # Find instance corresponding to this id in the renderer
         for instance in self.renderer.instances:
@@ -487,33 +507,25 @@ class Simulator:
     @staticmethod
     def update_position(instance, force_sync=False):
         """
-        Update position for an object or a robot in renderer.
-        :param instance: Instance in the renderer
+        Update the position of an object or a robot in renderer.
+
+        :param instance: an instance in the renderer
+        :param force_sync: whether to force sync the object
         """
         body_links_awake = 0
         for j, link_id in enumerate(instance.link_ids):
-            if link_id == -1:
-                dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, -1)
-                if len(dynamics_info) == 13 and not force_sync:
-                    activation_state = dynamics_info[12]
-                else:
-                    activation_state = PyBulletSleepState.AWAKE
+            dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, link_id)
+            if len(dynamics_info) == 13 and not force_sync:
+                activation_state = dynamics_info[12]
+            else:
+                activation_state = PyBulletSleepState.AWAKE
 
-                if activation_state != PyBulletSleepState.AWAKE:
-                    continue
+            if activation_state != PyBulletSleepState.AWAKE:
+                continue
 
+            if link_id == PYBULLET_BASE_LINK_INDEX:
                 pos, orn = p.getBasePositionAndOrientation(instance.pybullet_uuid)
             else:
-                dynamics_info = p.getDynamicsInfo(instance.pybullet_uuid, link_id)
-
-                if len(dynamics_info) == 13 and not force_sync:
-                    activation_state = dynamics_info[12]
-                else:
-                    activation_state = PyBulletSleepState.AWAKE
-
-                if activation_state != PyBulletSleepState.AWAKE:
-                    continue
-
                 pos, orn = p.getLinkState(instance.pybullet_uuid, link_id)[:2]
 
             instance.set_position_for_part(xyz2mat(pos), j)

@@ -42,8 +42,12 @@ class OccupancyGridState(object):
     FREESPACE = 1.0
 
 
+# PyBullet-related
 class PyBulletSleepState(IntEnum):
     AWAKE = 1
+
+
+PYBULLET_BASE_LINK_INDEX = -1
 
 
 # BEHAVIOR-related
