@@ -327,6 +327,10 @@ class iGibsonEnv(BaseEnv):
         :return: done: whether the episode is terminated
         :return: info: info dictionary with any useful information
         """
+        self.simulator.step()
+        self.simulator.renderer.render_robot_cameras(modes=("rgb"))
+        print(self.simulator.body_links_awake)
+        return {"task_obs": np.zeros(1)}, 0.0, False, {}
         self.current_step += 1
         if action is not None:
             self.robots[0].apply_action(action)
@@ -476,6 +480,7 @@ class iGibsonEnv(BaseEnv):
         self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
+        self.robots[0].set_position([1000, 1000, 1000])
 
         return state
 

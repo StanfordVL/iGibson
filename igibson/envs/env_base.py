@@ -195,6 +195,7 @@ class BaseEnv(gym.Env):
                 load_room_instances=self.config.get("load_room_instances", None),
                 merge_fixed_links=self.config.get("merge_fixed_links", True)
                 and not self.config.get("online_sampling", False),
+                ignore_visual_shape=True,
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses
             first_n = self.config.get("_set_first_n_objects", -1)
