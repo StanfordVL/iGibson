@@ -705,7 +705,6 @@ class URDFObject(Object):
             if idx == 0:
                 pos = np.array(self.default_pos)        # Make sure we only grab a copy
                 orn = np.array(self.default_orn)        # Make sure we only grab a copy
-                print(type(pos), type(orn), pos, orn)
 
                 # Add noise if requested
                 if self.randomize_pose:
@@ -719,8 +718,6 @@ class URDFObject(Object):
                 pos = transformation[0:3, 3]
                 orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
 
-            logging.info("Resetting URDF to (pos,ori): " +
-                         np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             pos, orn = p.multiplyTransforms(
