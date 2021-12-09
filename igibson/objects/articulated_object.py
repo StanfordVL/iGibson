@@ -182,7 +182,6 @@ class URDFObject(StatefulObject, NonRobotObject):
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
         self.ignore_visual_shape = ignore_visual_shape
-
         # Update rendering and class parameters.
         final_rendering_params = {}
         if self.category in ["walls", "floors", "ceilings"]:
@@ -231,6 +230,9 @@ class URDFObject(StatefulObject, NonRobotObject):
             self.filename = simplified_urdf
             filename = simplified_urdf
         logging.info("Loading the following URDF template " + filename)
+
+        return
+
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
         if not visualize_primitives:

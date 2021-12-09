@@ -3,6 +3,7 @@ import logging
 from collections import OrderedDict
 
 import networkx as nx
+import numpy as np
 import pybullet as p
 from bddl.activity import (
     Conditions,
@@ -14,6 +15,7 @@ from bddl.activity import (
     get_object_scope,
 )
 from bddl.condition_evaluation import Negation
+from bddl.enum_obj_states import EdgeTypeEnum, JunctionTypeEnum, NodeTypeEnum, get_feature
 from bddl.logic_base import AtomicFormula
 from bddl.object_taxonomy import ObjectTaxonomy
 
@@ -31,6 +33,7 @@ from igibson.tasks.bddl_backend import IGibsonBDDLBackend
 from igibson.tasks.task_base import BaseTask
 from igibson.termination_conditions.predicate_goal import PredicateGoal
 from igibson.termination_conditions.timeout import Timeout
+from igibson.utils import semantics_utils
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
 from igibson.utils.checkpoint_utils import load_checkpoint, load_internal_states, save_internal_states
 from igibson.utils.constants import (
@@ -39,6 +42,7 @@ from igibson.utils.constants import (
     MAX_TASK_RELEVANT_OBJS,
     NON_SAMPLEABLE_OBJECTS,
     TASK_RELEVANT_OBJS_OBS_DIM,
+    SemanticClass,
     SimulatorMode,
 )
 from igibson.utils.ig_logging import IGLogWriter
@@ -76,7 +80,7 @@ class BehaviorTask(BaseTask):
 
         self.initialized, self.feedback = self.initialize(env)
         self.state_history = {}
-        self.initial_state = self.save_scene(env)
+        # self.initial_state = self.save_scene(env)
         if self.config.get("should_highlight_task_relevant_objs", True):
             self.highlight_task_relevant_objs(env)
         if self.config.get("should_activate_behavior_robot", True):
@@ -109,9 +113,9 @@ class BehaviorTask(BaseTask):
         # Generate initial and goal conditions
         self.initial_conditions = get_initial_conditions(self.conds, self.backend, self.object_scope)
         self.goal_conditions = get_goal_conditions(self.conds, self.backend, self.object_scope)
-        self.ground_goal_state_options = get_ground_goal_state_options(
-            self.conds, self.backend, self.object_scope, self.goal_conditions
-        )
+        # self.ground_goal_state_options = get_ground_goal_state_options(
+        #     self.conds, self.backend, self.object_scope, self.goal_conditions
+        # )
 
         # Demo attributes
         self.instruction_order = np.arange(len(self.conds.parsed_goal_conditions))
@@ -205,9 +209,9 @@ class BehaviorTask(BaseTask):
 
         # Generate goal condition with the fully populated self.object_scope
         self.goal_conditions = get_goal_conditions(self.conds, self.backend, self.object_scope)
-        self.ground_goal_state_options = get_ground_goal_state_options(
-            self.conds, self.backend, self.object_scope, self.goal_conditions
-        )
+        # self.ground_goal_state_options = get_ground_goal_state_options(
+        #     self.conds, self.backend, self.object_scope, self.goal_conditions
+        # )
         return accept_scene, feedback
 
     def parse_non_sampleable_object_room_assignment(self):
@@ -505,10 +509,10 @@ class BehaviorTask(BaseTask):
                 else:
                     raise Exception("Only BehaviorRobot and FetchGripper have scene caches")
 
-                agent.set_position_orientation(
-                    self.scene.agent[agent_key]["xyz"],
-                    quat_from_euler(self.scene.agent[agent_key]["rpy"]),
-                )
+                # agent.set_position_orientation(
+                #     self.scene.agent[agent_key]["xyz"],
+                #     quat_from_euler(self.scene.agent[agent_key]["rpy"]),
+                # )
             else:
                 for _, sim_obj in self.scene.objects_by_name.items():
                     if sim_obj.bddl_object_scope == obj_inst:
@@ -939,3 +943,65 @@ class BehaviorTask(BaseTask):
     def iterate_instruction(self):
         self.currently_viewed_index = (self.currently_viewed_index + 1) % len(self.conds.parsed_goal_conditions)
         self.currently_viewed_instruction = self.instruction_order[self.currently_viewed_index]
+
+    def to_graph(self):
+        G = nx.DiGraph()
+
+        max_classes = max(semantics_utils.CLASS_NAME_TO_CLASS_ID.values()) + 1
+
+        # First, add the objects.
+        for key, obj in self.object_scope.items():
+            # Note that this uses *category* rather than synset currently.
+            # This is a hack and needs to be resolved at some point.
+            cat_map = {"room_floor": semantics_utils.CLASS_NAME_TO_CLASS_ID["floors"], "agent": SemanticClass.ROBOTS}
+            cat_idx = (
+                cat_map[obj.category]
+                if obj.category in cat_map
+                else semantics_utils.CLASS_NAME_TO_CLASS_ID[obj.category]
+            )
+            feature = np.eye(max_classes, dtype=int)[cat_idx]
+            G.add_node(key, node_type=NodeTypeEnum.Object.value, node_feature=feature)
+
+        # Then add all the goals
+        assert self.goal_conditions, "There are no goal conditions."
+
+        G.add_node(
+            "task", node_type=NodeTypeEnum.Junction.value, node_feature=get_feature(JunctionTypeEnum.Conjunction)
+        )
+        for gc in self.goal_conditions:
+            goal = gc.to_graph(G)
+            G.add_edge("task", goal, edge_type=EdgeTypeEnum.Child.value)
+
+        # Some checks
+        root_conditions = [
+            node
+            for node, in_degree in G.in_degree()
+            if in_degree == 0 and G.nodes[node]["node_type"] != NodeTypeEnum.Object.value
+        ]
+        assert len(root_conditions) == 1, "There needs to be exactly one root condition."
+
+        # Check node attributes.
+        for node, data in G.nodes(data=True):
+            assert "node_type" in data
+            nt = data["node_type"]
+            assert type(nt) == int, "Node type %s is not an int" % str(nt)
+
+            assert "node_feature" in data, "Nodes are missing features."
+            assert isinstance(data["node_feature"], np.ndarray), "Features need to be arrays of int."
+            assert data["node_feature"].dtype == np.int, "Features need to be arrays of int."
+
+        # Check edge attributes
+        for u, v, data in G.edges(data=True):
+            assert "edge_type" in data, "Edge type missing in edge %s, %s" % (u, v)
+            et = data["edge_type"]
+            assert type(et) == int, "Edge type %s is not an int" % str(et)
+
+            assert "edge_feature" not in data, "Edges should not have features."
+
+            # Assert that there are no object-object edges.
+            assert (
+                G.nodes[u]["node_type"] != NodeTypeEnum.Object.value
+                or G.nodes[v]["node_type"] != NodeTypeEnum.Object.value
+            ), "No edges should exist between two objects."
+
+        return G

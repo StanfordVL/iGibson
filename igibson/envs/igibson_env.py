@@ -114,7 +114,7 @@ class iGibsonEnv(BaseEnv):
                 with open(os.path.join(os.path.dirname(bddl.__file__), "activity_manifest.txt")) as f:
                     all_activities = [line.strip() for line in f.readlines()]
 
-                if self.config["task"] in all_activities:
+                if self.config["task"].lower() in all_activities:
                     self.task = BehaviorTask(self)
                 else:
                     raise Exception("Invalid task: {}".format(self.config["task"]))
@@ -250,9 +250,9 @@ class iGibsonEnv(BaseEnv):
         """
         super(iGibsonEnv, self).load()
         self.load_task_setup()
-        self.load_observation_space()
-        self.load_action_space()
-        self.load_miscellaneous_variables()
+        # self.load_observation_space()
+        # self.load_action_space()
+        # self.load_miscellaneous_variables()
 
     def get_state(self):
         """

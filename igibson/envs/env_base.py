@@ -191,7 +191,7 @@ class BaseEnv(gym.Env):
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
 
-        self.simulator.import_scene(scene)
+        # self.simulator.import_scene(scene)
 
         # TODO: modify way of instantiating robots (pass specific configs, not monolithic)
 
@@ -218,14 +218,14 @@ class BaseEnv(gym.Env):
         else:
             raise Exception("unknown robot type: {}".format(self.config["robot"]))
 
-        self.simulator.import_robot(robot)
+        # self.simulator.import_robot(robot)
         if isinstance(robot, BehaviorRobot):
             self.robot_body_id = robot.links["body"].get_body_id()
         else:
             self.robot_body_id = robot.get_body_id()
 
-        self.scene = self.simulator.scene
-        self.robots = self.simulator.robots
+        self.scene = scene
+        self.robots = [robot]
 
     def clean(self):
         """

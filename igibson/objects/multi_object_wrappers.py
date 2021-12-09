@@ -104,11 +104,7 @@ class ObjectGrouper(NonRobotObject):
             for state_type in state_types
         }
 
-        self.procedural_material = (
-            ObjectGrouper.ProceduralMaterialAggregator(self)
-            if self.objects[0].procedural_material is not None
-            else None
-        )
+        self.procedural_material = None
 
     def __getattr__(self, item):
         # Check if the attr is the same for everything
