@@ -17,6 +17,8 @@ from gibson2.utils.utils import parse_config
 from gibson2.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 import gym
 
+import logging
+
 
 class BaseEnv(gym.Env):
     '''
@@ -77,7 +79,10 @@ class BaseEnv(gym.Env):
                                    device_idx=device_idx,
                                    render_to_tensor=render_to_tensor,
                                    rendering_settings=settings)
+
+        logging.info("Loading iGibson environment...")
         self.load()
+        logging.info("Finished loading iGibson environment!")
 
         # Register any scene object randomization
         randomize_scene_objects = self.config.get("randomize_scene_objects", {})

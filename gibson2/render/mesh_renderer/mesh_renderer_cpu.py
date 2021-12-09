@@ -334,7 +334,7 @@ class MeshRenderer(object):
             return
 
         reader = tinyobjloader.ObjReader()
-        logging.info("Loading {}".format(obj_path))
+        logging.debug("Loading {}".format(obj_path))
         ret = reader.ParseFromFile(obj_path)
         vertex_data_indices = []
         face_indices = []

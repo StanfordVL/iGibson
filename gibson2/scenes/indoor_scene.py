@@ -42,7 +42,7 @@ class IndoorScene(Scene):
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
         super().__init__()
-        logging.info("IndoorScene model: {}".format(scene_id))
+        logging.debug("IndoorScene model: {}".format(scene_id))
         self.scene_id = scene_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution

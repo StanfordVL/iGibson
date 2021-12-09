@@ -155,11 +155,11 @@ class URDFObject(Object):
 
         self.model_path = model_path
 
-        logging.info("Category " + self.category)
-        logging.info("Model " + self.model)
+        logging.debug("Category " + self.category)
+        logging.debug("Model " + self.model)
 
         self.filename = filename
-        logging.info("Loading the following URDF template " + filename)
+        logging.debug("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
         # Change the mesh filenames to include the entire path
@@ -205,7 +205,7 @@ class URDFObject(Object):
                     scale = np.ones(3)
                 bounding_box = bbox_size * scale
 
-        logging.info("Scale: " + np.array2string(scale))
+        logging.debug("Scale: " + np.array2string(scale))
 
         # We want to load the metadata for obj sampling
         self.sampling_surfaces = {}
@@ -610,13 +610,13 @@ class URDFObject(Object):
         Load the object into pybullet and set it to the correct pose
         """
         for idx in range(len(self.urdf_paths)):
-            logging.info("Loading " + self.urdf_paths[idx])
+            logging.debug("Loading " + self.urdf_paths[idx])
             body_id = p.loadURDF(self.urdf_paths[idx])
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Moving URDF to (pos,ori): " +
+            logging.debug("Moving URDF to (pos,ori): " +
                          np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]

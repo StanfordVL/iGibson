@@ -28,10 +28,10 @@ def get_available_devices():
                 ["{}/test_device".format(executable_path),
                  str(i)], stderr=FNULL):
                 available_devices.append(i)
-                logging.info('Device {} is available for rendering'.format(i))
+                logging.debug('Device {} is available for rendering'.format(i))
         except subprocess.CalledProcessError as e:
-            logging.info(e)
-            logging.info('Device {} is not available for rendering'.format(i))
+            logging.debug(e)
+            logging.debug('Device {} is not available for rendering'.format(i))
     FNULL.close()
 
     return available_devices
