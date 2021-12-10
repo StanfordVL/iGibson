@@ -1,13 +1,14 @@
 import os
-from collections import OrderedDict
 
 import numpy as np
 import pybullet as p
 
 import igibson
-from igibson.controllers import ControlType, InverseKinematicsController
+from igibson.controllers import ControlType
 from igibson.external.pybullet_tools.utils import set_joint_positions
-from igibson.robots import ActiveCameraRobot, LocomotionRobot, ManipulationRobot
+from igibson.robots.active_camera_robot import ActiveCameraRobot
+from igibson.robots.manipulation_robot import ManipulationRobot
+from igibson.robots.two_wheel_robot import TwoWheelRobot
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
 
@@ -20,7 +21,7 @@ DEFAULT_ARM_POSES = {
 }
 
 
-class Fetch(LocomotionRobot, ManipulationRobot, ActiveCameraRobot):
+class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     """
     Fetch Robot
     Reference: https://fetchrobotics.com/robotics-platforms/fetch-mobile-manipulator/
@@ -74,7 +75,6 @@ class Fetch(LocomotionRobot, ManipulationRobot, ActiveCameraRobot):
 
         # Run super init
         super().__init__(
-            model_file=os.path.join(igibson.assets_path, "models/fetch/fetch_gripper.urdf"),
             control_freq=control_freq,
             action_config=action_config,
             controller_config=controller_config,
@@ -268,16 +268,10 @@ class Fetch(LocomotionRobot, ManipulationRobot, ActiveCameraRobot):
 
     @property
     def wheel_radius(self):
-        """
-        :return: float, radius of each Fetch's wheel at the base, in metric units
-        """
         return 0.0613
 
     @property
     def wheel_axle_length(self):
-        """
-        :return: float, perpendicular distance between the two wheels of the Fetch, in metric units
-        """
         return 0.372
 
     @property
@@ -342,3 +336,7 @@ class Fetch(LocomotionRobot, ManipulationRobot, ActiveCameraRobot):
     @property
     def finger_joint_names(self):
         return ["r_gripper_finger_joint", "l_gripper_finger_joint"]
+
+    @property
+    def model_file(self):
+        return os.path.join(igibson.assets_path, "models/fetch/fetch_gripper.urdf")

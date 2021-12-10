@@ -500,10 +500,10 @@ class BehaviorTask(BaseTask):
 
                 if isinstance(env.robots[0], BehaviorRobot):
                     agent_key = "BRBody_1"
-                elif isinstance(env.robots[0], FetchGripper):
+                elif isinstance(env.robots[0], Fetch):
                     agent_key = "fetch_gripper_robot_1"
                 else:
-                    raise Exception("Only BehaviorRobot and FetchGripper have scene caches")
+                    raise Exception("Only BehaviorRobot and Fetch have scene caches")
 
                 agent.set_position_orientation(
                     self.scene.agent[agent_key]["xyz"],

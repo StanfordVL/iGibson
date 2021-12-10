@@ -6,7 +6,7 @@ import igibson
 from igibson.objects.articulated_object import ArticulatedObject, RBOObject
 from igibson.objects.cube import Cube
 from igibson.objects.ycb_object import YCBObject
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets

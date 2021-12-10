@@ -7,9 +7,9 @@ import pybullet_data
 
 import igibson
 from igibson.robots.fetch import Fetch
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
-from igibson.robots.locobot_robot import Locobot
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.jr2 import JR2
+from igibson.robots.locobot import Locobot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.utils.utils import parse_config
 
 
@@ -28,7 +28,7 @@ def main():
     robots.append(fetch)
 
     config = parse_config(os.path.join(igibson.example_config_path, "jr_reaching.yaml"))
-    jr = JR2_Kinova(config)
+    jr = JR2(config)
     robots.append(jr)
 
     config = parse_config(os.path.join(igibson.example_config_path, "locobot_point_nav.yaml"))

@@ -120,8 +120,8 @@ class BaseController:
         command_input_limits = (-1.0, 1.0) if command_input_limits == "default" else command_input_limits
         command_output_limits = (
             (
-                self.control_limits[self.control_type][0][self.joint_idx],
-                self.control_limits[self.control_type][1][self.joint_idx],
+                np.array(self.control_limits[self.control_type][0])[self.joint_idx],
+                np.array(self.control_limits[self.control_type][1])[self.joint_idx],
             )
             if command_output_limits == "default"
             else command_output_limits

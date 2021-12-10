@@ -27,6 +27,14 @@ from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
 from igibson.utils.utils import rotate_vector_3d
 
+# Global dicts that will contain mappings
+REGISTERED_ROBOTS = {}
+
+
+def register_robot(cls):
+    if cls.__name__ not in REGISTERED_ROBOTS:
+        REGISTERED_ROBOTS[cls.__name__] = cls
+
 
 class BaseRobot(with_metaclass(ABCMeta, object)):
     """
@@ -42,20 +50,28 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         "shadow_caster": True,
     }
 
+    def __init_subclass__(cls, **kwargs):
+        """
+        Registers all subclasses as part of this registry. This is useful to decouple internal codebase from external
+        user additions. This way, users can add their custom robot by simply extending this Robot class,
+        and it will automatically be registered internally. This allows users to then specify their robot
+        directly in string-from in e.g., their config files, without having to manually set the str-to-class mapping
+        in our code.
+        """
+        register_robot(cls)
+
     def __init__(
         self,
-        model_file,
         control_freq=10.0,
         action_config=None,
         controller_config=None,
         base_name=None,
         scale=1.0,
-        self_collision=True,
+        self_collision=False,
         class_id=SemanticClass.ROBOTS,
         rendering_params=None,
     ):
         """
-        :param model_file: str, absolute path to robot model's URDF / MJCF file
         :param control_freq: float, control frequency (in Hz) at which to control the robot
         :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
             to action-related values. Should, at the minimum, contain:
@@ -75,7 +91,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         # Store arguments
         self.base_name = base_name
-        self.model_file = model_file
         self.control_freq = control_freq
         self.scale = scale
         self.self_collision = self_collision
@@ -948,6 +963,14 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :return Tuple[Tuple[str, str]]: List of collision pairs to disable. Default is None (empty list)
         """
         return []
+
+    @property
+    @abstractmethod
+    def model_file(self):
+        """
+        :return str: absolute path to robot model's URDF / MJCF file
+        """
+        raise NotImplementedError
 
 
 class RobotLink:

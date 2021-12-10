@@ -70,45 +70,12 @@ class LocomotionRobot(BaseRobot):
         }
 
     @property
-    def _default_base_differential_drive_controller_config(self):
-        """
-        :return: Dict[str, Any] Default differential drive controller config to
-            control this robot's base. Note: assumes self.wheel_radius and self.wheel_axle_length properties
-            are specified!
-        """
-        # Make sure base only has two indices (i.e.: two wheels for differential drive)
-        assert len(self.base_control_idx) == 2, "Differential drive can only be used with robot with two base joints!"
-        assert hasattr(self, "wheel_radius"), "self.wheel_radius property must be specified to use differential drive!"
-        assert hasattr(self, "wheel_axle_length"), (
-            "self.wheel_axle_length property must be specified to use " "differential drive!"
-        )
-
-        # Calculate max linear, angular velocities -- make sure each wheel has same max values
-        max_vels = [list(self._joints.values())[i].max_velocity for i in self.base_control_idx]
-        assert max_vels[0] == max_vels[1], "Differential drive requires both wheel joints to have same max velocities!"
-        max_lin_vel = max_vels[0] * self.wheel_radius
-        max_ang_vel = max_lin_vel * 2.0 / self.wheel_axle_length
-
-        return {
-            "name": "DifferentialDriveController",
-            "control_freq": self.control_freq,
-            "wheel_radius": self.wheel_radius,
-            "wheel_axle_length": self.wheel_axle_length,
-            "control_limits": self.control_limits,
-            "joint_idx": self.base_control_idx,
-            "command_output_limits": ([-max_lin_vel, -max_ang_vel], [max_lin_vel, max_ang_vel]),  # (lin_vel, ang_vel)
-        }
-
-    @property
     def _default_controller_config(self):
         # Always run super method first
         cfg = super()._default_controller_config
 
         # Add supported base controllers
         cfg["base"] = {
-            self._default_base_differential_drive_controller_config[
-                "name"
-            ]: self._default_base_differential_drive_controller_config,
             self._default_base_joint_controller_config["name"]: self._default_base_joint_controller_config,
         }
 

@@ -59,9 +59,9 @@ The reference frame of each body part is shown below.
 In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [igibson/examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/robot_example.py).
 
 ```python
-from igibson.robots.locobot_robot import Locobot
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
+from igibson.robots.locobot import Locobot
+from igibson.robots.turtlebot import Turtlebot
+from igibson.robots.jr2 import JR2
 from igibson.robots.fetch import Fetch
 from igibson.utils.utils import parse_config
 import os
@@ -71,10 +71,11 @@ import pybullet as p
 import pybullet_data
 import igibson
 
+
 def main():
     p.connect(p.GUI)
     p.setGravity(0, 0, -9.8)
-    p.setTimeStep(1./240.)
+    p.setTimeStep(1. / 240.)
 
     floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
     p.loadMJCF(floor)
@@ -84,8 +85,8 @@ def main():
     fetch = Fetch(config)
     robots.append(fetch)
 
-    config = parse_config(os.path.join(igibson.example_config_path,'jr_reaching.yaml'))
-    jr = JR2_Kinova(config)
+    config = parse_config(os.path.join(igibson.example_config_path, 'jr_reaching.yaml'))
+    jr = JR2(config)
     robots.append(jr)
 
     config = parse_config(os.path.join(igibson.example_config_path, 'locobot_point_nav.yaml'))
@@ -111,14 +112,14 @@ def main():
 
     for _ in range(2400):  # keep still for 10 seconds
         p.stepSimulation()
-        time.sleep(1./240.)
+        time.sleep(1. / 240.)
 
     for _ in range(2400):  # move with small random actions for 10 seconds
         for robot, position in zip(robots, positions):
             action = np.random.uniform(-1, 1, robot.action_dim)
             robot.apply_action(action)
         p.stepSimulation()
-        time.sleep(1./240.0)
+        time.sleep(1. / 240.0)
 
     p.disconnect()
 
