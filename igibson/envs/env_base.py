@@ -2,16 +2,14 @@ import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots.ant_robot import Ant
+from igibson.robots.ant import Ant
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch import Fetch
-from igibson.robots.freight_robot import Freight
-from igibson.robots.humanoid_robot import Humanoid
-from igibson.robots.husky_robot import Husky
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
-from igibson.robots.jr2_robot import JR2
-from igibson.robots.locobot_robot import Locobot
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.freight import Freight
+from igibson.robots.husky import Husky
+from igibson.robots.jr2 import JR2
+from igibson.robots.locobot import Locobot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -205,8 +203,6 @@ class BaseEnv(gym.Env):
             robot = Humanoid(self.config)
         elif self.config["robot"] == "JR2":
             robot = JR2(self.config)
-        elif self.config["robot"] == "JR2_Kinova":
-            robot = JR2_Kinova(self.config)
         elif self.config["robot"] == "Freight":
             robot = Freight(self.config)
         elif self.config["robot"] == "Fetch":

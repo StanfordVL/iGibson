@@ -53,19 +53,17 @@ class ManipulationRobot(BaseRobot):
 
     def __init__(
         self,
-        model_file,
         control_freq=10.0,
         action_config=None,
         controller_config=None,
         base_name=None,
         scale=1.0,
-        self_collision=True,
+        self_collision=False,
         class_id=SemanticClass.ROBOTS,
         rendering_params=None,
         assisted_grasp_mode=None,
     ):
         """
-        :param model_file: str, absolute path to robot model's URDF / MJCF file
         :param control_freq: float, control frequency (in Hz) at which to control the robot
         :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
             to action-related values. Should, at the minimum, contain:
@@ -101,7 +99,7 @@ class ManipulationRobot(BaseRobot):
 
         # Call super() method
         super().__init__(
-            model_file=model_file,
+            control_freq=control_freq,
             action_config=action_config,
             controller_config=controller_config,
             base_name=base_name,
@@ -400,7 +398,7 @@ class ManipulationRobot(BaseRobot):
             "motor_type": "velocity",
             "control_limits": self.control_limits,
             "joint_idx": self.arm_control_idx,
-            "command_output_limits": "deafult",
+            "command_output_limits": "default",
             "use_delta_commands": False,
             "use_compliant_mode": True,
         }
@@ -436,9 +434,6 @@ class ManipulationRobot(BaseRobot):
         :return: Dict[str, Any] Default controller config to control this robot's parallel jaw gripper. Assumes
             robot gripper idx has exactly two elements
         """
-        assert len(self.gripper_control_idx) == 2, (
-            "Parallel jaw control can only be used with robot " "with two gripper joints!"
-        )
         return {
             "name": "ParallelJawGripperController",
             "control_freq": self.control_freq,

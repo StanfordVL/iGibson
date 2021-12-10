@@ -8,7 +8,7 @@ import numpy as np
 
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_assets_version

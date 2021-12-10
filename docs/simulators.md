@@ -18,7 +18,7 @@ Most of the code can be found here: [igibson/simulator.py](https://github.com/St
 In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [igibson/examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/simulator_example.py)
 
 ```python
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.simulator import Simulator
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.objects.ycb_object import YCBObject
