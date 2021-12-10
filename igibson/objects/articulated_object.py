@@ -29,11 +29,12 @@ from igibson.external.pybullet_tools.utils import (
     set_joint_position,
 )
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
-from igibson.object_states.utils import clear_cached_states
 from igibson.objects.object_base import NonRobotObject, SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.utils import utils
+from igibson.utils.constants import SemanticClass
+from igibson.utils.semantics_utils import CLASS_NAME_TO_CLASS_ID
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
 from igibson.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_3d
 
@@ -59,7 +60,7 @@ class ArticulatedObject(StatefulObject, SingleBodyObject):
         self.scale = scale
         self.merge_fixed_links = merge_fixed_links
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -70,27 +71,10 @@ class ArticulatedObject(StatefulObject, SingleBodyObject):
         body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
 
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
-        self.create_link_name_to_vm_map(body_id)
-        return [body_id]
 
-    def create_link_name_to_vm_map(self, body_id):
-        self.link_name_to_vm = []
-        link_name_to_vm_urdf = {}
-        for visual_shape in p.getVisualShapeData(body_id):
-            id, link_id, type, dimensions, filename, rel_pos, rel_orn, color = visual_shape[:8]
-            try:
-                if link_id == -1:
-                    link_name = p.getBodyInfo(id)[0].decode("utf-8")
-                else:
-                    link_name = p.getJointInfo(id, link_id)[12].decode("utf-8")
-                if not link_name in link_name_to_vm_urdf:
-                    link_name_to_vm_urdf[link_name] = []
-                else:
-                    raise ValueError("link name clashing")
-                link_name_to_vm_urdf[link_name].append(filename.decode("utf-8"))
-            except:
-                pass
-        self.link_name_to_vm = [link_name_to_vm_urdf]
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        return [body_id]
 
     def force_wakeup(self):
         """
@@ -143,6 +127,8 @@ class URDFObject(StatefulObject, NonRobotObject):
         joint_positions=None,
         merge_fixed_links=True,
         ignore_visual_shape=False,
+        class_id=None,
+        rendering_params=None,
         **kwargs
     ):
         """
@@ -166,6 +152,8 @@ class URDFObject(StatefulObject, NonRobotObject):
         :param visualize_primitives: whether to render geometric primitives
         :param joint_positions: Joint positions, keyed by body index and joint name, in the form of
             List[Dict[name, position]]
+        :param class_id: Class ID to override default class ID with (default will be constructed using category)
+        :param rendering_params: Rendering params to override default category-based rendering params.
         """
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -177,10 +165,9 @@ class URDFObject(StatefulObject, NonRobotObject):
                     abilities = {}
             else:
                 abilities = {}
-
         assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
-        super(URDFObject, self).__init__(abilities=abilities, **kwargs)
 
+        # Save important arguments.
         self.name = name
         self.category = category
         self.in_rooms = in_rooms
@@ -195,6 +182,21 @@ class URDFObject(StatefulObject, NonRobotObject):
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
         self.ignore_visual_shape = ignore_visual_shape
+
+        # Update rendering and class parameters.
+        final_rendering_params = {}
+        if self.category in ["walls", "floors", "ceilings"]:
+            final_rendering_params["use_pbr"] = False
+            final_rendering_params["use_pbr_mapping"] = False
+        if self.category == "ceilings":
+            final_rendering_params["shadow_caster"] = False
+        if rendering_params:
+            final_rendering_params.update(rendering_params)
+        if class_id is None:
+            class_id = CLASS_NAME_TO_CLASS_ID.get(self.category, SemanticClass.SCENE_OBJS)
+        super(URDFObject, self).__init__(
+            abilities=abilities, class_id=class_id, rendering_params=final_rendering_params
+        )
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -920,7 +922,7 @@ class URDFObject(StatefulObject, NonRobotObject):
 
         self.procedural_material = procedural_material
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet and set it to the correct pose
         """
@@ -959,6 +961,15 @@ class URDFObject(StatefulObject, NonRobotObject):
                         joint_name = str(info.jointName, encoding="utf-8")
                         joint_position = self.joint_positions[idx][joint_name]
                         set_joint_position(body_id, j, joint_position)
+
+            simulator.load_object_in_renderer(
+                self,
+                body_id,
+                self.class_id,
+                visual_mesh_to_material=self.visual_mesh_to_material[idx],
+                link_name_to_vm=self.link_name_to_vm[idx],
+                **self._rendering_params
+            )
 
             self.body_ids.append(body_id)
 

@@ -17,7 +17,7 @@ def get_scene_support_objs(scene_name):
         s = Simulator(mode="headless", image_width=800, image_height=800, rendering_settings=settings)
         simulator = s
         scene = InteractiveIndoorScene(scene_name, texture_randomization=False, object_randomization=False)
-        s.import_ig_scene(scene)
+        s.import_scene(scene)
 
         for obj_name in scene.objects_by_name:
             obj = scene.objects_by_name[obj_name]

@@ -16,8 +16,8 @@ from PIL import Image
 import igibson
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.robots.fetch_robot import Fetch
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.fetch import Fetch
+from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
@@ -203,7 +203,6 @@ class ToyEnv(object):
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
-        # self.s.import_ig_scene(scene)
         self.robot = Turtlebot(config)
         self.s.import_robot(self.robot)
 
@@ -255,7 +254,7 @@ class ToyEnvInt(object):
         )
 
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
-        self.s.import_ig_scene(scene)
+        self.s.import_scene(scene)
 
         if robot == "turtlebot":
             self.robot = Turtlebot(config)

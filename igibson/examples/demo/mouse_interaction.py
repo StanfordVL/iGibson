@@ -44,9 +44,9 @@ def test_import_igsdf(scene_name, scene_source):
         light_dimming_factor=1.0,
         optimized=True,
     )
-    s = Simulator(mode="iggui", image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
+    s = Simulator(mode="gui_interactive", image_width=960, image_height=720, device_idx=0, rendering_settings=settings)
 
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
     fpss = []
 
     np.random.seed(0)

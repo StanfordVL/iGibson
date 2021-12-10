@@ -9,10 +9,11 @@ from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplex
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_model_path
+from igibson.utils.utils import restoreState
 
 
 def main():
-    s = Simulator(mode="gui", image_width=1280, image_height=720)
+    s = Simulator(mode="gui_interactive", use_pb_gui=True, image_width=1280, image_height=720)
     scene = EmptyScene()
     s.import_scene(scene)
 
@@ -71,7 +72,7 @@ def main():
     for obj_part in apple.objects:
         obj_part.set_position([0, 0, 1])
 
-    p.restoreState(state_dump)
+    restoreState(state_dump)
     p.removeState(state_dump)
     # The apple should become whole again
     apple.load_state(dump)

@@ -50,9 +50,9 @@ class PointCloudExtractor(object):
         self.categories = None
         self.instances = None
 
-    def start_callback(self, igbhvr_act_inst, log_reader):
+    def start_callback(self, env, log_reader):
         # Create the dataset
-        renderer = igbhvr_act_inst.simulator.renderer
+        renderer = env.simulator.renderer
         w = renderer.width
         h = renderer.height
         n_frames = frame_to_entry_idx(log_reader.total_frame_num)
@@ -96,8 +96,8 @@ class PointCloudExtractor(object):
         self.categories_cache = np.zeros((FRAME_BATCH_SIZE, h, w), dtype=np.int32)
         self.instances_cache = np.zeros((FRAME_BATCH_SIZE, h, w), dtype=np.int32)
 
-    def write_to_file(self, igbhvr_act_inst):
-        frame_count = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count)
+    def write_to_file(self, env):
+        frame_count = frame_to_entry_idx(env.simulator.frame_count)
         new_lines = frame_count % FRAME_BATCH_SIZE
         if new_lines == 0:
             return
@@ -108,14 +108,14 @@ class PointCloudExtractor(object):
         self.categories[start_pos:frame_count] = self.categories_cache[:new_lines]
         self.instances[start_pos:frame_count] = self.instances_cache[:new_lines]
 
-        self.create_caches(igbhvr_act_inst.simulator.renderer)
+        self.create_caches(env.simulator.renderer)
 
-    def step_callback(self, igbhvr_act_inst, _):
-        if not is_subsampled_frame(igbhvr_act_inst.simulator.frame_count):
+    def step_callback(self, env, _):
+        if not is_subsampled_frame(env.simulator.frame_count):
             return
 
         # TODO: Check how this compares to the outputs of SUNRGBD. Currently we're just taking the robot FOV.
-        renderer = igbhvr_act_inst.simulator.renderer
+        renderer = env.simulator.renderer
         rgb, seg, ins_seg, threed = renderer.render_robot_cameras(modes=("rgb", "seg", "ins_seg", "3d"))
 
         # Get rid of extra dimensions on segmentations
@@ -123,17 +123,17 @@ class PointCloudExtractor(object):
         ins_seg = np.round(ins_seg[:, :, 0] * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
-        frame_idx = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count) % FRAME_BATCH_SIZE
+        frame_idx = frame_to_entry_idx(env.simulator.frame_count) % FRAME_BATCH_SIZE
         self.points_cache[frame_idx] = threed.astype(np.float32)
         self.colors_cache[frame_idx] = rgb[:, :, :3].astype(np.float32)
         self.categories_cache[frame_idx] = seg.astype(np.int32)
         self.instances_cache[frame_idx] = id_seg.astype(np.int32)
 
         if frame_idx == FRAME_BATCH_SIZE - 1:
-            self.write_to_file(igbhvr_act_inst)
+            self.write_to_file(env)
 
-    def end_callback(self, igbhvr_act_inst, _):
-        self.write_to_file(igbhvr_act_inst)
+    def end_callback(self, env, _):
+        self.write_to_file(env)
 
 
 class BBoxExtractor(object):
@@ -182,8 +182,8 @@ class BBoxExtractor(object):
             self.cameraV_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
             self.cameraP_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
 
-    def write_to_file(self, igbhvr_act_inst):
-        frame_count = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count)
+    def write_to_file(self, env):
+        frame_count = frame_to_entry_idx(env.simulator.frame_count)
         new_lines = frame_count % FRAME_BATCH_SIZE
         if new_lines == 0:
             return
@@ -197,33 +197,33 @@ class BBoxExtractor(object):
 
         self.create_caches()
 
-    def step_callback(self, igbhvr_act_inst, _):
-        if not is_subsampled_frame(igbhvr_act_inst.simulator.frame_count):
+    def step_callback(self, env, _):
+        if not is_subsampled_frame(env.simulator.frame_count):
             return
 
         # Clear debug drawings.
         if DEBUG_DRAW:
             p.removeAllUserDebugItems()
 
-        renderer = igbhvr_act_inst.simulator.renderer
+        renderer = env.simulator.renderer
         ins_seg = renderer.render_robot_cameras(modes="ins_seg")[0][:, :, 0]
         ins_seg = np.round(ins_seg * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
-        frame_idx = frame_to_entry_idx(igbhvr_act_inst.simulator.frame_count) % FRAME_BATCH_SIZE
+        frame_idx = frame_to_entry_idx(env.simulator.frame_count) % FRAME_BATCH_SIZE
         filled_obj_idx = 0
 
         for body_id in np.unique(id_seg):
-            if body_id == -1 or body_id not in igbhvr_act_inst.simulator.scene.objects_by_id:
+            if body_id == -1 or body_id not in env.simulator.scene.objects_by_id:
                 continue
 
             # Get the object semantic class ID
-            obj = igbhvr_act_inst.simulator.scene.objects_by_id[body_id]
+            obj = env.scene.objects_by_id[body_id]
             if not isinstance(obj, URDFObject):
                 # Ignore robots etc.
                 continue
 
-            class_id = igbhvr_act_inst.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
+            class_id = env.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
 
             # 2D bounding box
             this_object_pixels_positions = np.argwhere(id_seg == body_id)
@@ -235,7 +235,7 @@ class BBoxExtractor(object):
                 body_id=body_id, visual=True
             )
             world_frame_pose = np.concatenate([world_frame_center, world_frame_orientation])
-            camera_frame_pose = igbhvr_act_inst.simulator.renderer.transform_pose(world_frame_pose)
+            camera_frame_pose = env.simulator.renderer.transform_pose(world_frame_pose)
             camera_frame_center = camera_frame_pose[:3]
             camera_frame_orientation = camera_frame_pose[3:]
 
@@ -268,10 +268,10 @@ class BBoxExtractor(object):
             self.cameraP_cache[frame_idx] = renderer.P
 
         if frame_idx == FRAME_BATCH_SIZE - 1:
-            self.write_to_file(igbhvr_act_inst)
+            self.write_to_file(env)
 
-    def end_callback(self, igbhvr_act_inst, _):
-        self.write_to_file(igbhvr_act_inst)
+    def end_callback(self, env, _):
+        self.write_to_file(env)
 
 
 def main():

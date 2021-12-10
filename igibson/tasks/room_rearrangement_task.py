@@ -9,6 +9,7 @@ from igibson.tasks.task_base import BaseTask
 from igibson.termination_conditions.max_collision import MaxCollision
 from igibson.termination_conditions.out_of_bound import OutOfBound
 from igibson.termination_conditions.timeout import Timeout
+from igibson.utils.utils import restoreState
 
 
 class RoomRearrangementTask(BaseTask):
@@ -101,7 +102,7 @@ class RoomRearrangementTask(BaseTask):
         for _ in range(max_trials):
             initial_pos, initial_orn = self.sample_initial_pose(env)
             reset_success = env.test_valid_position(env.robots[0], initial_pos, initial_orn)
-            p.restoreState(state_id)
+            restoreState(state_id)
             if reset_success:
                 break
 
@@ -110,9 +111,6 @@ class RoomRearrangementTask(BaseTask):
 
         env.land(env.robots[0], initial_pos, initial_orn)
         p.removeState(state_id)
-
-        for reward_function in self.reward_functions:
-            reward_function.reset(self, env)
 
     def get_task_obs(self, env):
         """

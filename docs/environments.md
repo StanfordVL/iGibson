@@ -196,6 +196,8 @@ In this example, we show how to instantiate `iGibsonEnv` and how to step through
 - `info`: a python dictionary for bookkeeping purpose
 The code can be found here: [igibson/examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_example.py).
 
+If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/examples/configs/turtlebot_demo.yaml) to avoid out-of-memory error.
+
 ```python
 from igibson.envs.igibson_env import iGibsonEnv
 from time import time

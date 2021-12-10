@@ -26,16 +26,16 @@ def main():
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = Simulator(mode="iggui", rendering_settings=vr_rendering_settings, image_height=512, image_width=512)
+    s = Simulator(mode="gui_interactive", rendering_settings=vr_rendering_settings, image_height=512, image_width=512)
 
     scene = EmptyScene()
     # scene.load_object_categories(benchmark_names)
 
-    s.import_scene(scene, render_floor_plane=True)
+    s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     vr_agent = BehaviorRobot(s)
-    s.import_behavior_robot(vr_agent)
+    s.import_robot(vr_agent)
     s.register_main_vr_robot(vr_agent)
     vr_agent.activate()
 

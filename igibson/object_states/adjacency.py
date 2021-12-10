@@ -12,8 +12,8 @@ _MAX_DISTANCE_HORIZONTAL = 1.0
 
 # How many 2-D bases to try during horizontal adjacency check. When 1, only the standard axes will be considered.
 # When 2, standard axes + 45 degree rotated will be considered. The tried axes will be equally spaced. The higher
-# this number, the lower the possibility of false negatives in Inside.
-_HORIZONTAL_AXIS_COUNT = 3
+# this number, the lower the possibility of false negatives in Inside and NextTo.
+_HORIZONTAL_AXIS_COUNT = 5
 
 AxisAdjacencyList = namedtuple("AxisAdjacencyList", ("positive_neighbors", "negative_neighbors"))
 
@@ -29,7 +29,7 @@ def get_equidistant_coordinate_planes(n_planes):
 
     The samples will cover all 360 degrees (although rotational symmetry
     is assumed, e.g. if you take into account the axis index and the
-    positive/negative directions, only 1/4 of the possible coordinate
+    positive/negative directions, only 1/4 of the possible coordinate (1 quadrant, np.pi / 2.0)
     planes will be sampled: the ones where the first axis' positive direction
     is in the first quadrant).
 
@@ -40,7 +40,7 @@ def get_equidistant_coordinate_planes(n_planes):
         corresponding to the axis.
     """
     # Compute the positive directions of the 1st axis of each plane.
-    first_axis_angles = np.linspace(0, np.pi / 4, n_planes)
+    first_axis_angles = np.linspace(0, np.pi / 2, n_planes)
     first_axes = np.stack(
         [np.cos(first_axis_angles), np.sin(first_axis_angles), np.zeros_like(first_axis_angles)], axis=1
     )

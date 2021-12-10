@@ -6,7 +6,7 @@ We provide four types of scenes.
 - `StaticIndoorScene`: it loads static 3D scenes from `igibson.g_dataset_path`.
 - `InteractiveIndoorScene`: it loads fully interactive 3D scenes from `igibson.ig_dataset_path`.
 
-Typically, they take in the `scene_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` and `import_ig_scene` of the `Simulator`).
+Typically, they take in the `scene_id` of a scene and provide a `load` function that be invoked externally (usually by `import_scene` of the `Simulator`).
 
 To be more specific, the `load` function of `StaticIndoorScene`
 - stores the floor information (we have many multistory houses in our dataset)
@@ -124,7 +124,7 @@ def main():
                   image_height=512, device_idx=0)
     scene = InteractiveIndoorScene(
         'Rs_int', texture_randomization=False, object_randomization=False)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     np.random.seed(0)
     for _ in range(10):

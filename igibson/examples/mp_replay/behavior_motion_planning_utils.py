@@ -97,7 +97,7 @@ def plan_base_motion_br(
 
     body_ids = []
     for part in ["body", "left_hand", "right_hand"]:
-        body_ids.append(robot.parts[part].get_body_id())
+        body_ids.append(robot.links[part].get_body_id())
 
     if obj_in_hand is not None:
         body_ids.append(obj_in_hand.get_body_id())
@@ -195,8 +195,8 @@ def plan_hand_motion_br(
         r, p, yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
         return (x, y, z, r, p, yaw)
 
-    pos = robot.parts["right_hand"].get_position()
-    orn = robot.parts["right_hand"].get_orientation()
+    pos = robot.links["right_hand"].get_position()
+    orn = robot.links["right_hand"].get_orientation()
     rpy = p.getEulerFromQuaternion(orn)
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
 
@@ -252,16 +252,16 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
         for obs in obstacles
         if (
             (obj_in_hand is None or obs != obj_in_hand.get_body_id())
-            and (obs != robot.parts["right_hand"].get_body_id())
+            and (obs != robot.links["right_hand"].get_body_id())
         )
     }
 
     def collision_fn(pose3d):
-        robot.parts["right_hand"].set_position_orientation(*pose3d)
-        close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(robot.parts["right_hand"].get_body_id())))
+        robot.links["right_hand"].set_position_orientation(*pose3d)
+        close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(robot.links["right_hand"].get_body_id())))
         close_obstacles = close_objects & non_hand_non_oih_obstacles
         collisions = [
-            (obs, pairwise_collision(robot.parts["right_hand"].get_body_id(), obs, max_distance=max_distance))
+            (obs, pairwise_collision(robot.links["right_hand"].get_body_id(), obs, max_distance=max_distance))
             for obs in close_obstacles
         ]
         colliding_bids = [obs for obs, col in collisions if col]
@@ -289,25 +289,25 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
 if __name__ == "__main__":
     config = parse_config(os.path.join(igibson.example_config_path, "behavior.yaml"))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
+    )
 
     scene = EmptyScene()
     scene.objects_by_id = {}
-    s.import_scene(scene, render_floor_plane=True)
+    s.import_scene(scene)
 
-    agent = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True, use_ghost_hands=False)
-    s.import_behavior_robot(agent)
-    s.register_main_vr_robot(agent)
-    initial_pos_z_offset = 0.7
+    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
+    s.import_robot(agent)
 
     s.robots.append(agent)
-    agent.initial_z_offset = initial_pos_z_offset
-    agent.set_position_orientation([0, 0, initial_pos_z_offset], [0, 0, 0, 1])
+    agent.initial_z_offset = BODY_OFFSET_FROM_FLOOR
+    agent.set_position_orientation([0, 0, BODY_OFFSET_FROM_FLOOR], [0, 0, 0, 1])
     # plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])
     plan = plan_hand_motion_br(agent, [3, 3, 3, 0, 0, 0], ((-5, -5, -5), (5, 5, 5)))
     print(plan)
     for q in plan:
-        agent.parts["right_hand"].set_position_orientation(
+        agent.links["right_hand"].set_position_orientation(
             [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
         )
         time.sleep(0.05)
@@ -329,7 +329,7 @@ def dry_run_base_plan(robot: BehaviorRobot, plan):
 
 def dry_run_arm_plan(robot: BehaviorRobot, plan):
     for (x, y, z, roll, pitch, yaw) in plan:
-        robot.parts["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+        robot.links["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
         time.sleep(0.01)
 
 

@@ -5,21 +5,21 @@ import numpy as np
 from IPython import embed
 
 import igibson
-from igibson.robots.fetch_gripper_robot import FetchGripper
+from igibson.robots.fetch import Fetch
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 if __name__ == "__main__":
-    s = Simulator(mode="pbgui")
+    s = Simulator(mode="headless", use_pb_gui=True)
     scene = EmptyScene()
     s.import_scene(scene)
 
     config = parse_config(os.path.join(igibson.example_config_path, "behavior_onboard_sensing_fetch.yaml"))
-    robot = FetchGripper(s, config)
+    robot = Fetch(s, config)
     s.import_robot(robot)
 
-    robot.robot_specific_reset()
+    robot.reset()
     action_dim = 11
     for i in range(action_dim):
         embed()

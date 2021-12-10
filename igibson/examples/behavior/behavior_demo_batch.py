@@ -46,8 +46,6 @@ def behavior_demo_batch(
     logger = logging.getLogger()
     logger.disabled = True
 
-    bddl.set_backend("iGibson")
-
     demo_list = pd.read_csv(log_manifest)
 
     for idx, demo in enumerate(demo_list["demos"]):
@@ -80,7 +78,8 @@ def behavior_demo_batch(
                 start_callbacks=start_callbacks,
                 step_callbacks=step_callbacks,
                 end_callbacks=end_callbacks,
-                mode="pbgui" if debug_display else "headless",
+                mode="headless",
+                use_pb_gui=debug_display,
                 verbose=False,
                 image_size=image_size,
             )

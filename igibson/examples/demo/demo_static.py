@@ -1,7 +1,7 @@
 import os
 
 import igibson
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets, download_demo_data
@@ -16,7 +16,7 @@ class DemoStatic(object):
     def run_demo(self):
         config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_demo.yaml"))
 
-        s = Simulator(mode="gui", image_width=700, image_height=700)
+        s = Simulator(mode="gui_interactive", use_pb_gui=True, image_width=700, image_height=700)
         scene = StaticIndoorScene("Rs", pybullet_load_texture=True)
         s.import_scene(scene)
         turtlebot = Turtlebot(config)

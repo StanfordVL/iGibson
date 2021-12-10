@@ -15,9 +15,6 @@ object_randomization_freq: null
 
 # robot
 robot: Fetch
-wheel_velocity: 0.8
-torso_lift_velocity: 0.8
-arm_velocity: 0.8
 
 # task
 task: reaching_random
