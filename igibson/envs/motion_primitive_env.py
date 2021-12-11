@@ -1,17 +1,16 @@
 from enum import IntEnum
 
 import gym
-import numpy as np
 
-from igibson.envs.behavior_env import BehaviorEnv
+from igibson.envs.motion_planning_env import MotionPlanningEnv
 from igibson.examples.mp_replay.behavior_motion_primitive_controller import (
     MotionPrimitiveController,
     MotionPrimitiveError,
 )
 from igibson.object_states.on_floor import RoomFloor
 from igibson.objects.articulated_object import URDFObject
+from igibson.robots import Fetch
 from igibson.robots.behavior_robot import BehaviorRobot, BRBody, BREye, BRHand
-from igibson.robots.fetch_gripper_robot import FetchGripper
 
 
 class MotionPrimitive(IntEnum):
@@ -23,18 +22,17 @@ class MotionPrimitive(IntEnum):
     NAVIGATE_TO = 5  # For mostly debugging purposes.
 
 
-class BehaviorMotionPrimitiveEnv(BehaviorEnv):
+class MotionPrimitiveEnv(gym.Env):
     def __init__(self, activity_relevant_objects_only=True, **kwargs):
         """
-        @param config_file: Config file for the environment. Will be passed down to BehaviorEnv constructor too.
         @param use_motion_planning: Whether motion-planned primitives or magic primitives should be used
         @param activity_relevant_objects_only: Whether the actions should be parameterized by AROs or all scene objs.
-        @param kwargs: Keyword arguments to pass to BehaviorEnv constructor.
+        @param kwargs: Keyword arguments to pass to MotionPlanningEnv (and later to the BehaviorEnv) constructor.
         """
+        self.env = MotionPlanningEnv(**kwargs)
         self.activity_relevant_objects_only = activity_relevant_objects_only
-        super(BehaviorMotionPrimitiveEnv, self).__init__(**kwargs)
 
-        self.controller = MotionPrimitiveController(scene=self.scene, robot=self.robots[0])
+        self.controller = MotionPrimitiveController(scene=self.env.scene, robot=self.env.robots[0])
         self.controller_functions = {
             MotionPrimitive.GRASP: self.controller.grasp,
             MotionPrimitive.PLACE_ON_TOP: self.controller.place_on_top,
@@ -48,19 +46,19 @@ class BehaviorMotionPrimitiveEnv(BehaviorEnv):
         if self.activity_relevant_objects_only:
             self.addressable_objects = [
                 item
-                for item in self.task.object_scope.values()
+                for item in self.env.task.object_scope.values()
                 if isinstance(item, URDFObject) or isinstance(item, RoomFloor)
             ]
         else:
             self.addressable_objects = list(
-                set(self.task.simulator.scene.objects_by_name.values()) | set(self.task.object_scope.values())
+                set(self.env.task.simulator.scene.objects_by_name.values()) | set(self.env.task.object_scope.values())
             )
 
         # Filter out the robots.
         self.addressable_objects = [
             obj
             for obj in self.addressable_objects
-            if not isinstance(obj, (BRBody, BRHand, BREye, BehaviorRobot, FetchGripper))
+            if not isinstance(obj, (BRBody, BRHand, BREye, BehaviorRobot, Fetch))
         ]
 
         self.num_objects = len(self.addressable_objects)
@@ -77,19 +75,31 @@ class BehaviorMotionPrimitiveEnv(BehaviorEnv):
         obj_list_id = int(action) % self.num_objects
         target_obj = self.addressable_objects[obj_list_id]
 
-        # Find the motion primitive controller.
+        # Find the appropriate motion primitive goal generator.
         motion_primitive = MotionPrimitive(int(action) // self.num_objects)
         action_generator_fn = self.controller_functions[motion_primitive]
 
-        # Apply an empty initial step to get the state data from underlying env.
-        state, reward, done, info = super(BehaviorMotionPrimitiveEnv, self).step(np.zeros(26))
-
-        # Apply control from the controller. Note that the controller can be open or closed-loop since it has access
-        # to the environment state.
+        # Run the goal generator and feed the goals into the motion planning env.
         try:
             for action in action_generator_fn(target_obj):
-                state, reward, done, info = super(BehaviorMotionPrimitiveEnv, self).step(action)
+                state, reward, done, info = self.env.step(action)
         except MotionPrimitiveError as e:
             print(e)
 
+        # TODO(MP): What about reward accumulation?
+
         return state, reward, done, info
+
+    @property
+    def scene(self):
+        return self.env.scene
+
+    @property
+    def task(self):
+        return self.env.task
+
+    @property
+    def robots(self):
+        return self.env.robots
+
+    # TODO(MP): Implement the rest of the gym.Env interface.

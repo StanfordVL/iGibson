@@ -57,11 +57,11 @@ def open_and_close_cabinet(s, robot, controller: MotionPrimitiveController):
 
 
 def main():
-    s = Simulator(mode="gui", image_width=512, image_height=512, device_idx=0)
+    s = Simulator(mode="gui_non_interactive", image_width=512, image_height=512, device_idx=0, use_pb_gui=True)
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "bottom_cabinet", "door", "sink", "coffee_table", "fridge"]
     )
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     model_path = get_ig_model_path("tray", "tray_000")
     model_filename = os.path.join(model_path, "tray_000.urdf")
@@ -79,7 +79,7 @@ def main():
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
 
     robot = BehaviorRobot(s)
-    s.import_behavior_robot(robot)
+    s.import_robot(robot)
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
     robot.activate()
 
