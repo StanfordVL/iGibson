@@ -110,6 +110,7 @@ try:
             )
             return self.readbuffer_to_tensor(modes)
 
+
 except ImportError:
     logging.warning("torch is not available, falling back to rendering to memory (instead of tensor)")
     MeshRendererG2G = MeshRenderer
