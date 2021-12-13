@@ -256,8 +256,9 @@ class Simulator:
 
         :param robot: a robot object to load
         """
+        # TODO: Remove this function in favor of unifying with import_object.
         assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
-        robot.load(self)
+        self.scene.add_object(robot, self, _is_call_from_simulator=True)
         self.robots.append(robot)
 
     @load_without_pybullet_vis

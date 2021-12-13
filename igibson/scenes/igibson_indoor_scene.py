@@ -17,6 +17,7 @@ from igibson.object_states.factory import get_state_from_name, get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.utils.assets_utils import (
     get_3dfront_scene_path,
@@ -482,6 +483,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param obj: Object instance to add to scene.
         """
+        # TODO: Remove this hack.
+        # BehaviorRobot parts all go into the scene as agent objects. To retain backwards compatibility, we special case
+        # this here. This logic is to be removed once BehaviorRobot is unified into BaseRobot.
+        if isinstance(obj, BehaviorRobot):
+            for part in obj.links.values():
+                assert part._loaded, "BehaviorRobot parts need to be pre-loaded."
+                self._add_object(part)
+            return
+
         if hasattr(obj, "category"):
             category = obj.category
         else:
