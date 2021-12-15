@@ -504,10 +504,12 @@ class BRBody(ArticulatedObject):
         Sets BRBody's collision filters.
         """
         # Get body ids of the floor and carpets
-        no_col_objs = (
-            self.parent.simulator.scene.objects_by_category["floors"]
-            + self.parent.simulator.scene.objects_by_category["carpet"]
-        )
+        no_col_objs = []
+        if "floors" in self.parent.simulator.scene.objects_by_category:
+            no_col_objs += self.parent.simulator.scene.objects_by_category["floors"]
+        if "carpet" in self.parent.simulator.scene.objects_by_category:
+            no_col_objs += self.parent.simulator.scene.objects_by_category["carpet"]
+
         no_col_ids = [x.get_body_id() for x in no_col_objs]
         body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.get_body_id()))]
 
