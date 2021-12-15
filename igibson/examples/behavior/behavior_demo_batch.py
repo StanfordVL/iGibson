@@ -5,6 +5,7 @@ BEHAVIOR demo batch analysis script
 import json
 import logging
 import os
+import traceback
 from pathlib import Path
 
 import bddl
@@ -92,6 +93,7 @@ def behavior_demo_batch(
 
         except Exception as e:
             if ignore_errors:
+                traceback.print_exc()
                 print("Demo failed with the error: ", str(e))
                 demo_information = {"demo_id": Path(demo).name, "failed": True, "failure_reason": str(e)}
             else:

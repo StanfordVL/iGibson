@@ -72,7 +72,14 @@ def normalize(v, axis=None, eps=1e-10):
 
 
 def lookat(eye, target=[0, 0, 0], up=[0, 1, 0]):
-    """Generate LookAt modelview matrix."""
+    """
+    Generate LookAt modelview matrix.
+
+    :param eye: position of the camera
+    :param target: position where the camera is looking at
+    :param up: up direction of the camera
+    :return: a view matrix that transforms vertices from world space to camera space
+    """
     eye = np.float32(eye)
     forward = normalize(target - eye)
     side = normalize(np.cross(forward, up))

@@ -1323,8 +1323,8 @@ class MeshRenderer(object):
         """
         Transform pose from world frame to camera frame
 
-        :param pose: pose in world frame
-        :return: pose in camera frame
+        :param pose: pose in world frame with quaternion in (w, x, y, z) format
+        :return: pose in camera frame in OpenGL coordinate system (right, upward, backward)
         """
         pose_rot = quat2rotmat(pose[3:])
         pose_trans = xyz2mat(pose[:3])
