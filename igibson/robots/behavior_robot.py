@@ -26,7 +26,7 @@ import numpy as np
 import pybullet as p
 
 from igibson import assets_path
-from igibson.external.pybullet_tools.utils import set_all_collisions
+from igibson.external.pybullet_tools.utils import link_from_name, set_all_collisions
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.constants import SemanticClass, SimulatorMode
@@ -76,6 +76,7 @@ FINGER_TIP_POS = [0, -0.025, -0.055]
 HAND_LIFTING_FORCE = 300
 
 # Assisted grasping parameters
+VISUALIZE_RAYS = False
 ASSIST_FRACTION = 1.0
 ARTICULATED_ASSIST_FRACTION = 0.7
 MIN_ASSIST_FORCE = 0
@@ -85,10 +86,9 @@ TRIGGER_FRACTION_THRESHOLD = 0.5
 CONSTRAINT_VIOLATION_THRESHOLD = 0.1
 
 # Hand link index constants
-PALM_LINK_INDEX = 0
-FINGER_TIP_LINK_INDICES = [1, 2, 3, 4, 5]
-THUMB_LINK_INDEX = 4
-NON_THUMB_FINGERS = [1, 2, 3, 5]
+PALM_LINK_NAME = "palm"
+FINGER_TIP_LINK_NAMES = frozenset(["Tmiddle", "Imiddle", "Mmiddle", "Rmiddle", "Pmiddle"])
+THUMB_LINK_NAME = "Tmiddle"
 
 # Gripper parameters
 GRIPPER_GHOST_HAND_APPEAR_THRESHOLD = 0.25
@@ -392,7 +392,7 @@ class BehaviorRobot(object):
                     < toggle_distance_threshold
                 ):
                     return True
-                for finger in FINGER_TIP_LINK_INDICES:
+                for finger in part.finger_tip_link_indices:
                     finger_link_state = p.getLinkState(part.get_body_id(), finger)
                     link_pos = finger_link_state[0]
                     if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
@@ -854,6 +854,16 @@ class BRHand(BRHandBase):
         self.candidate_data = None
         self.movement_cid = None
 
+    def load(self, simulator):
+        ids = super(BRHand, self).load(simulator)
+
+        self.palm_link_idx = link_from_name(self.get_body_id(), PALM_LINK_NAME)
+        self.finger_tip_link_indices = {link_from_name(self.get_body_id(), name) for name in FINGER_TIP_LINK_NAMES}
+        self.thumb_link_idx = link_from_name(self.get_body_id(), THUMB_LINK_NAME)
+        self.non_thumb_fingers = self.finger_tip_link_indices - {self.thumb_link_idx}
+
+        return ids
+
     def activate_constraints(self):
         p.changeDynamics(self.get_body_id(), -1, mass=1, lateralFriction=HAND_FRICTION)
         for joint_index in range(p.getNumJoints(self.get_body_id())):
@@ -922,7 +932,6 @@ class BRHand(BRHandBase):
         Calculates the body id and link that have the most fingertip-palm ray intersections.
         """
         # Store unique ray start/end points for visualization
-        raypoints = []
         palm_link_state = p.getLinkState(self.get_body_id(), 0)
         palm_pos = palm_link_state[0]
         palm_orn = palm_link_state[1]
@@ -930,7 +939,7 @@ class BRHand(BRHandBase):
         palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == "right" else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, palm_center_pos, [0, 0, 0, 1])
-        thumb_link_state = p.getLinkState(self.get_body_id(), THUMB_LINK_INDEX)
+        thumb_link_state = p.getLinkState(self.get_body_id(), self.thumb_link_idx)
         thumb_pos = thumb_link_state[0]
         thumb_orn = thumb_link_state[1]
         thumb_1_pos = np.copy(THUMB_1_POS)
@@ -940,11 +949,10 @@ class BRHand(BRHandBase):
         thumb_1, _ = p.multiplyTransforms(thumb_pos, thumb_orn, thumb_2_pos, [0, 0, 0, 1])
         thumb_2, _ = p.multiplyTransforms(thumb_pos, thumb_orn, thumb_1_pos, [0, 0, 0, 1])
         # Repeat for each of 4 fingers
-        raypoints.extend([palm_base_pos, palm_center_pos, thumb_1, thumb_2])
         raycast_startpoints = [palm_base_pos, palm_center_pos, thumb_1, thumb_2] * 4
 
         raycast_endpoints = []
-        for lk in NON_THUMB_FINGERS:
+        for lk in self.non_thumb_fingers:
             finger_link_state = p.getLinkState(self.get_body_id(), lk)
             link_pos = finger_link_state[0]
             link_orn = finger_link_state[1]
@@ -953,10 +961,13 @@ class BRHand(BRHandBase):
             finger_tip_pos[1] *= 1 if self.hand == "right" else -1
 
             finger_tip_pos, _ = p.multiplyTransforms(link_pos, link_orn, finger_tip_pos, [0, 0, 0, 1])
-            raypoints.append(finger_tip_pos)
             raycast_endpoints.extend([finger_tip_pos] * 4)
 
-        # Raycast from each start point to each end point - 8 in total between 4 finger start points and 2 palm end points
+        if VISUALIZE_RAYS:
+            for f, t in zip(raycast_startpoints, raycast_endpoints):
+                p.addUserDebugLine(f, t, [1, 0, 0], 0.01)
+
+        # Raycast from each start point to each end point - 16 in total.
         ray_results = p.rayTestBatch(raycast_startpoints, raycast_endpoints)
         if not ray_results:
             return None
@@ -983,7 +994,7 @@ class BRHand(BRHandBase):
         for i in range(len(cpts)):
             cpt = cpts[i]
             # Don't attach to links that are not finger tip
-            if (not find_all) and (cpt[3] not in FINGER_TIP_LINK_INDICES):
+            if (not find_all) and (cpt[3] not in self.finger_tip_link_indices):
                 continue
             c_bid = cpt[2]
             c_link = cpt[4]
@@ -1108,7 +1119,7 @@ class BRHand(BRHandBase):
                 # Joint frame set at the contact point
                 joint_frame_pos = contact_pos
                 joint_frame_orn = [0, 0, 0, 1]
-                palm_link_pos, palm_link_orn = p.getLinkState(self.get_body_id(), PALM_LINK_INDEX)[:2]
+                palm_link_pos, palm_link_orn = p.getLinkState(self.get_body_id(), self.palm_link_idx)[:2]
                 inv_palm_link_pos, inv_palm_link_orn = p.invertTransform(palm_link_pos, palm_link_orn)
                 parent_frame_pos, parent_frame_orn = p.multiplyTransforms(
                     inv_palm_link_pos, inv_palm_link_orn, joint_frame_pos, joint_frame_orn
@@ -1123,7 +1134,7 @@ class BRHand(BRHandBase):
                 )
                 self.obj_cid = p.createConstraint(
                     parentBodyUniqueId=self.get_body_id(),
-                    parentLinkIndex=PALM_LINK_INDEX,
+                    parentLinkIndex=self.palm_link_idx,
                     childBodyUniqueId=ag_bid,
                     childLinkIndex=ag_link,
                     jointType=joint_type,
@@ -1282,7 +1293,7 @@ class BRHand(BRHandBase):
         if self.obj_cid is not None:
             self.obj_cid = p.createConstraint(
                 parentBodyUniqueId=self.get_body_id(),
-                parentLinkIndex=PALM_LINK_INDEX,
+                parentLinkIndex=self.palm_link_idx,
                 childBodyUniqueId=dump["obj_cid_params"]["childBodyUniqueId"],
                 childLinkIndex=dump["obj_cid_params"]["childLinkIndex"],
                 jointType=dump["obj_cid_params"]["jointType"],
