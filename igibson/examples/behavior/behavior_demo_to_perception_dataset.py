@@ -264,6 +264,20 @@ class BBoxExtractor(object):
                 _,
             ) = obj.get_base_aligned_bounding_box(body_id=body_id, visual=True, xy_aligned=True)
 
+            # Debug-mode drawing of the bounding box.
+            if DEBUG_DRAW and obj.category not in ("walls", "floors", "ceilings"):
+                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
+                    base_frame_extent / 2
+                )
+                bbox_transform = utils.quat_pos_to_mat(bbox_world_frame_center, bbox_world_frame_orientation)
+                world_frame_vertex_positions = trimesh.transformations.transform_points(
+                    bbox_frame_vertex_positions, bbox_transform
+                )
+                for i, from_vertex in enumerate(world_frame_vertex_positions):
+                    for j, to_vertex in enumerate(world_frame_vertex_positions):
+                        if j <= i:
+                            p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
+
             # Transform from world frame to upright camera frame.
             camera_trans, camera_orientation = (
                 igbhvr_act_inst.simulator.robots[0].parts["eye"].get_position_orientation()
@@ -286,20 +300,6 @@ class BBoxExtractor(object):
                 upright_camera_frame_center[2],
             ]
             base_frame_extent = base_frame_extent[[1, 0, 2]]
-
-            # Debug-mode drawing of the bounding box.
-            if DEBUG_DRAW and obj.category not in ("walls", "floors", "ceilings"):
-                bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
-                    base_frame_extent / 2
-                )
-                bbox_transform = utils.quat_pos_to_mat(bbox_world_frame_center, bbox_world_frame_orientation)
-                world_frame_vertex_positions = trimesh.transformations.transform_points(
-                    bbox_frame_vertex_positions, bbox_transform
-                )
-                for i, from_vertex in enumerate(world_frame_vertex_positions):
-                    for j, to_vertex in enumerate(world_frame_vertex_positions):
-                        if j <= i:
-                            p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
 
             # Record the results.
             self.bboxes_cache[frame_idx, filled_obj_idx, 0] = body_id
@@ -347,6 +347,7 @@ def main():
         get_imvotenet_callbacks,
         image_size=(480, 480),
         ignore_errors=True,
+        skip_existing=True,
         debug_display=DEBUG_DRAW,
     )
 

@@ -1051,7 +1051,9 @@ class URDFObject(StatefulObject, NonRobotObject):
                         unscaled_bbox_center_in_link_frame = np.array(bb_data["transform"])
 
                         # Prepare the scale matrix for this link's scale.
-                        scale = np.abs(np.dot(self.scales_in_link_frame[converted_name], np.array(bb_data["transform"])[:3,:3]))
+                        scale = np.abs(
+                            np.dot(self.scales_in_link_frame[converted_name], np.array(bb_data["transform"])[:3, :3])
+                        )
                         scale_bounding_box = np.diag(np.concatenate([scale, [1]]))
 
                         # Scale the bounding box as necessary.
