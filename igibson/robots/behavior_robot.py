@@ -1405,13 +1405,14 @@ class BREye(ArticulatedObject):
         self.head_visual_marker = VisualMarker(
             visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3, class_id=class_id
         )
+        self.neck_cid = None
 
     def _load(self, simulator):
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
         body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
 
-        # Set mass to 0 so that the eye isn't continuously falling.
-        self.mass = 0
+        # Set a minimal mass
+        self.mass = 1e-9
         p.changeDynamics(body_id, -1, self.mass)
 
         simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
@@ -1491,12 +1492,32 @@ class BREye(ArticulatedObject):
         _, new_local_orn = p.multiplyTransforms([0, 0, 0], clipped_delta_orn, [0, 0, 0], current_local_orn)
         new_local_pos = np.array(current_local_pos) + np.array(clipped_delta_pos)
 
-        # Calculate new world position based on local transform and new body pose
+        # Calculate new world position based on new local transform and current body pose
         body = self.parent.links["body"]
-        self.new_pos, self.new_orn = p.multiplyTransforms(body.new_pos, body.new_orn, new_local_pos, new_local_orn)
+        self.new_pos, self.new_orn = p.multiplyTransforms(
+            body.get_position(), body.get_orientation(), new_local_pos, new_local_orn
+        )
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
+
+        if self.neck_cid is not None:
+            p.removeConstraint(self.neck_cid)
+
+        # Create a rigid constraint between the body and the head such that the head will move with the body during the
+        # next physics simulation duration. Set the joint frame to be aligned with the child frame (URDF standard)
+        self.neck_cid = p.createConstraint(
+            parentBodyUniqueId=body.get_body_id(),
+            parentLinkIndex=-1,
+            childBodyUniqueId=self.get_body_id(),
+            childLinkIndex=-1,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=new_local_pos,
+            childFramePosition=[0, 0, 0],
+            parentFrameOrientation=new_local_orn,
+            childFrameOrientation=[0, 0, 0, 1],
+        )
 
     def dump_part_state(self):
         pass
