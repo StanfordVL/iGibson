@@ -1,26 +1,15 @@
-import itertools
 import json
 import os
 import xml.etree.ElementTree as ET
 
 import numpy as np
-import pybullet as p
 import tqdm
 import trimesh
 
-import igibson
+from igibson.utils.assets_utils import get_all_object_models
 
 SKIP_EXISTING = True
 IGNORE_ERRORS = False
-
-
-def get_categories():
-    dir = os.path.join(igibson.ig_dataset_path, "objects")
-    return [cat for cat in os.listdir(dir) if os.path.isdir(get_category_directory(cat))]
-
-
-def get_category_directory(category):
-    return os.path.join(igibson.ig_dataset_path, "objects", category)
 
 
 def get_urdf_filename(folder):
@@ -42,9 +31,6 @@ def validate_meta(meta):
                 return "No " + mesh_type + " bounding box found for link " + link
 
             lbb_thistype = lbb[mesh_type]
-            if lbb_thistype is None:
-                continue
-
             for bb_type in ["axis_aligned", "oriented"]:
                 if bb_type not in lbb_thistype:
                     return "No " + bb_type + "bounding box found for link " + link + ", type " + mesh_type
@@ -53,38 +39,31 @@ def validate_meta(meta):
 
 
 def main():
-    # Collect the relevant categories.
-    categories = get_categories()
-    print("%d categories: %s" % (len(categories), ", ".join(categories)))
-
     # Now collect the actual objects.
-    objects = []
-    for cat in categories:
-        cd = get_category_directory(cat)
-        for objdir in os.listdir(cd):
-            objdirfull = os.path.join(cd, objdir)
-            objects.append(objdirfull)
+    objects = get_all_object_models()
 
     objects.sort()
     print("%d objects.\n" % len(objects))
 
     # Filter out already-processed objects.
     objects_to_process = []
-    for objdirfull in objects:
+    print("Scanning all objects.")
+    for objdirfull in tqdm.tqdm(objects):
         mfn = get_metadata_filename(objdirfull)
         with open(mfn, "r") as mf:
             meta = json.load(mf)
 
-        if SKIP_EXISTING:
-            validation_error = validate_meta(meta)
-            if validation_error is None:
+        validation_error = validate_meta(meta)
+        if validation_error is None:
+            if SKIP_EXISTING:
                 continue
-            else:
-                print("%s: %s" % (objdirfull, validation_error))
+        else:
+            print("%s: %s" % (objdirfull, validation_error))
 
         objects_to_process.append(objdirfull)
 
     # Now process the remaining.
+    print("%d objects will be processed. Starting processing.\n" % len(objects_to_process))
     for objdirfull in tqdm.tqdm(objects_to_process):
         mfn = get_metadata_filename(objdirfull)
         with open(mfn, "r") as mf:
@@ -135,27 +114,33 @@ def main():
                                 )
 
                         # Now that we have the combined mesh, let's simply compute the bounding box.
-                        bbox = combined_mesh.bounding_box
-                        bbox = {
-                            "extent": np.array(bbox.primitive.extents).tolist(),
-                            "transform": np.array(bbox.primitive.transform).tolist(),
-                        }
-                        bbox_oriented = combined_mesh.bounding_box_oriented
-                        bbox_oriented = {
-                            "extent": np.array(bbox_oriented.primitive.extents).tolist(),
-                            "transform": np.array(bbox_oriented.primitive.transform).tolist(),
+                        axis_aligned_bbox = combined_mesh.bounding_box
+                        axis_aligned_bbox_dict = {
+                            "extent": np.array(axis_aligned_bbox.primitive.extents).tolist(),
+                            "transform": np.array(axis_aligned_bbox.primitive.transform).tolist(),
                         }
 
-                        oriented_bbox = combined_mesh.bounding_box_oriented
-                        oriented_bbox_dict = {
-                            "extent": np.array(oriented_bbox.primitive.extents).tolist(),
-                            "transform": np.array(oriented_bbox.primitive.transform).tolist(),
-                        }
+                        try:
+                            oriented_bbox = combined_mesh.bounding_box_oriented
+                            oriented_bbox_dict = {
+                                "extent": np.array(oriented_bbox.primitive.extents).tolist(),
+                                "transform": np.array(oriented_bbox.primitive.transform).tolist(),
+                            }
+                        except:
+                            print("Could not compute oriented bounding box for this object. Reusing axis_aligned box.")
+                            oriented_bbox_dict = axis_aligned_bbox_dict
 
-                        this_link_bounding_boxes[mesh_type] = {"axis_aligned": bbox, "oriented": bbox_oriented}
-                    except:
+                        if mesh_count > 1:
+                            combined_mesh.show()
+
+                        this_link_bounding_boxes[mesh_type] = {
+                            "axis_aligned": axis_aligned_bbox_dict,
+                            "oriented": oriented_bbox_dict,
+                        }
+                    except Exception as e:
                         print(
-                            "Problem with %s mesh in link %s in obj %s" % (mesh_type, link.attrib["name"], objdirfull)
+                            "Problem with %s mesh in link %s in obj %s: %s"
+                            % (mesh_type, link.attrib["name"], objdirfull, e)
                         )
 
                         # We are quite sensitive against missing collision meshes!
