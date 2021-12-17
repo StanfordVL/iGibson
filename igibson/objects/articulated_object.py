@@ -1050,19 +1050,20 @@ class URDFObject(StatefulObject, NonRobotObject):
                         unscaled_extent = np.array(bb_data["extent"])
                         unscaled_bbox_center_in_link_frame = np.array(bb_data["transform"])
 
-                        # Prepare the scale matrix for this link's scale
-                        scale_bounding_box = np.diag(np.concatenate([self.scales_in_link_frame[converted_name], [1]]))
+                        # Prepare the scale matrix for this link's scale.
+                        scale = np.abs(np.dot(self.scales_in_link_frame[converted_name], np.array(bb_data["transform"])[:3,:3]))
+                        scale_bounding_box = np.diag(np.concatenate([scale, [1]]))
 
                         # Scale the bounding box as necessary.
                         scaled_bbox_center_in_link_frame = np.dot(
                             scale_bounding_box, unscaled_bbox_center_in_link_frame
                         )
 
-                        # Only scale the translation component
+                        # Only scale the translation component.
                         scaled_bbox_center_in_link_frame[:4, :3] = unscaled_bbox_center_in_link_frame[:4, :3]
 
-                        # Scale the extent
-                        scaled_extent = unscaled_extent * self.scales_in_link_frame[converted_name]
+                        # Scale the extent.
+                        scaled_extent = unscaled_extent * scale
 
                         # Insert into our results array.
                         self.scaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
