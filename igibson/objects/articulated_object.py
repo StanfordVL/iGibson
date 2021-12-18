@@ -1034,19 +1034,20 @@ class URDFObject(StatefulObject, NonRobotObject):
         self.room_floor = room_floor
 
     def prepare_link_based_bounding_boxes(self):
-        self.scaled_link_bounding_boxes = {}
+        self.unscaled_link_bounding_boxes = {}
         if "link_bounding_boxes" in self.metadata:
             for name in self.metadata["link_bounding_boxes"]:
                 converted_name = self.get_prefixed_link_name(name)
-                self.scaled_link_bounding_boxes[converted_name] = {}
+                self.unscaled_link_bounding_boxes[converted_name] = {}
                 for box_type in ["visual", "collision"]:
-                    self.scaled_link_bounding_boxes[converted_name][box_type] = {}
+                    self.unscaled_link_bounding_boxes[converted_name][box_type] = {}
                     for axis_type in ["axis_aligned", "oriented"]:
                         if box_type not in self.metadata["link_bounding_boxes"][name]:
                             # We'll use the AABB for any nonexistent BBs.
                             continue
-
+                        # Store the extent and transform.
                         bb_data = self.metadata["link_bounding_boxes"][name][box_type][axis_type]
+<<<<<<< HEAD
                         unscaled_extent = np.array(bb_data["extent"])
                         unscaled_bbox_center_in_link_frame = np.array(bb_data["transform"])
 
@@ -1071,6 +1072,11 @@ class URDFObject(StatefulObject, NonRobotObject):
                         self.scaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
                             "extent": scaled_extent,
                             "transform": scaled_bbox_center_in_link_frame,
+=======
+                        self.unscaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
+                            "extent": np.array(bb_data["extent"]),
+                            "transform": np.array(bb_data["transform"]),
+>>>>>>> 514f43d5 (Rewrote bounding box scaling logics.)
                         }
 
     def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False, xy_aligned=False):
@@ -1093,14 +1099,11 @@ class URDFObject(StatefulObject, NonRobotObject):
         links = [link_id] if link_id is not None else get_all_links(body_id)
         for link in links:
             name = get_link_name(body_id, link)
-
-            # If the link has a bounding box annotation
-            if name in self.scaled_link_bounding_boxes and bbox_type in self.scaled_link_bounding_boxes[name]:
+            # If the link has a bounding box annotation.
+            if name in self.unscaled_link_bounding_boxes and bbox_type in self.unscaled_link_bounding_boxes[name]:
                 # Get the bounding box data.
-                bb_data = self.scaled_link_bounding_boxes[name][bbox_type]["oriented"]
+                bb_data = self.unscaled_link_bounding_boxes[name][bbox_type]["oriented"]
                 extent = bb_data["extent"]
-
-                # Metadata contains bbox center in link origin frame
                 bbox_to_link_origin = bb_data["transform"]
 
                 # Get the link's pose in the base frame.
@@ -1113,7 +1116,12 @@ class URDFObject(StatefulObject, NonRobotObject):
                     )
                     link_com_to_base_com = np.dot(world_to_base_com, link_com_to_world)
 
-                # Account for the link vs. center-of-mass
+                # Scale the bounding box in link origin frame.
+                bbox_to_link_origin_orn = np.diag(self.scales_in_link_frame[name]).dot(bbox_to_link_origin[:3, :3])
+                bbox_to_link_origin = np.copy(bbox_to_link_origin)
+                bbox_to_link_origin[:3, :3] = bbox_to_link_origin_orn
+
+                # Account for the link vs. center-of-mass.
                 dynamics_info = p.getDynamicsInfo(body_id, link)
                 inertial_pos, inertial_orn = p.invertTransform(dynamics_info[3], dynamics_info[4])
                 link_origin_to_link_com = utils.quat_pos_to_mat(inertial_pos, inertial_orn)
@@ -1122,6 +1130,7 @@ class URDFObject(StatefulObject, NonRobotObject):
                 bbox_to_link_com = np.dot(link_origin_to_link_com, bbox_to_link_origin)
                 bbox_center_in_base_com = np.dot(link_com_to_base_com, bbox_to_link_com)
                 vertices_in_base_com = np.array(list(itertools.product((1, -1), repeat=3))) * (extent / 2)
+
                 points.extend(trimesh.transformations.transform_points(vertices_in_base_com, bbox_center_in_base_com))
             else:
                 # If no BB annotation is available, get the AABB for this link.
