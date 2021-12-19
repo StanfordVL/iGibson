@@ -77,7 +77,7 @@ def main():
     batch_size = 100
     max_attempts = 100
 
-    s = Simulator(mode="gui")
+    s = Simulator(mode="gui_interactive", use_pb_gui=True)
     scene = EmptyScene()
     s.import_scene(scene)
     acs = get_ig_avg_category_specs()

@@ -9,7 +9,6 @@ import igibson
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots.fetch_vr_robot import FetchVR
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 
@@ -47,7 +46,11 @@ if VR_MODE:
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
     s = Simulator(
-        mode="iggui", image_width=960, image_height=720, device_idx=0, rendering_settings=vr_rendering_settings
+        mode="gui_interactive",
+        image_width=960,
+        image_height=720,
+        device_idx=0,
+        rendering_settings=vr_rendering_settings,
     )
     s.viewer.min_cam_z = 1.0
 
@@ -55,7 +58,7 @@ scene = InteractiveIndoorScene("Rs_int")
 # Turn this on when debugging to speed up loading
 if LOAD_PARTIAL:
     scene._set_first_n_objects(10)
-s.import_ig_scene(scene)
+s.import_scene(scene)
 
 if not VR_MODE:
     camera_pose = np.array([0, -3, 1.2])
@@ -70,8 +73,8 @@ fvr = FetchVR(s, [0.5, -1.5, 0], update_freq=1, use_ns_ik=True, use_gaze_marker=
 mass_list = [5, 10, 100, 500]
 mustard_start = [-1, 1.55, 1.2]
 for i in range(len(mass_list)):
-    mustard = YCBObject("006_mustard_bottle")
-    s.import_object(mustard, use_pbr=False, use_pbr_mapping=False, shadow_caster=True)
+    mustard = YCBObject("006_mustard_bottle", renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+    s.import_object(mustard)
     mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
     p.changeDynamics(mustard.get_body_id(), -1, mass=mass_list[i])
 

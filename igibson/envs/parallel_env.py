@@ -243,7 +243,7 @@ class ProcessPyEnvironment(object):
 
 
 if __name__ == "__main__":
-    config_filename = os.path.join(os.path.dirname(igibson.__file__), "test", "test.yaml")
+    config_filename = os.path.join(os.path.dirname(igibson.__file__), "..", "tests", "test.yaml")
 
     def load_env():
         return iGibsonEnv(config_file=config_filename, mode="headless")

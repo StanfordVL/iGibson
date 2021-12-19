@@ -2005,7 +2005,7 @@ void MeshRendererContext::postRenderText() {
 
 	// Restore previous FBO if one was bound
 	// This allows us to render text both to the screen and to a texture
-	if (this->restore_prev_FBO = true) {
+	if (this->restore_prev_FBO) {
 		glBindFramebuffer(GL_FRAMEBUFFER, this->m_prevFBO);
 	}
 }

@@ -17,6 +17,7 @@ from igibson.object_states.factory import get_state_from_name, get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.utils.assets_utils import (
     get_3dfront_scene_path,
@@ -27,7 +28,7 @@ from igibson.utils.assets_utils import (
     get_ig_model_path,
     get_ig_scene_path,
 )
-from igibson.utils.utils import rotate_vector_3d
+from igibson.utils.utils import restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
 
@@ -51,7 +52,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         build_graph=True,
         num_waypoints=10,
         waypoint_resolution=0.2,
-        pybullet_load_texture=False,
         texture_randomization=False,
         link_collision_tolerance=0.03,
         object_randomization=False,
@@ -65,6 +65,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         scene_source="IG",
         merge_fixed_links=True,
         ignore_visual_shape=False,
+        rendering_params=None,
     ):
         """
         :param scene_id: Scene id
@@ -75,7 +76,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param build_graph: build connectivity graph
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
-        :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         :param texture_randomization: whether to randomize material/texture
         :param link_collision_tolerance: tolerance of the percentage of links that cannot be fully extended after object randomization
         :param object_randomization: whether to randomize object
@@ -87,6 +87,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param load_room_instances: only load objects in these room instances into the scene (a list of str)
         :param seg_map_resolution: room segmentation map resolution
         :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT
+        :param rendering_params: additional rendering params to be passed into object initializers (e.g. texture scale)
         """
 
         super(InteractiveIndoorScene, self).__init__(
@@ -97,7 +98,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
             build_graph,
             num_waypoints,
             waypoint_resolution,
-            pybullet_load_texture,
         )
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
@@ -295,6 +295,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     joint_positions=joint_positions,
                     merge_fixed_links=self.merge_fixed_links,
                     ignore_visual_shape=ignore_visual_shape,
+                    rendering_params=rendering_params,
                 )
 
                 # Load object states.
@@ -312,7 +313,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         self.object_groupers[link.attrib["grouper"]]["object_parts"] = []
                     self.object_groupers[link.attrib["grouper"]]["object_parts"].append(obj)
                 else:
-                    self.add_object(obj)
+                    self.add_object(obj, simulator=None)
 
             elif link.attrib["name"] != "world":
                 logging.error("iGSDF should only contain links that represent embedded URDF objects")
@@ -326,7 +327,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             pose_offsets = grouper["pose_offsets"]
             grouped_obj_parts = ObjectGrouper(list(zip(object_parts, pose_offsets)))
             obj = ObjectMultiplexer(multiplexer, [whole_object, grouped_obj_parts], current_index)
-            self.add_object(obj)
+            self.add_object(obj, simulator=None)
 
     def set_ignore_visual_shape(self, value):
         self.ignore_visual_shape = value
@@ -482,6 +483,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param obj: Object instance to add to scene.
         """
+        # TODO: Remove this hack.
+        # BehaviorRobot parts all go into the scene as agent objects. To retain backwards compatibility, we special case
+        # this here. This logic is to be removed once BehaviorRobot is unified into BaseRobot.
+        if isinstance(obj, BehaviorRobot):
+            for part in obj.links.values():
+                assert part._loaded, "BehaviorRobot parts need to be pre-loaded."
+                self._add_object(part)
+            return
+
         if hasattr(obj, "category"):
             category = obj.category
         else:
@@ -626,21 +636,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 j_high_perc = j_range * 0.66 + j_low
 
                 # check if j_default has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_default)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
                 joint_quality = joint_quality and (not has_collision)
 
                 # check if j_low_perc has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_low_perc)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
                 joint_quality = joint_quality and (not has_collision)
 
                 # check if j_high_perc has collision
-                p.restoreState(state_id)
+                restoreState(state_id)
                 p.resetJointState(body_id, joint_id, j_high_perc)
                 p.stepSimulation()
                 has_collision = self.check_collision(body_a=body_id, link_a=joint_id, fixed_body_ids=fixed_body_ids)
@@ -653,7 +663,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         quality_check = quality_check and (joint_collision_so_far <= joint_collision_allowed)
 
         # restore state to the initial state before testing collision
-        p.restoreState(state_id)
+        restoreState(state_id)
         p.removeState(state_id)
 
         self.quality_check = quality_check
@@ -744,7 +754,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     p.resetJointState(body_id, joint_id, j_high - j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(body_a=body_id, link_a=joint_id)
-                    p.restoreState(state_id)
+                    restoreState(state_id)
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_high - j_pos)
                         break
@@ -758,7 +768,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     p.resetJointState(body_id, joint_id, j_pos)
                     p.stepSimulation()
                     has_collision = self.check_collision(body_a=body_id, link_a=joint_id)
-                    p.restoreState(state_id)
+                    restoreState(state_id)
                     if not has_collision:
                         p.resetJointState(body_id, joint_id, j_pos)
                         reset_success = True
@@ -816,26 +826,20 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         return self.open_all_objs_by_category("door", mode="max")
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load all scene objects into pybullet
         """
         # Load all the objects
         body_ids = []
         fixed_body_ids = []
-        visual_mesh_to_material = []
-        link_name_to_vm = []
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
-            new_ids = obj.load()
+            new_ids = obj.load(simulator)
             for id in new_ids:
                 self.objects_by_id[id] = obj
             body_ids += new_ids
-            visual_mesh_to_material += obj.visual_mesh_to_material
-            link_name_to_vm += obj.link_name_to_vm
             fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.body_ids, obj.is_fixed) if is_fixed]
-        assert len(visual_mesh_to_material) == len(body_ids)
-        assert len(link_name_to_vm) == len(body_ids)
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -849,8 +853,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if self.build_graph:
             self.load_trav_map(maps_path)
 
-        self.visual_mesh_to_material = visual_mesh_to_material
-        self.link_name_to_vm = link_name_to_vm
         self.check_scene_quality(body_ids, fixed_body_ids)
 
         # force wake up each body once
@@ -1076,10 +1078,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
-        if hasattr(obj, "body_ids"):
-            body_id = obj.body_ids[obj.main_body]
-        else:
-            body_id = obj.body_id
+        body_id = obj.get_body_id()
 
         dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
@@ -1162,7 +1161,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Common logic for objects that are both in the scene & otherwise.
         # Add joints
-        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.body_id]
+        body_ids = obj.body_ids if hasattr(obj, "body_ids") else [obj.get_body_id()]
         joint_data = []
         for bid in body_ids:
             this_joint_data = {}

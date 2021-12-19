@@ -8,6 +8,12 @@ class VisualMarker(SingleBodyObject):
     Visual shape created with shape primitives
     """
 
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+        "shadow_caster": False,
+    }
+
     def __init__(
         self,
         visual_shape=p.GEOM_SPHERE,
@@ -18,6 +24,7 @@ class VisualMarker(SingleBodyObject):
         initial_offset=[0, 0, 0],
         filename=None,
         scale=[1.0] * 3,
+        **kwargs
     ):
         """
         create a visual shape to show in pybullet and MeshRenderer
@@ -31,7 +38,7 @@ class VisualMarker(SingleBodyObject):
         :param filename: mesh file name for p.GEOM_MESH
         :param scale: scale for p.GEOM_MESH
         """
-        super(VisualMarker, self).__init__()
+        super(VisualMarker, self).__init__(**kwargs)
         self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
@@ -41,7 +48,7 @@ class VisualMarker(SingleBodyObject):
         self.filename = filename
         self.scale = scale
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -72,6 +79,8 @@ class VisualMarker(SingleBodyObject):
         body_id = p.createMultiBody(
             baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1, flags=p.URDF_ENABLE_SLEEPING
         )
+
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
 

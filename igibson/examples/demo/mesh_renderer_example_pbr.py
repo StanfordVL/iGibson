@@ -74,7 +74,7 @@ def main():
     for fn in os.listdir(model_path):
         if fn.endswith("obj"):
             renderer.load_object(os.path.join(model_path, fn), scale=[scale, scale, scale])
-            renderer.add_instance(i)
+            renderer.add_instance_group([i])
             i += 1
 
     print(renderer.visual_objects, renderer.instances)

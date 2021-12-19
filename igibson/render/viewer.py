@@ -8,15 +8,16 @@ import numpy as np
 import pybullet as p
 
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils.constants import ViewerMode
 from igibson.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:
-    def __init__(self, use_companion_window, frame_save_path=None):
+    def __init__(self, use_companion_window, frame_save_path=None, renderer=None):
         """
         :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
         """
-        self.renderer = None
+        self.renderer = renderer
         self.use_companion_window = use_companion_window
         self.frame_save_path = frame_save_path
         self.frame_counter = 0
@@ -29,7 +30,7 @@ class ViewerVR:
         if not self.renderer:
             raise RuntimeError("Unable to render without a renderer attached to the ViewerVR!")
         if self.frame_save_path:
-            frame = cv2.cvtColor(self.renderer.render(return_frame=True)[0], cv2.COLOR_RGB2BGR)
+            frame = cv2.cvtColor(self.renderer.render(return_buffer=True)[0], cv2.COLOR_RGB2BGR)
             frame = (frame * 255).astype(np.uint8)
             # Save as a video
             if self.frame_save_path.endswith(".mp4"):
@@ -120,7 +121,7 @@ class Viewer:
 
         # Flag to control if the mouse interface is in navigation, manipulation
         # or motion planning/execution mode
-        self.manipulation_mode = 0
+        self.mode = ViewerMode.NAVIGATION
 
         # Video recording
         self.recording = False  # Boolean if we are recording frames from the viewer
@@ -154,14 +155,18 @@ class Viewer:
         """
         self.constraint_marker = VisualMarker(radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(
-            visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3, initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1]
+            visual_shape=p.GEOM_CAPSULE,
+            radius=0.01,
+            length=3,
+            initial_offset=[0, 0, -1.5],
+            rgba_color=[0, 0, 1, 1],
         )
 
         # Simuation is done by MuJoCo when rendering robosuite envs
         if not self.is_robosuite:
             if self.simulator is not None:
-                self.simulator.import_object(self.constraint_marker2, use_pbr=False)
-                self.simulator.import_object(self.constraint_marker, use_pbr=False)
+                self.simulator.import_object(self.constraint_marker2)
+                self.simulator.import_object(self.constraint_marker)
 
             self.constraint_marker.set_position([0, 0, -1])
             self.constraint_marker2.set_position([0, 0, -1])
@@ -414,7 +419,7 @@ class Viewer:
         """
 
         # Navigation mode
-        if self.manipulation_mode == 0:
+        if self.mode == ViewerMode.NAVIGATION:
             # Only once, when pressing left mouse while ctrl key is pressed
             if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
                 self._mouse_ix, self._mouse_iy = x, y
@@ -494,7 +499,7 @@ class Viewer:
                     self.pz = max(self.min_cam_z, self.pz)
 
         # Manipulation mode
-        elif self.manipulation_mode == 1:
+        elif self.mode == ViewerMode.MANIPULATION:
             # Middle mouse button press or only once, when pressing left mouse
             # while shift key is pressed (Mac compatibility)
             if (event == cv2.EVENT_MBUTTONDOWN) or (
@@ -527,7 +532,7 @@ class Viewer:
                     self.move_constraint_z(dy)
 
         # Motion planning / execution mode
-        elif self.manipulation_mode == 2 and not self.block_command:
+        elif self.mode == ViewerMode.PLANNING and not self.block_command:
             # left mouse button press
             if event == cv2.EVENT_LBUTTONDOWN:
                 self._mouse_ix, self._mouse_iy = x, y
@@ -661,7 +666,7 @@ class Viewer:
         )
         cv2.putText(
             frame,
-            ["nav mode", "manip mode", "planning mode"][self.manipulation_mode],
+            ["nav mode", "manip mode", "planning mode"][self.mode],
             (10, 60),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -696,7 +701,7 @@ class Viewer:
             move_vec = rotate_vector_2d(move_vec, yaw)
             self.px += move_vec[0]
             self.py += move_vec[1]
-            if self.manipulation_mode == 1:
+            if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # turn left
@@ -705,7 +710,7 @@ class Viewer:
             self.view_direction = np.array(
                 [np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(self.phi), np.sin(self.phi)]
             )
-            if self.manipulation_mode == 1:
+            if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # turn right
@@ -714,7 +719,7 @@ class Viewer:
             self.view_direction = np.array(
                 [np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(self.phi), np.sin(self.phi)]
             )
-            if self.manipulation_mode == 1:
+            if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # quit (Esc)
@@ -757,7 +762,12 @@ class Viewer:
             self.left_down = False
             self.middle_down = False
             self.right_down = False
-            self.manipulation_mode = (self.manipulation_mode + 1) % 3
+            if self.planner is not None:
+                self.mode = (self.mode + 1) % len(ViewerMode)
+            else:
+                # Disable planning mode if planner not initialized (assume planning mode is the last available mode)
+                assert ViewerMode.PLANNING == len(ViewerMode) - 1, "Planning mode is not the last available viewer mode"
+                self.mode = (self.mode + 1) % (len(ViewerMode) - 1)
 
         elif (
             self.is_robosuite
