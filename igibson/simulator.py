@@ -13,7 +13,6 @@ from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.render.mesh_renderer.instances import InstanceGroup, Instance, Robot
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.viewer import Viewer, ViewerSimple
 from igibson.robots.behavior_robot import BehaviorRobot
@@ -451,10 +450,9 @@ class Simulator:
 
         self.sync()
 
-    def sync(self):
+    def sync(self, force_sync=False):
         """
         Update positions in renderer without stepping the simulation. Usually used in the reset() function.
-
         :param force_sync: whether to force sync the objects in renderer
         """
         self.body_links_awake = 0

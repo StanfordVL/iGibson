@@ -3,6 +3,7 @@ from igibson.render.mesh_renderer.instances import InstanceGroup
 from igibson.utils.utils import l2_distance
 from igibson.objects import cube
 
+import igibson.audio.default_config as config
 import audio
 
 import wave
@@ -27,7 +28,19 @@ class AudioSystem(object):
     It manages a set of audio objects and their corresponding audio buffers.
     It also interfaces with ResonanceAudio to perform the simulaiton to the listener.
     """
-    def __init__(self, simulator, listener, acousticMesh, is_Viewer=False, is_VR_Viewer=False, writeToFile="", SR=44100, num_probes=10, renderAmbisonics=False, renderReverbReflections=True, vrViewerSource=False):
+    def __init__(self,
+                 simulator,
+                 listener,
+                 acousticMesh,
+                 is_Viewer=False,
+                 is_VR_Viewer=False,
+                 writeToFile="",
+                 SR=config.SAMPLE_RATE,
+                 num_probes=config.NUM_REVERB_PROBES,
+                 occl_multiplier=config.OCCLUSION_MULTIPLIER,
+                 renderAmbisonics=False,
+                 renderReverbReflections=True
+                 ):
         """
         :param scene: iGibson scene
         :param pybullet: pybullet client
@@ -44,6 +57,7 @@ class AudioSystem(object):
         self.writeToFile = writeToFile
         self.renderAmbisonics = renderAmbisonics
         self.reverb = renderReverbReflections
+        self.occl_multiplier = occl_multiplier
 
         def getViewerOrientation():
             #from numpy-quaternion github
@@ -86,7 +100,7 @@ class AudioSystem(object):
                         sample_position[2] += 1.7
                     else:
                         sample_position[2] += self.get_pos()[2]
-                    audio.RegisterReverbProbe(key, sample_position)
+                    audio.RegisterReverbProbe(key, sample_position, *config.REV_PROBE_PARAMS)
                     self.probe_key_to_pos_by_floor[floor][key] = sample_position[:2]
 
             self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
@@ -135,13 +149,23 @@ class AudioSystem(object):
                 min_probe = probe_key
         return min_probe
 
-    def registerSource(self, source_obj_id, audio_fname, enabled=False, repeat=True, reverb_gain=2):
+    def registerSource(self,
+                       source_obj_id,
+                       audio_fname,
+                       enabled=False,
+                       repeat=True,
+                       min_distance=config.DEFAULT_MIN_FALLOFF_DISTANCE,
+                       max_distance=config.DEFAULT_MAX_FALLOFF_DISTANCE,
+                       source_gain=config.DEFAULT_SOURCE_GAIN,
+                       near_field_gain=config.DEFAULT_NEAR_FIELD_GAIN,
+                       reverb_gain=config.DEFAULT_ROOM_EFFECTS_GAIN,
+                    ):
         print("Initializing source object " + str(source_obj_id) + " from file: " + audio_fname)
         if source_obj_id in self.sourceToEnabled:
             raise Exception('Object {} has already been registered with source {}, and we currently only support one audio stream per source.'.format(source_obj_id, audio_fname))
 
         source_pos,_ = p.getBasePositionAndOrientation(source_obj_id)
-        source_id = audio.InitializeSource(source_pos, 0.1, 10, reverb_gain)
+        source_id = audio.InitializeSource(source_pos, min_distance, max_distance, source_gain, near_field_gain, reverb_gain)
         buffer = None
         if audio_fname:
             buffer =  wave.open(audio_fname, 'rb')
@@ -204,7 +228,7 @@ class AudioSystem(object):
                         if self.single_occl_hit_per_obj and hit_id not in self.alwaysCountCollisionIDs:
                             hit_objects.add(hit_id)
                     hit_num += 1
-                audio.SetSourceOcclusion(self.sourceToResonanceID[source], occl_hits)
+                audio.SetSourceOcclusion(self.sourceToResonanceID[source], occl_hits*self.occl_multiplier)
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
             else:
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, np.zeros(self.framesPerBuf, dtype=np.int16))
@@ -218,7 +242,6 @@ class AudioSystem(object):
                 self.current_probe_key = closest_probe_key
 
         self.current_output = audio.ProcessListener(self.framesPerBuf)
-        #print("{} {}".format(np.mean(source_audio), np.mean(self.current_output)))
 
         if self.renderAmbisonics:
             self.ambisonic_output = audio.RenderAmbisonics(self.framesPerBuf)

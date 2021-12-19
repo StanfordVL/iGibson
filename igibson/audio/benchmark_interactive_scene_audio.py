@@ -46,7 +46,8 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True, num_sources=
                 _,source_location = scene.get_random_point_by_room_type("living_room")
                 source_location[2] = 1.7
                 obj = cube.Cube(pos=source_location, dim=[0.05, 0.05, 0.05], visual_only=False, mass=0.5, color=[255, 0, 0, 1])
-                obj_id = s.import_object(obj)
+                s.import_object(obj)
+                obj_id = obj.get_body_id()
                 audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
                 audioSystem.setSourceRepeat(obj_id)
             s.attachAudioSystem(audioSystem)

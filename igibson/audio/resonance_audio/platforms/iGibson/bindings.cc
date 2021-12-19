@@ -182,9 +182,6 @@ namespace igibson {
 
     void InitializeSystem(int frames_per_buffer, int sample_rate) {
         Initialize(sample_rate, 2, frames_per_buffer);
-        //std::cout << "TODO: DISABLING ROOM EFFECTS" << std::endl;
-        //resonance_audio->api->EnableRoomEffects(false);
-        //SetListenerStereoSpeakerMode(true);
     }
 
     void DisableRoomEffects() {
@@ -217,16 +214,15 @@ namespace igibson {
         py::print("Reverb Computer Initialized in ", fp_ms.count(), "ms");
     }
 
-    void RegisterReverbProbe(const std::string &room, py::array_t<float> sample_pos) {
-        // Ray-tracing related fields.
-        const int kSampleRate = 48000;
-        const int kNumRays = 200000;//20000;
-        const int kNumRaysPerBatch = 20000;//2000;
-        const int kMaxDepth = 3;
-        const float kEnergyThresold = 1e-6f;
-        const float listener_sphere_radius = 0.1f;
-        const size_t impulse_response_num_samples = 1000000;//96000;
-
+    void RegisterReverbProbe(const std::string &room,
+                             py::array_t<float> sample_pos,
+                             int kSampleRate,
+                             int kNumRays,
+                             int kNumRaysPerBatch,
+                             int kMaxDepth,
+                             float kEnergyThresold,
+                             float listener_sphere_radius,
+                             size_t impulse_response_num_samples) {
         RoomProperties proxy_room_properties;
         float rt60s [kNumReverbOctaveBands];
 
@@ -258,15 +254,15 @@ namespace igibson {
         SetRoomReflectionAndReverb(reflection_and_reverb.first, reflection_and_reverb.second);
     }
 
-    int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance, float room_effects_gain) {
+    int InitializeSource(py::array_t<float> source_pos, float min_distance, float max_distance, float source_gain, float near_field_gain, float room_effects_gain) {
         ResonanceAudioApi::SourceId source_id = CreateSoundObject(RenderingMode::kBinauralHighQuality, min_distance, max_distance);
 
         py::buffer_info sl_buf = source_pos.request();
         float* source_location_arr = (float*)sl_buf.ptr;
 
         SetSourcePosition(source_id, source_pos);
-        SetSourceGain(source_id, 1.0f);
-        SetNearFieldEffectGain(source_id, 1.0f);
+        SetSourceGain(source_id, source_gain);
+        SetNearFieldEffectGain(source_id, near_field_gain);
         SetSourceRoomEffectsGain(source_id, room_effects_gain);
 
         return source_id;
