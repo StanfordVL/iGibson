@@ -32,7 +32,7 @@ def ig_example():
     acousticMesh = getIgAcousticMesh(s)
 
     # Audio System Initialization!
-    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=True, SR = 44100, num_probes=5)
+    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile="example")
     # Attach wav file to imported cube obj
     audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
     # Ensure source continuously repeats
@@ -61,16 +61,17 @@ def ig_example():
     s.disconnect()
     
 def mp3d_example():
-    s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
+    s = Simulator(mode='gui_interactive', image_width=512, image_height=512, device_idx=0)
     scene = StaticIndoorScene('17DRP5sb8fy')
     s.import_scene(scene)
 
     acousticMesh = getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/17DRP5sb8fy/sem_map.png")
 
     obj = cube.Cube(pos=[0, 0, 2], dim=[0.3, 0.3, 0.3], visual_only=True, mass=0, color=[1,1,0,1])
-    obj_id = s.import_object(obj)[0]
+    s.import_object(obj)
+    obj_id = obj.get_body_id()
     # Audio System Initialization!
-    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=True, SR = 44100, num_probes=5)
+    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile="example")
     # Attach wav file to imported cube obj
     audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
     # Ensure source continuously repeats

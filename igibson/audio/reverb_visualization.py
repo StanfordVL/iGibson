@@ -60,7 +60,8 @@ def renderAndPlot(scene_id, pos, name, reverb_gain, mat_override=None):
     # 10.7, -1.9, 3.5 (small: 6.3, 6.9)
     pos3d = pos + [1.2]
     obj = cube.Cube(pos=pos3d, dim=[0.05, 0.05, 0.05], visual_only=True, mass=0, color=[1,0,0,1])
-    obj_id = s.import_object(obj)[0]
+    s.import_object(obj)
+    obj_id = obj.get_body_id()
 
     pos3d = pos + [1.2]
     s.viewer = Viewer(simulator=s, renderer=s.renderer, initial_pos=pos3d)

@@ -315,7 +315,8 @@ def mp3d_example():
     audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile=True, SR = 44100, num_probes=5, renderAmbisonics=True, renderReverbReflections=False)
     # -4.1,3.1,1.2
     obj = cube.Cube(pos=[-1, 1, 1.2], dim=[0.05, 0.05, 0.05], visual_only=True, mass=0, color=[1,0,0,1])
-    obj_id = s.import_object(obj)[0]
+    s.import_object(obj)
+    obj_id = obj.get_body_id()
 
     # Attach wav file to imported cube obj
     audioSystem.registerSource(obj_id, "250Hz_44100Hz.wav", enabled=True)
