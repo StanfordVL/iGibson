@@ -11,7 +11,7 @@ import trimesh
 import igibson
 
 SKIP_EXISTING = True
-IGNORE_ERRORS = True
+IGNORE_ERRORS = False
 
 
 def get_categories():
@@ -31,14 +31,25 @@ def get_metadata_filename(objdir):
     return os.path.join(objdir, "misc", "metadata.json")
 
 
-def get_corner_positions(base, rotation, size):
-    quat = p.getQuaternionFromEuler(rotation)
-    options = [-1, 1]
-    outputs = []
-    for pos in itertools.product(options, options, options):
-        res = p.multiplyTransforms(base, quat, np.array(pos) * size / 2.0, [0, 0, 0, 1])
-        outputs.append(res)
-    return outputs
+def validate_meta(meta):
+    if "link_bounding_boxes" not in meta:
+        return "No bounding box found"
+
+    lbbs = meta["link_bounding_boxes"]
+    for link, lbb in lbbs.items():
+        for mesh_type in ["visual", "collision"]:
+            if mesh_type not in lbb:
+                return "No " + mesh_type + " bounding box found for link " + link
+
+            lbb_thistype = lbb[mesh_type]
+            if lbb_thistype is None:
+                continue
+
+            for bb_type in ["axis_aligned", "oriented"]:
+                if bb_type not in lbb_thistype:
+                    return "No " + bb_type + "bounding box found for link " + link + ", type " + mesh_type
+
+    return None
 
 
 def main():
@@ -64,9 +75,12 @@ def main():
         with open(mfn, "r") as mf:
             meta = json.load(mf)
 
-        if "link_bounding_boxes" in meta and len(meta["link_bounding_boxes"]) > 0:
-            if SKIP_EXISTING:
+        if SKIP_EXISTING:
+            validation_error = validate_meta(meta)
+            if validation_error is None:
                 continue
+            else:
+                print("%s: %s" % (objdirfull, validation_error))
 
         objects_to_process.append(objdirfull)
 
@@ -90,7 +104,11 @@ def main():
                         # For each type of mesh, we first combine all of the different mesh files into a single mesh.
                         mesh_type_nodes = link.findall(mesh_type)
                         combined_mesh = trimesh.Trimesh()
-                        mesh_count = 0
+
+                        if not mesh_type_nodes:
+                            # None here means that the object does not have this type of mesh.
+                            this_link_bounding_boxes[mesh_type] = None
+                            continue
 
                         for mesh_type_node in mesh_type_nodes:
                             origin = mesh_type_node.find("origin")
@@ -104,7 +122,8 @@ def main():
 
                             for mesh_node in mesh_nodes:
                                 object_file = os.path.join(objdirfull, mesh_node.attrib["filename"])
-                                mesh = trimesh.load(object_file, force="mesh")
+                                mesh = trimesh.load(object_file, force="mesh", skip_materials=True)
+
                                 scale = mesh_node.attrib["scale"] if "scale" in mesh_node.attrib else "1 1 1"
                                 scale = np.array([float(x) for x in scale.split(" ")])
 
@@ -114,9 +133,6 @@ def main():
                                         scale=scale, angles=rotation, translate=translation
                                     )
                                 )
-
-                                if "scale" in mesh_node.attrib:
-                                    mesh_count += 1
 
                         # Now that we have the combined mesh, let's simply compute the bounding box.
                         bbox = combined_mesh.bounding_box
@@ -130,14 +146,21 @@ def main():
                             "transform": np.array(bbox_oriented.primitive.transform).tolist(),
                         }
 
-                        if mesh_count > 1:
-                            combined_mesh.show()
+                        oriented_bbox = combined_mesh.bounding_box_oriented
+                        oriented_bbox_dict = {
+                            "extent": np.array(oriented_bbox.primitive.extents).tolist(),
+                            "transform": np.array(oriented_bbox.primitive.transform).tolist(),
+                        }
 
                         this_link_bounding_boxes[mesh_type] = {"axis_aligned": bbox, "oriented": bbox_oriented}
                     except:
                         print(
                             "Problem with %s mesh in link %s in obj %s" % (mesh_type, link.attrib["name"], objdirfull)
                         )
+
+                        # We are quite sensitive against missing collision meshes!
+                        if mesh_type == "collision":
+                            raise
 
                 if len(this_link_bounding_boxes) > 0:
                     link_bounding_boxes[link.attrib["name"]] = this_link_bounding_boxes
@@ -149,7 +172,7 @@ def main():
 
             with open(mfn, "w") as mf:
                 json.dump(meta, mf)
-        except Exception as e:
+        except:
             combined_mesh.show()
 
             if IGNORE_ERRORS:
