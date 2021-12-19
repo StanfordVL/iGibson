@@ -1,4 +1,5 @@
 import os
+import platform
 import sys
 
 import matplotlib.pyplot as plt
@@ -10,6 +11,10 @@ from igibson.utils.assets_utils import get_scene_path
 
 
 def main():
+    if platform.system() != "Linux":
+        print("Rendering to pytorch tensor is only available on Linux.")
+        exit(1)
+
     if len(sys.argv) > 1:
         model_path = sys.argv[1]
     else:
@@ -17,7 +22,7 @@ def main():
 
     renderer = MeshRendererG2G(width=512, height=512, device_idx=0)
     renderer.load_object(model_path)
-    renderer.add_instance(0)
+    renderer.add_instance_group([0])
 
     print(renderer.visual_objects, renderer.instances)
     print(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)

@@ -11,7 +11,7 @@ from igibson.external.pybullet_tools.utils import (
     set_joint_positions,
 )
 from igibson.render.profiler import Profiler
-from igibson.robots.fetch_robot import Fetch
+from igibson.robots.fetch import Fetch
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
@@ -19,13 +19,13 @@ from igibson.utils.utils import parse_config
 
 def main():
     config = parse_config(os.path.join(igibson.example_config_path, "fetch_reaching.yaml"))
-    s = Simulator(mode="gui", physics_timestep=1 / 240.0)
+    s = Simulator(mode="gui_interactive", use_pb_gui=True, physics_timestep=1 / 240.0)
     scene = EmptyScene()
     s.import_scene(scene)
     fetch = Fetch(config)
     s.import_robot(fetch)
 
-    robot_id = fetch.robot_ids[0]
+    robot_id = fetch.get_body_id()
 
     arm_joints = joints_from_names(
         robot_id,
@@ -90,7 +90,7 @@ def main():
             threshold = 0.01
             maxIter = 100
             joint_pos = accurateCalculateInverseKinematics(
-                robot_id, fetch.parts["gripper_link"].body_part_index, [x, y, z], threshold, maxIter
+                robot_id, fetch.links["gripper_link"].body_part_index, [x, y, z], threshold, maxIter
             )[2:10]
 
             s.step()

@@ -2,7 +2,7 @@
 
 ### Overview
 
-We developed an easy-to-use iGibson-human interface called **Viewer** for users to inspect and interact with our scenes and objects. The Viewer will automatically pop up if you use `gui` or `iggui` mode in `Simulator`.
+We developed an easy-to-use iGibson-human interface called **Viewer** for users to inspect and interact with our scenes and objects. The Viewer will automatically pop up if you use `gui_non_interactive` or `gui_interactive` mode in `Simulator`.
 
 To play with an example of viewer, you can run the following command:
 

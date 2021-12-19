@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import time
 from collections import OrderedDict
 
@@ -10,10 +11,13 @@ from transforms3d.euler import euler2quat
 
 from igibson.envs.env_base import BaseEnv
 from igibson.external.pybullet_tools.utils import stable_z_on_aabb
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
+from igibson.tasks.behavior_task import BehaviorTask
+from igibson.tasks.dummy_task import DummyTask
 from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
@@ -26,7 +30,7 @@ from igibson.utils.utils import quatToXYZW
 
 class iGibsonEnv(BaseEnv):
     """
-    iGibson Environment (OpenAI Gym interface)
+    iGibson Environment (OpenAI Gym interface).
     """
 
     def __init__(
@@ -36,19 +40,23 @@ class iGibsonEnv(BaseEnv):
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 240.0,
+        rendering_settings=None,
+        vr_settings=None,
         device_idx=0,
-        render_to_tensor=False,
         automatic_reset=False,
+        use_pb_gui=False,
     ):
         """
         :param config_file: config_file path
         :param scene_id: override scene_id in config file
-        :param mode: headless, gui, iggui
+        :param mode: headless, headless_tensor, gui_interactive, gui_non_interactive, vr
         :param action_timestep: environment executes action per action_timestep second
         :param physics_timestep: physics timestep for pybullet
+        :param rendering_settings: rendering_settings to override the default one
+        :param vr_settings: vr_settings to override the default one
         :param device_idx: which GPU to run the simulation and rendering on
-        :param render_to_tensor: whether to render directly to pytorch tensors
         :param automatic_reset: whether to automatic reset after an episode finishes
+        :param use_pb_gui: concurrently display the interactive pybullet gui (for debugging)
         """
         super(iGibsonEnv, self).__init__(
             config_file=config_file,
@@ -56,14 +64,16 @@ class iGibsonEnv(BaseEnv):
             mode=mode,
             action_timestep=action_timestep,
             physics_timestep=physics_timestep,
+            rendering_settings=rendering_settings,
+            vr_settings=vr_settings,
             device_idx=device_idx,
-            render_to_tensor=render_to_tensor,
+            use_pb_gui=use_pb_gui,
         )
         self.automatic_reset = automatic_reset
 
     def load_task_setup(self):
         """
-        Load task setup
+        Load task setup.
         """
         self.initial_pos_z_offset = self.config.get("initial_pos_z_offset", 0.1)
         # s = 0.5 * G * (t ** 2)
@@ -83,7 +93,9 @@ class iGibsonEnv(BaseEnv):
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
 
         # task
-        if self.config["task"] == "point_nav_fixed":
+        if "task" not in self.config:
+            self.task = DummyTask(self)
+        elif self.config["task"] == "point_nav_fixed":
             self.task = PointNavFixedTask(self)
         elif self.config["task"] == "point_nav_random":
             self.task = PointNavRandomTask(self)
@@ -96,17 +108,32 @@ class iGibsonEnv(BaseEnv):
         elif self.config["task"] == "room_rearrangement":
             self.task = RoomRearrangementTask(self)
         else:
-            self.task = None
+            try:
+                import bddl
+
+                with open(os.path.join(os.path.dirname(bddl.__file__), "activity_manifest.txt")) as f:
+                    all_activities = [line.strip() for line in f.readlines()]
+
+                if self.config["task"] in all_activities:
+                    self.task = BehaviorTask(self)
+                else:
+                    raise Exception("Invalid task: {}".format(self.config["task"]))
+            except ImportError:
+                raise Exception("bddl is not available.")
 
     def build_obs_space(self, shape, low, high):
         """
-        Helper function that builds individual observation spaces
+        Helper function that builds individual observation spaces.
+
+        :param shape: shape of the space
+        :param low: lower bounds of the space
+        :param high: higher bounds of the space
         """
         return gym.spaces.Box(low=low, high=high, shape=shape, dtype=np.float32)
 
     def load_observation_space(self):
         """
-        Load observation space
+        Load observation space.
         """
         self.output = self.config["output"]
         self.image_width = self.config.get("image_width", 128)
@@ -188,6 +215,10 @@ class iGibsonEnv(BaseEnv):
         if "bump" in self.output:
             observation_space["bump"] = gym.spaces.Box(low=0.0, high=1.0, shape=(1,))
             sensors["bump"] = BumpSensor(self)
+        if "proprioception" in self.output:
+            observation_space["proprioception"] = self.build_obs_space(
+                shape=(self.robots[0].proprioception_dim,), low=-np.inf, high=np.inf
+            )
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -200,13 +231,13 @@ class iGibsonEnv(BaseEnv):
 
     def load_action_space(self):
         """
-        Load action space
+        Load action space.
         """
         self.action_space = self.robots[0].action_space
 
     def load_miscellaneous_variables(self):
         """
-        Load miscellaneous variables for book keeping
+        Load miscellaneous variables for book keeping.
         """
         self.current_step = 0
         self.collision_step = 0
@@ -215,7 +246,7 @@ class iGibsonEnv(BaseEnv):
 
     def load(self):
         """
-        Load environment
+        Load environment.
         """
         super(iGibsonEnv, self).load()
         self.load_task_setup()
@@ -223,11 +254,10 @@ class iGibsonEnv(BaseEnv):
         self.load_action_space()
         self.load_miscellaneous_variables()
 
-    def get_state(self, collision_links=[]):
+    def get_state(self):
         """
-        Get the current observation
+        Get the current observation.
 
-        :param collision_links: collisions from last physics timestep
         :return: observation as a dictionary
         """
         state = OrderedDict()
@@ -243,22 +273,24 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
             state["bump"] = self.sensors["bump"].get_obs(self)
+        if "proprioception" in self.sensors:
+            state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
 
     def run_simulation(self):
         """
-        Run simulation for one action timestep (same as one render timestep in Simulator class)
+        Run simulation for one action timestep (same as one render timestep in Simulator class).
 
-        :return: collision_links: collisions from last physics timestep
+        :return: a list of collisions from the last physics timestep
         """
         self.simulator_step()
-        collision_links = list(p.getContactPoints(bodyA=self.robots[0].robot_ids[0]))
+        collision_links = list(p.getContactPoints(bodyA=self.robot_body_id))
         return self.filter_collision_links(collision_links)
 
     def filter_collision_links(self, collision_links):
         """
-        Filter out collisions that should be ignored
+        Filter out collisions that should be ignored.
 
         :param collision_links: original collisions, a list of collisions
         :return: filtered collisions
@@ -274,22 +306,23 @@ class iGibsonEnv(BaseEnv):
                 continue
 
             # ignore self collision with robot link a (body b is also robot itself)
-            if item[2] == self.robots[0].robot_ids[0] and item[4] in self.collision_ignore_link_a_ids:
+            if item[2] == self.robot_body_id and item[4] in self.collision_ignore_link_a_ids:
                 continue
             new_collision_links.append(item)
         return new_collision_links
 
     def populate_info(self, info):
         """
-        Populate info dictionary with any useful information
+        Populate info dictionary with any useful information.
+
+        :param info: the info dictionary to populate
         """
         info["episode_length"] = self.current_step
         info["collision_step"] = self.collision_step
 
     def step(self, action):
         """
-        Apply robot's action.
-        Returns the next state, reward, done and info,
+        Apply robot's action and return the next state, reward, done and info,
         following OpenAI Gym's convention
 
         :param action: robot actions
@@ -305,7 +338,7 @@ class iGibsonEnv(BaseEnv):
         self.collision_links = collision_links
         self.collision_step += int(len(collision_links) > 0)
 
-        state = self.get_state(collision_links)
+        state = self.get_state()
         info = {}
         reward, info = self.task.get_reward(self, collision_links, action, info)
         done, info = self.task.get_termination(self, collision_links, action, info)
@@ -320,10 +353,10 @@ class iGibsonEnv(BaseEnv):
 
     def check_collision(self, body_id):
         """
-        Check with the given body_id has any collision after one simulator step
+        Check whether the given body_id has collision after one simulator step
 
         :param body_id: pybullet body id
-        :return: whether the given body_id has no collision
+        :return: whether the given body_id has collision
         """
         self.simulator_step()
         collisions = list(p.getContactPoints(bodyA=body_id))
@@ -332,11 +365,11 @@ class iGibsonEnv(BaseEnv):
             for item in collisions:
                 logging.debug("bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(item[1], item[2], item[3], item[4]))
 
-        return len(collisions) == 0
+        return len(collisions) > 0
 
     def set_pos_orn_with_z_offset(self, obj, pos, orn=None, offset=None):
         """
-        Reset position and orientation for the robot or the object
+        Reset position and orientation for the robot or the object.
 
         :param obj: an instance of robot or object
         :param pos: position
@@ -350,7 +383,7 @@ class iGibsonEnv(BaseEnv):
             offset = self.initial_pos_z_offset
 
         is_robot = isinstance(obj, BaseRobot)
-        body_id = obj.robot_ids[0] if is_robot else obj.get_body_id()
+        body_id = obj.get_body_id()
         # first set the correct orientation
         obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), "wxyz"))
         # compute stable z based on this orientation
@@ -361,28 +394,28 @@ class iGibsonEnv(BaseEnv):
 
     def test_valid_position(self, obj, pos, orn=None):
         """
-        Test if the robot or the object can be placed with no collision
+        Test if the robot or the object can be placed with no collision.
 
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
-        :return: validity
+        :return: whether the position is valid
         """
         is_robot = isinstance(obj, BaseRobot)
 
         self.set_pos_orn_with_z_offset(obj, pos, orn)
 
         if is_robot:
-            obj.robot_specific_reset()
+            obj.reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if is_robot else obj.get_body_id()
+        body_id = obj.get_body_id()
         has_collision = self.check_collision(body_id)
-        return has_collision
+        return not has_collision
 
     def land(self, obj, pos, orn):
         """
-        Land the robot or the object onto the floor, given a valid position and orientation
+        Land the robot or the object onto the floor, given a valid position and orientation.
 
         :param obj: an instance of robot or object
         :param pos: position
@@ -393,10 +426,10 @@ class iGibsonEnv(BaseEnv):
         self.set_pos_orn_with_z_offset(obj, pos, orn)
 
         if is_robot:
-            obj.robot_specific_reset()
+            obj.reset()
             obj.keep_still()
 
-        body_id = obj.robot_ids[0] if is_robot else obj.get_body_id()
+        body_id = obj.get_body_id()
 
         land_success = False
         # land for maximum 1 second, should fall down ~5 meters
@@ -408,15 +441,15 @@ class iGibsonEnv(BaseEnv):
                 break
 
         if not land_success:
-            print("WARNING: Failed to land")
+            logging.warning("Object failed to land.")
 
         if is_robot:
-            obj.robot_specific_reset()
+            obj.reset()
             obj.keep_still()
 
     def reset_variables(self):
         """
-        Reset bookkeeping variables for the next new episode
+        Reset bookkeeping variables for the next new episode.
         """
         self.current_episode += 1
         self.current_step = 0
@@ -425,9 +458,9 @@ class iGibsonEnv(BaseEnv):
 
     def randomize_domain(self):
         """
-        Domain randomization
-        Object randomization loads new object models with the same poses
-        Texture randomization loads new materials and textures for the same object models
+        Randomize domain.
+        Object randomization loads new object models with the same poses.
+        Texture randomization loads new materials and textures for the same object models.
         """
         if self.object_randomization_freq is not None:
             if self.current_episode % self.object_randomization_freq == 0:
@@ -438,14 +471,13 @@ class iGibsonEnv(BaseEnv):
 
     def reset(self):
         """
-        Reset episode
+        Reset episode.
         """
         self.randomize_domain()
-        # move robot away from the scene
+        # Move robot away from the scene.
         self.robots[0].set_position([100.0, 100.0, 100.0])
-        self.task.reset_scene(self)
-        self.task.reset_agent(self)
-        self.simulator.sync()
+        self.task.reset(self)
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 
@@ -458,7 +490,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["headless", "gui", "iggui"],
+        choices=["headless", "headless_tensor", "gui_interactive", "gui_non_interactive"],
         default="headless",
         help="which mode for simulation (default: headless)",
     )

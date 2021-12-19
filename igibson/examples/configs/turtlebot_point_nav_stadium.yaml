@@ -15,7 +15,6 @@ object_randomization_freq: null
 # robot
 robot: Turtlebot
 is_discrete: false
-velocity: 1.0
 
 # task
 task: point_nav_random

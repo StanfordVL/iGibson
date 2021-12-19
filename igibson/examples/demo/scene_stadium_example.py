@@ -6,6 +6,7 @@ from igibson.scenes.stadium_scene import StadiumScene
 
 
 def main():
+    # TODO: Update
     p.connect(p.GUI)
     p.setGravity(0, 0, -9.8)
     p.setTimeStep(1.0 / 240.0)

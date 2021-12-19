@@ -27,7 +27,7 @@ def main():
 
     renderer = MeshRenderer(width=512, height=512)
     renderer.load_object(model_path)
-    renderer.add_instance(0)
+    renderer.add_instance_group([0])
     camera_pose = np.array([0, 0, 1.2])
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
@@ -87,7 +87,7 @@ The mode '3d' provides a 4-channeled image where the first three channels corres
 
 ```
 # Pose of the camera of the simulated robot in world frame
-eye_pos, eye_orn = self.robot.parts["eyes"].get_position_orientation()
+eye_pos, eye_orn = self.robot.links["eyes"].get_position_orientation()
 camera_in_wf = quat2rotmat(xyzw2wxyz(eye_orn))
 camera_in_wf[:3,3] = eye_pos
 

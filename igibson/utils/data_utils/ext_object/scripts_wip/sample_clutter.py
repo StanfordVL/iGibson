@@ -87,7 +87,7 @@ def main(args):
             object_randomization=False,
             load_object_categories=support_categories,
         )
-        s.import_ig_scene(scene)
+        s.import_scene(scene)
         renderer = s.renderer
 
         category_supporting_objects = {}

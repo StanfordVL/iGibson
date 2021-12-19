@@ -18,11 +18,11 @@ We provide a wide variety of **Robots** that can be imported into the **Simulato
 
 Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in `igibson.assets_path`) and provide a `load` function that be invoked externally (usually by `import_robot` of `Simulator`). The `load` function imports the robot into PyBullet.
 
-All robot clases inherit `LocomotorRobot`. Some useful functions are worth pointing out:
+All robot clases inherit `LocomotionRobot`. Some useful functions are worth pointing out:
 - `{get/set}_{position/orientation/rpy/linear_velocity/angular_velocity}`: get and set the physical states of the robot base
 - `apply_robot_action`: set motor control for each of the controllable joints. It currently supports four modes of control: joint torque, velocity, position, and differential drive for two-wheeled robots
 - `calc_state`: compute robot states that might be useful for external applications
-- `robot_specific_reset`: reset the robot joint states to their default value, particularly useful for mobile manipulators. For instance, `Fetch.robot_specific_reset()` will reset the robot to be something like this:
+- `reset`: reset the robot joint states to their default value, particularly useful for mobile manipulators. For instance, `Fetch.reset()` will reset the robot to be something like this:
 
 ![fetch.png](images/fetch.png)
 
@@ -33,8 +33,8 @@ Here are some details about how we perform motor control for robots:
 - `robot_action` will be applied by `apply_robot_action`, which internally executes the following:
 ```python
 def apply_robot_action(action):
-    for n, j in enumerate(self.ordered_joints):
-        j.set_motor_velocity(self.velocity_coef * j.max_velocity * float(np.clip(action[n], -1, +1)))
+    for n, j in enumerate(self.joints.values()):
+        j.set_vel(self.velocity_coef * j.max_velocity * float(np.clip(action[n], -1, +1)))
 ```
 Note that `robot_action` is a normalized joint velocity, i.e. `robot_action[n] == 1.0` means executing the maximum joint velocity for the nth joint. The limits of joint position, velocity and torque are extracted from the URDF file of the robot.
 
@@ -59,10 +59,10 @@ The reference frame of each body part is shown below.
 In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [igibson/examples/demo/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/robot_example.py).
 
 ```python
-from igibson.robots.locobot_robot import Locobot
-from igibson.robots.turtlebot_robot import Turtlebot
-from igibson.robots.jr2_kinova_robot import JR2_Kinova
-from igibson.robots.fetch_robot import Fetch
+from igibson.robots.locobot import Locobot
+from igibson.robots.turtlebot import Turtlebot
+from igibson.robots.jr2 import JR2
+from igibson.robots.fetch import Fetch
 from igibson.utils.utils import parse_config
 import os
 import time
@@ -71,10 +71,11 @@ import pybullet as p
 import pybullet_data
 import igibson
 
+
 def main():
     p.connect(p.GUI)
     p.setGravity(0, 0, -9.8)
-    p.setTimeStep(1./240.)
+    p.setTimeStep(1. / 240.)
 
     floor = os.path.join(pybullet_data.getDataPath(), "mjcf/ground_plane.xml")
     p.loadMJCF(floor)
@@ -84,8 +85,8 @@ def main():
     fetch = Fetch(config)
     robots.append(fetch)
 
-    config = parse_config(os.path.join(igibson.example_config_path,'jr_reaching.yaml'))
-    jr = JR2_Kinova(config)
+    config = parse_config(os.path.join(igibson.example_config_path, 'jr_reaching.yaml'))
+    jr = JR2(config)
     robots.append(jr)
 
     config = parse_config(os.path.join(igibson.example_config_path, 'locobot_point_nav.yaml'))
@@ -106,19 +107,19 @@ def main():
     for robot, position in zip(robots, positions):
         robot.load()
         robot.set_position(position)
-        robot.robot_specific_reset()
+        robot.reset()
         robot.keep_still()
 
     for _ in range(2400):  # keep still for 10 seconds
         p.stepSimulation()
-        time.sleep(1./240.)
+        time.sleep(1. / 240.)
 
     for _ in range(2400):  # move with small random actions for 10 seconds
         for robot, position in zip(robots, positions):
             action = np.random.uniform(-1, 1, robot.action_dim)
             robot.apply_action(action)
         p.stepSimulation()
-        time.sleep(1./240.0)
+        time.sleep(1. / 240.0)
 
     p.disconnect()
 

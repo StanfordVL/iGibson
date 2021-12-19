@@ -11,7 +11,6 @@ from igibson.objects.articulated_object import ArticulatedObject
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots.fetch_vr_robot import FetchVR
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 
@@ -47,13 +46,17 @@ if VR_MODE:
     s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(vr_fps=VR_FPS))
 else:
     s = Simulator(
-        mode="iggui", image_width=960, image_height=720, device_idx=0, rendering_settings=vr_rendering_settings
+        mode="gui_interactive",
+        image_width=960,
+        image_height=720,
+        device_idx=0,
+        rendering_settings=vr_rendering_settings,
     )
     s.viewer.min_cam_z = 1.0
 
 scene = InteractiveIndoorScene("Rs_int")
 scene._set_first_n_objects(2)
-s.import_ig_scene(scene)
+s.import_scene(scene)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
 if not VR_MODE:
@@ -83,8 +86,8 @@ for item in objects:
     fpath = item[0]
     pos = item[1]
     orn = item[2]
-    item_ob = ArticulatedObject(fpath, scale=1)
-    s.import_object(item_ob, use_pbr=False, use_pbr_mapping=False)
+    item_ob = ArticulatedObject(fpath, scale=1, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+    s.import_object(item_ob)
     item_ob.set_position(pos)
     item_ob.set_orientation(orn)
 

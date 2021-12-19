@@ -6,7 +6,7 @@
 
 Some key functions are the following:
 - `load`: initialize PyBullet physics engine and MeshRenderer
-- `import_{scene, ig_scene}`: import the scene into PyBullet by calling `scene.load`, and then import it into MeshRenderer by calling `self.renderer.add_instance`. If `InteractiveIndoorScene` is imported using `import_ig_scene`, all objects in the scene are also imported.
+- `import_{scene, ig_scene}`: import the scene into PyBullet by calling `scene.load`, and then import it into MeshRenderer by calling `self.renderer.add_instance_group`. If `InteractiveIndoorScene` is imported using `import_scene`, all objects in the scene are also imported.
 - `import_{object, articulated_object, robot}`: import the object, articulated object and robot into the simulator in a similar manner
 - `sync`: synchronize the poses of the dynamic objects (including the robots) between PyBullet and MeshRenderer. Specifically, it calls `update_position` for each object, in which it retrieve the object's pose in PyBullet, and then update its pose accordingly in MeshRenderer.
 
@@ -18,7 +18,7 @@ Most of the code can be found here: [igibson/simulator.py](https://github.com/St
 In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [igibson/examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/simulator_example.py)
 
 ```python
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.simulator import Simulator
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.objects.ycb_object import YCBObject

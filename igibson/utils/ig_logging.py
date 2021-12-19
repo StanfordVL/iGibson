@@ -92,14 +92,14 @@ class IGLogWriter(object):
         self.persistent_frame_count = 0
         # Handle of HDF5 file
         self.hf = None
-        # Name path data - used to extract data from data map and save to hd5
+        # Name path data - used to extract data from data map and save to hdf5
         self.name_path_data = []
         self.generate_name_path_data()
         # Create data map
         self.create_data_map()
 
     def generate_name_path_data(self):
-        """Generates lists of name paths for resolution in hd5 saving.
+        """Generates lists of name paths for resolution in hdf5 saving.
         Eg. ['vr', 'vr_camera', 'right_eye_view']."""
         self.name_path_data.extend([["frame_data"]])
 
@@ -348,8 +348,8 @@ class IGLogWriter(object):
 
         if self.vr_robot:
             forces = {
-                "left_controller": p.getConstraintState(self.vr_robot.parts["left_hand"].movement_cid),
-                "right_controller": p.getConstraintState(self.vr_robot.parts["right_hand"].movement_cid),
+                "left_controller": p.getConstraintState(self.vr_robot.links["left_hand"].movement_cid),
+                "right_controller": p.getConstraintState(self.vr_robot.links["right_hand"].movement_cid),
             }
         for device in ["hmd", "left_controller", "right_controller"]:
             is_valid, trans, rot = self.sim.get_data_for_vr_device(device)
@@ -369,9 +369,9 @@ class IGLogWriter(object):
                     else:
                         # Calculate model rotation and store
                         if device == "left_controller":
-                            base_rot = self.vr_robot.parts["left_hand"].base_rot
+                            base_rot = self.vr_robot.links["left_hand"].base_rot
                         else:
-                            base_rot = self.vr_robot.parts["right_hand"].base_rot
+                            base_rot = self.vr_robot.links["right_hand"].base_rot
                         controller_rot = rot
                         # Use dummy translation to calculation final rotation
                         final_rot = p.multiplyTransforms([0, 0, 0], controller_rot, [0, 0, 0], base_rot)[1]
@@ -395,7 +395,7 @@ class IGLogWriter(object):
         vr_pos_data.extend(list(self.sim.get_vr_pos()))
         vr_pos_data.extend(list(self.sim.get_vr_offset()))
         if self.vr_robot:
-            vr_pos_data.extend(p.getConstraintState(self.vr_robot.parts["body"].movement_cid))
+            vr_pos_data.extend(p.getConstraintState(self.vr_robot.links["body"].movement_cid))
         self.data_map["vr"]["vr_device_data"]["vr_position_data"][self.frame_counter, ...] = np.array(vr_pos_data)
 
         # On systems where eye tracking is not supported, we get dummy data and a guaranteed False validity reading
@@ -490,8 +490,8 @@ class IGLogWriter(object):
         -- updating pybullet data
         -- incrementing frame counter by 1
         """
-        self.write_frame_data_to_map()
         if self.store_vr:
+            self.write_frame_data_to_map()
             self.write_vr_data_to_map()
         self.write_pybullet_data_to_map()
         if self.task:
@@ -501,9 +501,8 @@ class IGLogWriter(object):
         self.frame_counter += 1
         self.persistent_frame_count += 1
         if self.frame_counter >= self.frames_before_write:
-            self.frame_counter = 0
-            # We have accumulated enough data, which we will write to hd5
-            self.write_to_hd5()
+            # We have accumulated enough data, which we will write to hdf5
+            self.write_to_hdf5()
 
     def refresh_data_map(self):
         """Resets all values stored in self.data_map to the default sentinel value.
@@ -513,27 +512,35 @@ class IGLogWriter(object):
             np_data = self.get_data_for_name_path(name_path)
             np_data.fill(self.default_fill_sentinel)
 
-    def write_to_hd5(self):
-        """Writes data stored in self.data_map to hd5.
+    def write_to_hdf5(self):
+        """Writes data stored in self.data_map to hdf5.
         The data is saved each time this function is called, so data
         will be saved even if a Ctrl+C event interrupts the program."""
         if self.log_status:
-            print("----- Writing log data to hd5 on frame: {0} -----".format(self.persistent_frame_count))
-        start_time = time.time()
-        for name_path in self.name_path_data:
-            curr_dset = self.hf["/".join(name_path)]
-            # Resize to accommodate new data
-            curr_dset.resize(curr_dset.shape[0] + self.frames_before_write, axis=0)
-            # Set last self.frames_before_write rows to numpy data from data map
-            curr_dset[-self.frames_before_write :, ...] = self.get_data_for_name_path(name_path)
+            print("----- Writing log data to hdf5 on frame: {0} -----".format(self.persistent_frame_count))
 
-        self.refresh_data_map()
+        start_time = time.time()
+
+        frames_to_write = self.persistent_frame_count - self.hf["frame_data"].shape[0]
+        if frames_to_write > 0:
+            for name_path in self.name_path_data:
+                curr_dset = self.hf["/".join(name_path)]
+                # Resize to accommodate new data
+                curr_dset.resize(curr_dset.shape[0] + frames_to_write, axis=0)
+                # Set the last frames_to_write rows to numpy data from data map
+                curr_dset[-frames_to_write:, ...] = self.get_data_for_name_path(name_path)[:frames_to_write, ...]
+
+            self.refresh_data_map()
+            self.frame_counter = 0
+
         delta = time.time() - start_time
         if self.profiling_mode:
             print("Time to write: {0}".format(delta))
 
     def end_log_session(self):
         """Closes hdf5 log file at end of logging session."""
+        # Write the remaining data to hdf
+        self.write_to_hdf5()
         if self.log_status:
             print("IG LOGGER INFO: Ending log writing session after {} frames".format(self.persistent_frame_count))
         self.hf.close()
@@ -571,6 +578,14 @@ class IGLogReader(object):
         """
         f = h5py.File(vr_log_path, "r")
         return attr_name in f.attrs
+
+    @staticmethod
+    def get_all_metadata_attrs(vr_log_path):
+        """
+        Returns a list of available metadata attributes
+        """
+        f = h5py.File(vr_log_path, "r")
+        return f.attrs
 
     @staticmethod
     def read_metadata_attr(vr_log_path, attr_name):
