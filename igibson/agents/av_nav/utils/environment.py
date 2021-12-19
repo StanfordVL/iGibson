@@ -410,7 +410,8 @@ class AVNavRLEnv(iGibsonEnv):
             self.audio_obj = cube.Cube(pos=source_location, dim=[0.05, 0.05, 0.05], 
                                        visual_only=False, 
                                        mass=0.5, color=[255, 0, 0, 1]) # pos initialized with default
-            self.audio_obj_id = self.simulator.import_object(self.audio_obj)
+            self.simulator.import_object(self.audio_obj)
+            self.audio_obj_id = self.audio_obj.get_body_id()
             self.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'], enabled=True)
             self.audio_system.setSourceRepeat(self.audio_obj_id)
             self.simulator.attachAudioSystem(self.audio_system)
