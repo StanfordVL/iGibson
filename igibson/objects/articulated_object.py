@@ -1086,11 +1086,11 @@ class URDFObject(StatefulObject, NonRobotObject):
 
         bbox_type = "visual" if visual else "collision"
 
-        # Get the base position transform
+        # Get the base position transform.
         pos, orn = p.getBasePositionAndOrientation(body_id)
         base_com_to_world = utils.quat_pos_to_mat(pos, orn)
 
-        # Compute the world-to-base frame transform
+        # Compute the world-to-base frame transform.
         world_to_base_com = trimesh.transformations.inverse_matrix(base_com_to_world)
 
         # Grab the corners of all the different links' bounding boxes.
@@ -1104,7 +1104,7 @@ class URDFObject(StatefulObject, NonRobotObject):
                 # Get the bounding box data.
                 bb_data = self.unscaled_link_bounding_boxes[name][bbox_type]["oriented"]
                 extent = bb_data["extent"]
-                bbox_to_link_origin = bb_data["transform"]
+                transfrom = bb_data["transform"]
 
                 # Get the link's pose in the base frame.
                 if link == -1:
@@ -1117,9 +1117,7 @@ class URDFObject(StatefulObject, NonRobotObject):
                     link_com_to_base_com = np.dot(world_to_base_com, link_com_to_world)
 
                 # Scale the bounding box in link origin frame.
-                bbox_to_link_origin_orn = np.diag(self.scales_in_link_frame[name]).dot(bbox_to_link_origin[:3, :3])
-                bbox_to_link_origin = np.copy(bbox_to_link_origin)
-                bbox_to_link_origin[:3, :3] = bbox_to_link_origin_orn
+                bbox_to_link_origin = np.dot(np.diag(np.concatenate([self.scales_in_link_frame[name], [1]])), transfrom)
 
                 # Account for the link vs. center-of-mass.
                 dynamics_info = p.getDynamicsInfo(body_id, link)
