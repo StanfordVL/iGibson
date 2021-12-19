@@ -1047,36 +1047,9 @@ class URDFObject(StatefulObject, NonRobotObject):
                             continue
                         # Store the extent and transform.
                         bb_data = self.metadata["link_bounding_boxes"][name][box_type][axis_type]
-<<<<<<< HEAD
-                        unscaled_extent = np.array(bb_data["extent"])
-                        unscaled_bbox_center_in_link_frame = np.array(bb_data["transform"])
-
-                        # Prepare the scale matrix for this link's scale.
-                        scale = np.abs(
-                            np.dot(self.scales_in_link_frame[converted_name], np.array(bb_data["transform"])[:3, :3])
-                        )
-                        scale_bounding_box = np.diag(np.concatenate([scale, [1]]))
-
-                        # Scale the bounding box as necessary.
-                        scaled_bbox_center_in_link_frame = np.dot(
-                            scale_bounding_box, unscaled_bbox_center_in_link_frame
-                        )
-
-                        # Only scale the translation component.
-                        scaled_bbox_center_in_link_frame[:4, :3] = unscaled_bbox_center_in_link_frame[:4, :3]
-
-                        # Scale the extent.
-                        scaled_extent = unscaled_extent * scale
-
-                        # Insert into our results array.
-                        self.scaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
-                            "extent": scaled_extent,
-                            "transform": scaled_bbox_center_in_link_frame,
-=======
                         self.unscaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
                             "extent": np.array(bb_data["extent"]),
                             "transform": np.array(bb_data["transform"]),
->>>>>>> 514f43d5 (Rewrote bounding box scaling logics.)
                         }
 
     def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False, xy_aligned=False):
