@@ -1369,7 +1369,8 @@ class MeshRenderer(object):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1], cache=True)
+                up_direction = mat.dot(np.array([0, 0, 1]))
+                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=True)
                 hidden_instances = []
                 if self.rendering_settings.hide_robot:
                     hidden_instances.append(instance)
@@ -1945,7 +1946,8 @@ class MeshRenderer(object):
                 orn = instance.robot.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
-                self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                up_direction = mat.dot(np.array([0, 0, 1]))
+                self.set_camera(camera_pos, camera_pos + view_direction, up_direction)
 
         original_fov = self.vertical_fov
         self.set_fov(90)
@@ -1998,7 +2000,8 @@ class MeshRenderer(object):
                     orn = instance.robot.eyes.get_orientation()
                     mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                     view_direction = mat.dot(np.array([1, 0, 0]))
-                    self.set_camera(camera_pos, camera_pos + view_direction, [0, 0, 1])
+                    up_direction = mat.dot(np.array([0, 0, 1]))
+                    self.set_camera(camera_pos, camera_pos + view_direction, up_direction)
 
         def render_cube():
             frames = []
