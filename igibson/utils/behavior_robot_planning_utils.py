@@ -8,6 +8,7 @@ import igibson
 from igibson.external.pybullet_tools.utils import (
     CIRCULAR_LIMITS,
     MAX_DISTANCE,
+    MAX_DISTANCE_GRASP,
     PI,
     birrt,
     circular_difference,
@@ -142,13 +143,15 @@ def plan_hand_motion_br(
     direct=False,
     weights=(1, 1, 1, 5, 5, 5),
     resolutions=0.02 * np.ones(6),
-    max_distance=MAX_DISTANCE,
+    max_distance=MAX_DISTANCE_GRASP,
     rng=np.random.default_rng(23),
     **kwargs
 ):
     def sample_fn():
-        x, y, z = (rng.random() * (hand_limits[1] - hand_limits[0])) + hand_limits[0] #np.random.uniform(*hand_limits)
-        # r, p, yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
+        # x, y, z = (rng.random() * (hand_limits[1] - hand_limits[0])) + hand_limits[0] #np.random.uniform(*hand_limits)
+        x = rng.random() * (hand_limits[1][0] - hand_limits[0][0]) + hand_limits[0][0]
+        y = rng.random() * (hand_limits[1][1] - hand_limits[0][1]) + hand_limits[0][1]
+        z = rng.random() * (hand_limits[1][2] - hand_limits[0][2]) + hand_limits[0][2]
         r = (rng.random() * (2 * PI)) - PI
         p = (rng.random() * (2 * PI)) - PI
         yaw = (rng.random() * (2 * PI)) - PI

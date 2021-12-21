@@ -8,7 +8,7 @@ from igibson.object_states.pose import Pose
 
 _MAX_ITERATIONS = 10
 _MAX_DISTANCE_VERTICAL = 5.0
-_MAX_DISTANCE_HORIZONTAL = 1.0
+_MAX_DISTANCE_HORIZONTAL = 4.0 #1.0
 
 # How many 2-D bases to try during horizontal adjacency check. When 1, only the standard axes will be considered.
 # When 2, standard axes + 45 degree rotated will be considered. The tried axes will be equally spaced. The higher

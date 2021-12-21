@@ -2580,8 +2580,9 @@ def approximate_as_cylinder(body, **kwargs):
 
 
 #MAX_DISTANCE = 1e-3
-# MAX_DISTANCE = 0.
 MAX_DISTANCE = 0.1
+
+MAX_DISTANCE_GRASP = 1e-3
 
 
 def set_all_collisions(body_id, enabled=1):
