@@ -9,6 +9,7 @@ import trimesh
 
 import igibson
 from igibson.examples.behavior.behavior_demo_batch import behavior_demo_batch
+from igibson.external.pybullet_tools.utils import matrix_from_quat
 from igibson.objects.articulated_object import URDFObject
 from igibson.utils import utils
 from igibson.utils.constants import MAX_INSTANCE_COUNT, SemanticClass
@@ -118,13 +119,37 @@ class PointCloudExtractor(object):
         renderer = env.simulator.renderer
         rgb, seg, ins_seg, threed = renderer.render_robot_cameras(modes=("rgb", "seg", "ins_seg", "3d"))
 
-        # Get rid of extra dimensions on segmentations
+        # Get rid of extra dimensions on segmentations.
         seg = seg[:, :, 0].astype(int)
         ins_seg = np.round(ins_seg[:, :, 0] * MAX_INSTANCE_COUNT).astype(int)
         id_seg = renderer.get_pb_ids_for_instance_ids(ins_seg)
 
+        # OpenGL coordinate system is (right, upward, backward).
+        # PyBullet coordinate system is (forward, left, upward).
+        # SUN RGBD coordinate system is (right, forward, upward).
+        pybullet_xyz = np.stack((-threed[:, :, 2], -threed[:, :, 0], threed[:, :, 1]), axis=-1)
+
+        _, camera_orientation = env.simulator.robots[0].parts["eye"].get_position_orientation()
+        camera_rotated_X_axis = matrix_from_quat(camera_orientation)[:, 0]
+        camera_rotation_around_Z_axis = np.arctan2(camera_rotated_X_axis[1], camera_rotated_X_axis[0])
+        upright_camera_orientation = p.getQuaternionFromEuler([0, 0, camera_rotation_around_Z_axis])
+        _, camera_frame_to_upright_camera_frame_orientation = p.multiplyTransforms(
+            *p.invertTransform([0, 0, 0], upright_camera_orientation), [0, 0, 0], camera_orientation
+        )
+        camera_frame_to_upright_camera_frame_mat = matrix_from_quat(camera_frame_to_upright_camera_frame_orientation)
+        points_in_upright_camera_frame = np.dot(pybullet_xyz, camera_frame_to_upright_camera_frame_mat.T)
+        sun_rgbd_xyz = np.stack(
+            (
+                -points_in_upright_camera_frame[:, :, 1],
+                points_in_upright_camera_frame[:, :, 0],
+                points_in_upright_camera_frame[:, :, 2],
+            ),
+            axis=-1,
+        )
+
+        # Cache cloud points information.
         frame_idx = frame_to_entry_idx(env.simulator.frame_count) % FRAME_BATCH_SIZE
-        self.points_cache[frame_idx] = threed.astype(np.float32)
+        self.points_cache[frame_idx] = np.concatenate((sun_rgbd_xyz, threed[:, :, -1:]), axis=-1).astype(np.float32)
         self.colors_cache[frame_idx] = rgb[:, :, :3].astype(np.float32)
         self.categories_cache[frame_idx] = seg.astype(np.int32)
         self.instances_cache[frame_idx] = id_seg.astype(np.int32)
@@ -148,13 +173,14 @@ class BBoxExtractor(object):
     def start_callback(self, _, log_reader):
         # Create the dataset
         n_frames = frame_to_entry_idx(log_reader.total_frame_num)
-        # body id, category id, 2d top left, 2d extent, 3d center, 4d orientation quat, 3d extent
+        # The array contains 13 items: body id, category id, 2d top left, 2d extent, 3d center, z-axis rotation, 3d extent.
+        # We only have z-axis rotation because the 3D bounding box is xy aligned.
         self.bboxes = self.h5py_file.create_dataset(
-            "/bbox2d",
-            (n_frames, p.getNumBodies(), 16),
+            "/bbox",
+            (n_frames, p.getNumBodies(), 13),
             dtype=np.float32,
             compression="lzf",
-            chunks=(min(n_frames, FRAME_BATCH_SIZE), p.getNumBodies(), 16),
+            chunks=(min(n_frames, FRAME_BATCH_SIZE), p.getNumBodies(), 13),
         )
 
         if SAVE_CAMERA:
@@ -176,7 +202,7 @@ class BBoxExtractor(object):
         self.create_caches()
 
     def create_caches(self):
-        self.bboxes_cache = np.full((FRAME_BATCH_SIZE, p.getNumBodies(), 16), -1, dtype=np.float32)
+        self.bboxes_cache = np.full((FRAME_BATCH_SIZE, p.getNumBodies(), 13), -1, dtype=np.float32)
 
         if SAVE_CAMERA:
             self.cameraV_cache = np.zeros((FRAME_BATCH_SIZE, 4, 4), dtype=np.float32)
@@ -214,37 +240,36 @@ class BBoxExtractor(object):
         filled_obj_idx = 0
 
         for body_id in np.unique(id_seg):
-            if body_id == -1 or body_id not in env.simulator.scene.objects_by_id:
+            if body_id == -1 or body_id not in env.scene.objects_by_id:
                 continue
 
             # Get the object semantic class ID
-            obj = env.scene.objects_by_id[body_id]
+            obj = env.simulator.scene.objects_by_id[body_id]
             if not isinstance(obj, URDFObject):
                 # Ignore robots etc.
                 continue
 
             class_id = env.simulator.class_name_to_class_id.get(obj.category, SemanticClass.SCENE_OBJS)
 
-            # 2D bounding box
+            # Get 2D bounding box.
             this_object_pixels_positions = np.argwhere(id_seg == body_id)
             bb_top_left = np.min(this_object_pixels_positions, axis=0)
             bb_bottom_right = np.max(this_object_pixels_positions, axis=0)
 
-            # 3D bounding box
-            world_frame_center, world_frame_orientation, base_frame_extent, _ = obj.get_base_aligned_bounding_box(
-                body_id=body_id, visual=True
-            )
-            world_frame_pose = np.concatenate([world_frame_center, world_frame_orientation])
-            camera_frame_pose = env.simulator.renderer.transform_pose(world_frame_pose)
-            camera_frame_center = camera_frame_pose[:3]
-            camera_frame_orientation = camera_frame_pose[3:]
+            # Get 3D bounding box.
+            (
+                bbox_world_frame_center,
+                bbox_world_frame_orientation,
+                base_frame_extent,
+                _,
+            ) = obj.get_base_aligned_bounding_box(body_id=body_id, visual=True, xy_aligned=True)
 
             # Debug-mode drawing of the bounding box.
             if DEBUG_DRAW and obj.category not in ("walls", "floors", "ceilings"):
                 bbox_frame_vertex_positions = np.array(list(itertools.product((1, -1), repeat=3))) * (
                     base_frame_extent / 2
                 )
-                bbox_transform = utils.quat_pos_to_mat(world_frame_center, world_frame_orientation)
+                bbox_transform = utils.quat_pos_to_mat(bbox_world_frame_center, bbox_world_frame_orientation)
                 world_frame_vertex_positions = trimesh.transformations.transform_points(
                     bbox_frame_vertex_positions, bbox_transform
                 )
@@ -253,14 +278,35 @@ class BBoxExtractor(object):
                         if j <= i:
                             p.addUserDebugLine(from_vertex, to_vertex, [1.0, 0.0, 0.0], 1, 0)
 
+            # Transform from world frame to upright camera frame.
+            camera_trans, camera_orientation = env.simulator.robots[0].parts["eye"].get_position_orientation()
+            camera_rotated_X_axis = matrix_from_quat(camera_orientation)[:, 0]
+            camera_rotation_around_Z_axis = np.arctan2(camera_rotated_X_axis[1], camera_rotated_X_axis[0])
+            upright_camera_orientation = p.getQuaternionFromEuler([0, 0, camera_rotation_around_Z_axis])
+            upright_camera_frame_center, upright_camera_frame_orientation = p.multiplyTransforms(
+                *p.invertTransform(camera_trans, upright_camera_orientation),
+                bbox_world_frame_center,
+                bbox_world_frame_orientation
+            )
+            rotation_around_Z_axis = p.getEulerFromQuaternion(upright_camera_frame_orientation)[2]
+
+            # PyBullet coordinate system is (forward, left, upward).
+            # SUN RGBD coordinate system is (right, forward, upward).
+            sun_rgbd_bbox_center = [
+                -upright_camera_frame_center[1],
+                upright_camera_frame_center[0],
+                upright_camera_frame_center[2],
+            ]
+            base_frame_extent = base_frame_extent[[1, 0, 2]]
+
             # Record the results.
             self.bboxes_cache[frame_idx, filled_obj_idx, 0] = body_id
             self.bboxes_cache[frame_idx, filled_obj_idx, 1] = class_id
             self.bboxes_cache[frame_idx, filled_obj_idx, 2:4] = bb_top_left
             self.bboxes_cache[frame_idx, filled_obj_idx, 4:6] = bb_bottom_right - bb_top_left
-            self.bboxes_cache[frame_idx, filled_obj_idx, 6:9] = camera_frame_center
-            self.bboxes_cache[frame_idx, filled_obj_idx, 9:13] = camera_frame_orientation
-            self.bboxes_cache[frame_idx, filled_obj_idx, 13:16] = base_frame_extent
+            self.bboxes_cache[frame_idx, filled_obj_idx, 6:9] = sun_rgbd_bbox_center
+            self.bboxes_cache[frame_idx, filled_obj_idx, 9] = rotation_around_Z_axis
+            self.bboxes_cache[frame_idx, filled_obj_idx, 10:13] = base_frame_extent
             filled_obj_idx += 1
 
         if SAVE_CAMERA:
@@ -280,7 +326,7 @@ def main():
     print(args)
 
     def get_imvotenet_callbacks(demo_name, out_dir):
-        path = os.path.join(out_dir, demo_name + "_data.h5py")
+        path = os.path.join(out_dir, demo_name + "_data.hdf5")
         h5py_file = h5py.File(path, "w")
         extractors = [PointCloudExtractor(h5py_file), BBoxExtractor(h5py_file)]
 
@@ -299,6 +345,7 @@ def main():
         get_imvotenet_callbacks,
         image_size=(480, 480),
         ignore_errors=True,
+        skip_existing=True,
         debug_display=DEBUG_DRAW,
     )
 
