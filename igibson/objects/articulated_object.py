@@ -1052,25 +1052,16 @@ class URDFObject(StatefulObject, NonRobotObject):
         self.room_floor = room_floor
 
     def prepare_link_based_bounding_boxes(self):
+        """This function simply converts the link bounding box metadata to match prefixed link names."""
         self.unscaled_link_bounding_boxes = {}
         if "link_bounding_boxes" in self.metadata:
-            for name in self.metadata["link_bounding_boxes"]:
+            for name, bb_data in self.metadata["link_bounding_boxes"].items():
                 converted_name = self.get_prefixed_link_name(name)
-                self.unscaled_link_bounding_boxes[converted_name] = {}
-                for box_type in ["visual", "collision"]:
-                    self.unscaled_link_bounding_boxes[converted_name][box_type] = {}
-                    for axis_type in ["axis_aligned", "oriented"]:
-                        if box_type not in self.metadata["link_bounding_boxes"][name]:
-                            # We'll use the AABB for any nonexistent BBs.
-                            continue
-                        # Store the extent and transform.
-                        bb_data = self.metadata["link_bounding_boxes"][name][box_type][axis_type]
-                        self.unscaled_link_bounding_boxes[converted_name][box_type][axis_type] = {
-                            "extent": np.array(bb_data["extent"]),
-                            "transform": np.array(bb_data["transform"]),
-                        }
+                self.unscaled_link_bounding_boxes[converted_name] = bb_data
 
-    def get_base_aligned_bounding_box(self, body_id=None, link_id=None, visual=False, xy_aligned=False):
+    def get_base_aligned_bounding_box(
+        self, body_id=None, link_id=None, visual=False, xy_aligned=False, fallback_to_aabb=False
+    ):
         """Get a bounding box for this object that's axis-aligned in the object's base frame."""
         if body_id is None:
             body_id = self.get_body_id()
@@ -1084,18 +1075,39 @@ class URDFObject(StatefulObject, NonRobotObject):
         # Compute the world-to-base frame transform.
         world_to_base_com = trimesh.transformations.inverse_matrix(base_com_to_world)
 
-        # Grab the corners of all the different links' bounding boxes.
+        # Grab the corners of all the different links' bounding boxes. We will later fit a bounding box to
+        # this set of points to get our final, base-frame bounding box.
         points = []
 
         links = [link_id] if link_id is not None else get_all_links(body_id)
         for link in links:
-            name = get_link_name(body_id, link)
+            link_name = get_link_name(body_id, link)
             # If the link has a bounding box annotation.
-            if name in self.unscaled_link_bounding_boxes and bbox_type in self.unscaled_link_bounding_boxes[name]:
-                # Get the bounding box data.
-                bb_data = self.unscaled_link_bounding_boxes[name][bbox_type]["oriented"]
-                extent = bb_data["extent"]
-                transfrom = bb_data["transform"]
+            if link_name in self.unscaled_link_bounding_boxes:
+                # If a visual bounding box does not exist in the dictionary, try switching to collision.
+                # We expect that every link has its collision bb annotated (or set to None if none exists).
+                if bbox_type == "visual" and "visual" not in self.unscaled_link_bounding_boxes[link_name]:
+                    logging.debug(
+                        "Falling back to collision bbox for object %s link %s since no visual bbox exists.",
+                        self.name,
+                        link_name,
+                    )
+                    bbox_type = "collision"
+
+                # Check if the annotation is still missing.
+                if bbox_type not in self.unscaled_link_bounding_boxes[link_name]:
+                    raise ValueError(
+                        "Could not find %s bounding box for object %s link %s" % (bbox_type, self.name, link_name)
+                    )
+
+                # Check if a mesh exists for this link. If None, the link is meshless, so we continue to the next link.
+                if self.unscaled_link_bounding_boxes[link_name][bbox_type] is None:
+                    continue
+
+                # Get the extent and transform.
+                bb_data = self.unscaled_link_bounding_boxes[link_name][bbox_type]["oriented"]
+                extent_in_bbox_frame = np.array(bb_data["extent"])
+                bbox_to_link_origin = np.array(bb_data["transform"])
 
                 # Get the link's pose in the base frame.
                 if link == -1:
@@ -1107,8 +1119,13 @@ class URDFObject(StatefulObject, NonRobotObject):
                     )
                     link_com_to_base_com = np.dot(world_to_base_com, link_com_to_world)
 
-                # Scale the bounding box in link origin frame.
-                bbox_to_link_origin = np.dot(np.diag(np.concatenate([self.scales_in_link_frame[name], [1]])), transfrom)
+                # Scale the bounding box in link origin frame. Here we create a transform that first puts the bounding
+                # box's vertices into the link frame, and then scales them to match the scale applied to this object.
+                # Note that once scaled, the vertices of the bounding box do not necessarily form a cuboid anymore but
+                # instead a parallelepiped. This is not a problem because we later fit a bounding box to the points,
+                # this time in the object's base link frame.
+                scale_in_link_frame = np.diag(np.concatenate([self.scales_in_link_frame[link_name], [1]]))
+                bbox_to_scaled_link_origin = np.dot(scale_in_link_frame, bbox_to_link_origin)
 
                 # Account for the link vs. center-of-mass.
                 dynamics_info = p.getDynamicsInfo(body_id, link)
@@ -1116,12 +1133,13 @@ class URDFObject(StatefulObject, NonRobotObject):
                 link_origin_to_link_com = utils.quat_pos_to_mat(inertial_pos, inertial_orn)
 
                 # Compute the bounding box vertices in the base frame.
-                bbox_to_link_com = np.dot(link_origin_to_link_com, bbox_to_link_origin)
+                bbox_to_link_com = np.dot(link_origin_to_link_com, bbox_to_scaled_link_origin)
                 bbox_center_in_base_com = np.dot(link_com_to_base_com, bbox_to_link_com)
-                vertices_in_base_com = np.array(list(itertools.product((1, -1), repeat=3))) * (extent / 2)
+                vertices_in_base_com = np.array(list(itertools.product((1, -1), repeat=3))) * (extent_in_bbox_frame / 2)
 
+                # Add the points to our collection of points.
                 points.extend(trimesh.transformations.transform_points(vertices_in_base_com, bbox_center_in_base_com))
-            else:
+            elif fallback_to_aabb:
                 # If no BB annotation is available, get the AABB for this link.
                 aabb_center, aabb_extent = get_center_extent(body_id, link=link)
                 aabb_vertices_in_world = aabb_center + np.array(list(itertools.product((1, -1), repeat=3))) * (
@@ -1131,6 +1149,11 @@ class URDFObject(StatefulObject, NonRobotObject):
                     aabb_vertices_in_world, world_to_base_com
                 )
                 points.extend(aabb_vertices_in_base_com)
+            else:
+                raise ValueError(
+                    "Bounding box annotation missing for link: %s. Use fallback_to_aabb=True if you're okay with using "
+                    "AABB as fallback." % link_name
+                )
 
         if xy_aligned:
             # If the user requested an XY-plane aligned bbox, convert everything to that frame.
@@ -1156,8 +1179,9 @@ class URDFObject(StatefulObject, NonRobotObject):
             # Default desired frame is base CoM frame.
             desired_frame_to_world = base_com_to_world
 
+        # TODO: Implement logic to allow tight bounding boxes that don't necessarily have to match the base frame.
         # All points are now in the desired frame: either the base CoM or the xy-plane-aligned base CoM.
-        # Now take the minimum/maximum in the desired frame.
+        # Now fit a bounding box to all the points by taking the minimum/maximum in the desired frame.
         aabb_min_in_desired_frame = np.amin(points, axis=0)
         aabb_max_in_desired_frame = np.amax(points, axis=0)
         bbox_center_in_desired_frame = (aabb_min_in_desired_frame + aabb_max_in_desired_frame) / 2
