@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from enum import IntEnum
 
 import gym
 import numpy as np
@@ -7,7 +8,12 @@ from transforms3d.euler import euler2quat
 from transforms3d.quaternions import qmult, quat2mat
 
 import igibson.utils.transform_utils as T
-from igibson.controllers import ManipulationController, NullGripperController
+from igibson.controllers import (
+    JointController,
+    ManipulationController,
+    NullGripperController,
+    ParallelJawGripperController,
+)
 from igibson.external.pybullet_tools.utils import (
     get_child_frame_pose,
     get_constraint_violation,
@@ -20,6 +26,13 @@ from igibson.external.pybullet_tools.utils import (
 from igibson.robots.robot_base import BaseRobot
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
+
+
+class IsGraspingState(IntEnum):
+    TRUE = 1
+    UNKNOWN = 0
+    FALSE = -1
+
 
 AG_MODES = {
     None,
@@ -35,6 +48,10 @@ MAX_ASSIST_FORCE = 500
 ASSIST_FORCE = MIN_ASSIST_FORCE + (MAX_ASSIST_FORCE - MIN_ASSIST_FORCE) * ASSIST_FRACTION
 CONSTRAINT_VIOLATION_THRESHOLD = 0.1
 RELEASE_WINDOW = 1 / 30.0  # release window in seconds
+
+# is_grasping heuristics parameters
+POS_TOLERANCE = 0.002  # arbitrary heuristic
+VEL_TOLERANCE = 0.01  # arbitrary heuristic
 
 
 class ManipulationRobot(BaseRobot):
@@ -53,8 +70,10 @@ class ManipulationRobot(BaseRobot):
 
     def __init__(
         self,
-        control_freq=10.0,
-        action_config=None,
+        control_freq=None,
+        action_type="continuous",
+        action_normalize=True,
+        proprio_obs="default",
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -64,12 +83,14 @@ class ManipulationRobot(BaseRobot):
         assisted_grasp_mode=None,
     ):
         """
-        :param control_freq: float, control frequency (in Hz) at which to control the robot
-        :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
-            to action-related values. Should, at the minimum, contain:
-                type: one of {discrete, continuous} - what type of action space to use
-                normalize: either {True, False} - whether to normalize inputted actions
-            This will override any default values specified by this class.
+        :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
+            simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
+        :param action_type: str, one of {discrete, continuous} - what type of action space to use
+        :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
+         specified by this class.
+        :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
+            observations. If str, should be exactly "default" -- this results in the default proprioception observations
+            being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -100,7 +121,9 @@ class ManipulationRobot(BaseRobot):
         # Call super() method
         super().__init__(
             control_freq=control_freq,
-            action_config=action_config,
+            action_type=action_type,
+            action_normalize=action_normalize,
+            proprio_obs=proprio_obs,
             controller_config=controller_config,
             base_name=base_name,
             scale=scale,
@@ -131,16 +154,106 @@ class ManipulationRobot(BaseRobot):
         # run super
         super()._validate_configuration()
 
-    def is_grasping(self, candidate_obj):
+    def is_grasping(self, candidate_obj=None):
         """
-        Returns True if the robot is grasping the target option @candidate_obj.
+        Returns True if the robot is grasping the target option @candidate_obj or any object if @candidate_obj is None.
 
-        :param candidate_obj: Object, object to check if this robot is currently grasping
+        :param candidate_obj: Object or None, object to check if this robot is currently grasping. If None, then
+            will be a general (object-agnostic) check for grasping.
+            Note: if self.assisted_grasp_mode is None, then @candidate_obj will be ignored completely
 
-        :return Array[bool]: For each manipulator appendage, returns 1 if it is grasping @candidate_obj,
-            otherwise it returns 0
+        :return Array[int]: For each manipulator appendage, returns IsGraspingState.TRUE if it is grasping (potentially
+            @candidate_obj if specified), IsGraspingState.FALSE if it is not grasping, and IsGraspingState.UNKNOWN if unknown.
         """
-        return np.array([self._obj_in_hand == candidate_obj])
+        if self.assisted_grasp_mode is not None:
+            is_grasping_obj = (
+                self._ag_obj_in_hand is not None if candidate_obj is None else self._ag_obj_in_hand == candidate_obj
+            )
+            is_grasping = (
+                IsGraspingState.TRUE if is_grasping_obj and self._ag_release_counter else IsGraspingState.FALSE
+            )
+        else:
+            gripper_controller = self._controllers["gripper"]
+
+            # NullGripperController cannot grasp anything
+            if isinstance(gripper_controller, NullGripperController):
+                is_grasping = IsGraspingState.FALSE
+
+            # JointController does not have any good heuristics to determine is_grasping
+            elif isinstance(gripper_controller, JointController):
+                is_grasping = IsGraspingState.UNKNOWN
+
+            elif isinstance(gripper_controller, ParallelJawGripperController):
+                # Independent mode of ParallelJawGripperController does not have any good heuristics to determine is_grasping
+                if gripper_controller.mode == "independent":
+                    is_grasping = IsGraspingState.UNKNOWN
+
+                # No control has been issued before
+                elif gripper_controller.control is None:
+                    is_grasping = IsGraspingState.FALSE
+
+                else:
+                    assert np.all(
+                        gripper_controller.control == gripper_controller.control[0]
+                    ), "ParallelJawGripperController has different values in the command for non-independent mode"
+
+                    assert POS_TOLERANCE > gripper_controller.limit_tolerance, (
+                        "Joint position tolerance for is_grasping heuristics checking is smaller than or equal to the "
+                        "gripper controller's tolerance of zero-ing out velocities, which makes the heuristics invalid."
+                    )
+
+                    finger_pos = self.joint_positions[self.gripper_control_idx]
+
+                    # For joint position control, if the desired positions are the same as the current positions, is_grasping unknown
+                    if (
+                        gripper_controller.motor_type == "position"
+                        and np.mean(np.abs(finger_pos - gripper_controller.control)) < POS_TOLERANCE
+                    ):
+                        is_grasping = IsGraspingState.UNKNOWN
+
+                    # For joint velocity / torque control, if the desired velocities / torques are zeros, is_grasping unknown
+                    elif (
+                        gripper_controller.motor_type in {"velocity", "torque"}
+                        and np.mean(np.abs(gripper_controller.control)) < VEL_TOLERANCE
+                    ):
+                        is_grasping = IsGraspingState.UNKNOWN
+
+                    # Otherwise, the last control signal intends to "move" the gripper
+                    else:
+                        finger_pos = self.joint_positions[self.gripper_control_idx]
+                        finger_vel = self.joint_velocities[self.gripper_control_idx]
+                        min_pos = self.joint_lower_limits[self.gripper_control_idx]
+                        max_pos = self.joint_upper_limits[self.gripper_control_idx]
+
+                        # Make sure we don't have any invalid values (i.e.: fingers should be within the limits)
+                        assert np.all(
+                            (min_pos <= finger_pos) * (finger_pos <= max_pos)
+                        ), "Got invalid finger joint positions when checking for grasp!"
+
+                        # Check distance from both ends of the joint limits
+                        dist_from_lower_limit = finger_pos - min_pos
+                        dist_from_upper_limit = max_pos - finger_pos
+
+                        # If the joint positions are not near the joint limits with some tolerance (POS_TOLERANCE)
+                        valid_grasp_pos = (
+                            np.mean(dist_from_lower_limit) > POS_TOLERANCE
+                            and np.mean(dist_from_upper_limit) > POS_TOLERANCE
+                        )
+
+                        # And the joint velocities are close to zero with some tolerance (VEL_TOLERANCE)
+                        valid_grasp_vel = np.all(np.abs(finger_vel) < VEL_TOLERANCE)
+
+                        # Then the gripper is grasping something, which stops the gripper from reaching its desired state
+                        is_grasping = is_grasping = (
+                            IsGraspingState.TRUE if valid_grasp_pos and valid_grasp_vel else IsGraspingState.FALSE
+                        )
+
+            else:
+                # Add more cases once we have more gripper controllers available
+                raise Exception("Unexpected gripper controller type: {}".format(type(gripper_controller)))
+
+        # Return as a numerical array
+        return np.array([is_grasping])
 
     def apply_action(self, action):
         # First run assisted grasping
@@ -172,6 +285,31 @@ class ManipulationRobot(BaseRobot):
         dic["task_quat_relative"] = self.get_relative_eef_orientation()
 
         return dic
+
+    def _get_proprioception_dict(self):
+        dic = super()._get_proprioception_dict()
+
+        # Add arm info
+        dic["arm_qpos"] = self.joint_positions[self.arm_control_idx]
+        dic["arm_qpos_sin"] = np.sin(self.joint_positions[self.arm_control_idx])
+        dic["arm_qpos_cos"] = np.cos(self.joint_positions[self.arm_control_idx])
+        dic["arm_qvel"] = self.joint_velocities[self.arm_control_idx]
+
+        # Add eef and grasping info
+        dic["eef_pos_global"] = self.get_eef_position()
+        dic["eef_quat_global"] = self.get_eef_orientation()
+        dic["eef_pos"] = self.get_relative_eef_position()
+        dic["eef_quat"] = self.get_relative_eef_orientation()
+        dic["grasp"] = self.is_grasping()
+        dic["gripper_qpos"] = self.joint_positions[self.finger_joint_ids]
+        dic["gripper_qvel"] = self.joint_velocities[self.finger_joint_ids]
+
+        return dic
+
+    @property
+    def default_proprio_obs(self):
+        obs_keys = super().default_proprio_obs
+        return obs_keys + ["arm_qpos_sin", "arm_qpos_cos", "eef_pos", "eef_quat", "gripper_qpos", "grasp"]
 
     @property
     def controller_order(self):
@@ -263,6 +401,12 @@ class ManipulationRobot(BaseRobot):
         :return Array[float]: (x,y,z) global end-effector Cartesian position for this robot's end-effector
         """
         return self._links[self.eef_link_name].get_position()
+
+    def get_eef_orientation(self):
+        """
+        :return Array[float]: (x,y,z,w) global quaternion orientation for this robot's end-effector
+        """
+        return self._links[self.eef_link_name].get_orientation()
 
     def get_relative_eef_pose(self, mat=True):
         """
@@ -442,7 +586,7 @@ class ManipulationRobot(BaseRobot):
             "joint_idx": self.gripper_control_idx,
             "command_output_limits": "default",
             "mode": "binary",
-            "limit_tolerance": 0.01,
+            "limit_tolerance": 0.001,
         }
 
     @property

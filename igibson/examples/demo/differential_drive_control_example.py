@@ -43,7 +43,6 @@ def main(args):
     s = Simulator(
         mode="headless", use_pb_gui=True, rendering_settings=rendering_settings, image_height=512, image_width=512
     )
-    p.configureDebugVisualizer(p.COV_ENABLE_GUI, enable=0)
 
     scene = EmptyScene()
     s.scene = scene
@@ -52,7 +51,7 @@ def main(args):
     s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    agent = REGISTERED_ROBOTS[args.robot](action_config={"type": "continuous"})
+    agent = REGISTERED_ROBOTS[args.robot](action_type="continuous")
 
     s.import_robot(agent)
 
@@ -61,61 +60,6 @@ def main(args):
     assert (
         agent.controller_config["base"]["name"] == "DifferentialDriveController"
     ), "Robot must be using differential drive control for its base"
-
-    table_objects_to_load = {
-        "table_1": {
-            "category": "breakfast_table",
-            "model": "1b4e6f9dd22a8c628ef9d976af675b86",
-            "pos": (1.500000, 0.000000, 0.35),
-            "orn": (0, 0, 1, 1),
-        },
-        "coffee_cup_1": {
-            "category": "coffee_cup",
-            "model": "coffee_cup_000",
-            "pos": (1.5, 0.20, 0.8),
-            "orn": (0, 0, 0, 1),
-        },
-        "plate_1": {
-            "category": "plate",
-            "model": "plate_000",
-            "pos": (1.5, -0.20, 0.8),
-            "orn": (0, 0, 0, 1),
-        },
-    }
-
-    avg_category_spec = get_ig_avg_category_specs()
-
-    scene_objects = {}
-    for obj in table_objects_to_load.values():
-        category = obj["category"]
-        if category in scene_objects:
-            scene_objects[category] += 1
-        else:
-            scene_objects[category] = 1
-
-        category_path = get_ig_category_path(category)
-        if "model" in obj:
-            model = obj["model"]
-        else:
-            model = np.random.choice(os.listdir(category_path))
-        model_path = get_ig_model_path(category, model)
-        filename = os.path.join(model_path, model + ".urdf")
-        obj_name = "{}_{}".format(category, scene_objects[category])
-
-        simulator_obj = URDFObject(
-            filename,
-            name=obj_name,
-            category=category,
-            model_path=model_path,
-            avg_obj_dims=avg_category_spec.get(category),
-            fit_avg_dim_volume=True,
-            texture_randomization=False,
-            overwrite_inertial=True,
-            initial_pos=obj["pos"],
-            initial_orn=[0, 0, 90],
-        )
-        s.import_object(simulator_obj)
-        simulator_obj.set_orientation(obj["orn"])
 
     agent.reset()
     i = 0

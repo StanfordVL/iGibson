@@ -30,7 +30,7 @@ class ParallelJawGripperController(ManipulationController):
         command_input_limits="default",
         command_output_limits="default",
         mode="binary",
-        limit_tolerance=0.01,
+        limit_tolerance=0.001,
     ):
         """
         :param control_freq: int, controller loop frequency

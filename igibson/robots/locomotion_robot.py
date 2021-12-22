@@ -37,6 +37,22 @@ class LocomotionRobot(BaseRobot):
         # run super
         super()._validate_configuration()
 
+    def _get_proprioception_dict(self):
+        dic = super()._get_proprioception_dict()
+
+        # Add base info
+        dic["base_qpos"] = self.joint_positions[self.base_control_idx]
+        dic["base_qpos_sin"] = np.sin(self.joint_positions[self.base_control_idx])
+        dic["base_qpos_cos"] = np.cos(self.joint_positions[self.base_control_idx])
+        dic["base_qvel"] = self.joint_velocities[self.base_control_idx]
+
+        return dic
+
+    @property
+    def default_proprio_obs(self):
+        obs_keys = super().default_proprio_obs
+        return obs_keys + ["base_qpos_sin", "base_qpos_cos", "robot_lin_vel", "robot_ang_vel"]
+
     @property
     def controller_order(self):
         # By default, only base is supported

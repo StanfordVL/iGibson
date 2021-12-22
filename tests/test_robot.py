@@ -3,25 +3,19 @@ import os
 import numpy as np
 import pybullet as p
 
-from igibson.robots.ant import Ant
-from igibson.robots.fetch import Fetch
-from igibson.robots.husky import Husky
-from igibson.robots.jr2 import JR2
-from igibson.robots.turtlebot import Turtlebot
+from igibson.robots import REGISTERED_ROBOTS
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets
-from igibson.utils.utils import parse_config
 
 download_assets()
-config = parse_config(os.path.join(os.path.dirname(__file__), "test.yaml"))
 
 
 def test_fetch():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    fetch = Fetch(config)
+    fetch = REGISTERED_ROBOTS["Fetch"]()
     s.import_robot(fetch)
     for i in range(100):
         fetch.calc_state()
@@ -33,7 +27,7 @@ def test_turtlebot():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    turtlebot = Turtlebot(config)
+    turtlebot = REGISTERED_ROBOTS["Turtlebot"]()
     s.import_robot(turtlebot)
     nbody = p.getNumBodies()
     s.disconnect()
@@ -44,7 +38,7 @@ def test_jr2():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    jr2 = JR2(config)
+    jr2 = REGISTERED_ROBOTS["JR2"]()
     s.import_robot(jr2)
     nbody = p.getNumBodies()
     s.disconnect()
@@ -55,9 +49,9 @@ def test_ant():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    ant = Ant(config)
+    ant = REGISTERED_ROBOTS["Ant"]()
     s.import_robot(ant)
-    ant2 = Ant(config)
+    ant2 = REGISTERED_ROBOTS["Ant"]()
     s.import_robot(ant2)
     ant2.set_position([0, 2, 2])
     nbody = p.getNumBodies()
@@ -71,7 +65,7 @@ def test_husky():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    husky = Husky(config)
+    husky = REGISTERED_ROBOTS["Husky"]()
     s.import_robot(husky)
     nbody = p.getNumBodies()
     s.disconnect()
@@ -82,7 +76,7 @@ def test_turtlebot_position():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    turtlebot = Turtlebot(config)
+    turtlebot = REGISTERED_ROBOTS["Turtlebot"]()
     s.import_robot(turtlebot)
 
     turtlebot.set_position([0, 0, 5])
@@ -98,9 +92,9 @@ def test_multiagent():
     s = Simulator(mode="headless")
     scene = StadiumScene()
     s.import_scene(scene)
-    turtlebot1 = Turtlebot(config)
-    turtlebot2 = Turtlebot(config)
-    turtlebot3 = Turtlebot(config)
+    turtlebot1 = REGISTERED_ROBOTS["Turtlebot"]()
+    turtlebot2 = REGISTERED_ROBOTS["Turtlebot"]()
+    turtlebot3 = REGISTERED_ROBOTS["Turtlebot"]()
 
     s.import_robot(turtlebot1)
     s.import_robot(turtlebot2)
@@ -123,23 +117,23 @@ def show_action_sensor_space():
     scene = StadiumScene()
     s.import_scene(scene)
 
-    turtlebot = Turtlebot(config)
+    turtlebot = REGISTERED_ROBOTS["Turtlebot"]()
     s.import_robot(turtlebot)
     turtlebot.set_position([0, 1, 0.5])
 
-    ant = Ant(config)
+    ant = REGISTERED_ROBOTS["Ant"]()
     s.import_robot(ant)
     ant.set_position([0, 2, 0.5])
 
-    jr = JR2(config)
+    jr = REGISTERED_ROBOTS["JR2"]()
     s.import_robot(jr)
     jr.set_position([0, 4, 0.5])
 
-    jr2 = JR2(config)
+    jr2 = REGISTERED_ROBOTS["JR2"]()
     s.import_robot(jr2)
     jr2.set_position([0, 5, 0.5])
 
-    husky = Husky(config)
+    husky = REGISTERED_ROBOTS["Husky"]()
     s.import_robot(husky)
     husky.set_position([0, 6, 0.5])
 
