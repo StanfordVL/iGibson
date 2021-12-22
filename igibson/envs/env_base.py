@@ -2,14 +2,7 @@ import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots.ant import Ant
-from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.fetch import Fetch
-from igibson.robots.freight import Freight
-from igibson.robots.husky import Husky
-from igibson.robots.jr2 import JR2
-from igibson.robots.locobot import Locobot
-from igibson.robots.turtlebot import Turtlebot
+from igibson.robots import REGISTERED_ROBOTS
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -191,31 +184,23 @@ class BaseEnv(gym.Env):
 
         self.simulator.import_scene(scene)
 
-        # TODO: modify way of instantiating robots (pass specific configs, not monolithic)
+        # Get robot config
+        robot_config = self.config["robot"]
 
-        if self.config["robot"] == "Turtlebot":
-            robot = Turtlebot(self.config)
-        elif self.config["robot"] == "Husky":
-            robot = Husky(self.config)
-        elif self.config["robot"] == "Ant":
-            robot = Ant(self.config)
-        elif self.config["robot"] == "Humanoid":
-            robot = Humanoid(self.config)
-        elif self.config["robot"] == "JR2":
-            robot = JR2(self.config)
-        elif self.config["robot"] == "Freight":
-            robot = Freight(self.config)
-        elif self.config["robot"] == "Fetch":
-            robot = Fetch(self.config)
-        elif self.config["robot"] == "Locobot":
-            robot = Locobot(self.config)
-        elif self.config["robot"] == "BehaviorRobot":
-            robot = BehaviorRobot(self.simulator)
+        # Get corresponding robot class
+        robot_name = robot_config.pop("name")
+        assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
+
+        # TODO: Remove if statement once BEHAVIOR robot is refactored
+        if robot_name == "BehaviorRobot":
+            robot = REGISTERED_ROBOTS[robot_name](self.simulator)
         else:
-            raise Exception("unknown robot type: {}".format(self.config["robot"]))
+            robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
         self.simulator.import_robot(robot)
-        if isinstance(robot, BehaviorRobot):
+
+        # TODO: Remove if statement once BEHAVIOR robot is refactored
+        if robot_name == "BehaviorRobot":
             self.robot_body_id = robot.links["body"].get_body_id()
         else:
             self.robot_body_id = robot.get_body_id()

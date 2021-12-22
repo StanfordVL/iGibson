@@ -258,6 +258,15 @@ class Simulator:
         """
         # TODO: Remove this function in favor of unifying with import_object.
         assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
+
+        # TODO: remove this if statement after BehaviorRobot refactoring
+        if isinstance(robot, BaseRobot):
+            assert (
+                robot.control_freq is None
+            ), "control_freq should NOT be specified in robot config. Currently this value is automatically inferred from simulator.render_timestep!"
+            control_freq = 1.0 / self.render_timestep
+            robot.control_freq = control_freq
+
         self.scene.add_object(robot, self, _is_call_from_simulator=True)
         self.robots.append(robot)
 

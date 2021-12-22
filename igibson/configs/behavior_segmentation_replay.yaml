@@ -1,45 +1,44 @@
 # scene
 scene: igibson
-scene_id: Rs_int
+scene_id: REPLACE_ME
+clutter: false
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
-trav_map_type: no_obj
-trav_map_resolution: 0.1
-trav_map_erosion: 3
 should_open_all_doors: true
+
+# Ignore task, use EmptyScene instead
+debug: False
 
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Fetch
+robot:
+  name: BehaviorRobot
 
 # task
-task: room_rearrangement
-load_object_categories: [
-  bottom_cabinet,
-  bottom_cabinet_no_top,
-  top_cabinet,
-  dishwasher,
-  fridge,
-  microwave,
-  oven,
-  washer
-  dryer,
-]
+task: REPLACE_ME
+task_id: REPLACE_ME
+online_sampling: False
+target_dist_min: 1.0
+target_dist_max: 10.0
+goal_format: polar
+task_obs_dim: 4
 
 # reward
+reward_type: l2
+success_reward: 10.0
 potential_reward_weight: 1.0
-prismatic_joint_reward_scale: 3.0
-revolute_joint_reward_scale: 1.0
+collision_reward_weight: -0.1
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-max_step: 500
+dist_tol: 0.36  # body width
+max_step: 100
 max_collisions_allowed: 500
 
 # misc config
@@ -47,13 +46,13 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [rgb, depth, scan]
+output: [proprioception, task_obs]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 128
-image_height: 128
+image_width: 512
+image_height: 512
 vertical_fov: 90
 # depth
 depth_low: 0.35
@@ -76,3 +75,11 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
+
+# speed limit
+hand_threshold: 0.4
+hand_speed: 0.3
+body_speed: 0.3
+
+# texture scale
+texture_scale: 0.5

@@ -111,6 +111,7 @@ class BaseController:
         self._joint_idx = joint_idx
 
         # Initialize some other variables that will be filled in during runtime
+        self.control = None
         self._command = None
         self._command_scale_factor = None
         self._command_output_transform = None
@@ -219,7 +220,8 @@ class BaseController:
         :return Array[float]: numpy array of outputted control signals
         """
         control = self._command_to_control(command=self._command, control_dict=control_dict)
-        return self.clip_control(control=control)
+        self.control = self.clip_control(control=control)
+        return self.control
 
     def reset(self):
         """

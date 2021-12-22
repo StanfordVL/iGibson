@@ -16,12 +16,6 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     Reference: https://cvgl.stanford.edu/projects/jackrabbot/
     """
 
-    def get_proprioception(self):
-        relative_eef_pos = self.get_relative_eef_position()
-        relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
-        joint_states = np.array([j.get_state() for j in self._joints.values()]).astype(np.float32).flatten()
-        return np.concatenate([relative_eef_pos, relative_eef_orn, joint_states])
-
     def _create_discrete_action_space(self):
         # JR2 does not support discrete actions if we're controlling the arm as well
         raise ValueError("Full JR2 does not support discrete actions!")

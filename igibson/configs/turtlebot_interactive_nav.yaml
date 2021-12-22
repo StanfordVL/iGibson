@@ -1,6 +1,6 @@
 # scene
-scene: gibson
-scene_id: Rs
+scene: igibson
+scene_id: Rs_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -14,11 +14,20 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Turtlebot
-is_discrete: false
+robot:
+  name: Turtlebot
+  action_type: continuous
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  controller_config:
+    base:
+      name: DifferentialDriveController
 
 # task
-task: point_nav_random
+task: interactive_nav_random
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
@@ -72,6 +81,3 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-
-# Need to reduce the texture size for machines that have less memory (e.g. older versions of Macbooks)
-texture_scale: 0.5

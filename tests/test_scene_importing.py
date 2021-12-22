@@ -9,7 +9,6 @@ from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets, download_demo_data
-from igibson.utils.utils import parse_config
 
 
 def test_import_building():
@@ -50,16 +49,15 @@ def test_import_stadium():
 def test_import_building_viewing():
     download_assets()
     download_demo_data()
-    config = parse_config(os.path.join(os.path.dirname(__file__), "test.yaml"))
 
     s = Simulator(mode="headless")
     scene = StaticIndoorScene("Rs")
     s.import_scene(scene)
     assert p.getNumBodies() == 2
 
-    turtlebot1 = Turtlebot(config)
-    turtlebot2 = Turtlebot(config)
-    turtlebot3 = Turtlebot(config)
+    turtlebot1 = Turtlebot()
+    turtlebot2 = Turtlebot()
+    turtlebot3 = Turtlebot()
 
     s.import_robot(turtlebot1)
     s.import_robot(turtlebot2)

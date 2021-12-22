@@ -11,9 +11,6 @@ class Ant(LocomotionRobot):
     OpenAI Ant Robot
     """
 
-    def get_proprioception(self):
-        return np.array([j.get_state() for j in self._joints.values()]).astype(np.float32).flatten()
-
     def _create_discrete_action_space(self):
         raise ValueError("Ant does not support discrete actions!")
 

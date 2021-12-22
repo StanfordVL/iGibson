@@ -1,0 +1,14 @@
+# Example Ant config
+robot:
+  name: Ant
+  action_type: continuous
+  action_normalize: true
+  proprio_obs:
+    - joint_qpos
+  base_name: null
+  scale: 1.0
+  self_collision: false
+  rendering_params: null
+  controller_config:
+    base:
+      name: JointController

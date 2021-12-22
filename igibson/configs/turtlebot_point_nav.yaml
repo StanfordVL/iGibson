@@ -1,6 +1,7 @@
 # scene
-scene: stadium
-build_graph: false
+scene: igibson
+scene_id: Rs_int
+build_graph: true
 load_texture: true
 pybullet_load_texture: true
 trav_map_type: no_obj
@@ -13,8 +14,17 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Turtlebot
-is_discrete: false
+robot:
+  name: Turtlebot
+  action_type: continuous
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  controller_config:
+    base:
+      name: DifferentialDriveController
 
 # task
 task: point_nav_random
@@ -24,7 +34,7 @@ goal_format: polar
 task_obs_dim: 4
 
 # reward
-reward_type: l2
+reward_type: geodesic
 success_reward: 10.0
 potential_reward_weight: 1.0
 collision_reward_weight: -0.1

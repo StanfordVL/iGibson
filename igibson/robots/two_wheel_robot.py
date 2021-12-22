@@ -26,47 +26,6 @@ class TwoWheelRobot(LocomotionRobot):
                 values specified, but setting these individual kwargs will override them
     """
 
-    def __init__(
-        self,
-        control_freq=10.0,
-        action_config=None,
-        controller_config=None,
-        base_name=None,
-        scale=1.0,
-        self_collision=False,
-        class_id=SemanticClass.ROBOTS,
-        rendering_params=None,
-    ):
-        """
-        :param control_freq: float, control frequency (in Hz) at which to control the robot
-        :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
-            to action-related values. Should, at the minimum, contain:
-                type: one of {discrete, continuous} - what type of action space to use
-                normalize: either {True, False} - whether to normalize inputted actions
-            This will override any default values specified by this class.
-        :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
-            configurations for this robot. This will override any default values specified by this class.
-        :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
-            this should correspond to one of the link names found in this robot's corresponding URDF / MJCF file.
-            None defaults to the base link name used in @model_file
-        :param scale: int, scaling factor for model (default is 1)
-        :param self_collision: bool, whether to enable self collision
-        :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
-        :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
-            See DEFAULT_RENDERING_PARAMS for the values passed by default.
-        """
-        # Run super init
-        super().__init__(
-            control_freq=control_freq,
-            action_config=action_config,
-            controller_config=controller_config,
-            base_name=base_name,
-            scale=scale,
-            self_collision=self_collision,
-            class_id=class_id,
-            rendering_params=rendering_params,
-        )
-
     def _validate_configuration(self):
         # Make sure base only has two indices (i.e.: two wheels for differential drive)
         assert len(self.base_control_idx) == 2, "Differential drive can only be used with robot with two base joints!"
@@ -108,6 +67,29 @@ class TwoWheelRobot(LocomotionRobot):
         # Return this action space
         return gym.spaces.Box(len(self.action_list))
 
+    def _get_proprioception_dict(self):
+        dic = super()._get_proprioception_dict()
+
+        # Grab wheel joint velocity info
+        joints = list(self._joints.values())
+        wheel_joints = [joints[idx] for idx in self.base_control_idx]
+        l_vel, r_vel = [jnt.get_state()[1] for jnt in wheel_joints]
+
+        # Compute linear and angular velocities
+        lin_vel = (l_vel + r_vel) / 2.0 * self.wheel_radius
+        ang_vel = (r_vel - l_vel) / self.wheel_axle_length
+
+        # Add info
+        dic["dd_base_lin_vel"] = np.array([lin_vel])
+        dic["dd_base_ang_vel"] = np.array([ang_vel])
+
+        return dic
+
+    @property
+    def default_proprio_obs(self):
+        obs_keys = super().default_proprio_obs
+        return obs_keys + ["dd_base_lin_vel", "dd_base_ang_vel"]
+
     @property
     def _default_controllers(self):
         # Always call super first
@@ -124,12 +106,6 @@ class TwoWheelRobot(LocomotionRobot):
         :return: Dict[str, Any] Default differential drive controller config to
             control this robot's base.
         """
-        # Calculate max linear, angular velocities -- make sure each wheel has same max values
-        max_vels = [list(self._joints.values())[i].max_velocity for i in self.base_control_idx]
-        assert max_vels[0] == max_vels[1], "Differential drive requires both wheel joints to have same max velocities!"
-        max_lin_vel = max_vels[0] * self.wheel_radius
-        max_ang_vel = max_lin_vel * 2.0 / self.wheel_axle_length
-
         return {
             "name": "DifferentialDriveController",
             "control_freq": self.control_freq,
@@ -137,7 +113,6 @@ class TwoWheelRobot(LocomotionRobot):
             "wheel_axle_length": self.wheel_axle_length,
             "control_limits": self.control_limits,
             "joint_idx": self.base_control_idx,
-            "command_output_limits": ([-max_lin_vel, -max_ang_vel], [max_lin_vel, max_ang_vel]),  # (lin_vel, ang_vel)
         }
 
     @property

@@ -29,8 +29,10 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
     def __init__(
         self,
-        control_freq=10.0,
-        action_config=None,
+        control_freq=None,
+        action_type="continuous",
+        action_normalize=True,
+        proprio_obs="default",
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -43,12 +45,14 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         default_arm_pose="vertical",
     ):
         """
-        :param control_freq: float, control frequency (in Hz) at which to control the robot
-        :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
-            to action-related values. Should, at the minimum, contain:
-                type: one of {discrete, continuous} - what type of action space to use
-                normalize: either {True, False} - whether to normalize inputted actions
-            This will override any default values specified by this class.
+        :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
+            simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
+        :param action_type: str, one of {discrete, continuous} - what type of action space to use
+        :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
+         specified by this class.
+        :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
+            observations. If str, should be exactly "default" -- this results in the default proprioception observations
+            being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -76,7 +80,8 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # Run super init
         super().__init__(
             control_freq=control_freq,
-            action_config=action_config,
+            action_type=action_type,
+            action_normalize=action_normalize,
             controller_config=controller_config,
             base_name=base_name,
             scale=scale,
@@ -129,16 +134,6 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         else:
             raise ValueError("Unknown default arm pose: {}".format(self.default_arm_pose))
         return pos
-
-    def get_proprioception(self):
-        relative_eef_pos = self.get_relative_eef_position()
-        relative_eef_orn = p.getEulerFromQuaternion(self.get_relative_eef_orientation())
-        joint_states = np.array([j.get_state() for j in self._joints.values()]).astype(np.float32).flatten()
-        self._ag_data = self._calculate_in_hand_object()
-        is_grasping = np.array([self._ag_obj_in_hand is not None and self._ag_release_counter is None]).astype(
-            np.float32
-        )
-        return np.concatenate([relative_eef_pos, relative_eef_orn, is_grasping, joint_states])
 
     def _create_discrete_action_space(self):
         # Fetch does not support discrete actions
@@ -221,6 +216,20 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             contact_dict[candidate] = new_contact_point_data
 
         return contact_dict
+
+    def _get_proprioception_dict(self):
+        dic = super()._get_proprioception_dict()
+
+        # Add trunk info
+        dic["trunk_qpos"] = self.joint_positions[self.trunk_control_idx]
+        dic["trunk_qvel"] = self.joint_velocities[self.trunk_control_idx]
+
+        return dic
+
+    @property
+    def default_proprio_obs(self):
+        obs_keys = super().default_proprio_obs
+        return obs_keys + ["trunk_qpos"]
 
     @property
     def controller_order(self):

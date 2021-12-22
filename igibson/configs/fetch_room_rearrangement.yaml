@@ -14,26 +14,54 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Fetch
+robot:
+  name: Fetch
+  action_type: continuous
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  assisted_grasping_mode: null
+  rigid_trunk: false
+  default_trunk_offset: 0.365
+  default_arm_pose: diagonal30
+  controller_config:
+    base:
+      name: DifferentialDriveController
+    arm:
+      name: InverseKinematicsController
+      kv: 2.0
+    gripper:
+      name: ParallelJawController
+      mode: binary
+    camera:
+      name: JointController
+      use_delta_commands: False
 
 # task
-task: reaching_random
-target_dist_min: 1.0
-target_dist_max: 10.0
-goal_format: polar
-task_obs_dim: 4
+task: room_rearrangement
+load_object_categories: [
+  bottom_cabinet,
+  bottom_cabinet_no_top,
+  top_cabinet,
+  dishwasher,
+  fridge,
+  microwave,
+  oven,
+  washer
+  dryer,
+]
 
 # reward
-reward_type: l2
-success_reward: 10.0
 potential_reward_weight: 1.0
-collision_reward_weight: -0.1
+prismatic_joint_reward_scale: 3.0
+revolute_joint_reward_scale: 1.0
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-dist_tol: 0.36  # body width
 max_step: 500
 max_collisions_allowed: 500
 
@@ -42,7 +70,7 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [task_obs, rgb, depth, scan]
+output: [rgb, depth, scan]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09

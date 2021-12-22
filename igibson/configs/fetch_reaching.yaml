@@ -1,26 +1,46 @@
 # scene
 scene: igibson
-scene_id: REPLACE_ME
-clutter: false
+scene_id: Rs_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
+trav_map_type: no_obj
+trav_map_resolution: 0.1
+trav_map_erosion: 3
 should_open_all_doors: true
-
-# Ignore task, use EmptyScene instead
-debug: False
 
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: BehaviorRobot
+robot:
+  name: Fetch
+  action_type: continuous
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  assisted_grasping_mode: null
+  rigid_trunk: false
+  default_trunk_offset: 0.365
+  default_arm_pose: diagonal30
+  controller_config:
+    base:
+      name: DifferentialDriveController
+    arm:
+      name: InverseKinematicsController
+      kv: 2.0
+    gripper:
+      name: ParallelJawController
+      mode: binary
+    camera:
+      name: JointController
+      use_delta_commands: False
 
 # task
-task: REPLACE_ME
-task_id: REPLACE_ME
-online_sampling: False
+task: reaching_random
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
@@ -37,7 +57,7 @@ discount_factor: 0.99
 
 # termination condition
 dist_tol: 0.36  # body width
-max_step: 100
+max_step: 500
 max_collisions_allowed: 500
 
 # misc config
@@ -45,13 +65,13 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [proprioception, task_obs]
+output: [task_obs, rgb, depth, scan]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
 fisheye: false
-image_width: 512
-image_height: 512
+image_width: 128
+image_height: 128
 vertical_fov: 90
 # depth
 depth_low: 0.35
@@ -74,11 +94,3 @@ scan_noise_rate: 0.0
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
-
-# speed limit
-hand_threshold: 0.4
-hand_speed: 0.3
-body_speed: 0.3
-
-# texture scale
-texture_scale: 0.5

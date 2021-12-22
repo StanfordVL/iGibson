@@ -12,7 +12,8 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: BehaviorRobot
+robot:
+  name: BehaviorRobot
 
 # task
 task: cleaning_cupboards
