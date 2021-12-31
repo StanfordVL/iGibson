@@ -1014,13 +1014,12 @@ class BRHand(BRHandBase):
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
-                    # print(ag_data, force_data)
-                    # from IPython import embed; embed()
                     if not force_data or ag_data not in force_data:
                         return False
                 else:
                     ag_data = self.calculate_ag_object()
 
+                # import ipdb; ipdb.set_trace()
                 # Return early if no AG-valid object can be grasped
                 if not ag_data:
                     return False
