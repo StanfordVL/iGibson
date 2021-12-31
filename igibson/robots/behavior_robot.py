@@ -345,11 +345,15 @@ class BehaviorRobot(object):
 
         return state_list
 
-    def is_grasping(self, candidate_obj):
+    def is_grasping(self, candidate_obj_bid):
+        # NOTE: we need to check the candidate_obj_bid and not just the 
+        # candidate object itself because we set parts[...].object_in_hand 
+        # to the object's id during assistive grasping, and not the object
+        # itself
         return np.array(
             [
-                self.parts["left_hand"].object_in_hand == candidate_obj,
-                self.parts["right_hand"].object_in_hand == candidate_obj,
+                self.parts["left_hand"].object_in_hand == candidate_obj_bid,
+                self.parts["right_hand"].object_in_hand == candidate_obj_bid,
             ]
         )
 
@@ -968,7 +972,8 @@ class BRHand(BRHandBase):
             return None
 
         # Step 3 - Make sure we are applying a force to this object
-        force_data = self.find_hand_contacts()
+        force_data = self.find_hand_contacts()            
+
         if not force_data or (ag_bid, ag_link) not in force_data:
             return None
 
@@ -1010,7 +1015,9 @@ class BRHand(BRHandBase):
 
         if not self.object_in_hand:
             # Detect valid trig fraction that is above threshold
+            # print(new_trig_frac)
             if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
+                # import ipdb; ipdb.set_trace()
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
@@ -1019,10 +1026,10 @@ class BRHand(BRHandBase):
                 else:
                     ag_data = self.calculate_ag_object()
 
-                # import ipdb; ipdb.set_trace()
                 # Return early if no AG-valid object can be grasped
                 if not ag_data:
                     return False
+
                 ag_bid, ag_link = ag_data
 
                 child_frame_pos, child_frame_orn = self.get_child_frame_pose(ag_bid, ag_link)
@@ -1063,6 +1070,10 @@ class BRHand(BRHandBase):
                 self.set_hand_coll_filter(ag_bid, False)
                 self.gen_freeze_vals()
                 return True
+
+            else:
+                return False
+
         else:
             constraint_violation = self.get_constraint_violation(self.obj_cid)
             if (
@@ -1129,7 +1140,8 @@ class BRHand(BRHandBase):
         """
         # AG is only enable for the reduced joint hand
         if ASSIST_FRACTION > 0:
-            self.handle_assisted_grasping(action)
+            grasp_success = self.handle_assisted_grasping(action)    
+            # import ipdb; ipdb.set_trace()
 
         super(BRHand, self).update(action)
 
