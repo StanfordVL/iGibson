@@ -197,8 +197,12 @@ def plan_hand_motion_br(
         )
 
         if obj_in_hand is not None:
+            if type(obj_in_hand.body_id) == list:
+                obj_in_hand_body_id = obj_in_hand.body_id[0]
+            else:
+                obj_in_hand_body_id = obj_in_hand.body_id
             collision = collision or any(
-                pairwise_collision(obj_in_hand.body_id[0], obs, max_distance=max_distance) for obs in obstacles
+                pairwise_collision(obj_in_hand_body_id, obs, max_distance=max_distance) for obs in obstacles
             )
 
         return collision
