@@ -926,6 +926,14 @@ class BehaviorTask(BaseTask):
         self.current_success, self.current_goal_status = evaluate_goal_conditions(self.goal_conditions)
         return self.current_success, self.current_goal_status
 
+    def get_termination(self, env, collision_links=[], action=None, info={}):
+        """
+        Aggreate termination conditions and fill info
+        """
+        done, info = super(BehaviorTask, self).get_termination(env, collision_links, action, info)
+        info["goal_status"] = self.current_goal_status
+        return done, info
+
     def show_instruction(self):
         satisfied = self.currently_viewed_instruction in self.current_goal_status["satisfied"]
         natural_language_condition = self.natural_language_goal_conditions[self.currently_viewed_instruction]
