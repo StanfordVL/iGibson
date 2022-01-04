@@ -62,8 +62,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
     def __init__(
         self,
-        control_freq=10.0,
-        action_config=None,
+        control_freq=None,
+        action_type="continuous",
+        action_normalize=True,
+        proprio_obs="default",
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -72,12 +74,14 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         rendering_params=None,
     ):
         """
-        :param control_freq: float, control frequency (in Hz) at which to control the robot
-        :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
-            to action-related values. Should, at the minimum, contain:
-                type: one of {discrete, continuous} - what type of action space to use
-                normalize: either {True, False} - whether to normalize inputted actions
-            This will override any default values specified by this class.
+        :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
+            simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
+        :param action_type: str, one of {discrete, continuous} - what type of action space to use
+        :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
+         specified by this class.
+        :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
+            observations. If str, should be exactly "default" -- this results in the default proprioception observations
+            being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -94,11 +98,15 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         self.control_freq = control_freq
         self.scale = scale
         self.self_collision = self_collision
-        self.action_config = {} if action_config is None else action_config
+        assert_valid_key(key=action_type, valid_keys={"discrete", "continuous"}, name="action type")
+        self.action_type = action_type
+        self.action_normalize = action_normalize
+        self.proprio_obs = self.default_proprio_obs if proprio_obs == "default" else list(proprio_obs)
         self.controller_config = {} if controller_config is None else controller_config
 
         # Initialize internal attributes that will be loaded later
         # These will have public interfaces
+        self.simulator = None
         self.model_type = None
         self.action_list = None  # Array of discrete actions to deploy
         self._links = None
@@ -149,6 +157,8 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         # Store body ids and return them
         _body_ids = self._load(simulator)
 
+        # A persistent reference to simulator is needed for AG in ManipulationRobot
+        self.simulator = simulator
         return _body_ids
 
     def _load(self, simulator):
@@ -256,7 +266,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         self.update_state()
 
         # Update the configs
-        self.action_config = merge_nested_dicts(base_dict=self._default_action_config, extra_dict=self.action_config)
         for group in self.controller_order:
             group_controller_name = (
                 self.controller_config[group]["name"]
@@ -373,7 +382,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             assert_valid_key(key=name, valid_keys=self.controller_config, name="controller name")
             cfg = self.controller_config[name]
             # If we're using normalized action space, override the inputs for all controllers
-            if self.action_config["normalize"]:
+            if self.action_normalize:
                 cfg["command_input_limits"] = "default"  # default is normalized (-1, 1)
             # Create the controller
             self._controllers[name] = create_controller(**cfg)
@@ -488,14 +497,12 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             else:
                 raise ValueError("Invalid control type specified: {}".format(ctrl_type))
 
-    @abstractmethod
     def get_proprioception(self):
         """
-        Must be implemented by subclass.
-
         :return Array[float]: numpy array of all robot-specific proprioceptive observations.
         """
-        raise NotImplementedError
+        proprio_dict = self._get_proprioception_dict()
+        return np.concatenate([proprio_dict[obs] for obs in self.proprio_obs])
 
     def get_position(self):
         """
@@ -609,6 +616,23 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         Load the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
         """
         pass
+
+    def _get_proprioception_dict(self):
+        """
+        :return dict: keyword-mapped proprioception observations available for this robot. Can be extended by subclasses
+        """
+        return {
+            "joint_qpos": self.joint_positions,
+            "joint_qpos_sin": np.sin(self.joint_positions),
+            "joint_qpos_cos": np.cos(self.joint_positions),
+            "joint_qvel": self.joint_velocities,
+            "joint_qtor": self.joint_torques,
+            "robot_pos": self.get_position(),
+            "robot_rpy": self.get_rpy(),
+            "robot_quat": self.get_orientation(),
+            "robot_lin_vel": self.get_linear_velocity(),
+            "robot_ang_vel": self.get_angular_velocity(),
+        }
 
     @property
     def proprioception_dim(self):
@@ -788,15 +812,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         return sum([controller.command_dim for controller in self._controllers.values()])
 
     @property
-    def action_type(self):
-        """
-        :return str: Type of action space. One of {discrete, continuous}
-        """
-        assert "type" in self.action_config, "'type' should be specified in action_config!"
-        assert_valid_key(key=self.action_config["type"], valid_keys={"discrete", "continuous"}, name="action type")
-        return self.action_config["type"]
-
-    @property
     def action_space(self):
         """
         Action space for this robot.
@@ -831,14 +846,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         return dic
 
     @property
-    def normalize_actions(self):
-        """
-        :return bool: Whether to normalize actions or not.
-        """
-        assert "normalize" in self.action_config, "'normalize' should be specified in action_config!"
-        return self.action_config["normalize"]
-
-    @property
     def control_limits(self):
         """
         :return: Dict[str, Any]: Keyword-mapped limits for this robot. Dict contains:
@@ -856,22 +863,19 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         }
 
     @property
+    def default_proprio_obs(self):
+        """
+        :return Array[str]: Default proprioception observations to use
+        """
+        return []
+
+    @property
     @abstractmethod
     def default_joint_pos(self):
         """
         :return Array[float]: Default joint positions for this robot
         """
         raise NotImplementedError
-
-    @property
-    def _default_action_config(self):
-        """
-        :return Dict[str, Any]: default nested dictionary for specific action keyword arguments for this robot
-        """
-        return {
-            "type": "continuous",
-            "normalize": True,
-        }
 
     @property
     @abstractmethod
@@ -1026,7 +1030,7 @@ class RobotLink:
         """
         :return Array[float]: (r,p,y) orientation in euler form of this link
         """
-        return p.getEulerFromQuaternion(self.get_orientation())
+        return np.array(p.getEulerFromQuaternion(self.get_orientation()))
 
     def set_position(self, pos):
         """

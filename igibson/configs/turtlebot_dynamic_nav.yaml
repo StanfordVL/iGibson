@@ -14,11 +14,20 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 # robot
-robot: Turtlebot
-is_discrete: false
+robot:
+  name: Turtlebot
+  action_type: continuous
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  controller_config:
+    base:
+      name: DifferentialDriveController
 
 # task
-task: interactive_nav_random
+task: dynamic_nav_random
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar

@@ -8,9 +8,17 @@ trav_map_resolution: 0.1
 trav_map_erosion: 2
 
 # robot
-robot: Turtlebot
-is_discrete: false
-velocity: 1.0
+robot:
+  name: Turtlebot
+  action_type: continuous
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  controller_config:
+    base:
+      name: DifferentialDriveController
 
 # task
 task: point_nav_random
