@@ -100,7 +100,7 @@ class Simulator:
         self.vertical_fov = vertical_fov
         self.device_idx = device_idx
         self.rendering_settings = rendering_settings
-        self.use_pb_gui = use_pb_gui
+        self.use_pb_gui = True
 
         plt = platform.system()
         if plt == "Darwin" and self.mode == SimulatorMode.GUI_INTERACTIVE and use_pb_gui:
