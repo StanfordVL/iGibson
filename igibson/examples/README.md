@@ -1,4 +1,4 @@
-### iGibson examples
+### Code Examples
 
 The following examples illustrate the use of iGibson.
 
@@ -16,4 +16,4 @@ If you are looking for examples of BEHAVIOR, the benchmark of household activiti
 - ros: how to run ROS with iGibson as if it is the real world.
 - scenes: how to load interactive and non-interactive scenes, how to use domain randomization (of object models and/or texture), and how to create a tour video of the scenes.
 - vr: how to use iGibson with VR.
-- web_ui: how to start a web server that hosts iGibson environments
+- web_ui: how to start a web server that hosts iGibson environments.

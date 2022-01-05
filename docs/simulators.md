@@ -1,4 +1,4 @@
-# Simulators
+# Simulator
 
 ### Overview
 
@@ -15,7 +15,7 @@ If `Simulator` uses `gui` mode, by default it will also maintain a `Viewer`, whi
 Most of the code can be found here: [igibson/simulator.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/simulator.py).
 
 ### Examples
-In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator. The code can be found here: [igibson/examples/demo/simulator_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/simulator_example.py)
+In this example, we import a `StaticIndoorScene`, a `Turtlebot`, and ten `YCBObject` into the simulator.
 
 ```python
 from igibson.robots.turtlebot import Turtlebot
@@ -32,7 +32,7 @@ from IPython import embed
 def main():
     config = parse_config('../configs/turtlebot_static_nav.yaml')
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode='gui', image_width=256,
+    s = Simulator(mode='gui_interactive', image_width=256,
                   image_height=256, rendering_settings=settings)
 
     scene = StaticIndoorScene('Rs',

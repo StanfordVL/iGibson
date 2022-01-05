@@ -96,9 +96,9 @@ class BehaviorTask(BaseTask):
     def update_problem(self, behavior_activity, activity_definition, predefined_problem=None):
         self.behavior_activity = behavior_activity
         self.activity_definition = activity_definition
-        if predefined_problem is None:
-            assert self.behavior_activity is not None
-        self.conds = Conditions(behavior_activity, activity_definition, simulator_name="igibson")
+        self.conds = Conditions(
+            behavior_activity, activity_definition, simulator_name="igibson", predefined_problem=predefined_problem
+        )
         self.object_scope = get_object_scope(self.conds)
         self.obj_inst_to_obj_cat = {
             obj_inst: obj_cat

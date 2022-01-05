@@ -10,8 +10,8 @@ In this page you will find information about:
 ## Download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects
 
 What will you download?
-- iGibson 2.0 Dataset of Scenes: New versions of the fully interactive scenes, more densely populated with objects.
-- BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
+- **iGibson 2.0 Dataset of Scenes**: New versions of the fully interactive scenes, more densely populated with objects.
+- **BEHAVIOR Object Dataset**: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
 
 To download both in a bundle, you need to follow the following steps:
 - Fill out the license agreement in this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
@@ -24,7 +24,7 @@ After this process, you will be able to sample and use the scenes and objects in
 ## Download iGibson 1.0 Scenes
 
 What will you download?
-- iGibson 1.0 Dataset of Scenes: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
+- **iGibson 1.0 Dataset of Scenes**: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
 
 The following image shows the fifteen fully interactive scenes: 
 
@@ -45,8 +45,8 @@ A description of the file structure and format of the files in the dataset can b
 ## Download Gibson and Stanford 2D-3D-Semantics scenes
 
 What will you download?
-- Gibson static scenes: more than 500 reconstructions of homes and offices with a Matterport device. These models keep the texture observed with the sensor, but contain some irregularities, specially with reflective surfaces and thin elements like chairs' legs.
-- Stanford 2D-3D-Semantics scenes: 7 reconstructions of Stanford offices.
+- **Gibson static scenes**: more than 500 reconstructions of homes and offices with a Matterport device. These models keep the texture observed with the sensor, but contain some irregularities, specially with reflective surfaces and thin elements like chairs' legs.
+- **Stanford 2D-3D-Semantics scenes**: 7 reconstructions of Stanford offices.
 
 Files included in the dataset:
 
