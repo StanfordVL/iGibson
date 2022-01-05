@@ -89,11 +89,11 @@ def main():
     jr = JR2(config)
     robots.append(jr)
 
-    config = parse_config(os.path.join(igibson.example_config_path, 'locobot_point_nav.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'locobot_nav.yaml'))
     locobot = Locobot(config)
     robots.append(locobot)
 
-    config = parse_config(os.path.join(igibson.example_config_path, 'turtlebot_point_nav.yaml'))
+    config = parse_config(os.path.join(igibson.example_config_path, 'turtlebot_nav.yaml'))
     turtlebot = Turtlebot(config)
     robots.append(turtlebot)
 

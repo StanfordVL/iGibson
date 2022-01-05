@@ -361,8 +361,14 @@ class Simulator:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/sphere8.obj")
                 dimensions = [dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5]
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
+                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cylinder16.obj")
                 dimensions = [dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]]
+                if not os.path.exists(filename):
+                    logging.info(
+                        "Cylinder mesh file cannot be found in the assets. Consider removing the assets folder and downloading the newest version using download_assets(). Using a cube for backcompatibility"
+                    )
+                    filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
+                    dimensions = [dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5]
             elif type == p.GEOM_BOX:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
             elif type == p.GEOM_PLANE:

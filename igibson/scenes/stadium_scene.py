@@ -31,7 +31,8 @@ class StadiumScene(Scene):
         p.resetBasePositionAndOrientation(self.floor_body_ids[0], [pos[0], pos[1], pos[2] - 0.005], orn)
         p.changeVisualShape(self.floor_body_ids[0], -1, rgbaColor=[1, 1, 1, 0.5])
 
-        for id in list(self.stadium) + self.floor_body_ids:
+        # Only load the stadium mesh into the renderer, not the extra floor plane
+        for id in list(self.stadium):
             simulator.load_object_in_renderer(None, id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False)
 
         # Load additional objects & merge body IDs

@@ -39,7 +39,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         self_collision=True,
         class_id=SemanticClass.ROBOTS,
         rendering_params=None,
-        assisted_grasp_mode=None,
+        assisted_grasping_mode=None,
         rigid_trunk=False,
         default_trunk_offset=0.365,
         default_arm_pose="vertical",
@@ -63,7 +63,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
         :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
             See DEFAULT_RENDERING_PARAMS for the values passed by default.
-        :param assisted_grasp_mode: None or str, One of {None, "soft", "strict"}. If None, no assisted grasping
+        :param assisted_grasping_mode: None or str, One of {None, "soft", "strict"}. If None, no assisted grasping
             will be used. If "soft", will magnetize any object touching the gripper's fingers. If "strict" will require
             the object to be within the gripper bounding box before assisting.
         :param rigid_trunk: bool, if True, will prevent the trunk from moving during execution.
@@ -88,7 +88,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             self_collision=self_collision,
             class_id=class_id,
             rendering_params=rendering_params,
-            assisted_grasp_mode=assisted_grasp_mode,
+            assisted_grasping_mode=assisted_grasping_mode,
         )
 
     @property

@@ -80,7 +80,7 @@ class ManipulationRobot(BaseRobot):
         self_collision=False,
         class_id=SemanticClass.ROBOTS,
         rendering_params=None,
-        assisted_grasp_mode=None,
+        assisted_grasping_mode=None,
     ):
         """
         :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
@@ -101,13 +101,13 @@ class ManipulationRobot(BaseRobot):
         :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
         :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
             See DEFAULT_RENDERING_PARAMS for the values passed by default.
-        :param assisted_grasp_mode: None or str, One of {None, "soft", "strict"}. If None, no assisted grasping
+        :param assisted_grasping_mode: None or str, One of {None, "soft", "strict"}. If None, no assisted grasping
             will be used. If "soft", will magnetize any object touching the gripper's fingers. If "strict" will require
             the object to be within the gripper bounding box before assisting.
         """
         # Store relevant internal vars
-        assert_valid_key(key=assisted_grasp_mode, valid_keys=AG_MODES, name="assisted_grasp_mode")
-        self.assisted_grasp_mode = assisted_grasp_mode
+        assert_valid_key(key=assisted_grasping_mode, valid_keys=AG_MODES, name="assisted_grasping_mode")
+        self.assisted_grasping_mode = assisted_grasping_mode
 
         # Initialize other variables used for assistive grasping
         self._ag_data = None
@@ -160,12 +160,12 @@ class ManipulationRobot(BaseRobot):
 
         :param candidate_obj: Object or None, object to check if this robot is currently grasping. If None, then
             will be a general (object-agnostic) check for grasping.
-            Note: if self.assisted_grasp_mode is None, then @candidate_obj will be ignored completely
+            Note: if self.assisted_grasping_mode is None, then @candidate_obj will be ignored completely
 
         :return Array[int]: For each manipulator appendage, returns IsGraspingState.TRUE if it is grasping (potentially
             @candidate_obj if specified), IsGraspingState.FALSE if it is not grasping, and IsGraspingState.UNKNOWN if unknown.
         """
-        if self.assisted_grasp_mode is not None:
+        if self.assisted_grasping_mode is not None:
             is_grasping_obj = (
                 self._ag_obj_in_hand is not None if candidate_obj is None else self._ag_obj_in_hand == candidate_obj
             )
@@ -257,7 +257,7 @@ class ManipulationRobot(BaseRobot):
 
     def apply_action(self, action):
         # First run assisted grasping
-        if self.assisted_grasp_mode is not None:
+        if self.assisted_grasping_mode is not None:
             self._handle_assisted_grasping(action=action)
 
         # Run super method as normal
@@ -467,7 +467,7 @@ class ManipulationRobot(BaseRobot):
 
         # Step 3: If we're using strict assisted grasping, filter candidates by checking to make sure target is
         # inside bounding box
-        if self.assisted_grasp_mode == "strict":
+        if self.assisted_grasping_mode == "strict":
             contact_dict = self._filter_assisted_grasp_candidates(contact_dict=contact_dict, candidates=candidates_set)
 
         # Step 4: Find the closest object to the gripper center among these "inside" objects
@@ -718,7 +718,7 @@ class ManipulationRobot(BaseRobot):
                 self._establish_grasp(self._ag_data)
 
     def dump_state(self):
-        if self.assisted_grasp_mode is None:
+        if self.assisted_grasping_mode is None:
             return
 
         # Recompute child frame pose because it could have changed since the
@@ -746,7 +746,7 @@ class ManipulationRobot(BaseRobot):
         }
 
     def load_state(self, dump):
-        if self.assisted_grasp_mode is None:
+        if self.assisted_grasping_mode is None:
             return
 
         # Cancel the previous AG if exists

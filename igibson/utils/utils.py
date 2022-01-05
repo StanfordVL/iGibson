@@ -1,5 +1,6 @@
 import collections
 import os
+import random
 
 import numpy as np
 import pybullet as p
@@ -221,3 +222,20 @@ def restoreState(*args, **kwargs):
             body_id, *p.getBasePositionAndOrientation(body_id), physicsClientId=kwargs.get("physicsClientId", 0)
         )
     return p.restoreState(*args, **kwargs)
+
+
+def let_user_pick(options, print_intro=True, random_selection=False):
+    if print_intro and not random_selection:
+        print("Please choose:")
+    for idx, element in enumerate(options):
+        print("{}) {}".format(idx + 1, element))
+    if not random_selection:
+        i = input("Enter number: ")
+    else:
+        i = random.choice(range(len(options))) + 1
+    try:
+        if 0 < int(i) <= len(options):
+            return int(i)
+    except:
+        pass
+    return None

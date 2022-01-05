@@ -55,7 +55,7 @@ class BaseEnv(gym.Env):
         self.object_randomization_idx = 0
         self.num_object_randomization_idx = 10
 
-        enable_shadow = self.config.get("enable_shadow", False)
+        enable_shadow = self.config.get("enable_shadow", True)
         enable_pbr = self.config.get("enable_pbr", True)
         texture_scale = self.config.get("texture_scale", 1.0)
 

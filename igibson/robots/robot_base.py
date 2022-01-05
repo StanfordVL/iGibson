@@ -976,6 +976,13 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         raise NotImplementedError
 
+    def force_wakeup(self):
+        """
+        Wakes up all links of this robot
+        """
+        for link_name in self._links:
+            self._links[link_name].force_wakeup()
+
 
 class RobotLink:
     """

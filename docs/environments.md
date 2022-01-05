@@ -130,8 +130,7 @@ depth_noise_rate: 0.0
 scan_noise_rate: 0.0
 
 # visual objects
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+visible_target: true
 
 ```
 
@@ -183,8 +182,8 @@ Parameters of this config file are explained below:
 | laser_link_name | scan_link | the link name of the LiDAR sensor in the robot URDF file |
 | depth_noise_rate | 0.0 | noise rate for the depth camera. 0.1 means 10% of the pixels will be corrupted (set to 0.0) |
 | scan_noise_rate | 0.0 | noise rate for the LiDAR. 0.1 means 10% of the rays will be corrupted (set to laser_linear_range) |
-| visual_object_at_initial_target_pos | true | whether to show visual markers for the initial and target positions |
-| target_visual_object_visible_to_agent | false | whether these visual markers are visible to the agents |
+| visible_target | true | whether to show visual markers for the target positions that are visible to the agent |
+| visible_path | true | whether to show visual markers for the computed shortest path that are visible to the agent |
 
 ### Examples
 
@@ -208,7 +207,7 @@ import logging
 
 
 def main():
-    config_filename = os.path.join(igibson.example_config_path, 'turtlebot_demo.yaml')
+    config_filename = os.path.join(igibson.example_config_path, 'turtlebot_static_nav.yaml')
     env = iGibsonEnv(config_file=config_filename, mode='gui')
     for j in range(10):
         env.reset()

@@ -203,7 +203,7 @@ def sample_cuboid_on_object(
         are set to None when no successful sampling happens within the max number of attempts. Refusal details are only
         filled if the debug_sampling flag is globally set to True.
     """
-    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(xy_aligned=True)
+    bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(xy_aligned=True, fallback_to_aabb=True)
     half_extent_with_offset = (bbox_bf_extent / 2) + aabb_offset
 
     body_id = obj.get_body_id()
