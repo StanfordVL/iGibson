@@ -4,10 +4,10 @@
 Assume you finished installation and assets downloading. Let's get our hands dirty and see iGibson in action.
 
 ```bash
-python -m igibson.examples.demo.env_example
+python -m igibson.examples.environments.env_nonint_example
 ```
 
-If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/examples/configs/turtlebot_demo.yaml) to avoid out-of-memory error.
+If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.
 
 You should see something like this. If you are on Mac OS X, you will only see the two small windows. 
 ![quickstart.png](images/quickstart.png)

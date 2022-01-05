@@ -52,9 +52,9 @@ We provide a few common termination conditions for robotics tasks.
 Most of the code can be found in [igibson/termination_conditions](https://github.com/StanfordVL/iGibson/tree/master/igibson/termination_conditions).
 
 #### Configs
-To instantiate an **Environment**, we first need to create a YAML config file. It will specify parameters for the **Environment** (e.g. robot type, action frequency, etc), the **Sensors** (e.g. sensor types, image resolution, noise rate, etc), the **Task** (e.g. task type, goal distance range, etc), the **Reward Functions** (e.g. reward types, reward scale, etc) and the **Termination Conditions** (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: [examples/configs](https://github.com/StanfordVL/iGibson/tree/master/examples/configs).
+To instantiate an **Environment**, we first need to create a YAML config file. It will specify parameters for the **Environment** (e.g. robot type, action frequency, etc), the **Sensors** (e.g. sensor types, image resolution, noise rate, etc), the **Task** (e.g. task type, goal distance range, etc), the **Reward Functions** (e.g. reward types, reward scale, etc) and the **Termination Conditions** (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: [configs](https://github.com/StanfordVL/iGibson/tree/master/igibson/configs).
 
-Here is one example: [examples/configs/turtlebot_point_nav.yaml](https://github.com/StanfordVL/iGibson/blob/master/examples/configs/turtlebot_point_nav.yaml)
+Here is one example: [configs/turtlebot_nav.yaml](https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/turtlebot_nav.yaml)
 
 ```yaml
 # scene
@@ -193,31 +193,48 @@ In this example, we show how to instantiate `iGibsonEnv` and how to step through
 - `reward`: a scalar that represents the current reward
 - `done`: a boolean that indicates whether the episode should terminate
 - `info`: a python dictionary for bookkeeping purpose
-The code can be found here: [igibson/examples/demo/env_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_example.py).
+The code can be found here: [igibson/examples/environments/env_nonint_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/environments/env_nonint_example.py).
 
-If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/examples/configs/turtlebot_demo.yaml) to avoid out-of-memory error.
+If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.
 
 ```python
-from igibson.envs.igibson_env import iGibsonEnv
-from time import time
-import igibson
-import os
-from igibson.render.profiler import Profiler
 import logging
+import os
+from sys import platform
+
+import yaml
+
+import igibson
+from igibson.envs.igibson_env import iGibsonEnv
+from igibson.render.profiler import Profiler
+from igibson.utils.assets_utils import download_assets, download_demo_data
 
 
 def main():
-    config_filename = os.path.join(igibson.example_config_path, 'turtlebot_static_nav.yaml')
-    env = iGibsonEnv(config_file=config_filename, mode='gui')
+    """
+    Creates an iGibson environment from a config file with a turtlebot in Rs (not interactive).
+    It steps the environment 100 times with random actions sampled from the action space,
+    using the Gym interface, resetting it 10 times.
+    """
+    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    # If they have not been downloaded before, download assets and Rs Gibson (non-interactive) models
+    download_assets()
+    download_demo_data()
+    config_filename = os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml")
+    config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
+    # Reduce texture scale for Mac.
+    if platform == "darwin":
+        config_data["texture_scale"] = 0.5
+    env = iGibsonEnv(config_file=config_data, mode="gui_interactive")
     for j in range(10):
+        logging.info("Resetting environment")
         env.reset()
         for i in range(100):
-            with Profiler('Environment action step'):
+            with Profiler("Environment action step"):
                 action = env.action_space.sample()
                 state, reward, done, info = env.step(action)
                 if done:
-                    logging.info(
-                        "Episode finished after {} timesteps".format(i + 1))
+                    logging.info("Episode finished after {} timesteps".format(i + 1))
                     break
     env.close()
 
@@ -227,4 +244,4 @@ if __name__ == "__main__":
 ```
 
 #### Interactive Environments
-In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [igibson/examples/demo/env_interactive_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_interactive_example.py).
+In this example, we show how to instantiate `iGibsobEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [igibson/examples/environments/env_int_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/env_int_example.py).
