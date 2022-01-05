@@ -108,8 +108,9 @@ class Simulator:
         self.viewer = None
         self.renderer = None
 
-        self.initialize_physics_engine()
         self.initialize_renderer()
+        self.initialize_physics_engine()
+        self.initialize_viewers()
 
         self.robots = []
 
@@ -152,26 +153,10 @@ class Simulator:
         Destroy the MeshRenderer and physics simulator and start again.
         """
         self.disconnect()
-        self.initialize_physics_engine()
+
         self.initialize_renderer()
-
-    def initialize_physics_engine(self):
-        """
-        Initialize the physics engine (pybullet).
-        """
-        if self.use_pb_gui:
-            self.cid = p.connect(p.GUI)
-        else:
-            self.cid = p.connect(p.DIRECT)
-
-        # Needed for deterministic action replay
-        # TODO(mjlbach) consider making optional and benchmark
-        p.resetSimulation()
-        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-        p.setPhysicsEngineParameter(numSolverIterations=self.solver_iterations)
-        p.setTimeStep(self.physics_timestep)
-        p.setGravity(0, 0, -self.gravity)
-        p.setPhysicsEngineParameter(enableFileCaching=0)
+        self.initialize_physics_engine()
+        self.initialize_viewers()
 
     def initialize_renderer(self):
         """
@@ -201,6 +186,25 @@ class Simulator:
                 "The available render modes are headless, headless_tensor, gui_interactive, and gui_non_interactive."
             )
 
+    def initialize_physics_engine(self):
+        """
+        Initialize the physics engine (pybullet).
+        """
+        if self.use_pb_gui:
+            self.cid = p.connect(p.GUI)
+        else:
+            self.cid = p.connect(p.DIRECT)
+
+        # Needed for deterministic action replay
+        # TODO(mjlbach) consider making optional and benchmark
+        p.resetSimulation()
+        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
+        p.setPhysicsEngineParameter(numSolverIterations=self.solver_iterations)
+        p.setTimeStep(self.physics_timestep)
+        p.setGravity(0, 0, -self.gravity)
+        p.setPhysicsEngineParameter(enableFileCaching=0)
+
+    def initialize_viewers(self):
         if self.mode == SimulatorMode.GUI_NON_INTERACTIVE:
             self.viewer = ViewerSimple(renderer=self.renderer)
         elif self.mode == SimulatorMode.GUI_INTERACTIVE:
