@@ -1802,10 +1802,14 @@ class MeshRenderer(object):
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
 
-        orig_fov = self.vertical_fov
-        self.set_fov(90)
-        org_V = np.copy(self.V)
+        # Cache the original fov and V to be restored later
+        original_fov = self.vertical_fov
+        original_V = np.copy(self.V)
 
+        # Set fov to be 90 degrees
+        self.set_fov(90)
+
+        # Compute initial_V that will be used to render in 6 directions, based on whether use_robot_camera is True
         if use_robot_camera:
             for instance in self.instances:
                 if isinstance(instance.ig_object, BaseRobot):
@@ -1815,9 +1819,15 @@ class MeshRenderer(object):
                     view_direction = mat.dot(np.array([1, 0, 0]))
                     up_direction = mat.dot(np.array([0, 0, 1]))
                     self.set_camera(camera_pos, camera_pos + view_direction, up_direction)
+                    initial_V = np.copy(self.V)
+        else:
+            initial_V = original_V
 
         def render_cube():
+            # Store 6 frames in 6 directions
             frames = []
+
+            # Forward, backward, left, right
             r = np.array(
                 [
                     [
@@ -1839,20 +1849,23 @@ class MeshRenderer(object):
             # Up
             r_up = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
 
-            self.V = r_up.dot(org_V)
+            self.V = r_up.dot(initial_V)
             frames.append(self.render(modes=(mode))[0])
 
+            # Down
             r_down = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
-            # Down
-            self.V = r_down.dot(org_V)
+            self.V = r_down.dot(initial_V)
             frames.append(self.render(modes=(mode))[0])
 
             return frames
 
         frames = render_cube()
-        self.V = org_V
-        self.set_fov(orig_fov)
+
+        # Restore original fov and V
+        self.V = original_V
+        self.set_fov(original_fov)
+
         return frames
 
     def get_equi(self, mode="rgb", use_robot_camera=False):
