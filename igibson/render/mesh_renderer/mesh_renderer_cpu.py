@@ -1857,6 +1857,7 @@ class MeshRenderer(object):
 
     def get_equi(self, mode="rgb", use_robot_camera=False):
         """
+        Generate panorama images
         :param mode: simulator rendering mode, 'rgb' or '3d'
         :param use_robot_camera: use the camera pose from robot
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D]

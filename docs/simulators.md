@@ -30,7 +30,7 @@ from IPython import embed
 
 
 def main():
-    config = parse_config('../configs/turtlebot_demo.yaml')
+    config = parse_config('../configs/turtlebot_static_nav.yaml')
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(mode='gui', image_width=256,
                   image_height=256, rendering_settings=settings)

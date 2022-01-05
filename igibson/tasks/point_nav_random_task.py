@@ -39,8 +39,10 @@ class PointNavRandomTask(PointNavFixedTask):
             if self.target_dist_min < dist < self.target_dist_max:
                 break
         if not (self.target_dist_min < dist < self.target_dist_max):
-            print("WARNING: Failed to sample initial and target positions")
+            logging.warning("Failed to sample initial and target positions")
         initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
+        logging.info("Sampled initial pose: {}, {}".format(initial_pos, initial_orn))
+        logging.info("Sampled target position: {}".format(target_pos))
         return initial_pos, initial_orn, target_pos
 
     def reset_scene(self, env):

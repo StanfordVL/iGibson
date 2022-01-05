@@ -34,3 +34,10 @@ class YCBObject(StatefulObject, SingleBodyObject):
         simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
+
+    def reset(self):
+        return
+
+    def force_wakeup(self):
+        activationState = p.ACTIVATION_STATE_WAKE_UP
+        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)

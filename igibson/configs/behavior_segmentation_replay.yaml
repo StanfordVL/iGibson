@@ -73,13 +73,10 @@ depth_noise_rate: 0.0
 scan_noise_rate: 0.0
 
 # visual objects
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+visible_target: true
+
 
 # speed limit
 hand_threshold: 0.4
 hand_speed: 0.3
 body_speed: 0.3
-
-# texture scale
-texture_scale: 0.5

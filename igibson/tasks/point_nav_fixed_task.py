@@ -42,8 +42,8 @@ class PointNavFixedTask(BaseTask):
         self.goal_format = self.config.get("goal_format", "polar")
         self.dist_tol = self.termination_conditions[-1].dist_tol
 
-        self.visual_object_at_initial_target_pos = self.config.get("visual_object_at_initial_target_pos", True)
-        self.target_visual_object_visible_to_agent = self.config.get("target_visual_object_visible_to_agent", False)
+        self.visible_target = self.config.get("visible_target", False)
+        self.visible_path = self.config.get("visible_path", False)
         self.floor_num = 0
 
         self.load_visualization(env)
@@ -75,11 +75,14 @@ class PointNavFixedTask(BaseTask):
 
         env.simulator.import_object(self.initial_pos_vis_obj)
         env.simulator.import_object(self.target_pos_vis_obj)
-        if self.target_visual_object_visible_to_agent:
-            for instance in self.initial_pos_vis_obj.renderer_instances:
-                instance.hidden = False
-            for instance in self.target_pos_vis_obj.renderer_instances:
-                instance.hidden = False
+
+        # The visual object indicating the initial location is always hidden
+        for instance in self.initial_pos_vis_obj.renderer_instances:
+            instance.hidden = True
+
+        # The visual object indicating the target location may be visible
+        for instance in self.target_pos_vis_obj.renderer_instances:
+            instance.hidden = not self.visible_target
 
         if env.scene.build_graph:
             self.num_waypoints_vis = 250
@@ -95,8 +98,9 @@ class PointNavFixedTask(BaseTask):
             ]
             for waypoint in self.waypoints_vis:
                 env.simulator.import_object(waypoint)
+                # The path to the target may be visible
                 for instance in waypoint.renderer_instances:
-                    instance.hidden = False
+                    instance.hidden = not self.visible_path
 
     def get_geodesic_potential(self, env):
         """

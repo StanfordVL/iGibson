@@ -22,7 +22,9 @@ class JR2(ManipulationRobot, TwoWheelRobot):
 
     def _validate_configuration(self):
         # Make sure we're not using assisted grasping
-        assert self.assisted_grasp_mode is None, "Cannot use assisted grasping modes for JR2 since gripper is disabled!"
+        assert (
+            self.assisted_grasping_mode is None
+        ), "Cannot use assisted grasping modes for JR2 since gripper is disabled!"
 
         # Make sure we're using a null controller for the gripper
         assert (
