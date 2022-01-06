@@ -799,15 +799,7 @@ class Viewer:
         elif q == ord("x"):
             self.reset_viewer()
 
-        elif (
-            self.is_robosuite
-            and q == ord("0")
-            or q == ord("1")
-            or q == ord("2")
-            or q == ord("3")
-            or q == ord("4")
-            or q == ord("5")
-        ):
+        elif self.is_robosuite and q in {ord("0"), ord("1"), ord("2"), ord("3"), ord("4"), ord("5Z")}:
             idxx = int(chr(q))
             self.renderer._switch_camera(idxx)
             if not self.renderer._is_camera_active(idxx):

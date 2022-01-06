@@ -125,7 +125,8 @@ class KeyboardController:
             idx += controller.command_dim
 
         # Other persistent variables we need to keep track of
-        self.joint_direction = 1.0  # Flips between -1 and 1
+        self.joint_control_idx = None  # Indices of joints being directly controlled via joint control
+        self.current_joint = -1  # Active joint being controlled for joint control
         self.gripper_direction = 1.0  # Flips between -1 and 1
         self.persistent_gripper_action = None  # Whether gripper actions should persist between commands
         self.keypress_mapping = None
@@ -140,13 +141,18 @@ class KeyboardController:
                 val: <float>
         """
         self.keypress_mapping = {}
+        self.joint_control_idx = set()
+
+        # Add mapping for joint control directions (no index because these are inferred at runtime)
+        self.keypress_mapping["]"] = {"idx": None, "val": 0.1}
+        self.keypress_mapping["["] = {"idx": None, "val": -0.1}
 
         # Iterate over all controller info and populate mapping
         for component, info in self.controller_info.items():
             if info["name"] == "JointController":
                 for i in range(info["command_dim"]):
                     ctrl_idx = info["start_idx"] + i
-                    self.keypress_mapping[str(ctrl_idx)] = {"idx": ctrl_idx, "val": 0.1}
+                    self.joint_control_idx.add(ctrl_idx)
             elif info["name"] == "DifferentialDriveController":
                 self.keypress_mapping["up_arrow"] = {"idx": info["start_idx"] + 0, "val": 0.2}
                 self.keypress_mapping["down_arrow"] = {"idx": info["start_idx"] + 0, "val": -0.2}
@@ -169,7 +175,7 @@ class KeyboardController:
                 if info["command_dim"] > 1:
                     for i in range(info["command_dim"]):
                         ctrl_idx = info["start_idx"] + i
-                        self.keypress_mapping[str(ctrl_idx)] = {"idx": ctrl_idx, "val": 0.1}
+                        self.joint_control_idx.add(ctrl_idx)
                 else:
                     self.keypress_mapping[" "] = {"idx": info["start_idx"], "val": 1.0}
                     self.persistent_gripper_action = 1.0
@@ -190,29 +196,26 @@ class KeyboardController:
         keypress = self.get_keyboard_input()
 
         if keypress is not None:
-            # Handle special cases
-            if keypress == "[":
-                # Joint direction should be negative
-                self.joint_direction = -1.0
-            elif keypress == "]":
-                # Joint direction should be positive
-                self.joint_direction = 1.0
-            else:
-                # Get idx to modify the corresponding value
-                action_info = self.keypress_mapping.get(keypress, None)
-                if action_info is not None:
-                    idx, val = action_info["idx"], action_info["val"]
-                    # If the keypress is a number, this is a joint action -- we must multiply it by the joint direction
-                    if keypress.isnumeric():
-                        val *= self.joint_direction
-                    # If the keypress is a spacebar, this is a gripper action -- we must toggle its direction
-                    elif keypress == " ":
-                        val *= self.gripper_direction
-                        if self.persistent_gripper_action is not None:
-                            self.persistent_gripper_action = val
-                        self.gripper_direction *= -1.0
-                    # Set action
-                    action[idx] = val
+            # If the keypress is a number, this is a joint action -- we must update the active joint
+            if keypress.isnumeric() and int(keypress) in self.joint_control_idx:
+                self.current_joint = int(keypress)
+            # Get idx to modify the corresponding value
+            action_info = self.keypress_mapping.get(keypress, None)
+            if action_info is not None:
+                idx, val = action_info["idx"], action_info["val"]
+                # If the keypress is a spacebar, this is a gripper action -- we must toggle its direction
+                if keypress == " ":
+                    val *= self.gripper_direction
+                    if self.persistent_gripper_action is not None:
+                        self.persistent_gripper_action = val
+                    self.gripper_direction *= -1.0
+
+                # If there is no index, then we assume that we are controlling a joint, so we directly set the idx
+                if idx is None:
+                    idx = self.current_joint
+
+                # Set action
+                action[idx] = val
 
         # Possibly set the persistent gripper action
         if self.persistent_gripper_action is not None:
@@ -254,13 +257,14 @@ class KeyboardController:
             char += " " * (10 - len(char))
             print("{}\t{}".format(char, info))
 
+        print()
         print("*" * 30)
-        print("\nControlling the Robot Using the Keyboard")
+        print("Controlling the Robot Using the Keyboard")
         print("*" * 30)
         print()
         print("Joint Control")
         print_command("0-9", "specify the joint to control")
-        print_command("[, ]", "to move the joint backwards and forwards, respectively")
+        print_command("[, ]", "move the joint backwards, forwards, respectively")
         print()
         print("Differential Drive Control")
         print_command(u"\u2190, \u2192", "turn left, right")
