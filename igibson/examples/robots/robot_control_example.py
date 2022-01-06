@@ -55,7 +55,7 @@ def choose_from_options(options, name):
     :return str: Requested option
     """
     # Select robot
-    print("Here is a list of available {}s:\n".format(name))
+    print("\nHere is a list of available {}s:\n".format(name))
 
     for k, option in enumerate(options):
         docstring = ": {}".format(options[option]) if isinstance(options, dict) else ""

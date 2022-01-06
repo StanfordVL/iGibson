@@ -29,10 +29,17 @@ from igibson.utils.utils import rotate_vector_3d
 
 # Global dicts that will contain mappings
 REGISTERED_ROBOTS = {}
+ROBOT_TEMPLATE_CLASSES = {
+    "BaseRobot",
+    "ActiveCameraRobot",
+    "TwoWheelRobot",
+    "ManipulationRobot",
+    "LocomotionRobot",
+}
 
 
 def register_robot(cls):
-    if cls.__name__ not in REGISTERED_ROBOTS:
+    if cls.__name__ not in REGISTERED_ROBOTS and cls.__name__ not in ROBOT_TEMPLATE_CLASSES:
         REGISTERED_ROBOTS[cls.__name__] = cls
 
 
