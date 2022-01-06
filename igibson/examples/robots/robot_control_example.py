@@ -5,6 +5,7 @@ Options for random actions, as well as selection of robot action space
 """
 import logging
 import random
+import sys
 from collections import OrderedDict
 
 import cv2
@@ -45,6 +46,7 @@ ARROWS = {
 }
 
 gui = "ig"
+keypress = None
 
 
 def choose_from_options(options, name, random_selection=False):
@@ -115,14 +117,12 @@ class KeyboardController:
     Simple class for controlling iGibson robots using keyboard commands
     """
 
-    def __init__(
-        self,
-        robot,
-    ):
+    def __init__(self, robot, simulator):
         """
         :param robot: BaseRobot, robot to control
         """
         # Store relevant info from robot
+        self.simulator = simulator
         self.action_dim = robot.action_dim
         self.controller_info = OrderedDict()
         idx = 0
@@ -187,7 +187,7 @@ class KeyboardController:
                         ctrl_idx = info["start_idx"] + i
                         self.joint_control_idx.add(ctrl_idx)
                 else:
-                    self.keypress_mapping[" "] = {"idx": info["start_idx"], "val": 1.0}
+                    self.keypress_mapping["y"] = {"idx": info["start_idx"], "val": 1.0}
                     self.persistent_gripper_action = 1.0
             else:
                 raise ValueError("Unknown controller name received: {}".format(info["name"]))
@@ -214,7 +214,7 @@ class KeyboardController:
             if action_info is not None:
                 idx, val = action_info["idx"], action_info["val"]
                 # If the keypress is a spacebar, this is a gripper action -- we must toggle its direction
-                if keypress == " ":
+                if keypress == "y":
                     val *= self.gripper_direction
                     if self.persistent_gripper_action is not None:
                         self.persistent_gripper_action = val
@@ -226,28 +226,36 @@ class KeyboardController:
 
                 # Set action
                 action[idx] = val
+            sys.stdout.write("\033[K")
+            print("Pressed {}. Action: {}".format(keypress, action))
+            sys.stdout.write("\033[F")
 
         # Possibly set the persistent gripper action
         if self.persistent_gripper_action is not None:
-            action[self.keypress_mapping[" "]["idx"]] = self.persistent_gripper_action
+            action[self.keypress_mapping["y"]["idx"]] = self.persistent_gripper_action
 
         # Return action
         return action
 
-    @staticmethod
-    def get_keyboard_input():
+    def get_keyboard_input(self):
         """
         Checks for newly received user inputs and returns the first received input, if any
         :return None or str: User input in string form. Note that only the characters mentioned in
         @self.print_keyboard_teleop_info are explicitly supported
         """
         global gui
+        global keypress
         if gui == "pb":
-            keypress = p.getKeyboardEvents()
-            keypress = -1 if len(keypress.keys()) == 0 else list(keypress.keys())[0]
+            kbe = p.getKeyboardEvents()
+
+            # We mimic the same behavior (repeating the last action) even though PB has event handling for keys
+            if len(kbe.keys()) != 0:
+                keypress = list(kbe.keys())[0]
+            # keypress = -1 if len(keypress.keys()) == 0 else list(keypress.keys())[0]
         else:
             # todo: optimize for ig gui? seems very slow otherwise
-            keypress = cv2.waitKey(1)
+            # keypress = cv2.waitKey(1)
+            keypress = self.simulator.viewer.last_pressed_key
 
         # Handle special case of arrow keys, which are mapped differently between pybullet and cv2
         keypress = ARROWS.get(keypress, keypress)
@@ -271,7 +279,10 @@ class KeyboardController:
         print()
         print("*" * 30)
         print("Controlling the Robot Using the Keyboard")
+        print("Last key is active until cleared with SPACE")
         print("*" * 30)
+        print()
+        print_command("spacebar", "clear last command")
         print()
         print("Joint Control")
         print_command("0-9", "specify the joint to control")
@@ -290,7 +301,7 @@ class KeyboardController:
         print_command("v, c", "rotate arm about z-axis")
         print()
         print("Boolean Gripper Control")
-        print_command("spacebar", "toggle gripper (open/close)")
+        print_command("y", "toggle gripper (open/close)")
         print()
         print("*" * 30)
         print()
@@ -384,7 +395,7 @@ def main(random_selection=False):
         s.viewer.reset_viewer()
 
     # Create teleop controller
-    action_generator = KeyboardController(robot=robot)
+    action_generator = KeyboardController(robot=robot, simulator=s)
 
     # Print out relevant keyboard info if using keyboard teleop
     if control_mode == "teleop":
