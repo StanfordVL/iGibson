@@ -388,7 +388,7 @@ def main(random_selection=False):
 
     # Other helpful user info
     quit_cmd = "ctrl-q" if gui == "pb" else "ESC"
-    print("Running demo")
+    print("Running demo. Switch to the viewer windows")
     print("Press {} to quit".format(quit_cmd))
 
     # Loop control until user quits
