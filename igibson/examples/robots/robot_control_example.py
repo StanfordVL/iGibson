@@ -3,7 +3,8 @@ Example script demo'ing robot control.
 
 Options for random actions, as well as selection of robot action space
 """
-
+import logging
+import random
 from collections import OrderedDict
 
 import cv2
@@ -44,13 +45,14 @@ ARROWS = {
 }
 
 
-def choose_from_options(options, name):
+def choose_from_options(options, name, random_selection=False):
     """
     Prints out options from a list, and returns the requested option.
 
     :param options: dict or Array, options to choose from. If dict, the value entries are assumed to be docstrings
         explaining the individual options
     :param name: str, name of the options
+    :param random_selection: bool, if the selection is random (for automatic demo execution). Default False
 
     :return str: Requested option
     """
@@ -59,21 +61,25 @@ def choose_from_options(options, name):
 
     for k, option in enumerate(options):
         docstring = ": {}".format(options[option]) if isinstance(options, dict) else ""
-        print("[{}] {}{}".format(k, option, docstring))
+        print("[{}] {}{}".format(k + 1, option, docstring))
     print()
-    try:
-        s = input("Choose a {} (enter a number from 0 to {}): ".format(name, len(options) - 1))
-        # parse input into a number within range
-        k = min(max(int(s), 0), len(options))
-    except:
-        k = 0
-        print("Input is not valid. Use {} by default.".format(list(options)[k]))
+
+    if not random_selection:
+        try:
+            s = input("Choose a {} (enter a number from 1 to {}): ".format(name, len(options)))
+            # parse input into a number within range
+            k = min(max(int(s), 1), len(options)) - 1
+        except:
+            k = 0
+            print("Input is not valid. Use {} by default.".format(list(options)[k]))
+    else:
+        k = random.choice(range(len(options)))
 
     # Return requested option
     return list(options)[k]
 
 
-def choose_controllers(robot):
+def choose_controllers(robot, random_selection=False):
     """
     For a given robot, iterates over all components of the robot, and returns the requested controller type for each
     component.
@@ -92,7 +98,9 @@ def choose_controllers(robot):
     for component, controller_options in default_config.items():
         # Select controller
         options = list(sorted(controller_options.keys()))
-        choice = choose_from_options(options=options, name="{} controller".format(component))
+        choice = choose_from_options(
+            options=options, name="{} controller".format(component), random_selection=random_selection
+        )
 
         # Add to user responses
         controller_choices[component] = choice
@@ -285,7 +293,12 @@ class KeyboardController:
         print()
 
 
-if __name__ == "__main__":
+def main(random_selection=False):
+    """
+    Robot control demo with selection
+    Queries the user to select a robot, the controllers, a scene and a type of input (random actions or teleop)
+    """
+    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # Set rendering options
     rendering_settings = MeshRendererSettings(
         optimized=True,
@@ -302,21 +315,26 @@ if __name__ == "__main__":
     s.import_scene(scene)
 
     # Get robot to create
-    robot_name = choose_from_options(options=list(sorted(REGISTERED_ROBOTS.keys())), name="robot")
+    robot_name = choose_from_options(
+        options=list(sorted(REGISTERED_ROBOTS.keys())), name="robot", random_selection=random_selection
+    )
     robot = REGISTERED_ROBOTS[robot_name](action_type="continuous")
     s.import_robot(robot)
 
     # Get controller choice
-    controller_choices = choose_controllers(robot=robot)
+    controller_choices = choose_controllers(robot=robot, random_selection=random_selection)
 
     # Choose control mode
-    control_mode = choose_from_options(options=CONTROL_MODES, name="control mode")
+    if random_selection:
+        control_mode = "random"
+    else:
+        control_mode = choose_from_options(options=CONTROL_MODES, name="control mode")
 
     # Choose scene to load
-    scene_id = choose_from_options(options=SCENES, name="scene")
+    scene_id = choose_from_options(options=SCENES, name="scene", random_selection=random_selection)
 
     # Choose GUI
-    gui = choose_from_options(options=GUIS, name="gui")
+    gui = choose_from_options(options=GUIS, name="gui", random_selection=random_selection)
 
     # Infer what GUI(s) to use
     render_mode, use_pb_gui = None, None
@@ -370,6 +388,7 @@ if __name__ == "__main__":
 
     # Other helpful user info
     quit_cmd = "ctrl-q" if gui == "pb" else "ESC"
+    print("Running demo")
     print("Press {} to quit".format(quit_cmd))
 
     # Loop control until user quits
@@ -382,3 +401,7 @@ if __name__ == "__main__":
             s.step()
 
     s.disconnect()
+
+
+if __name__ == "__main__":
+    main()
