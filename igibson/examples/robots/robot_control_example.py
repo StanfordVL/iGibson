@@ -44,6 +44,8 @@ ARROWS = {
     65298: "down_arrow",
 }
 
+gui = "ig"
+
 
 def choose_from_options(options, name, random_selection=False):
     """
@@ -239,6 +241,7 @@ class KeyboardController:
         :return None or str: User input in string form. Note that only the characters mentioned in
         @self.print_keyboard_teleop_info are explicitly supported
         """
+        global gui
         if gui == "pb":
             keypress = p.getKeyboardEvents()
             keypress = -1 if len(keypress.keys()) == 0 else list(keypress.keys())[0]
@@ -334,13 +337,14 @@ def main(random_selection=False):
     scene_id = choose_from_options(options=SCENES, name="scene", random_selection=random_selection)
 
     # Choose GUI
+    global gui
     gui = choose_from_options(options=GUIS, name="gui", random_selection=random_selection)
 
     # Infer what GUI(s) to use
     render_mode, use_pb_gui = None, None
     if gui == "ig":
         render_mode, use_pb_gui = "gui_interactive", False
-    if gui == "pb":
+    elif gui == "pb":
         render_mode, use_pb_gui = "headless", True
     else:  # Use both
         render_mode, use_pb_gui = "gui_interactive", True
