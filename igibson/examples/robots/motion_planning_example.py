@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 
 import numpy as np
@@ -21,7 +22,11 @@ def run_example(args):
         state, reward, done, _ = nav_env.step(action)
 
 
-if __name__ == "__main__":
+def main():
+    """
+    Example of usage of the motion planner wrapper
+    """
+    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config",
@@ -39,3 +44,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     run_example(args)
+
+
+if __name__ == "__main__":
+    main()
