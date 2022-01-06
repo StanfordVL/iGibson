@@ -132,6 +132,7 @@ class Viewer:
         self.block_command = False
         self.last_key = None
         self.last_pressed_key = None
+        self.ms_since_last_pressed_key = 0
 
     def setup_motion_planner(self, planner=None):
         """
@@ -700,7 +701,12 @@ class Viewer:
         self.last_key = cv2.waitKey(1)
 
         if self.last_key != -1:
+            # Update the last pressed key and reset the time since last press
             self.last_pressed_key = self.last_key
+            self.ms_since_last_pressed_key = 0
+        else:
+            # Otherwise, we increment the time since last press
+            self.ms_since_last_pressed_key += 1
 
         move_vec = self.view_direction[:2]
         # step size is 0.1m
@@ -851,6 +857,7 @@ class Viewer:
         self.view_direction = np.array(self.initial_view_direction)
         self.last_key = None
         self.last_pressed_key = None
+        self.ms_since_last_pressed_key = 0
 
 
 if __name__ == "__main__":

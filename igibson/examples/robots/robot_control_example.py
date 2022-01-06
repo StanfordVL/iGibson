@@ -8,11 +8,9 @@ import random
 import sys
 from collections import OrderedDict
 
-import cv2
 import numpy as np
 import pybullet as p
 
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.robots import REGISTERED_ROBOTS
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -46,7 +44,7 @@ ARROWS = {
 }
 
 gui = "ig"
-keypress = None
+GRIPPER_TOGGLE_THRESHOLD = 3  # How many action cycles before a gripper toggling is allowed
 
 
 def choose_from_options(options, name, random_selection=False):
@@ -89,6 +87,7 @@ def choose_controllers(robot, random_selection=False):
     component.
 
     :param robot: BaseRobot, robot class from which to infer relevant valid controller options
+    :param random_selection: bool, if the selection is random (for automatic demo execution). Default False
 
     :return OrderedDict: Mapping from individual robot component (e.g.: base, arm, etc.) to selected controller names
     """
@@ -138,7 +137,9 @@ class KeyboardController:
         self.joint_control_idx = None  # Indices of joints being directly controlled via joint control
         self.current_joint = -1  # Active joint being controlled for joint control
         self.gripper_direction = 1.0  # Flips between -1 and 1
+        self.actions_since_last_grasp = 0  # Counter used to prevent high frequency toggling of gripper
         self.persistent_gripper_action = None  # Whether gripper actions should persist between commands
+        self.last_keypress = None  # Last detected keypress
         self.keypress_mapping = None
         self.populate_keypress_mapping()
 
@@ -187,7 +188,7 @@ class KeyboardController:
                         ctrl_idx = info["start_idx"] + i
                         self.joint_control_idx.add(ctrl_idx)
                 else:
-                    self.keypress_mapping["y"] = {"idx": info["start_idx"], "val": 1.0}
+                    self.keypress_mapping[" "] = {"idx": info["start_idx"], "val": 1.0}
                     self.persistent_gripper_action = 1.0
             else:
                 raise ValueError("Unknown controller name received: {}".format(info["name"]))
@@ -213,12 +214,18 @@ class KeyboardController:
             action_info = self.keypress_mapping.get(keypress, None)
             if action_info is not None:
                 idx, val = action_info["idx"], action_info["val"]
-                # If the keypress is a spacebar, this is a gripper action -- we must toggle its direction
-                if keypress == "y":
+                # If the keypress is a spacebar, this is a gripper action
+                if keypress == " ":
+                    # We toggle the gripper direction if the last keypress is DIFFERENT from this keypress AND
+                    # we're past the gripper time threshold, to avoid high frequency toggling
+                    # i.e.: holding down the spacebar shouldn't result in rapid toggling of the gripper)
+                    if (keypress != self.last_keypress) and (self.actions_since_last_grasp > GRIPPER_TOGGLE_THRESHOLD):
+                        self.gripper_direction *= -1.0
+                        self.actions_since_last_grasp = 0
+                    # Modify the gripper value
                     val *= self.gripper_direction
                     if self.persistent_gripper_action is not None:
                         self.persistent_gripper_action = val
-                    self.gripper_direction *= -1.0
 
                 # If there is no index, then we assume that we are controlling a joint, so we directly set the idx
                 if idx is None:
@@ -226,13 +233,18 @@ class KeyboardController:
 
                 # Set action
                 action[idx] = val
+
             sys.stdout.write("\033[K")
             print("Pressed {}. Action: {}".format(keypress, action))
             sys.stdout.write("\033[F")
 
+        # Update last keypress
+        self.last_keypress = keypress
+
         # Possibly set the persistent gripper action
+        self.actions_since_last_grasp += 1
         if self.persistent_gripper_action is not None:
-            action[self.keypress_mapping["y"]["idx"]] = self.persistent_gripper_action
+            action[self.keypress_mapping[" "]["idx"]] = self.persistent_gripper_action
 
         # Return action
         return action
@@ -244,18 +256,16 @@ class KeyboardController:
         @self.print_keyboard_teleop_info are explicitly supported
         """
         global gui
-        global keypress
+
         if gui == "pb":
             kbe = p.getKeyboardEvents()
-
-            # We mimic the same behavior (repeating the last action) even though PB has event handling for keys
-            if len(kbe.keys()) != 0:
-                keypress = list(kbe.keys())[0]
-            # keypress = -1 if len(keypress.keys()) == 0 else list(keypress.keys())[0]
+            # Record the first keypress if any was detected
+            keypress = -1 if len(kbe.keys()) == 0 else list(kbe.keys())[0]
         else:
-            # todo: optimize for ig gui? seems very slow otherwise
-            # keypress = cv2.waitKey(1)
-            keypress = self.simulator.viewer.last_pressed_key
+            # Record the last keypress detected if it's within a certain time threshold
+            keypress = (
+                -1 if self.simulator.viewer.ms_since_last_pressed_key > 1 else self.simulator.viewer.last_pressed_key
+            )
 
         # Handle special case of arrow keys, which are mapped differently between pybullet and cv2
         keypress = ARROWS.get(keypress, keypress)
@@ -293,15 +303,15 @@ class KeyboardController:
         print_command(u"\u2191, \u2193", "move forward, backwards")
         print()
         print("Inverse Kinematics Control")
-        print_command("i, k", "translate arm along x-axis")
-        print_command("l, j", "translate arm along y-axis")
-        print_command("p, ;", "translate arm along z-axis")
-        print_command("n, b", "rotate arm about x-axis")
-        print_command("o, u", "rotate arm about y-axis")
-        print_command("v, c", "rotate arm about z-axis")
+        print_command("i, k", "translate arm eef along x-axis")
+        print_command("l, j", "translate arm eef along y-axis")
+        print_command("p, ;", "translate arm eef along z-axis")
+        print_command("n, b", "rotate arm eef about x-axis")
+        print_command("o, u", "rotate arm eef about y-axis")
+        print_command("v, c", "rotate arm eef about z-axis")
         print()
         print("Boolean Gripper Control")
-        print_command("y", "toggle gripper (open/close)")
+        print_command("space", "toggle gripper (open/close)")
         print()
         print("*" * 30)
         print()
@@ -313,15 +323,6 @@ def main(random_selection=False):
     Queries the user to select a robot, the controllers, a scene and a type of input (random actions or teleop)
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    # Set rendering options
-    rendering_settings = MeshRendererSettings(
-        optimized=True,
-        fullscreen=False,
-        enable_shadow=True,
-        enable_pbr=True,
-        msaa=True,
-        light_dimming_factor=1.0,
-    )
 
     # Create an initial headless dummy scene so we can load the requested robot and extract useful info
     s = Simulator(mode="headless", use_pb_gui=False)
