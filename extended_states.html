@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Extended States and Logic States &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Renderer" href="renderer.html" />
+    <link rel="prev" title="Physics Engine" href="physics_engine.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Extended States and Logic States</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#extended-states">Extended States</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#temperature">Temperature</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#wetness-level">Wetness level</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cleanliness-dustiness-and-stain-level">Cleanliness (Dustiness and Stain Level)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#toggled-state">Toggled State</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sliced-state">Sliced State</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#logic-states">Logic States</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Extended States and Logic States</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/extended_states.md.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="tex2jax_ignore mathjax_ignore section" id="extended-states-and-logic-states">
+<h1>Extended States and Logic States<a class="headerlink" href="#extended-states-and-logic-states" title="Permalink to this headline"></a></h1>
+<div class="section" id="extended-states">
+<h2>Extended States<a class="headerlink" href="#extended-states" title="Permalink to this headline"></a></h2>
+<p>iGibson 2.0 is an object-oriented simulator: the simulator maintains and updates a list of objects with properties that change over-time.
+Object classes are organized following the WordNet hierarchy.
+Different to other simulators, iGibson 2.0 is not limited to kinematic properties of the objects (pose, velocity, acceleration, joint configurations for articulated objects), but it includes also a set of additional object-properties that we call “extended states”.
+The extended states are:</p>
+<div class="section" id="temperature">
+<h3>Temperature<a class="headerlink" href="#temperature" title="Permalink to this headline"></a></h3>
+<p>Real continuous value per object. It can change if the object is close/inside a source or sink of heat, and the source/sink is active.
+<img alt="extstates1.jpg" src="_images/extstates1.jpg" /></p>
+</div>
+<div class="section" id="wetness-level">
+<h3>Wetness level<a class="headerlink" href="#wetness-level" title="Permalink to this headline"></a></h3>
+<p>Integer value per object. It changes when in contact with a water dropplet.
+<img alt="extstates2.jpg" src="_images/extstates2.jpg" /></p>
+</div>
+<div class="section" id="cleanliness-dustiness-and-stain-level">
+<h3>Cleanliness (Dustiness and Stain Level)<a class="headerlink" href="#cleanliness-dustiness-and-stain-level" title="Permalink to this headline"></a></h3>
+<p>In iGibson 2.0, objects can be initialized with visible dust or stain particles on its surface. The number of particles at initialization corresponds to a 100% level of dustiness, d, or stains, s, as we assume that dust/stain particles cannot be generated after initialization. As particles are cleaned, the level decreases proportionally to the number of particles removed, reaching a level of 0% when all particles have been cleaned.
+<img alt="extstates3.jpg" src="_images/extstates3.jpg" /></p>
+</div>
+<div class="section" id="toggled-state">
+<h3>Toggled State<a class="headerlink" href="#toggled-state" title="Permalink to this headline"></a></h3>
+<p>Some object categories in iGibson 2.0 can be toggled on and off. iGibson 2.0 maintains and updates an internal binary functional state for those objects.
+<img alt="extstates4a.jpg" src="_images/extstates4a.jpg" /></p>
+</div>
+<div class="section" id="sliced-state">
+<h3>Sliced State<a class="headerlink" href="#sliced-state" title="Permalink to this headline"></a></h3>
+<p>Many cooking activities require the agent to slice objects, e.g. food items.
+In iGibson 2.0 some objects can be sliced into two halves and the state of the object will be updated.
+<img alt="extstates4b.jpg" src="_images/extstates4b.jpg" /></p>
+</div>
+</div>
+<div class="section" id="logic-states">
+<h2>Logic States<a class="headerlink" href="#logic-states" title="Permalink to this headline"></a></h2>
+<p>Based on the kinematic and extended states, iGibson 2.0 implements a list of logic predicates, checking conditions to indicate if a logic state is True or False.
+The logic states implemented and checked by iGibson 2.0 include:</p>
+<ul class="simple">
+<li><p>InsideOf(o1,o2): Object o1 is inside of object o2 if we can find two orthogonal axes crossing at o1 center of mass that intersect o2 collision mesh in both directions.</p></li>
+<li><p>OnTopOf(o1,o2): Object o1 is on top of object o2 if o2 is in the list of objects InSameNegativeVerticalAxisObjs(o1) and o2 is in the list of objects InSamePositiveVerticalAxisObjs(o1) and InContactWith(o1, o2), where InSamePositive/NegativeVerticalAxisObjs(o1) is the list of objects in the same positive/negative vertical axis as o1 and InContactWith(o1, o2) is whether the two objects are in physical contact.</p></li>
+<li><p>NextTo(o1,o2): Object o1 is next to object o2 if o2 is in the list of objects InSameHorizontalPlaneObjs(o1) and l2(o1, o2) &lt; tNextTo , where InSameHorizontalPlaneObjs(o1) is a list of objects in the same horizontal plane as o1, l2 is the L2 distance between the closest points of the two objects, and tNextTo is a distance threshold that is proportional to the average size of the two objects.</p></li>
+<li><p>InContactWith(o1,o2): Object o1 is in contact with o2 if their surfaces are in contact in at least one point, i.e., o2 is in the list of objects InContactObjs(o1).</p></li>
+<li><p>Under(o1,o2): Object o1 is under object o2 if o2 is in the list of objects InSamePositiveVerticalAxisObjs(o1) and o2 6 is in the list of objects InSameNegativeVerticalAxisObjs(o1).</p></li>
+<li><p>OnFloor(o1,o2): Object o1 is on the room floor o2 if InContactWith(o1, o2) and o2 is of Room type.</p></li>
+<li><p>Open(o): Any joints (internal articulated degrees of freedom) of object o are open. Only joints that are relevant to consider an object Open are used in the predicate computation, e.g. the door of a microwave but not the buttons and controls. To select the relevant joints, object models of categories that can be Open undergo an additional annotation that produces a RelevantJoints list. A joint is considered open if its joint state q is 5% over the lower limit, i.e. q &gt; 0.05(qUpperLimit − qLowerLimit ) + qLowerLimit.</p></li>
+<li><p>Cooked(o): The temperature of object o was over the cooked threshold, Tcooked , and under the burnt threshold, Tburnt, at least once in the history of the simulation episode, i.e., Tcooked ≤ T max o &lt; Tburnt. We annotate the cooked temperature Tcooked for each object category that can be Cooked.</p></li>
+<li><p>Burnt(o): The temperature of object o was over the burnt threshold, Tburnt, at least once in the history of the simulation episode, i.e., T max o ≥ Tburnt. We annotate the burnt temperature Tburnt for each object category that can be Burnt.</p></li>
+<li><p>Frozen(o): The temperature of object o is under the freezing threshold, Tfrozen , i.e., To ≤ Tfrozen . We assume as default freezing temperature Tfrozen = 0◦C, a value that can be adapted per object category and model.</p></li>
+<li><p>Soaked(o): The wetness level w of the object o is over a threshold, wsoaked , i.e., w ≥ wsoaked . The default value for the threshold is wsoaked = 1, (the object is soaked if it absorbs one or more droplets), a value that can be adapted per object category and model.</p></li>
+<li><p>Dusty(o): The dustiness level d of the object o is over a threshold, ddusty , i.e., d &gt; ddusty . The default value for the threshold is ddusty = 0.5, (half of the dust particles have been cleaned), a value that can be adapted per object category and model.</p></li>
+<li><p>Stained(o): The stain level s of the object o is over a threshold, sstained , i.e., s &gt; sstained . The default value for the threshold is sstained = 0.5, (half of the stain particles have been cleaned), a value that can be adapted per object category and model.</p></li>
+<li><p>ToggledOn(o): Object o is toggled on or off. It is a direct query of the iGibson 2.0 objects’ extended state TS, the toggled state.</p></li>
+<li><p>Sliced(o): Object o is sliced or not. It is a direct access of the iGibson 2.0 objects’ extended state SS, the sliced state.</p></li>
+<li><p>InFoVOfAgent(o): Object o is in the field of view of the agent, i.e., at least one pixel of the image acquired by the agent’s onboard sensors corresponds to the surface of o.</p></li>
+<li><p>InHandOfAgent(o): Object o is grasped by the agent’s hands (i.e. assistive grasping is activated on that object).</p></li>
+<li><p>InReachOfAgent(o): Object o is within dreach = 2 meters away from the agent.</p></li>
+<li><p>InSameRoomAsAgent(o): Object o is located in the same room as the agent.</p></li>
+</ul>
+<p>We do not annotate all objects all extended states.
+Objects are annotated with extended states that allow to query meaningful and useful logic states from them, e.g. temperature to query if food is cooked (or frozen or burned).
+This doesn’t mean a table does not have temperature, but it is not relevant for most robotics activities simulated in iGibson 2.0.
+We annotate object classes with meaningful logic states that apply to them, and, possibly, the parameters to check these states.
+The list of classes and states can be found in the BDDL repository (<a class="reference external" href="https://github.com/sanjanasrivastava/BDDL/blob/master/utils/synsets_to_filtered_properties_pruned_igibson.json">list of object characteristics</a>).</p>
+<p>The characteristics that can be annotated include (additional extended state and parameters in parenthesis):
+(e.g., the temperature is not necessary/relevant for non-food categories for most tasks of interest).</p>
+<ul class="simple">
+<li><p>cookable: Can be Cooked (MaxTemperature, Temperature)</p></li>
+<li><p>burnable: Can be Burnt (MaxTemperature, Temperature)</p></li>
+<li><p>freezable: Can be Frozen (Temperature)</p></li>
+<li><p>soakable: Can be Soaked (WetnessLevel)</p></li>
+<li><p>dustyable: Can be Dusty (DustinessLevel)</p></li>
+<li><p>stainable: Can be Stained (StainLevel)</p></li>
+<li><p>toggleable: Can be ToggledOn (ToggledState)</p></li>
+<li><p>sliceable: Can be Sliced (SlicedState)</p></li>
+</ul>
+<p>Additionally, some objects present characteristics to help changing the logic states of others (additional extended state in parenthesis):</p>
+<ul class="simple">
+<li><p>Is a HeatSourceSink (ToggledState)</p></li>
+<li><p>Is a DropletSource (ToggledState)</p></li>
+<li><p>Is a CleaningTool</p></li>
+<li><p>Is a Liquid</p></li>
+<li><p>Is a Slicer</p></li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="physics_engine.html" class="btn btn-neutral float-left" title="Physics Engine" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="renderer.html" class="btn btn-neutral float-right" title="Renderer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

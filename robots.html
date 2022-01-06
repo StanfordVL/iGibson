@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Robots &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Robots &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,7 +15,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Simulators" href="simulators.html" />
+    <link rel="next" title="Sampling Scene Instances" href="sampling.html" />
     <link rel="prev" title="Objects" href="objects.html" /> 
 </head>
 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,14 +42,18 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Robots</a><ul>
@@ -58,12 +62,11 @@
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -174,12 +177,12 @@
 </tbody>
 </table>
 <p>Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>) and provide a <code class="docutils literal notranslate"><span class="pre">load</span></code> function that be invoked externally (usually by <code class="docutils literal notranslate"><span class="pre">import_robot</span></code> of <code class="docutils literal notranslate"><span class="pre">Simulator</span></code>). The <code class="docutils literal notranslate"><span class="pre">load</span></code> function imports the robot into PyBullet.</p>
-<p>All robot clases inherit <code class="docutils literal notranslate"><span class="pre">LocomotorRobot</span></code>. Some useful functions are worth pointing out:</p>
+<p>All robot clases inherit <code class="docutils literal notranslate"><span class="pre">LocomotionRobot</span></code>. Some useful functions are worth pointing out:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">{get/set}_{position/orientation/rpy/linear_velocity/angular_velocity}</span></code>: get and set the physical states of the robot base</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">apply_robot_action</span></code>: set motor control for each of the controllable joints. It currently supports four modes of control: joint torque, velocity, position, and differential drive for two-wheeled robots</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">calc_state</span></code>: compute robot states that might be useful for external applications</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">robot_specific_reset</span></code>: reset the robot joint states to their default value, particularly useful for mobile manipulators. For instance, <code class="docutils literal notranslate"><span class="pre">Fetch.robot_specific_reset()</span></code> will reset the robot to be something like this:</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">reset</span></code>: reset the robot joint states to their default value, particularly useful for mobile manipulators. For instance, <code class="docutils literal notranslate"><span class="pre">Fetch.reset()</span></code> will reset the robot to be something like this:</p></li>
 </ul>
 <p><img alt="fetch.png" src="_images/fetch.png" /></p>
 <p>Here are some details about how we perform motor control for robots:</p>
@@ -190,8 +193,8 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">robot_action</span></code> will be applied by <code class="docutils literal notranslate"><span class="pre">apply_robot_action</span></code>, which internally executes the following:</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">apply_robot_action</span><span class="p">(</span><span class="n">action</span><span class="p">):</span>
-    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ordered_joints</span><span class="p">):</span>
-        <span class="n">j</span><span class="o">.</span><span class="n">set_motor_velocity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">velocity_coef</span> <span class="o">*</span> <span class="n">j</span><span class="o">.</span><span class="n">max_velocity</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">joints</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+        <span class="n">j</span><span class="o">.</span><span class="n">set_vel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">velocity_coef</span> <span class="o">*</span> <span class="n">j</span><span class="o">.</span><span class="n">max_velocity</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">action</span><span class="p">[</span><span class="n">n</span><span class="p">],</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">+</span><span class="mi">1</span><span class="p">)))</span>
 </pre></div>
 </div>
 <p>Note that <code class="docutils literal notranslate"><span class="pre">robot_action</span></code> is a normalized joint velocity, i.e. <code class="docutils literal notranslate"><span class="pre">robot_action[n]</span> <span class="pre">==</span> <span class="pre">1.0</span></code> means executing the maximum joint velocity for the nth joint. The limits of joint position, velocity and torque are extracted from the URDF file of the robot.</p>
@@ -212,72 +215,70 @@
 </div>
 <div class="section" id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
-<p>In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/robot_example.py">igibson/examples/demo/robot_example.py</a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.robots.locobot_robot</span> <span class="kn">import</span> <span class="n">Locobot</span>
-<span class="kn">from</span> <span class="nn">igibson.robots.turtlebot_robot</span> <span class="kn">import</span> <span class="n">Turtlebot</span>
-<span class="kn">from</span> <span class="nn">igibson.robots.jr2_kinova_robot</span> <span class="kn">import</span> <span class="n">JR2_Kinova</span>
-<span class="kn">from</span> <span class="nn">igibson.robots.fetch_robot</span> <span class="kn">import</span> <span class="n">Fetch</span>
-<span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">parse_config</span>
+<p>In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/robot_example.py">igibson/examples/robots/robot_example.py</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">import</span> <span class="nn">time</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
-<span class="kn">import</span> <span class="nn">pybullet_data</span>
+
 <span class="kn">import</span> <span class="nn">igibson</span>
+<span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_settings</span> <span class="kn">import</span> <span class="n">MeshRendererSettings</span>
+<span class="kn">from</span> <span class="nn">igibson.robots</span> <span class="kn">import</span> <span class="n">REGISTERED_ROBOTS</span>
+<span class="kn">from</span> <span class="nn">igibson.scenes.empty_scene</span> <span class="kn">import</span> <span class="n">EmptyScene</span>
+<span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">parse_config</span>
+
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GUI</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">setGravity</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">9.8</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">setTimeStep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Robot demo</span>
+<span class="sd">    Loads all robots in an empty scene, generate random actions</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="c1"># Create empty scene</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">texture_scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+    <span class="n">scene</span> <span class="o">=</span> <span class="n">EmptyScene</span><span class="p">(</span><span class="n">render_floor_plane</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">floor_plane_rgba</span><span class="o">=</span><span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
 
-    <span class="n">floor</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pybullet_data</span><span class="o">.</span><span class="n">getDataPath</span><span class="p">(),</span> <span class="s2">&quot;mjcf/ground_plane.xml&quot;</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">loadMJCF</span><span class="p">(</span><span class="n">floor</span><span class="p">)</span>
-
-    <span class="n">robots</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s1">&#39;fetch_reaching.yaml&#39;</span><span class="p">))</span>
-    <span class="n">fetch</span> <span class="o">=</span> <span class="n">Fetch</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    <span class="n">robots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fetch</span><span class="p">)</span>
-
-    <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span><span class="s1">&#39;jr_reaching.yaml&#39;</span><span class="p">))</span>
-    <span class="n">jr</span> <span class="o">=</span> <span class="n">JR2_Kinova</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    <span class="n">robots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">jr</span><span class="p">)</span>
-
-    <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s1">&#39;locobot_point_nav.yaml&#39;</span><span class="p">))</span>
-    <span class="n">locobot</span> <span class="o">=</span> <span class="n">Locobot</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    <span class="n">robots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">locobot</span><span class="p">)</span>
-
-    <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s1">&#39;turtlebot_point_nav.yaml&#39;</span><span class="p">))</span>
-    <span class="n">turtlebot</span> <span class="o">=</span> <span class="n">Turtlebot</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
-    <span class="n">robots</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">turtlebot</span><span class="p">)</span>
-
-    <span class="n">positions</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
-        <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-    <span class="p">]</span>
-
-    <span class="k">for</span> <span class="n">robot</span><span class="p">,</span> <span class="n">position</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">robots</span><span class="p">,</span> <span class="n">positions</span><span class="p">):</span>
-        <span class="n">robot</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    <span class="c1"># Create one instance of each robot aligned along the y axis</span>
+    <span class="n">position</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">robots</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">robot_config_file</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;robots&quot;</span><span class="p">)):</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;robots&quot;</span><span class="p">,</span> <span class="n">robot_config_file</span><span class="p">))</span>
+        <span class="n">robot_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;robot&quot;</span><span class="p">]</span>
+        <span class="n">robot_name</span> <span class="o">=</span> <span class="n">robot_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="n">robot</span> <span class="o">=</span> <span class="n">REGISTERED_ROBOTS</span><span class="p">[</span><span class="n">robot_name</span><span class="p">](</span><span class="o">**</span><span class="n">robot_config</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">import_robot</span><span class="p">(</span><span class="n">robot</span><span class="p">)</span>
         <span class="n">robot</span><span class="o">.</span><span class="n">set_position</span><span class="p">(</span><span class="n">position</span><span class="p">)</span>
-        <span class="n">robot</span><span class="o">.</span><span class="n">robot_specific_reset</span><span class="p">()</span>
+        <span class="n">robot</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="n">robot</span><span class="o">.</span><span class="n">keep_still</span><span class="p">()</span>
+        <span class="n">robots</span><span class="p">[</span><span class="n">robot_name</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">robot</span><span class="p">,</span> <span class="n">position</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Loaded &quot;</span> <span class="o">+</span> <span class="n">robot_name</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Moving &quot;</span> <span class="o">+</span> <span class="n">robot_name</span><span class="p">)</span>
+        <span class="c1"># Set viewer in front</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">initial_pos</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.6</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.3</span><span class="p">]</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">initial_view_direction</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mf">0.7</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.7</span><span class="p">]</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">reset_viewer</span><span class="p">()</span>
 
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2400</span><span class="p">):</span>  <span class="c1"># keep still for 10 seconds</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">stepSimulation</span><span class="p">()</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>  <span class="c1"># keep still for 10 seconds</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
 
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2400</span><span class="p">):</span>  <span class="c1"># move with small random actions for 10 seconds</span>
-        <span class="k">for</span> <span class="n">robot</span><span class="p">,</span> <span class="n">position</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">robots</span><span class="p">,</span> <span class="n">positions</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">30</span><span class="p">):</span>
             <span class="n">action</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">robot</span><span class="o">.</span><span class="n">action_dim</span><span class="p">)</span>
             <span class="n">robot</span><span class="o">.</span><span class="n">apply_action</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">stepSimulation</span><span class="p">()</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+                <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
 
-    <span class="n">p</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+        <span class="n">robot</span><span class="o">.</span><span class="n">keep_still</span><span class="p">()</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">reload</span><span class="p">()</span>
+        <span class="n">scene</span> <span class="o">=</span> <span class="n">EmptyScene</span><span class="p">(</span><span class="n">render_floor_plane</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">floor_plane_rgba</span><span class="o">=</span><span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
+
+    <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -291,7 +292,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="objects.html" class="btn btn-neutral float-left" title="Objects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="simulators.html" class="btn btn-neutral float-right" title="Simulators" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="sampling.html" class="btn btn-neutral float-right" title="Sampling Scene Instances" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

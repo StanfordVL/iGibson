@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quickstart &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Quickstart &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,7 +15,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Overview" href="overview.html" />
+    <link rel="next" title="Overview of Modules" href="overview.html" />
     <link rel="prev" title="Installation" href="installation.html" /> 
 </head>
 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -52,23 +52,26 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -106,10 +109,11 @@
 <div class="section" id="igibson-in-action">
 <h2>iGibson in Action<a class="headerlink" href="#igibson-in-action" title="Permalink to this headline"></a></h2>
 <p>Assume you finished installation and assets downloading. Let’s get our hands dirty and see iGibson in action.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.demo.env_example
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
-<p>You should see something like this:
+<p>If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.</p>
+<p>You should see something like this. If you are on Mac OS X, you will only see the two small windows.
 <img alt="quickstart.png" src="_images/quickstart.png" /></p>
 <p>The main window shows PyBullet visualization. The robot (TurtleBot) is moving around with random actions in a realistic house (called “Rs”, the one you just downloaded!).</p>
 <p>On the right hand side, you can see two windows from our mesh renderer. The top one (RobotView) shows the robot’s first person view. The bottom one (ExternalView) shows the view of a virtual camera floating in the air.</p>
@@ -200,7 +204,7 @@ training perception tasks, with highest quality of graphics possible.</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="overview.html" class="btn btn-neutral float-right" title="Overview" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="overview.html" class="btn btn-neutral float-right" title="Overview of Modules" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

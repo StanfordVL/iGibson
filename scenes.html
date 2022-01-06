@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scenes &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Scenes &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -16,7 +16,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Objects" href="objects.html" />
-    <link rel="prev" title="Physics Engine" href="physics_engine.html" /> 
+    <link rel="prev" title="Environments" href="environments.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,14 +42,18 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Scenes</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#adding-other-scenes-to-igibson">Adding other scenes to iGibson</a></li>
@@ -69,12 +73,11 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -117,7 +120,7 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">StaticIndoorScene</span></code>: it loads static 3D scenes from <code class="docutils literal notranslate"><span class="pre">igibson.g_dataset_path</span></code>.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>: it loads fully interactive 3D scenes from <code class="docutils literal notranslate"><span class="pre">igibson.ig_dataset_path</span></code>.</p></li>
 </ul>
-<p>Typically, they take in the <code class="docutils literal notranslate"><span class="pre">scene_id</span></code> of a scene and provide a <code class="docutils literal notranslate"><span class="pre">load</span></code> function that be invoked externally (usually by <code class="docutils literal notranslate"><span class="pre">import_scene</span></code> and <code class="docutils literal notranslate"><span class="pre">import_ig_scene</span></code> of the <code class="docutils literal notranslate"><span class="pre">Simulator</span></code>).</p>
+<p>Typically, they take in the <code class="docutils literal notranslate"><span class="pre">scene_id</span></code> of a scene and provide a <code class="docutils literal notranslate"><span class="pre">load</span></code> function that be invoked externally (usually by <code class="docutils literal notranslate"><span class="pre">import_scene</span></code> of the <code class="docutils literal notranslate"><span class="pre">Simulator</span></code>).</p>
 <p>To be more specific, the <code class="docutils literal notranslate"><span class="pre">load</span></code> function of <code class="docutils literal notranslate"><span class="pre">StaticIndoorScene</span></code></p>
 <ul class="simple">
 <li><p>stores the floor information (we have many multistory houses in our dataset)</p></li>
@@ -138,7 +141,7 @@
 <div class="section" id="adding-other-scenes-to-igibson">
 <h2>Adding other scenes to iGibson<a class="headerlink" href="#adding-other-scenes-to-igibson" title="Permalink to this headline"></a></h2>
 <p>We provide detailed instructions and scripts to import scenes from the following sources into iGibson:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p><a class="reference external" href="https://github.com/CubiCasa/CubiCasa5k">CubiCasa5k</a>: A Dataset and an Improved Multi-Task Model for Floorplan Image Analysis. (Kalervo, Ahti, et al.)</p></li>
 <li><p><a class="reference external" href="https://tianchi.aliyun.com/specials/promotion/alibaba-3d-scene-dataset">3D-FRONT</a>: 3D Furnished Rooms with layOuts and semaNTics. (Fu, Huanl, et al.)</p></li>
 </ol>
@@ -148,28 +151,35 @@
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
 <div class="section" id="stadium-scenes">
 <h3>Stadium Scenes<a class="headerlink" href="#stadium-scenes" title="Permalink to this headline"></a></h3>
-<p>In this example, we import a simple stadium scene that is good for debugging. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/scene_stadium_example.py">igibson/examples/demo/scene_stadium_example.py</a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.scenes.stadium_scene</span> <span class="kn">import</span> <span class="n">StadiumScene</span>
-<span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">time</span>
+<p>In this example, we import a simple stadium scene that is good for debugging. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/stadium_example.py">igibson/examples/scenes/stadium_example.py</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+
+<span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_settings</span> <span class="kn">import</span> <span class="n">MeshRendererSettings</span>
+<span class="kn">from</span> <span class="nn">igibson.render.profiler</span> <span class="kn">import</span> <span class="n">Profiler</span>
+<span class="kn">from</span> <span class="nn">igibson.scenes.stadium_scene</span> <span class="kn">import</span> <span class="n">StadiumScene</span>
+<span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
+
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GUI</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">setGravity</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mf">9.8</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">setTimeStep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Loads the Stadium scene</span>
+<span class="sd">    This scene is default in pybullet but is not really useful in iGibson</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
 
     <span class="n">scene</span> <span class="o">=</span> <span class="n">StadiumScene</span><span class="p">()</span>
-    <span class="n">scene</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
 
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">24000</span><span class="p">):</span>  <span class="c1"># at least 100 seconds</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">stepSimulation</span><span class="p">()</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
-    <span class="n">p</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
-
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -178,97 +188,154 @@
 </div>
 <div class="section" id="static-building-scenes">
 <h3>Static Building Scenes<a class="headerlink" href="#static-building-scenes" title="Permalink to this headline"></a></h3>
-<p>In this example, we import a static scene, and then randomly sample a pair of locations in the scene and compuete the shortest path between them. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/scene_example.py">igibson/examples/demo/scene_example.py</a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.scenes.gibson_indoor_scene</span> <span class="kn">import</span> <span class="n">StaticIndoorScene</span>
-<span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
+<p>In this example, we import a static scene, and then randomly sample a pair of locations in the scene and compuete the shortest path between them. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/g_scene_selector.py">igibson/examples/scenes/g_scene_selector.py</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">platform</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
-<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_settings</span> <span class="kn">import</span> <span class="n">MeshRendererSettings</span>
+<span class="kn">from</span> <span class="nn">igibson.render.profiler</span> <span class="kn">import</span> <span class="n">Profiler</span>
+<span class="kn">from</span> <span class="nn">igibson.scenes.gibson_indoor_scene</span> <span class="kn">import</span> <span class="n">StaticIndoorScene</span>
+<span class="kn">from</span> <span class="nn">igibson.scenes.igibson_indoor_scene</span> <span class="kn">import</span> <span class="n">InteractiveIndoorScene</span>
+<span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">get_available_g_scenes</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">let_user_pick</span>
+
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">GUI</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">setGravity</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="o">-</span><span class="mf">9.8</span><span class="p">)</span>
-    <span class="n">p</span><span class="o">.</span><span class="n">setTimeStep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prompts the user to select any available non-interactive scene and loads it.</span>
+<span class="sd">    Shows how to load directly scenes without the Environment interface</span>
+<span class="sd">    Shows how to sample points in the scene and how to compute geodesic distance and the shortest path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">available_g_scenes</span> <span class="o">=</span> <span class="n">get_available_g_scenes</span><span class="p">()</span>
+    <span class="n">scene_id</span> <span class="o">=</span> <span class="n">available_g_scenes</span><span class="p">[</span><span class="n">let_user_pick</span><span class="p">(</span><span class="n">available_g_scenes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1"># Reduce texture scale for Mac.</span>
+    <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">texture_scale</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
 
-    <span class="n">scene</span> <span class="o">=</span> <span class="n">BuildingScene</span><span class="p">(</span><span class="s1">&#39;Rs&#39;</span><span class="p">,</span>
-                          <span class="n">build_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                          <span class="n">pybullet_load_texture</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">scene</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    <span class="n">scene</span> <span class="o">=</span> <span class="n">StaticIndoorScene</span><span class="p">(</span>
+        <span class="n">scene_id</span><span class="p">,</span>
+        <span class="n">build_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
 
+    <span class="c1"># Shows how to sample points in the scene</span>
     <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
         <span class="n">random_floor</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_floor</span><span class="p">()</span>
-        <span class="n">p1</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">floor</span><span class="o">=</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">p2</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">floor</span><span class="o">=</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">shortest_path</span><span class="p">,</span> <span class="n">geodesic_distance</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_shortest_path</span><span class="p">(</span><span class="n">random_floor</span><span class="p">,</span> <span class="n">p1</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">p2</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">entire_path</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;random point 1:&#39;</span><span class="p">,</span> <span class="n">p1</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;random point 2:&#39;</span><span class="p">,</span> <span class="n">p2</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;geodesic distance between p1 and p2&#39;</span><span class="p">,</span> <span class="n">geodesic_distance</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;shortest path from p1 to p2:&#39;</span><span class="p">,</span> <span class="n">shortest_path</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 1: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Geodesic distance between p1 and p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Shortest path from p1 to p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shortest_path</span><span class="p">))</span>
 
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">24000</span><span class="p">):</span>  <span class="c1"># at least 100 seconds</span>
-        <span class="n">p</span><span class="o">.</span><span class="n">stepSimulation</span><span class="p">()</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.</span><span class="o">/</span><span class="mf">240.</span><span class="p">)</span>
+    <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press enter&quot;</span><span class="p">)</span>
 
-    <span class="n">p</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="interactive-building-scenes">
 <h3>Interactive Building Scenes<a class="headerlink" href="#interactive-building-scenes" title="Permalink to this headline"></a></h3>
-<p>In this example, we import a fully interactive scene, and randomly sample points given a room type such as “living_room”. This can be useful for tasks that require the robot to always be spawned in certain room types. We support fifteen such scenes right now as part of the new iGibson Dataset. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/scene_interactive_example.py">igibson/examples/demo/scene_interactive_example.py</a>.</p>
+<p>In this example, we import a fully interactive scene, and randomly sample points given a room type such as “living_room”. This can be useful for tasks that require the robot to always be spawned in certain room types. We support fifteen such scenes right now as part of the new iGibson Dataset. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/ig_scene_selector.py">igibson/examples/scenes/ig_scene_selector.py</a>.</p>
 <p>Note that all objects in these scenes can be interacted realistically.
 <img alt="scene_interactive.png" src="_images/scene_interactive.png" /></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.scenes.igibson_indoor_scene</span> <span class="kn">import</span> <span class="n">InteractiveIndoorScene</span>
-<span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">platform</span>
+
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_settings</span> <span class="kn">import</span> <span class="n">MeshRendererSettings</span>
+<span class="kn">from</span> <span class="nn">igibson.render.profiler</span> <span class="kn">import</span> <span class="n">Profiler</span>
+<span class="kn">from</span> <span class="nn">igibson.scenes.igibson_indoor_scene</span> <span class="kn">import</span> <span class="n">InteractiveIndoorScene</span>
+<span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">get_available_ig_scenes</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">let_user_pick</span>
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gui&#39;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
-                  <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">device_idx</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-    <span class="n">scene</span> <span class="o">=</span> <span class="n">InteractiveIndoorScene</span><span class="p">(</span>
-        <span class="s1">&#39;Rs_int&#39;</span><span class="p">,</span> <span class="n">texture_randomization</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">object_randomization</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">s</span><span class="o">.</span><span class="n">import_ig_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prompts the user to select any available interactive scene and loads it.</span>
+<span class="sd">    Shows how to load directly scenes without the Environment interface</span>
+<span class="sd">    Shows how to sample points in the scene by room type and how to compute geodesic distance and the shortest path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">available_ig_scenes</span> <span class="o">=</span> <span class="n">get_available_ig_scenes</span><span class="p">()</span>
+    <span class="n">scene_id</span> <span class="o">=</span> <span class="n">available_ig_scenes</span><span class="p">[</span><span class="n">let_user_pick</span><span class="p">(</span><span class="n">available_ig_scenes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="n">settings</span><span class="o">.</span><span class="n">texture_scale</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
 
+    <span class="n">scene</span> <span class="o">=</span> <span class="n">InteractiveIndoorScene</span><span class="p">(</span>
+        <span class="n">scene_id</span><span class="p">,</span>
+        <span class="n">load_object_categories</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># To load only the building. Fast</span>
+        <span class="n">build_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
+
+    <span class="c1"># Shows how to sample points in the scene</span>
     <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-        <span class="n">pt</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point_by_room_type</span><span class="p">(</span><span class="s1">&#39;living_room&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;random point in living_room&#39;</span><span class="p">,</span> <span class="n">pt</span><span class="p">)</span>
+        <span class="n">pt</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point_by_room_type</span><span class="p">(</span><span class="s2">&quot;living_room&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point in living_room: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pt</span><span class="p">))</span>
 
-    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000</span><span class="p">):</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">random_floor</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_floor</span><span class="p">()</span>
+        <span class="n">p1</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">p2</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">shortest_path</span><span class="p">,</span> <span class="n">geodesic_distance</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_shortest_path</span><span class="p">(</span><span class="n">random_floor</span><span class="p">,</span> <span class="n">p1</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">p2</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">entire_path</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 1: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Geodesic distance between p1 and p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">))</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Shortest path from p1 to p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shortest_path</span><span class="p">))</span>
+
+    <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press enter&quot;</span><span class="p">)</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
     <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
     <span class="n">main</span><span class="p">()</span>
-
 </pre></div>
 </div>
 <div class="section" id="texture-randomization">
 <h4>Texture Randomization<a class="headerlink" href="#texture-randomization" title="Permalink to this headline"></a></h4>
-<p>In this example, we demonstrate material/texture randomization functionality of <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>. The goal is to randomize the material, texture and dynamic properties of all scene objects by calling <code class="docutils literal notranslate"><span class="pre">scene.randomize_texture</span></code> on-demand. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/scene_interactive_texture_rand_example.py">igibson/examples/demo/scene_interactive_texture_rand_example.py</a>.</p>
+<p>In this example, we demonstrate material/texture randomization functionality of <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>. The goal is to randomize the material, texture and dynamic properties of all scene objects by calling <code class="docutils literal notranslate"><span class="pre">scene.randomize_texture</span></code> on-demand. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/scene_texture_rand_example.py">igibson/examples/scenes/scene_texture_rand_example.py</a>.</p>
 <p>The randomized materials in the <code class="docutils literal notranslate"><span class="pre">ExternalView</span></code> window should look like this.
 <img alt="scene_interactive_texture_rand" src="_images/scene_interactive_texture_rand.png" /></p>
 </div>
 <div class="section" id="object-randomization">
 <h4>Object Randomization<a class="headerlink" href="#object-randomization" title="Permalink to this headline"></a></h4>
-<p>In this example, we demonstrate object randomization functionality of <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>. The goal is to randomize the object models while maintaining their poses and categories. Note that when object models are randomized, there is no guarantee that they have no collisions or the fixed, articulated objects can extend their joints without collision. We provide <code class="docutils literal notranslate"><span class="pre">scene.check_scene_quality</span></code> functionality to check scene quality and you should do object model re-sampling if this function returns <code class="docutils literal notranslate"><span class="pre">False</span></code>. An alternative way (recommended) is to use randoml object model configuration that we provide (10 for each scenes) which guarantees scene quality, by passing in <code class="docutils literal notranslate"><span class="pre">object_randomization_idx=[0-9]</span></code>. Finally, object randomization can be expensive because the new object models need to be loaded to the simulator each time, so we recommend only using it occasionally (e.g. every 1000 training episodes). The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/scene_interactive_object_rand_example.py">igibson/examples/demo/scene_interactive_object_rand_example.py</a>.</p>
+<p>In this example, we demonstrate object randomization functionality of <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>. The goal is to randomize the object models while maintaining their poses and categories. Note that when object models are randomized, there is no guarantee that they have no collisions or the fixed, articulated objects can extend their joints without collision. We provide <code class="docutils literal notranslate"><span class="pre">scene.check_scene_quality</span></code> functionality to check scene quality and you should do object model re-sampling if this function returns <code class="docutils literal notranslate"><span class="pre">False</span></code>. An alternative way (recommended) is to use randoml object model configuration that we provide (10 for each scenes) which guarantees scene quality, by passing in <code class="docutils literal notranslate"><span class="pre">object_randomization_idx=[0-9]</span></code>. Finally, object randomization can be expensive because the new object models need to be loaded to the simulator each time, so we recommend only using it occasionally (e.g. every 1000 training episodes). The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/scene_texture_rand_example.py">igibson/examples/scenes/scene_texture_rand_example.py</a>.</p>
 <p>The randomized object models in the <code class="docutils literal notranslate"><span class="pre">ExternalView</span></code> window should look like this.
 <img alt="scene_interactive_object_rand" src="_images/scene_interactive_object_rand.png" /></p>
 </div>
 <div class="section" id="partial-scene-loading">
 <h4>Partial Scene Loading<a class="headerlink" href="#partial-scene-loading" title="Permalink to this headline"></a></h4>
-<p>In this example, we demonstrate partial scene loading functionality of <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>. Specifically in this example we only load “chairs” in “living rooms”. This can be useful for tasks that only require certain object categories or rooms. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/scene_interactive_partial_loading_example.py">igibson/examples/demo/scene_interactive_partial_loading_example.py</a>.</p>
+<p>In this example, we demonstrate partial scene loading functionality of <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code>. Specifically in this example we only load “chairs” in “living rooms”. This can be useful for tasks that only require certain object categories or rooms. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/scene_partial_loading_example.py">igibson/examples/scenes/scene_partial_loading_example.py</a>.</p>
 </div>
 </div>
 <div class="section" id="visualize-traversability-map">
 <h3>Visualize Traversability Map<a class="headerlink" href="#visualize-traversability-map" title="Permalink to this headline"></a></h3>
-<p>In this example, we visuliaze the traversability map of a scene. We use this map to build an internal traversability graph for each floor so that we can compute the shortest path between two locations, and place robots and objects at valid locations inside the scene. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/examples/trav_map_vis_example.py">igibson/examples/demo/trav_map_vis_example.py</a>.</p>
+<p>In this example, we visuliaze the traversability map of a scene. We use this map to build an internal traversability graph for each floor so that we can compute the shortest path between two locations, and place robots and objects at valid locations inside the scene. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/trav_map_vis_example.py">igibson/examples/robots/trav_map_vis_example.py</a>.</p>
 <p>The traversability map of the scene <code class="docutils literal notranslate"><span class="pre">Rs</span></code> looks like this:
 <img alt="trav_map_vis" src="_images/trav_map_vis.png" /></p>
 </div>
@@ -279,7 +346,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="physics_engine.html" class="btn btn-neutral float-left" title="Physics Engine" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="environments.html" class="btn btn-neutral float-left" title="Environments" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="objects.html" class="btn btn-neutral float-right" title="Objects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

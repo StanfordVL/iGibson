@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Physics Engine &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Physics Engine &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,8 +15,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Scenes" href="scenes.html" />
-    <link rel="prev" title="Renderer" href="renderer.html" /> 
+    <link rel="next" title="Extended States and Logic States" href="extended_states.html" />
+    <link rel="prev" title="Simulator" href="simulators.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,27 +42,30 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Physics Engine</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -105,7 +108,7 @@
 </div>
 <div class="section" id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
-<p>In this example, we import a scene, a robot and an object into PyBullet and step through a few seconds of simulation. The code can be found here:<a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/physics_engine_example.py">igibson/examples/demo/physics_engine_example.py</a>.</p>
+<p>In this example, we import a scene, a robot and an object into PyBullet and step through a few seconds of simulation.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pybullet</span> <span class="k">as</span> <span class="nn">p</span>
 <span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">get_scene_path</span><span class="p">,</span> <span class="n">get_texture_file</span>
 <span class="kn">import</span> <span class="nn">igibson</span>
@@ -176,8 +179,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="renderer.html" class="btn btn-neutral float-left" title="Renderer" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="scenes.html" class="btn btn-neutral float-right" title="Scenes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="simulators.html" class="btn btn-neutral float-left" title="Simulator" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="extended_states.html" class="btn btn-neutral float-right" title="Extended States and Logic States" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

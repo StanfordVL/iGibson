@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Virtual Reality Overview &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Virtual Reality Overview &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -25,7 +25,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -40,23 +40,26 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -96,12 +99,12 @@
 </div>
 <div class="section" id="setup">
 <h1>Setup<a class="headerlink" href="#setup" title="Permalink to this headline"></a></h1>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Set up the HTC Vive VR hardware according to the <a class="reference external" href="https://support.steampowered.com/steamvr/HTC_Vive/">setup guide</a></p></li>
 <li><p>(optional) if you plan to use eye tracking on Windows, create a <a class="reference external" href="https://hub.vive.com/sso/login">vive developer account</a> then download and install the <a class="reference external" href="https://developer.vive.com/resources/vive-sense/sdk/vive-eye-and-facial-tracking-sdk/">SRAnipal runtime</a>. Note you should <a class="reference external" href="https://developer.vive.com/us/support/sdk/category_howto/how-to-calibrate-eye-tracking.html">calibrate</a> the Vive eye tracker before each recording session.</p></li>
 <li><p>Ensure you have installed iGibson according to the installation <a class="reference external" href="http://svl.stanford.edu/igibson/docs/installation.html#installation-method">instructions</a>.</p>
 <ul class="simple">
-<li><p>Note: On Windows VR support is eanbled by default. On Linux, you must install with an additional environmental variable <code class="docutils literal notranslate"><span class="pre">USE_VR=TRUE</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code>. You must also have addition development headers installed: on Ubuntu <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">xorg-dev</span></code> and on Centos/Fedora: <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">libXinerama-devel</span> <span class="pre">libXi-devel</span> <span class="pre">libXrandr-devel</span> <span class="pre">libXcursor-devel</span></code>.</p></li>
+<li><p>Note: On Windows VR support is enabled by default. On Linux, you must install with an additional environmental variable <code class="docutils literal notranslate"><span class="pre">USE_VR=TRUE</span> <span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-e</span> <span class="pre">.</span></code>. You must also have addition development headers installed: on Ubuntu <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">xorg-dev</span></code> and on Centos/Fedora: <code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">libXinerama-devel</span> <span class="pre">libXi-devel</span> <span class="pre">libXrandr-devel</span> <span class="pre">libXcursor-devel</span></code>.</p></li>
 </ul>
 </li>
 </ol>
@@ -110,27 +113,27 @@
 <h1>VR examples<a class="headerlink" href="#vr-examples" title="Permalink to this headline"></a></h1>
 <p>We have several examples showing how to use our VR interface:</p>
 <ul class="simple">
-<li><p>vr demo files: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos</span></code></p></li>
-<li><p>multi-user VR (experimental): <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/muvr</span></code></p></li>
-<li><p>benchmark: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/in_development</span></code></p>
+<li><p>vr demo files: <code class="docutils literal notranslate"><span class="pre">igibson/examples/vr</span></code></p></li>
+<li><p>multi-user VR (experimental): <code class="docutils literal notranslate"><span class="pre">igibson/examples/vr/muvr</span></code></p></li>
+<li><p>benchmark: <code class="docutils literal notranslate"><span class="pre">igibson/examples/vr/in_development</span></code></p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">vr_hand_dex_benchmark.py</span></code> – Demonstrates various challenging manipulation tasks</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">vr_hand_speed_benchmark.py</span></code> – Demonstrates various tasks to assess user speed at working in VR</p></li>
 </ul>
 </li>
-<li><p>data_save_replay: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/data_save_replay</span></code></p>
+<li><p>data_save_replay: <code class="docutils literal notranslate"><span class="pre">igibson/examples/vr/data_save_replay</span></code></p>
 <ul>
-<li><p>This folder demonstrates how to save VR recordings and “replay” them to reproduce the reorded trajectory</p></li>
+<li><p>This folder demonstrates how to save VR recordings and “replay” them to reproduce the recorded trajectory</p></li>
 </ul>
 </li>
-<li><p>robot_embodiment: <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/robot_embodiment</span></code></p>
+<li><p>robot_embodiment: <code class="docutils literal notranslate"><span class="pre">igibson/examples/vr/robot_embodiment</span></code></p>
 <ul>
 <li><p>This folder demonstrates the VR interface to the Fetch robot (WIP)</p></li>
 </ul>
 </li>
 </ul>
 <p>Benchmarks:</p>
-<p>We have two benchmarks - a hand and speed benchmark, both of which can be found in the top level of the vr_demos folder. In these demos, you can time yourself performing various challenges,
+<p>We have two benchmarks - a hand and speed benchmark, both of which can be found in the top level of the vr examples folder. In these demos, you can time yourself performing various challenges,
 such as putting objects away into specific containers/cabinets. Please see the comments in these demo files for more information.</p>
 </div>
 <div class="section" id="vr-config-and-button-mapping">
@@ -151,7 +154,7 @@ such as putting objects away into specific containers/cabinets. Please see the c
 <li><p><code class="docutils literal notranslate"><span class="pre">movement_speed</span></code> (default 0.01): how fast you move when using the touchpad. This number has been calibrated carefully, however feel free to change it if you want to speed up/slow down.</p></li>
 </ul>
 <p>We recommend looking at <code class="docutils literal notranslate"><span class="pre">igibson/render/mesh_renderer/mesh_renderer_vr.py</span></code> to see the VrSettings class which reads from <code class="docutils literal notranslate"><span class="pre">vr_config.yaml</span></code>. A single VrSettings object is created and passed in to the <code class="docutils literal notranslate"><span class="pre">Simulator</span></code> constructor.</p>
-<p>Note(optional): If you are using a device not already mapped, please run <code class="docutils literal notranslate"><span class="pre">igibson/examples/demo/vr_demos/in_development/vr_button_mapping.py</span></code> to figure out which physical controller buttons correspond to which indices in OpenVR.</p>
+<p>Note(optional): If you are using a device not already mapped, please run <code class="docutils literal notranslate"><span class="pre">igibson/examples/vr/in_development/vr_button_mapping.py</span></code> to figure out which physical controller buttons correspond to which indices in OpenVR.</p>
 </div>
 <div class="section" id="mirroring-the-vr-view-on-the-monitor">
 <h1>Mirroring the VR view on the monitor<a class="headerlink" href="#mirroring-the-vr-view-on-the-monitor" title="Permalink to this headline"></a></h1>

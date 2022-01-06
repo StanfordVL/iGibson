@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simulators &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Simulator &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,8 +15,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Viewer" href="viewer.html" />
-    <link rel="prev" title="Robots" href="robots.html" /> 
+    <link rel="next" title="Physics Engine" href="physics_engine.html" />
+    <link rel="prev" title="Assets" href="assets.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,27 +42,30 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Simulators</a><ul>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Simulator</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -85,7 +88,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Simulators</li>
+      <li>Simulator</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/simulators.md.txt" rel="nofollow"> View page source</a>
       </li>
@@ -95,15 +98,15 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="simulators">
-<h1>Simulators<a class="headerlink" href="#simulators" title="Permalink to this headline"></a></h1>
+  <div class="tex2jax_ignore mathjax_ignore section" id="simulator">
+<h1>Simulator<a class="headerlink" href="#simulator" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
 <p><strong>Simulator</strong> maintains an instance of <strong>Renderer</strong> and <strong>PhysicsEngine</strong> and provides APIs to import <strong>Scene</strong>, <strong>Object</strong> and <strong>Robot</strong> into both of them and keep them synchronized at all time.</p>
 <p>Some key functions are the following:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">load</span></code>: initialize PyBullet physics engine and MeshRenderer</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">import_{scene,</span> <span class="pre">ig_scene}</span></code>: import the scene into PyBullet by calling <code class="docutils literal notranslate"><span class="pre">scene.load</span></code>, and then import it into MeshRenderer by calling <code class="docutils literal notranslate"><span class="pre">self.renderer.add_instance</span></code>. If <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code> is imported using <code class="docutils literal notranslate"><span class="pre">import_ig_scene</span></code>, all objects in the scene are also imported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">import_{scene,</span> <span class="pre">ig_scene}</span></code>: import the scene into PyBullet by calling <code class="docutils literal notranslate"><span class="pre">scene.load</span></code>, and then import it into MeshRenderer by calling <code class="docutils literal notranslate"><span class="pre">self.renderer.add_instance_group</span></code>. If <code class="docutils literal notranslate"><span class="pre">InteractiveIndoorScene</span></code> is imported using <code class="docutils literal notranslate"><span class="pre">import_scene</span></code>, all objects in the scene are also imported.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">import_{object,</span> <span class="pre">articulated_object,</span> <span class="pre">robot}</span></code>: import the object, articulated object and robot into the simulator in a similar manner</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sync</span></code>: synchronize the poses of the dynamic objects (including the robots) between PyBullet and MeshRenderer. Specifically, it calls <code class="docutils literal notranslate"><span class="pre">update_position</span></code> for each object, in which it retrieve the object’s pose in PyBullet, and then update its pose accordingly in MeshRenderer.</p></li>
 </ul>
@@ -112,8 +115,8 @@
 </div>
 <div class="section" id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
-<p>In this example, we import a <code class="docutils literal notranslate"><span class="pre">StaticIndoorScene</span></code>, a <code class="docutils literal notranslate"><span class="pre">Turtlebot</span></code>, and ten <code class="docutils literal notranslate"><span class="pre">YCBObject</span></code> into the simulator. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/simulator_example.py">igibson/examples/demo/simulator_example.py</a></p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.robots.turtlebot_robot</span> <span class="kn">import</span> <span class="n">Turtlebot</span>
+<p>In this example, we import a <code class="docutils literal notranslate"><span class="pre">StaticIndoorScene</span></code>, a <code class="docutils literal notranslate"><span class="pre">Turtlebot</span></code>, and ten <code class="docutils literal notranslate"><span class="pre">YCBObject</span></code> into the simulator.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.robots.turtlebot</span> <span class="kn">import</span> <span class="n">Turtlebot</span>
 <span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
 <span class="kn">from</span> <span class="nn">igibson.scenes.gibson_indoor_scene</span> <span class="kn">import</span> <span class="n">StaticIndoorScene</span>
 <span class="kn">from</span> <span class="nn">igibson.objects.ycb_object</span> <span class="kn">import</span> <span class="n">YCBObject</span>
@@ -125,9 +128,9 @@
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="s1">&#39;../configs/turtlebot_demo.yaml&#39;</span><span class="p">)</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="s1">&#39;../configs/turtlebot_static_nav.yaml&#39;</span><span class="p">)</span>
     <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gui&#39;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gui_interactive&#39;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span>
                   <span class="n">image_height</span><span class="o">=</span><span class="mi">256</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
 
     <span class="n">scene</span> <span class="o">=</span> <span class="n">StaticIndoorScene</span><span class="p">(</span><span class="s1">&#39;Rs&#39;</span><span class="p">,</span>
@@ -165,8 +168,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="robots.html" class="btn btn-neutral float-left" title="Robots" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="viewer.html" class="btn btn-neutral float-right" title="Viewer" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="assets.html" class="btn btn-neutral float-left" title="Assets" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="physics_engine.html" class="btn btn-neutral float-right" title="Physics Engine" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

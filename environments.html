@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Environments &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Environments &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,7 +15,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Learning Frameworks" href="learning_framework.html" />
+    <link rel="next" title="Scenes" href="scenes.html" />
     <link rel="prev" title="Viewer" href="viewer.html" /> 
 </head>
 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,18 +42,16 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
-<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
-<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
-<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Environments</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a><ul>
@@ -71,9 +69,14 @@
 </li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -162,83 +165,82 @@ Most of the code can be found in <a class="reference external" href="https://git
 </div>
 <div class="section" id="configs">
 <h3>Configs<a class="headerlink" href="#configs" title="Permalink to this headline"></a></h3>
-<p>To instantiate an <strong>Environment</strong>, we first need to create a YAML config file. It will specify parameters for the <strong>Environment</strong> (e.g. robot type, action frequency, etc), the <strong>Sensors</strong> (e.g. sensor types, image resolution, noise rate, etc), the <strong>Task</strong> (e.g. task type, goal distance range, etc), the <strong>Reward Functions</strong> (e.g. reward types, reward scale, etc) and the <strong>Termination Conditions</strong> (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/examples/configs">examples/configs</a>.</p>
-<p>Here is one example: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/examples/configs/turtlebot_point_nav.yaml">examples/configs/turtlebot_point_nav.yaml</a></p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># scene</span>
-<span class="nt">scene</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">igibson</span>
-<span class="nt">scene_id</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Rs_int</span>
-<span class="nt">build_graph</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">load_texture</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">pybullet_load_texture</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">trav_map_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">no_obj</span>
-<span class="nt">trav_map_resolution</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.1</span>
-<span class="nt">trav_map_erosion</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">2</span>
-<span class="nt">should_open_all_doors</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
+<p>To instantiate an <strong>Environment</strong>, we first need to create a YAML config file. It will specify parameters for the <strong>Environment</strong> (e.g. robot type, action frequency, etc), the <strong>Sensors</strong> (e.g. sensor types, image resolution, noise rate, etc), the <strong>Task</strong> (e.g. task type, goal distance range, etc), the <strong>Reward Functions</strong> (e.g. reward types, reward scale, etc) and the <strong>Termination Conditions</strong> (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/configs">configs</a>.</p>
+<p>Here is one example: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/turtlebot_nav.yaml">configs/turtlebot_nav.yaml</a></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># scene</span><span class="w"></span>
+<span class="nt">scene</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">igibson</span><span class="w"></span>
+<span class="nt">scene_id</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Rs_int</span><span class="w"></span>
+<span class="nt">build_graph</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
+<span class="nt">load_texture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
+<span class="nt">pybullet_load_texture</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
+<span class="nt">trav_map_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">no_obj</span><span class="w"></span>
+<span class="nt">trav_map_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w"></span>
+<span class="nt">trav_map_erosion</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2</span><span class="w"></span>
+<span class="nt">should_open_all_doors</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
 
-<span class="c1"># domain randomization</span>
-<span class="nt">texture_randomization_freq</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">null</span>
-<span class="nt">object_randomization_freq</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">null</span>
+<span class="c1"># domain randomization</span><span class="w"></span>
+<span class="nt">texture_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
+<span class="nt">object_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
 
-<span class="c1"># robot</span>
-<span class="nt">robot</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">Turtlebot</span>
-<span class="nt">is_discrete</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="nt">velocity</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="c1"># robot</span><span class="w"></span>
+<span class="nt">robot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Turtlebot</span><span class="w"></span>
+<span class="nt">is_discrete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
+<span class="nt">velocity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
 
-<span class="c1"># task</span>
-<span class="nt">task</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">point_nav_random</span>
-<span class="nt">target_dist_min</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1.0</span>
-<span class="nt">target_dist_max</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">10.0</span>
-<span class="nt">goal_format</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">polar</span>
-<span class="nt">task_obs_dim</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">4</span>
+<span class="c1"># task</span><span class="w"></span>
+<span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">point_nav_random</span><span class="w"></span>
+<span class="nt">target_dist_min</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
+<span class="nt">target_dist_max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span><span class="w"></span>
+<span class="nt">goal_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">polar</span><span class="w"></span>
+<span class="nt">task_obs_dim</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">4</span><span class="w"></span>
 
-<span class="c1"># reward</span>
-<span class="nt">reward_type</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">geodesic</span>
-<span class="nt">success_reward</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">10.0</span>
-<span class="nt">potential_reward_weight</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1.0</span>
-<span class="nt">collision_reward_weight</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">-0.1</span>
+<span class="c1"># reward</span><span class="w"></span>
+<span class="nt">reward_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">geodesic</span><span class="w"></span>
+<span class="nt">success_reward</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span><span class="w"></span>
+<span class="nt">potential_reward_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
+<span class="nt">collision_reward_weight</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-0.1</span><span class="w"></span>
 
-<span class="c1"># discount factor</span>
-<span class="nt">discount_factor</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.99</span>
+<span class="c1"># discount factor</span><span class="w"></span>
+<span class="nt">discount_factor</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.99</span><span class="w"></span>
 
-<span class="c1"># termination condition</span>
-<span class="nt">dist_tol</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.36</span>  <span class="c1"># body width</span>
-<span class="nt">max_step</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">500</span>
-<span class="nt">max_collisions_allowed</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">500</span>
+<span class="c1"># termination condition</span><span class="w"></span>
+<span class="nt">dist_tol</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.36</span><span class="w">  </span><span class="c1"># body width</span><span class="w"></span>
+<span class="nt">max_step</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w"></span>
+<span class="nt">max_collisions_allowed</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span><span class="w"></span>
 
-<span class="c1"># misc config</span>
-<span class="nt">initial_pos_z_offset</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.1</span>
-<span class="nt">collision_ignore_link_a_ids</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span> <span class="nv">2</span><span class="p p-Indicator">,</span> <span class="nv">3</span><span class="p p-Indicator">,</span> <span class="nv">4</span><span class="p p-Indicator">]</span>  <span class="c1"># ignore collisions with these robot links</span>
+<span class="c1"># misc config</span><span class="w"></span>
+<span class="nt">initial_pos_z_offset</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.1</span><span class="w"></span>
+<span class="nt">collision_ignore_link_a_ids</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">3</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">4</span><span class="p p-Indicator">]</span><span class="w">  </span><span class="c1"># ignore collisions with these robot links</span><span class="w"></span>
 
-<span class="c1"># sensor spec</span>
-<span class="nt">output</span><span class="p">:</span> <span class="p p-Indicator">[</span><span class="nv">task_obs</span><span class="p p-Indicator">,</span> <span class="nv">rgb</span><span class="p p-Indicator">,</span> <span class="nv">depth</span><span class="p p-Indicator">,</span> <span class="nv">scan</span><span class="p p-Indicator">]</span>
-<span class="c1"># image</span>
-<span class="c1"># ASUS Xtion PRO LIVE</span>
-<span class="c1"># https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE</span>
-<span class="nt">fisheye</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
-<span class="nt">image_width</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">160</span>
-<span class="nt">image_height</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">120</span>
-<span class="nt">vertical_fov</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">45</span>
-<span class="c1"># depth</span>
-<span class="nt">depth_low</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.8</span>
-<span class="nt">depth_high</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">3.5</span>
-<span class="c1"># scan</span>
-<span class="c1"># Hokuyo URG-04LX-UG01</span>
-<span class="c1"># https://www.hokuyo-aut.jp/search/single.php?serial=166</span>
-<span class="c1"># n_horizontal_rays is originally 683, sub-sampled 1/3</span>
-<span class="nt">n_horizontal_rays</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">228</span>
-<span class="nt">n_vertical_beams</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">1</span>
-<span class="nt">laser_linear_range</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">5.6</span>
-<span class="nt">laser_angular_range</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">240.0</span>
-<span class="nt">min_laser_dist</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.05</span>
-<span class="nt">laser_link_name</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">scan_link</span>
+<span class="c1"># sensor spec</span><span class="w"></span>
+<span class="nt">output</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">task_obs</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">rgb</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">depth</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">scan</span><span class="p p-Indicator">]</span><span class="w"></span>
+<span class="c1"># image</span><span class="w"></span>
+<span class="c1"># ASUS Xtion PRO LIVE</span><span class="w"></span>
+<span class="c1"># https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE</span><span class="w"></span>
+<span class="nt">fisheye</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
+<span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">160</span><span class="w"></span>
+<span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span><span class="w"></span>
+<span class="nt">vertical_fov</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">45</span><span class="w"></span>
+<span class="c1"># depth</span><span class="w"></span>
+<span class="nt">depth_low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span><span class="w"></span>
+<span class="nt">depth_high</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3.5</span><span class="w"></span>
+<span class="c1"># scan</span><span class="w"></span>
+<span class="c1"># Hokuyo URG-04LX-UG01</span><span class="w"></span>
+<span class="c1"># https://www.hokuyo-aut.jp/search/single.php?serial=166</span><span class="w"></span>
+<span class="c1"># n_horizontal_rays is originally 683, sub-sampled 1/3</span><span class="w"></span>
+<span class="nt">n_horizontal_rays</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">228</span><span class="w"></span>
+<span class="nt">n_vertical_beams</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1</span><span class="w"></span>
+<span class="nt">laser_linear_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.6</span><span class="w"></span>
+<span class="nt">laser_angular_range</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">240.0</span><span class="w"></span>
+<span class="nt">min_laser_dist</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.05</span><span class="w"></span>
+<span class="nt">laser_link_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">scan_link</span><span class="w"></span>
 
-<span class="c1"># sensor noise</span>
-<span class="nt">depth_noise_rate</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.0</span>
-<span class="nt">scan_noise_rate</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">0.0</span>
+<span class="c1"># sensor noise</span><span class="w"></span>
+<span class="nt">depth_noise_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w"></span>
+<span class="nt">scan_noise_rate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0</span><span class="w"></span>
 
-<span class="c1"># visual objects</span>
-<span class="nt">visual_object_at_initial_target_pos</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">true</span>
-<span class="nt">target_visual_object_visible_to_agent</span><span class="p">:</span> <span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="c1"># visual objects</span><span class="w"></span>
+<span class="nt">visible_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
 </pre></div>
 </div>
 <p>Parameters of this config file are explained below:</p>
@@ -472,14 +474,14 @@ Most of the code can be found in <a class="reference external" href="https://git
 <td>noise rate for the LiDAR. 0.1 means 10% of the rays will be corrupted (set to laser_linear_range)</td>
 </tr>
 <tr>
-<td>visual_object_at_initial_target_pos</td>
+<td>visible_target</td>
 <td>true</td>
-<td>whether to show visual markers for the initial and target positions</td>
+<td>whether to show visual markers for the target positions that are visible to the agent</td>
 </tr>
 <tr>
-<td>target_visual_object_visible_to_agent</td>
-<td>false</td>
-<td>whether these visual markers are visible to the agents</td>
+<td>visible_path</td>
+<td>true</td>
+<td>whether to show visual markers for the computed shortest path that are visible to the agent</td>
 </tr>
 </tbody>
 </table>
@@ -495,28 +497,46 @@ Most of the code can be found in <a class="reference external" href="https://git
 <li><p><code class="docutils literal notranslate"><span class="pre">reward</span></code>: a scalar that represents the current reward</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">done</span></code>: a boolean that indicates whether the episode should terminate</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">info</span></code>: a python dictionary for bookkeeping purpose
-The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_example.py">igibson/examples/demo/env_example.py</a>.</p></li>
+The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/environments/env_nonint_example.py">igibson/examples/environments/env_nonint_example.py</a>.</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">igibson.envs.igibson_env</span> <span class="kn">import</span> <span class="n">iGibsonEnv</span>
-<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span>
-<span class="kn">import</span> <span class="nn">igibson</span>
+<p>If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">platform</span>
+
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+<span class="kn">import</span> <span class="nn">igibson</span>
+<span class="kn">from</span> <span class="nn">igibson.envs.igibson_env</span> <span class="kn">import</span> <span class="n">iGibsonEnv</span>
 <span class="kn">from</span> <span class="nn">igibson.render.profiler</span> <span class="kn">import</span> <span class="n">Profiler</span>
-<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">download_assets</span><span class="p">,</span> <span class="n">download_demo_data</span>
 
 
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
-    <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s1">&#39;turtlebot_demo.yaml&#39;</span><span class="p">)</span>
-    <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_filename</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;gui&#39;</span><span class="p">)</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates an iGibson environment from a config file with a turtlebot in Rs (not interactive).</span>
+<span class="sd">    It steps the environment 100 times with random actions sampled from the action space,</span>
+<span class="sd">    using the Gym interface, resetting it 10 times.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="c1"># If they have not been downloaded before, download assets and Rs Gibson (non-interactive) models</span>
+    <span class="n">download_assets</span><span class="p">()</span>
+    <span class="n">download_demo_data</span><span class="p">()</span>
+    <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">)</span>
+    <span class="n">config_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">config_filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
+    <span class="c1"># Reduce texture scale for Mac.</span>
+    <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;texture_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Resetting environment&quot;</span><span class="p">)</span>
         <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
-            <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s1">&#39;Environment action step&#39;</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Environment action step&quot;</span><span class="p">):</span>
                 <span class="n">action</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
                 <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
-                        <span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
                     <span class="k">break</span>
     <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
@@ -528,7 +548,7 @@ The code can be found here: <a class="reference external" href="https://github.c
 </div>
 <div class="section" id="interactive-environments">
 <h3>Interactive Environments<a class="headerlink" href="#interactive-environments" title="Permalink to this headline"></a></h3>
-<p>In this example, we show how to instantiate <code class="docutils literal notranslate"><span class="pre">iGibsobEnv</span></code> with a fully interactive scene <code class="docutils literal notranslate"><span class="pre">Rs_int</span></code>. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/demo/env_interactive_example.py">igibson/examples/demo/env_interactive_example.py</a>.</p>
+<p>In this example, we show how to instantiate <code class="docutils literal notranslate"><span class="pre">iGibsobEnv</span></code> with a fully interactive scene <code class="docutils literal notranslate"><span class="pre">Rs_int</span></code>. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/env_int_example.py">igibson/examples/environments/env_int_example.py</a>.</p>
 </div>
 </div>
 </div>
@@ -538,7 +558,7 @@ The code can be found here: <a class="reference external" href="https://github.c
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="viewer.html" class="btn btn-neutral float-left" title="Viewer" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="learning_framework.html" class="btn btn-neutral float-right" title="Learning Frameworks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="scenes.html" class="btn btn-neutral float-right" title="Scenes" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

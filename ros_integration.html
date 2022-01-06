@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ROS Integration &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>ROS Integration &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,7 +15,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Tests" href="tests.html" />
+    <link rel="next" title="Tests and Examples" href="tests.html" />
     <link rel="prev" title="Learning Frameworks" href="learning_framework.html" /> 
 </head>
 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,20 +42,22 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">ROS Integration</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
@@ -69,7 +71,8 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -121,7 +124,7 @@
 </div>
 <div class="section" id="preparation">
 <h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline"></a></h2>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Install ROS: in this package, we use navigation stack from ROS kinetic. Please follow the <a class="reference external" href="http://wiki.ros.org/kinetic/Installation/Ubuntu">instructions</a>.</p></li>
 <li><p>Install iGibson <strong>from source</strong> following <a class="reference internal" href="installation.html"><span class="doc std std-doc">installation guide</span></a> in <strong>python2.7</strong>. Note that ROS only supports <code class="docutils literal notranslate"><span class="pre">python2.7</span></code> at the moment, so you need to create python2.7 virtual environment to install iGibson instead of python3.x.</p></li>
 </ol>
@@ -134,15 +137,15 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <span class="nb">source</span> deactivate <span class="c1"># This step is important because we will NOT use &lt;anaconda installation root&gt;/envs/py2-igibson/bin/python</span>
 </pre></div>
 </div>
-<ol>
+<ol class="arabic">
 <li><p>If you use anaconda for setting up python environment, some tweaks of <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> variable are required to avoid conflict. In particular:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>For <code class="docutils literal notranslate"><span class="pre">PATH</span></code>: conda related needs to be removed from <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="nv">$PATH</span> <span class="p">|</span> grep -oP <span class="s2">&quot;[^:;]+&quot;</span> <span class="p">|</span> grep conda	<span class="c1">## Remove these paths from $PATH</span>
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>For <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code>: <code class="docutils literal notranslate"><span class="pre">/usr/lib/python2.7/dist-packages/</span></code>, <code class="docutils literal notranslate"><span class="pre">/opt/ros/kinetic/lib/python2.7/dist-packages</span></code>(ROS python libraries), <code class="docutils literal notranslate"><span class="pre">&lt;anaconda</span> <span class="pre">installation</span> <span class="pre">root&gt;/envs/py2-igibson/lib/python2.7/site-packages</span></code>(iGibson dependencies) and <code class="docutils literal notranslate"><span class="pre">&lt;iGibson</span> <span class="pre">root&gt;</span></code> need to be in <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> <strong>in this exact order</strong>.</p></li>
 </ol>
 </li>
@@ -151,7 +154,7 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir -p ~/catkin_ws
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Soft-link <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> folder to your <code class="docutils literal notranslate"><span class="pre">catkin_ws/src</span></code> and run <code class="docutils literal notranslate"><span class="pre">catkin_make</span></code> to index <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> package.</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;iGibson root&gt;/igibson
@@ -159,7 +162,7 @@ ln -s <span class="nv">$PWD</span>/examples/ros/igibson-ros/ ~/catkin_ws/src/
 <span class="nb">cd</span> ~/catkin_ws <span class="o">&amp;&amp;</span> catkin_make
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Install <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> dependencies:</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~/catkin_ws
@@ -177,14 +180,14 @@ python -c <span class="s1">&#39;import igibson, rospy, rospkg&#39;</span> <span 
 <div class="section" id="running">
 <h2>Running<a class="headerlink" href="#running" title="Permalink to this headline"></a></h2>
 <p>In order to run iGibson+ROS examples, you will need to perform the following steps:</p>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Prepare ROS environment</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">source</span> /opt/ros/kinetic/setup.bash
 <span class="nb">source</span> ~/catkin_ws/devel/setup.bash
 </pre></div>
 </div>
-<ol class="simple">
+<ol class="arabic simple">
 <li><p>Repeat Step 3 from Preparation: sanitize <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code></p></li>
 <li><p>Here are some of the examples that you can run, including gmapping, hector mapping and navigation.</p></li>
 </ol>
@@ -287,7 +290,7 @@ roslaunch igibson-ros turtlebot_gt_navigation.launch <span class="c1"># Run the 
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="learning_framework.html" class="btn btn-neutral float-left" title="Learning Frameworks" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="tests.html" class="btn btn-neutral float-right" title="Tests" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="tests.html" class="btn btn-neutral float-right" title="Tests and Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

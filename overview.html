@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overview &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Overview of Modules &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,23 +42,26 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -81,7 +84,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Overview</li>
+      <li>Overview of Modules</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/overview.md.txt" rel="nofollow"> View page source</a>
       </li>
@@ -91,15 +94,37 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="overview">
-<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h1>
+  <div class="tex2jax_ignore mathjax_ignore section" id="overview-of-modules">
+<h1>Overview of Modules<a class="headerlink" href="#overview-of-modules" title="Permalink to this headline"></a></h1>
 <p>Next, we will give an overview of iGibson and briefly explain the different modules in our system.
 <img alt="quickstart.png" src="_images/overview.png" /></p>
-<p>First of all, we have <strong>Dataset</strong> and <strong>Assets</strong>. <strong>Dataset</strong> contain 3D reconstructed real-world environments. <strong>Assets</strong> contain models of robots and objects. Download guide can be found <a class="reference external" href="installation.html#downloading-the-assets">here</a>. More info can be found here: <a class="reference internal" href="dataset.html"><span class="doc std std-doc">Dataset</span></a> and <a class="reference internal" href="assets.html"><span class="doc std std-doc">Assets</span></a>.</p>
-<p>Next, we have <strong>Renderer</strong> and <strong>PhysicsEngine</strong>. These are the two pillars that ensure the visual and physics fidelity of iGibson. We developed our own MeshRenderer that supports customizable camera configuration, physics-based rendering (PBR) and various image modalities, and renders at a lightening speed. We use the open-sourced <a class="reference external" href="http://www.pybullet.org/">PyBullet</a> as our underlying physics engine. It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner. Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time. Our code have already handled this for you. More info can be found here: <a class="reference internal" href="renderer.html"><span class="doc std std-doc">Renderer</span></a> and <a class="reference internal" href="physics_engine.html"><span class="doc std std-doc">PhysicsEngine</span></a>.</p>
-<p>Furthermore, we have <strong>Scene</strong>, <strong>Object</strong>, <strong>Robot</strong>, and <strong>Simulator</strong>. <strong>Scene</strong> loads 3D scene meshes from <code class="docutils literal notranslate"><span class="pre">igibson.g_dataset_path,</span> <span class="pre">igibson.ig_dataset_path</span></code>. <strong>Object</strong> loads interactable objects from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>. <strong>Robot</strong> loads robots from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>. <strong>Simulator</strong> maintains an instance of <strong>Renderer</strong> and <strong>PhysicsEngine</strong> and provides APIs to import <strong>Scene</strong>, <strong>Object</strong> and <strong>Robot</strong> into both of them and keep them synchronized at all time. More info can be found here: <a class="reference internal" href="scenes.html"><span class="doc std std-doc">Scene</span></a>, <a class="reference internal" href="objects.html"><span class="doc std std-doc">Object</span></a>, <a class="reference internal" href="robots.html"><span class="doc std std-doc">Robot</span></a>, and <a class="reference internal" href="simulators.html"><span class="doc std std-doc">Simulator</span></a>.</p>
-<p>Moreover, we have <strong>Task</strong>, <strong>Sensor</strong> and <strong>Environment</strong>. <strong>Task</strong> defines the task setup and includes a list of <strong>Reward Function</strong> and <strong>Termination Condition</strong>. It also provides task-specific reset functions and task-relevant observation definition. <strong>Sensor</strong> provides a light wrapper around <strong>Render</strong> to retrieve sensory observation. <strong>Environment</strong> follows the <a class="reference external" href="https://github.com/openai/gym">OpenAI gym</a> convention and provides an API interface for external applications. More info can be found here: <a class="reference internal" href="environments.html"><span class="doc std std-doc">Environment</span></a>.</p>
-<p>Finally, any learning framework (e.g. RL, IL) or planning and control framework (e.g. ROS) can be used with <strong>Environment</strong> as long as they accommodate OpenAI gym interface. We provide tight integration with <strong>ROS</strong> that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson. More info can be found here: <a class="reference internal" href="learning_framework.html"><span class="doc std std-doc">Learning Framework</span></a> and <a class="reference internal" href="ros_integration.html"><span class="doc std std-doc">ROS</span></a>.</p>
+<p>First of all, we have <strong>Datasets</strong> and <strong>Assets</strong>.
+<strong>Datasets</strong> include the 3D reconstructed real-world environments (iGibson Dataset), and 3D models of objects (BEHAVIOR Dataset of Objects).
+<strong>Assets</strong> contain models of robots and some additional 3D objects.
+The download guide for the assets can be found <a class="reference external" href="installation.html#downloading-the-assets">here</a>.
+More info can be found in the sections <a class="reference internal" href="dataset.html"><span class="doc std std-doc">Datasets</span></a> and <a class="reference internal" href="assets.html"><span class="doc std std-doc">Assets</span></a>.</p>
+<p>Next, we have <strong>Renderer</strong> and <strong>PhysicsEngine</strong>.
+These are the two pillars that ensure the visual and physics fidelity of iGibson.
+We developed our own renderer that supports customizable camera configuration, physics-based rendering (PBR) and various image modalities, and renders at a lightening speed.
+We use the open-sourced <a class="reference external" href="http://www.pybullet.org/">PyBullet</a> as our underlying physics engine.
+It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner.
+Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time.
+Our code have already handled this for you. More info can be found here: <a class="reference internal" href="renderer.html"><span class="doc std std-doc">Renderer</span></a> and <a class="reference internal" href="physics_engine.html"><span class="doc std std-doc">PhysicsEngine</span></a>.</p>
+<p>Furthermore, we have <strong>Scene</strong>, <strong>Object</strong>, <strong>Robot</strong>, and <strong>Simulator</strong>.
+<strong>Scene</strong> loads 3D scene meshes from <code class="docutils literal notranslate"><span class="pre">igibson.g_dataset_path,</span> <span class="pre">igibson.ig_dataset_path</span></code> and loads/holds the list of objects associated with an interactive scene.
+<strong>Object</strong> loads interactable objects from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>.
+<strong>Robot</strong> loads robots from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>.
+<strong>Simulator</strong> maintains an instance of <strong>Renderer</strong> and <strong>PhysicsEngine</strong> and provides APIs to import <strong>Scene</strong>, <strong>Object</strong> and <strong>Robot</strong> into both of them and keep them synchronized at all time.
+More info can be found here: <a class="reference internal" href="scenes.html"><span class="doc std std-doc">Scene</span></a>, <a class="reference internal" href="objects.html"><span class="doc std std-doc">Object</span></a>, <a class="reference internal" href="robots.html"><span class="doc std std-doc">Robot</span></a>, and <a class="reference internal" href="simulators.html"><span class="doc std std-doc">Simulator</span></a>.</p>
+<p>Moreover, we have <strong>Task</strong>, <strong>Sensor</strong> and <strong>Environment</strong>.
+<strong>Task</strong> defines the task setup and includes a list of <strong>Reward Function</strong> and <strong>Termination Condition</strong>.
+It also provides task-specific reset functions and task-relevant observation definition.
+<strong>Sensor</strong> provides a light wrapper around <strong>Render</strong> to retrieve sensory observation.
+<strong>Environment</strong> follows the <a class="reference external" href="https://github.com/openai/gym">OpenAI gym</a> convention and provides an API interface for external applications.
+More info can be found here: <a class="reference internal" href="environments.html"><span class="doc std std-doc">Environment</span></a>.</p>
+<p>Finally, any learning framework (e.g. RL, IL) or planning and control framework (e.g. ROS) can be used with <strong>Environment</strong> as long as they accommodate the OpenAI gym interface.
+We provide tight integration with <strong>ROS</strong> that allows for evaluation and visualization of, say, ROS Navigation Stack, in iGibson.
+More info can be found here: <a class="reference internal" href="learning_framework.html"><span class="doc std std-doc">Learning Framework</span></a> and <a class="reference internal" href="ros_integration.html"><span class="doc std std-doc">ROS</span></a>.</p>
 <p>We highly recommend you go through each of the Modules below for more details and code examples.</p>
 </div>
 

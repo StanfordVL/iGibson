@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Datasets &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Datasets &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -16,7 +16,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Assets" href="assets.html" />
-    <link rel="prev" title="Overview" href="overview.html" /> 
+    <link rel="prev" title="Overview of Modules" href="overview.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -42,7 +42,7 @@
 <li class="toctree-l1"><a class="reference internal" href="intro.html">iGibson: the Interactive Gibson Environment</a></li>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
@@ -54,17 +54,20 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -110,8 +113,8 @@
 <h2>Download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects<a class="headerlink" href="#download-igibson-2-0-scenes-and-the-behavior-dataset-of-objects" title="Permalink to this headline"></a></h2>
 <p>What will you download?</p>
 <ul class="simple">
-<li><p>iGibson 2.0 Dataset of Scenes: New versions of the fully interactive scenes, more densely populated with objects.</p></li>
-<li><p>BEHAVIOR Object Dataset: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists’ copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.</p></li>
+<li><p><strong>iGibson 2.0 Dataset of Scenes</strong>: New versions of the fully interactive scenes, more densely populated with objects.</p></li>
+<li><p><strong>BEHAVIOR Object Dataset</strong>: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists’ copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.</p></li>
 </ul>
 <p>To download both in a bundle, you need to follow the following steps:</p>
 <ul class="simple">
@@ -126,7 +129,7 @@
 <h2>Download iGibson 1.0 Scenes<a class="headerlink" href="#download-igibson-1-0-scenes" title="Permalink to this headline"></a></h2>
 <p>What will you download?</p>
 <ul class="simple">
-<li><p>iGibson 1.0 Dataset of Scenes: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets (<a class="reference external" href="https://www.shapenet.org/">ShapeNet Dataset</a>, <a class="reference external" href="http://motiondataset.zbuaa.com/">Motion Dataset</a>, <a class="reference external" href="https://sapien.ucsd.edu/">SAPIEN Dataset</a>) enriched with annotations of material and dynamic properties.</p></li>
+<li><p><strong>iGibson 1.0 Dataset of Scenes</strong>: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets (<a class="reference external" href="https://www.shapenet.org/">ShapeNet Dataset</a>, <a class="reference external" href="http://motiondataset.zbuaa.com/">Motion Dataset</a>, <a class="reference external" href="https://sapien.ucsd.edu/">SAPIEN Dataset</a>) enriched with annotations of material and dynamic properties.</p></li>
 </ul>
 <p>The following image shows the fifteen fully interactive scenes:</p>
 <p><img alt="placeholder.jpg" src="_images/ig_scene.png" /></p>
@@ -142,8 +145,8 @@
 <h2>Download Gibson and Stanford 2D-3D-Semantics scenes<a class="headerlink" href="#download-gibson-and-stanford-2d-3d-semantics-scenes" title="Permalink to this headline"></a></h2>
 <p>What will you download?</p>
 <ul class="simple">
-<li><p>Gibson static scenes: more than 500 reconstructions of homes and offices with a Matterport device. These models keep the texture observed with the sensor, but contain some irregularities, specially with reflective surfaces and thin elements like chairs’ legs.</p></li>
-<li><p>Stanford 2D-3D-Semantics scenes: 7 reconstructions of Stanford offices.</p></li>
+<li><p><strong>Gibson static scenes</strong>: more than 500 reconstructions of homes and offices with a Matterport device. These models keep the texture observed with the sensor, but contain some irregularities, specially with reflective surfaces and thin elements like chairs’ legs.</p></li>
+<li><p><strong>Stanford 2D-3D-Semantics scenes</strong>: 7 reconstructions of Stanford offices.</p></li>
 </ul>
 <p>Files included in the dataset:</p>
 <ul class="simple">
@@ -207,7 +210,7 @@ The following image shows some of the environments:</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="overview.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="overview.html" class="btn btn-neutral float-left" title="Overview of Modules" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="assets.html" class="btn btn-neutral float-right" title="Assets" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

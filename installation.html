@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; iGibson 2.0.3 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Installation &mdash; iGibson 2.0.4 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.3
+                2.0.4
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -53,29 +53,33 @@
 <li class="toctree-l3"><a class="reference internal" href="#the-svl-pybullet-fork">The SVL pybullet fork</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#downloading-the-assets">Downloading the Assets</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-the-assets-and-datasets-of-scenes-and-objects">Downloading the Assets and Datasets of Scenes and Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#testing">Testing</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#uninstalling">Uninstalling</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview of Modules</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
-<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
 <li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
+<li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scenes.html">Scenes</a></li>
 <li class="toctree-l1"><a class="reference internal" href="objects.html">Objects</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robots.html">Robots</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
-<li class="toctree-l1"><a class="reference internal" href="environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampling.html">Sampling Scene Instances</a></li>
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ros_integration.html">ROS Integration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
@@ -252,7 +256,7 @@ Build cuda_11.1.TC455_06.29190527_0
 <p>iGibson’s simulator can be installed as a python package using pip:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip install igibson  <span class="c1"># This step takes about 4 minutes</span>
 <span class="c1"># run the demo</span>
-python -m igibson.examples.demo.demo_static
+python -m igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 </div>
@@ -307,8 +311,8 @@ pip install pybullet-svl
 </div>
 </div>
 </div>
-<div class="section" id="downloading-the-assets">
-<h2>Downloading the Assets<a class="headerlink" href="#downloading-the-assets" title="Permalink to this headline"></a></h2>
+<div class="section" id="downloading-the-assets-and-datasets-of-scenes-and-objects">
+<h2>Downloading the Assets and Datasets of Scenes and Objects<a class="headerlink" href="#downloading-the-assets-and-datasets-of-scenes-and-objects" title="Permalink to this headline"></a></h2>
 <p>Once the environment has been installed, we need to download the assets to enable the simulation including models of the robotic agents, objects, 3D scenes, etc. This process requires three simple steps.</p>
 <p>First, we need to configure where the iGibson’s assets are going to be stored. The desired path should be indicated in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code>. The default place to store the data is:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>assets_path: your_installation_path/igibson/data/assets 
@@ -322,27 +326,38 @@ cubicasa_dataset_path: your_installation_path/igibson/data/assetscubicasa_datase
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --change_data_path
 </pre></div>
 </div>
-<p>Second, we need to download the robot models and some small objects from <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz">here</a> and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:</p>
+<p>Second, we need to download the robot models and some small objects from the assets bundle <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz">here</a> and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_assets
 </pre></div>
 </div>
-<p>Third, we need to download datasets of scenes, and, possibly, more object models. For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
-For navigation tasks, we provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset and Matterport3D Dataset.
-In any case, please, follow the instructions <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a> to download the datasets.</p>
-<p>Alternatively, to avoid downloading the entire dataset, you can download a single <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/Rs.tar.gz">high quality small environment R’s</a> for demo and testing purposes.
-To download the demo data, run:</p>
+<p>Third, we need to download datasets of scenes (Gibson or iGibson), and, possibly, the BEHAVIOR Datasets of Object Models.
+For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects, or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
+For navigation tasks, you could use the interactive scenes, but we also provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset, and Matterport3D Dataset that include non-interactive scene models.
+Follow the detailed instructions <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a> to download the aforementioned datasets.</p>
+<p>Alternatively, to avoid downloading an entire dataset before you can test iGibson’s functionalities, we provide a single <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/Rs.tar.gz">high quality small non-interactive scene (R’s)</a> for demo and testing purposes.
+To download this demo data, run:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_demo_data
+</pre></div>
+</div>
+</div>
+<div class="section" id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
+<p>We provide multiple examples to get you started!
+Check the folder <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/examples">igibson/examples</a> and the description <a class="reference internal" href="examples.html"><span class="doc std std-doc">here</span></a>.</p>
+<p>After installing the code and downloading the demo data, you should be able to try out a simple robot navigation demo executing:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 </div>
 <div class="section" id="testing">
 <h2>Testing<a class="headerlink" href="#testing" title="Permalink to this headline"></a></h2>
-<p>To test iGibson is properly installed, you can run</p>
+<p>To test iGibson installation, you can run</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python
 &gt;&gt; import igibson
 </pre></div>
 </div>
-<p>For a full suite of tests and benchmarks, you can refer to <a class="reference internal" href="tests.html"><span class="doc std std-doc">tests</span></a> for more details.</p>
+<p>For a full suite of tests and benchmarks, you can refer to <a class="reference internal" href="tests.html"><span class="doc std std-doc">tests</span></a> for more details.
+(For Mac users) Some tests will fail as they require a Nvidia GPU.</p>
 </div>
 <div class="section" id="uninstalling">
 <h2>Uninstalling<a class="headerlink" href="#uninstalling" title="Permalink to this headline"></a></h2>
