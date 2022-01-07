@@ -93,11 +93,9 @@ def main():
             fit_avg_dim_volume=True,
             texture_randomization=False,
             overwrite_inertial=True,
-            initial_pos=obj["pos"],
-            initial_orn=[0, 0, 90],
         )
         s.import_object(simulator_obj)
-        simulator_obj.set_orientation(obj["orn"])
+        simulator_obj.set_position_orientation(obj["pos"], obj["orn"])
 
     vr_agent.reset()
     i = 0

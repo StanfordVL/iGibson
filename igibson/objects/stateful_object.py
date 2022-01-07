@@ -27,8 +27,12 @@ class StatefulObject(BaseObject):
 
     def load_state(self, dump):
         for state_type, state_instance in self.states.items():
+            state_name = get_state_name(state_type)
             if issubclass(state_type, AbsoluteObjectState):
-                state_instance.load(dump[get_state_name(state_type)])
+                if state_name in dump:
+                    state_instance.load(dump[state_name])
+                else:
+                    logging.warning("Missing object state [{}] in the state dump".format(state_name))
 
     def set_position_orientation(self, pos, orn):
         super(StatefulObject, self).set_position_orientation(pos, orn)

@@ -218,12 +218,11 @@ if __name__ == "__main__":
     scene.objects_by_id = {}
     s.import_scene(scene)
 
-    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
+    agent = BehaviorRobot(show_visual_head=True, use_ghost_hands=False)
     s.import_robot(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
 
-    s.robots.append(agent)
     agent.initial_z_offset = initial_pos_z_offset
     agent.set_position_orientation([0, 0, initial_pos_z_offset], [0, 0, 0, 1])
     # plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])

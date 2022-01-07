@@ -32,12 +32,9 @@ def get_ig_avg_category_specs():
     """
     Load average object specs (dimension and mass) for objects
     """
-    avg_obj_dim_file = os.path.join(igibson.ig_dataset_path, "objects", "avg_category_specs.json")
-    if os.path.isfile(avg_obj_dim_file):
-        with open(avg_obj_dim_file) as f:
-            return json.load(f)
-    else:
-        return {}
+    avg_obj_dim_file = os.path.join(igibson.ig_dataset_path, "metadata", "avg_category_specs.json")
+    with open(avg_obj_dim_file) as f:
+        return json.load(f)
 
 
 def get_ig_category_ids():
@@ -137,6 +134,31 @@ def get_ig_model_path(category_name, model_name):
     return os.path.join(ig_category_path, model_name)
 
 
+def get_object_models_of_category(category_name, filter_method=None):
+    """
+    Get iGibson all object models of a given category
+
+    :return: a list of all object models of a given
+    """
+    models = []
+    ig_category_path = get_ig_category_path(category_name)
+    for model_name in os.listdir(ig_category_path):
+        if filter_method is None:
+            models.append(model_name)
+        elif filter_method in ["sliceable_part", "sliceable_whole"]:
+            model_path = get_ig_model_path(category_name, model_name)
+            metadata_json = os.path.join(model_path, "misc", "metadata.json")
+            with open(metadata_json) as f:
+                metadata = json.load(f)
+            if (filter_method == "sliceable_part" and "object_parts" not in metadata) or (
+                filter_method == "sliceable_whole" and "object_parts" in metadata
+            ):
+                models.append(model_name)
+        else:
+            raise Exception("Unknown filter method: {}".format(filter_method))
+    return models
+
+
 def get_all_object_categories():
     """
     Get iGibson all object categories
@@ -148,20 +170,6 @@ def get_all_object_categories():
 
     categories = sorted([f for f in os.listdir(ig_categories_path) if not folder_is_hidden(f)])
     return categories
-
-
-def get_object_models_of_category(category):
-    """
-    Get iGibson all object categories
-
-    :return: a list of all object categories
-    """
-    ig_dataset_path = igibson.ig_dataset_path
-    ig_categories_path = os.path.join(ig_dataset_path, "objects")
-
-    category_models = os.listdir(os.path.join(ig_categories_path, category))
-    models = [item for item in category_models if os.path.isdir(os.path.join(ig_categories_path, category, item))]
-    return models
 
 
 def get_all_object_models():

@@ -76,7 +76,7 @@ def main():
     if VR_MODE:
         # Create a BehaviorRobot and it will handle all initialization and importing under-the-hood
         # Change USE_GRIPPER to switch between the BRHand and the BRGripper (see robots/behavior_robot.py for more details)
-        vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
+        vr_agent = BehaviorRobot(use_gripper=USE_GRIPPER)
         # Since vr_height_offset is set, we will use the VR HMD true height plus this offset instead of the z coordinate of start_pos
         s.set_vr_start_pos([0, 0, 0], vr_height_offset=-0.1)
 

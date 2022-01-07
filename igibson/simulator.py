@@ -83,9 +83,6 @@ class Simulator:
         self.physics_timestep_num = int(self.physics_timestep_num)
         self.mode = SimulatorMode[mode.upper()]
 
-        self.particle_systems = []
-        self.objects = []
-
         self.image_width = image_width
         self.image_height = image_height
         self.vertical_fov = vertical_fov
@@ -103,19 +100,13 @@ class Simulator:
             self.mode = SimulatorMode.HEADLESS
             logging.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
 
-        self.frame_count = 0
-        self.body_links_awake = 0
         self.viewer = None
         self.renderer = None
 
         self.initialize_renderer()
         self.initialize_physics_engine()
         self.initialize_viewers()
-
-        self.robots = []
-
-        # First sync always sync all objects (regardless of their sleeping states)
-        self.first_sync = True
+        self.initialize_variables()
 
         # Set of categories that can be grasped by assisted grasping
         self.object_state_types = get_states_by_dependency_order()
@@ -157,6 +148,18 @@ class Simulator:
         self.initialize_renderer()
         self.initialize_physics_engine()
         self.initialize_viewers()
+        self.initialize_variables()
+
+    def initialize_variables(self):
+        """
+        Intialize miscellaneous variables
+        """
+        self.scene = None
+        self.particle_systems = []
+        self.frame_count = 0
+        self.body_links_awake = 0
+        # First sync always sync all objects (regardless of their sleeping states)
+        self.first_sync = True
 
     def initialize_renderer(self):
         """
@@ -251,6 +254,7 @@ class Simulator:
         else:
             # Non-marker objects require a Scene to be imported.
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+            assert self.scene is not None, "import_object needs to be called after import_scene"
             self.scene.add_object(obj, self, _is_call_from_simulator=True)
 
     @load_without_pybullet_vis
@@ -262,6 +266,7 @@ class Simulator:
         """
         # TODO: Remove this function in favor of unifying with import_object.
         assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
+        assert self.scene is not None, "import_robot needs to be called after import_scene"
 
         # TODO: remove this if statement after BehaviorRobot refactoring
         if isinstance(robot, BaseRobot):
@@ -272,7 +277,6 @@ class Simulator:
             robot.control_freq = control_freq
 
         self.scene.add_object(robot, self, _is_call_from_simulator=True)
-        self.robots.append(robot)
 
     @load_without_pybullet_vis
     def load_object_in_renderer(

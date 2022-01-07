@@ -11,7 +11,7 @@ def main():
     s = Simulator(mode="vr", rendering_settings=MeshRendererSettings(enable_shadow=True, optimized=True))
     scene = EmptyScene()
     s.import_scene(scene)
-    vr_agent = BehaviorRobot(s)
+    vr_agent = BehaviorRobot()
 
     # Main simulation loop
     while True:

@@ -25,14 +25,15 @@ from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplex
 from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch import Fetch
+from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.tasks.bddl_backend import IGibsonBDDLBackend
 from igibson.tasks.task_base import BaseTask
 from igibson.termination_conditions.predicate_goal import PredicateGoal
 from igibson.termination_conditions.timeout import Timeout
-from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
-from igibson.utils.checkpoint_utils import load_checkpoint, load_internal_states, save_internal_states
+from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_model_path, get_object_models_of_category
+from igibson.utils.checkpoint_utils import load_checkpoint
 from igibson.utils.constants import (
     AGENT_POSE_DIM,
     FLOOR_SYNSET,
@@ -51,7 +52,6 @@ class BehaviorTask(BaseTask):
     def __init__(self, env):
         super(BehaviorTask, self).__init__(env)
         self.scene = env.scene
-
         self.termination_conditions = [
             Timeout(self.config),
             PredicateGoal(self.config),
@@ -88,8 +88,8 @@ class BehaviorTask(BaseTask):
         self.log_writer = None
 
     def highlight_task_relevant_objs(self, env):
-        for _, obj in self.object_scope.items():
-            if obj.category in ["agent", "room_floor"]:
+        for obj_name, obj in self.object_scope.items():
+            if isinstance(obj, BaseRobot) or isinstance(obj, RoomFloor):
                 continue
             obj.highlight()
 
@@ -131,16 +131,15 @@ class BehaviorTask(BaseTask):
         return -success_score
 
     def save_scene(self, env):
-        snapshot_id = p.saveState()
-        self.state_history[snapshot_id] = save_internal_states(env.simulator)
+        scene_tree, snapshot_id = self.scene.save(pybullet_save_state=True)
+        self.state_history[snapshot_id] = scene_tree
         return snapshot_id
 
     def reset_scene(self, env):
         if self.reset_checkpoint_dir is not None and self.reset_checkpoint_idx != -1:
             load_checkpoint(env.simulator, self.reset_checkpoint_dir, self.reset_checkpoint_idx)
         else:
-            restoreState(self.initial_state)
-            load_internal_states(env.simulator, self.state_history[self.initial_state])
+            self.scene.restore(scene_tree=self.state_history[self.initial_state], pybullet_state_id=self.initial_state)
 
     def reset_agent(self, env):
         return
@@ -352,14 +351,12 @@ class BehaviorTask(BaseTask):
                 if remove_category in categories:
                     categories.remove(remove_category)
 
-            # for sliceable objects, exclude the half_XYZ categories
-            if is_sliceable:
-                categories = [cat for cat in categories if "half_" not in cat]
-
             for obj_inst in self.conds.parsed_objects[obj_cat]:
                 category = np.random.choice(categories)
-                category_path = get_ig_category_path(category)
-                model_choices = os.listdir(category_path)
+                # for sliceable objects, only get the whole objects
+                model_choices = get_object_models_of_category(
+                    category, filter_method="sliceable_whole" if is_sliceable else None
+                )
 
                 # Filter object models if the object category is openable
                 synset = self.object_taxonomy.get_class_name_from_igibson_category(category)
@@ -383,7 +380,10 @@ class BehaviorTask(BaseTask):
                 model_path = get_ig_model_path(category, model)
                 filename = os.path.join(model_path, model + ".urdf")
                 obj_name = "{}_{}".format(category, len(self.scene.objects_by_name))
-                # create the object and set the initial position to be far-away
+
+                new_urdf_objs = []
+
+                # create the object
                 simulator_obj = URDFObject(
                     filename,
                     name=obj_name,
@@ -393,8 +393,8 @@ class BehaviorTask(BaseTask):
                     fit_avg_dim_volume=True,
                     texture_randomization=False,
                     overwrite_inertial=True,
-                    initial_pos=[100 + num_new_obj, 100, -100],
                 )
+                new_urdf_objs.append(simulator_obj)
                 num_new_obj += 1
 
                 if is_sliceable:
@@ -413,7 +413,7 @@ class BehaviorTask(BaseTask):
                         model_path = get_ig_model_path(category, model)
                         filename = os.path.join(model_path, model + ".urdf")
                         obj_name = whole_object.name + "_part_{}".format(i)
-                        # create the object part (or half object) and set the initial position to be far-away
+                        # create the object parts (half objects) and set the initial position to be far-away
                         simulator_obj_part = URDFObject(
                             filename,
                             name=obj_name,
@@ -424,8 +424,8 @@ class BehaviorTask(BaseTask):
                             scale=whole_object.scale,
                             texture_randomization=False,
                             overwrite_inertial=True,
-                            initial_pos=[100 + num_new_obj, 100, -100],
                         )
+                        new_urdf_objs.append(simulator_obj_part)
                         num_new_obj += 1
                         object_parts.append((simulator_obj_part, (part_pos, part_orn)))
 
@@ -436,10 +436,13 @@ class BehaviorTask(BaseTask):
                     )
 
                 # Load the object into the simulator
-                if not self.scene.loaded:
-                    self.scene.add_object(simulator_obj, simulator=None)
-                else:
-                    env.simulator.import_object(simulator_obj)
+                assert self.scene.loaded, "Scene is not loaded"
+                env.simulator.import_object(simulator_obj)
+
+                # Set these objects to be far-away locations
+                for i, new_urdf_obj in enumerate(new_urdf_objs):
+                    new_urdf_obj.set_position([100 + num_new_obj - len(new_urdf_objs) + i, 100, -100])
+
                 self.newly_added_objects.add(simulator_obj)
                 self.object_scope[obj_inst] = simulator_obj
 
@@ -494,24 +497,9 @@ class BehaviorTask(BaseTask):
                 )
             elif obj_inst == "agent.n.01_1":
                 matched_sim_obj = self.get_agent(env)
-                agent = matched_sim_obj
-                if isinstance(env.robots[0], BehaviorRobot):
-                    agent = matched_sim_obj.parent
-
-                if isinstance(env.robots[0], BehaviorRobot):
-                    agent_key = "BRBody_1"
-                elif isinstance(env.robots[0], Fetch):
-                    agent_key = "fetch_gripper_robot_1"
-                else:
-                    raise Exception("Only BehaviorRobot and Fetch have scene caches")
-
-                agent.set_position_orientation(
-                    self.scene.agent[agent_key]["xyz"],
-                    quat_from_euler(self.scene.agent[agent_key]["rpy"]),
-                )
             else:
                 for _, sim_obj in self.scene.objects_by_name.items():
-                    if sim_obj.bddl_object_scope == obj_inst:
+                    if hasattr(sim_obj, "bddl_object_scope") and sim_obj.bddl_object_scope == obj_inst:
                         matched_sim_obj = sim_obj
                         break
             assert matched_sim_obj is not None, obj_inst
@@ -798,40 +786,45 @@ class BehaviorTask(BaseTask):
 
         return True, None
 
-    def import_non_colliding_objects(self, env, objects, existing_objects=[], min_distance=0.5):
+    def import_non_colliding_objects(self, env, clutter_scene, existing_objects=[], min_distance=0.5):
         """
         Loads objects into the scene such that they don't collide with existing objects.
 
         :param env: iGibsonEnv
-        :param objects: A dictionary with objects, from a scene loaded with a particular URDF
+        :param clutter_scene: A clutter scene to load new clutter objects from
         :param existing_objects: A list of objects that needs to be kept min_distance away when loading the new objects
         :param min_distance: A minimum distance to require for objects to load
         """
         state_id = p.saveState()
         objects_to_add = []
 
-        for obj_name in objects:
-            obj = objects[obj_name]
-
+        for obj_name, obj in clutter_scene.objects_by_name.items():
             # Do not allow duplicate object categories
             if obj.category in env.simulator.scene.objects_by_category:
                 continue
 
+            bbox_center_pos, bbox_center_orn = clutter_scene.object_states[obj_name]["bbox_center_pose"]
+            rotated_offset = p.multiplyTransforms([0, 0, 0], bbox_center_orn, obj.scaled_bbxc_in_blf, [0, 0, 0, 1])[0]
+            base_link_pos, base_link_orn = bbox_center_pos + rotated_offset, bbox_center_orn
+
             add = True
             body_ids = []
-
-            # Filter based on the minimum distance to any existing object
-            for idx in range(len(obj.urdf_paths)):
-                body_id = p.loadURDF(obj.urdf_paths[idx])
+            for i, urdf_path in enumerate(obj.urdf_paths):
+                # Load the object only into pybullet
+                body_id = p.loadURDF(obj.urdf_paths[i])
                 body_ids.append(body_id)
-                transformation = obj.poses[idx]
-                pos = transformation[0:3, 3]
-                orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
+                sub_urdf_pos, sub_urdf_orn = p.multiplyTransforms(
+                    base_link_pos, base_link_orn, *obj.local_transforms[i]
+                )
+                # Convert to CoM frame
                 dynamics_info = p.getDynamicsInfo(body_id, -1)
                 inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-                pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
-                pos = list(pos)
-                min_distance_to_existing_object = None
+                sub_urdf_pos, sub_urdf_orn = p.multiplyTransforms(
+                    sub_urdf_pos, sub_urdf_orn, inertial_pos, inertial_orn
+                )
+                sub_urdf_pos = np.array(sub_urdf_pos)
+                sub_urdf_pos[2] += 0.01  # slighly above to not touch furniture
+                p.resetBasePositionAndOrientation(body_id, sub_urdf_pos, sub_urdf_orn)
                 for existing_object in existing_objects:
                     # If a sliced obj is an existing_object, get_position will not work
                     if isinstance(existing_object, ObjectMultiplexer) and isinstance(
@@ -840,30 +833,25 @@ class BehaviorTask(BaseTask):
                         obj_pos = np.array([obj.get_position() for obj in existing_object.objects]).mean(axis=0)
                     else:
                         obj_pos = existing_object.get_position()
-                    distance = np.linalg.norm(np.array(pos) - np.array(obj_pos))
-                    if min_distance_to_existing_object is None or min_distance_to_existing_object > distance:
-                        min_distance_to_existing_object = distance
-
-                if min_distance_to_existing_object < min_distance:
-                    add = False
+                    distance = np.linalg.norm(np.array(sub_urdf_pos) - np.array(obj_pos))
+                    if distance < min_distance:
+                        add = False
+                        break
+                if not add:
                     break
-
-                pos[2] += 0.01  # slighly above to not touch furniture
-                p.resetBasePositionAndOrientation(body_id, pos, orn)
 
             # Filter based on collisions with any existing object
             if add:
                 p.stepSimulation()
-
                 for body_id in body_ids:
-                    in_collision = len(p.getContactPoints(body_id)) > 0
-                    if in_collision:
+                    if len(p.getContactPoints(body_id)) > 0:
                         add = False
                         break
 
             if add:
                 objects_to_add.append(obj)
 
+            # Always remove all the body ids for this object
             for body_id in body_ids:
                 p.removeBody(body_id)
 
@@ -871,8 +859,12 @@ class BehaviorTask(BaseTask):
 
         p.removeState(state_id)
 
+        # Actually load the object into the simulator
         for obj in objects_to_add:
             env.simulator.import_object(obj)
+
+        # Restore clutter objects to their correct poses
+        clutter_scene.restore_object_states(clutter_scene.object_states)
 
     def clutter_scene(self, env):
         """
@@ -884,7 +876,7 @@ class BehaviorTask(BaseTask):
         clutter_scene = InteractiveIndoorScene(scene_id, "{}_clutter{}".format(scene_id, clutter_id))
         existing_objects = [value for key, value in self.object_scope.items() if "floor.n.01" not in key]
         self.import_non_colliding_objects(
-            env=env, objects=clutter_scene.objects_by_name, existing_objects=existing_objects, min_distance=0.5
+            env=env, clutter_scene=clutter_scene, existing_objects=existing_objects, min_distance=0.5
         )
 
     def get_task_obs(self, env):

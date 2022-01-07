@@ -11,6 +11,13 @@ class Ant(LocomotionRobot):
     OpenAI Ant Robot
     """
 
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Ant"
+
     def _create_discrete_action_space(self):
         raise ValueError("Ant does not support discrete actions!")
 

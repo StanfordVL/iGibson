@@ -92,6 +92,13 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         )
 
     @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Fetch"
+
+    @property
     def tucked_default_joint_pos(self):
         return np.array(
             [
@@ -349,3 +356,15 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     @property
     def model_file(self):
         return os.path.join(igibson.assets_path, "models/fetch/fetch_gripper.urdf")
+
+    def dump_config(self):
+        """Dump robot config"""
+        dump = super(Fetch, self).dump_config()
+        dump.update(
+            {
+                "rigid_trunk": self.rigid_trunk,
+                "default_trunk_offset": self.default_trunk_offset,
+                "default_arm_pose": self.default_arm_pose,
+            }
+        )
+        return dump

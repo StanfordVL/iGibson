@@ -4,6 +4,7 @@ from future.utils import with_metaclass
 
 from igibson.objects.particles import Particle
 from igibson.objects.visual_marker import VisualMarker
+from igibson.robots.robot_base import BaseRobot
 
 
 class Scene(with_metaclass(ABCMeta)):
@@ -16,6 +17,7 @@ class Scene(with_metaclass(ABCMeta)):
         self.loaded = False
         self.build_graph = False  # Indicates if a graph for shortest path has been built
         self.floor_body_ids = []  # List of ids of the floor_heights
+        self.robots = []
 
     @abstractmethod
     def _load(self, simulator):
@@ -100,6 +102,10 @@ class Scene(with_metaclass(ABCMeta)):
             body_ids = obj.load(simulator)
 
         self._add_object(obj)
+
+        # Keeps track of all the robots separately
+        if isinstance(obj, BaseRobot):
+            self.robots.append(obj)
 
         return body_ids
 

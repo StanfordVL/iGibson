@@ -69,7 +69,7 @@ def main():
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
     if not VIEWER_MANIP:
-        vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
+        vr_agent = BehaviorRobot(use_gripper=USE_GRIPPER)
 
     objects = [
         ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),

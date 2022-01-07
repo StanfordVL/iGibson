@@ -158,13 +158,6 @@ class LocomotionRobot(BaseRobot):
         quat = qmult((euler2quat(delta, 0, 0)), quat)
         self.base_link.set_orientation(quat)
 
-    def keep_still(self):
-        """
-        Keep the robot still. Apply zero velocity to all joints.
-        """
-        for n, j in enumerate(self.joints.values()):
-            j.set_vel(0.0)
-
     @property
     @abstractmethod
     def base_control_idx(self):

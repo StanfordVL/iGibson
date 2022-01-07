@@ -16,6 +16,13 @@ class Freight(TwoWheelRobot):
     """
 
     @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Freight"
+
+    @property
     def wheel_radius(self):
         return 0.0613
 

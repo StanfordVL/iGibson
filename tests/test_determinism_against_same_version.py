@@ -1,10 +1,13 @@
 import os
 import tempfile
 
+import pytest
+
 from igibson.examples.learning.demo_collection_example import collect_demo
 from igibson.examples.learning.demo_replaying_example import safe_replay_demo
 
 
+@pytest.mark.skip(reason="need to re-cache scene instances and refactor BehaviorRobot first")
 def test_determinism_with_new_demo():
     # First record a random demo.
     with tempfile.TemporaryDirectory() as directory:

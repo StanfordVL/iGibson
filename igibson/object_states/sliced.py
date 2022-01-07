@@ -26,7 +26,7 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         self.value = new_value
 
-        # We want to return early if set_value(True)is called on a URDFObject
+        # We want to return early if set_value(True) is called on a URDFObject
         # (an object part) that does not have multiplexer registered. This is
         # used when we propagate sliced=True from the whole object to all the
         # object parts.

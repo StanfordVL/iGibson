@@ -373,26 +373,18 @@ class AttachedParticleSystem(ParticleSystem):
 
 class WaterStream(ParticleSystem):
     _DROP_PERIOD = 0.1  # new water every this many seconds.
-    _SIZE_OPTIONS = np.array(
-        [
-            [0.02] * 3,
-            [0.018] * 3,
-            [0.016] * 3,
-        ]
-    )
-    _COLOR_OPTIONS = np.array([(0.61, 0.82, 0.86, 1), (0.5, 0.77, 0.87, 1)])
+    _SIZE = np.array([0.02] * 3)
+    _COLOR = np.array([0.61, 0.82, 0.86, 1])
     DEFAULT_RENDERING_PARAMS = {"use_pbr": True}  # PBR needs to be on for the shiny water particles.
 
     def __init__(self, water_source_pos, num, initial_dump=None, **kwargs):
+        # Backward compatibility: we no longer randomize the sizes and colors because we want to reload scene with state caches
         if initial_dump is not None:
             self.sizes = np.array(initial_dump["sizes"])
             self.colors = np.array(initial_dump["colors"])
         else:
-            size_idxs = np.random.choice(len(self._SIZE_OPTIONS), num, replace=True)
-            self.sizes = self._SIZE_OPTIONS[size_idxs]
-
-            color_idxs = np.random.choice(len(self._COLOR_OPTIONS), num, replace=True)
-            self.colors = self._COLOR_OPTIONS[color_idxs]
+            self.sizes = np.tile(self._SIZE, (num, 1))
+            self.colors = np.tile(self._COLOR, (num, 1))
 
         super(WaterStream, self).__init__(
             num=num,
@@ -409,9 +401,10 @@ class WaterStream(ParticleSystem):
         self.initial_dump = initial_dump
 
     def reset_to_dump(self, dump):
+        # Need to comment out for backward compatibility for existing scene caches
         # Assert that the dump is compatible with the particle system state.
-        assert np.all(self.sizes == np.array(dump["sizes"])), "Incompatible WaterStream dump."
-        assert np.all(self.colors == np.array(dump["colors"])), "Incompatible WaterStream dump."
+        # assert np.all(self.sizes == np.array(dump["sizes"])), "Incompatible WaterStream dump."
+        # assert np.all(self.colors == np.array(dump["colors"])), "Incompatible WaterStream dump."
 
         self.steps_since_last_drop_step = dump["steps_since_last_drop_step"]
 
@@ -569,6 +562,7 @@ class Stain(_Dirt):
 
     def __init__(self, parent_obj, initial_dump=None, **kwargs):
         if initial_dump:
+            # Backward compatibility: we no longer randomize the bbox dims because we want to reload scene with state caches
             self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
             # Particle size range changes based on parent object size.
@@ -594,9 +588,9 @@ class Stain(_Dirt):
                 self._BOUNDING_BOX_UPPER_LIMIT_MAX,
             )
 
-            # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
-            random_bbox_base_size = np.random.uniform(
-                bounding_box_lower_limit, bounding_box_upper_limit, self._PARTICLE_COUNT
+            # Fixed but different sizes
+            random_bbox_base_size = np.linspace(
+                bounding_box_lower_limit, bounding_box_upper_limit, num=self._PARTICLE_COUNT, endpoint=True
             )
             self.random_bbox_dims = np.stack(
                 [
@@ -621,8 +615,9 @@ class Stain(_Dirt):
         )
 
     def reset_to_dump(self, dump):
+        # Need to comment out for backward compatibility for existing scene caches
         # Assert that the dump is compatible.
-        assert np.all(np.array(dump["random_bbox_dims"]) == self.random_bbox_dims)
+        # assert np.all(np.array(dump["random_bbox_dims"]) == self.random_bbox_dims)
 
         # Call the dump resetter of the parent.
         super(Stain, self).reset_to_dump(dump["dirt_dump"])

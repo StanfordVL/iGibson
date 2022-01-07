@@ -1,4 +1,5 @@
 import collections
+import json
 import os
 import random
 
@@ -6,15 +7,9 @@ import numpy as np
 import pybullet as p
 import scipy
 import yaml
-from packaging import version
 from PIL import Image
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
-
-# The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
-# We will use the version number for backcompatibility
-scipy_version = version.parse(scipy.version.version)
-
 
 # File I/O related
 
@@ -59,15 +54,19 @@ def dump_config(config):
     return yaml.dump(config)
 
 
+class NumpyEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
+
+
 # Geometry related
 
 
 def rotate_vector_3d(v, r, p, y, cck=True):
     """Rotates 3d vector by roll, pitch and yaw counterclockwise"""
-    if scipy_version >= version.parse("1.4"):
-        local_to_global = R.from_euler("xyz", [r, p, y]).as_matrix()
-    else:
-        local_to_global = R.from_euler("xyz", [r, p, y]).as_dcm()
+    local_to_global = R.from_euler("xyz", [r, p, y]).as_matrix()
     if cck:
         global_to_local = local_to_global.T
         return np.dot(global_to_local, v)
@@ -82,10 +81,7 @@ def get_transform_from_xyz_rpy(xyz, rpy):
     xyz = Array of the translation
     rpy = Array with roll, pitch, yaw rotations
     """
-    if scipy_version >= version.parse("1.4"):
-        rotation = R.from_euler("xyz", [rpy[0], rpy[1], rpy[2]]).as_matrix()
-    else:
-        rotation = R.from_euler("xyz", [rpy[0], rpy[1], rpy[2]]).as_dcm()
+    rotation = R.from_euler("xyz", [rpy[0], rpy[1], rpy[2]]).as_matrix()
     transformation = np.eye(4)
     transformation[0:3, 0:3] = rotation
     transformation[0:3, 3] = xyz
@@ -98,16 +94,13 @@ def get_rpy_from_transform(transform):
     homogeneous transformation matrix
     transformation = Array with the rotation (3x3) or full transformation (4x4)
     """
-    rpy = R.from_dcm(transform[0:3, 0:3]).as_euler("xyz")
+    rpy = R.from_matrix(transform[0:3, 0:3]).as_euler("xyz")
     return rpy
 
 
 def rotate_vector_2d(v, yaw):
     """Rotates 2d vector by yaw counterclockwise"""
-    if scipy_version >= version.parse("1.4"):
-        local_to_global = R.from_euler("z", yaw).as_matrix()
-    else:
-        local_to_global = R.from_euler("z", yaw).as_dcm()
+    local_to_global = R.from_euler("z", yaw).as_matrix()
     global_to_local = local_to_global.T
     global_to_local = global_to_local[:2, :2]
     if len(v.shape) == 1:
@@ -186,6 +179,13 @@ def quat_pos_to_mat(pos, quat):
     mat[:3, :3] = R.from_quat(quat).as_matrix()
     mat[:3, -1] = pos
     return mat
+
+
+def mat_to_quat_pos(mat):
+    """Convert transformation matrix to position and quaternion"""
+    quat = R.from_matrix(mat[0:3, 0:3]).as_quat()
+    pos = mat[0:3, 3]
+    return pos, quat
 
 
 # Texture related

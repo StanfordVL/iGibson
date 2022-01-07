@@ -13,7 +13,6 @@ import networkx as nx
 import numpy as np
 import pybullet as p
 import trimesh
-from scipy.spatial.transform import Rotation
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
@@ -26,7 +25,6 @@ from igibson.external.pybullet_tools.utils import (
     link_from_name,
     matrix_from_quat,
     quat_from_matrix,
-    set_joint_position,
 )
 from igibson.object_states.texture_change_state_mixin import TextureChangeStateMixin
 from igibson.objects.object_base import NonRobotObject, SingleBodyObject
@@ -36,7 +34,7 @@ from igibson.utils import utils
 from igibson.utils.constants import SemanticClass
 from igibson.utils.semantics_utils import CLASS_NAME_TO_CLASS_ID
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
-from igibson.utils.utils import get_transform_from_xyz_rpy, quatXYZWFromRotMat, rotate_vector_3d
+from igibson.utils.utils import get_transform_from_xyz_rpy, mat_to_quat_pos, quatXYZWFromRotMat, rotate_vector_3d
 
 # Optionally import bddl for object taxonomy.
 try:
@@ -113,9 +111,7 @@ class URDFObject(StatefulObject, NonRobotObject):
         bounding_box=None,
         scale=None,
         fit_avg_dim_volume=False,
-        connecting_joint=None,
-        initial_pos=None,
-        initial_orn=None,
+        fixed_base=False,
         avg_obj_dims=None,
         joint_friction=None,
         in_rooms=None,
@@ -124,7 +120,6 @@ class URDFObject(StatefulObject, NonRobotObject):
         scene_instance_folder=None,
         bddl_object_scope=None,
         visualize_primitives=False,
-        joint_positions=None,
         merge_fixed_links=True,
         ignore_visual_shape=False,
         class_id=None,
@@ -135,13 +130,12 @@ class URDFObject(StatefulObject, NonRobotObject):
         :param filename: urdf file path of that object model
         :param name: object name, unique for each object instance, e.g. door_3
         :param category: object category, e.g. door
+        :param abilities: a list of abilities to instantiate the correspounding object states
         :param model_path: folder path of that object model
         :param bounding_box: bounding box of this object
         :param scale: scaling factor of this object
-        :param: fit_avg_dim_volume: whether to fit the object to have the same volume as the average dimension while keeping the aspect ratio
-        :param connecting_joint: connecting joint to the scene that defines the object's initial pose (optional)
-        :param initial_pos: initial position of the object (lower priority than connecting_joint)
-        :param initial_orn: initial orientation of the object (lower priority than connecting_joint)
+        :param fit_avg_dim_volume: whether to fit the object to have the same volume as the average dimension while keeping the aspect ratio
+        :param fixed_base: whether this object has a fixed base to the world
         :param avg_obj_dims: average object dimension of this object
         :param joint_friction: joint friction for joints in this object
         :param in_rooms: which room(s) this object is in. It can be in more than one rooms if it sits at room boundary (e.g. doors)
@@ -150,10 +144,12 @@ class URDFObject(StatefulObject, NonRobotObject):
         :param scene_instance_folder: scene instance folder to split and save sub-URDFs
         :param bddl_object_scope: bddl object scope name, e.g. chip.n.04_2
         :param visualize_primitives: whether to render geometric primitives
-        :param joint_positions: Joint positions, keyed by body index and joint name, in the form of
-            List[Dict[name, position]]
-        :param class_id: Class ID to override default class ID with (default will be constructed using category)
-        :param rendering_params: Rendering params to override default category-based rendering params.
+        :param joint_states: joint positions and velocities, keyed by body index and joint name, in the form of
+            List[Dict[name, Tuple(position, velocity)]]
+        :param merge_fixed_links: whether to merge fixed links when importing to pybullet
+        :param ignore_visual_shape: whether to ignore visual shape when importing to pybullet
+        :param class_id: class ID to override default class ID with (default will be constructed using category)
+        :param rendering_params: rendering params to override default category-based rendering params.
         """
         # Load abilities from taxonomy if needed & possible
         if abilities is None:
@@ -171,14 +167,11 @@ class URDFObject(StatefulObject, NonRobotObject):
         self.name = name
         self.category = category
         self.in_rooms = in_rooms
-        self.connecting_joint = connecting_joint
-        self.initial_pos = initial_pos
-        self.initial_orn = initial_orn
+        self.fixed_base = fixed_base
         self.texture_randomization = texture_randomization
         self.overwrite_inertial = overwrite_inertial
         self.scene_instance_folder = scene_instance_folder
         self.bddl_object_scope = bddl_object_scope
-        self.joint_positions = joint_positions
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
         self.ignore_visual_shape = ignore_visual_shape
@@ -213,12 +206,13 @@ class URDFObject(StatefulObject, NonRobotObject):
         # of sub URDFs in this object)
         # urdf_paths, string
         self.urdf_paths = []
-        # object poses, 4 x 4 numpy array
-        self.poses = []
+        # local transformations from sub URDFs to the main body
+        self.local_transforms = []
         # pybullet body ids, int
         self.body_ids = []
-        # whether this object is fixed or not, boolean
+        # whether these sub URDFs are fixed
         self.is_fixed = []
+
         self.main_body = -1
 
         logging.info("Category " + self.category)
@@ -250,8 +244,7 @@ class URDFObject(StatefulObject, NonRobotObject):
         # Apply the desired bounding box size / scale
         # First obtain the scaling factor
         if bounding_box is not None and scale is not None:
-            logging.error("You cannot define both scale and bounding box size when creating a URDF Objects")
-            exit(-1)
+            raise Exception("You cannot define both scale and bounding box size for a URDFObject")
 
         meta_json = os.path.join(self.model_path, "misc", "metadata.json")
         bbox_json = os.path.join(self.model_path, "misc", "bbox.json")
@@ -327,7 +320,6 @@ class URDFObject(StatefulObject, NonRobotObject):
         self.add_meta_links(meta_links)
 
         self.scale_object()
-        self.compute_object_pose()
         self.remove_floating_joints(self.scene_instance_folder)
         self.prepare_link_based_bounding_boxes()
 
@@ -335,40 +327,6 @@ class URDFObject(StatefulObject, NonRobotObject):
 
     def set_ignore_visual_shape(self, value):
         self.ignore_visual_shape = value
-
-    def compute_object_pose(self):
-        if self.connecting_joint is not None:
-            joint_type = self.connecting_joint.attrib["type"]
-            joint_xyz = np.array([float(val) for val in self.connecting_joint.find("origin").attrib["xyz"].split(" ")])
-            if "rpy" in self.connecting_joint.find("origin").attrib:
-                joint_rpy = np.array(
-                    [float(val) for val in self.connecting_joint.find("origin").attrib["rpy"].split(" ")]
-                )
-            else:
-                joint_rpy = np.array([0.0, 0.0, 0.0])
-        else:
-            joint_type = "floating"
-            if self.initial_pos is not None:
-                joint_xyz = self.initial_pos
-            else:
-                joint_xyz = np.array([0.0, 0.0, 0.0])
-            if self.initial_orn is not None:
-                joint_rpy = self.initial_orn
-            else:
-                joint_rpy = np.array([0.0, 0.0, 0.0])
-
-        # The joint location is given wrt the bounding box center but we need it wrt to the base_link frame
-        # scaled_bbxc_in_blf is in object local frame, need to rotate to global (scene) frame
-        x, y, z = self.scaled_bbxc_in_blf
-        roll, pitch, yaw = joint_rpy
-        x, y, z = rotate_vector_3d(self.scaled_bbxc_in_blf, roll, pitch, yaw, False)
-        joint_xyz += np.array([x, y, z])
-
-        # We save the transformation of the joint to be used when we load the
-        # embedded urdf
-        self.joint_frame = get_transform_from_xyz_rpy(joint_xyz, joint_rpy)
-
-        self.main_body_is_fixed = joint_type == "fixed"
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
@@ -722,17 +680,18 @@ class URDFObject(StatefulObject, NonRobotObject):
 
         # Deal with floating joints inside the embedded urdf
         file_prefix = os.path.join(folder, self.name)
-        urdfs_no_floating = save_urdfs_without_floating_joints(self.object_tree, self.main_body_is_fixed, file_prefix)
+        urdfs_no_floating = save_urdfs_without_floating_joints(self.object_tree, file_prefix)
 
         # append a new tuple of file name of the instantiated embedded urdf
         # and the transformation (!= identity if its connection was floating)
         for i, urdf in enumerate(urdfs_no_floating):
             self.urdf_paths.append(urdfs_no_floating[urdf][0])
-            transformation = np.dot(self.joint_frame, urdfs_no_floating[urdf][1])
-            self.poses.append(transformation)
-            self.is_fixed.append(urdfs_no_floating[urdf][2])
-            if urdfs_no_floating[urdf][3]:
+            self.local_transforms.append(mat_to_quat_pos(urdfs_no_floating[urdf][1]))
+            if urdfs_no_floating[urdf][2]:
                 self.main_body = i
+                self.is_fixed.append(self.fixed_base)
+            else:
+                self.is_fixed.append(False)
 
     def prepare_visual_mesh_to_material(self):
         # mapping between visual objects and possible textures
@@ -937,30 +896,16 @@ class URDFObject(StatefulObject, NonRobotObject):
             logging.info("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]
             body_id = p.loadURDF(self.urdf_paths[idx], flags=flags, useFixedBase=is_fixed)
-            # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-            transformation = self.poses[idx]
-            pos = transformation[0:3, 3]
-            orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Moving URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
-            dynamics_info = p.getDynamicsInfo(body_id, -1)
-            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-            pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
-            p.resetBasePositionAndOrientation(body_id, pos, orn)
             p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
 
-            for j in get_joints(body_id):
-                info = get_joint_info(body_id, j)
-                jointType = info.jointType
-                if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+            # Set joint friction
+            for j in range(p.getNumJoints(body_id)):
+                info = p.getJointInfo(body_id, j)
+                joint_type = info[2]
+                if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
                     p.setJointMotorControl2(
                         body_id, j, p.VELOCITY_CONTROL, targetVelocity=0.0, force=self.joint_friction
                     )
-
-                    # Only need to restore revolute and prismatic joints
-                    if self.joint_positions:
-                        joint_name = str(info.jointName, encoding="utf-8")
-                        joint_position = self.joint_positions[idx][joint_name]
-                        set_joint_position(body_id, j, joint_position)
 
             simulator.load_object_in_renderer(
                 self,
@@ -986,47 +931,36 @@ class URDFObject(StatefulObject, NonRobotObject):
                 p.changeDynamics(body_id, joint_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
             p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
 
-    def reset(self):
-        """
-        Reset the object to its original pose and joint configuration
-        """
-        for idx in range(len(self.body_ids)):
-            body_id = self.body_ids[idx]
-            transformation = self.poses[idx]
-            pos = transformation[0:3, 3]
-            orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Resetting URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
-            dynamics_info = p.getDynamicsInfo(body_id, -1)
-            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
-            pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
-            p.resetBasePositionAndOrientation(body_id, pos, orn)
-
-            # reset joint position to 0.0
-            for j in range(p.getNumJoints(body_id)):
-                info = p.getJointInfo(body_id, j)
-                jointType = info[2]
-                if jointType in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                    p.resetJointState(body_id, j, targetValue=0.0, targetVelocity=0.0)
-                    p.setJointMotorControl2(
-                        body_id, j, p.VELOCITY_CONTROL, targetVelocity=0.0, force=self.joint_friction
-                    )
+    def set_bbox_center_position_orientation(self, pos, orn):
+        rotated_offset = p.multiplyTransforms([0, 0, 0], orn, self.scaled_bbxc_in_blf, [0, 0, 0, 1])[0]
+        self.set_base_link_position_orientation(pos + rotated_offset, orn)
 
     def set_position_orientation(self, pos, orn):
-        if self.main_body_is_fixed:
-            logging.warning("cannot set position / orientation for fixed objects")
-            return
-
         super(URDFObject, self).set_position_orientation(pos, orn)
 
-    def set_base_link_position_orientation(self, pos, orn):
-        if self.main_body_is_fixed:
-            logging.warning("cannot set_base_link_position_orientation for fixed objects")
-            return
+        # Get pose of the base link frame
+        dynamics_info = p.getDynamicsInfo(self.get_body_id(), -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        link_frame_pos, link_frame_orn = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
 
-        super(URDFObject, self).set_base_link_position_orientation(pos, orn)
+        # Set the non-main bodies to their original local poses
+        for i, body_id in enumerate(self.body_ids):
+            if body_id == self.get_body_id():
+                continue
+
+            # Get pose of the sub URDF base link frame
+            sub_urdf_pos, sub_urdf_orn = p.multiplyTransforms(link_frame_pos, link_frame_orn, *self.local_transforms[i])
+
+            # Convert to CoM frame
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+            sub_urdf_pos, sub_urdf_orn = p.multiplyTransforms(sub_urdf_pos, sub_urdf_orn, inertial_pos, inertial_orn)
+
+            p.resetBasePositionAndOrientation(body_id, sub_urdf_pos, sub_urdf_orn)
 
     def get_body_id(self):
-        return self.body_ids[self.main_body]
+        return None if len(self.body_ids) == 0 else self.body_ids[self.main_body]
 
     def add_meta_links(self, meta_links):
         """
