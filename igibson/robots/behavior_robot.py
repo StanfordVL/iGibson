@@ -110,7 +110,6 @@ class BehaviorRobot(object):
 
     def __init__(
         self,
-        sim,
         robot_num=1,
         hands=("left", "right"),
         use_body=True,
@@ -123,7 +122,6 @@ class BehaviorRobot(object):
     ):
         """
         Initializes BehaviorRobot:
-        :parm sim: iGibson simulator object
         :parm robot_num: the number of the agent - used in multi-user VR
         :parm use_constraints: whether to use constraints to move agent (normally set to True - set to false in state replay mode)
         :parm hands: list containing left, right or no hands
@@ -134,13 +132,14 @@ class BehaviorRobot(object):
         :param use_tracked_body: sets use_tracked_body to decide on which URDF to load, and which local transforms to use
         """
         # Basic parameters
-        self.simulator = sim
+        self.category = "agent"
+        self.model_name = "BehaviorRobot"
+        self.body_ids = []
+        self.simulator = None  # populated in load function
         self.robot_num = robot_num
         self.hands = hands
         self.use_body = use_body
         self.use_tracked_body = use_tracked_body
-        if sim.mode == SimulatorMode.VR:
-            self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
         self.use_gripper = use_gripper
         self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
@@ -179,8 +178,15 @@ class BehaviorRobot(object):
 
         self.links["eye"] = BREye(self, **kwargs)
 
+    def get_body_id(self):
+        return None if len(self.body_ids) == 0 else self.links["body"].get_body_id()
+
     def load(self, simulator):
-        return [id for part in self.links.values() for id in part.load(simulator)]
+        self.simulator = simulator
+        if self.simulator.mode == SimulatorMode.VR:
+            self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
+        self.body_ids = [id for part in self.links.values() for id in part.load(simulator)]
+        return self.body_ids
 
     def set_colliders(self, enabled=False):
         self.links["left_hand"].set_colliders(enabled)
@@ -406,6 +412,19 @@ class BehaviorRobot(object):
         for part_name, part_state in dump.items():
             self.links[part_name].load_part_state(part_state)
 
+    def dump_config(self):
+        """Dump robot config"""
+        return {
+            "robot_num": self.robot_num,
+            "hands": self.hands,
+            "use_body": self.use_body,
+            "use_gripper": self.use_gripper,
+            "use_ghost_hands": self.use_ghost_hands,
+            "normal_color": self.normal_color,
+            "show_visual_head": self.show_visual_head,
+            "use_tracked_body": self.use_tracked_body,
+        }
+
 
 class BRBody(ArticulatedObject):
     """
@@ -626,7 +645,7 @@ class BRHandBase(ArticulatedObject):
                 scale=[0.001] * 3,
                 class_id=class_id,
             )
-            self.ghost_hand.category = "agent"
+            self.ghost_hand.category = "BehaviorRobot"
             self.ghost_hand_appear_threshold = ghost_hand_appear_threshold
 
         if self.hand not in ["left", "right"]:
@@ -1101,8 +1120,8 @@ class BRHand(BRHandBase):
                     ag_link != -1
                     and p.getJointInfo(ag_bid, ag_link)[2] in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]
                     and ag_bid in self.parent.simulator.scene.objects_by_id
-                    and hasattr(self.parent.simulator.scene.objects_by_id[ag_bid], "main_body_is_fixed")
-                    and self.parent.simulator.scene.objects_by_id[ag_bid].main_body_is_fixed
+                    and hasattr(self.parent.simulator.scene.objects_by_id[ag_bid], "fixed_base")
+                    and self.parent.simulator.scene.objects_by_id[ag_bid].fixed_base
                 ):
                     joint_type = p.JOINT_POINT2POINT
                 else:

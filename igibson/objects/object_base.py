@@ -37,6 +37,10 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         self._loaded = True
         return self._load(simulator)
 
+    @property
+    def loaded(self):
+        return self._loaded
+
     @abstractmethod
     def get_body_id(self):
         """
@@ -85,13 +89,45 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
 
+    def get_velocity(self):
+        """Get object base velocity in the format of Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]"""
+        lin, ang = p.getBaseVelocity(self.get_body_id())
+        return np.array(lin), np.array(ang)
+
+    def set_velocity(self, linear_velocity, angular_velocity):
+        """Set object base velocity in the format of Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]"""
+        p.resetBaseVelocity(self.get_body_id(), linear_velocity, angular_velocity)
+
+    def set_joint_states(self, joint_states):
+        """Set object joint states in the format of Dict[String: (q, q_dot)]]"""
+        body_id = self.get_body_id()
+        for j in range(p.getNumJoints(body_id)):
+            info = p.getJointInfo(body_id, j)
+            joint_type = info[2]
+            if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                joint_name = info[1].decode("UTF-8")
+                joint_position, joint_velocity = joint_states[joint_name]
+                p.resetJointState(body_id, j, joint_position, targetVelocity=joint_velocity)
+
+    def get_joint_states(self):
+        """Get object joint states in the format of Dict[String: (q, q_dot)]]"""
+        joint_states = {}
+        body_id = self.get_body_id()
+        for j in range(p.getNumJoints(body_id)):
+            info = p.getJointInfo(body_id, j)
+            joint_type = info[2]
+            if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                joint_name = info[1].decode("UTF-8")
+                joint_states[joint_name] = p.getJointState(body_id, j)[:2]
+        return joint_states
+
     def dump_state(self):
         """Dump the state of the object other than what's not included in pybullet state."""
         return None
 
     def load_state(self, dump):
         """Load the state of the object other than what's not included in pybullet state."""
-        pass
+        return
 
 
 class NonRobotObject(BaseObject):

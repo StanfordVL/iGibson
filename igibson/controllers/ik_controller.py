@@ -127,6 +127,25 @@ class InverseKinematicsController(ManipulationController):
             self.control_filter.reset()
         self._quat_target = None
 
+    def dump_state(self):
+        """
+        :return Any: the state of the object other than what's not included in pybullet state.
+        """
+        dump = {"quat_target": self._quat_target if self._quat_target is None else self._quat_target.tolist()}
+        if self.control_filter is not None:
+            dump["control_filter"] = self.control_filter.dump_state()
+        return dump
+
+    def load_state(self, dump):
+        """
+        Load the state of the object other than what's not included in pybullet state.
+
+        :param dump: Any: the dumped state
+        """
+        self._quat_target = dump["quat_target"] if dump["quat_target"] is None else np.array(dump["quat_target"])
+        if self.control_filter is not None:
+            self.control_filter.load_state(dump["control_filter"])
+
     @staticmethod
     def _pose_in_base_to_pose_in_world(pose_in_base, base_in_world):
         """

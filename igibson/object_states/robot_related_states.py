@@ -13,7 +13,7 @@ _IN_FOV_PIXEL_FRACTION_THRESHOLD = 0.05
 def _get_behavior_robot(simulator):
     from igibson.robots.behavior_robot import BehaviorRobot
 
-    valid_robots = [robot for robot in simulator.robots if isinstance(robot, BehaviorRobot)]
+    valid_robots = [robot for robot in simulator.scene.robots if isinstance(robot, BehaviorRobot)]
     if not valid_robots:
         return None
 

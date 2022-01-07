@@ -53,27 +53,25 @@ def clear_cached_states(obj):
             obj_state.clear_cached_value()
 
 
-def detect_collision(bodyA):
-    collision = False
+def detect_closeness(bodyA, distance=0.01):
+    too_close = False
     for body_id in range(p.getNumBodies()):
+        # Ignore self-closeness
         if body_id == bodyA:
             continue
-        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
+        closest_points = p.getClosestPoints(bodyA, body_id, distance=distance)
         if len(closest_points) > 0:
-            collision = True
+            too_close = True
             break
-    return collision
+    return too_close
 
 
-def detect_collision(bodyA):
+def detect_collision_with_others(bodyA):
     collision = False
-    for body_id in range(p.getNumBodies()):
-        if body_id == bodyA:
-            continue
-        closest_points = p.getClosestPoints(bodyA, body_id, distance=0.01)
-        if len(closest_points) > 0:
+    for item in p.getContactPoints(bodyA=bodyA):
+        # Ignore self-collision
+        if item[2] != bodyA:
             collision = True
-            break
     return collision
 
 
@@ -208,7 +206,7 @@ def sample_kinematics(
         else:
             pos[2] += z_offset
             objA.set_position_orientation(pos, orientation)
-            success = not detect_collision(objA.get_body_id())  # len(p.getContactPoints(objA.get_body_id())) == 0
+            success = not detect_closeness(objA.get_body_id())
 
         if igibson.debug_sampling:
             print("sample_kinematics", success)
@@ -223,11 +221,12 @@ def sample_kinematics(
 
     if success and not skip_falling:
         objA.set_position_orientation(pos, orientation)
+
         # Let it fall for 0.2 second
         physics_timestep = p.getPhysicsEngineParameters()["fixedTimeStep"]
         for _ in range(int(0.2 / physics_timestep)):
             p.stepSimulation()
-            if len(p.getContactPoints(bodyA=objA.get_body_id())) > 0:
+            if detect_collision_with_others(objA.get_body_id()):
                 break
 
     return success

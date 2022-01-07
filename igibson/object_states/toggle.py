@@ -58,7 +58,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
 
         robot_can_toggle = False
         # detect marker and hand interaction
-        for robot in self.simulator.robots:
+        for robot in self.simulator.scene.robots:
             robot_can_toggle = robot.can_toggle(button_position_on_object, _TOGGLE_DISTANCE_THRESHOLD)
             if robot_can_toggle:
                 break

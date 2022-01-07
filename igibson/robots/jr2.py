@@ -16,6 +16,13 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     Reference: https://cvgl.stanford.edu/projects/jackrabbot/
     """
 
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "JR2"
+
     def _create_discrete_action_space(self):
         # JR2 does not support discrete actions if we're controlling the arm as well
         raise ValueError("Full JR2 does not support discrete actions!")

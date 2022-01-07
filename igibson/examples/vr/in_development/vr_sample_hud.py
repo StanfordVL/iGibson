@@ -73,7 +73,7 @@ def main():
     s.import_scene(scene)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER)
+    vr_agent = BehaviorRobot(use_gripper=USE_GRIPPER)
     # Move VR agent to the middle of the kitchen
     s.set_vr_start_pos(start_pos=[0, 2.1, 0], vr_height_offset=-0.02)
 

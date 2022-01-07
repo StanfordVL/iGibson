@@ -137,7 +137,7 @@ def show_action_sensor_space():
     s.import_robot(husky)
     husky.set_position([0, 6, 0.5])
 
-    for robot in s.robots:
+    for robot in scene.robots:
         print(type(robot), len(robot.joints), robot.calc_state().shape)
 
     for i in range(100):

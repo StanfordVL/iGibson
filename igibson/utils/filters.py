@@ -23,6 +23,20 @@ class Filter(object):
         """
         pass
 
+    def dump_state(self):
+        """
+        :return Any: the state of the object other than what's not included in pybullet state.
+        """
+        return None
+
+    def load_state(self, dump):
+        """
+        Load the state of the object other than what's not included in pybullet state.
+
+        :param dump: Any: the dumped state
+        """
+        return
+
 
 class MovingAverageFilter(Filter):
     """
@@ -64,6 +78,28 @@ class MovingAverageFilter(Filter):
         self.past_samples_sum *= 0.0
         self.num_samples = 0
 
+    def dump_state(self):
+        """
+        :return Any: the state of the object other than what's not included in pybullet state.
+        """
+        return {
+            "filter_width": self.filter_width,
+            "past_samples": [item.tolist() for item in self.past_samples],
+            "past_samples_sum": self.past_samples_sum.tolist(),
+            "num_samples": self.num_samples,
+        }
+
+    def load_state(self, dump):
+        """
+        Load the state of the object other than what's not included in pybullet state.
+
+        :param dump: Any: the dumped state
+        """
+        assert self.filter_width == dump["filter_width"], "filter width mismatch"
+        self.past_samples = [np.array(item) for item in dump["past_samples"]]
+        self.past_samples_sum = np.array(dump["past_samples_sum"])
+        self.num_samples = dump["num_samples"]
+
 
 class ExponentialAverageFilter(Filter):
     """
@@ -92,6 +128,26 @@ class ExponentialAverageFilter(Filter):
         self.num_samples += 1
 
         return np.array(self.avg)
+
+    def dump_state(self):
+        """
+        :return Any: the state of the object other than what's not included in pybullet state.
+        """
+        return {
+            "alpha": self.alpha,
+            "avg": self.avg.tolist(),
+            "num_samples": self.num_samples,
+        }
+
+    def load_state(self, dump):
+        """
+        Load the state of the object other than what's not included in pybullet state.
+
+        :param dump: Any: the dumped state
+        """
+        assert self.alpha == dump["alpha"], "filter alpha mismatch"
+        self.avg = np.array(dump["avg"])
+        self.num_samples = dump["num_samples"]
 
 
 class Subsampler(object):

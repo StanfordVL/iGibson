@@ -78,8 +78,8 @@ def run_muvr(mode="server", host="localhost", port="8885"):
         s.renderer.set_fov(90)
 
     # Spawn two agents - one for client and one for the server
-    client_agent = BehaviorRobot(s, agent_num=1)
-    server_agent = BehaviorRobot(s, agent_num=2)
+    client_agent = BehaviorRobot(agent_num=1)
+    server_agent = BehaviorRobot(agent_num=2)
 
     # Objects to interact with
     mass_list = [5, 10, 20, 30]

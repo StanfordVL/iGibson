@@ -4,6 +4,8 @@ A set of utility functions for general python usage
 import inspect
 from copy import deepcopy
 
+import numpy as np
+
 
 def merge_nested_dicts(base_dict, extra_dict, verbose=False):
     """
@@ -21,17 +23,15 @@ def merge_nested_dicts(base_dict, extra_dict, verbose=False):
         if k not in base_dict:
             base_dict[k] = v
         else:
-            if isinstance(v, dict):
-                if isinstance(base_dict[k], dict):
-                    base_dict[k] = merge_nested_dicts(base_dict[k], v)
-                else:
-                    if base_dict[k] != v and verbose:
-                        print(f"Different values for key {k}: {base_dict[k]}, {v}\n")
-                    base_dict[k] = v
+            if isinstance(v, dict) and isinstance(base_dict[k], dict):
+                base_dict[k] = merge_nested_dicts(base_dict[k], v)
             else:
-                if base_dict[k] != v and verbose:
+                not_equal = base_dict[k] != v
+                if isinstance(not_equal, np.ndarray):
+                    not_equal = not_equal.any()
+                if not_equal and verbose:
                     print(f"Different values for key {k}: {base_dict[k]}, {v}\n")
-                base_dict[k] = v
+                base_dict[k] = np.array(v) if isinstance(v, list) else v
 
     # Return new dict
     return base_dict

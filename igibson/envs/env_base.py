@@ -3,6 +3,7 @@ import gym
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import REGISTERED_ROBOTS
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -157,6 +158,7 @@ class BaseEnv(gym.Env):
                     self.config["task_id"],
                     self.config["instance_id"],
                 )
+            include_robots = self.config.get("include_robots", True)
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
                 urdf_file=urdf_file,
@@ -176,6 +178,7 @@ class BaseEnv(gym.Env):
                 load_room_instances=self.config.get("load_room_instances", None),
                 merge_fixed_links=self.config.get("merge_fixed_links", True)
                 and not self.config.get("online_sampling", False),
+                include_robots=include_robots,
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses.
             first_n = self.config.get("_set_first_n_objects", -1)
@@ -187,26 +190,24 @@ class BaseEnv(gym.Env):
         # Get robot config
         robot_config = self.config["robot"]
 
-        # Get corresponding robot class
-        robot_name = robot_config.pop("name")
-        assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
-
-        # TODO: Remove if statement once BEHAVIOR robot is refactored
-        if robot_name == "BehaviorRobot":
-            robot = REGISTERED_ROBOTS[robot_name](self.simulator)
-        else:
+        # If no robot has been imported from the scene
+        if len(scene.robots) == 0:
+            # Get corresponding robot class
+            robot_name = robot_config.pop("name")
+            assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
-        self.simulator.import_robot(robot)
+            self.simulator.import_robot(robot)
 
+        robot = scene.robots[0]
         # TODO: Remove if statement once BEHAVIOR robot is refactored
-        if robot_name == "BehaviorRobot":
+        if isinstance(robot, BehaviorRobot):
             self.robot_body_id = robot.links["body"].get_body_id()
         else:
             self.robot_body_id = robot.get_body_id()
 
-        self.scene = self.simulator.scene
-        self.robots = self.simulator.robots
+        self.scene = scene
+        self.robots = scene.robots
 
     def clean(self):
         """

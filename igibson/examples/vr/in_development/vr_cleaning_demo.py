@@ -57,7 +57,7 @@ scene = InteractiveIndoorScene("Rs_int", texture_randomization=False, object_ran
 s.import_scene(scene)
 
 if not VIEWER_MANIP:
-    vr_agent = BehaviorRobot(s, use_gripper=USE_GRIPPER, normal_color=False)
+    vr_agent = BehaviorRobot(use_gripper=USE_GRIPPER, normal_color=False)
 
 block = YCBObject(name="036_wood_block", abilities={"soakable": {}, "cleaning_tool": {}})
 s.import_object(block)

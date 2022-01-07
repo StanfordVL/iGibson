@@ -301,8 +301,8 @@ class ManipulationRobot(BaseRobot):
         dic["eef_pos"] = self.get_relative_eef_position()
         dic["eef_quat"] = self.get_relative_eef_orientation()
         dic["grasp"] = self.is_grasping()
-        dic["gripper_qpos"] = self.joint_positions[self.finger_joint_ids]
-        dic["gripper_qvel"] = self.joint_velocities[self.finger_joint_ids]
+        dic["gripper_qpos"] = self.joint_positions[self.gripper_control_idx]
+        dic["gripper_qvel"] = self.joint_velocities[self.gripper_control_idx]
 
         return dic
 
@@ -717,9 +717,21 @@ class ManipulationRobot(BaseRobot):
             if self._ag_data:
                 self._establish_grasp(self._ag_data)
 
+    def dump_config(self):
+        """Dump robot config"""
+        dump = super(ManipulationRobot, self).dump_config()
+        dump.update(
+            {
+                "assisted_grasping_mode": self.assisted_grasping_mode,
+            }
+        )
+        return dump
+
     def dump_state(self):
+        dump = super(ManipulationRobot, self).dump_state()
+
         if self.assisted_grasping_mode is None:
-            return
+            return dump
 
         # Recompute child frame pose because it could have changed since the
         # constraint has been created
@@ -736,7 +748,7 @@ class ManipulationRobot(BaseRobot):
                 }
             )
 
-        return {
+        dump["ManipulationRobot"] = {
             "_ag_obj_in_hand": self._ag_obj_in_hand,
             "_ag_release_counter": self._ag_release_counter,
             "_ag_freeze_gripper": self._ag_freeze_gripper,
@@ -744,8 +756,11 @@ class ManipulationRobot(BaseRobot):
             "_ag_obj_cid": self._ag_obj_cid,
             "_ag_obj_cid_params": self._ag_obj_cid_params,
         }
+        return dump
 
     def load_state(self, dump):
+        super(ManipulationRobot, self).load_state(dump)
+
         if self.assisted_grasping_mode is None:
             return
 
@@ -761,33 +776,35 @@ class ManipulationRobot(BaseRobot):
                 enable=True,
             )
 
-        # For backwards compatibility, if the newest version of the string doesn't exist, we try to use the old string
-        _ag_obj_in_hand_str = "_ag_obj_in_hand" if "_ag_obj_in_hand" in dump else "object_in_hand"
-        _ag_release_counter_str = "_ag_release_counter" if "_ag_release_counter" in dump else "release_counter"
-        _ag_freeze_gripper_str = "_ag_freeze_gripper" if "_ag_freeze_gripper" in dump else "should_freeze_joints"
-        _ag_freeze_joint_pos_str = "_ag_freeze_joint_pos" if "_ag_freeze_joint_pos" in dump else "freeze_vals"
-        _ag_obj_cid_str = "_ag_obj_cid" if "_ag_obj_cid" in dump else "obj_cid"
-        _ag_obj_cid_params_str = "_ag_obj_cid_params" if "_ag_obj_cid_params" in dump else "obj_cid_params"
+        robot_dump = dump["ManipulationRobot"]
 
-        self._ag_obj_in_hand = dump[_ag_obj_in_hand_str]
-        self._ag_release_counter = dump[_ag_release_counter_str]
-        self._ag_freeze_gripper = dump[_ag_freeze_gripper_str]
-        self._ag_freeze_joint_pos = {int(key): val for key, val in dump[_ag_freeze_joint_pos_str].items()}
-        self._ag_obj_cid = dump[_ag_obj_cid_str]
-        self._ag_obj_cid_params = dump[_ag_obj_cid_params_str]
+        # For backwards compatibility, if the newest version of the string doesn't exist, we try to use the old string
+        _ag_obj_in_hand_str = "_ag_obj_in_hand" if "_ag_obj_in_hand" in robot_dump else "object_in_hand"
+        _ag_release_counter_str = "_ag_release_counter" if "_ag_release_counter" in robot_dump else "release_counter"
+        _ag_freeze_gripper_str = "_ag_freeze_gripper" if "_ag_freeze_gripper" in robot_dump else "should_freeze_joints"
+        _ag_freeze_joint_pos_str = "_ag_freeze_joint_pos" if "_ag_freeze_joint_pos" in robot_dump else "freeze_vals"
+        _ag_obj_cid_str = "_ag_obj_cid" if "_ag_obj_cid" in robot_dump else "obj_cid"
+        _ag_obj_cid_params_str = "_ag_obj_cid_params" if "_ag_obj_cid_params" in robot_dump else "obj_cid_params"
+
+        self._ag_obj_in_hand = robot_dump[_ag_obj_in_hand_str]
+        self._ag_release_counter = robot_dump[_ag_release_counter_str]
+        self._ag_freeze_gripper = robot_dump[_ag_freeze_gripper_str]
+        self._ag_freeze_joint_pos = {int(key): val for key, val in robot_dump[_ag_freeze_joint_pos_str].items()}
+        self._ag_obj_cid = robot_dump[_ag_obj_cid_str]
+        self._ag_obj_cid_params = robot_dump[_ag_obj_cid_params_str]
         if self._ag_obj_cid is not None:
             self._ag_obj_cid = p.createConstraint(
                 parentBodyUniqueId=self.get_body_id(),
                 parentLinkIndex=self.eef_link_id,
-                childBodyUniqueId=dump[_ag_obj_cid_params_str]["childBodyUniqueId"],
-                childLinkIndex=dump[_ag_obj_cid_params_str]["childLinkIndex"],
-                jointType=dump[_ag_obj_cid_params_str]["jointType"],
+                childBodyUniqueId=robot_dump[_ag_obj_cid_params_str]["childBodyUniqueId"],
+                childLinkIndex=robot_dump[_ag_obj_cid_params_str]["childLinkIndex"],
+                jointType=robot_dump[_ag_obj_cid_params_str]["jointType"],
                 jointAxis=(0, 0, 0),
                 parentFramePosition=(0, 0, 0),
-                childFramePosition=dump[_ag_obj_cid_params_str]["childFramePosition"],
-                childFrameOrientation=dump[_ag_obj_cid_params_str]["childFrameOrientation"],
+                childFramePosition=robot_dump[_ag_obj_cid_params_str]["childFramePosition"],
+                childFrameOrientation=robot_dump[_ag_obj_cid_params_str]["childFrameOrientation"],
             )
-            p.changeConstraint(self._ag_obj_cid, maxForce=dump[_ag_obj_cid_params_str]["maxForce"])
+            p.changeConstraint(self._ag_obj_cid, maxForce=robot_dump[_ag_obj_cid_params_str]["maxForce"])
 
         if self._ag_obj_in_hand is not None:
             set_coll_filter(

@@ -211,7 +211,7 @@ def main(args):
 
         print("Total %d objects placed" % placement_count)
         if args.urdf_name:
-            scene.save_modified_urdf("%s_%s" % (scene_name, args.urdf_name))
+            scene.save("%s_%s" % (scene_name, args.urdf_name))
         if args.save_placement_txt:
             with open("%s_placements.txt" % scene_name, "w") as f:
                 for room in room_placements_counts:

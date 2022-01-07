@@ -19,6 +19,13 @@ class Turtlebot(TwoWheelRobot):
     """
 
     @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Turtlebot"
+
+    @property
     def wheel_radius(self):
         return 0.038
 

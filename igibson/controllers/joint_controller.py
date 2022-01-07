@@ -83,6 +83,20 @@ class JointController(LocomotionController, ManipulationController):
         # Clear the target
         self._joint_target = None
 
+    def dump_state(self):
+        """
+        :return Any: the state of the object other than what's not included in pybullet state.
+        """
+        return {"joint_target": self._joint_target if self._joint_target is None else self._joint_target.tolist()}
+
+    def load_state(self, dump):
+        """
+        Load the state of the object other than what's not included in pybullet state.
+
+        :param dump: Any: the dumped state
+        """
+        self._joint_target = dump["joint_target"] if dump["joint_target"] is None else np.array(dump["joint_target"])
+
     def _command_to_control(self, command, control_dict):
         """
         Converts the (already preprocessed) inputted @command into deployable (non-clipped!) joint control signal

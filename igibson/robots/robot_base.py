@@ -22,7 +22,8 @@ from igibson.external.pybullet_tools.utils import (
     set_coll_filter,
     set_joint_positions,
 )
-from igibson.object_states.factory import prepare_object_states
+from igibson.object_states.factory import get_state_name, prepare_object_states
+from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
 from igibson.utils.utils import rotate_vector_3d
@@ -138,8 +139,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             self._rendering_params.update(rendering_params)
 
         self._loaded = False
-        self._body_ids = None  # this is the unique pybullet body id(s) representing this model
-        self.states = {}
+        self.body_ids = []  # this is the unique pybullet body id(s) representing this model
 
     def load(self, simulator):
         """
@@ -157,9 +157,17 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         # Store body ids and return them
         _body_ids = self._load(simulator)
 
+        # Reset the robot and keep all joints still after loading
+        self.reset()
+        self.keep_still()
+
         # A persistent reference to simulator is needed for AG in ManipulationRobot
         self.simulator = simulator
         return _body_ids
+
+    @property
+    def loaded(self):
+        return self._loaded
 
     def _load(self, simulator):
         """
@@ -191,10 +199,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             body_ids = p.loadMJCF(self.model_file, flags=flags)
 
         # Store body ids
-        self._body_ids = body_ids
+        self.body_ids = body_ids
 
         # Load into simulator and initialize states
-        for body_id in self._body_ids:
+        for body_id in self.body_ids:
             simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         for state in self.states.values():
@@ -228,7 +236,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         Parse the set of robot @body_ids to get properties including joint information and mass
         """
-        assert len(self._body_ids) == 1, "Only one robot body ID was expected, but got {}!".format(len(self._body_ids))
+        assert len(self.body_ids) == 1, "Only one robot body ID was expected, but got {}!".format(len(self.body_ids))
         robot_id = self.get_body_id()
 
         # Initialize link and joint dictionaries for this robot
@@ -355,7 +363,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         :return None or int: Body ID representing this model in simulation if it exists, else None
         """
-        return None if self._body_ids is None else self._body_ids[0]
+        return None if len(self.body_ids) == 0 else self.body_ids[0]
 
     def reset(self):
         """
@@ -541,6 +549,27 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         return self.base_link.get_velocity()
 
+    def set_velocity(self, linear_velocity, angular_velocity):
+        """
+        Set velocity of this robot (velocity associated with base link)
+
+        :param linear_velocity: Array[float], linear velocity (x,y,z)
+        :param angular_velocity: Array[float], angular velocity (ax,ay,az)
+        """
+        p.resetBaseVelocity(self.get_body_id(), linear_velocity, angular_velocity)
+
+    def set_joint_states(self, joint_states):
+        """Set object joint states in the format of Dict[String: (q, q_dot)]]"""
+        for joint_name, joint in self._joints.items():
+            joint.reset_state(*joint_states[joint_name])
+
+    def get_joint_states(self):
+        """Get object joint states in the format of Dict[String: (q, q_dot)]]"""
+        joint_states = {}
+        for joint_name, joint in self._joints.items():
+            joint_states[joint_name] = joint.get_state()[:2]
+        return joint_states
+
     def get_linear_velocity(self):
         """
         Get linear velocity of this robot (velocity associated with base link)
@@ -605,17 +634,45 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             "base_quat": self.get_orientation(),
         }
 
+    def dump_config(self):
+        """Dump robot config"""
+        return {
+            "control_freq": self.control_freq,
+            "action_type": self.action_type,
+            "action_normalize": self.action_normalize,
+            "proprio_obs": self.proprio_obs,
+            "controller_config": self.controller_config,
+            "base_name": self.base_name,
+            "scale": self.scale,
+            "self_collision": self.self_collision,
+            "class_id": self.class_id,
+            "rendering_params": self._rendering_params,
+        }
+
+    # TODO: Replace this with a reasonable StatefulObject inheritance.
     def dump_state(self):
-        """
-        Dump the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
-        """
-        pass
+        """Dump the state of the object other than what's not included in pybullet state."""
+        return {
+            "states": {
+                get_state_name(state_type): state_instance.dump()
+                for state_type, state_instance in self.states.items()
+                if issubclass(state_type, AbsoluteObjectState)
+            },
+            "controllers": {
+                controller_name: controller.dump_state() for controller_name, controller in self._controllers.items()
+            },
+        }
 
     def load_state(self, dump):
-        """
-        Load the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
-        """
-        pass
+        """Dump the state of the object other than what's not included in pybullet state."""
+        state_dump = dump["states"]
+        for state_type, state_instance in self.states.items():
+            if issubclass(state_type, AbsoluteObjectState):
+                state_instance.load(state_dump[get_state_name(state_type)])
+
+        controller_dump = dump["controllers"]
+        for controller_name, controller in self._controllers.items():
+            controller.load_state(controller_dump[controller_name])
 
     def _get_proprioception_dict(self):
         """
@@ -804,6 +861,14 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         return "agent"
 
     @property
+    @abstractmethod
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        raise NotImplementedError
+
+    @property
     def action_dim(self):
         """
         :return int: Dimension of action space for this robot. By default,
@@ -977,11 +1042,15 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         raise NotImplementedError
 
     def force_wakeup(self):
+        for link in self._links.values():
+            link.force_wakeup()
+
+    def keep_still(self):
         """
-        Wakes up all links of this robot
+        Keep the robot still. Apply zero velocity to all joints.
         """
-        for link_name in self._links:
-            self._links[link_name].force_wakeup()
+        for joint in self._joints.values():
+            joint.set_vel(0.0)
 
 
 class RobotLink:
@@ -1108,7 +1177,7 @@ class RobotLink:
         """
         Forces a wakeup for this robot. Defaults to no-op.
         """
-        pass
+        p.changeDynamics(self.body_id, self.link_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
 
 
 class RobotJoint:
