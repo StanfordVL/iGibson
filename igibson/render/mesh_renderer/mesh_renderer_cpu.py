@@ -589,9 +589,15 @@ class MeshRenderer(object):
             delta_pos2 = v2 - v0
             delta_uv1 = uv1 - uv0
             delta_uv2 = uv2 - uv0
-            r = 1.0 / (delta_uv1[:, 0] * delta_uv2[:, 1] - delta_uv1[:, 1] * delta_uv2[:, 0])
-            tangent = (delta_pos1 * delta_uv2[:, 1][:, None] - delta_pos2 * delta_uv1[:, 1][:, None]) * r[:, None]
-            bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] - delta_pos1 * delta_uv2[:, 0][:, None]) * r[:, None]
+            d = delta_uv1[:, 0] * delta_uv2[:, 1] - delta_uv1[:, 1] * delta_uv2[:, 0]
+            # filter zero values
+            d[np.abs(d) < 1e-10] = 1e-10
+            tangent = (delta_pos1 * delta_uv2[:, 1][:, None] - delta_pos2 * delta_uv1[:, 1][:, None]) * (1.0 / d)[
+                :, None
+            ]
+            bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] - delta_pos1 * delta_uv2[:, 0][:, None]) * (1.0 / d)[
+                :, None
+            ]
             # Set the same tangent and bitangent for all three vertices of the triangle.
             tangent = tangent.repeat(3, axis=0)
             bitangent = bitangent.repeat(3, axis=0)
