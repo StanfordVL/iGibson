@@ -726,7 +726,8 @@ class URDFObject(StatefulObject, NonRobotObject):
                 break
 
         if self.texture_randomization and self.texture_procedural_generation:
-            raise ValueError("Cannot support both randomized and procedural texture")
+            logging.warn("Cannot support both randomized and procedural texture. Dropping texture randomization.")
+            self.texture_randomization = False
 
         if self.texture_randomization:
             self.prepare_randomized_texture()

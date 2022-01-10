@@ -13,7 +13,7 @@ import igibson.render.mesh_renderer as mesh_renderer
 from igibson.render.mesh_renderer import tinyobjloader
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
 from igibson.render.mesh_renderer.instances import InstanceGroup
-from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial
+from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.text import Text, TextManager
 from igibson.render.mesh_renderer.visual_object import VisualObject
@@ -856,10 +856,10 @@ class MeshRenderer(object):
     def update_optimized_texture(self):
         request_update = False
         for material in self.material_idx_to_material_instance_mapping:
+            current_material = self.material_idx_to_material_instance_mapping[material]
             if (
-                isinstance(self.material_idx_to_material_instance_mapping[material], ProceduralMaterial)
-                and self.material_idx_to_material_instance_mapping[material].request_update
-            ):
+                isinstance(current_material, ProceduralMaterial) or isinstance(current_material, RandomizedMaterial)
+            ) and current_material.request_update:
                 request_update = True
                 self.material_idx_to_material_instance_mapping[material].request_update = False
 
