@@ -38,7 +38,9 @@ class MotionPlanningWrapper(object):
         self.env = env
         assert "occupancy_grid" in self.env.output
         # get planning related parameters from env
-        self.robot_id = self.env.robots[0].get_body_id()
+        body_ids = self.env.robots[0].get_body_ids()
+        assert len(body_ids) == 1, "Only single-body robots are supported."
+        self.robot_id = body_ids[0]
         # self.mesh_id = self.scene.mesh_body_id
         # mesh id should not be used
         self.map_size = self.env.scene.trav_map_original_size * self.env.scene.trav_map_default_resolution

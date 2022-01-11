@@ -7,7 +7,7 @@ import pybullet as p
 
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
-from igibson.objects.object_base import NonRobotObject
+from igibson.objects.object_base import BaseObject
 from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
@@ -246,7 +246,7 @@ class Simulator:
 
         :param obj: a non-robot object to load
         """
-        assert isinstance(obj, NonRobotObject), "import_object can only be called with NonRobotObject"
+        assert isinstance(obj, BaseObject), "import_object can only be called with BaseObject"
 
         if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
@@ -523,7 +523,7 @@ class Simulator:
         """
         # Find instance corresponding to this id in the renderer
         for instance in self.renderer.instances:
-            if obj.get_body_id() == instance.pybullet_uuid:
+            if instance.pybullet_uuid in obj.get_body_ids():
                 instance.hidden = hide
                 self.renderer.update_hidden_highlight_state([instance])
                 return

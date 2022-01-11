@@ -1,11 +1,8 @@
 from abc import abstractmethod
 from enum import IntEnum
 
-import gym
 import numpy as np
 import pybullet as p
-from transforms3d.euler import euler2quat
-from transforms3d.quaternions import qmult, quat2mat
 
 import igibson.utils.transform_utils as T
 from igibson.controllers import (
@@ -14,15 +11,7 @@ from igibson.controllers import (
     NullGripperController,
     ParallelJawGripperController,
 )
-from igibson.external.pybullet_tools.utils import (
-    get_child_frame_pose,
-    get_constraint_violation,
-    get_joint_info,
-    get_relative_pose,
-    joints_from_names,
-    set_coll_filter,
-    set_joint_positions,
-)
+from igibson.external.pybullet_tools.utils import get_child_frame_pose, get_constraint_violation, get_link_pose
 from igibson.robots.robot_base import BaseRobot
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
@@ -54,6 +43,30 @@ POS_TOLERANCE = 0.002  # arbitrary heuristic
 VEL_TOLERANCE = 0.01  # arbitrary heuristic
 
 
+def get_relative_pose(origin_body, origin_link, target_body, target_link):
+    """Get the pose of target related to origin."""
+    origin_in_world_frame = get_link_pose(origin_body, origin_link)
+    target_in_world_frame = get_link_pose(target_body, target_link)
+    world_in_origin_frame = p.invertTransform(*origin_in_world_frame)
+    target_in_origin_frame = p.multiplyTransforms(world_in_origin_frame, target_in_world_frame)
+    return target_in_origin_frame
+
+
+def set_coll_filter(target_body_id, source_links, enable):
+    # TODO: mostly shared with behavior robot, can be factored out
+    """
+    Sets collision filters for body - to enable or disable them
+    :param target_body_id: physics body to enable/disable collisions with
+    :param source_links: RobotLink objects to disable collisions with
+    :param enable: whether to enable/disable collisions
+    """
+    target_link_idxs = [-1] + list(range(p.getNumJoints(target_body_id)))
+
+    for link in source_links:
+        for target_link_idx in target_link_idxs:
+            p.setCollisionFilterPair(link.body_id, target_body_id, link.link_id, target_link_idx, 1 if enable else 0)
+
+
 class ManipulationRobot(BaseRobot):
     """
     Robot that is is equipped with grasping (manipulation) capabilities.
@@ -70,6 +83,7 @@ class ManipulationRobot(BaseRobot):
 
     def __init__(
         self,
+        name=None,
         control_freq=None,
         action_type="continuous",
         action_normalize=True,
@@ -83,6 +97,7 @@ class ManipulationRobot(BaseRobot):
         assisted_grasping_mode=None,
     ):
         """
+        :param name: None or str, name of the robot object
         :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
             simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
         :param action_type: str, one of {discrete, continuous} - what type of action space to use
@@ -120,6 +135,7 @@ class ManipulationRobot(BaseRobot):
 
         # Call super() method
         super().__init__(
+            name=name,
             control_freq=control_freq,
             action_type=action_type,
             action_normalize=action_normalize,
@@ -368,25 +384,32 @@ class ManipulationRobot(BaseRobot):
         raise NotImplementedError
 
     @property
-    def eef_link_id(self):
+    def eef_link(self):
         """
-        :return int: Link ID corresponding to the eef link
+        :return int: RobotLink corresponding to the eef link
         """
-        return self._links[self.eef_link_name].link_id
+        return self._links[self.eef_link_name]
 
     @property
-    def finger_link_ids(self):
+    def finger_links(self):
         """
-        :return list: Link IDs corresponding to the eef fingers
+        :return list: RobotLink objects corresponding to the eef fingers
         """
-        return [self._links[link].link_id for link in self.finger_link_names]
+        return [self._links[link] for link in self.finger_link_names]
+
+    @property
+    def finger_joints(self):
+        """
+        :return list: RobotJoint objects corresponding to the eef fingers
+        """
+        return [self._joints[joint] for joint in self.finger_joint_names]
 
     @property
     def finger_joint_ids(self):
         """
         :return list: Joint IDs corresponding to the eef fingers
         """
-        return [self._joints[joint].joint_id for joint in self.finger_joint_names]
+        return [joint.joint_id for joint in self.finger_joints]
 
     @property
     def gripper_link_to_grasp_point(self):
@@ -415,20 +438,22 @@ class ManipulationRobot(BaseRobot):
         :return Tuple[Array[float], Array[float]] or Array[Array[float]]: End-effector pose, either in 4x4 homogeneous
             matrix form (if @mat=True) or (pos, quat) tuple (if @mat=False)
         """
-        pose = get_relative_pose(body=self.get_body_id(), link1=self.eef_link_id)
+        pose = get_relative_pose(
+            self.base_link.body_id, self.base_link.link_id, self.eef_link.body_id, self.eef_link.link_id
+        )
         return T.pose2mat(pose) if mat else pose
 
     def get_relative_eef_position(self):
         """
         :return Array[float]: (x,y,z) Cartesian position of end-effector relative to robot base frame
         """
-        return get_relative_pose(body=self.get_body_id(), link1=self.eef_link_id)[0]
+        return self.get_relative_eef_pose()[0]
 
     def get_relative_eef_orientation(self):
         """
         :return Array[float]: (x,y,z,z) quaternion orientation of end-effector relative to robot base frame
         """
-        return get_relative_pose(body=self.get_body_id(), link1=self.eef_link_id)[1]
+        return self.get_relative_eef_pose()[1]
 
     def _calculate_in_hand_object(self):
         """
@@ -439,9 +464,7 @@ class ManipulationRobot(BaseRobot):
             (object_id, link_id) corresponding to the contact point of that object. Otherwise, returns None
         """
         # Step 1: Find all objects in contact with all finger joints
-        contact_groups = [
-            p.getContactPoints(bodyA=self.get_body_id(), linkIndexA=link_id) for link_id in self.finger_link_ids
-        ]
+        contact_groups = [p.getContactPoints(bodyA=link.body_id, linkIndexA=link.link_id) for link in self.finger_links]
 
         # Step 2: Process contacts and get intersection over all sets of contacts
         contact_dict = {}
@@ -471,7 +494,7 @@ class ManipulationRobot(BaseRobot):
             contact_dict = self._filter_assisted_grasp_candidates(contact_dict=contact_dict, candidates=candidates_set)
 
         # Step 4: Find the closest object to the gripper center among these "inside" objects
-        gripper_state = p.getLinkState(self.get_body_id(), self.eef_link_id)
+        gripper_state = p.getLinkState(self.eef_link.body_id, self.eef_link.link_id)
         # Compute gripper bounding box
         gripper_center_pos, _ = p.multiplyTransforms(*gripper_state, self.gripper_link_to_grasp_point, [0, 0, 0, 1])
 
@@ -488,7 +511,7 @@ class ManipulationRobot(BaseRobot):
             return None
 
         # Return None if any of the following edge cases are activated
-        if not self.simulator.can_assisted_grasp(ag_bid, ag_link) or (self.get_body_id() == ag_bid):
+        if not self.simulator.can_assisted_grasp(ag_bid, ag_link) or (ag_bid in self.get_body_ids()):
             return None
 
         return ag_bid, ag_link
@@ -515,9 +538,8 @@ class ManipulationRobot(BaseRobot):
         time_since_release = self._ag_release_counter * self.simulator.render_timestep
         if time_since_release >= RELEASE_WINDOW:
             set_coll_filter(
-                target_id=self._ag_obj_in_hand,
-                body_id=self.get_body_id(),
-                body_links=self.finger_joint_ids,
+                self._ag_obj_in_hand,
+                self.finger_links,
                 enable=True,
             )
             self._ag_obj_in_hand = None
@@ -527,8 +549,9 @@ class ManipulationRobot(BaseRobot):
         """
         Freezes gripper finger joints - used in assisted grasping.
         """
-        for joint_index, j_val in self._ag_freeze_joint_pos.items():
-            p.resetJointState(self.get_body_id(), joint_index, targetValue=j_val, targetVelocity=0.0)
+        for joint_name, j_val in self._ag_freeze_joint_pos.items():
+            joint = self._joints[joint_name]
+            p.resetJointState(joint.body_id, joint.joint_id, targetValue=j_val, targetVelocity=0.0)
 
     @property
     def _default_arm_joint_controller_config(self):
@@ -555,8 +578,8 @@ class ManipulationRobot(BaseRobot):
         """
         return {
             "name": "InverseKinematicsController",
-            "base_body_id": self.get_body_id(),
-            "task_link_id": self.eef_link_id,
+            "base_body_id": self.base_link.body_id,
+            "task_link_id": self.eef_link.link_id,
             "control_freq": self.control_freq,
             "default_joint_pos": self.default_joint_pos,
             "joint_damping": self.joint_damping,
@@ -646,7 +669,7 @@ class ManipulationRobot(BaseRobot):
         ag_bid, ag_link = ag_data
 
         child_frame_pos, child_frame_orn = get_child_frame_pose(
-            parent_bid=self.get_body_id(), parent_link=self.eef_link_id, child_bid=ag_bid, child_link=ag_link
+            parent_bid=self.eef_link.body_id, parent_link=self.eef_link.link_id, child_bid=ag_bid, child_link=ag_link
         )
 
         # If we grab a child link of a URDF, create a p2p joint
@@ -656,8 +679,8 @@ class ManipulationRobot(BaseRobot):
             joint_type = p.JOINT_POINT2POINT
 
         self.obj_cid = p.createConstraint(
-            parentBodyUniqueId=self.get_body_id(),
-            parentLinkIndex=self.eef_link_id,
+            parentBodyUniqueId=self.eef_link.body_id,
+            parentLinkIndex=self.eef_link.link_id,
             childBodyUniqueId=ag_bid,
             childLinkIndex=ag_link,
             jointType=joint_type,
@@ -682,10 +705,10 @@ class ManipulationRobot(BaseRobot):
         self._ag_obj_in_hand = ag_bid
         self._ag_freeze_gripper = True
         # Disable collisions while picking things up
-        set_coll_filter(target_id=ag_bid, body_id=self.get_body_id(), body_links=self.finger_joint_ids, enable=False)
-        for joint_index in self.gripper_finger_joint_ids:
-            j_val = p.getJointState(self.get_body_id(), joint_index)[0]
-            self._ag_freeze_joint_pos[joint_index] = j_val
+        set_coll_filter(ag_bid, self.finger_links, enable=False)
+        for joint in self.finger_joints:
+            j_val = joint.get_state()[0]
+            self._ag_freeze_joint_pos[joint.joint_name] = j_val
 
     def _handle_assisted_grasping(self, action):
         """
@@ -739,7 +762,10 @@ class ManipulationRobot(BaseRobot):
             ag_bid = self._ag_obj_cid_params["childBodyUniqueId"]
             ag_link = self._ag_obj_cid_params["childLinkIndex"]
             child_frame_pos, child_frame_orn = get_child_frame_pose(
-                parent_bid=self.get_body_id(), parent_link=self.eef_link_id, child_bid=ag_bid, child_link=ag_link
+                parent_bid=self.eef_link.body_id,
+                parent_link=self.eef_link.link_id,
+                child_bid=ag_bid,
+                child_link=ag_link,
             )
             self._ag_obj_cid_params.update(
                 {
@@ -770,9 +796,8 @@ class ManipulationRobot(BaseRobot):
 
         if self._ag_obj_in_hand is not None:
             set_coll_filter(
-                target_id=self._ag_obj_in_hand,
-                body_id=self.get_body_id(),
-                body_links=self.finger_joint_ids,
+                self._ag_obj_in_hand,
+                self.finger_links,
                 enable=True,
             )
 
@@ -789,13 +814,13 @@ class ManipulationRobot(BaseRobot):
         self._ag_obj_in_hand = robot_dump[_ag_obj_in_hand_str]
         self._ag_release_counter = robot_dump[_ag_release_counter_str]
         self._ag_freeze_gripper = robot_dump[_ag_freeze_gripper_str]
-        self._ag_freeze_joint_pos = {int(key): val for key, val in robot_dump[_ag_freeze_joint_pos_str].items()}
+        self._ag_freeze_joint_pos = robot_dump[_ag_freeze_joint_pos_str]
         self._ag_obj_cid = robot_dump[_ag_obj_cid_str]
         self._ag_obj_cid_params = robot_dump[_ag_obj_cid_params_str]
         if self._ag_obj_cid is not None:
             self._ag_obj_cid = p.createConstraint(
-                parentBodyUniqueId=self.get_body_id(),
-                parentLinkIndex=self.eef_link_id,
+                parentBodyUniqueId=self.eef_link.body_id,
+                parentLinkIndex=self.eef_link.link_id,
                 childBodyUniqueId=robot_dump[_ag_obj_cid_params_str]["childBodyUniqueId"],
                 childLinkIndex=robot_dump[_ag_obj_cid_params_str]["childLinkIndex"],
                 jointType=robot_dump[_ag_obj_cid_params_str]["jointType"],
@@ -808,16 +833,14 @@ class ManipulationRobot(BaseRobot):
 
         if self._ag_obj_in_hand is not None:
             set_coll_filter(
-                target_id=self._ag_obj_in_hand,
-                body_id=self.get_body_id(),
-                body_links=self.finger_joint_ids,
+                self._ag_obj_in_hand,
+                self.finger_links,
                 enable=False,
             )
 
     def can_toggle(self, toggle_position, toggle_distance_threshold):
-        for joint_id in self.finger_joint_ids:
-            finger_link_state = p.getLinkState(self.get_body_id(), joint_id)
-            link_pos = finger_link_state[0]
+        for link in self.finger_links:
+            link_pos = link.get_position()
             if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
                 return True
         return False

@@ -27,7 +27,8 @@ import pybullet as p
 
 from igibson import assets_path
 from igibson.external.pybullet_tools.utils import link_from_name, set_all_collisions
-from igibson.objects.articulated_object import ArticulatedObject
+from igibson.object_states.utils import clear_cached_states
+from igibson.objects.stateful_object import StatefulObject
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.constants import SemanticClass, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyzw2wxyz
@@ -100,7 +101,7 @@ HEAD_ANGULAR_VELOCITY = 1  # angular velocity thresholds in radians/frame
 HEAD_DISTANCE_THRESHOLD = 0.5  # distance threshold in meters
 
 
-class BehaviorRobot(object):
+class BehaviorRobot(StatefulObject):
     """
     A class representing all the VR objects comprising a single agent.
     The individual parts of an agent can be used separately, however
@@ -110,6 +111,7 @@ class BehaviorRobot(object):
 
     def __init__(
         self,
+        name=None,
         robot_num=1,
         hands=("left", "right"),
         use_body=True,
@@ -122,6 +124,7 @@ class BehaviorRobot(object):
     ):
         """
         Initializes BehaviorRobot:
+        :param name: None or str, name of the robot object
         :parm robot_num: the number of the agent - used in multi-user VR
         :parm use_constraints: whether to use constraints to move agent (normally set to True - set to false in state replay mode)
         :parm hands: list containing left, right or no hands
@@ -133,8 +136,11 @@ class BehaviorRobot(object):
         """
         # Basic parameters
         self.category = "agent"
+        if name is None:
+            address = "%08X" % id(self)
+            name = "{}_{}".format(self.category, address)
+        self.name = name
         self.model_name = "BehaviorRobot"
-        self.body_ids = []
         self.simulator = None  # populated in load function
         self.robot_num = robot_num
         self.hands = hands
@@ -178,15 +184,14 @@ class BehaviorRobot(object):
 
         self.links["eye"] = BREye(self, **kwargs)
 
-    def get_body_id(self):
-        return None if len(self.body_ids) == 0 else self.links["body"].get_body_id()
+        # TODO(behaviorrobot): Converting to BaseRobot inheritance will remove the ability here.
+        super(BehaviorRobot, self).__init__(abilities={"robot": {}}, **kwargs)
 
-    def load(self, simulator):
-        self.simulator = simulator
+    def _load(self, simulator):
+        # TODO: Remove hacky fix - constructor/config should contain this data.
         if self.simulator.mode == SimulatorMode.VR:
             self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
-        self.body_ids = [id for part in self.links.values() for id in part.load(simulator)]
-        return self.body_ids
+        return [id for part in self.links.values() for id in part.load(simulator)]
 
     def set_colliders(self, enabled=False):
         self.links["left_hand"].set_colliders(enabled)
@@ -227,27 +232,20 @@ class BehaviorRobot(object):
         if self.constraints_active["body"]:
             self.links["body"].move(pos, orn)
 
-    def set_position(self, pos):
-        self.set_position_orientation(pos, self.get_orientation())
+        clear_cached_states(self)
 
-    def set_orientation(self, orn):
-        self.set_position_orientation(self.get_position(), orn)
-
-    def get_position(self):
-        return self.links["body"].get_position()
+    def get_position_orientation(self):
+        return self.links["body"].get_position_orientation()
 
     def get_rpy(self):
         return p.getEulerFromQuaternion(self.get_orientation())
 
-    def get_orientation(self):
-        return self.links["body"].get_orientation()
-
     def get_linear_velocity(self):
-        (vx, vy, vz), _ = p.getBaseVelocity(self.links["body"].get_body_id())
+        (vx, vy, vz), _ = p.getBaseVelocity(self.links["body"].body_id)
         return np.array([vx, vy, vz])
 
     def get_angular_velocity(self):
-        _, (vr, vp, vyaw) = p.getBaseVelocity(self.links["body"].get_body_id())
+        _, (vr, vp, vyaw) = p.getBaseVelocity(self.links["body"].body_id)
         return np.array([vr, vp, vyaw])
 
     def get_end_effector_position(self):
@@ -314,6 +312,7 @@ class BehaviorRobot(object):
             self.links[vr_obj_name].update(frame_action)
 
     def render_camera_image(self, modes=("rgb")):
+        # TODO: Remove this function once BehaviorRobot is BaseRobot-compliant.
         # render frames from current eye position
         eye_pos, eye_orn = self.links["eye"].get_position_orientation()
         renderer = self.simulator.renderer
@@ -382,11 +381,11 @@ class BehaviorRobot(object):
 
         return state_list
 
-    def is_grasping(self, candidate_obj):
+    def is_grasping(self, candidate_objs):
         return np.array(
             [
-                self.links["left_hand"].object_in_hand == candidate_obj,
-                self.links["right_hand"].object_in_hand == candidate_obj,
+                self.links["left_hand"].object_in_hand in candidate_objs,
+                self.links["right_hand"].object_in_hand in candidate_objs,
             ]
         )
 
@@ -399,7 +398,7 @@ class BehaviorRobot(object):
                 ):
                     return True
                 for finger in part.finger_tip_link_indices:
-                    finger_link_state = p.getLinkState(part.get_body_id(), finger)
+                    finger_link_state = p.getLinkState(part.body_id, finger)
                     link_pos = finger_link_state[0]
                     if np.linalg.norm(np.array(link_pos) - np.array(toggle_position)) < toggle_distance_threshold:
                         return True
@@ -425,8 +424,78 @@ class BehaviorRobot(object):
             "use_tracked_body": self.use_tracked_body,
         }
 
+    @property
+    def base_link(self):
+        # TODO: Fix this mess once the robot types are unified.
+        return self.links["body"]
 
-class BRBody(ArticulatedObject):
+
+# TODO: Make this inherit RobotLink
+class BRPart(object):
+    """This is the interface that all BehaviorRobot parts must implement."""
+
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": True,
+        "use_pbr_mapping": True,
+        "shadow_caster": True,
+    }
+
+    def __init__(self, class_id=SemanticClass.USER_ADDED_OBJS, rendering_params=None):
+        """
+        Create an object instance with the minimum information of class ID and rendering parameters.
+
+        @param class_id: What class ID the object should be assigned in semantic segmentation rendering mode.
+        @param rendering_params: Any keyword arguments to be passed into simulator.load_object_into_renderer(...).
+        """
+        self.states = {}
+        self.class_id = class_id
+        self.renderer_instances = []
+        self._rendering_params = dict(self.DEFAULT_RENDERING_PARAMS)
+        if rendering_params is not None:
+            self._rendering_params.update(rendering_params)
+
+        self._loaded = False
+        self.body_id = None
+
+    def load(self, simulator):
+        """Load object into pybullet and return list of loaded body ids."""
+        if self._loaded:
+            raise ValueError("Cannot load a single object multiple times.")
+        self._loaded = True
+        return self._load(simulator)
+
+    def _load(self, simulator):
+        raise NotImplementedError("Child class should implement this.")
+
+    def get_position(self):
+        """Get object position in the format of Array[x, y, z]"""
+        return self.get_position_orientation()[0]
+
+    def get_orientation(self):
+        """Get object orientation as a quaternion in the format of Array[x, y, z, w]"""
+        return self.get_position_orientation()[1]
+
+    def get_position_orientation(self):
+        """Get object position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        pos, orn = p.getBasePositionAndOrientation(self.body_id)
+        return np.array(pos), np.array(orn)
+
+    def set_position(self, pos):
+        """Set object position in the format of Array[x, y, z]"""
+        old_orn = self.get_orientation()
+        self.set_position_orientation(pos, old_orn)
+
+    def set_orientation(self, orn):
+        """Set object orientation as a quaternion in the format of Array[x, y, z, w]"""
+        old_pos = self.get_position()
+        self.set_position_orientation(old_pos, orn)
+
+    def set_position_orientation(self, pos, orn):
+        """Set object position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+
+
+class BRBody(BRPart):
     """
     A simple ellipsoid representing the robot's body.
     """
@@ -451,26 +520,23 @@ class BRBody(ArticulatedObject):
         body_path = "normal_color" if self.parent.normal_color else "alternative_color"
         body_path_suffix = "vr_body.urdf" if not self.parent.use_tracked_body else "vr_body_tracker.urdf"
         self.vr_body_fpath = os.path.join(assets_path, "models", "vr_agent", "vr_body", body_path, body_path_suffix)
-        super(BRBody, self).__init__(
-            filename=self.vr_body_fpath, scale=1, abilities={"robot": {}}, class_id=class_id, **kwargs
-        )
+        super(BRBody, self).__init__(class_id=class_id, **kwargs)
 
     def _load(self, simulator):
         """
         Overidden load that keeps BRBody awake upon initialization.
         """
-        body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.body_ids = [body_id]
+        self.body_id = p.loadURDF(self.vr_body_fpath, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.main_body = -1
         self.bounding_box = [0.5, 0.5, 1]
         self.mass = BODY_MASS  # p.getDynamicsInfo(body_id, -1)[0]
         # The actual body is at link 0, the base link is a "virtual" link
-        p.changeDynamics(body_id, 0, mass=self.mass)
-        p.changeDynamics(body_id, -1, mass=1e-9)
+        p.changeDynamics(self.body_id, 0, mass=self.mass)
+        p.changeDynamics(self.body_id, -1, mass=1e-9)
 
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+        simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
 
-        return [body_id]
+        return [self.body_id]
 
     def set_position_orientation_unwrapped(self, pos, orn):
         super(BRBody, self).set_position_orientation(pos, orn)
@@ -490,7 +556,7 @@ class BRBody(ArticulatedObject):
 
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
-        set_all_collisions(self.get_body_id(), int(enabled))
+        set_all_collisions(self.body_id, int(enabled))
         if enabled == True:
             self.set_body_collision_filters()
 
@@ -506,7 +572,7 @@ class BRBody(ArticulatedObject):
             )
 
         self.movement_cid = p.createConstraint(
-            self.get_body_id(),
+            self.body_id,
             -1,
             -1,
             -1,
@@ -529,14 +595,14 @@ class BRBody(ArticulatedObject):
         if "carpet" in self.parent.simulator.scene.objects_by_category:
             no_col_objs += self.parent.simulator.scene.objects_by_category["carpet"]
 
-        no_col_ids = [x.get_body_id() for x in no_col_objs]
-        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.get_body_id()))]
+        no_col_ids = [bid for x in no_col_objs for bid in x.get_body_ids()]
+        body_link_idxs = [-1] + list(range(p.getNumJoints(self.body_id)))
 
         for col_id in no_col_ids:
-            col_link_idxs = [-1] + [i for i in range(p.getNumJoints(col_id))]
+            col_link_idxs = [-1] + list(range(p.getNumJoints(col_id)))
             for body_link_idx in body_link_idxs:
                 for col_link_idx in col_link_idxs:
-                    p.setCollisionFilterPair(self.get_body_id(), col_id, body_link_idx, col_link_idx, 0)
+                    p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
 
     def move(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=BODY_MOVING_FORCE)
@@ -586,7 +652,7 @@ class BRBody(ArticulatedObject):
         pass
 
 
-class BRHandBase(ArticulatedObject):
+class BRHandBase(BRPart):
     """
     The base BRHand class from which other BRHand objects derive. It is intended
     that subclasses override most of the methods to implement their own functionality.
@@ -650,18 +716,18 @@ class BRHandBase(ArticulatedObject):
 
         if self.hand not in ["left", "right"]:
             raise ValueError("ERROR: BRHandBase can only accept left or right as a hand argument!")
-        super(BRHandBase, self).__init__(filename=self.fpath, scale=1, class_id=class_id, **kwargs)
+        super(BRHandBase, self).__init__(class_id=class_id, **kwargs)
 
     def _load(self, simulator):
         """
         Overidden load that keeps BRHandBase awake upon initialization.
         """
-        body_id = p.loadURDF(self.fpath, globalScaling=self.scale, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
-        self.mass = p.getDynamicsInfo(body_id, -1)[0]
+        self.body_id = p.loadURDF(self.fpath, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
+        self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
 
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+        simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
 
-        body_ids = [body_id]
+        body_ids = [self.body_id]
         if self.parent.use_ghost_hands:
             body_ids.extend(self.ghost_hand.load(simulator))
 
@@ -678,7 +744,7 @@ class BRHandBase(ArticulatedObject):
         # Start ghost hand where the VR hand starts
         if self.parent.use_ghost_hands:
             self.ghost_hand.set_position(self.get_position())
-            p.changeVisualShape(self.ghost_hand.get_body_id(), -1, rgbaColor=(0, 0, 0, 0))
+            p.changeVisualShape(self.ghost_hand.get_body_ids()[0], -1, rgbaColor=(0, 0, 0, 0))
             # change it to transparent for visualization
 
     def set_position_orientation(self, pos, orn):
@@ -706,7 +772,7 @@ class BRHandBase(ArticulatedObject):
 
     def set_colliders(self, enabled=False):
         assert type(enabled) == bool
-        set_all_collisions(self.get_body_id(), int(enabled))
+        set_all_collisions(self.body_id, int(enabled))
 
     def clip_delta_pos_orn(self, delta_pos, delta_orn):
         """
@@ -876,22 +942,22 @@ class BRHand(BRHandBase):
     def load(self, simulator):
         ids = super(BRHand, self).load(simulator)
 
-        self.palm_link_idx = link_from_name(self.get_body_id(), PALM_LINK_NAME)
-        self.finger_tip_link_indices = {link_from_name(self.get_body_id(), name) for name in FINGER_TIP_LINK_NAMES}
-        self.thumb_link_idx = link_from_name(self.get_body_id(), THUMB_LINK_NAME)
+        self.palm_link_idx = link_from_name(self.body_id, PALM_LINK_NAME)
+        self.finger_tip_link_indices = {link_from_name(self.body_id, name) for name in FINGER_TIP_LINK_NAMES}
+        self.thumb_link_idx = link_from_name(self.body_id, THUMB_LINK_NAME)
         self.non_thumb_fingers = self.finger_tip_link_indices - {self.thumb_link_idx}
 
         return ids
 
     def activate_constraints(self):
-        p.changeDynamics(self.get_body_id(), -1, mass=1, lateralFriction=HAND_FRICTION)
-        for joint_index in range(p.getNumJoints(self.get_body_id())):
+        p.changeDynamics(self.body_id, -1, mass=1, lateralFriction=HAND_FRICTION)
+        for joint_index in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
-            p.changeDynamics(self.get_body_id(), joint_index, mass=0.1, lateralFriction=HAND_FRICTION)
-            p.resetJointState(self.get_body_id(), joint_index, targetValue=0, targetVelocity=0.0)
+            p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=HAND_FRICTION)
+            p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
             p.setJointMotorControl2(
-                self.get_body_id(),
+                self.body_id,
                 joint_index,
                 controlMode=p.POSITION_CONTROL,
                 targetPosition=0,
@@ -900,10 +966,10 @@ class BRHand(BRHandBase):
                 velocityGain=0.1,
                 force=0,
             )
-            p.setJointMotorControl2(self.get_body_id(), joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
+            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
         # Create constraint that can be used to move the hand
         self.movement_cid = p.createConstraint(
-            self.get_body_id(),
+            self.body_id,
             -1,
             -1,
             -1,
@@ -923,20 +989,18 @@ class BRHand(BRHandBase):
         :param enable: whether to enable/disable collisions
         """
         target_link_idxs = [-1] + [i for i in range(p.getNumJoints(target_id))]
-        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.get_body_id()))]
+        body_link_idxs = [-1] + [i for i in range(p.getNumJoints(self.body_id))]
 
         for body_link_idx in body_link_idxs:
             for target_link_idx in target_link_idxs:
-                p.setCollisionFilterPair(
-                    self.get_body_id(), target_id, body_link_idx, target_link_idx, 1 if enable else 0
-                )
+                p.setCollisionFilterPair(self.body_id, target_id, body_link_idx, target_link_idx, 1 if enable else 0)
 
     def gen_freeze_vals(self):
         """
         Generate joint values to freeze joints at.
         """
-        for joint_index in range(p.getNumJoints(self.get_body_id())):
-            j_val = p.getJointState(self.get_body_id(), joint_index)[0]
+        for joint_index in range(p.getNumJoints(self.body_id)):
+            j_val = p.getJointState(self.body_id, joint_index)[0]
             self.freeze_vals[joint_index] = j_val
 
     def freeze_joints(self):
@@ -944,21 +1008,21 @@ class BRHand(BRHandBase):
         Freezes hand joints - used in assisted grasping.
         """
         for joint_index, j_val in self.freeze_vals.items():
-            p.resetJointState(self.get_body_id(), joint_index, targetValue=j_val, targetVelocity=0.0)
+            p.resetJointState(self.body_id, joint_index, targetValue=j_val, targetVelocity=0.0)
 
     def find_raycast_candidates(self):
         """
         Calculates the body id and link that have the most fingertip-palm ray intersections.
         """
         # Store unique ray start/end points for visualization
-        palm_link_state = p.getLinkState(self.get_body_id(), 0)
+        palm_link_state = p.getLinkState(self.body_id, 0)
         palm_pos = palm_link_state[0]
         palm_orn = palm_link_state[1]
         palm_base_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, PALM_BASE_POS, [0, 0, 0, 1])
         palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == "right" else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_pos, palm_orn, palm_center_pos, [0, 0, 0, 1])
-        thumb_link_state = p.getLinkState(self.get_body_id(), self.thumb_link_idx)
+        thumb_link_state = p.getLinkState(self.body_id, self.thumb_link_idx)
         thumb_pos = thumb_link_state[0]
         thumb_orn = thumb_link_state[1]
         thumb_1_pos = np.copy(THUMB_1_POS)
@@ -972,7 +1036,7 @@ class BRHand(BRHandBase):
 
         raycast_endpoints = []
         for lk in self.non_thumb_fingers:
-            finger_link_state = p.getLinkState(self.get_body_id(), lk)
+            finger_link_state = p.getLinkState(self.body_id, lk)
             link_pos = finger_link_state[0]
             link_orn = finger_link_state[1]
 
@@ -994,7 +1058,7 @@ class BRHand(BRHandBase):
         for ray_res in ray_results:
             bid, link_idx, fraction, _, _ = ray_res
             # Skip intersections with the hand itself
-            if bid == -1 or bid == self.get_body_id():
+            if bid == -1 or bid == self.body_id:
                 continue
             ray_data.append((bid, link_idx))
 
@@ -1005,7 +1069,7 @@ class BRHand(BRHandBase):
         Calculates the body ids and links that have force applied to them by the VR hand.
         """
         # Get collisions
-        cpts = p.getContactPoints(self.get_body_id())
+        cpts = p.getContactPoints(self.body_id)
         if not cpts:
             return None
 
@@ -1036,7 +1100,7 @@ class BRHand(BRHandBase):
             return None
 
         # Step 2 - find the closest object to the palm center among these "inside" objects
-        palm_state = p.getLinkState(self.get_body_id(), 0)
+        palm_state = p.getLinkState(self.body_id, 0)
         palm_center_pos = np.copy(PALM_CENTER_POS)
         palm_center_pos[1] *= 1 if self.hand == "right" else -1
         palm_center_pos, _ = p.multiplyTransforms(palm_state[0], palm_state[1], palm_center_pos, [0, 0, 0, 1])
@@ -1065,8 +1129,8 @@ class BRHand(BRHandBase):
         if (
             not self.parent.simulator.can_assisted_grasp(ag_bid, ag_link)
             or (self.other_hand and self.other_hand.object_in_hand == ag_bid)
-            or ("body" in self.parent.links and self.parent.links["body"].get_body_id() == ag_bid)
-            or (self.other_hand and self.other_hand.get_body_id() == ag_bid)
+            or ("body" in self.parent.links and self.parent.links["body"].body_id == ag_bid)
+            or (self.other_hand and self.other_hand.body_id == ag_bid)
         ):
             return None
 
@@ -1138,7 +1202,7 @@ class BRHand(BRHandBase):
                 # Joint frame set at the contact point
                 joint_frame_pos = contact_pos
                 joint_frame_orn = [0, 0, 0, 1]
-                palm_link_pos, palm_link_orn = p.getLinkState(self.get_body_id(), self.palm_link_idx)[:2]
+                palm_link_pos, palm_link_orn = p.getLinkState(self.body_id, self.palm_link_idx)[:2]
                 inv_palm_link_pos, inv_palm_link_orn = p.invertTransform(palm_link_pos, palm_link_orn)
                 parent_frame_pos, parent_frame_orn = p.multiplyTransforms(
                     inv_palm_link_pos, inv_palm_link_orn, joint_frame_pos, joint_frame_orn
@@ -1152,7 +1216,7 @@ class BRHand(BRHandBase):
                     inv_obj_pos, inv_obj_orn, joint_frame_pos, joint_frame_orn
                 )
                 self.obj_cid = p.createConstraint(
-                    parentBodyUniqueId=self.get_body_id(),
+                    parentBodyUniqueId=self.body_id,
                     parentLinkIndex=self.palm_link_idx,
                     childBodyUniqueId=ag_bid,
                     childLinkIndex=ag_link,
@@ -1264,8 +1328,8 @@ class BRHand(BRHandBase):
         if self.should_freeze_joints:
             return
 
-        for joint_index in range(p.getNumJoints(self.get_body_id())):
-            jf = p.getJointInfo(self.get_body_id(), joint_index)
+        for joint_index in range(p.getNumJoints(self.body_id)):
+            jf = p.getJointInfo(self.body_id, joint_index)
             j_name = jf[1]
             # Thumb has different close fraction to fingers
             if j_name.decode("utf-8")[0] == "T":
@@ -1275,7 +1339,7 @@ class BRHand(BRHandBase):
             interp_frac = (close_pos - HAND_OPEN_POSITION) * close_frac
             target_pos = HAND_OPEN_POSITION + interp_frac
             p.setJointMotorControl2(
-                self.get_body_id(), joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=HAND_CLOSE_FORCE
+                self.body_id, joint_index, p.POSITION_CONTROL, targetPosition=target_pos, force=HAND_CLOSE_FORCE
             )
 
     def dump_part_state(self):
@@ -1311,7 +1375,7 @@ class BRHand(BRHandBase):
         self.obj_cid_params = dump["obj_cid_params"]
         if self.obj_cid is not None:
             self.obj_cid = p.createConstraint(
-                parentBodyUniqueId=self.get_body_id(),
+                parentBodyUniqueId=self.body_id,
                 parentLinkIndex=self.palm_link_idx,
                 childBodyUniqueId=dump["obj_cid_params"]["childBodyUniqueId"],
                 childLinkIndex=dump["obj_cid_params"]["childLinkIndex"],
@@ -1369,19 +1433,19 @@ class BRGripper(BRHandBase):
                 )
             )
 
-        for joint_idx in range(p.getNumJoints(self.get_body_id())):
-            p.resetJointState(self.get_body_id(), joint_idx, GRIPPER_JOINT_POSITIONS[joint_idx])
-            p.setJointMotorControl2(self.get_body_id(), joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
+        for joint_idx in range(p.getNumJoints(self.body_id)):
+            p.resetJointState(self.body_id, joint_idx, GRIPPER_JOINT_POSITIONS[joint_idx])
+            p.setJointMotorControl2(self.body_id, joint_idx, p.POSITION_CONTROL, targetPosition=0, force=0)
 
         # Movement constraint
         self.movement_cid = p.createConstraint(
-            self.get_body_id(), -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position()
+            self.body_id, -1, -1, -1, p.JOINT_FIXED, [0, 0, 0], [0.2, 0, 0], self.get_position()
         )
         # Gripper gear constraint
         self.grip_cid = p.createConstraint(
-            self.get_body_id(),
+            self.body_id,
             0,
-            self.get_body_id(),
+            self.body_id,
             2,
             jointType=p.JOINT_GEAR,
             jointAxis=[0, 1, 0],
@@ -1393,14 +1457,14 @@ class BRGripper(BRHandBase):
 
     def set_close_fraction(self, close_frac):
         # PyBullet recommmends doing this to keep the gripper centered/symmetric
-        b = p.getJointState(self.get_body_id(), 2)[0]
-        p.setJointMotorControl2(self.get_body_id(), 0, p.POSITION_CONTROL, targetPosition=b, force=3)
+        b = p.getJointState(self.body_id, 2)[0]
+        p.setJointMotorControl2(self.body_id, 0, p.POSITION_CONTROL, targetPosition=b, force=3)
 
         # Change gear constraint to reflect trigger close fraction
         p.changeConstraint(self.grip_cid, gearRatio=1, erp=1, relativePositionTarget=1 - close_frac, maxForce=3)
 
 
-class BREye(ArticulatedObject):
+class BREye(BRPart):
     """
     Class representing the eye of the robot - robots can use this eye's position
     to move the camera and render the same thing that the VR users see.
@@ -1418,7 +1482,7 @@ class BREye(ArticulatedObject):
         color_folder = "normal_color" if self.parent.normal_color else "alternative_color"
         self.head_visual_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", color_folder, "vr_head.obj")
         self.eye_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", "vr_eye.urdf")
-        super(BREye, self).__init__(filename=self.eye_path, scale=1, class_id=class_id, **kwargs)
+        super(BREye, self).__init__(class_id=class_id, **kwargs)
 
         self.should_hide = True
         self.head_visual_marker = VisualMarker(
@@ -1428,15 +1492,15 @@ class BREye(ArticulatedObject):
 
     def _load(self, simulator):
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL | p.URDF_ENABLE_SLEEPING
-        body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
+        self.body_id = p.loadURDF(self.eye_path, flags=flags)
 
         # Set a minimal mass
         self.mass = 1e-9
-        p.changeDynamics(body_id, -1, self.mass)
+        p.changeDynamics(self.body_id, -1, self.mass)
 
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+        simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
 
-        body_ids = [body_id] + self.head_visual_marker.load(simulator)
+        body_ids = [self.body_id] + self.head_visual_marker.load(simulator)
 
         return body_ids
 
@@ -1526,9 +1590,9 @@ class BREye(ArticulatedObject):
         # Create a rigid constraint between the body and the head such that the head will move with the body during the
         # next physics simulation duration. Set the joint frame to be aligned with the child frame (URDF standard)
         self.neck_cid = p.createConstraint(
-            parentBodyUniqueId=body.get_body_id(),
+            parentBodyUniqueId=body.body_id,
             parentLinkIndex=-1,
-            childBodyUniqueId=self.get_body_id(),
+            childBodyUniqueId=self.body_id,
             childLinkIndex=-1,
             jointType=p.JOINT_FIXED,
             jointAxis=[0, 0, 0],

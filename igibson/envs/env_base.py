@@ -199,13 +199,6 @@ class BaseEnv(gym.Env):
 
             self.simulator.import_robot(robot)
 
-        robot = scene.robots[0]
-        # TODO: Remove if statement once BEHAVIOR robot is refactored
-        if isinstance(robot, BehaviorRobot):
-            self.robot_body_id = robot.links["body"].get_body_id()
-        else:
-            self.robot_body_id = robot.get_body_id()
-
         self.scene = scene
         self.robots = scene.robots
 

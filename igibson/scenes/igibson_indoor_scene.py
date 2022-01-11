@@ -199,7 +199,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # Store the original states retrieved from the URDF
         # self.object_states[object_name]["bbox_center_pose"] = ([x, y, z], [x, y, z, w])
         # self.object_states[object_name]["base_com_pose"] = ([x, y, z], [x, y, z, w])
-        # self.object_states[object_name]["base_velocity"] = (vx, vy, vz], [wx, wy, wz])
+        # self.object_states[object_name]["base_velocities"] = (vx, vy, vz], [wx, wy, wz])
         # self.object_states[object_name]["joint_states"] = {joint_name: (q, q_dot)}
         # self.object_states[object_name]["non_kinematic_states"] = dict()
         self.object_states = defaultdict(dict)
@@ -231,10 +231,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             # Robot object
             if category == "agent":
                 robot_config = json.loads(link.attrib["robot_config"]) if "robot_config" in link.attrib else {}
-                assert model in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
-                obj = REGISTERED_ROBOTS[model](**robot_config)
-                # TODO: remove once BaseRobot has a name field
-                obj.name = object_name
+                assert model in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(model)
+                obj = REGISTERED_ROBOTS[model](name=object_name, **robot_config)
 
             # Non-robot object
             else:
@@ -330,7 +328,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             bbx_center_orn = p.getQuaternionFromEuler(bbx_center_orn)
 
             base_com_pose = json.loads(link.attrib["base_com_pose"]) if "base_com_pose" in link.attrib else None
-            base_velocity = json.loads(link.attrib["base_velocity"]) if "base_velocity" in link.attrib else None
+            base_velocities = json.loads(link.attrib["base_velocities"]) if "base_velocities" in link.attrib else None
             if "joint_states" in link.keys():
                 joint_states = json.loads(link.attrib["joint_states"])
             elif "joint_positions" in link.keys():
@@ -348,7 +346,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
             self.object_states[object_name]["bbox_center_pose"] = (bbox_center_pos, bbx_center_orn)
             self.object_states[object_name]["base_com_pose"] = base_com_pose
-            self.object_states[object_name]["base_velocity"] = base_velocity
+            self.object_states[object_name]["base_velocities"] = base_velocities
             self.object_states[object_name]["joint_states"] = joint_states
             self.object_states[object_name]["non_kinematic_states"] = non_kinematic_states
 
@@ -516,11 +514,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 for in_room in in_rooms:
                     self.objects_by_room[in_room].remove(obj)
 
-        if hasattr(obj, "body_ids"):
-            for id in obj.body_ids:
-                del self.objects_by_id[id]
-        else:
-            del self.objects_by_id[obj.get_body_id()]
+        for id in obj.get_body_ids():
+            del self.objects_by_id[id]
 
     def _add_object(self, obj):
         """
@@ -528,36 +523,16 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         :param obj: Object instance to add to scene.
         """
-        # TODO: Remove this hack.
-        # BehaviorRobot parts all go into the scene as agent objects. To retain backward compatibility, we special case
-        # this here. This logic is to be removed once BehaviorRobot is unified into BaseRobot.
-        if isinstance(obj, BehaviorRobot):
-            for part in obj.links.values():
-                assert part._loaded, "BehaviorRobot parts need to be pre-loaded."
-                self._add_object(part)
-            return
-
-        if hasattr(obj, "category"):
-            category = obj.category
-        else:
-            # TODO(cgokmen): Fix this - we don't want to set object attributes here.
-            category = obj.category = "object"
-
-        if hasattr(obj, "name"):
-            object_name = obj.name
-        else:
-            # TODO(cgokmen): Fix this - we don't want to set object attributes here.
-            object_name = obj.name = "{}_{}".format(category, len(self.objects_by_category.get(category, [])))
-
-        if object_name in self.objects_by_name.keys():
-            logging.error("Object names need to be unique! Existing name " + object_name)
+        # Give the object a name if it doesn't already have one.
+        if obj.name in self.objects_by_name.keys():
+            logging.error("Object names need to be unique! Existing name " + obj.name)
             exit(-1)
 
         # Add object to database
-        self.objects_by_name[object_name] = obj
-        if category not in self.objects_by_category.keys():
-            self.objects_by_category[category] = []
-        self.objects_by_category[category].append(obj)
+        self.objects_by_name[obj.name] = obj
+        if obj.category not in self.objects_by_category.keys():
+            self.objects_by_category[obj.category] = []
+        self.objects_by_category[obj.category].append(obj)
 
         if hasattr(obj, "states"):
             for state in obj.states:
@@ -574,12 +549,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         self.objects_by_room[in_room] = []
                     self.objects_by_room[in_room].append(obj)
 
-        if hasattr(obj, "body_ids"):
-            for id in obj.body_ids:
+        if obj.get_body_ids() is not None:
+            for id in obj.get_body_ids():
                 self.objects_by_id[id] = obj
-        else:
-            if obj.get_body_id() is not None:
-                self.objects_by_id[obj.get_body_id()] = obj
 
     def randomize_texture(self):
         """
@@ -630,7 +602,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # build mapping from body_id to object name for debugging
         body_id_to_name = {}
         for name in self.objects_by_name:
-            for body_id in self.objects_by_name[name].body_ids:
+            for body_id in self.objects_by_name[name].get_body_ids():
                 body_id_to_name[body_id] = name
         self.body_id_to_name = body_id_to_name
 
@@ -641,8 +613,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if obj1_name not in self.objects_by_name or obj2_name not in self.objects_by_name:
                 # This could happen if only part of the scene is loaded (e.g. only a subset of rooms)
                 continue
-            for obj1_body_id in self.objects_by_name[obj1_name].body_ids:
-                for obj2_body_id in self.objects_by_name[obj2_name].body_ids:
+            for obj1_body_id in self.objects_by_name[obj1_name].get_body_ids():
+                for obj2_body_id in self.objects_by_name[obj2_name].get_body_ids():
                     overlapped_body_ids.append((obj1_body_id, obj2_body_id))
 
         # cache pybullet initial state
@@ -850,7 +822,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             # open probability
             if np.random.random() > prob:
                 continue
-            for body_id in obj.body_ids:
+            for body_id in obj.get_body_ids():
                 body_joint_pairs += self.open_one_obj(body_id, mode=mode)
         return body_joint_pairs
 
@@ -882,6 +854,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if not obj_kin_state:
             return
 
+        # TODO: For velocities, we are now storing each body's com. Should we somehow do the same for positions?
         if obj_kin_state["base_com_pose"] is not None:
             obj.set_position_orientation(*obj_kin_state["base_com_pose"])
         else:
@@ -891,16 +864,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
             else:
                 obj.set_bbox_center_position_orientation(*obj_kin_state["bbox_center_pose"])
 
-        if obj_kin_state["base_velocity"] is not None:
-            obj.set_velocity(*obj_kin_state["base_velocity"])
+        if obj_kin_state["base_velocities"] is not None:
+            obj.set_velocities(obj_kin_state["base_velocities"])
         else:
-            obj.set_velocity(0.0, 0.0)
+            obj.set_velocities([[[0.0] * 3, [0.0] * 3]] * len(obj.get_body_ids()))
 
         if obj_kin_state["joint_states"] is not None:
             obj.set_joint_states(obj_kin_state["joint_states"])
         else:
             zero_joint_states = {
-                j.decode("UTF-8"): (0.0, 0.0) for j in get_joint_names(obj.get_body_id(), get_joints(obj.get_body_id()))
+                j.decode("UTF-8"): (0.0, 0.0)
+                for bid in obj.get_body_ids()
+                for j in get_joint_names(bid, get_joints(bid))
             }
             obj.set_joint_states(zero_joint_states)
 
@@ -935,7 +910,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
             # Only URDFObject has the attribute is_fixed
             if isinstance(obj, URDFObject):
-                fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.body_ids, obj.is_fixed) if is_fixed]
+                fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.get_body_ids(), obj.is_fixed) if is_fixed]
 
         # disable collision between the fixed links of the fixed objects
         for i in range(len(fixed_body_ids)):
@@ -1116,14 +1091,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         ids = []
         for obj_name in self.objects_by_name:
-            # TODO: Remove URDFObject-specific logic
-            if (
-                hasattr(self.objects_by_name[obj_name], "body_ids")
-                and self.objects_by_name[obj_name].body_ids is not None
-            ):
-                ids.extend(self.objects_by_name[obj_name].body_ids)
-            elif self.objects_by_name[obj_name].get_body_id() is not None:
-                ids.append(self.objects_by_name[obj_name].get_body_id())
+            if self.objects_by_name[obj_name].get_body_ids() is not None:
+                ids.extend(self.objects_by_name[obj_name].get_body_ids())
         return ids
 
     def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
@@ -1144,7 +1113,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 grouper_link.attrib = {
                     "category": "grouper",
                     "name": obj.name + "_grouper",
-                    "pose_offsets": json.dumps([(list(pos), list(orn)) for pos, orn in sub_obj.pose_offsets]),
+                    "pose_offsets": json.dumps(sub_obj.pose_offsets, cls=NumpyEncoder),
                     "multiplexer": obj.name,
                 }
                 for group_sub_obj in sub_obj.objects:
@@ -1178,18 +1147,21 @@ class InteractiveIndoorScene(StaticIndoorScene):
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
-        body_id = obj.get_body_id()
+        body_ids = obj.get_body_ids()
+        main_body_id = body_ids[0] if len(body_ids) == 1 else body_ids[obj.main_body]
 
-        dynamics_info = p.getDynamicsInfo(body_id, -1)
+        dynamics_info = p.getDynamicsInfo(main_body_id, -1)
         inertial_pos = dynamics_info[3]
         inertial_orn = dynamics_info[4]
 
-        pos, orn = obj.get_position_orientation()
+        # TODO: replace this with obj.get_position_orientation() once URDFObject no longer works with multiple body ids
+        pos, orn = p.getBasePositionAndOrientation(main_body_id)
+        pos, orn = np.array(pos), np.array(orn)
         inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
         base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
 
         # Convert to XYZ position for URDF
-        euler = euler_from_quat(obj.get_orientation())
+        euler = euler_from_quat(orn)
         roll, pitch, yaw = euler
         if hasattr(obj, "scaled_bbxc_in_blf"):
             offset = rotate_vector_3d(obj.scaled_bbxc_in_blf, roll, pitch, yaw, False)
@@ -1264,17 +1236,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
             new_parent.attrib["link"] = "world"
 
         # Common logic for objects that are both in the scene & otherwise.
-        base_com_pose = (pos.tolist(), orn.tolist())
-        lin, ang = obj.get_velocity()
-        base_velocity = (lin.tolist(), ang.tolist())
+        base_com_pose = (pos, orn)
         joint_states = obj.get_joint_states()
-        link.attrib["base_com_pose"] = json.dumps(base_com_pose)
-        link.attrib["base_velocity"] = json.dumps(base_velocity)
-        link.attrib["joint_states"] = json.dumps(joint_states)
+        link.attrib["base_com_pose"] = json.dumps(base_com_pose, cls=NumpyEncoder)
+        link.attrib["base_velocities"] = json.dumps(obj.get_velocities(), cls=NumpyEncoder)
+        link.attrib["joint_states"] = json.dumps(joint_states, cls=NumpyEncoder)
 
         # Add states
         if hasattr(obj, "states"):
-            link.attrib["states"] = json.dumps(obj.dump_state())
+            link.attrib["states"] = json.dumps(obj.dump_state(), cls=NumpyEncoder)
 
         # Add additional attributes.
         if name in additional_attribs_by_name:
@@ -1320,7 +1290,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
             object_states[object_name]["bbox_center_pose"] = None
             object_states[object_name]["base_com_pose"] = json.loads(link.attrib["base_com_pose"])
-            object_states[object_name]["base_velocity"] = json.loads(link.attrib["base_velocity"])
+            object_states[object_name]["base_velocities"] = json.loads(link.attrib["base_velocities"])
             object_states[object_name]["joint_states"] = json.loads(link.attrib["joint_states"])
             object_states[object_name]["non_kinematic_states"] = json.loads(link.attrib["states"])
 

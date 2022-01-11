@@ -3,12 +3,34 @@ from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.utils import clear_cached_states
 from igibson.objects.object_base import BaseObject
 
+# Optionally import bddl for object taxonomy.
+try:
+    from bddl.object_taxonomy import ObjectTaxonomy
+
+    OBJECT_TAXONOMY = ObjectTaxonomy()
+except ImportError:
+    print("BDDL could not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
+    OBJECT_TAXONOMY = None
+
 
 class StatefulObject(BaseObject):
     """Objects that support object states."""
 
     def __init__(self, abilities=None, **kwargs):
         super(StatefulObject, self).__init__(**kwargs)
+
+        # Load abilities from taxonomy if needed & possible
+        if abilities is None:
+            if OBJECT_TAXONOMY is not None:
+                taxonomy_class = OBJECT_TAXONOMY.get_class_name_from_igibson_category(self.category)
+                if taxonomy_class is not None:
+                    abilities = OBJECT_TAXONOMY.get_abilities(taxonomy_class)
+                else:
+                    abilities = {}
+            else:
+                abilities = {}
+        assert isinstance(abilities, dict), "Object abilities must be in dictionary form."
+
         prepare_object_states(self, abilities=abilities)
 
     def load(self, simulator):

@@ -27,7 +27,9 @@ def main():
     fetch = Fetch(config)
     s.import_robot(fetch)
 
-    robot_id = fetch.get_body_id()
+    body_ids = fetch.get_body_ids()
+    assert len(body_ids) == 1, "Fetch robot is expected to be single-body."
+    robot_id = body_ids[0]
 
     arm_joints = joints_from_names(
         robot_id,

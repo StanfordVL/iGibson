@@ -45,7 +45,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         # In addition to normal reset, reset the joint configuration to be in default mode
         super().reset()
         joints = self.default_joint_pos
-        set_joint_positions(self.get_body_id(), self.joint_ids, joints)
+        set_joint_positions(self.get_body_ids()[0], self.joint_ids, joints)
 
     @property
     def controller_order(self):
@@ -100,12 +100,12 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     @property
     def disabled_collision_pairs(self):
         return [
-            ["base_chassis_joint", "pan_joint"],
-            ["base_chassis_joint", "tilt_joint"],
-            ["base_chassis_joint", "camera_joint"],
-            ["jr2_fixed_body_joint", "pan_joint"],
-            ["jr2_fixed_body_joint", "tilt_joint"],
-            ["jr2_fixed_body_joint", "camera_joint"],
+            ["base_chassis_link", "pan_link"],
+            ["base_chassis_link", "tilt_link"],
+            ["base_chassis_link", "camera_link"],
+            ["jr2_fixed_body_link", "pan_link"],
+            ["jr2_fixed_body_link", "tilt_link"],
+            ["jr2_fixed_body_link", "camera_link"],
         ]
 
     @property

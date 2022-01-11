@@ -4,10 +4,10 @@ import pybullet as p
 
 from igibson.object_states.factory import get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from igibson.objects.object_base import BaseObject, NonRobotObject
+from igibson.objects.object_base import BaseObject
 
 
-class ObjectGrouper(NonRobotObject):
+class ObjectGrouper(BaseObject):
     """A multi-object wrapper that groups multiple objects and applies operations to all of them in parallel."""
 
     class ProceduralMaterialAggregator(object):
@@ -144,8 +144,14 @@ class ObjectGrouper(NonRobotObject):
             body_ids += obj.load(simulator)
         return body_ids
 
-    def get_body_id(self):
-        raise ValueError("Cannot get_body_id on ObjectGrouper")
+    def get_body_ids(self):
+        ids = []
+        for obj in self.objects:
+            if obj.get_body_ids() is not None:
+                ids.extend(obj.get_body_ids())
+        if len(ids) == 0:
+            ids = None
+        return ids
 
     def get_position(self):
         raise ValueError("Cannot get_position on ObjectGrouper")
@@ -183,7 +189,7 @@ class ObjectGrouper(NonRobotObject):
                 state_instance.load(dump[get_state_name(state_type)])
 
 
-class ObjectMultiplexer(NonRobotObject):
+class ObjectMultiplexer(BaseObject):
     """A multi-object wrapper that acts as a proxy for the selected one between the set of objects it contains."""
 
     def __init__(self, name, multiplexed_objects, current_index):
@@ -194,8 +200,12 @@ class ObjectMultiplexer(NonRobotObject):
             obj.multiplexer = self
 
         self._multiplexed_objects = multiplexed_objects
+
         self.current_index = current_index
         self.name = name
+        categories = set(x.category for x in multiplexed_objects)
+        assert len(categories) == 1, "All multiplexed objects should be the same category."
+        self.category = categories.pop()
 
     def set_selection(self, idx):
         assert 0 <= idx < len(self._multiplexed_objects)
@@ -219,8 +229,8 @@ class ObjectMultiplexer(NonRobotObject):
             body_ids += obj.load(simulator)
         return body_ids
 
-    def get_body_id(self):
-        return self.current_selection().get_body_id()
+    def get_body_ids(self):
+        return self.current_selection().get_body_ids()
 
     def get_position(self):
         return self.current_selection().get_position()
