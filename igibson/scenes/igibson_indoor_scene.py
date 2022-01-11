@@ -874,7 +874,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
         return self.open_all_objs_by_category("door", mode="max")
 
     def restore_object_states_single_object(self, obj, obj_kin_state):
+        # If the object isn't loaded, skip
         if not obj.loaded:
+            return
+
+        # If the object state is empty (which happens if an object is added after the scene URDF is parsed), skip
+        if not obj_kin_state:
             return
 
         if obj_kin_state["base_com_pose"] is not None:
@@ -965,7 +970,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         Reset the pose and joint configuration of all scene objects.
         Also open all doors if self.should_open_all_doors is True
         """
-        self.restore_object_states(self.obj_kin_states)
+        self.restore_object_states(self.object_states)
 
         if self.should_open_all_doors:
             self.force_wakeup_scene_objects()
