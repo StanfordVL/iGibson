@@ -48,7 +48,7 @@ def get_relative_pose(origin_body, origin_link, target_body, target_link):
     origin_in_world_frame = get_link_pose(origin_body, origin_link)
     target_in_world_frame = get_link_pose(target_body, target_link)
     world_in_origin_frame = p.invertTransform(*origin_in_world_frame)
-    target_in_origin_frame = p.multiplyTransforms(world_in_origin_frame, target_in_world_frame)
+    target_in_origin_frame = p.multiplyTransforms(*world_in_origin_frame, *target_in_world_frame)
     return target_in_origin_frame
 
 
@@ -431,7 +431,7 @@ class ManipulationRobot(BaseRobot):
         """
         return self._links[self.eef_link_name].get_orientation()
 
-    def get_relative_eef_pose(self, mat=True):
+    def get_relative_eef_pose(self, mat=False):
         """
         :param mat: bool, whether to return pose in matrix form (mat=True) or (pos, quat) tuple (mat=False)
 
