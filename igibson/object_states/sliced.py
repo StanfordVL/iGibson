@@ -35,7 +35,10 @@ class Sliced(AbsoluteObjectState, BooleanState):
 
         # Object parts offset annotation are w.r.t the base link of the whole object
         pos, orn = self.obj.get_position_orientation()
-        dynamics_info = p.getDynamicsInfo(self.obj.get_body_id(), -1)
+        body_ids = self.obj.get_body_ids()
+        assert len(body_ids) == 1, "Sliceable is expected to be single-body."
+        body_id = body_ids[0]
+        dynamics_info = p.getDynamicsInfo(body_id, -1)
         inertial_pos = dynamics_info[3]
         inertial_orn = dynamics_info[4]
         inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)

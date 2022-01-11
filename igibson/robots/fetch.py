@@ -29,6 +29,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
     def __init__(
         self,
+        name=None,
         control_freq=None,
         action_type="continuous",
         action_normalize=True,
@@ -45,6 +46,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         default_arm_pose="vertical",
     ):
         """
+        :param name: None or str, name of the robot object
         :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
             simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
         :param action_type: str, one of {discrete, continuous} - what type of action space to use
@@ -79,6 +81,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
         # Run super init
         super().__init__(
+            name=name,
             control_freq=control_freq,
             action_type=action_type,
             action_normalize=action_normalize,
@@ -150,15 +153,17 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # In addition to normal reset, reset the joint configuration to be in default untucked mode
         super().reset()
         joints = self.untucked_default_joint_pos
-        set_joint_positions(self.get_body_id(), self.joint_ids, joints)
+        set_joint_positions(self.get_body_ids()[0], self.joint_ids, joints)
 
     def _load(self, simulator):
         # Run super method
         ids = super()._load(simulator)
 
+        assert len(self.get_body_ids()) == 1, "Fetch robot is expected to have only one body ID."
+
         # Extend super method by increasing laterial friction for EEF
         for link in self.finger_joint_ids:
-            p.changeDynamics(self.get_body_id(), link, lateralFriction=500)
+            p.changeDynamics(self.get_body_ids()[0], link, lateralFriction=500)
 
         return ids
 
@@ -179,10 +184,10 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # Compute gripper bounding box
         corners = []
 
-        eef_pos, eef_orn, _, _, _, _ = p.getLinkState(self.get_body_id(), self.eef_link_id)
+        eef_pos, eef_orn, _, _, _, _ = p.getLinkState(self.get_body_ids()[0], self.eef_link.link_id)
         i_eef_pos, i_eef_orn = p.invertTransform(eef_pos, eef_orn)
 
-        gripper_fork_1_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[0])
+        gripper_fork_1_state = p.getLinkState(self.get_body_ids()[0], self.gripper_finger_joint_ids[0])
         local_corners = [
             [0.04, -0.012, 0.014],
             [0.04, -0.012, -0.014],
@@ -193,7 +198,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             corner, _ = p.multiplyTransforms(gripper_fork_1_state[0], gripper_fork_1_state[1], coord, [0, 0, 0, 1])
             corners.append(corner)
 
-        gripper_fork_2_state = p.getLinkState(self.get_body_id(), self.gripper_finger_joint_ids[1])
+        gripper_fork_2_state = p.getLinkState(self.get_body_ids()[0], self.gripper_finger_joint_ids[1])
         local_corners = [
             [0.04, 0.012, 0.014],
             [0.04, 0.012, -0.014],
@@ -332,13 +337,13 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     @property
     def disabled_collision_pairs(self):
         return [
-            ["torso_lift_joint", "shoulder_lift_joint"],
-            ["torso_lift_joint", "torso_fixed_joint"],
-            ["caster_wheel_joint", "estop_joint"],
-            ["caster_wheel_joint", "laser_joint"],
-            ["caster_wheel_joint", "torso_fixed_joint"],
-            ["caster_wheel_joint", "l_wheel_joint"],
-            ["caster_wheel_joint", "r_wheel_joint"],
+            ["torso_lift_link", "shoulder_lift_link"],
+            ["torso_lift_link", "torso_fixed_link"],
+            ["caster_wheel_link", "estop_link"],
+            ["caster_wheel_link", "laser_link"],
+            ["caster_wheel_link", "torso_fixed_link"],
+            ["caster_wheel_link", "l_wheel_link"],
+            ["caster_wheel_link", "r_wheel_link"],
         ]
 
     @property

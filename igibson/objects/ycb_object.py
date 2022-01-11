@@ -3,12 +3,10 @@ import os
 import pybullet as p
 
 import igibson
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class YCBObject(StatefulObject, SingleBodyObject):
+class YCBObject(StatefulObject):
     """
     YCB Object from assets/models/ycb
     Reference: https://www.ycbbenchmarks.com/
@@ -37,7 +35,3 @@ class YCBObject(StatefulObject, SingleBodyObject):
 
     def reset(self):
         return
-
-    def force_wakeup(self):
-        activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)

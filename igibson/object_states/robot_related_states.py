@@ -33,7 +33,7 @@ class InReachOfRobot(CachingEnabledObjectState, BooleanState):
         if not robot:
             return False
 
-        robot_pos = robot.links["body"].get_position()
+        robot_pos = robot.get_position()
         object_pos, _ = self.obj.states[Pose].get_value()
         return np.linalg.norm(object_pos - np.array(robot_pos)) < _IN_REACH_DISTANCE_THRESHOLD
 
@@ -62,7 +62,7 @@ class InSameRoomAsRobot(CachingEnabledObjectState, BooleanState):
         if not scene or not hasattr(scene, "get_room_instance_by_point"):
             return False
 
-        robot_pos = robot.links["body"].get_position()
+        robot_pos = robot.get_position()
         robot_room = scene.get_room_instance_by_point(np.array(robot_pos[:2]))
         object_rooms = self.obj.states[InsideRoomTypes].get_value()
 
@@ -85,7 +85,7 @@ class InHandOfRobot(CachingEnabledObjectState, BooleanState):
         if not robot:
             return False
 
-        return robot.is_grasping(self.obj.get_body_id()).any()
+        return robot.is_grasping(self.obj.get_body_ids()).any()
 
     def _set_value(self, new_value):
         raise NotImplementedError("InHandOfRobot state currently does not support setting.")
@@ -108,7 +108,8 @@ class InFOVOfRobot(CachingEnabledObjectState, BooleanState):
         if not robot:
             return False
 
-        return self.obj.get_body_id() in robot.links["body"].states[ObjectsInFOVOfRobot].get_value()
+        body_ids = set(self.obj.get_body_ids())
+        return not body_ids.isdisjoint(robot.states[ObjectsInFOVOfRobot].get_value())
 
     def _set_value(self, new_value):
         raise NotImplementedError("InFOVOfRobot state currently does not support setting.")
@@ -127,7 +128,7 @@ class ObjectsInFOVOfRobot(CachingEnabledObjectState):
 
     def _compute_value(self):
         # Pass the FOV through the instance-to-body ID mapping.
-        seg = self.obj.parent.render_camera_image(modes="ins_seg")[0][:, :, 0]
+        seg = self.obj.render_camera_image(modes="ins_seg")[0][:, :, 0]
         seg = np.round(seg * MAX_INSTANCE_COUNT).astype(int)
         body_ids = self.simulator.renderer.get_pb_ids_for_instance_ids(seg)
 

@@ -472,10 +472,7 @@ class BehaviorTask(BaseTask):
         return True, None
 
     def get_agent(self, env):
-        if isinstance(env.robots[0], BehaviorRobot):
-            return env.robots[0].links["body"]
-        else:
-            return env.robots[0]
+        return env.robots[0]
 
     def assign_object_scope_with_cache(self, env):
         # Assign object_scope based on a cached scene
@@ -891,7 +888,7 @@ class BehaviorTask(BaseTask):
                 state["obj_{}_valid".format(i)] = 1.0
                 state["obj_{}_pos".format(i)] = np.array(v.get_position())
                 state["obj_{}_orn".format(i)] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
-                grasping_objects = env.robots[0].is_grasping(v.get_body_id())
+                grasping_objects = env.robots[0].is_grasping(v.get_body_ids())
                 for grasp_idx, grasping in enumerate(grasping_objects):
                     state["obj_{}_pos_in_gripper_{}".format(i, grasp_idx)] = float(grasping)
                 i += 1

@@ -5,6 +5,7 @@ import pybullet as p
 from future.utils import with_metaclass
 
 from igibson.utils.constants import SemanticClass
+from igibson.utils.semantics_utils import CLASS_NAME_TO_CLASS_ID
 
 
 class BaseObject(with_metaclass(ABCMeta, object)):
@@ -16,40 +17,62 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         "shadow_caster": True,
     }
 
-    def __init__(self, class_id=SemanticClass.USER_ADDED_OBJS, rendering_params=None):
+    def __init__(self, name=None, category="object", class_id=None, rendering_params=None):
         """
         Create an object instance with the minimum information of class ID and rendering parameters.
 
+        @param name: Name for the object. Names need to be unique per scene. If no name is set, a name will be generated
+            at the time the object is added to the scene, using the object's category.
+        @param category: Category for the object. Defaults to "object".
         @param class_id: What class ID the object should be assigned in semantic segmentation rendering mode.
         @param rendering_params: Any keyword arguments to be passed into simulator.load_object_into_renderer(...).
         """
-        self.states = {}
-        self._loaded = False
+        # Generate a name if necessary. Note that the generation order & set of these names is not deterministic.
+        if name is None:
+            address = "%08X" % id(self)
+            name = "{}_{}".format(category, address)
+
+        self.name = name
+        self.category = category
+
+        category_based_rendering_params = {}
+        if category in ["walls", "floors", "ceilings"]:
+            category_based_rendering_params["use_pbr"] = False
+            category_based_rendering_params["use_pbr_mapping"] = False
+        if category == "ceilings":
+            category_based_rendering_params["shadow_caster"] = False
+
+        if rendering_params:  # Use the input rendering params as an override.
+            category_based_rendering_params.update(rendering_params)
+
+        if class_id is None:
+            class_id = CLASS_NAME_TO_CLASS_ID.get(category, SemanticClass.USER_ADDED_OBJS)
+
         self.class_id = class_id
+        self.renderer_instances = []
         self._rendering_params = dict(self.DEFAULT_RENDERING_PARAMS)
-        if rendering_params is not None:
-            self._rendering_params.update(rendering_params)
+        self._rendering_params.update(category_based_rendering_params)
+
+        self._loaded = False
+        self._body_ids = None
 
     def load(self, simulator):
         """Load object into pybullet and return list of loaded body ids."""
         if self._loaded:
             raise ValueError("Cannot load a single object multiple times.")
         self._loaded = True
-        return self._load(simulator)
+        self._body_ids = self._load(simulator)
+        return self._body_ids
 
     @property
     def loaded(self):
         return self._loaded
 
-    @abstractmethod
-    def get_body_id(self):
+    def get_body_ids(self):
         """
-        Gets the body ID for the object.
-
-        If the object somehow has multiple bodies, this will be the default body that the default manipulation functions
-        will manipulate.
+        Gets the body IDs belonging to this object.
         """
-        pass
+        return self._body_ids
 
     @abstractmethod
     def _load(self, simulator):
@@ -65,7 +88,8 @@ class BaseObject(with_metaclass(ABCMeta, object)):
 
     def get_position_orientation(self):
         """Get object position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
-        pos, orn = p.getBasePositionAndOrientation(self.get_body_id())
+        assert len(self.get_body_ids()) == 1, "Base implementation only works with single-body objects."
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[0])
         return np.array(pos), np.array(orn)
 
     def set_position(self, pos):
@@ -80,45 +104,53 @@ class BaseObject(with_metaclass(ABCMeta, object)):
 
     def set_position_orientation(self, pos, orn):
         """Set object position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
-        p.resetBasePositionAndOrientation(self.get_body_id(), pos, orn)
+        assert len(self.get_body_ids()) == 1, "Base implementation only works with single-body objects."
+        p.resetBasePositionAndOrientation(self.get_body_ids()[0], pos, orn)
 
     def set_base_link_position_orientation(self, pos, orn):
         """Set object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
-        dynamics_info = p.getDynamicsInfo(self.get_body_id(), -1)
+        dynamics_info = p.getDynamicsInfo(self.get_body_ids()[0], -1)
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
 
-    def get_velocity(self):
-        """Get object base velocity in the format of Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]"""
-        lin, ang = p.getBaseVelocity(self.get_body_id())
-        return np.array(lin), np.array(ang)
+    def get_velocities(self):
+        """Get object bodies' velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
+        velocities = []
+        for body_id in self.get_body_ids():
+            lin, ang = p.getBaseVelocity(body_id)
+            velocities.append((np.array(lin), np.array(ang)))
 
-    def set_velocity(self, linear_velocity, angular_velocity):
-        """Set object base velocity in the format of Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]"""
-        p.resetBaseVelocity(self.get_body_id(), linear_velocity, angular_velocity)
+        return velocities
+
+    def set_velocities(self, velocities):
+        """Set object base velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
+        assert len(velocities) == len(self.get_body_ids()), "Number of velocities should match number of bodies."
+
+        for bid, (linear_velocity, angular_velocity) in zip(self.get_body_ids(), velocities):
+            p.resetBaseVelocity(bid, linear_velocity, angular_velocity)
 
     def set_joint_states(self, joint_states):
         """Set object joint states in the format of Dict[String: (q, q_dot)]]"""
-        body_id = self.get_body_id()
-        for j in range(p.getNumJoints(body_id)):
-            info = p.getJointInfo(body_id, j)
-            joint_type = info[2]
-            if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                joint_name = info[1].decode("UTF-8")
-                joint_position, joint_velocity = joint_states[joint_name]
-                p.resetJointState(body_id, j, joint_position, targetVelocity=joint_velocity)
+        for body_id in self.get_body_ids():
+            for j in range(p.getNumJoints(body_id)):
+                info = p.getJointInfo(body_id, j)
+                joint_type = info[2]
+                if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    joint_name = info[1].decode("UTF-8")
+                    joint_position, joint_velocity = joint_states[joint_name]
+                    p.resetJointState(body_id, j, joint_position, targetVelocity=joint_velocity)
 
     def get_joint_states(self):
         """Get object joint states in the format of Dict[String: (q, q_dot)]]"""
         joint_states = {}
-        body_id = self.get_body_id()
-        for j in range(p.getNumJoints(body_id)):
-            info = p.getJointInfo(body_id, j)
-            joint_type = info[2]
-            if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
-                joint_name = info[1].decode("UTF-8")
-                joint_states[joint_name] = p.getJointState(body_id, j)[:2]
+        for body_id in self.get_body_ids():
+            for j in range(p.getNumJoints(body_id)):
+                info = p.getJointInfo(body_id, j)
+                joint_type = info[2]
+                if joint_type in [p.JOINT_REVOLUTE, p.JOINT_PRISMATIC]:
+                    joint_name = info[1].decode("UTF-8")
+                    joint_states[joint_name] = p.getJointState(body_id, j)[:2]
         return joint_states
 
     def dump_state(self):
@@ -129,17 +161,6 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         """Load the state of the object other than what's not included in pybullet state."""
         return
 
-
-class NonRobotObject(BaseObject):
-    # This class implements the object interface for non-robot objects.
-    # Also allows us to identify non-robot objects until all simulator etc. call for importing etc. are unified.
-
-    # TODO: This renderer_instances logic doesn't actually need to be specific to non-robot objects. Generalize this.
-    def __init__(self, **kwargs):
-        super(NonRobotObject, self).__init__(**kwargs)
-
-        self.renderer_instances = []
-
     def highlight(self):
         for instance in self.renderer_instances:
             instance.set_highlight(True)
@@ -148,20 +169,11 @@ class NonRobotObject(BaseObject):
         for instance in self.renderer_instances:
             instance.set_highlight(False)
 
-
-class SingleBodyObject(NonRobotObject):
-    """Provides convenience get_body_id() function for single-body objects."""
-
-    # TODO: Merge this into BaseObject once URDFObject also becomes single-body.
-
-    def __init__(self, **kwargs):
-        super(SingleBodyObject, self).__init__(**kwargs)
-        self._body_id = None
-
-    def load(self, simulator):
-        body_ids = super(NonRobotObject, self).load(simulator)
-        self._body_id = body_ids[0]
-        return body_ids
-
-    def get_body_id(self):
-        return self._body_id
+    def force_wakeup(self):
+        """
+        Force wakeup sleeping objects
+        """
+        for body_id in self.get_body_ids():
+            for joint_id in range(p.getNumJoints(body_id)):
+                p.changeDynamics(body_id, joint_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
+            p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)

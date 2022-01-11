@@ -57,7 +57,9 @@ def get_joint_selection(s, objdirfull, offline_joints):
     obj_pos = np.array([0.0, 0.0, 1.0])
     obj.set_position(obj_pos)
 
-    bid = obj.get_body_id()
+    body_ids = obj.get_body_ids()
+    assert len(body_ids) == 1, "Only single-body objects are supported."
+    bid = body_ids[0]
     joints = utils.get_joints(bid)
     joint_infos = [utils.get_joint_info(bid, j) for j in joints]
     relevant_joints = [ji for ji in joint_infos if ji.jointType in open_state._JOINT_THRESHOLD_BY_TYPE.keys()]

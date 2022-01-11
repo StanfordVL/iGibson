@@ -7,14 +7,14 @@ import pybullet as p
 import igibson
 from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
-from igibson.objects.object_base import SingleBodyObject
+from igibson.objects.object_base import BaseObject
 from igibson.utils import sampling_utils
 from igibson.utils.constants import PyBulletSleepState, SemanticClass
 
 _STASH_POSITION = [0, 0, -100]
 
 
-class Particle(SingleBodyObject):
+class Particle(BaseObject):
     """
     A particle object, used to simulate water stream and dust/stain
     """
@@ -105,14 +105,10 @@ class Particle(SingleBodyObject):
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.get_body_id()
+            body_id = self.get_body_ids()[0]
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
-
-    def force_wakeup(self):
-        activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
 
 
 class ParticleSystem(object):
@@ -222,7 +218,7 @@ class ParticleSystem(object):
             particle = self._stashed_particles.popleft()
 
         # Lazy loading of the particle now if not already loaded
-        if not particle.get_body_id():
+        if particle.get_body_ids() is None:
             self._load_particle(particle)
 
         particle.set_position_orientation(position, orientation)
@@ -254,6 +250,17 @@ class AttachedParticleSystem(ParticleSystem):
         super(AttachedParticleSystem, self).__init__(**kwargs)
 
         self.parent_obj = parent_obj
+
+        # TODO: Avoid this logic. This is necessitated by the fact that all of our currently existing scenes are
+        # cached with single-body-attached particles. We don't need this to be true.
+        parent_body_ids = self.parent_obj.get_body_ids()
+        assert parent_body_ids, "Object needs to have a body ID."
+        if len(parent_body_ids) == 1:
+            self.parent_body_id = parent_body_ids[0]
+        else:
+            assert hasattr(self.parent_obj, "main_body"), "The main body ID needs to be annotated on the object."
+            self.parent_body_id = self.parent_obj.get_body_ids()[self.parent_obj.main_body]
+
         self._attachment_offsets = {}  # in the format of {particle: offset}
         self.initial_dump = initial_dump
 
@@ -274,9 +281,7 @@ class AttachedParticleSystem(ParticleSystem):
                 particle_attached_link_id = -1
                 if particle_attached_link_name is not None:
                     try:
-                        particle_attached_link_id = link_from_name(
-                            self.parent_obj.get_body_id(), particle_attached_link_name
-                        )
+                        particle_attached_link_id = link_from_name(self.parent_body_id, particle_attached_link_name)
                     except ValueError:
                         pass
 
@@ -299,7 +304,7 @@ class AttachedParticleSystem(ParticleSystem):
             attachment_source_pos = self.parent_obj.get_position()
             attachment_source_orn = self.parent_obj.get_orientation()
         else:
-            link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+            link_state = utils.get_link_state(self.parent_body_id, link_id)
             attachment_source_pos = link_state.linkWorldPosition
             attachment_source_orn = link_state.linkWorldOrientation
 
@@ -320,7 +325,7 @@ class AttachedParticleSystem(ParticleSystem):
         for particle in self.get_active_particles():
             link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
 
-            dynamics_info = p.getDynamicsInfo(self.parent_obj.get_body_id(), link_id)
+            dynamics_info = p.getDynamicsInfo(self.parent_body_id, link_id)
 
             if len(dynamics_info) == 13:
                 activation_state = dynamics_info[12]
@@ -335,7 +340,7 @@ class AttachedParticleSystem(ParticleSystem):
                 attachment_source_pos = self.parent_obj.get_position()
                 attachment_source_orn = self.parent_obj.get_orientation()
             else:
-                link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+                link_state = utils.get_link_state(self.parent_body_id, link_id)
                 attachment_source_pos = link_state.linkWorldPosition
                 attachment_source_orn = link_state.linkWorldOrientation
 
@@ -358,8 +363,8 @@ class AttachedParticleSystem(ParticleSystem):
                     attachment_source_pos = self.parent_obj.get_position()
                     attachment_source_orn = self.parent_obj.get_orientation()
                 else:
-                    link_name = get_link_name(self.parent_obj.get_body_id(), link_id)
-                    link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+                    link_name = get_link_name(self.parent_body_id, link_id)
+                    link_state = utils.get_link_state(self.parent_body_id, link_id)
                     attachment_source_pos = link_state.linkWorldPosition
                     attachment_source_orn = link_state.linkWorldOrientation
 

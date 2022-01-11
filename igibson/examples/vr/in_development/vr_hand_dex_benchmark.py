@@ -159,8 +159,11 @@ def main():
             )
             handle.set_position(new_pos)
             handle.set_orientation(orn)
-            p.changeDynamics(handle.get_body_id(), -1, mass=masses[i])
-            minBox, maxBox = p.getAABB(handle.get_body_id())
+            body_ids = handle.get_body_ids()
+            assert len(body_ids) == 1, "Object is expected to be single-body."
+            body_id = body_ids[0]
+            p.changeDynamics(body_id, -1, mass=masses[i])
+            minBox, maxBox = p.getAABB(body_id)
             dims = [maxBox[i] - minBox[i] for i in range(3)]
             print("Name {} and masses: {}".format(name, masses))
             print("XYZ dimensions: {}".format(dims))
@@ -291,9 +294,12 @@ def main():
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
         objs_loaded.append(item_ob)
-        minBox, maxBox = p.getAABB(item_ob.get_body_id())
+        body_ids = item_ob.get_body_ids()
+        assert len(body_ids) == 1, "Object is expected to be single-body."
+        body_id = body_ids[0]
+        minBox, maxBox = p.getAABB(body_id)
         dims = [maxBox[i] - minBox[i] for i in range(3)]
-        p.changeDynamics(item_ob.get_body_id(), -1, mass=mass)
+        p.changeDynamics(body_id, -1, mass=mass)
         print("Name {} and mass: {}".format(it_name, mass))
         print("XYZ dimensions: {}".format(dims))
 

@@ -87,7 +87,7 @@ def main():
         mustard = YCBObject("006_mustard_bottle", renderer_params={"use_pbr": False, "use_pbr_mapping": False})
         s.import_object(mustard)
         mustard.set_position([mustard_start[0] + i * 0.2, mustard_start[1], mustard_start[2]])
-        p.changeDynamics(mustard.get_body_id(), -1, mass=mass_list[i])
+        p.changeDynamics(mustard.get_body_ids()[0], -1, mass=mass_list[i])
 
     # Main simulation loop
     while True:

@@ -172,7 +172,10 @@ def main():
             )
             handle.set_position(new_pos)
             handle.set_orientation(orn)
-            p.changeDynamics(handle.get_body_id(), -1, mass=masses[i])
+            body_ids = handle.get_body_ids()
+            assert len(body_ids) == 1, "Object is expected to be single-body."
+            body_id = body_ids[0]
+            p.changeDynamics(body_id, -1, mass=masses[i])
 
     # Text position/size is described in percentage of axes in screen space
     wrap_scroll_text = s.add_vr_overlay_text(

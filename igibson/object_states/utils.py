@@ -8,6 +8,7 @@ from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
 import igibson
+from igibson import object_states
 from igibson.external.pybullet_tools.utils import (
     get_aabb,
     get_aabb_center,
@@ -115,7 +116,10 @@ def sample_kinematics(
             _, pos = objB.scene.get_random_point_by_room_instance(objB.room_instance)
 
             if pos is not None:
-                pos[2] = stable_z_on_aabb(objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
+                # Get the combined AABB.
+                lower, _ = objA.states[object_states.AABB].get_value()
+                # Move the position to a stable Z for the object.
+                pos[2] += objA.get_position()[2] - lower[2]
         else:
             if use_ray_casting_method:
                 if predicate == "onTop":
@@ -198,15 +202,17 @@ def sample_kinematics(
                     else:
                         link_pos, link_orn = get_link_pose(body_id, link_id)
                     pos = matrix_from_quat(link_orn).dot(pos) + np.array(link_pos)
-                    z = stable_z_on_aabb(objA.get_body_id(), ([0, 0, pos[2]], [0, 0, pos[2]]))
-                    pos[2] = z
+                    # Get the combined AABB.
+                    lower, _ = objA.states[object_states.AABB].get_value()
+                    # Move the position to a stable Z for the object.
+                    pos[2] += objA.get_position()[2] - lower[2]
 
         if pos is None:
             success = False
         else:
             pos[2] += z_offset
             objA.set_position_orientation(pos, orientation)
-            success = not detect_closeness(objA.get_body_id())
+            success = not any(detect_closeness(bid) for bid in objA.get_body_ids())
 
         if igibson.debug_sampling:
             print("sample_kinematics", success)
@@ -226,7 +232,7 @@ def sample_kinematics(
         physics_timestep = p.getPhysicsEngineParameters()["fixedTimeStep"]
         for _ in range(int(0.2 / physics_timestep)):
             p.stepSimulation()
-            if detect_collision_with_others(objA.get_body_id()):
+            if any(detect_collision_with_others(bid) for bid in objA.get_body_ids()):
                 break
 
     return success

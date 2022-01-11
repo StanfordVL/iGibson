@@ -206,7 +206,7 @@ def sample_cuboid_on_object(
     bbox_center, bbox_orn, bbox_bf_extent, _ = obj.get_base_aligned_bounding_box(xy_aligned=True, fallback_to_aabb=True)
     half_extent_with_offset = (bbox_bf_extent / 2) + aabb_offset
 
-    body_id = obj.get_body_id()
+    body_ids = obj.get_body_ids()
 
     cuboid_dimensions = np.array(cuboid_dimensions)
     assert cuboid_dimensions.ndim <= 2
@@ -257,7 +257,7 @@ def sample_cuboid_on_object(
             # for ray_start, ray_end in zip(sources, destinations):
             #     p.addUserDebugLine(ray_start, ray_end, lineWidth=4)
 
-            threshold, hits = check_rays_hit_object(cast_results, body_id, refusal_reasons["missed_object"], 0.6)
+            threshold, hits = check_rays_hit_object(cast_results, body_ids, refusal_reasons["missed_object"], 0.6)
             if not threshold:
                 continue
 
@@ -411,9 +411,9 @@ def check_normal_similarity(center_hit_normal, hit_normals, refusal_log):
     return True
 
 
-def check_rays_hit_object(cast_results, body_id, refusal_log, threshold=1.0):
+def check_rays_hit_object(cast_results, body_ids, refusal_log, threshold=1.0):
     hit_body_ids = [ray_res[0] for ray_res in cast_results]
-    ray_hits = list(hit_body_id == body_id for hit_body_id in hit_body_ids)
+    ray_hits = list(hit_body_id in body_ids for hit_body_id in hit_body_ids)
     if not (sum(ray_hits) / len(hit_body_ids)) >= threshold:
         if igibson.debug_sampling:
             refusal_log.append("hits %r" % hit_body_ids)

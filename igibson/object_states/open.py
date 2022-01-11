@@ -60,7 +60,9 @@ def _get_relevant_joints(obj):
     joint_names = set(obj.get_prefixed_joint_name(joint_name).encode(encoding="utf-8") for joint_name in joint_names)
 
     # Get joint infos and compute openness thresholds.
-    body_id = obj.get_body_id()
+    body_ids = obj.get_body_ids()
+    assert len(body_ids) == 1, "Open state only supports single-body objects."
+    body_id = body_ids[0]
     all_joint_ids = utils.get_joints(body_id)
     all_joint_infos = [utils.get_joint_info(body_id, joint_id) for joint_id in all_joint_ids]
     relevant_joint_infos = [joint_info for joint_info in all_joint_infos if joint_info.jointName in joint_names]
@@ -98,7 +100,7 @@ class Open(CachingEnabledObjectState, BooleanState):
                 _compute_joint_threshold(joint_info, joint_direction * side)
                 for joint_info, joint_direction in zip(relevant_joint_infos, joint_directions)
             )
-            joint_positions = utils.get_joint_positions(self.obj.get_body_id(), joint_ids)
+            joint_positions = utils.get_joint_positions(self.obj.get_body_ids()[0], joint_ids)
             joint_openness = (
                 _is_in_range(position, threshold, open_end)
                 for position, (threshold, open_end, closed_end) in zip(joint_positions, joint_thresholds)
@@ -159,7 +161,7 @@ class Open(CachingEnabledObjectState, BooleanState):
                     joint_pos = random.uniform(low, high)
 
                 # Save sampled position.
-                utils.set_joint_position(self.obj.get_body_id(), joint_info.jointIndex, joint_pos)
+                utils.set_joint_position(self.obj.get_body_ids()[0], joint_info.jointIndex, joint_pos)
 
             # If we succeeded, return now.
             if self._compute_value() == new_value:

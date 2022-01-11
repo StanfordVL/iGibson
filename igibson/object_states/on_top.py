@@ -49,8 +49,8 @@ class OnTop(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
 
         # Then check vertical adjacency - it's the second least
         # costly.
+        other_bids = set(other.get_body_ids())
         adjacency = self.obj.states[VerticalAdjacency].get_value()
-        return (
-            other.get_body_id() in adjacency.negative_neighbors
-            and other.get_body_id() not in adjacency.positive_neighbors
+        return not other_bids.isdisjoint(adjacency.negative_neighbors) and other_bids.isdisjoint(
+            adjacency.positive_neighbors
         )

@@ -74,7 +74,7 @@ def test_saving():
     apple.states[Sliced].set_value(True)
 
     # Import agents
-    fetch = Fetch()
+    fetch = Fetch(name="agent_0")
     s.import_robot(fetch)
     fetch.set_position(FETCH_POS)
     fetch.joints["head_tilt_joint"].reset_state(*FETCH_JOINT)
