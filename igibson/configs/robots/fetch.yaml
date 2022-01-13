@@ -11,6 +11,7 @@ robot:
     - arm_qpos_cos
     - gripper_qpos
     - grasp
+  reset_joint_pos: null
   base_name: null
   scale: 1.0
   self_collision: true

@@ -1,47 +1,67 @@
 # Robots
 
-### Overview
-We provide a wide variety of **Robots** that can be imported into the **Simulator**.
+## Overview
+We provide a wide variety of **Robots** that can be imported in iGibson.
 
-| Agent Name     | DOF | Information      | Controller |
-|:-------------: | :-------------: |:-------------: |:-------------|
-| Mujoco Ant      | 8     | [OpenAI Link](https://blog.openai.com/roboschool/) | Torque |
-| Mujoco Humanoid | 17    | [OpenAI Link](https://blog.openai.com/roboschool/) | Torque |
-| Husky Robot     | 4     | [ROS](http://wiki.ros.org/Robots/Husky), [Manufacturer](https://www.clearpathrobotics.com/) | Torque, Velocity, Position |
-| Minitaur Robot  | 8     | [Robot Page](https://www.ghostrobotics.io/copy-of-robots), [Manufacturer](https://www.ghostrobotics.io/) | Sine Controller |
-| Quadrotor       | 6     | [Paper](https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1705&context=edissertations) | Torque |
-| TurtleBot       | 2     | [ROS](http://wiki.ros.org/Robots/TurtleBot), [Manufacturer](https://www.turtlebot.com/) | Torque, Velocity, Position, Differential Drive |
-| Freight         | 2     | [Fetch Robotics Link](https://fetchrobotics.com/robotics-platforms/freight-base/) | Torque, Velocity, Position, Differential Drive|
-| Fetch           | 10    | [Fetch Robotics Link](https://fetchrobotics.com/robotics-platforms/freight-base/) | Torque, Velocity, Position, Differential Drive |
-| JackRabbot      | 2 & 7 | [Stanford Project Link](http://cvgl.stanford.edu/projects/jackrabbot/) | Torque, Velocity, Position, Differential Drive |
-| LocoBot         | 2     | [ROS](http://wiki.ros.org/locobot), [Manufacturer](https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx) | Torque, Velocity, Position, Differential Drive |
+To quickly see all of them, you can play the example:
+```
+python -m igibson.examples.robots.all_robots_visualizer
+```
+
+Below, we list the fully-supported robots:
+
+| Agent Name     | Robot Type(s) | DOF | Information      | Controller(s) |
+|:-------------: | :-------------: | :-------------: |:-------------: |:-------------|
+| Mujoco Ant      | `LocomotionRobot`     | 8     | [OpenAI Link](https://blog.openai.com/roboschool/) | Base: {Torque, Velocity, Position} |
+| Husky Robot     | `LocomotionRobot`     | 4     | [ROS](http://wiki.ros.org/Robots/Husky), [Manufacturer](https://www.clearpathrobotics.com/) | Base: {Torque, Velocity, Position} |
+| TurtleBot       | `TwoWheeledRobot`     | 2     | [ROS](http://wiki.ros.org/Robots/TurtleBot), [Manufacturer](https://www.turtlebot.com/) | Base: {Torque, Velocity, Position, Differential Drive} |
+| Freight         | `TwoWheeledRobot`     | 2     | [Fetch Robotics Link](https://fetchrobotics.com/robotics-platforms/freight-base/) | Base: {Torque, Velocity, Position, Differential Drive} |
+| Fetch           | `TwoWheeledRobot` <br> `ManipulationRobot` <br> `ActiveCameraRobot`     | 10    | [Fetch Robotics Link](https://fetchrobotics.com/robotics-platforms/freight-base/) | Base: {Torque, Velocity, Position, Differential Drive} <br> Camera: {Torque, Velocity, Position} <br> Arm: {Torque, Velocity, Position, Inverse Kinematics} <br> Gripper: {Torque, Velocity, Position, Binary} |
+| JackRabbot      | `TwoWheeledRobot` <br> `ManipulationRobot`     | 2 & 7 | [Stanford Project Link](http://cvgl.stanford.edu/projects/jackrabbot/) | Base: {Torque, Velocity, Position, Differential Drive} <br> Arm: {Torque, Velocity, Position, Inverse Kinematics} |
+| LocoBot         | `TwoWheeledRobot`     | 2     | [ROS](http://wiki.ros.org/locobot), [Manufacturer](https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx) | Base: {Torque, Velocity, Position, Differential Drive} |
 
 Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in `igibson.assets_path`) and provide a `load` function that be invoked externally (usually by `import_robot` of `Simulator`). The `load` function imports the robot into PyBullet.
 
-All robot clases inherit `LocomotionRobot`. Some useful functions are worth pointing out:
+### Robot Class Hierarchy
+All robot classes inherit from `BaseRobot`, which provides the core interface for all Robot classes. From `BaseRobot`, there are additional abstract subclasses from which a robot can inherit from:
+
+```
+BaseRobot -- all robots inherit from this class
+|-- LocomotionRobot -- any robot with navigation functionality
+  |-- TwoWheeledRobot -- any locomotion robot with two parallel wheels and differential drive functionality
+|-- ManipulationRobot -- any robot with one or more arms
+|-- ActiveCameraRobot -- any robot with a head or another controllable camera
+```
+
+Note that because these abstract classes describe different aspects of a robot's morphology, a robot class can inherit from multiple abstract classes. For example, `Fetch` inherits from `TwoWheeledRobot`, `ManipulationRobot`, and `ActiveCameraRobot`.
+
+Each abstract robot class implements useful functions for controlling and accessing robot properties. For example, `ManipulationRobot` contains functionalities to query the state of the arms, and implements multiple grasping modes, including some simplified grasping modes like "sticky mitten" that could be used for researchers less interested on grasp-control and/or focused on task planning. For creating new robot classes to import custom robots, it is highly recommended to follow our robot hierarchy, to best leverage the features designed in our abstract classes.
+
+How are robot parameters specified? Each abstract robot class expects certain kwargs, which are optionally extended for specific robot classes. While default values (seen in each respective robot class) are loaded at runtime, these can also be easily overridden by specifying these kwargs in the constructor or in the config file that you pass into the iGibson environment constructor. The set of modifiable arguments and expected robot config structure for each robot can be found in [igibson/configs/robots](https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/robots). For description of what each specific keyword argument corresponds to, please see the respective robot's class docstring.
+
+Our examples contain multiple demonstrations on how to specify, create and initialize robots, either through config files and the Environment API, or manually with the constructors.
+
+### Robot Control
+iGibson v2.0 implements modular controllers that can be assigned to specific components of the robot. The controller classes can be found in [igibson/controllers](https://github.com/StanfordVL/iGibson/blob/master/igibson/controllers). They include very generic controllers, such as `JointController`, and some more morphology-specific controllers, such as `DifferentialDriveController` (designed to control a two-wheeled robot) and `InverseKinematicsController` (designed to control a robot arm in Cartesian space using an inverse kinematics solver to find the right arm configuration).
+
+Robots requests controllers of specific types based on the abstract classes they derive from. For example, a robot inheriting from `TwoWheeledRobot` requires loading a controller for the robot's `base`, and must be a `JointController` or `DifferentialDriveController`. A robot inheriting from `ManipulationRobot` requires loading a controller for each of the robot's `arm`s (`JointController` or `InverseKinematicsController`), and corresponding `gripper` (`JointController`, `ParallelJawGripperController`, `NullGripperController`).
+
+How are controller parameters specified? Each abstract robot class implements default controller configurations for each supported controller, which are automatically loaded at runtime (you can see the default configs directly in the abstract class source code, e.g.: the `InverseKinematicsController` defaults in [manipulation_robot.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/robots/manipulation_robot.py)). However, you can easily override these defaults and set specific parameters in your config file that you pass into the iGibson environment constructor. The set of modifiable arguments and expected controller config structure for each controller can be found in [igibson/configs/controllers](https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/controllers). For description of what each specific keyword argument corresponds to, please see the respective controller's class docstring.
+
+We also include an example demo script showcasing controlling different robots. Please see [Robot Control Example](robots.md#robot-control-example) or run:
+```
+python -m igibson.examples.robots.robot_control_example
+```
+You can select the robot, the controllers, the input to the controllers (random or teleop with the keyboard) and the scene, and test them.
+
+Some useful functions worth pointing out:
 - `{get/set}_{position/orientation/rpy/linear_velocity/angular_velocity}`: get and set the physical states of the robot base
 - `apply_robot_action`: set motor control for each of the controllable joints. It currently supports four modes of control: joint torque, velocity, position, and differential drive for two-wheeled robots
 - `calc_state`: compute robot states that might be useful for external applications
-- `reset`: reset the robot joint states to their default value, particularly useful for mobile manipulators. For instance, `Fetch.reset()` will reset the robot to be something like this:
-
-![fetch.png](images/fetch.png)
-
-Here are some details about how we perform motor control for robots:
-- Say the robot uses joint velocity control `self.control == 'velocity'`
-- We assume the external user (say an RL agent) will call `apply_action` with `policy_action` that is always between `-1` and `1`.
-- `policy_action` will be scaled to `robot_action` by `policy_action_to_robot_action` based on the action space. The action space is set by `config['velocity']` in the YAML config file
-- `robot_action` will be applied by `apply_robot_action`, which internally executes the following:
-```python
-def apply_robot_action(action):
-    for n, j in enumerate(self.joints.values()):
-        j.set_vel(self.velocity_coef * j.max_velocity * float(np.clip(action[n], -1, +1)))
-```
-Note that `robot_action` is a normalized joint velocity, i.e. `robot_action[n] == 1.0` means executing the maximum joint velocity for the nth joint. The limits of joint position, velocity and torque are extracted from the URDF file of the robot.
-
-Most of the code can be found here: [igibson/robots](https://github.com/StanfordVL/iGibson/blob/master/igibson/robots).
+- `reset`: reset the robot joint states to their default values, particularly useful for mobile manipulators. By default, this will correspond to the robot's `default_joint_pos` property. However, this can be overridden in multiple ways. You can either directly overwrite `default_joint_pos` to your own values, or, after calling `robot.reset()` normally, immediately set the joints to a new value, calling `robot.set_joint_states(values)`. This can be useful for robots that have multiple reset configurations -- for example, Fetch can be Tucked or Untucked. By default, `fetch.reset()` configures Fetch into Untucked mode. If you want to set Fetch to be in Tucked mode, you can call `fetch.set_joint_states(fetch.tucked_default_joint_pos)` (though for Fetch we directly provide this functionality with fetch.tuck() and fetch.untuck()).
 
 ### BehaviorRobot
-The BehaviorRobot can be used in VR as an avatar, or as an autonomous agent to participate in the BEHAVIOR100 challenge. The embodiment is composed of two hands, a torso, and a head link. It largely follows the convention of previous "URDF" based robots, but contains multiple URDFs connected by floating joints(constraints).
+The BehaviorRobot is a special "robot", and is intended to be used in virtual reality as an avatar or as an autonomous agent to participate in the BEHAVIOR100 challenge. The embodiment is composed of two hands, a torso, and a head link. It largely follows the convention of previous "URDF" based robots, but contains multiple URDFs connected by floating joints(constraints).
 
 The BehaviorRobot has an action space of 26 DoF listed below.
 - Torso: 6 DoF delta pose - relative to torso frame from the previous frame
@@ -55,77 +75,37 @@ The reference frame of each body part is shown below.
 ![brobot](images/behavior_robot.jpg)
 
 
-### Examples
-In this example, we import four different robots into PyBullet. We keep them still for around 10 seconds and then move them with small random actions for another 10 seconds. The code can be found here: [igibson/examples/robots/robot_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/robot_example.py).
+## Examples
+We provide multiple examples showcasing our robots' functionality, described below. These examples, together with the provided config files, should help you getting started with all robots and controllers. All of these examples can be found in [igibson/examples/robots](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots)
 
-```python
-import logging
-import os
+### Visualizing Robots Example
+In [all_robots_visualizer.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/all_robots_visualizer.py), we iterate over all of our supported robots, loading them into a scene and applying random actions for a few seconds. This demo allows you to visualize all the robots and their corresponding DOFs in our iGibson GUI.
 
-import numpy as np
+### Inverse Kinematics Example
+In [ik_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/ik_example.py), we showcase using pybullet's built-in Inverse Kinematics (IK) control in an interactive way. We load Fetch and a visual marker in the pybullet GUI. You can then move a visual marker in the GUI, and apply IK to cause Fetch's arm to converge towards the marker.
 
-import igibson
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.robots import REGISTERED_ROBOTS
-from igibson.scenes.empty_scene import EmptyScene
-from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config
+### Motion Planning Example
+In [motion_planning_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/motion_planning_example.py), we showcase using our motion planning module in an interactive way. We load Fetch into an empty building (`Rs_int` scene). You can interact with the GUI to set navigation and manipulation targets, which Fetch will converge to using our motion planner.
 
+### Robot Control Example
+In [robot_control_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/robots/robot_control_example.py), we showcase using our controllers to control our different robots. You can choose a robot, and specific set of controllers to control the robot, and then either deploy random actions or directly teleoperate the robot using your keyboard.
 
-def main():
-    """
-    Robot demo
-    Loads all robots in an empty scene, generate random actions
-    """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    # Create empty scene
-    settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
-    s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
-    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
-    s.import_scene(scene)
+## Legacy Robots
+We also include robots originally supported in Gibson / iGibson v1.0, but have not been ported to iGibson v2.0.
+They are included in [igibson/robots/legacy](https://github.com/StanfordVL/iGibson/blob/master/igibson/robots/legacy)
+in their original unaltered state, and are not expected to work out of the box with the current iGibson environments.
+Interested users should consider modifying those robot class logics to be compatible with iGibson v2.0, or their own
+repositories. We are happy to accept community PR contributions standardizing these robot classes with iGibson v2.0!
 
-    # Create one instance of each robot aligned along the y axis
-    position = [0, 0, 0]
-    robots = {}
-    for robot_config_file in os.listdir(os.path.join(igibson.example_config_path, "robots")):
-        config = parse_config(os.path.join(igibson.example_config_path, "robots", robot_config_file))
-        robot_config = config["robot"]
-        robot_name = robot_config.pop("name")
-        robot = REGISTERED_ROBOTS[robot_name](**robot_config)
-        s.import_robot(robot)
-        robot.set_position(position)
-        robot.reset()
-        robot.keep_still()
-        robots[robot_name] = (robot, position[1])
-        logging.info("Loaded " + robot_name)
-        logging.info("Moving " + robot_name)
-        # Set viewer in front
-        s.viewer.initial_pos = [1.6, 0, 1.3]
-        s.viewer.initial_view_direction = [-0.7, 0, -0.7]
-        s.viewer.reset_viewer()
+Below, we list the legacy robots that can be found in iGibson:
 
-        for _ in range(100):  # keep still for 10 seconds
-            s.step()
-
-        for _ in range(30):
-            action = np.random.uniform(-1, 1, robot.action_dim)
-            robot.apply_action(action)
-            for _ in range(10):
-                s.step()
-
-        robot.keep_still()
-        s.reload()
-        scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
-        s.import_scene(scene)
-
-    s.disconnect()
+| Agent Name     | DOF | Information      | Controller |
+|:-------------: | :-------------: |:-------------: |:-------------|
+| Mujoco Humanoid | 17    | [OpenAI Link](https://blog.openai.com/roboschool/) | Torque |
+| Minitaur Robot  | 8     | [Robot Page](https://www.ghostrobotics.io/copy-of-robots), [Manufacturer](https://www.ghostrobotics.io/) | Sine Controller |
+| Quadrotor       | 6     | [Paper](https://repository.upenn.edu/cgi/viewcontent.cgi?referer=https://www.google.com/&httpsredir=1&article=1705&context=edissertations) | Torque |
 
 
-if __name__ == "__main__":
-    main()
-```
-The four robots will have a fun cocktail party like this:
-![robot](images/robot.png)
 
 
 

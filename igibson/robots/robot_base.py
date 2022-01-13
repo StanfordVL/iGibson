@@ -19,10 +19,17 @@ from igibson.utils.utils import rotate_vector_3d
 
 # Global dicts that will contain mappings
 REGISTERED_ROBOTS = {}
+ROBOT_TEMPLATE_CLASSES = {
+    "BaseRobot",
+    "ActiveCameraRobot",
+    "TwoWheelRobot",
+    "ManipulationRobot",
+    "LocomotionRobot",
+}
 
 
 def register_robot(cls):
-    if cls.__name__ not in REGISTERED_ROBOTS:
+    if cls.__name__ not in REGISTERED_ROBOTS and cls.__name__ not in ROBOT_TEMPLATE_CLASSES:
         REGISTERED_ROBOTS[cls.__name__] = cls
 
 
@@ -57,6 +64,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         action_type="continuous",
         action_normalize=True,
         proprio_obs="default",
+        reset_joint_pos=None,
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -74,6 +82,8 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
             observations. If str, should be exactly "default" -- this results in the default proprioception observations
             being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
+        :param reset_joint_pos: None or Array[float], if specified, should be the joint positions that the robot should
+            be set to during a reset. If None (default), self.default_joint_pos will be used instead.
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -86,6 +96,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             See DEFAULT_RENDERING_PARAMS for the values passed by default.
         """
         # Store arguments
+        if type(name) == dict:
+            raise ValueError(
+                "Robot name is a dict. You are probably using the deprecated constructor API which takes in robot_config (a dict) as input. Check the new API in BaseRobot."
+            )
         if name is None:
             address = "%08X" % id(self)
             name = "{}_{}".format(self.category, address)
@@ -99,6 +113,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         self.action_type = action_type
         self.action_normalize = action_normalize
         self.proprio_obs = self.default_proprio_obs if proprio_obs == "default" else list(proprio_obs)
+        self.reset_joint_pos = reset_joint_pos if reset_joint_pos is None else np.array(reset_joint_pos)
         self.controller_config = {} if controller_config is None else controller_config
 
         # Initialize internal attributes that will be loaded later
@@ -288,6 +303,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
                 extra_dict=self.controller_config.get(group, {}),
             )
 
+        # Update the reset joint pos
+        if self.reset_joint_pos is None:
+            self.reset_joint_pos = self.default_joint_pos
+
     def _validate_configuration(self):
         """
         Run any needed sanity checks to make sure this robot was created correctly.
@@ -374,8 +393,8 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         By default, sets all joint states (pos, vel) to 0, and resets all controllers.
         """
-        for joint in self._joints.values():
-            joint.reset_state(0.0, 0.0)
+        for joint, joint_pos in zip(self._joints.values(), self.reset_joint_pos):
+            joint.reset_state(joint_pos, 0.0)
 
         for controller in self._controllers.values():
             controller.reset()
@@ -558,6 +577,11 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         for bid, (linear_velocity, angular_velocity) in zip(self.get_body_ids(), velocities):
             p.resetBaseVelocity(bid, linear_velocity, angular_velocity)
+
+    def set_joint_positions(self, joint_positions):
+        """Set this robot's joint positions, where @joint_positions is an array"""
+        for joint, joint_pos in zip(self._joints.values(), joint_positions):
+            joint.reset_state(pos=joint_pos, vel=0.0)
 
     def set_joint_states(self, joint_states):
         """Set object joint states in the format of Dict[String: (q, q_dot)]]"""
