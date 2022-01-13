@@ -69,6 +69,7 @@ class BaseEnv(gym.Env):
                 texture_scale=texture_scale,
                 optimized=self.config.get("optimized_renderer", True),
                 load_textures=self.config.get("load_texture", True),
+                hide_robot=self.config.get("hide_robot", True),
             )
 
         if mode == "vr":

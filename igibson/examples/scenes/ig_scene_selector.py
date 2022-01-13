@@ -27,7 +27,7 @@ def main():
 
     scene = InteractiveIndoorScene(
         scene_id,
-        load_object_categories=[],  # To load only the building. Fast
+        # load_object_categories=[],  # To load only the building. Fast
         build_graph=True,
     )
     s.import_scene(scene)

@@ -6,9 +6,10 @@ robot:
   proprio_obs:
     - dd_base_lin_vel
     - dd_base_ang_vel
+  reset_joint_pos: null
   base_name: null
   scale: 1.0
-  self_collision: true
+  self_collision: false
   rendering_params: null
   controller_config:
     base:

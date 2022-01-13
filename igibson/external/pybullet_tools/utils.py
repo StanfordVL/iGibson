@@ -2646,7 +2646,7 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
         if (body1 == body2) and (link1 == link2):
             continue
         if pairwise_link_collision(body1, link1, body2, link2, **kwargs):
-            # print('body {} link {} body {} link {}'.format(body1, link1, body2, link2))
+            #print('body {} link {} body {} link {}'.format(body1, get_link_name(body1, link1), body2, get_link_name(body2, link2)))
             return True
     return False
 
@@ -2926,18 +2926,26 @@ def get_self_link_pairs(body, joints, disabled_collisions=set(), only_moving=Tru
     return check_link_pairs
 
 
+# TODO: convert most of these to keyword arguments
 def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disabled_collisions,
                      custom_limits={}, allow_collision_links=[], **kwargs):
-    # TODO: convert most of these to keyword arguments
-    check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) \
-        if self_collisions else []
-    moving_links = frozenset(
-        [item for item in get_moving_links(body, joints) if not item in allow_collision_links])
+
+    # Pair of links within the robot that need to be checked for self-collisions
+    # Pairs in the disabled_collisions list are excluded
+    # If the flag self_collisions is False, we do not check for any self collisions by setting this list to be empty
+    check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
+
+    # List of links that move on the robot and that should be checked for collisions with the obstacles
+    # We do not check for collisions of the links that are allowed (in the allow_collision_links list)
+    moving_links = frozenset([item for item in get_moving_links(body, joints) if not item in allow_collision_links])
+
     # TODO: This is a fetch specific change
     attached_bodies = [attachment.child for attachment in attachments]
     moving_bodies = [(body, moving_links)] + attached_bodies
     #moving_bodies = [body] + [attachment.child for attachment in attachments]
     # + list(combinations(moving_bodies, 2))
+
+    # Pairs to check for collisions
     check_body_pairs = list(product(moving_bodies, obstacles))
     lower_limits, upper_limits = get_custom_limits(body, joints, custom_limits)
 
@@ -2952,16 +2960,28 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
         set_joint_positions(body, joints, q)
         for attachment in attachments:
             attachment.assign()
+
+        # Check for self collisions
         for link1, link2 in check_link_pairs:
             # Self-collisions should not have the max_distance parameter
             # , **kwargs):
             if pairwise_link_collision(body, link1, body, link2):
-                #print(get_body_name(body), get_link_name(body, link1), get_link_name(body, link2))
                 return True
+
+        # Check for collisions of the moving bodies and the obstacles
         for body1, body2 in check_body_pairs:
             if pairwise_collision(body1, body2, **kwargs):
-                # print('body collision', body1, body2)
-                #print(get_body_name(body1), get_body_name(body2))
+                # print('body collision between {} and {}'.format(body1, body2))
+                # if isinstance(body1, tuple):
+                #     body1a, links1a = expand_links(body1)
+                #     print(get_body_name(body1a))
+                # else:
+                #     print(get_body_name(body1))
+                # if isinstance(body2, tuple):
+                #     body2a, links2a = expand_links(body2)
+                #     print(get_body_name(body2a))
+                # else:
+                #     print(get_body_name(body2))
                 return True
         return False
     return collision_fn

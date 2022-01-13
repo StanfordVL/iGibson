@@ -15,7 +15,7 @@ def main():
     s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
     scene = InteractiveIndoorScene(
         "Rs_int",
-        load_object_categories=[],  # To load only the building. Fast
+        # load_object_categories=[],  # To load only the building. Fast
         texture_randomization=True,
         object_randomization=False,
     )

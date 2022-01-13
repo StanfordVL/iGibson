@@ -88,6 +88,7 @@ class ManipulationRobot(BaseRobot):
         action_type="continuous",
         action_normalize=True,
         proprio_obs="default",
+        reset_joint_pos=None,
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -106,6 +107,8 @@ class ManipulationRobot(BaseRobot):
         :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
             observations. If str, should be exactly "default" -- this results in the default proprioception observations
             being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
+        :param reset_joint_pos: None or Array[float], if specified, should be the joint positions that the robot should
+            be set to during a reset. If None (default), self.default_joint_pos will be used instead.
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -140,6 +143,7 @@ class ManipulationRobot(BaseRobot):
             action_type=action_type,
             action_normalize=action_normalize,
             proprio_obs=proprio_obs,
+            reset_joint_pos=reset_joint_pos,
             controller_config=controller_config,
             base_name=base_name,
             scale=scale,

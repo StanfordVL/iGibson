@@ -11,7 +11,7 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Robot demo
     Loads all robots in an empty scene, generate random actions
@@ -19,7 +19,12 @@ def main():
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # Create empty scene
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
-    s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive" if not headless else "headless",
+        image_width=512,
+        image_height=512,
+        rendering_settings=settings,
+    )
     scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 

@@ -1,3 +1,4 @@
+import logging
 import os
 
 import cv2
@@ -9,16 +10,19 @@ from igibson.utils.assets_utils import get_scene_path
 
 
 def main():
+    """
+    Traversable map demo
+    Loads the floor plan and obstacles for the Rs scene, and overlays them in a visual figure such that the
+    highlighted area reflects the traversable (free-space) area
+    """
+    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     scene_id = "Rs"
-    trav_map_original_size = 1000
     trav_map_size = 200
     trav_map_erosion = 2
-    floor_map = []
-    floor_graph = []
 
     with open(os.path.join(get_scene_path(scene_id), "floors.txt"), "r") as f:
         floors = sorted(list(map(float, f.readlines())))
-        print("floor_heights", floors)
+        logging.info("Floor heights: {}".format(floors))
 
     for f in range(len(floors)):
         trav_map = Image.open(os.path.join(get_scene_path(scene_id), "floor_trav_{}.png".format(f)))
@@ -29,6 +33,7 @@ def main():
         trav_map = cv2.erode(trav_map, np.ones((trav_map_erosion, trav_map_erosion)))
         plt.figure(f, figsize=(12, 12))
         plt.imshow(trav_map)
+        plt.title("Traversable area of {} scene".format(scene_id))
 
     plt.show()
 

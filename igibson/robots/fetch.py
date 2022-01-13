@@ -20,6 +20,11 @@ DEFAULT_ARM_POSES = {
     "horizontal",
 }
 
+RESET_JOINT_OPTIONS = {
+    "tuck",
+    "untuck",
+}
+
 
 class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     """
@@ -34,6 +39,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         action_type="continuous",
         action_normalize=True,
         proprio_obs="default",
+        reset_joint_pos=None,
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -55,6 +61,10 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
             observations. If str, should be exactly "default" -- this results in the default proprioception observations
             being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
+        :param reset_joint_pos: None or str or Array[float], if specified, should be the joint positions that the robot
+            should be set to during a reset. If str, should be one of {tuck, untuck}, corresponds to default
+            configurations for un/tucked modes. If None (default), self.default_joint_pos (untuck mode) will be used
+            instead.
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -79,12 +89,23 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         assert_valid_key(key=default_arm_pose, valid_keys=DEFAULT_ARM_POSES, name="default_arm_pose")
         self.default_arm_pose = default_arm_pose
 
+        # Parse reset joint pos if specifying special string
+        if isinstance(reset_joint_pos, str):
+            assert (
+                reset_joint_pos in RESET_JOINT_OPTIONS
+            ), "reset_joint_pos should be one of {} if using a string!".format(RESET_JOINT_OPTIONS)
+            reset_joint_pos = (
+                self.tucked_default_joint_pos if reset_joint_pos == "tuck" else self.untucked_default_joint_pos
+            )
+
         # Run super init
         super().__init__(
             name=name,
             control_freq=control_freq,
             action_type=action_type,
             action_normalize=action_normalize,
+            proprio_obs=proprio_obs,
+            reset_joint_pos=reset_joint_pos,
             controller_config=controller_config,
             base_name=base_name,
             scale=scale,
@@ -124,7 +145,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
     @property
     def untucked_default_joint_pos(self):
-        pos = np.zeros(self.n_joints)
+        pos = np.zeros(len(self.tucked_default_joint_pos))
         pos[self.base_control_idx] = 0.0
         pos[self.trunk_control_idx] = 0.02 + self.default_trunk_offset
         pos[self.camera_control_idx] = np.array([0.0, 0.45])
@@ -149,11 +170,17 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # Fetch does not support discrete actions
         raise ValueError("Fetch does not support discrete actions!")
 
-    def reset(self):
-        # In addition to normal reset, reset the joint configuration to be in default untucked mode
-        super().reset()
-        joints = self.untucked_default_joint_pos
-        set_joint_positions(self.get_body_ids()[0], self.joint_ids, joints)
+    def tuck(self):
+        """
+        Immediately set this robot's configuration to be in tucked mode
+        """
+        self.set_joint_positions(self.tucked_default_joint_pos)
+
+    def untuck(self):
+        """
+        Immediately set this robot's configuration to be in untucked mode
+        """
+        self.set_joint_positions(self.untucked_default_joint_pos)
 
     def _load(self, simulator):
         # Run super method

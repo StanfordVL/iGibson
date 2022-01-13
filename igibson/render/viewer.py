@@ -694,26 +694,31 @@ class Viewer:
 
         cv2.imshow("Viewer", frame)
 
-        # We keep some double functinality for "backcompatibility"
-        q = cv2.waitKey(1)
+        self.last_key = cv2.waitKey(1)
+
+        if self.last_key != -1:
+            # Update the last pressed key and record the time
+            self.last_pressed_key = self.last_key
+            self.time_last_pressed_key = time.time()
+
         move_vec = self.view_direction[:2]
         # step size is 0.1m
         step_size = 0.1
         move_vec = move_vec / np.linalg.norm(move_vec) * step_size
 
         # show help text
-        if q == ord("h"):
+        if self.last_key == ord("h"):
             self.show_help += 1
 
         # move
-        elif q in [ord("w"), ord("s"), ord("a"), ord("d")]:
-            if q == ord("w"):
+        elif self.last_key in [ord("w"), ord("s"), ord("a"), ord("d")]:
+            if self.last_key == ord("w"):
                 yaw = 0.0
-            elif q == ord("s"):
+            elif self.last_key == ord("s"):
                 yaw = np.pi
-            elif q == ord("a"):
+            elif self.last_key == ord("a"):
                 yaw = -np.pi / 2.0
-            elif q == ord("d"):
+            elif self.last_key == ord("d"):
                 yaw = np.pi / 2.0
             move_vec = rotate_vector_2d(move_vec, yaw)
             self.px += move_vec[0]
@@ -721,14 +726,14 @@ class Viewer:
             if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
-        elif q in [ord("t")]:
+        elif self.last_key in [ord("t")]:
             self.pz += step_size
 
-        elif q in [ord("g")]:
+        elif self.last_key in [ord("g")]:
             self.pz -= step_size
 
         # turn left
-        elif q == ord("q"):
+        elif self.last_key == ord("q"):
             self.theta += np.pi / 36
             self.view_direction = np.array(
                 [np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(self.phi), np.sin(self.phi)]
@@ -737,7 +742,7 @@ class Viewer:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # turn right
-        elif q == ord("e"):
+        elif self.last_key == ord("e"):
             self.theta -= np.pi / 36
             self.view_direction = np.array(
                 [np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(self.phi), np.sin(self.phi)]
@@ -746,7 +751,7 @@ class Viewer:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # quit (Esc)
-        elif q == 27:
+        elif self.last_key == 27:
             if self.video_folder != "":
                 logging.info(
                     "You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder"
@@ -757,7 +762,7 @@ class Viewer:
             sys.exit()
 
         # Start/Stop recording. Stopping saves frames to files
-        elif q == ord("r"):
+        elif self.last_key == ord("r"):
             if self.recording:
                 self.recording = False
                 self.pause_recording = False
@@ -774,14 +779,14 @@ class Viewer:
                 self.frame_idx = 0
 
         # Pause/Resume recording
-        elif q == ord("p"):
+        elif self.last_key == ord("p"):
             if self.pause_recording:
                 self.pause_recording = False
             else:
                 self.pause_recording = True
 
         # Switch amoung navigation, manipulation, motion planning / execution modes
-        elif q == ord("m"):
+        elif self.last_key == ord("m"):
             self.left_down = False
             self.middle_down = False
             self.right_down = False
@@ -792,23 +797,15 @@ class Viewer:
                 assert ViewerMode.PLANNING == len(ViewerMode) - 1, "Planning mode is not the last available viewer mode"
                 self.mode = (self.mode + 1) % (len(ViewerMode) - 1)
 
-        elif q == ord("z"):
+        elif self.last_key == ord("z"):
             self.initial_pos = [self.px, self.py, self.pz]
             self.initial_view_direction = self.view_direction
 
-        elif q == ord("x"):
+        elif self.last_key == ord("x"):
             self.reset_viewer()
 
-        elif (
-            self.is_robosuite
-            and q == ord("0")
-            or q == ord("1")
-            or q == ord("2")
-            or q == ord("3")
-            or q == ord("4")
-            or q == ord("5")
-        ):
-            idxx = int(chr(q))
+        elif self.is_robosuite and self.last_key in {ord("0"), ord("1"), ord("2"), ord("3"), ord("4"), ord("5")}:
+            idxx = int(chr(self.last_key))
             self.renderer._switch_camera(idxx)
             if not self.renderer._is_camera_active(idxx):
                 cv2.destroyWindow(self.renderer._get_camera_name(idxx))
@@ -851,6 +848,9 @@ class Viewer:
         self.middle_down = False
         self.right_down = False
         self.view_direction = np.array(self.initial_view_direction)
+        self.last_key = None
+        self.last_pressed_key = None
+        self.time_last_pressed_key = None
 
 
 if __name__ == "__main__":
