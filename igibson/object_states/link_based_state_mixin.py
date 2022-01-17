@@ -27,8 +27,10 @@ class LinkBasedStateMixin(object):
 
         self.is_point_link = hasattr(self.obj, "meta_links") and self.get_state_link_name() in self.obj.meta_links
 
-        # Get the body id
-        self.body_id = self.obj.get_body_id()
+        # Get the body id. Note that this annotation only works with single-body objects.
+        body_ids = self.obj.get_body_ids()
+        assert len(body_ids) == 1, "LinkBasedStateMixin expects object to be single-body."
+        self.body_id = body_ids[0]
 
         if self.is_point_link:
             # For point links, compute the necessary transforms in advance.

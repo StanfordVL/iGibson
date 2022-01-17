@@ -3,12 +3,10 @@ import os
 import pybullet as p
 
 import igibson
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class Pedestrian(StatefulObject, SingleBodyObject):
+class Pedestrian(StatefulObject):
     """
     Pedestiran object
     """

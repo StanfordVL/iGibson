@@ -10,7 +10,6 @@ from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import download_assets
-from igibson.utils.utils import parse_config
 
 download_assets()
 
@@ -98,9 +97,8 @@ def test_import_box():
         obj = Cube(curr[0], curr[1])
         s.import_object(obj)
 
-    config = parse_config(os.path.join(os.path.dirname(__file__), "test.yaml"))
-    turtlebot1 = Turtlebot(config)
-    turtlebot2 = Turtlebot(config)
+    turtlebot1 = Turtlebot()
+    turtlebot2 = Turtlebot()
     s.import_robot(turtlebot1)
     s.import_robot(turtlebot2)
     turtlebot1.set_position([6.0, -6.0, 0.0])

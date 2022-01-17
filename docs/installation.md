@@ -147,7 +147,7 @@ iGibson's simulator can be installed as a python package using pip:
 ```bash
 pip install igibson  # This step takes about 4 minutes
 # run the demo
-python -m igibson.examples.demo.demo_static
+python -m igibson.examples.environments.env_nonint_example
 ```
 
 #### 2. Docker image
@@ -207,7 +207,7 @@ pip uninstall pybullet
 pip install pybullet-svl
 ```
 
-## Downloading the Assets
+## Downloading the Assets and Datasets of Scenes and Objects
 
 Once the environment has been installed, we need to download the assets to enable the simulation including models of the robotic agents, objects, 3D scenes, etc. This process requires three simple steps.
  
@@ -225,32 +225,45 @@ In case you prefer to store the assets in a different location, you can run the 
 python -m igibson.utils.assets_utils --change_data_path
 ```
 
-Second, we need to download the robot models and some small objects from [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:
+Second, we need to download the robot models and some small objects from the assets bundle [here](https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz) and unpack it in the assets folder. More easily, this process can be automatically done by executing the command:
 
 ```bash
 python -m igibson.utils.assets_utils --download_assets
 ```
 
-Third, we need to download datasets of scenes, and, possibly, more object models. For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
-For navigation tasks, we provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset and Matterport3D Dataset.
-In any case, please, follow the instructions [here](dataset.md) to download the datasets.
+Third, we need to download datasets of scenes (Gibson or iGibson), and, possibly, the BEHAVIOR Datasets of Object Models. 
+For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects, or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
+For navigation tasks, you could use the interactive scenes, but we also provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset, and Matterport3D Dataset that include non-interactive scene models.
+Follow the detailed instructions [here](dataset.md) to download the aforementioned datasets.
 
-Alternatively, to avoid downloading the entire dataset, you can download a single [high quality small environment R's](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo and testing purposes.
-To download the demo data, run:
+Alternatively, to avoid downloading an entire dataset before you can test iGibson's functionalities, we provide a single [high quality small non-interactive scene (R's)](https://storage.googleapis.com/gibson_scenes/Rs.tar.gz) for demo and testing purposes.
+To download this demo data, run:
 
 ```bash
 python -m igibson.utils.assets_utils --download_demo_data
 ```
 
-## Testing 
+## Examples
 
-To test iGibson is properly installed, you can run 
+We provide multiple examples to get you started!
+Check the folder [igibson/examples](https://github.com/StanfordVL/iGibson/tree/master/igibson/examples) and the description [here](examples.md).
+
+After installing the code and downloading the demo data, you should be able to try out a simple robot navigation demo executing:
+
+```bash
+python -m igibson.examples.environments.env_nonint_example
+```
+
+## Testing
+
+To test iGibson installation, you can run 
 ```bash
 python
 >> import igibson
 ```
 
 For a full suite of tests and benchmarks, you can refer to [tests](tests.md) for more details. 
+(For Mac users) Some tests will fail as they require a Nvidia GPU.
 
 ## Uninstalling
 Uninstalling iGibson is easy: `pip uninstall igibson`

@@ -3,7 +3,7 @@ from enum import IntEnum
 import gym
 
 from igibson.envs.motion_planning_env import MotionPlanningEnv
-from igibson.examples.mp_replay.behavior_motion_primitive_controller import (
+from igibson.motion_primitives.behavior_motion_primitive_controller import (
     MotionPrimitiveController,
     MotionPrimitiveError,
 )

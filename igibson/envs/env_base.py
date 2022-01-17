@@ -2,14 +2,8 @@ import gym
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots.ant import Ant
+from igibson.robots import REGISTERED_ROBOTS
 from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.fetch import Fetch
-from igibson.robots.freight import Freight
-from igibson.robots.husky import Husky
-from igibson.robots.jr2 import JR2
-from igibson.robots.locobot import Locobot
-from igibson.robots.turtlebot import Turtlebot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -62,7 +56,7 @@ class BaseEnv(gym.Env):
         self.object_randomization_idx = 0
         self.num_object_randomization_idx = 10
 
-        enable_shadow = self.config.get("enable_shadow", False)
+        enable_shadow = self.config.get("enable_shadow", True)
         enable_pbr = self.config.get("enable_pbr", True)
         texture_scale = self.config.get("texture_scale", 1.0)
 
@@ -75,6 +69,7 @@ class BaseEnv(gym.Env):
                 texture_scale=texture_scale,
                 optimized=self.config.get("optimized_renderer", True),
                 load_textures=self.config.get("load_texture", True),
+                hide_robot=self.config.get("hide_robot", True),
             )
 
         if mode == "vr":
@@ -164,6 +159,7 @@ class BaseEnv(gym.Env):
                     self.config["task_id"],
                     self.config["instance_id"],
                 )
+            include_robots = self.config.get("include_robots", True)
             scene = InteractiveIndoorScene(
                 self.config["scene_id"],
                 urdf_file=urdf_file,
@@ -183,6 +179,7 @@ class BaseEnv(gym.Env):
                 load_room_instances=self.config.get("load_room_instances", None),
                 merge_fixed_links=self.config.get("merge_fixed_links", True)
                 and not self.config.get("online_sampling", False),
+                include_robots=include_robots,
             )
             # TODO: Unify the function import_scene and take out of the if-else clauses.
             first_n = self.config.get("_set_first_n_objects", -1)
@@ -191,37 +188,20 @@ class BaseEnv(gym.Env):
 
         self.simulator.import_scene(scene)
 
-        # TODO: modify way of instantiating robots (pass specific configs, not monolithic)
+        # Get robot config
+        robot_config = self.config["robot"]
 
-        if self.config["robot"] == "Turtlebot":
-            robot = Turtlebot(self.config)
-        elif self.config["robot"] == "Husky":
-            robot = Husky(self.config)
-        elif self.config["robot"] == "Ant":
-            robot = Ant(self.config)
-        elif self.config["robot"] == "Humanoid":
-            robot = Humanoid(self.config)
-        elif self.config["robot"] == "JR2":
-            robot = JR2(self.config)
-        elif self.config["robot"] == "Freight":
-            robot = Freight(self.config)
-        elif self.config["robot"] == "Fetch":
-            robot = Fetch(self.config)
-        elif self.config["robot"] == "Locobot":
-            robot = Locobot(self.config)
-        elif self.config["robot"] == "BehaviorRobot":
-            robot = BehaviorRobot(self.simulator)
-        else:
-            raise Exception("unknown robot type: {}".format(self.config["robot"]))
+        # If no robot has been imported from the scene
+        if len(scene.robots) == 0:
+            # Get corresponding robot class
+            robot_name = robot_config.pop("name")
+            assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
+            robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
-        self.simulator.import_robot(robot)
-        if isinstance(robot, BehaviorRobot):
-            self.robot_body_id = robot.links["body"].get_body_id()
-        else:
-            self.robot_body_id = robot.get_body_id()
+            self.simulator.import_robot(robot)
 
-        self.scene = self.simulator.scene
-        self.robots = self.simulator.robots
+        self.scene = scene
+        self.robots = scene.robots
 
     def clean(self):
         """

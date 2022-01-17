@@ -1,11 +1,9 @@
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class Cube(StatefulObject, SingleBodyObject):
+class Cube(StatefulObject):
     """
     Cube shape primitive
     """

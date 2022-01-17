@@ -37,6 +37,22 @@ class LocomotionRobot(BaseRobot):
         # run super
         super()._validate_configuration()
 
+    def _get_proprioception_dict(self):
+        dic = super()._get_proprioception_dict()
+
+        # Add base info
+        dic["base_qpos"] = self.joint_positions[self.base_control_idx]
+        dic["base_qpos_sin"] = np.sin(self.joint_positions[self.base_control_idx])
+        dic["base_qpos_cos"] = np.cos(self.joint_positions[self.base_control_idx])
+        dic["base_qvel"] = self.joint_velocities[self.base_control_idx]
+
+        return dic
+
+    @property
+    def default_proprio_obs(self):
+        obs_keys = super().default_proprio_obs
+        return obs_keys + ["base_qpos_sin", "base_qpos_cos", "robot_lin_vel", "robot_ang_vel"]
+
     @property
     def controller_order(self):
         # By default, only base is supported
@@ -141,13 +157,6 @@ class LocomotionRobot(BaseRobot):
         quat = self.base_link.get_orientation()
         quat = qmult((euler2quat(delta, 0, 0)), quat)
         self.base_link.set_orientation(quat)
-
-    def keep_still(self):
-        """
-        Keep the robot still. Apply zero velocity to all joints.
-        """
-        for n, j in enumerate(self.joints.values()):
-            j.set_vel(0.0)
 
     @property
     @abstractmethod

@@ -3,12 +3,10 @@ import os
 import pybullet as p
 
 import igibson
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class YCBObject(StatefulObject, SingleBodyObject):
+class YCBObject(StatefulObject):
     """
     YCB Object from assets/models/ycb
     Reference: https://www.ycbbenchmarks.com/
@@ -34,3 +32,6 @@ class YCBObject(StatefulObject, SingleBodyObject):
         simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
+
+    def reset(self):
+        return

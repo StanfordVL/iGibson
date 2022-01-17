@@ -16,7 +16,7 @@ def test_tensor_render_rendering():
         return
     w = 800
     h = 600
-    setting = MeshRendererSettings(enable_pbr=False, msaa=True)
+    setting = MeshRendererSettings(enable_pbr=False, msaa=True, enable_shadow=False)
     renderer = MeshRendererG2G(w, h, rendering_settings=setting)
     test_dir = os.path.join(igibson.assets_path, "test")
     renderer.load_object(os.path.join(test_dir, "mesh/bed1a77d92d64f5cbbaaae4feed64ec1_new.obj"))

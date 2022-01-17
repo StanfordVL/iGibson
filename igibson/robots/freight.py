@@ -15,9 +15,12 @@ class Freight(TwoWheelRobot):
     Uses joint velocity control
     """
 
-    def get_proprioception(self):
-        # We only get velocity info
-        return np.concatenate([self.base_link.get_linear_velocity(), self.base_link.get_angular_velocity()])
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Freight"
 
     @property
     def wheel_radius(self):

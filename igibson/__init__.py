@@ -3,7 +3,7 @@ import os
 
 import yaml
 
-__version__ = "2.0.3"
+__version__ = "2.0.4"
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -71,7 +71,7 @@ logging.info("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
 logging.info("iGibson Key path: {}".format(key_path))
 
 example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
-example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples", "configs")
+example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 
 logging.info("Example path: {}".format(example_path))
 logging.info("Example config path: {}".format(example_config_path))

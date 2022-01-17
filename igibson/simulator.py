@@ -7,7 +7,7 @@ import pybullet as p
 
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
-from igibson.objects.object_base import NonRobotObject
+from igibson.objects.object_base import BaseObject
 from igibson.objects.particles import Particle, ParticleSystem
 from igibson.objects.visual_marker import VisualMarker
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
@@ -83,9 +83,6 @@ class Simulator:
         self.physics_timestep_num = int(self.physics_timestep_num)
         self.mode = SimulatorMode[mode.upper()]
 
-        self.particle_systems = []
-        self.objects = []
-
         self.image_width = image_width
         self.image_height = image_height
         self.vertical_fov = vertical_fov
@@ -103,18 +100,13 @@ class Simulator:
             self.mode = SimulatorMode.HEADLESS
             logging.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
 
-        self.frame_count = 0
-        self.body_links_awake = 0
         self.viewer = None
         self.renderer = None
 
-        self.initialize_physics_engine()
         self.initialize_renderer()
-
-        self.robots = []
-
-        # First sync always sync all objects (regardless of their sleeping states)
-        self.first_sync = True
+        self.initialize_physics_engine()
+        self.initialize_viewers()
+        self.initialize_variables()
 
         # Set of categories that can be grasped by assisted grasping
         self.object_state_types = get_states_by_dependency_order()
@@ -152,26 +144,22 @@ class Simulator:
         Destroy the MeshRenderer and physics simulator and start again.
         """
         self.disconnect()
-        self.initialize_physics_engine()
+
         self.initialize_renderer()
+        self.initialize_physics_engine()
+        self.initialize_viewers()
+        self.initialize_variables()
 
-    def initialize_physics_engine(self):
+    def initialize_variables(self):
         """
-        Initialize the physics engine (pybullet).
+        Intialize miscellaneous variables
         """
-        if self.use_pb_gui:
-            self.cid = p.connect(p.GUI)
-        else:
-            self.cid = p.connect(p.DIRECT)
-
-        # Needed for deterministic action replay
-        # TODO(mjlbach) consider making optional and benchmark
-        p.resetSimulation()
-        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
-        p.setPhysicsEngineParameter(numSolverIterations=self.solver_iterations)
-        p.setTimeStep(self.physics_timestep)
-        p.setGravity(0, 0, -self.gravity)
-        p.setPhysicsEngineParameter(enableFileCaching=0)
+        self.scene = None
+        self.particle_systems = []
+        self.frame_count = 0
+        self.body_links_awake = 0
+        # First sync always sync all objects (regardless of their sleeping states)
+        self.first_sync = True
 
     def initialize_renderer(self):
         """
@@ -201,6 +189,25 @@ class Simulator:
                 "The available render modes are headless, headless_tensor, gui_interactive, and gui_non_interactive."
             )
 
+    def initialize_physics_engine(self):
+        """
+        Initialize the physics engine (pybullet).
+        """
+        if self.use_pb_gui:
+            self.cid = p.connect(p.GUI)
+        else:
+            self.cid = p.connect(p.DIRECT)
+
+        # Needed for deterministic action replay
+        # TODO(mjlbach) consider making optional and benchmark
+        p.resetSimulation()
+        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
+        p.setPhysicsEngineParameter(numSolverIterations=self.solver_iterations)
+        p.setTimeStep(self.physics_timestep)
+        p.setGravity(0, 0, -self.gravity)
+        p.setPhysicsEngineParameter(enableFileCaching=0)
+
+    def initialize_viewers(self):
         if self.mode == SimulatorMode.GUI_NON_INTERACTIVE:
             self.viewer = ViewerSimple(renderer=self.renderer)
         elif self.mode == SimulatorMode.GUI_INTERACTIVE:
@@ -239,7 +246,7 @@ class Simulator:
 
         :param obj: a non-robot object to load
         """
-        assert isinstance(obj, NonRobotObject), "import_object can only be called with NonRobotObject"
+        assert isinstance(obj, BaseObject), "import_object can only be called with BaseObject"
 
         if isinstance(obj, VisualMarker) or isinstance(obj, Particle):
             # Marker objects can be imported without a scene.
@@ -247,6 +254,7 @@ class Simulator:
         else:
             # Non-marker objects require a Scene to be imported.
             # Load the object in pybullet. Returns a pybullet id that we can use to load it in the renderer
+            assert self.scene is not None, "import_object needs to be called after import_scene"
             self.scene.add_object(obj, self, _is_call_from_simulator=True)
 
     @load_without_pybullet_vis
@@ -256,9 +264,19 @@ class Simulator:
 
         :param robot: a robot object to load
         """
+        # TODO: Remove this function in favor of unifying with import_object.
         assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
-        robot.load(self)
-        self.robots.append(robot)
+        assert self.scene is not None, "import_robot needs to be called after import_scene"
+
+        # TODO: remove this if statement after BehaviorRobot refactoring
+        if isinstance(robot, BaseRobot):
+            assert (
+                robot.control_freq is None
+            ), "control_freq should NOT be specified in robot config. Currently this value is automatically inferred from simulator.render_timestep!"
+            control_freq = 1.0 / self.render_timestep
+            robot.control_freq = control_freq
+
+        self.scene.add_object(robot, self, _is_call_from_simulator=True)
 
     @load_without_pybullet_vis
     def load_object_in_renderer(
@@ -347,8 +365,14 @@ class Simulator:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/sphere8.obj")
                 dimensions = [dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5]
             elif type == p.GEOM_CAPSULE or type == p.GEOM_CYLINDER:
-                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
+                filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cylinder16.obj")
                 dimensions = [dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]]
+                if not os.path.exists(filename):
+                    logging.info(
+                        "Cylinder mesh file cannot be found in the assets. Consider removing the assets folder and downloading the newest version using download_assets(). Using a cube for backcompatibility"
+                    )
+                    filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
+                    dimensions = [dimensions[0] / 0.5, dimensions[0] / 0.5, dimensions[0] / 0.5]
             elif type == p.GEOM_BOX:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
             elif type == p.GEOM_PLANE:
@@ -499,7 +523,7 @@ class Simulator:
         """
         # Find instance corresponding to this id in the renderer
         for instance in self.renderer.instances:
-            if obj.get_body_id() == instance.pybullet_uuid:
+            if instance.pybullet_uuid in obj.get_body_ids():
                 instance.hidden = hide
                 self.renderer.update_hidden_highlight_state([instance])
                 return

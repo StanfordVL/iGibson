@@ -261,6 +261,7 @@ class RandomizedMaterial(Material):
 
         self.random_class = None
         self.random_instance = None
+        self.request_update = False
 
     def postprocess_material_classes(self, material_classes):
         """
@@ -338,6 +339,7 @@ class RandomizedMaterial(Material):
         scale = max(scale, 2)
         rotation = random.randint(0, 3) * math.pi / 2.0
         self.transform_param = [scale, scale, rotation]
+        self.request_update = True
 
     def __str__(self):
         return (

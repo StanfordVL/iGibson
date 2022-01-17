@@ -13,9 +13,12 @@ class Locobot(TwoWheelRobot):
     Reference: https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx
     """
 
-    def get_proprioception(self):
-        # We only get velocity info
-        return np.concatenate([self.base_link.get_linear_velocity(), self.base_link.get_angular_velocity()])
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Locobot"
 
     @property
     def wheel_radius(self):

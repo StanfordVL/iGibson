@@ -13,7 +13,7 @@ import igibson.render.mesh_renderer as mesh_renderer
 from igibson.render.mesh_renderer import tinyobjloader
 from igibson.render.mesh_renderer.get_available_devices import get_available_devices
 from igibson.render.mesh_renderer.instances import InstanceGroup
-from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial
+from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial, RandomizedMaterial
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.text import Text, TextManager
 from igibson.render.mesh_renderer.visual_object import VisualObject
@@ -589,9 +589,15 @@ class MeshRenderer(object):
             delta_pos2 = v2 - v0
             delta_uv1 = uv1 - uv0
             delta_uv2 = uv2 - uv0
-            r = 1.0 / (delta_uv1[:, 0] * delta_uv2[:, 1] - delta_uv1[:, 1] * delta_uv2[:, 0])
-            tangent = (delta_pos1 * delta_uv2[:, 1][:, None] - delta_pos2 * delta_uv1[:, 1][:, None]) * r[:, None]
-            bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] - delta_pos1 * delta_uv2[:, 0][:, None]) * r[:, None]
+            d = delta_uv1[:, 0] * delta_uv2[:, 1] - delta_uv1[:, 1] * delta_uv2[:, 0]
+            # filter zero values
+            d[np.abs(d) < 1e-10] = 1e-10
+            tangent = (delta_pos1 * delta_uv2[:, 1][:, None] - delta_pos2 * delta_uv1[:, 1][:, None]) * (1.0 / d)[
+                :, None
+            ]
+            bitangent = (delta_pos2 * delta_uv1[:, 0][:, None] - delta_pos1 * delta_uv2[:, 0][:, None]) * (1.0 / d)[
+                :, None
+            ]
             # Set the same tangent and bitangent for all three vertices of the triangle.
             tangent = tangent.repeat(3, axis=0)
             bitangent = bitangent.repeat(3, axis=0)
@@ -856,10 +862,10 @@ class MeshRenderer(object):
     def update_optimized_texture(self):
         request_update = False
         for material in self.material_idx_to_material_instance_mapping:
+            current_material = self.material_idx_to_material_instance_mapping[material]
             if (
-                isinstance(self.material_idx_to_material_instance_mapping[material], ProceduralMaterial)
-                and self.material_idx_to_material_instance_mapping[material].request_update
-            ):
+                isinstance(current_material, ProceduralMaterial) or isinstance(current_material, RandomizedMaterial)
+            ) and current_material.request_update:
                 request_update = True
                 self.material_idx_to_material_instance_mapping[material].request_update = False
 
@@ -1228,7 +1234,7 @@ class MeshRenderer(object):
         # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.
         # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface, it is not
         # added using import_robot and needs to be found & handled separately.
-        behavior_robots = (robot for robot in self.simulator.robots if isinstance(robot, BehaviorRobot))
+        behavior_robots = (robot for robot in self.simulator.scene.robots if isinstance(robot, BehaviorRobot))
         for robot in behavior_robots:
             frames.extend(robot.render_camera_image(modes=modes))
 
@@ -1802,10 +1808,14 @@ class MeshRenderer(object):
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D] * n_cameras
         """
 
-        orig_fov = self.vertical_fov
-        self.set_fov(90)
-        org_V = np.copy(self.V)
+        # Cache the original fov and V to be restored later
+        original_fov = self.vertical_fov
+        original_V = np.copy(self.V)
 
+        # Set fov to be 90 degrees
+        self.set_fov(90)
+
+        # Compute initial_V that will be used to render in 6 directions, based on whether use_robot_camera is True
         if use_robot_camera:
             for instance in self.instances:
                 if isinstance(instance.ig_object, BaseRobot):
@@ -1815,9 +1825,15 @@ class MeshRenderer(object):
                     view_direction = mat.dot(np.array([1, 0, 0]))
                     up_direction = mat.dot(np.array([0, 0, 1]))
                     self.set_camera(camera_pos, camera_pos + view_direction, up_direction)
+                    initial_V = np.copy(self.V)
+        else:
+            initial_V = original_V
 
         def render_cube():
+            # Store 6 frames in 6 directions
             frames = []
+
+            # Forward, backward, left, right
             r = np.array(
                 [
                     [
@@ -1839,24 +1855,28 @@ class MeshRenderer(object):
             # Up
             r_up = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, -1, 0, 0], [0, 0, 0, 1]])
 
-            self.V = r_up.dot(org_V)
+            self.V = r_up.dot(initial_V)
             frames.append(self.render(modes=(mode))[0])
 
+            # Down
             r_down = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
 
-            # Down
-            self.V = r_down.dot(org_V)
+            self.V = r_down.dot(initial_V)
             frames.append(self.render(modes=(mode))[0])
 
             return frames
 
         frames = render_cube()
-        self.V = org_V
-        self.set_fov(orig_fov)
+
+        # Restore original fov and V
+        self.V = original_V
+        self.set_fov(original_fov)
+
         return frames
 
     def get_equi(self, mode="rgb", use_robot_camera=False):
         """
+        Generate panorama images
         :param mode: simulator rendering mode, 'rgb' or '3d'
         :param use_robot_camera: use the camera pose from robot
         :return: List of sensor readings, normalized to [0.0, 1.0], ordered as [F, R, B, L, U, D]

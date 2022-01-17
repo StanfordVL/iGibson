@@ -1,5 +1,4 @@
 import logging
-import os
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
@@ -8,31 +7,29 @@ import gym
 import numpy as np
 import pybullet as p
 from future.utils import with_metaclass
-from transforms3d.euler import euler2quat
-from transforms3d.quaternions import qmult, quat2mat
 
-import igibson
 from igibson.controllers import ControlType, create_controller
-from igibson.external.pybullet_tools.utils import (
-    get_child_frame_pose,
-    get_constraint_violation,
-    get_joint_info,
-    get_relative_pose,
-    joints_from_names,
-    set_coll_filter,
-    set_joint_positions,
-)
-from igibson.object_states.factory import prepare_object_states
+from igibson.external.pybullet_tools.utils import get_joint_info
+from igibson.object_states.factory import get_state_name, prepare_object_states
+from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.object_states.utils import clear_cached_states
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
 from igibson.utils.utils import rotate_vector_3d
 
 # Global dicts that will contain mappings
 REGISTERED_ROBOTS = {}
+ROBOT_TEMPLATE_CLASSES = {
+    "BaseRobot",
+    "ActiveCameraRobot",
+    "TwoWheelRobot",
+    "ManipulationRobot",
+    "LocomotionRobot",
+}
 
 
 def register_robot(cls):
-    if cls.__name__ not in REGISTERED_ROBOTS:
+    if cls.__name__ not in REGISTERED_ROBOTS and cls.__name__ not in ROBOT_TEMPLATE_CLASSES:
         REGISTERED_ROBOTS[cls.__name__] = cls
 
 
@@ -62,8 +59,12 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
     def __init__(
         self,
-        control_freq=10.0,
-        action_config=None,
+        name=None,
+        control_freq=None,
+        action_type="continuous",
+        action_normalize=True,
+        proprio_obs="default",
+        reset_joint_pos=None,
         controller_config=None,
         base_name=None,
         scale=1.0,
@@ -72,12 +73,17 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         rendering_params=None,
     ):
         """
-        :param control_freq: float, control frequency (in Hz) at which to control the robot
-        :param action_config: None or Dict[str, ...], potentially nested dictionary mapping action settings
-            to action-related values. Should, at the minimum, contain:
-                type: one of {discrete, continuous} - what type of action space to use
-                normalize: either {True, False} - whether to normalize inputted actions
-            This will override any default values specified by this class.
+        :param name: None or str, name of the robot object
+        :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
+            simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
+        :param action_type: str, one of {discrete, continuous} - what type of action space to use
+        :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
+         specified by this class.
+        :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
+            observations. If str, should be exactly "default" -- this results in the default proprioception observations
+            being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
+        :param reset_joint_pos: None or Array[float], if specified, should be the joint positions that the robot should
+            be set to during a reset. If None (default), self.default_joint_pos will be used instead.
         :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
             configurations for this robot. This will override any default values specified by this class.
         :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
@@ -90,15 +96,29 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             See DEFAULT_RENDERING_PARAMS for the values passed by default.
         """
         # Store arguments
+        if type(name) == dict:
+            raise ValueError(
+                "Robot name is a dict. You are probably using the deprecated constructor API which takes in robot_config (a dict) as input. Check the new API in BaseRobot."
+            )
+        if name is None:
+            address = "%08X" % id(self)
+            name = "{}_{}".format(self.category, address)
+
+        self.name = name
         self.base_name = base_name
         self.control_freq = control_freq
         self.scale = scale
         self.self_collision = self_collision
-        self.action_config = {} if action_config is None else action_config
+        assert_valid_key(key=action_type, valid_keys={"discrete", "continuous"}, name="action type")
+        self.action_type = action_type
+        self.action_normalize = action_normalize
+        self.proprio_obs = self.default_proprio_obs if proprio_obs == "default" else list(proprio_obs)
+        self.reset_joint_pos = reset_joint_pos if reset_joint_pos is None else np.array(reset_joint_pos)
         self.controller_config = {} if controller_config is None else controller_config
 
         # Initialize internal attributes that will be loaded later
         # These will have public interfaces
+        self.simulator = None
         self.model_type = None
         self.action_list = None  # Array of discrete actions to deploy
         self._links = None
@@ -130,8 +150,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             self._rendering_params.update(rendering_params)
 
         self._loaded = False
-        self._body_ids = None  # this is the unique pybullet body id(s) representing this model
-        self.states = {}
+        self._body_ids = None
 
     def load(self, simulator):
         """
@@ -149,7 +168,17 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         # Store body ids and return them
         _body_ids = self._load(simulator)
 
+        # Reset the robot and keep all joints still after loading
+        self.reset()
+        self.keep_still()
+
+        # A persistent reference to simulator is needed for AG in ManipulationRobot
+        self.simulator = simulator
         return _body_ids
+
+    @property
+    def loaded(self):
+        return self._loaded
 
     def _load(self, simulator):
         """
@@ -195,8 +224,9 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         # Disable collisions
         for names in self.disabled_collision_pairs:
-            link_a, link_b = joints_from_names(self.get_body_id(), names)
-            p.setCollisionFilterPair(self.get_body_id(), self.get_body_id(), link_a, link_b, 0)
+            link_a = self._links[names[0]]
+            link_b = self._links[names[1]]
+            p.setCollisionFilterPair(link_a.body_id, link_b.body_id, link_a.link_id, link_b.link_id, 0)
 
         # Load controllers
         self._load_controllers()
@@ -218,45 +248,50 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         Parse the set of robot @body_ids to get properties including joint information and mass
         """
-        assert len(self._body_ids) == 1, "Only one robot body ID was expected, but got {}!".format(len(self._body_ids))
-        robot_id = self.get_body_id()
-
         # Initialize link and joint dictionaries for this robot
         self._links, self._joints, self._mass = OrderedDict(), OrderedDict(), 0.0
 
         # Grab model base info
-        base_name = p.getBodyInfo(robot_id)[0].decode("utf8")
-        self._links[base_name] = RobotLink(base_name, -1, robot_id)
-        # if base_name is unspecified, use this link as robot_body (base_link).
-        if self.base_name is None:
-            self.base_name = base_name
+        body_ids = self.get_body_ids()
+        assert (
+            self.base_name is not None or len(body_ids) == 1
+        ), "Base name can be inferred only for single-body robots."
 
-        # Loop through all robot links and infer relevant link / joint / mass references
-        for j in range(p.getNumJoints(robot_id)):
-            self._mass += p.getDynamicsInfo(robot_id, j)[0]
-            p.setJointMotorControl2(robot_id, j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
-            _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, link_name, _, _, _, _ = p.getJointInfo(robot_id, j)
-            logging.debug("Robot joint: {}".format(p.getJointInfo(robot_id, j)))
-            joint_name = joint_name.decode("utf8")
-            link_name = link_name.decode("utf8")
-            self._links[link_name] = RobotLink(link_name, j, robot_id)
+        for body_id in body_ids:
+            base_name = p.getBodyInfo(body_id)[0].decode("utf8")
+            self._links[base_name] = RobotLink(base_name, -1, body_id)
+            # if base_name is unspecified, use this link as robot_body (base_link).
+            if self.base_name is None:
+                self.base_name = base_name
 
-            # We additionally create joint references if they are (not) of certain types
-            if joint_name[:6] == "ignore":
-                # We don't save a reference to this joint, but we disable its motor
-                RobotJoint(joint_name, j, robot_id).disable_motor()
-            elif joint_name[:8] == "jointfix" or joint_type == p.JOINT_FIXED:
-                # Fixed joint, so we don't save a reference to this joint
-                pass
-            else:
-                # Default case, we store a reference
-                self._joints[joint_name] = RobotJoint(joint_name, j, robot_id)
+            # Loop through all robot links and infer relevant link / joint / mass references
+            for j in range(p.getNumJoints(body_id)):
+                self._mass += p.getDynamicsInfo(body_id, j)[0]
+                p.setJointMotorControl2(body_id, j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
+                _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, link_name, _, _, _, _ = p.getJointInfo(body_id, j)
+                logging.debug("Robot joint: {}".format(p.getJointInfo(body_id, j)))
+                joint_name = joint_name.decode("utf8")
+                link_name = link_name.decode("utf8")
+                self._links[link_name] = RobotLink(link_name, j, body_id)
+
+                # We additionally create joint references if they are (not) of certain types
+                if joint_name[:6] == "ignore":
+                    # We don't save a reference to this joint, but we disable its motor
+                    RobotJoint(joint_name, j, body_id).disable_motor()
+                elif joint_name[:8] == "jointfix" or joint_type == p.JOINT_FIXED:
+                    # Fixed joint, so we don't save a reference to this joint
+                    pass
+                else:
+                    # Default case, we store a reference
+                    self._joints[joint_name] = RobotJoint(joint_name, j, body_id)
+
+        # Assert that the base link is link -1 of one of the robot's bodies.
+        assert self._links[self.base_name].link_id == -1, "Robot base link should be link -1 of some body."
 
         # Populate the joint states
         self.update_state()
 
         # Update the configs
-        self.action_config = merge_nested_dicts(base_dict=self._default_action_config, extra_dict=self.action_config)
         for group in self.controller_order:
             group_controller_name = (
                 self.controller_config[group]["name"]
@@ -267,6 +302,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
                 base_dict=self._default_controller_config[group][group_controller_name],
                 extra_dict=self.controller_config.get(group, {}),
             )
+
+        # Update the reset joint pos
+        if self.reset_joint_pos is None:
+            self.reset_joint_pos = self.default_joint_pos
 
     def _validate_configuration(self):
         """
@@ -335,7 +374,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         return False
 
-    def get_body_id(self):
+    def get_body_ids(self):
         """
         Gets the body ID for this robot.
 
@@ -346,7 +385,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         :return None or int: Body ID representing this model in simulation if it exists, else None
         """
-        return None if self._body_ids is None else self._body_ids[0]
+        return self._body_ids
 
     def reset(self):
         """
@@ -354,8 +393,8 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         By default, sets all joint states (pos, vel) to 0, and resets all controllers.
         """
-        for joint in self._joints.values():
-            joint.reset_state(0.0, 0.0)
+        for joint, joint_pos in zip(self._joints.values(), self.reset_joint_pos):
+            joint.reset_state(joint_pos, 0.0)
 
         for controller in self._controllers.values():
             controller.reset()
@@ -373,7 +412,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             assert_valid_key(key=name, valid_keys=self.controller_config, name="controller name")
             cfg = self.controller_config[name]
             # If we're using normalized action space, override the inputs for all controllers
-            if self.action_config["normalize"]:
+            if self.action_normalize:
                 cfg["command_input_limits"] = "default"  # default is normalized (-1, 1)
             # Create the controller
             self._controllers[name] = create_controller(**cfg)
@@ -488,14 +527,12 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             else:
                 raise ValueError("Invalid control type specified: {}".format(ctrl_type))
 
-    @abstractmethod
     def get_proprioception(self):
         """
-        Must be implemented by subclass.
-
         :return Array[float]: numpy array of all robot-specific proprioceptive observations.
         """
-        raise NotImplementedError
+        proprio_dict = self._get_proprioception_dict()
+        return np.concatenate([proprio_dict[obs] for obs in self.proprio_obs])
 
     def get_position(self):
         """
@@ -515,7 +552,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :return Tuple[Array[float], Array[float]]: pos (x,y,z) global cartesian coordinates, quat (x,y,z,w) global
             orientation in quaternion form of this model's body (as taken at its body_id)
         """
-        pos, orn = p.getBasePositionAndOrientation(self.get_body_id())
+        pos, orn = p.getBasePositionAndOrientation(self.base_link.body_id)
         return np.array(pos), np.array(orn)
 
     def get_rpy(self):
@@ -525,14 +562,38 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         return self.base_link.get_rpy()
 
-    def get_velocity(self):
-        """
-        Get velocity of this robot (velocity associated with base link)
+    def get_velocities(self):
+        """Get object bodies' velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
+        velocities = []
+        for body_id in self.get_body_ids():
+            lin, ang = p.getBaseVelocity(body_id)
+            velocities.append((np.array(lin), np.array(ang)))
 
-        :return Tuple[Array[float], Array[float]]: linear (x,y,z) velocity, angular (ax,ay,az)
-            velocity of this robot
-        """
-        return self.base_link.get_velocity()
+        return velocities
+
+    def set_velocities(self, velocities):
+        """Set object base velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
+        assert len(velocities) == len(self.get_body_ids()), "Number of velocities should match number of bodies."
+
+        for bid, (linear_velocity, angular_velocity) in zip(self.get_body_ids(), velocities):
+            p.resetBaseVelocity(bid, linear_velocity, angular_velocity)
+
+    def set_joint_positions(self, joint_positions):
+        """Set this robot's joint positions, where @joint_positions is an array"""
+        for joint, joint_pos in zip(self._joints.values(), joint_positions):
+            joint.reset_state(pos=joint_pos, vel=0.0)
+
+    def set_joint_states(self, joint_states):
+        """Set object joint states in the format of Dict[String: (q, q_dot)]]"""
+        for joint_name, joint in self._joints.items():
+            joint.reset_state(*joint_states[joint_name])
+
+    def get_joint_states(self):
+        """Get object joint states in the format of Dict[String: (q, q_dot)]]"""
+        joint_states = {}
+        for joint_name, joint in self._joints.items():
+            joint_states[joint_name] = joint.get_state()[:2]
+        return joint_states
 
     def get_linear_velocity(self):
         """
@@ -575,7 +636,8 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :param pos: Array[float], corresponding to (x,y,z) global cartesian coordinates to set
         :param quat: Array[float], corresponding to (x,y,z,w) global quaternion orientation to set
         """
-        p.resetBasePositionAndOrientation(self.get_body_id(), pos, quat)
+        p.resetBasePositionAndOrientation(self.base_link.body_id, pos, quat)
+        clear_cached_states(self)
 
     def get_control_dict(self):
         """
@@ -598,17 +660,62 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             "base_quat": self.get_orientation(),
         }
 
+    def dump_config(self):
+        """Dump robot config"""
+        return {
+            "control_freq": self.control_freq,
+            "action_type": self.action_type,
+            "action_normalize": self.action_normalize,
+            "proprio_obs": self.proprio_obs,
+            "controller_config": self.controller_config,
+            "base_name": self.base_name,
+            "scale": self.scale,
+            "self_collision": self.self_collision,
+            "class_id": self.class_id,
+            "rendering_params": self._rendering_params,
+        }
+
+    # TODO: Replace this with a reasonable StatefulObject inheritance.
     def dump_state(self):
-        """
-        Dump the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
-        """
-        pass
+        """Dump the state of the object other than what's not included in pybullet state."""
+        return {
+            "states": {
+                get_state_name(state_type): state_instance.dump()
+                for state_type, state_instance in self.states.items()
+                if issubclass(state_type, AbsoluteObjectState)
+            },
+            "controllers": {
+                controller_name: controller.dump_state() for controller_name, controller in self._controllers.items()
+            },
+        }
 
     def load_state(self, dump):
+        """Dump the state of the object other than what's not included in pybullet state."""
+        state_dump = dump["states"]
+        for state_type, state_instance in self.states.items():
+            if issubclass(state_type, AbsoluteObjectState):
+                state_instance.load(state_dump[get_state_name(state_type)])
+
+        controller_dump = dump["controllers"]
+        for controller_name, controller in self._controllers.items():
+            controller.load_state(controller_dump[controller_name])
+
+    def _get_proprioception_dict(self):
         """
-        Load the state of this model other than what's not included in native pybullet state. This defaults to a no-op.
+        :return dict: keyword-mapped proprioception observations available for this robot. Can be extended by subclasses
         """
-        pass
+        return {
+            "joint_qpos": self.joint_positions,
+            "joint_qpos_sin": np.sin(self.joint_positions),
+            "joint_qpos_cos": np.cos(self.joint_positions),
+            "joint_qvel": self.joint_velocities,
+            "joint_qtor": self.joint_torques,
+            "robot_pos": self.get_position(),
+            "robot_rpy": self.get_rpy(),
+            "robot_quat": self.get_orientation(),
+            "robot_lin_vel": self.get_linear_velocity(),
+            "robot_ang_vel": self.get_angular_velocity(),
+        }
 
     @property
     def proprioception_dim(self):
@@ -780,21 +887,20 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         return "agent"
 
     @property
+    @abstractmethod
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        raise NotImplementedError
+
+    @property
     def action_dim(self):
         """
         :return int: Dimension of action space for this robot. By default,
             is the sum over all controller action dimensions
         """
         return sum([controller.command_dim for controller in self._controllers.values()])
-
-    @property
-    def action_type(self):
-        """
-        :return str: Type of action space. One of {discrete, continuous}
-        """
-        assert "type" in self.action_config, "'type' should be specified in action_config!"
-        assert_valid_key(key=self.action_config["type"], valid_keys={"discrete", "continuous"}, name="action type")
-        return self.action_config["type"]
 
     @property
     def action_space(self):
@@ -831,14 +937,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         return dic
 
     @property
-    def normalize_actions(self):
-        """
-        :return bool: Whether to normalize actions or not.
-        """
-        assert "normalize" in self.action_config, "'normalize' should be specified in action_config!"
-        return self.action_config["normalize"]
-
-    @property
     def control_limits(self):
         """
         :return: Dict[str, Any]: Keyword-mapped limits for this robot. Dict contains:
@@ -856,22 +954,19 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         }
 
     @property
+    def default_proprio_obs(self):
+        """
+        :return Array[str]: Default proprioception observations to use
+        """
+        return []
+
+    @property
     @abstractmethod
     def default_joint_pos(self):
         """
         :return Array[float]: Default joint positions for this robot
         """
         raise NotImplementedError
-
-    @property
-    def _default_action_config(self):
-        """
-        :return Dict[str, Any]: default nested dictionary for specific action keyword arguments for this robot
-        """
-        return {
-            "type": "continuous",
-            "normalize": True,
-        }
 
     @property
     @abstractmethod
@@ -918,7 +1013,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         :return: Array[float], joint damping values for this robot
         """
-        return np.array([get_joint_info(self.get_body_id(), joint_id)[6] for joint_id in self.joint_ids])
+        return np.array([joint.get_info().jointDamping for joint in self._joints.values()])
 
     @property
     def joint_lower_limits(self):
@@ -971,6 +1066,17 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :return str: absolute path to robot model's URDF / MJCF file
         """
         raise NotImplementedError
+
+    def force_wakeup(self):
+        for link in self._links.values():
+            link.force_wakeup()
+
+    def keep_still(self):
+        """
+        Keep the robot still. Apply zero velocity to all joints.
+        """
+        for joint in self._joints.values():
+            joint.set_vel(0.0)
 
 
 class RobotLink:
@@ -1026,7 +1132,7 @@ class RobotLink:
         """
         :return Array[float]: (r,p,y) orientation in euler form of this link
         """
-        return p.getEulerFromQuaternion(self.get_orientation())
+        return np.array(p.getEulerFromQuaternion(self.get_orientation()))
 
     def set_position(self, pos):
         """
@@ -1097,7 +1203,7 @@ class RobotLink:
         """
         Forces a wakeup for this robot. Defaults to no-op.
         """
-        pass
+        p.changeDynamics(self.body_id, self.link_id, activationState=p.ACTIVATION_STATE_WAKE_UP)
 
 
 class RobotJoint:
@@ -1182,6 +1288,9 @@ class RobotJoint:
         trq /= self.max_torque
 
         return pos, vel, trq
+
+    def get_info(self):
+        return get_joint_info(self.body_id, self.joint_id)
 
     def set_pos(self, pos):
         """

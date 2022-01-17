@@ -7,7 +7,7 @@ class InsideRoomTypes(CachingEnabledObjectState):
     """The value of this state is the list of rooms that the object currently is in."""
 
     def _compute_value(self):
-        if hasattr(self.obj, "main_body_is_fixed") and self.obj.main_body_is_fixed:
+        if hasattr(self.obj, "fixed_base") and self.obj.fixed_base:
             # For fixed objects, we can use the in_rooms attribute.
             if hasattr(self.obj, "in_rooms") and self.obj.in_rooms:
                 return self.obj.in_rooms

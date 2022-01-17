@@ -65,7 +65,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         # water reusing logic
         contacted_water_body_ids = set(item.bodyUniqueIdB for item in list(self.obj.states[ContactBodies].get_value()))
         for particle in self.water_stream.get_active_particles():
-            if particle.get_body_id() in contacted_water_body_ids:
+            if not contacted_water_body_ids.isdisjoint(particle.get_body_ids()):
                 self.water_stream.stash_particle(particle)
 
     def _set_value(self, new_value):
