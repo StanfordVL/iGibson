@@ -52,8 +52,8 @@ def print_mp_info():
     print("*" * 30)
 
 
-def run_example(args, headless, short_exec):
-    config_filename = args.config
+def run_example(config, programmatic_actions, headless, short_exec):
+    config_filename = config
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":
@@ -77,11 +77,14 @@ def run_example(args, headless, short_exec):
         if obj.category == "bottom_cabinet":
             obj.states[object_states.Open].set_value(True)
 
-    if args.programmatic_actions or headless:
-        # Set viewer camera and directly set mode to planning mode
-        env.simulator.viewer.initial_pos = [-0.8, 0.7, 1.7]
-        env.simulator.viewer.initial_view_direction = [0.1, -0.9, -0.5]
-        env.simulator.viewer.reset_viewer()
+    if programmatic_actions or headless:
+
+        if not headless:
+            # Set viewer camera and directly set mode to planning mode
+            env.simulator.viewer.initial_pos = [-0.8, 0.7, 1.7]
+            env.simulator.viewer.initial_view_direction = [0.1, -0.9, -0.5]
+            env.simulator.viewer.reset_viewer()
+
         env.land(env.robots[0], [0, 0, 0], [0, 0, 0])
         base_pose1 = [0.48253920783756465, -1.344157042454841, 1.9658493926322262]
 
@@ -113,6 +116,7 @@ def run_example(args, headless, short_exec):
             logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
             sys.exit()
 
+        success = False
         for attempt in range(1, max_attempts + 1):
             hit_pos = [-1.36, -0.45, 0.67]
             hit_normal = [-0.999, -0.015, -0.04]
@@ -122,11 +126,12 @@ def run_example(args, headless, short_exec):
                 logging.info("Executing planned arm push")
                 motion_planner.execute_arm_push(plan, hit_pos, np.array(hit_normal))
                 logging.info("End of the execution")
+                success = True
             else:
                 logging.error(
                     "MP couldn't find path to the arm pushing location. Attempt {} of {}".format(attempt, max_attempts)
                 )
-        if attempt == max_attempts:
+        if not success:
             logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
             sys.exit()
 
@@ -143,6 +148,8 @@ def run_example(args, headless, short_exec):
             action = np.zeros(env.action_space.shape)
             state, reward, done, _ = env.step(action)
 
+    env.close()
+
 
 def main(random_selection=False, headless=False, short_exec=False):
     """
@@ -152,23 +159,31 @@ def main(random_selection=False, headless=False, short_exec=False):
     and arm goals
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--config",
-        "-c",
-        default=os.path.join(igibson.example_config_path, "fetch_motion_planning.yaml"),
-        help="which config file to use [default: use yaml files in examples/configs]",
-    )
-    parser.add_argument(
-        "--programmatic",
-        "-p",
-        dest="programmatic_actions",
-        action="store_true",
-        help="if the motion planner should be used with the GUI or programmatically",
-    )
 
-    args = parser.parse_args()
-    run_example(args, headless, short_exec)
+    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+    if not (random_selection and headless and short_exec):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--config",
+            "-c",
+            default=os.path.join(igibson.example_config_path, "fetch_motion_planning.yaml"),
+            help="which config file to use [default: use yaml files in examples/configs]",
+        )
+        parser.add_argument(
+            "--programmatic",
+            "-p",
+            dest="programmatic_actions",
+            action="store_true",
+            help="if the motion planner should be used with the GUI or programmatically",
+        )
+        args = parser.parse_args()
+        config = args.config
+        programmatic_actions = args.programmatic_actions
+    else:
+        config = os.path.join(igibson.example_config_path, "fetch_motion_planning.yaml")
+        programmatic_actions = True
+    run_example(config, programmatic_actions, headless, short_exec)
 
 
 if __name__ == "__main__":

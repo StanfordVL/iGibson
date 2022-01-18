@@ -24,7 +24,7 @@ light_modulation_map_filename = os.path.join(
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(
         optimized=True,

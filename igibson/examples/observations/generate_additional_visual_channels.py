@@ -13,7 +13,7 @@ from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.vision_utils import randomize_colors, segmentation_to_rgb
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of rendering additional sensor modalities
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation
@@ -36,16 +36,19 @@ def main():
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
-    env = iGibsonEnv(config_file=config_data, mode="gui_interactive")
-    # Set a better viewing direction
-    env.simulator.viewer.initial_pos = [0, 1.1, 1.5]
-    env.simulator.viewer.initial_view_direction = [0, 1, 0.1]
-    env.simulator.viewer.reset_viewer()
+    env = iGibsonEnv(config_file=config_data, mode="gui_interactive" if not headless else "headless")
+
+    if not headless:
+        # Set a better viewing direction
+        env.simulator.viewer.initial_pos = [0, 1.1, 1.5]
+        env.simulator.viewer.initial_view_direction = [0, 1, 0.1]
+        env.simulator.viewer.reset_viewer()
 
     colors_ss = randomize_colors(MAX_CLASS_COUNT, bright=True)
     colors_is = randomize_colors(MAX_INSTANCE_COUNT, bright=True)
 
-    for j in range(100):
+    max_iterations = 100 if not short_exec else 1
+    for j in range(max_iterations):
         logging.info("Resetting environment")
         env.reset()
         for i in range(300):
@@ -54,20 +57,23 @@ def main():
                 state, reward, done, info = env.step([0.1, 0.1])
 
                 depth = state["depth"]
-                cv2.imshow("Depth", depth)
 
                 normal = state["normal"]
-                cv2.imshow("Normals", cv2.cvtColor(normal, cv2.COLOR_RGB2BGR))
 
                 seg = state["seg"]
                 seg_int = np.round(seg[:, :, 0]).astype(np.int32)
                 seg_cv = segmentation_to_rgb(seg_int, MAX_CLASS_COUNT, colors=colors_ss)
-                cv2.imshow("Semantic Segmentation", seg_cv)
 
                 ins_seg = state["ins_seg"]
                 ins_seg_int = np.round(ins_seg[:, :, 0]).astype(np.int32)
                 ins_seg_cv = segmentation_to_rgb(ins_seg_int, MAX_INSTANCE_COUNT, colors=colors_is)
-                cv2.imshow("Instance Segmentation", ins_seg_cv)
+
+                if not headless:
+                    cv2.imshow("Depth", depth)
+                    cv2.imshow("Normals", cv2.cvtColor(normal, cv2.COLOR_RGB2BGR))
+                    cv2.imshow("Semantic Segmentation", seg_cv)
+                    cv2.imshow("Instance Segmentation", ins_seg_cv)
+                    cv2.waitKey(0)  # display the window infinitely until any keypress
 
     env.close()
 

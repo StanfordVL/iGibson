@@ -12,7 +12,7 @@ from igibson.utils.assets_utils import get_available_ig_scenes
 from igibson.utils.utils import let_user_pick
 
 
-def main(random_selection=False):
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Prompts the user to select any available interactive scene and loads a turtlebot into it.
     It steps the environment 100 times with random actions sampled from the action space,
@@ -27,8 +27,9 @@ def main(random_selection=False):
     # config_data["load_object_categories"] = []  # Uncomment this line to accelerate loading with only the building
     available_ig_scenes = get_available_ig_scenes()
     scene_id = available_ig_scenes[let_user_pick(available_ig_scenes, random_selection=random_selection) - 1]
-    env = iGibsonEnv(config_file=config_data, scene_id=scene_id, mode="gui_interactive")
-    for j in range(10):
+    env = iGibsonEnv(config_file=config_data, scene_id=scene_id, mode="gui_interactive" if not headless else "headless")
+    max_iterations = 10 if not short_exec else 1
+    for j in range(max_iterations):
         logging.info("Resetting environment")
         env.reset()
         for i in range(100):

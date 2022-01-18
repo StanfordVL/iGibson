@@ -11,7 +11,7 @@ from igibson.render.profiler import Profiler
 from igibson.utils.assets_utils import get_scene_path
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Creates renderer and renders panorama images in Rs (no interactive). No physics.
     The camera view can be controlled.
@@ -32,8 +32,8 @@ def main():
     renderer.add_instance_group([0])
 
     # Print some information about the loaded model
-    logging.info(renderer.visual_objects, renderer.instances)
-    logging.info(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)
+    logging.info("visual objects {}, instances {}".format(renderer.visual_objects, renderer.instances))
+    logging.info("{} {}".format(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx))
 
     # Create a simple viewer with OpenCV and a keyboard navigation
     px = 0
@@ -63,34 +63,39 @@ def main():
         elif event == cv2.EVENT_LBUTTONUP:
             down = False
 
-    cv2.namedWindow("Viewer")
-    cv2.setMouseCallback("Viewer", change_dir)
-
-    cv2.namedWindow("Panorama Viewer")
+    if not headless:
+        cv2.namedWindow("Viewer")
+        cv2.setMouseCallback("Viewer", change_dir)
+        cv2.namedWindow("Panorama Viewer")
 
     # Move camera and render normal and panorama images
-    while True:
+    max_steps = -1 if not short_exec else 1000
+    step = 0
+    while step != max_steps:
         with Profiler("Render"):
             frame = renderer.render(modes=("rgb"))
             # Actual panorama image stuff
             img = renderer.get_equi()
 
-        cv2.imshow("Viewer", cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
-        cv2.imshow("Panorama Viewer", img)
+        if not headless:
+            cv2.imshow("Viewer", cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+            cv2.imshow("Panorama Viewer", img)
 
-        q = cv2.waitKey(1)
-        if q == ord("w"):
-            px += 0.01
-        elif q == ord("s"):
-            px -= 0.01
-        elif q == ord("a"):
-            py += 0.01
-        elif q == ord("d"):
-            py -= 0.01
-        elif q == ord("q"):
-            break
+            q = cv2.waitKey(1)
+            if q == ord("w"):
+                px += 0.01
+            elif q == ord("s"):
+                px -= 0.01
+            elif q == ord("a"):
+                py += 0.01
+            elif q == ord("d"):
+                py -= 0.01
+            elif q == ord("q"):
+                break
         camera_pose = np.array([px, py, 0.5])
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+
+        step += 1
 
     # Cleanup
     renderer.release()

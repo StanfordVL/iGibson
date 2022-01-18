@@ -95,7 +95,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         return th.cat(encoded_tensor_list, dim=1)
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example to set a training process with Stable Baselines 3
     Loads a scene and starts the training process for a navigation task with images using PPO
@@ -104,7 +104,7 @@ def main():
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config_file = "turtlebot_nav.yaml"
     tensorboard_log_dir = "log_dir"
-    num_environments = 8
+    num_environments = 8 if not short_exec else 1
 
     # Function callback to create environments
     def make_env(rank: int, seed: int = 0) -> Callable:
@@ -146,7 +146,8 @@ def main():
     print(f"Before Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
     # Train the model for the given number of steps
-    model.learn(1000000)
+    total_timesteps = 100 if short_exec else 1000000
+    model.learn(total_timesteps)
 
     # Evaluate the policy after training
     mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=20)

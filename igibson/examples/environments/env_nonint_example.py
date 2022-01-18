@@ -10,7 +10,7 @@ from igibson.render.profiler import Profiler
 from igibson.utils.assets_utils import download_assets, download_demo_data
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Creates an iGibson environment from a config file with a turtlebot in Rs (not interactive).
     It steps the environment 100 times with random actions sampled from the action space,
@@ -25,8 +25,9 @@ def main():
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
-    env = iGibsonEnv(config_file=config_data, mode="gui_interactive")
-    for j in range(10):
+    env = iGibsonEnv(config_file=config_data, mode="gui_interactive" if not headless else "headless")
+    max_iterations = 10 if not short_exec else 1
+    for j in range(max_iterations):
         logging.info("Resetting environment")
         env.reset()
         for i in range(100):

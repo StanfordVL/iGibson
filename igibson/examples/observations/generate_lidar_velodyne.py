@@ -12,7 +12,7 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of rendering and visualizing velodyne lidar signals
     Loads Rs (non interactive) and a robot and renders a velodyne signal from the robot's camera
@@ -37,14 +37,15 @@ def main():
     lidar = s.renderer.get_lidar_all()
     logging.info("Dimensions of the lidar observation: {}".format(lidar.shape))
 
-    # Visualize velodyne lidar
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.scatter(lidar[:, 0], lidar[:, 1], lidar[:, 2], s=3)
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
-    plt.show()
+    if not headless:
+        # Visualize velodyne lidar
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.scatter(lidar[:, 0], lidar[:, 1], lidar[:, 2], s=3)
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+        plt.show()
 
     s.disconnect()
 

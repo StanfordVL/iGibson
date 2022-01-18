@@ -14,7 +14,7 @@ from igibson.utils.assets_utils import download_assets
 download_assets()
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Demo to use the raycasting-based sampler to load objects onTop and/or inside another
     Loads a cabinet, a microwave open on top of it, and two plates with apples on top, one inside and one on top of the cabinet
@@ -22,21 +22,30 @@ def main():
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=False)
-    s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive" if not headless else "headless",
+        image_width=512,
+        image_height=512,
+        rendering_settings=settings,
+    )
     scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
     # Set a better viewing direction
-    s.viewer.initial_pos = [-0.2, -1.3, 2.7]
-    s.viewer.initial_view_direction = [0.3, 0.8, -0.5]
-    s.viewer.reset_viewer()
+    if not headless:
+        s.viewer.initial_pos = [-0.2, -1.3, 2.7]
+        s.viewer.initial_view_direction = [0.3, 0.8, -0.5]
+        s.viewer.reset_viewer()
 
     try:
         sample_microwave_plates_apples(s)
         sample_boxes_on_shelf(s)
 
-        while True:
+        max_steps = 100 if short_exec else -1
+        step = 0
+        while step != max_steps:
             s.step()
+            step += 1
     finally:
         s.disconnect()
 

@@ -12,7 +12,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 from igibson.utils.utils import restoreState
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Demo of a cleaning task that resets after everything has been cleaned
     To save/load state it combines pybullet save/load functionality and additional iG functions for the extended states
@@ -20,11 +20,14 @@ def main():
     If everything is cleaned, or after N steps, the scene resets to the initial state
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    s = Simulator(mode="gui_interactive", image_width=1280, image_height=720)
-    # Set a better viewing direction
-    s.viewer.initial_pos = [-0.5, -0.4, 1.5]
-    s.viewer.initial_view_direction = [0.7, 0.1, -0.7]
-    s.viewer.reset_viewer()
+    s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
+
+    if not headless:
+        # Set a better viewing direction
+        s.viewer.initial_pos = [-0.5, -0.4, 1.5]
+        s.viewer.initial_view_direction = [0.7, 0.1, -0.7]
+        s.viewer.reset_viewer()
+
     scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
@@ -88,8 +91,10 @@ def main():
 
     # Main simulation loop.
     max_steps = 1000
+    max_iterations = -1 if not short_exec else 1
+    iteration = 0
     try:
-        while True:
+        while iteration != max_iterations:
             # Keep stepping until table or bowl are clean, or we reach 1000 steps
             steps = 0
             while (
@@ -116,6 +121,8 @@ def main():
             desk.force_wakeup()
             bowl.load_state(bowl_initial_extended_state)
             bowl.force_wakeup()
+
+            iteration += 1
 
     finally:
         s.disconnect()

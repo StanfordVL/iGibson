@@ -13,7 +13,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 from igibson.utils.utils import restoreState
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Demo of a slicing task that resets after everything
     To save/load state it combines pybullet save/load functionality and additional iG functions for the extended states
@@ -23,11 +23,13 @@ def main():
     of the grouped slices
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    s = Simulator(mode="gui_interactive", image_width=1280, image_height=720)
-    # Set a better viewing direction
-    s.viewer.initial_pos = [-0.3, -0.3, 1.1]
-    s.viewer.initial_view_direction = [0.7, 0.6, -0.4]
-    s.viewer.reset_viewer()
+    s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
+
+    if not headless:
+        # Set a better viewing direction
+        s.viewer.initial_pos = [-0.3, -0.3, 1.1]
+        s.viewer.initial_view_direction = [0.7, 0.6, -0.4]
+        s.viewer.reset_viewer()
     scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
@@ -41,9 +43,7 @@ def main():
 
     # Create an URDF object of an apple, but doesn't load it in the simulator
     model_path = os.path.join(get_ig_model_path("apple", "00_0"), "00_0.urdf")
-    whole_obj = URDFObject(
-        model_path, name="00_0", category="apple", scale=np.array([1.0, 1.0, 1.0]), initial_pos=[100, 100, -100]
-    )
+    whole_obj = URDFObject(model_path, name="00_0", category="apple", scale=np.array([1.0, 1.0, 1.0]))
 
     object_parts = []
     # Check the parts that compose the apple and create URDF objects of them
@@ -62,7 +62,6 @@ def main():
             category=part_category,
             model_path=part_model_path,
             scale=whole_obj.scale,
-            initial_pos=[100 + i, 100, -100],
         )
         object_parts.append((part_obj, (part_pos, part_orn)))
 
@@ -74,6 +73,9 @@ def main():
 
     # Finally, load the multiplexed object
     s.import_object(multiplexed_obj)
+    whole_obj.set_position([100, 100, -100])
+    for (part_obj, (part_pos, part_orn)) in object_parts:
+        part_obj.set_position_orientation(part_pos, part_orn)
     multiplexed_obj.set_position([0, 0, 0.72])
 
     # Let the apple get stable
@@ -86,7 +88,9 @@ def main():
     logging.info(multiplexed_obj)
 
     try:
-        while True:
+        max_iterations = -1 if not short_exec else 1
+        iteration = 0
+        while iteration != max_iterations:
             logging.info("Stepping the simulator")
             for _ in range(100):
                 s.step()
@@ -113,9 +117,11 @@ def main():
             # The apple should become whole again
             multiplexed_obj.load_state(initial_state_multiplexed_obj)
 
+            iteration += 1
+
     finally:
-        s.disconnect()
         p.removeState(initial_state_pb)
+        s.disconnect()
 
 
 if __name__ == "__main__":

@@ -14,14 +14,14 @@ from igibson.simulator import Simulator
 from igibson.utils import utils
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Shows how to obtain the bounding box of an articulated object.
     Draws the bounding box around the loaded object, a cabinet, while it moves.
     Visible only in the pybullet GUI.
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    s = Simulator(mode="headless", use_pb_gui=True)
+    s = Simulator(mode="headless", use_pb_gui=True if not headless else False)
     scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
@@ -42,8 +42,11 @@ def main():
 
     # Main simulation loop
     try:
-        first_step = True
-        while True:
+        steps = 0
+        max_steps = -1 if not short_exec else 1000
+
+        # Main recording loop
+        while steps != max_steps:
             # Step simulation.
             s.step()
 
@@ -61,19 +64,18 @@ def main():
                 for i, from_vertex in enumerate(world_frame_vertex_positions):
                     for j, to_vertex in enumerate(world_frame_vertex_positions):
                         if j <= i:
-                            assert (
-                                p.addUserDebugLine(
-                                    from_vertex,
-                                    to_vertex,
-                                    lineColorRGB=[1.0, 0.0, 0.0],
-                                    lineWidth=1,
-                                    lifeTime=0,
-                                    replaceItemUniqueId=-1 if first_step else line_idx,
-                                )
-                                == line_idx
+                            ret_val = p.addUserDebugLine(
+                                from_vertex,
+                                to_vertex,
+                                lineColorRGB=[1.0, 0.0, 0.0],
+                                lineWidth=1,
+                                lifeTime=0,
+                                replaceItemUniqueId=-1 if steps == 0 else line_idx,
                             )
+                            if not headless:
+                                assert ret_val == line_idx
                             line_idx += 1
-            first_step = False
+            steps += 1
     finally:
         s.disconnect()
 

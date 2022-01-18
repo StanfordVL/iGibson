@@ -13,6 +13,7 @@ import networkx as nx
 import numpy as np
 import pybullet as p
 import trimesh
+from scipy.spatial.transform import Rotation
 
 import igibson
 from igibson.external.pybullet_tools.utils import (

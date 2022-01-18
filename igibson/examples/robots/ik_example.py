@@ -37,15 +37,21 @@ def main(random_selection=False, headless=False, short_exec=False):
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--programmatic",
-        "-p",
-        dest="programmatic_pos",
-        action="store_true",
-        help="if the IK solvers should be used with the GUI or programmatically",
-    )
-    args = parser.parse_args()
+    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+    if not (random_selection and headless and short_exec):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--programmatic",
+            "-p",
+            dest="programmatic_pos",
+            action="store_true",
+            help="if the IK solvers should be used with the GUI or programmatically",
+        )
+        args = parser.parse_args()
+        programmatic_pos = args.programmatic_pos
+    else:
+        programmatic_pos = True
 
     # Create simulator, scene and robot (Fetch)
     config = parse_config(os.path.join(igibson.example_config_path, "fetch_reaching.yaml"))
@@ -190,7 +196,7 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     threshold = 0.03
     max_iter = 100
-    if args.programmatic_pos or headless:
+    if programmatic_pos or headless:
         query_positions = [[1, 0, 0.8], [1, 1, 1], [0.5, 0.5, 0], [0.5, 0.5, 0.5]]
         for pos in query_positions:
             logging.info("Querying joint configuration to current marker position")
