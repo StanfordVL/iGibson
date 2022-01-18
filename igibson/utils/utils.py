@@ -3,8 +3,7 @@ import os
 
 import numpy as np
 
-# The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
-# We will use the version number for backcompatibility
+import pybullet as p
 import scipy
 import yaml
 from packaging import version
@@ -201,3 +200,35 @@ def brighten_texture(input_filename, output_filename, brightness=1):
     img = np.clip(img * brightness, 0, 255)
     img = img.astype(np.uint8)
     Image.fromarray(img).save(output_filename)
+
+
+def restoreState(*args, **kwargs):
+    """Restore to a given pybullet state, with a mitigation for a known sleep state restore bug.
+    When the pybullet state is restored, the object's wake zone (the volume around the object where
+    if any other object enters, the object should be waken up) does not get reset correctly,
+    causing weird bugs around asleep objects. This function mitigates the issue by forcing the
+    sleep code to update each object's wake zone.
+    """
+    p.restoreState(*args, **kwargs)
+    for body_id in range(p.getNumBodies()):
+        p.resetBasePositionAndOrientation(
+            body_id, *p.getBasePositionAndOrientation(body_id), physicsClientId=kwargs.get("physicsClientId", 0)
+        )
+    return p.restoreState(*args, **kwargs)
+
+
+def let_user_pick(options, print_intro=True, random_selection=False):
+    if print_intro and not random_selection:
+        print("Please choose:")
+    for idx, element in enumerate(options):
+        print("{}) {}".format(idx + 1, element))
+    if not random_selection:
+        i = input("Enter number: ")
+    else:
+        i = random.choice(range(len(options))) + 1
+    try:
+        if 0 < int(i) <= len(options):
+            return int(i)
+    except:
+        pass
+    return None

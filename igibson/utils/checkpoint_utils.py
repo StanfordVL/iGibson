@@ -4,6 +4,8 @@ import os
 
 import pybullet as p
 
+from igibson.utils.utils import restoreState
+
 
 def save_task_relevant_state(env, root_directory, filename="behavior_dump"):
     json_path = os.path.join(root_directory, f"{filename}.json")
@@ -12,6 +14,7 @@ def save_task_relevant_state(env, root_directory, filename="behavior_dump"):
     with open(json_path, "w") as f:
         json.dump(save_task_relevant_object_and_robot_states(env), f)
 
+
 def save_sim_urdf_object_state(sim, root_directory, filename="behavior_dump"):
     json_path = os.path.join(root_directory, f"{filename}.json")
 
@@ -19,16 +22,16 @@ def save_sim_urdf_object_state(sim, root_directory, filename="behavior_dump"):
     with open(json_path, "w") as f:
         json.dump(save_all_scene_object_and_robot_states(sim), f)
 
+
 def save_checkpoint(simulator, root_directory):
     bullet_path = os.path.join(root_directory, "%d.bullet" % simulator.frame_count)
     json_path = os.path.join(root_directory, "%d.json" % simulator.frame_count)
-
     # Save the simulation state.
     p.saveBullet(bullet_path)
-
     # Save the dump in a file.
     with open(json_path, "w") as f:
         json.dump(save_internal_states(simulator), f)
+    return simulator.frame_count
 
 
 def load_checkpoint(simulator, root_directory, frame):
@@ -36,7 +39,8 @@ def load_checkpoint(simulator, root_directory, frame):
     json_path = os.path.join(root_directory, "%d.json" % frame)
 
     # Restore the simulation state.
-    p.restoreState(fileName=bullet_path)
+    # p.restoreState(fileName=bullet_path)
+    restoreState(fileName=bullet_path)
 
     with open(json_path, "r") as f:
         dump = json.load(f)
