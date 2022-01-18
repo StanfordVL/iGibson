@@ -135,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--config",
         "-c",
-        default=os.path.join(igibson.root_path, "examples", "configs", "turtlebot_point_nav.yaml"),
+        default=os.path.join(igibson.root_path, "examples", "configs", "turtlebot_nav.yaml"),
         help="which config file to use [default: use yaml files in examples/configs]",
     )
     parser.add_argument("--ray_mode", default="train", help="Whether to run ray in train or test mode")
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["headless", "gui", "iggui"],
+        choices=["headless", "headless_tensor", "gui_interactive", "gui_non_interactive"],
         default="headless",
         help="which mode for simulation (default: headless)",
     )

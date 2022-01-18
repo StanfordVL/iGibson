@@ -42,8 +42,8 @@ class PointNavFixedTask(BaseTask):
         self.goal_format = self.config.get("goal_format", "polar")
         self.dist_tol = self.termination_conditions[-1].dist_tol
 
-        self.visual_object_at_initial_target_pos = self.config.get("visual_object_at_initial_target_pos", True)
-        self.target_visual_object_visible_to_agent = self.config.get("target_visual_object_visible_to_agent", False)
+        self.visible_target = self.config.get("visible_target", False)
+        self.visible_path = self.config.get("visible_path", False)
         self.floor_num = 0
 
         self.load_visualization(env)
@@ -54,7 +54,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if env.mode != "gui":
+        if env.mode != "gui_interactive":
             return
 
         cyl_length = 0.2
@@ -73,12 +73,16 @@ class PointNavFixedTask(BaseTask):
             initial_offset=[0, 0, cyl_length / 2.0],
         )
 
-        if self.target_visual_object_visible_to_agent:
-            env.simulator.import_object(self.initial_pos_vis_obj)
-            env.simulator.import_object(self.target_pos_vis_obj)
-        else:
-            self.initial_pos_vis_obj.load()
-            self.target_pos_vis_obj.load()
+        env.simulator.import_object(self.initial_pos_vis_obj)
+        env.simulator.import_object(self.target_pos_vis_obj)
+
+        # The visual object indicating the initial location is always hidden
+        for instance in self.initial_pos_vis_obj.renderer_instances:
+            instance.hidden = True
+
+        # The visual object indicating the target location may be visible
+        for instance in self.target_pos_vis_obj.renderer_instances:
+            instance.hidden = not self.visible_target
 
         if env.scene.build_graph:
             self.num_waypoints_vis = 250
@@ -93,7 +97,10 @@ class PointNavFixedTask(BaseTask):
                 for _ in range(self.num_waypoints_vis)
             ]
             for waypoint in self.waypoints_vis:
-                waypoint.load()
+                env.simulator.import_object(waypoint)
+                # The path to the target may be visible
+                for instance in waypoint.renderer_instances:
+                    instance.hidden = not self.visible_path
 
     def get_geodesic_potential(self, env):
         """
@@ -144,11 +151,11 @@ class PointNavFixedTask(BaseTask):
         :param env: environment instance
         """
         env.land(env.robots[0], self.initial_pos, self.initial_orn)
+
+    def reset_variables(self, env):
         self.path_length = 0.0
         self.robot_pos = self.initial_pos[:2]
         self.geodesic_dist = self.get_geodesic_potential(env)
-        for reward_function in self.reward_functions:
-            reward_function.reset(self, env)
 
     def get_termination(self, env, collision_links=[], action=None, info={}):
         """
@@ -215,7 +222,7 @@ class PointNavFixedTask(BaseTask):
 
         :param env: environment instance
         """
-        if env.mode != "gui":
+        if env.mode != "gui_interactive":
             return
 
         self.initial_pos_vis_obj.set_position(self.initial_pos)

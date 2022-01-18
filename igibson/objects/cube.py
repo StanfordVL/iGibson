@@ -1,22 +1,24 @@
 import pybullet as p
 
+from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
+from igibson.utils.constants import SemanticClass
 
 
-class Cube(StatefulObject):
+class Cube(StatefulObject, SingleBodyObject):
     """
     Cube shape primitive
     """
 
-    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1]):
-        super(Cube, self).__init__()
+    def __init__(self, pos=[1, 2, 3], dim=[1, 2, 3], visual_only=False, mass=1000, color=[1, 1, 1, 1], **kwargs):
+        super(Cube, self).__init__(**kwargs)
         self.basePos = pos
         self.dimension = dim
         self.visual_only = visual_only
         self.mass = mass
         self.color = color
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -32,4 +34,6 @@ class Cube(StatefulObject):
 
         p.resetBasePositionAndOrientation(body_id, self.basePos, baseOrientation)
 
-        return body_id
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
+        return [body_id]

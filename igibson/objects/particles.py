@@ -7,17 +7,23 @@ import pybullet as p
 import igibson
 from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
-from igibson.objects.object_base import Object
+from igibson.objects.object_base import SingleBodyObject
 from igibson.utils import sampling_utils
 from igibson.utils.constants import PyBulletSleepState, SemanticClass
 
 _STASH_POSITION = [0, 0, -100]
 
 
-class Particle(Object):
+class Particle(SingleBodyObject):
     """
     A particle object, used to simulate water stream and dust/stain
     """
+
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+        "shadow_caster": True,
+    }
 
     def __init__(
         self,
@@ -29,6 +35,7 @@ class Particle(Object):
         base_shape="sphere",
         mesh_filename=None,
         mesh_bounding_box=None,
+        **kwargs
     ):
         """
         Create a particle.
@@ -41,8 +48,9 @@ class Particle(Object):
         :param base_shape: One of "cube", "sphere", "mesh". If mesh, mesh_filename also required.
         :param mesh_filename: Filename of obj file to load mesh from, if base_shape is "mesh".
         :param mesh_bounding_box: bounding box of the mesh when scale=1. Needed for scale computation.
+        :param rendering_params: rendering parameters to pass onto object base & renderer.
         """
-        super(Particle, self).__init__()
+        super(Particle, self).__init__(**kwargs)
         self.base_pos = pos
         self.size = size
         self.visual_only = visual_only
@@ -57,7 +65,7 @@ class Particle(Object):
             self.mesh_filename = mesh_filename
             self.mesh_scale = np.array(size) / np.array(mesh_bounding_box)
 
-    def _load(self):
+    def _load(self, simulator):
         """
         Load the object into pybullet
         """
@@ -89,34 +97,28 @@ class Particle(Object):
 
         p.resetBasePositionAndOrientation(body_id, np.array(self.base_pos), base_orientation)
 
+        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
+
         self.force_sleep(body_id)
 
-        return body_id
+        return [body_id]
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.body_id
+            body_id = self.get_body_id()
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
         activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.body_id, -1, activationState=activationState)
+        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
 
 
 class ParticleSystem(object):
-    def __init__(
-        self,
-        num,
-        size,
-        color=(1, 1, 1, 1),
-        class_id=SemanticClass.USER_ADDED_OBJS,
-        use_pbr=False,
-        use_pbr_mapping=False,
-        shadow_caster=True,
-        **kwargs
-    ):
+    DEFAULT_RENDERING_PARAMS = {}  # Accept the Particle defaults but expose this interface for children
+
+    def __init__(self, num, size, color=(1, 1, 1, 1), rendering_params=None, **kwargs):
         size = np.array(size)
         if size.ndim == 2:
             assert size.shape[0] == num
@@ -131,19 +133,19 @@ class ParticleSystem(object):
         self._particles_activated_at_any_time = set()
 
         self._simulator = None
-        self._import_params = {
-            "class_id": class_id,
-            "use_pbr": use_pbr,
-            "use_pbr_mapping": use_pbr_mapping,
-            "shadow_caster": shadow_caster,
-        }
+
+        rendering_params_for_particle = dict(self.DEFAULT_RENDERING_PARAMS)
+        if rendering_params is not None:
+            rendering_params_for_particle.update(rendering_params)
 
         for i in range(num):
             # If different sizes / colors provided for each instance, pick the correct one for this instance.
             this_size = size if size.ndim == 1 else size[i]
             this_color = color if color.ndim == 1 else color[i]
 
-            particle = Particle(this_size, _STASH_POSITION, color=this_color, **kwargs)
+            particle = Particle(
+                this_size, _STASH_POSITION, color=this_color, rendering_params=rendering_params_for_particle, **kwargs
+            )
             self._all_particles.append(particle)
             self._stashed_particles.append(particle)
 
@@ -207,10 +209,10 @@ class ParticleSystem(object):
             particle.force_sleep()
 
     def _load_particle(self, particle):
-        body_id = self._simulator.import_object(particle, **self._import_params)
+        body_ids = particle.load(self._simulator)
         # Put loaded particles at the stash position initially.
         particle.set_position(_STASH_POSITION)
-        return body_id
+        return body_ids
 
     def unstash_particle(self, position, orientation, particle=None):
         # If the user wants a particular particle, give it to them. Otherwise, unstash one.
@@ -220,7 +222,7 @@ class ParticleSystem(object):
             particle = self._stashed_particles.popleft()
 
         # Lazy loading of the particle now if not already loaded
-        if not particle.loaded:
+        if not particle.get_body_id():
             self._load_particle(particle)
 
         particle.set_position_orientation(position, orientation)
@@ -379,6 +381,7 @@ class WaterStream(ParticleSystem):
         ]
     )
     _COLOR_OPTIONS = np.array([(0.61, 0.82, 0.86, 1), (0.5, 0.77, 0.87, 1)])
+    DEFAULT_RENDERING_PARAMS = {"use_pbr": True}  # PBR needs to be on for the shiny water particles.
 
     def __init__(self, water_source_pos, num, initial_dump=None, **kwargs):
         if initial_dump is not None:
@@ -397,7 +400,6 @@ class WaterStream(ParticleSystem):
             color=self.colors,
             visual_only=False,
             mass=0.00005,  # each drop is around 0.05 grams
-            use_pbr=True,  # PBR needs to be on for the shiny water particles.
             **kwargs
         )
 
@@ -431,16 +433,16 @@ class WaterStream(ParticleSystem):
 
     def _load_particle(self, particle):
         # First load the particle normally.
-        body_id = super(WaterStream, self)._load_particle(particle)
+        body_ids = super(WaterStream, self)._load_particle(particle)
 
         # Set renderer instance settings on the particles.
         instances = self._simulator.renderer.get_instances()
         for instance in instances:
-            if instance.pybullet_uuid == body_id:
+            if instance.pybullet_uuid in body_ids:
                 instance.roughness = 0
                 instance.metalness = 1
 
-        return body_id
+        return body_ids
 
     def set_running(self, on):
         self.on = on

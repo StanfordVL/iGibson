@@ -69,6 +69,32 @@ int GLFWRendererContext::init() {
         exit(EXIT_FAILURE);
     }
 
+    // Our codebase assumes that window size is equal to the framebuffer size.
+    // The change below was to maintain this assumption for high DPI displays.
+    int framebufferWidth;
+    int framebufferHeight;
+    glfwGetFramebufferSize(this->window, &framebufferWidth, &framebufferHeight);
+
+    int scaling_factor = framebufferWidth / m_windowWidth;
+
+    // This accounts for retina display. This display uses double-sized pixels. We need to create a window that is
+    // half the size to accomodate for that
+    if(framebufferWidth!=m_windowWidth)
+    {
+        glfwDestroyWindow(this->window);
+        if (m_fullscreen) {
+		    this->window = glfwCreateWindow(m_windowWidth/scaling_factor, m_windowHeight/scaling_factor, "Gibson Renderer Output", glfwGetPrimaryMonitor(), NULL);
+        }
+        else {
+            this->window = glfwCreateWindow(m_windowWidth/scaling_factor, m_windowHeight/scaling_factor, "Gibson Renderer Output", NULL, NULL);
+        }
+
+        if (this->window == NULL) {
+            fprintf(stderr, "ERROR: Failed to create GLFW window.\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
     glfwMakeContextCurrent(this->window);
     glfwSwapInterval(0);
 

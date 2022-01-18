@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import sys
 import time
 
 import cv2
@@ -8,15 +9,16 @@ import numpy as np
 import pybullet as p
 
 from igibson.objects.visual_marker import VisualMarker
+from igibson.utils.constants import ViewerMode
 from igibson.utils.utils import rotate_vector_2d
 
 
 class ViewerVR:
-    def __init__(self, use_companion_window, frame_save_path=None):
+    def __init__(self, use_companion_window, frame_save_path=None, renderer=None):
         """
         :param use_companion_window: whether to render companion window (passed in automatically from VrSettings)
         """
-        self.renderer = None
+        self.renderer = renderer
         self.use_companion_window = use_companion_window
         self.frame_save_path = frame_save_path
         self.frame_counter = 0
@@ -29,7 +31,7 @@ class ViewerVR:
         if not self.renderer:
             raise RuntimeError("Unable to render without a renderer attached to the ViewerVR!")
         if self.frame_save_path:
-            frame = cv2.cvtColor(self.renderer.render(return_frame=True)[0], cv2.COLOR_RGB2BGR)
+            frame = cv2.cvtColor(self.renderer.render(return_buffer=True)[0], cv2.COLOR_RGB2BGR)
             frame = (frame * 255).astype(np.uint8)
             # Save as a video
             if self.frame_save_path.endswith(".mp4"):
@@ -80,8 +82,8 @@ class ViewerSimple:
 class Viewer:
     def __init__(
         self,
-        initial_pos=[0, 0, 1.2],
-        initial_view_direction=[1, 0, 0],
+        initial_pos=[6.6, 5.6, 3.4],  # [0, 0, 1.2],
+        initial_view_direction=[-0.7, -0.6, -0.4],  # [1, 0, 0],
         initial_up=[0, 0, 1],
         simulator=None,
         renderer=None,
@@ -97,21 +99,10 @@ class Viewer:
         :param renderer: iGibson renderer
         :param min_cam_z: minimum camera z
         """
-        self.px = initial_pos[0]
-        self.py = initial_pos[1]
-        self.pz = initial_pos[2]
-        self.theta = np.arctan2(initial_view_direction[1], initial_view_direction[0])
-        self.phi = np.arctan2(
-            initial_view_direction[2], np.sqrt(initial_view_direction[0] ** 2 + initial_view_direction[1] ** 2)
-        )
+        self.initial_pos = initial_pos
+        self.initial_view_direction = initial_view_direction
+        self.reset_viewer()
         self.min_cam_z = min_cam_z
-        self.show_help = 0
-
-        self._mouse_ix, self._mouse_iy = -1, -1
-        self.left_down = False
-        self.middle_down = False
-        self.right_down = False
-        self.view_direction = np.array(initial_view_direction)
         self.up = initial_up
         self.renderer = renderer
         self.simulator = simulator
@@ -120,7 +111,7 @@ class Viewer:
 
         # Flag to control if the mouse interface is in navigation, manipulation
         # or motion planning/execution mode
-        self.manipulation_mode = 0
+        self.mode = ViewerMode.NAVIGATION
 
         # Video recording
         self.recording = False  # Boolean if we are recording frames from the viewer
@@ -131,11 +122,11 @@ class Viewer:
         # Later use the numpad to activate additional cameras
         self.is_robosuite = self.renderer.rendering_settings.is_robosuite
 
-        cv2.namedWindow("ExternalView")
-        cv2.moveWindow("ExternalView", 0, 0)
+        cv2.namedWindow("Viewer")
+        cv2.moveWindow("Viewer", 0, 0)
         if not self.is_robosuite:
             cv2.namedWindow("RobotView")
-        cv2.setMouseCallback("ExternalView", self.mouse_callback)
+        cv2.setMouseCallback("Viewer", self.mouse_callback)
         self.create_visual_object()
         self.planner = None
         self.block_command = False
@@ -154,14 +145,18 @@ class Viewer:
         """
         self.constraint_marker = VisualMarker(radius=0.04, rgba_color=[0, 0, 1, 1])
         self.constraint_marker2 = VisualMarker(
-            visual_shape=p.GEOM_CAPSULE, radius=0.01, length=3, initial_offset=[0, 0, -1.5], rgba_color=[0, 0, 1, 1]
+            visual_shape=p.GEOM_CAPSULE,
+            radius=0.01,
+            length=3,
+            initial_offset=[0, 0, -1.5],
+            rgba_color=[0, 0, 1, 1],
         )
 
         # Simuation is done by MuJoCo when rendering robosuite envs
         if not self.is_robosuite:
             if self.simulator is not None:
-                self.simulator.import_object(self.constraint_marker2, use_pbr=False)
-                self.simulator.import_object(self.constraint_marker, use_pbr=False)
+                self.simulator.import_object(self.constraint_marker2)
+                self.simulator.import_object(self.constraint_marker)
 
             self.constraint_marker.set_position([0, 0, -1])
             self.constraint_marker2.set_position([0, 0, -1])
@@ -211,10 +206,10 @@ class Viewer:
         :param y: image pixel y coordinate
         :param fixed: whether to create a fixed joint. Otherwise, it's a point2point joint.
         """
-        camera_pose = np.array([self.px, self.py, self.pz])
-        self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
+        camera_position = np.array([self.px, self.py, self.pz])
+        self.renderer.set_camera(camera_position, camera_position + self.view_direction, self.up)
 
-        position_cam = np.array(
+        clicked_point_in_cf = np.array(
             [
                 (x - self.renderer.width / 2)
                 / float(self.renderer.width / 2)
@@ -222,15 +217,14 @@ class Viewer:
                 -(y - self.renderer.height / 2)
                 / float(self.renderer.height / 2)
                 * np.tan(self.renderer.vertical_fov / 2.0 / 180.0 * np.pi),
-                -1,
+                -1,  # z axis is pointing into the camera in OpenGL convention
                 1,
             ]
         )
-        position_cam[:3] *= 5
+        clicked_point_in_cf[:3] *= 5
 
-        position_world = np.linalg.inv(self.renderer.V).dot(position_cam)
-        position_eye = camera_pose
-        res = p.rayTest(position_eye, position_world[:3])
+        clicked_point_in_wf = np.linalg.inv(self.renderer.V).dot(clicked_point_in_cf)
+        res = p.rayTest(camera_position, clicked_point_in_wf[:3])
         if len(res) > 0 and res[0][0] != -1:
             object_id, link_id, _, hit_pos, hit_normal = res[0]
             p.changeDynamics(object_id, -1, activationState=p.ACTIVATION_STATE_WAKE_UP)
@@ -246,9 +240,9 @@ class Viewer:
             )
             self.constraint_marker.set_position(hit_pos)
             self.constraint_marker2.set_position(hit_pos)
-            self.dist = np.linalg.norm(np.array(hit_pos) - camera_pose)
+            self.dist = np.linalg.norm(np.array(hit_pos) - camera_position)
             cid = p.createConstraint(
-                parentBodyUniqueId=self.constraint_marker.body_id,
+                parentBodyUniqueId=self.constraint_marker.get_body_id(),
                 parentLinkIndex=-1,
                 childBodyUniqueId=object_id,
                 childLinkIndex=link_id,
@@ -414,7 +408,7 @@ class Viewer:
         """
 
         # Navigation mode
-        if self.manipulation_mode == 0:
+        if self.mode == ViewerMode.NAVIGATION:
             # Only once, when pressing left mouse while ctrl key is pressed
             if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
                 self._mouse_ix, self._mouse_iy = x, y
@@ -468,7 +462,7 @@ class Viewer:
 
                 # if middle button was pressed we get closer/further away in the viewing direction
                 elif self.middle_down:
-                    d_vd = (y - self._mouse_iy) / 100.0
+                    d_vd = (y - self._mouse_iy) / 25.0
                     self._mouse_iy = y
 
                     motion_along_vd = d_vd * self.view_direction
@@ -494,7 +488,7 @@ class Viewer:
                     self.pz = max(self.min_cam_z, self.pz)
 
         # Manipulation mode
-        elif self.manipulation_mode == 1:
+        elif self.mode == ViewerMode.MANIPULATION:
             # Middle mouse button press or only once, when pressing left mouse
             # while shift key is pressed (Mac compatibility)
             if (event == cv2.EVENT_MBUTTONDOWN) or (
@@ -527,7 +521,7 @@ class Viewer:
                     self.move_constraint_z(dy)
 
         # Motion planning / execution mode
-        elif self.manipulation_mode == 2 and not self.block_command:
+        elif self.mode == ViewerMode.PLANNING and not self.block_command:
             # left mouse button press
             if event == cv2.EVENT_LBUTTONDOWN:
                 self._mouse_ix, self._mouse_iy = x, y
@@ -567,62 +561,89 @@ class Viewer:
         """
         Show help text
         """
-        if self.show_help < 0:
+        if self.show_help % 3 == 0:
             return
-
-        if self.show_help >= 150:
+        elif self.show_help % 3 == 1:
             first_color = (255, 0, 0)
             help_text = "Keyboard cheatsheet:"
             cv2.putText(frame, help_text, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
-            help_text = "'w','a','s','d': up, left, down, right (any mode)"
+            print(help_text)
+            help_text = "'w','s','a','d','t','g': forward, backwards, left, right, up, down  (any mode)"
             cv2.putText(frame, help_text, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "'q','e': turn left, turn right (any mode)"
             cv2.putText(frame, help_text, (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "'m': switch control mode across navigation, manipulation, and planning"
             cv2.putText(frame, help_text, (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "'r': Start/stop recording frames (results in \\tmp folder)"
             cv2.putText(frame, help_text, (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "'p': Pause/resume recording"
             cv2.putText(frame, help_text, (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
-            help_text = "'h': Show this help on screen"
+            print(help_text)
+            help_text = "'z': Save new resetting viewing pose"
             cv2.putText(frame, help_text, (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
-            help_text = "'ESC': Quit"
+            print(help_text)
+            help_text = "'x': Reset viewer to the saved viewing pose"
             cv2.putText(frame, help_text, (10, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
-        else:
+            print(help_text)
+            help_text = "'h': Show this help on screen (1 of 2)"
+            cv2.putText(frame, help_text, (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+            print(help_text)
+            help_text = "'ESC': Quit"
+            cv2.putText(frame, help_text, (10, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
+            print(help_text)
+        elif self.show_help % 3 == 2:
             second_color = (255, 0, 255)
             help_text = "Mouse control in navigation mode:"
             cv2.putText(frame, help_text, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Left click and drag: rotate camera"
             cv2.putText(frame, help_text, (10, 100), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "CTRL + left click and drag: translate camera"
             cv2.putText(frame, help_text, (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Middle click and drag (linux) or left SHIFT + left click and drag:"
             cv2.putText(frame, help_text, (10, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "translate camera closer/further away in the viewing direction"
             cv2.putText(frame, help_text, (10, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Mouse control in manipulation mode:"
             cv2.putText(frame, help_text, (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Left click and drag: create ball-joint connection to clicked object and move it"
             cv2.putText(frame, help_text, (10, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Middle click and drag (linux) or left SHIFT + left click and drag: create rigid connection"
             cv2.putText(frame, help_text, (10, 220), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = " to object and move it"
             cv2.putText(frame, help_text, (10, 240), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "CTRL + click and drag: up/down of the mouse moves object further/closer"
             cv2.putText(frame, help_text, (10, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Mouse control in planning mode:"
             cv2.putText(frame, help_text, (10, 280), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = (
                 "Left click: create (click), visualize (drag) and plan / execute (release) a base motion subgoal"
             )
             cv2.putText(frame, help_text, (10, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "for the robot base to reach the physical point that corresponds to the clicked pixel"
             cv2.putText(frame, help_text, (10, 320), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "Middle click: create, and plan / execute an arm motion subgoal"
             cv2.putText(frame, help_text, (10, 340), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
+            print(help_text)
             help_text = "for the robot end-effector to reach the physical point that corresponds to the clicked pixel"
             cv2.putText(frame, help_text, (10, 360), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
-        self.show_help -= 1
+            print(help_text)
 
     def update(self):
         """
@@ -661,7 +682,7 @@ class Viewer:
         )
         cv2.putText(
             frame,
-            ["nav mode", "manip mode", "planning mode"][self.manipulation_mode],
+            ["nav mode", "manip mode", "planning mode"][self.mode],
             (10, 60),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -671,17 +692,18 @@ class Viewer:
         )
         self.show_help_text(frame)
 
-        cv2.imshow("ExternalView", frame)
+        cv2.imshow("Viewer", frame)
 
         # We keep some double functinality for "backcompatibility"
         q = cv2.waitKey(1)
         move_vec = self.view_direction[:2]
-        # step size is 0.05m
-        move_vec = move_vec / np.linalg.norm(move_vec) * 0.05
+        # step size is 0.1m
+        step_size = 0.1
+        move_vec = move_vec / np.linalg.norm(move_vec) * step_size
 
         # show help text
         if q == ord("h"):
-            self.show_help = 300
+            self.show_help += 1
 
         # move
         elif q in [ord("w"), ord("s"), ord("a"), ord("d")]:
@@ -696,8 +718,14 @@ class Viewer:
             move_vec = rotate_vector_2d(move_vec, yaw)
             self.px += move_vec[0]
             self.py += move_vec[1]
-            if self.manipulation_mode == 1:
+            if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
+
+        elif q in [ord("t")]:
+            self.pz += step_size
+
+        elif q in [ord("g")]:
+            self.pz -= step_size
 
         # turn left
         elif q == ord("q"):
@@ -705,7 +733,7 @@ class Viewer:
             self.view_direction = np.array(
                 [np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(self.phi), np.sin(self.phi)]
             )
-            if self.manipulation_mode == 1:
+            if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # turn right
@@ -714,7 +742,7 @@ class Viewer:
             self.view_direction = np.array(
                 [np.cos(self.theta) * np.cos(self.phi), np.sin(self.theta) * np.cos(self.phi), np.sin(self.phi)]
             )
-            if self.manipulation_mode == 1:
+            if self.mode == ViewerMode.MANIPULATION:
                 self.move_constraint(self._mouse_ix, self._mouse_iy)
 
         # quit (Esc)
@@ -726,7 +754,7 @@ class Viewer:
                 )
                 logging.info("ffmpeg -i %5d.png -y -c:a copy -c:v libx264 -crf 18 -preset veryslow -r 30 video.mp4")
                 logging.info("The last folder you collected images for a video was: " + self.video_folder)
-            exit()
+            sys.exit()
 
         # Start/Stop recording. Stopping saves frames to files
         elif q == ord("r"):
@@ -757,7 +785,19 @@ class Viewer:
             self.left_down = False
             self.middle_down = False
             self.right_down = False
-            self.manipulation_mode = (self.manipulation_mode + 1) % 3
+            if self.planner is not None:
+                self.mode = (self.mode + 1) % len(ViewerMode)
+            else:
+                # Disable planning mode if planner not initialized (assume planning mode is the last available mode)
+                assert ViewerMode.PLANNING == len(ViewerMode) - 1, "Planning mode is not the last available viewer mode"
+                self.mode = (self.mode + 1) % (len(ViewerMode) - 1)
+
+        elif q == ord("z"):
+            self.initial_pos = [self.px, self.py, self.pz]
+            self.initial_view_direction = self.view_direction
+
+        elif q == ord("x"):
+            self.reset_viewer()
 
         elif (
             self.is_robosuite
@@ -793,6 +833,24 @@ class Viewer:
                 if len(frames) > 0:
                     frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                     cv2.imshow("RobotView", frame)
+
+    def reset_viewer(self):
+        self.px = self.initial_pos[0]
+        self.py = self.initial_pos[1]
+        self.pz = self.initial_pos[2]
+        self.initial_view_direction /= np.linalg.norm(self.initial_view_direction)
+        self.theta = np.arctan2(self.initial_view_direction[1], self.initial_view_direction[0])
+        self.phi = np.arctan2(
+            self.initial_view_direction[2],
+            np.sqrt(self.initial_view_direction[0] ** 2 + self.initial_view_direction[1] ** 2),
+        )
+        self.show_help = 0
+
+        self._mouse_ix, self._mouse_iy = -1, -1
+        self.left_down = False
+        self.middle_down = False
+        self.right_down = False
+        self.view_direction = np.array(self.initial_view_direction)
 
 
 if __name__ == "__main__":

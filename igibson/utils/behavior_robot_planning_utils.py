@@ -109,7 +109,7 @@ def dry_run_base_plan(robot: BehaviorRobot, plan):
 
 def dry_run_arm_plan(robot: BehaviorRobot, plan):
     for (x, y, z, roll, pitch, yaw) in plan:
-        robot.parts["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+        robot.links["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
         time.sleep(0.01)
 
 
@@ -160,8 +160,8 @@ def plan_hand_motion_br(
     difference_fn = get_hand_difference_fn()
     distance_fn = get_hand_distance_fn(weights=weights)
 
-    pos = robot.parts["right_hand"].get_position()
-    orn = robot.parts["right_hand"].get_orientation()
+    pos = robot.links["right_hand"].get_position()
+    orn = robot.links["right_hand"].get_orientation()
     rpy = p.getEulerFromQuaternion(orn)
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
 
@@ -182,7 +182,7 @@ def plan_hand_motion_br(
     def collision_fn(q):
         # TODO: update this function
         # set_base_values(body, q)
-        robot.parts["right_hand"].set_position_orientation(
+        robot.links["right_hand"].set_position_orientation(
             [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
         )
         if obj_in_hand is not None:
@@ -193,7 +193,8 @@ def plan_hand_motion_br(
             )
 
         collision = any(
-            pairwise_collision(robot.parts["right_hand"].body_id, obs, max_distance=max_distance) for obs in obstacles
+            pairwise_collision(robot.links["right_hand"].get_body_id(), obs, max_distance=max_distance)
+            for obs in obstacles
         )
 
         if obj_in_hand is not None:
@@ -202,7 +203,7 @@ def plan_hand_motion_br(
             else:
                 obj_in_hand_body_id = obj_in_hand.body_id
             collision = collision or any(
-                pairwise_collision(obj_in_hand_body_id, obs, max_distance=max_distance) for obs in obstacles
+                pairwise_collision(obj_in_hand.get_body_id(), obs, max_distance=max_distance) for obs in obstacles
             )
 
         return collision
@@ -221,14 +222,16 @@ def plan_hand_motion_br(
 if __name__ == "__main__":
     config = parse_config(os.path.join(igibson.example_config_path, "behavior.yaml"))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode="gui", image_width=256, image_height=256, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
+    )
 
     scene = EmptyScene()
     scene.objects_by_id = {}
-    s.import_scene(scene, render_floor_plane=True)
+    s.import_scene(scene)
 
-    agent = BehaviorRobot(s, use_tracked_body_override=True, show_visual_head=True, use_ghost_hands=False)
-    s.import_behavior_robot(agent)
+    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
+    s.import_robot(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
 
@@ -239,7 +242,7 @@ if __name__ == "__main__":
     plan = plan_hand_motion_br(agent, [3, 3, 3, 0, 0, 0], ((-5, -5, -5), (5, 5, 5)))
     print(plan)
     for q in plan:
-        agent.parts["right_hand"].set_position_orientation(
+        agent.links["right_hand"].set_position_orientation(
             [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
         )
         time.sleep(0.05)

@@ -135,14 +135,14 @@ class VisionSensor(BaseSensor):
         """
         :return: semantic segmentation mask, between 0 and MAX_CLASS_COUNT
         """
-        seg = (raw_vision_obs["seg"][:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int32)
+        seg = np.round(raw_vision_obs["seg"][:, :, 0:1] * MAX_CLASS_COUNT).astype(np.int32)
         return seg
 
     def get_ins_seg(self, raw_vision_obs):
         """
         :return: semantic segmentation mask, between 0 and MAX_INSTANCE_COUNT
         """
-        seg = (raw_vision_obs["ins_seg"][:, :, 0:1] * MAX_INSTANCE_COUNT).astype(np.int32)
+        seg = np.round(raw_vision_obs["ins_seg"][:, :, 0:1] * MAX_INSTANCE_COUNT).astype(np.int32)
         return seg
 
     def get_obs(self, env):

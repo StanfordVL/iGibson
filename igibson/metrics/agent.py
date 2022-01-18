@@ -26,14 +26,14 @@ class BehaviorRobotMetric(MetricBase):
 
         self.clip = 0.2
 
-    def step_callback(self, igbhvr_act_inst, _):
-        robot = igbhvr_act_inst.simulator.robots[0]
+    def step_callback(self, env, _):
+        robot = env.robots[0]
         agent_work = {part: 0 for part in ["left_hand", "right_hand", "body"]}
         agent_distance = {part: 0 for part in ["left_hand", "right_hand", "body"]}
 
         for part in ["left_hand", "right_hand", "body"]:
             self.next_state_cache[part] = {
-                "position": np.array(p.getBasePositionAndOrientation(robot.parts[part].body_id)[0]),
+                "position": np.array(p.getBasePositionAndOrientation(robot.links[part].get_body_id())[0]),
             }
 
         if not self.initialized:
@@ -62,18 +62,19 @@ class BehaviorRobotMetric(MetricBase):
             self.agent_pos[part].append(list(self.state_cache[part]["position"]))
             # Exclude agent teleports
             delta_pos = np.clip(delta_pos, -self.clip, self.clip)
-            if robot.parts[part].movement_cid is None:
+            if robot.links[part].movement_cid is None:
                 force = 0
                 work = 0
             else:
-                force = p.getConstraintState(robot.parts[part].movement_cid)
+                force = p.getConstraintState(robot.links[part].movement_cid)
                 work = np.abs((delta_pos * np.linalg.norm(force)))
 
             distance = np.abs(delta_pos)
             if part in ["left_hand", "right_hand"]:
-                self.agent_local_pos[part].append(list(robot.parts[part].local_pos))
+                self.agent_local_pos[part].append(list(robot.links[part].get_local_position_orientation()[0]))
             if part in ["left_hand", "right_hand"] and (
-                len(p.getContactPoints(robot.parts[part].body_id)) > 0 or robot.parts[part].object_in_hand is not None
+                len(p.getContactPoints(robot.links[part].get_body_id())) > 0
+                or robot.links[part].object_in_hand is not None
             ):
                 self.delta_agent_grasp_distance[part].append(distance)
                 self.agent_grasping[part].append(True)
@@ -132,8 +133,8 @@ class FetchRobotMetric(MetricBase):
 
         self.clip = 0.2
 
-    def step_callback(self, igbhvr_act_inst, _):
-        robot = igbhvr_act_inst.simulator.robots[0]
+    def step_callback(self, env, _):
+        robot = env.robots[0]
         agent_distance = {part: 0 for part in self.agent_pos}
 
         self.next_state_cache = {
@@ -159,9 +160,9 @@ class FetchRobotMetric(MetricBase):
         gripper_distance = np.abs(delta_pos)
         self.delta_agent_distance["gripper"].append(gripper_distance)
 
-        self.agent_local_pos["gripper"].append(list(robot.get_relative_eef_position()))
+        self.agent_local_pos["gripper"].append(robot.get_relative_eef_position().tolist())
 
-        contacts = p.getContactPoints(bodyA=robot.robot_ids[0], linkIndexA=robot.eef_link_id)
+        contacts = p.getContactPoints(bodyA=robot.get_body_id(), linkIndexA=robot.eef_link_id)
         if len(contacts) > 0:
             self.delta_agent_grasp_distance["gripper"].append(gripper_distance)
             self.agent_grasping["gripper"].append(True)

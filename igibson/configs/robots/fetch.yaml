@@ -1,0 +1,30 @@
+# Example Fetch config
+robot:
+  name: Fetch
+  action_type: continuous
+  action_normalize: true
+  proprio_obs:
+    - eef_pos
+    - eef_quat
+    - trunk_qpos
+    - arm_qpos_sin
+    - arm_qpos_cos
+    - gripper_qpos
+    - grasp
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  assisted_grasping_mode: null
+  rigid_trunk: false
+  default_trunk_offset: 0.365
+  default_arm_pose: vertical
+  controller_config:
+    base:
+      name: DifferentialDriveController
+    arm:
+      name: InverseKinematicsController
+    gripper:
+      name: ParallelJawGripperController
+    camera:
+      name: JointController
