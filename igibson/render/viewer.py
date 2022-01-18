@@ -826,7 +826,7 @@ class Viewer:
                         frame = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
                         cv2.imshow(cam_name, frame)
             else:
-                frames = self.renderer.render_robot_cameras(modes=("rgb"))
+                frames = self.renderer.render_robot_cameras(modes=("rgb"), cache=False)
                 if len(frames) > 0:
                     frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                     cv2.imshow("RobotView", frame)

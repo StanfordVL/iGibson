@@ -898,7 +898,8 @@ class MeshRenderer(object):
 
         render_shadow_pass = render_shadow_pass and "rgb" in modes
         need_flow_info = "optical_flow" in modes or "scene_flow" in modes
-        self.update_dynamic_positions(need_flow_info=need_flow_info)
+        if self.optimized:
+            self.update_dynamic_positions(need_flow_info=need_flow_info)
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
@@ -1210,9 +1211,13 @@ class MeshRenderer(object):
                             frames.append(item)
         return frames
 
-    def render_robot_cameras(self, modes=("rgb")):
+    def render_robot_cameras(self, modes=("rgb"), cache=True):
         """
         Render robot camera images.
+
+        :param modes: a tuple of modalities to render
+        :param cache: if cache is True, cache the robot pose for optical flow and scene flow calculation.
+        One simulation step can only have one rendering call with cache=True
 
         :return: a list of frames (number of modalities x number of robots)
         """
@@ -1224,7 +1229,7 @@ class MeshRenderer(object):
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 up_direction = mat.dot(np.array([0, 0, 1]))
-                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=True)
+                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=cache)
                 hidden_instances = []
                 if self.rendering_settings.hide_robot:
                     hidden_instances.append(instance)

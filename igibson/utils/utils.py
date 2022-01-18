@@ -231,11 +231,13 @@ def let_user_pick(options, print_intro=True, random_selection=False):
         print("{}) {}".format(idx + 1, element))
     if not random_selection:
         i = input("Enter number: ")
+        if i.isdigit():
+            i = int(i)
+        else:
+            raise (ValueError("Input not a valid number"))
     else:
         i = random.choice(range(len(options))) + 1
-    try:
-        if 0 < int(i) <= len(options):
-            return int(i)
-    except:
-        pass
-    return None
+    if 0 < i <= len(options):
+        return i
+    else:
+        raise (ValueError("Input not in the list"))
