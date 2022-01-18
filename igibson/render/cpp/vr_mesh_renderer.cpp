@@ -1,7 +1,10 @@
 #include "vr_mesh_renderer.h"
+
+#ifdef WIN32
 #include "SRanipal.h"
 #include "SRanipal_Eye.h"
 #include "SRanipal_Enums.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -159,7 +162,7 @@ py::list VRRendererContext::getDeviceCoordinateSystem(char* device) {
 // TIMELINE: Call after getDataForVRDevice, since this relies on knowing latest HMD transform
 py::list VRRendererContext::getEyeTrackingData() {
 	py::list eyeData;
-
+	#ifdef WIN32
 	// Transform data into Gibson coordinate system before returning to user
 	glm::vec3 gibOrigin(vrToGib * glm::vec4(eyeTrackingData.origin, 1.0));
 	glm::vec3 gibDir(vrToGib * glm::vec4(eyeTrackingData.dir, 1.0));
@@ -185,8 +188,27 @@ py::list VRRendererContext::getEyeTrackingData() {
 	eyeData.append(dir);
 	eyeData.append(eyeTrackingData.leftPupilDiameter);
 	eyeData.append(eyeTrackingData.rightPupilDiameter);
-
+	// Return dummy data with false validity if eye tracking is not enabled (on non-Windows system)
+	#else
+	py::list dummy_origin, dummy_dir;
+	float dummy_diameter_l, dummy_diameter_r;
+	eyeData.append(false);
+	eyeData.append(dummy_origin);
+	eyeData.append(dummy_dir);
+	eyeData.append(dummy_diameter_l);
+	eyeData.append(dummy_diameter_r);
+	#endif
 	return eyeData;
+}
+
+// Returns whether the current VR system supports eye tracking
+bool VRRendererContext::hasEyeTrackingSupport() {
+	#ifdef WIN32
+	return ViveSR::anipal::Eye::IsViveProEye();
+	// Non-windows OS always have eye tracking disabled
+	#else
+	return false;
+	#endif
 }
 
 // Gets the VR offset vector in form x, y, z
@@ -200,11 +222,6 @@ py::list VRRendererContext::getVROffset() {
 	offset.append(transformedOffsetVec.z);
 
 	return offset;
-}
-
-// Returns whether the current VR system supports eye tracking
-bool VRRendererContext::hasEyeTrackingSupport() {
-	return ViveSR::anipal::Eye::IsViveProEye();
 }
 
 // Initialize the VR system and compositor
@@ -238,12 +255,15 @@ void VRRendererContext::initVR(bool useEyeTracking) {
 	// No VR system offset by default
 	vrOffsetVec = glm::vec3(0, 0, 0);
 
+	// Only activate eye tracking on Windows
+        #ifdef WIN32
 	// Set eye tracking boolean
 	this->useEyeTracking = useEyeTracking;
 	if (useEyeTracking) {
 		shouldShutDownEyeTracking = false;
 		initAnipal();
 	}
+        #endif
 }
 
 // Polls for VR events, such as button presses
@@ -353,10 +373,12 @@ void VRRendererContext::releaseVR() {
 	vr::VR_Shutdown();
 	m_pHMD = NULL;
 
+        #ifdef WIN32
 	if (this->useEyeTracking) {
 		this->shouldShutDownEyeTracking = true;
 		eyeTrackingThread->join();
 	}
+        #endif
 }
 
 // Sets the offset of the VR headset
@@ -410,8 +432,8 @@ void VRRendererContext::updateVRData() {
 			hmdData.index = idx;
 			hmdData.isValidData = true;
 			hmdActualPos = getPositionFromSteamVRMatrix(transformMat);
-
-			setSteamVRMatrixPos(hmdActualPos + vrOffsetVec, transformMat);
+                        glm::vec3 steamVrMatrixPos = hmdActualPos + vrOffsetVec;
+			setSteamVRMatrixPos(steamVrMatrixPos, transformMat);
 
 			hmdData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 			hmdData.devicePos = getPositionFromSteamVRMatrix(transformMat);
@@ -447,7 +469,8 @@ void VRRendererContext::updateVRData() {
 				leftControllerData.isValidData = getControllerDataResult;
 
 				glm::vec3 leftControllerPos = getPositionFromSteamVRMatrix(transformMat);
-				setSteamVRMatrixPos(leftControllerPos + vrOffsetVec, transformMat);
+                                glm::vec3 steamVrMatrixPos = leftControllerPos + vrOffsetVec;
+				setSteamVRMatrixPos(steamVrMatrixPos, transformMat);
 
 				leftControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 				leftControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
@@ -463,7 +486,9 @@ void VRRendererContext::updateVRData() {
 				rightControllerData.isValidData = getControllerDataResult;
 
 				glm::vec3 rightControllerPos = getPositionFromSteamVRMatrix(transformMat);
-				setSteamVRMatrixPos(rightControllerPos + vrOffsetVec, transformMat);
+                                glm::vec3 steamVrMatrixPos = rightControllerPos + vrOffsetVec;
+
+				setSteamVRMatrixPos(steamVrMatrixPos, transformMat);
 
 				rightControllerData.deviceTransform = convertSteamVRMatrixToGlmMat4(transformMat);
 				rightControllerData.devicePos = getPositionFromSteamVRMatrix(transformMat);
@@ -481,7 +506,8 @@ void VRRendererContext::updateVRData() {
 
 			// Apply VR offset to tracker position
 			glm::vec3 trackerPos = getPositionFromSteamVRMatrix(transformMat);
-			setSteamVRMatrixPos(trackerPos + vrOffsetVec, transformMat);
+                        glm::vec3 steamVrMatrixPos = trackerPos + vrOffsetVec;
+			setSteamVRMatrixPos(steamVrMatrixPos, transformMat);
 
 			if (this->trackerNamesToData.find(serial) != this->trackerNamesToData.end()) {
 				this->trackerNamesToData[serial].index = idx;
@@ -641,6 +667,7 @@ glm::vec3 VRRendererContext::getVec3ColFromMat4(int col_index, glm::mat4& mat) {
 	return v;
 }
 
+#ifdef WIN32
 // Initializes the SRAnipal runtime, if the user selects this option
 void VRRendererContext::initAnipal() {
 	if (!ViveSR::anipal::Eye::IsViveProEye()) {
@@ -720,6 +747,7 @@ void VRRendererContext::pollAnipal() {
 		}
 	}
 }
+#endif
 
 // Print string version of mat4 for debugging purposes
 void VRRendererContext::printMat4(glm::mat4& m) {
@@ -873,8 +901,8 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("getDataForVRTracker", &VRRendererContext::getDataForVRTracker);
 	pymodule.def("getDeviceCoordinateSystem", &VRRendererContext::getDeviceCoordinateSystem);
 	pymodule.def("getEyeTrackingData", &VRRendererContext::getEyeTrackingData);
-	pymodule.def("getVROffset", &VRRendererContext::getVROffset);
 	pymodule.def("hasEyeTrackingSupport", &VRRendererContext::hasEyeTrackingSupport);
+	pymodule.def("getVROffset", &VRRendererContext::getVROffset);
 	pymodule.def("initVR", &VRRendererContext::initVR);
 	pymodule.def("pollVREvents", &VRRendererContext::pollVREvents);
 	pymodule.def("postRenderVRForEye", &VRRendererContext::postRenderVRForEye);

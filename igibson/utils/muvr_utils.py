@@ -11,7 +11,6 @@ from PodSixNet.Channel import Channel
 from PodSixNet.Connection import ConnectionListener, connection
 from PodSixNet.Server import Server
 
-from igibson.render.mesh_renderer.mesh_renderer_cpu import Instance, InstanceGroup
 from igibson.utils.vr_utils import VrData
 
 # An FPS cap is needed to ensure that the client and server don't fall too far out of sync
@@ -47,25 +46,19 @@ class IGVRClient(ConnectionListener):
         self.latest_frame_data = copy.deepcopy(self.frame_data)
         for instance in self.renderer.get_instances():
             data = self.latest_frame_data[instance.pybullet_uuid]
-            if isinstance(instance, Instance):
-                trans = np.array(data[0])
-                rot = np.array(data[1])
-                instance.pose_trans = trans
-                instance.pose_rot = rot
-            elif isinstance(instance, InstanceGroup):
-                poses_trans = []
-                poses_rot = []
-                data_trans = data[0]
-                data_rot = data[1]
-                num_links = len(data_trans)
-                for i in range(num_links):
-                    next_trans = np.array(data_trans[i])
-                    next_rot = np.array(data_rot[i])
-                    poses_trans.append(np.ascontiguousarray(next_trans))
-                    poses_rot.append(np.ascontiguousarray(next_rot))
+            poses_trans = []
+            poses_rot = []
+            data_trans = data[0]
+            data_rot = data[1]
+            num_links = len(data_trans)
+            for i in range(num_links):
+                next_trans = np.array(data_trans[i])
+                next_rot = np.array(data_rot[i])
+                poses_trans.append(np.ascontiguousarray(next_trans))
+                poses_rot.append(np.ascontiguousarray(next_rot))
 
-                instance.poses_trans = poses_trans
-                instance.poses_rot = poses_rot
+            instance.poses_trans = poses_trans
+            instance.poses_rot = poses_rot
 
     def client_step(self):
         self.s.viewer.update()
@@ -192,18 +185,13 @@ class IGVRServer(Server):
             # Loop through all instances and get pos and rot data
             # We convert numpy arrays into lists so they can be serialized and sent over the network
             # Lists can also be easily reconstructed back into numpy arrays on the client side
-            if isinstance(instance, Instance):
-                pose = instance.pose_trans.tolist()
-                rot = instance.pose_rot.tolist()
-                self.frame_data[instance.pybullet_uuid] = [pose, rot]
-            elif isinstance(instance, InstanceGroup):
-                poses = []
-                rots = []
-                for pose in instance.poses_trans:
-                    poses.append(pose.tolist())
-                for rot in instance.poses_rot:
-                    rots.append(rot.tolist())
-                self.frame_data[instance.pybullet_uuid] = [poses, rots]
+            poses = []
+            rots = []
+            for pose in instance.poses_trans:
+                poses.append(pose.tolist())
+            for rot in instance.poses_rot:
+                rots.append(rot.tolist())
+            self.frame_data[instance.pybullet_uuid] = [poses, rots]
 
     def send_frame_data(self):
         if self.client:

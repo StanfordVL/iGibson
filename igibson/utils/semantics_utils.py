@@ -18,3 +18,6 @@ def get_class_name_to_class_id(starting_class_id=SemanticClass.SCENE_OBJS + 1):
                 class_name_to_class_id[line.strip()] = starting_class_id
                 starting_class_id += 1
     return class_name_to_class_id
+
+
+CLASS_NAME_TO_CLASS_ID = get_class_name_to_class_id()

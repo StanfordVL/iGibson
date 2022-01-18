@@ -1,8 +1,8 @@
 import collections
 import os
+import random
 
 import numpy as np
-
 import pybullet as p
 import scipy
 import yaml
@@ -11,7 +11,10 @@ from PIL import Image
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
 
+# The function to retrieve the rotation matrix changed from as_dcm to as_matrix in version 1.4
+# We will use the version number for backcompatibility
 scipy_version = version.parse(scipy.version.version)
+
 
 # File I/O related
 
@@ -176,16 +179,16 @@ def normalizeListVec(v):
     return v
 
 
-# Quat(wxyz)
+# Quat(xyzw)
 def quat_pos_to_mat(pos, quat):
     """Convert position and quaternion to transformation matrix"""
-    r_w, r_x, r_y, r_z = quat
-    # print("quat", r_w, r_x, r_y, r_z)
     mat = np.eye(4)
-    mat[:3, :3] = quaternions.quat2mat([r_w, r_x, r_y, r_z])
+    mat[:3, :3] = R.from_quat(quat).as_matrix()
     mat[:3, -1] = pos
-    # Return: roll, pitch, yaw
     return mat
+
+
+# Texture related
 
 
 def transform_texture(input_filename, output_filename, mixture_weight=0, mixture_color=(0, 0, 0)):
@@ -202,8 +205,12 @@ def brighten_texture(input_filename, output_filename, brightness=1):
     Image.fromarray(img).save(output_filename)
 
 
+# Other
+
+
 def restoreState(*args, **kwargs):
     """Restore to a given pybullet state, with a mitigation for a known sleep state restore bug.
+
     When the pybullet state is restored, the object's wake zone (the volume around the object where
     if any other object enters, the object should be waken up) does not get reset correctly,
     causing weird bugs around asleep objects. This function mitigates the issue by forcing the
