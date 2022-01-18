@@ -33,37 +33,23 @@ def main(random_selection=False, headless=False, short_exec=False):
     #     "coffee_table",
     #     "breakfast_table",
     # ]  # Use None to load the full house
-    scene = InteractiveIndoorScene(
-        "Rs_int",
-        texture_randomization=False,
-        load_object_categories=load_object_categories,
-        object_randomization=True,
-    )
-    s.import_scene(scene)
-    loaded = True
 
     num_resets = 10 if not short_exec else 2
     num_steps_per_reset = 1000 if not short_exec else 10
-    total_steps = num_resets * num_steps_per_reset
-    for i in range(1, total_steps):
-        if i % num_steps_per_reset == 0:
-            logging.info("Reloading scene. New objects")
-            s.reload()
-            loaded = False
+    for i in range(num_resets):
+        logging.info("Randomize objects")
+        scene = InteractiveIndoorScene(
+            "Rs_int",
+            texture_randomization=False,
+            load_object_categories=load_object_categories,
+            object_randomization=True,
+            object_randomization_idx=i,
+        )
+        s.import_scene(scene)
+        for _ in range(num_steps_per_reset):
+            s.step()
+        s.reload()
 
-        if not loaded:
-            logging.info("Randomize object models")
-
-            scene = InteractiveIndoorScene(
-                "Rs_int",
-                texture_randomization=False,
-                load_object_categories=load_object_categories,
-                object_randomization=True,
-            )
-            s.import_scene(scene)
-            loaded = True
-
-        s.step()
     s.disconnect()
 
 
