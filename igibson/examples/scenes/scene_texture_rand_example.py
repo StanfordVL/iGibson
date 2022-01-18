@@ -31,13 +31,11 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     num_resets = 10 if not short_exec else 2
     num_steps_per_reset = 1000 if not short_exec else 10
-    total_steps = num_resets * num_steps_per_reset
-    for i in range(total_steps):
-        if i % num_steps_per_reset == 0:
-            logging.info("Randomize texture")
-            scene.randomize_texture()
-        logging.info("Step")
-        s.step()
+    for _ in range(num_resets):
+        logging.info("Randomize texture")
+        scene.randomize_texture()
+        for _ in range(num_steps_per_reset):
+            s.step()
     s.disconnect()
 
 

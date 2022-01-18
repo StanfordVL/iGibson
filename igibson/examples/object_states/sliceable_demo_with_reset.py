@@ -74,10 +74,10 @@ def main(random_selection=False, headless=False, short_exec=False):
     # Finally, load the multiplexed object
     s.import_object(multiplexed_obj)
     whole_obj.set_position([100, 100, -100])
-    for (part_obj, (part_pos, part_orn)) in object_parts:
-        part_obj.set_position_orientation(part_pos, part_orn)
-    multiplexed_obj.set_position([0, 0, 0.72])
+    for i, (part_obj, _) in enumerate(object_parts):
+        part_obj.set_position([101 + i, 100, -100])
 
+    multiplexed_obj.set_position([0, 0, 0.72])
     # Let the apple get stable
     for _ in range(100):
         s.step()
@@ -118,6 +118,8 @@ def main(random_selection=False, headless=False, short_exec=False):
             multiplexed_obj.load_state(initial_state_multiplexed_obj)
 
             iteration += 1
+
+            s.sync(force_sync=True)
 
     finally:
         p.removeState(initial_state_pb)
