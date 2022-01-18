@@ -332,7 +332,7 @@ class AttachedParticleSystem(ParticleSystem):
             else:
                 activation_state = PyBulletSleepState.AWAKE
 
-            if activation_state != PyBulletSleepState.AWAKE:
+            if activation_state not in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
                 # If parent object is in sleep, don't update particle poses
                 continue
 

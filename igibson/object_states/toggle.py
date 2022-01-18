@@ -90,7 +90,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
         else:
             activation_state = PyBulletSleepState.AWAKE
 
-        if activation_state == PyBulletSleepState.AWAKE:
+        if activation_state in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
             show_marker.set_position(button_position_on_object)
             hidden_marker.set_position(button_position_on_object)
 

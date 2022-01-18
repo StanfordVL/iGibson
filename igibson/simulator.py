@@ -543,7 +543,7 @@ class Simulator:
             else:
                 activation_state = PyBulletSleepState.AWAKE
 
-            if activation_state != PyBulletSleepState.AWAKE:
+            if activation_state not in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
                 continue
 
             if link_id == PYBULLET_BASE_LINK_INDEX:

@@ -45,6 +45,7 @@ class OccupancyGridState(object):
 # PyBullet-related
 class PyBulletSleepState(IntEnum):
     AWAKE = 1
+    ISLAND_AWAKE = 3
 
 
 PYBULLET_BASE_LINK_INDEX = -1
