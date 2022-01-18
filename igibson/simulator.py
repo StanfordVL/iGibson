@@ -261,7 +261,6 @@ class Simulator:
     def import_robot(self, robot):
         """
         Import a robot into the simulator.
-
         :param robot: a robot object to load
         """
         # TODO: Remove this function in favor of unifying with import_object.

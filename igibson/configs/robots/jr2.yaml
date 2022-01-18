@@ -4,20 +4,20 @@ robot:
   action_type: continuous
   action_normalize: true
   proprio_obs:
-    - eef_pos
-    - eef_quat
-    - arm_qpos_sin
-    - arm_qpos_cos
+    - eef_0_pos
+    - eef_0_quat
+    - arm_0_qpos_sin
+    - arm_0_qpos_cos
   reset_joint_pos: null
   base_name: null
   scale: 1.0
   self_collision: true
   rendering_params: null
-  assisted_grasping_mode: null
+  grasping_mode: physical
   controller_config:
     base:
       name: DifferentialDriveController
-    arm:
+    arm_0:
       name: InverseKinematicsController
-    gripper:
+    gripper_0:
       name: NullGripperController

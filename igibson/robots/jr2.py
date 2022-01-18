@@ -35,7 +35,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         self_collision=True,
         class_id=SemanticClass.ROBOTS,
         rendering_params=None,
-        assisted_grasping_mode=None,
+        grasping_mode="physical",
     ):
         """
         :param name: None or str, name of the robot object
@@ -61,9 +61,10 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
         :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
             See DEFAULT_RENDERING_PARAMS for the values passed by default.
-        :param assisted_grasping_mode: None or str, One of {None, "soft", "strict"}. If None, no assisted grasping
-            will be used. If "soft", will magnetize any object touching the gripper's fingers. If "strict" will require
-            the object to be within the gripper bounding box before assisting.
+        :param grasping_mode: None or str, One of {"physical", "assisted", "sticky"}.
+            If "physical", no assistive grasping will be applied (relies on contact friction + finger force).
+            If "assisted", will magnetize any object touching and within the gripper's fingers.
+            If "sticky", will magnetize any object touching the gripper's fingers.
         """
         # Parse reset joint pos if specifying special string
         if isinstance(reset_joint_pos, str):
@@ -88,7 +89,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
             self_collision=self_collision,
             class_id=class_id,
             rendering_params=rendering_params,
-            assisted_grasping_mode=assisted_grasping_mode,
+            grasping_mode=grasping_mode,
         )
 
     @property
@@ -104,13 +105,11 @@ class JR2(ManipulationRobot, TwoWheelRobot):
 
     def _validate_configuration(self):
         # Make sure we're not using assisted grasping
-        assert (
-            self.assisted_grasping_mode is None
-        ), "Cannot use assisted grasping modes for JR2 since gripper is disabled!"
+        assert self.grasping_mode == "physical", "Cannot use assisted grasping modes for JR2 since gripper is disabled!"
 
         # Make sure we're using a null controller for the gripper
         assert (
-            self.controller_config["gripper"]["name"] == "NullGripperController"
+            self.controller_config["gripper_{}".format(self.default_arm)]["name"] == "NullGripperController"
         ), "JR2 robot has its gripper disabled, so cannot use any controller other than NullGripperController!"
 
         # run super
@@ -137,7 +136,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     @property
     def controller_order(self):
         # Ordered by general robot kinematics chain
-        return ["base", "arm", "gripper"]
+        return ["base", "arm_{}".format(self.default_arm), "gripper_{}".format(self.default_arm)]
 
     @property
     def _default_controllers(self):
@@ -146,8 +145,8 @@ class JR2(ManipulationRobot, TwoWheelRobot):
 
         # We use differential drive with joint controller for arm, since arm only has 5DOF
         controllers["base"] = "DifferentialDriveController"
-        controllers["arm"] = "JointController"
-        controllers["gripper"] = "NullGripperController"
+        controllers["arm_{}".format(self.default_arm)] = "JointController"
+        controllers["gripper_{}".format(self.default_arm)] = "NullGripperController"
 
         return controllers
 
@@ -182,16 +181,18 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     @property
     def arm_control_idx(self):
         """
-        :return Array[int]: Indices in low-level control vector corresponding to arm joints.
+        :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
+            vector corresponding to arm joints.
         """
-        return np.array([2, 3, 4, 5, 6])
+        return {self.default_arm: np.array([2, 3, 4, 5, 6])}
 
     @property
     def gripper_control_idx(self):
         """
-        :return Array[int]: Indices in low-level control vector corresponding to gripper joints.
+        :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
+            vector corresponding to gripper joints.
         """
-        return np.array([], dtype=np.int)
+        return {self.default_arm: np.array([], dtype=np.int)}
 
     @property
     def disabled_collision_pairs(self):
@@ -205,16 +206,16 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         ]
 
     @property
-    def eef_link_name(self):
-        return "m1n6s200_end_effector"
+    def eef_link_names(self):
+        return {self.default_arm: "m1n6s200_end_effector"}
 
     @property
     def finger_link_names(self):
-        return []
+        return {self.default_arm: []}
 
     @property
     def finger_joint_names(self):
-        return []
+        return {self.default_arm: []}
 
     @property
     def model_file(self):
