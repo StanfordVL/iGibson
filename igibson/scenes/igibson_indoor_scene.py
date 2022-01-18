@@ -75,7 +75,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         seg_map_resolution=0.1,
         scene_source="IG",
         merge_fixed_links=True,
-        ignore_visual_shape=False,
         rendering_params=None,
         include_robots=True,
     ):
@@ -102,7 +101,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param seg_map_resolution: room segmentation map resolution
         :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT
         :param merge_fixed_links: whether to merge fixed links in pybullet
-        :param ignore_visual_shape: whether to ignore visual shapes (skip loading) in pybullet
         :param rendering_params: additional rendering params to be passed into object initializers (e.g. texture scale)
         :param include_robots: whether to also include the robot(s) defined in the scene
         """
@@ -119,7 +117,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
-        self.ignore_visual_shape = ignore_visual_shape
         if scene_source not in SCENE_SOURCE:
             raise ValueError("Unsupported scene source: {}".format(scene_source))
         if scene_source == "IG":
@@ -314,7 +311,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     scene_instance_folder=self.scene_instance_folder,
                     bddl_object_scope=bddl_object_scope,
                     merge_fixed_links=self.merge_fixed_links,
-                    ignore_visual_shape=ignore_visual_shape,
                     rendering_params=rendering_params,
                 )
 
@@ -371,11 +367,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         self.add_object(obj, simulator=None)
             else:
                 self.add_object(obj, simulator=None)
-
-    def set_ignore_visual_shape(self, value):
-        self.ignore_visual_shape = value
-        for obj in self.get_objects():
-            obj.set_ignore_visual_shape(value)
 
     def get_objects(self):
         return list(self.objects_by_name.values())

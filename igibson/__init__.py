@@ -76,4 +76,8 @@ example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 
 logging.info("Example path: {}".format(example_path))
 logging.info("Example config path: {}".format(example_config_path))
 
+# whether to enable debugging mode for object sampling
 debug_sampling = False
+
+# whether to ignore visual shape when importing to pybullet
+ignore_visual_shape = True
