@@ -33,7 +33,7 @@ def main():
     It steps the environment 100 times with random actions sampled from the action space,
     using the Gym interface, resetting it 10 times.
     """
-    examples_list = ["help", "all"]
+    examples_list = ["help", "all", "quit"]
     for kk in pkgutil.walk_packages(examples.__path__, examples.__name__ + "."):
         if not kk.ispkg and kk.name[17:] != "example_selector":
             examples_list += [kk.name[17:]]
@@ -51,7 +51,11 @@ def main():
         print("Select a demo/example, 'help' for information about a specific demo, or 'all' to run all demos:")
         selected_demo = let_user_pick(examples_list, print_intro=False) - 1
         if selected_demo == 0:
-            help_demo = int(input("\nProvide the number of the example you need information for: ")) - 1
+            user_input = input("\nProvide the number of the example you need information for: ")
+            if not user_input.isdigit():
+                continue
+            else:
+                help_demo = int(user_input) - 1
             if help_demo == 0:
                 print("Print the description of a demo/example")
             elif help_demo == 1:
@@ -62,7 +66,7 @@ def main():
             input("Press enter")
         elif selected_demo == 1:
             print("Executing all demos")
-            for idx in range(2, len(examples_list)):
+            for idx in range(3, len(examples_list)):
                 print("*" * 80)
                 print("*" * 80)
                 print(logo)
@@ -84,6 +88,9 @@ def main():
                 p.start()
                 p.join()
                 print("Ended " + examples_list[idx])
+        elif selected_demo == 2:
+            print("Exit")
+            return
         else:
             print("Executing " + examples_list[selected_demo])
             i = importlib.import_module("igibson.examples." + examples_list[selected_demo])
