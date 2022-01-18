@@ -130,7 +130,7 @@ def main():
                     size = np.array(meta["links"][LINK_NAME]["size"])
                     rotation = np.array(meta["links"][LINK_NAME]["rpy"])
 
-            s = Simulator(mode="gui_interactive", use_pb_gui=True)
+            s = Simulator(mode="gui")
             scene = EmptyScene()
             s.import_scene(scene)
             obj = get_obj(objdirfull)

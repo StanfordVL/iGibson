@@ -23,7 +23,7 @@ from igibson.external.pybullet_tools.utils import (
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.utils import l2_distance, quatToXYZW, restoreState, rotate_vector_2d
+from igibson.utils.utils import l2_distance, quatToXYZW, rotate_vector_2d
 
 
 class MotionPlanningWrapper(object):
@@ -38,7 +38,7 @@ class MotionPlanningWrapper(object):
         self.env = env
         assert "occupancy_grid" in self.env.output
         # get planning related parameters from env
-        self.robot_id = self.env.robots[0].get_body_id()
+        self.robot_id = self.env.robots[0].robot_ids[0]
         # self.mesh_id = self.scene.mesh_body_id
         # mesh id should not be used
         self.map_size = self.env.scene.trav_map_original_size * self.env.scene.trav_map_default_resolution
@@ -68,7 +68,7 @@ class MotionPlanningWrapper(object):
         self.marker = None
         self.marker_direction = None
 
-        if self.mode in ["gui_non_interactive", "gui_interactive"]:
+        if self.mode in ["gui", "iggui"]:
             self.marker = VisualMarker(radius=0.04, rgba_color=[0, 0, 1, 1])
             self.marker_direction = VisualMarker(
                 visual_shape=p.GEOM_CAPSULE,
@@ -77,8 +77,8 @@ class MotionPlanningWrapper(object):
                 initial_offset=[0, 0, -0.1],
                 rgba_color=[0, 0, 1, 1],
             )
-            self.env.simulator.import_object(self.marker)
-            self.env.simulator.import_object(self.marker_direction)
+            self.env.simulator.import_object(self.marker, use_pbr=False)
+            self.env.simulator.import_object(self.marker_direction, use_pbr=False)
 
     def set_marker_position(self, pos):
         """
@@ -232,7 +232,7 @@ class MotionPlanningWrapper(object):
         :param path: base waypoints or None if no plan can be found
         """
         if path is not None:
-            if self.mode in ["gui_non_interactive", "gui_interactive"]:
+            if self.mode in ["gui", "iggui", "pbgui"]:
                 for way_point in path:
                     set_base_values_with_z(
                         self.robot_id, [way_point[0], way_point[1], way_point[2]], z=self.initial_height
@@ -351,12 +351,12 @@ class MotionPlanningWrapper(object):
 
             # self.episode_metrics['arm_ik_time'] += time() - ik_start
             # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-            restoreState(state_id)
+            p.restoreState(state_id)
             p.removeState(state_id)
             return arm_joint_positions
 
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        restoreState(state_id)
+        p.restoreState(state_id)
         p.removeState(state_id)
         # self.episode_metrics['arm_ik_time'] += time() - ik_start
         return None
@@ -474,7 +474,7 @@ class MotionPlanningWrapper(object):
             allow_collision_links=allow_collision_links,
         )
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
-        restoreState(state_id)
+        p.restoreState(state_id)
         p.removeState(state_id)
         return arm_path
 
@@ -486,7 +486,7 @@ class MotionPlanningWrapper(object):
         """
         base_pose = get_base_values(self.robot_id)
         if arm_path is not None:
-            if self.mode in ["gui_non_interactive", "gui_interactive"]:
+            if self.mode in ["gui", "iggui", "pbgui"]:
                 for joint_way_point in arm_path:
                     set_joint_positions(self.robot_id, self.arm_joint_ids, joint_way_point)
                     set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
@@ -568,7 +568,7 @@ class MotionPlanningWrapper(object):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode == "gui_interactive":
+            if self.mode in ["pbgui", "iggui", "gui"]:
                 sleep(0.02)  # for visualization
 
     def execute_arm_push(self, plan, hit_pos, hit_normal):

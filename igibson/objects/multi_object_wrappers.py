@@ -2,12 +2,12 @@ import itertools
 
 import pybullet as p
 
-from igibson.object_states.factory import get_state_name
 from igibson.object_states.object_state_base import AbsoluteObjectState, BooleanState
-from igibson.objects.object_base import BaseObject, NonRobotObject
+from igibson.objects.object_base import Object
+from igibson.objects.stateful_object import StatefulObject
 
 
-class ObjectGrouper(NonRobotObject):
+class ObjectGrouper(StatefulObject):
     """A multi-object wrapper that groups multiple objects and applies operations to all of them in parallel."""
 
     class ProceduralMaterialAggregator(object):
@@ -83,9 +83,11 @@ class ObjectGrouper(NonRobotObject):
                 obj.states[self.state_type].set_value(other, new_value)
 
     def __init__(self, objects_with_pose_offsets):
+        super(StatefulObject, self).__init__()
+
         objects = [obj for obj, _ in objects_with_pose_offsets]
         pose_offsets = [trans for _, trans in objects_with_pose_offsets]
-        assert objects and all(isinstance(obj, BaseObject) for obj in objects)
+        assert objects and all(isinstance(obj, Object) for obj in objects)
         self.objects = objects
 
         # Pose offsets are the transformation of the object parts to the whole
@@ -138,14 +140,11 @@ class ObjectGrouper(NonRobotObject):
 
         return attrs[0]
 
-    def _load(self, simulator):
+    def _load(self):
         body_ids = []
         for obj in self.objects:
-            body_ids += obj.load(simulator)
+            body_ids += obj._load()
         return body_ids
-
-    def get_body_id(self):
-        raise ValueError("Cannot get_body_id on ObjectGrouper")
 
     def get_position(self):
         raise ValueError("Cannot get_position on ObjectGrouper")
@@ -170,24 +169,17 @@ class ObjectGrouper(NonRobotObject):
             new_pos, new_orn = p.multiplyTransforms(pos, orn, part_pos, part_orn)
             obj.set_base_link_position_orientation(new_pos, new_orn)
 
-    def dump_state(self):
-        return {
-            get_state_name(state_type): state_instance.dump()
-            for state_type, state_instance in self.states.items()
-            if issubclass(state_type, AbsoluteObjectState)
-        }
-
-    def load_state(self, dump):
-        for state_type, state_instance in self.states.items():
-            if issubclass(state_type, AbsoluteObjectState):
-                state_instance.load(dump[get_state_name(state_type)])
+    def rotate_by(self, x=0, y=0, z=0):
+        raise ValueError("Cannot rotate_by on ObjectGrouper")
 
 
-class ObjectMultiplexer(NonRobotObject):
+class ObjectMultiplexer(StatefulObject):
     """A multi-object wrapper that acts as a proxy for the selected one between the set of objects it contains."""
 
     def __init__(self, name, multiplexed_objects, current_index):
-        assert multiplexed_objects and all(isinstance(obj, BaseObject) for obj in multiplexed_objects)
+        super(StatefulObject, self).__init__()
+
+        assert multiplexed_objects and all(isinstance(obj, Object) for obj in multiplexed_objects)
         assert 0 <= current_index < len(multiplexed_objects)
 
         for obj in multiplexed_objects:
@@ -196,6 +188,9 @@ class ObjectMultiplexer(NonRobotObject):
         self._multiplexed_objects = multiplexed_objects
         self.current_index = current_index
         self.name = name
+
+        # This will help route obj.states to one of the multiplexed_objects
+        del self.states
 
     def set_selection(self, idx):
         assert 0 <= idx < len(self._multiplexed_objects)
@@ -213,14 +208,11 @@ class ObjectMultiplexer(NonRobotObject):
 
         return getattr(self.current_selection(), item)
 
-    def _load(self, simulator):
+    def _load(self):
         body_ids = []
         for obj in self._multiplexed_objects:
-            body_ids += obj.load(simulator)
+            body_ids += obj._load()
         return body_ids
-
-    def get_body_id(self):
-        return self.current_selection().get_body_id()
 
     def get_position(self):
         return self.current_selection().get_position()
@@ -242,6 +234,9 @@ class ObjectMultiplexer(NonRobotObject):
 
     def set_base_link_position_orientation(self, pos, orn):
         return self.current_selection().set_base_link_position_orientation(pos, orn)
+
+    def rotate_by(self, x=0, y=0, z=0):
+        return self.current_selection().rotate_by(x, y, z)
 
     def dump_state(self):
         return {

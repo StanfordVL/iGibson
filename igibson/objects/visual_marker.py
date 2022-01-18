@@ -1,18 +1,12 @@
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
+from igibson.objects.object_base import Object
 
 
-class VisualMarker(SingleBodyObject):
+class VisualMarker(Object):
     """
     Visual shape created with shape primitives
     """
-
-    DEFAULT_RENDERING_PARAMS = {
-        "use_pbr": False,
-        "use_pbr_mapping": False,
-        "shadow_caster": False,
-    }
 
     def __init__(
         self,
@@ -24,7 +18,6 @@ class VisualMarker(SingleBodyObject):
         initial_offset=[0, 0, 0],
         filename=None,
         scale=[1.0] * 3,
-        **kwargs
     ):
         """
         create a visual shape to show in pybullet and MeshRenderer
@@ -38,7 +31,7 @@ class VisualMarker(SingleBodyObject):
         :param filename: mesh file name for p.GEOM_MESH
         :param scale: scale for p.GEOM_MESH
         """
-        super(VisualMarker, self).__init__(**kwargs)
+        super(VisualMarker, self).__init__()
         self.visual_shape = visual_shape
         self.rgba_color = rgba_color
         self.radius = radius
@@ -48,7 +41,7 @@ class VisualMarker(SingleBodyObject):
         self.filename = filename
         self.scale = scale
 
-    def _load(self, simulator):
+    def _load(self):
         """
         Load the object into pybullet
         """
@@ -80,9 +73,7 @@ class VisualMarker(SingleBodyObject):
             baseVisualShapeIndex=shape, baseCollisionShapeIndex=-1, flags=p.URDF_ENABLE_SLEEPING
         )
 
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
-
-        return [body_id]
+        return body_id
 
     def set_color(self, color):
         """
@@ -90,18 +81,18 @@ class VisualMarker(SingleBodyObject):
 
         :param color: normalized rgba color
         """
-        p.changeVisualShape(self.get_body_id(), -1, rgbaColor=color)
+        p.changeVisualShape(self.body_id, -1, rgbaColor=color)
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.get_body_id()
+            body_id = self.body_id
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
 
     def force_wakeup(self):
         activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
+        p.changeDynamics(self.body_id, -1, activationState=activationState)
 
     def set_position(self, pos):
         self.force_wakeup()

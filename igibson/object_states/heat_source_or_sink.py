@@ -13,7 +13,6 @@ from igibson.object_states.toggle import ToggledOn
 
 # The name of the heat source link inside URDF files.
 from igibson.objects.visual_marker import VisualMarker
-from igibson.utils.constants import SemanticClass
 
 _HEATING_ELEMENT_LINK_NAME = "heat_source"
 
@@ -125,13 +124,9 @@ class HeatSourceOrSink(AbsoluteObjectState, LinkBasedStateMixin):
         super(HeatSourceOrSink, self)._initialize()
         self.initialize_link_mixin()
         self.marker = VisualMarker(
-            visual_shape=p.GEOM_MESH,
-            filename=_HEATING_ELEMENT_MARKER_FILENAME,
-            scale=_HEATING_ELEMENT_MARKER_SCALE,
-            class_id=SemanticClass.SCENE_OBJS,
-            rendering_params={"shadow_caster": True},
+            visual_shape=p.GEOM_MESH, filename=_HEATING_ELEMENT_MARKER_FILENAME, scale=_HEATING_ELEMENT_MARKER_SCALE
         )
-        self.simulator.import_object(self.marker)
+        self.simulator.import_object(self.marker, use_pbr=False, use_pbr_mapping=False)
         self.marker.set_position([0, 0, -100])
 
     def _update(self):

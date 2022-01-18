@@ -2,7 +2,6 @@ import os
 import time
 
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
-from igibson.utils.constants import AVAILABLE_MODALITIES
 from igibson.utils.utils import dump_config, parse_config, parse_str_config
 
 
@@ -262,10 +261,7 @@ class MeshRendererVR(MeshRenderer):
         self.width = 1296
         self.height = 1440
         super().__init__(
-            width=self.width,
-            height=self.height,
-            rendering_settings=self.vr_rendering_settings,
-            simulator=simulator,
+            width=self.width, height=self.height, rendering_settings=self.vr_rendering_settings, simulator=simulator
         )
 
         # Rename self.r to self.vrsys
@@ -278,6 +274,7 @@ class MeshRendererVR(MeshRenderer):
 
         # Always turn MSAA off for VR
         self.msaa = False
+        # The VrTextOverlay that serves as the VR HUD (heads-up-display)
         self.vr_hud = None
 
     def gen_vr_hud(self):
@@ -304,9 +301,7 @@ class MeshRendererVR(MeshRenderer):
         """
         self.vrsys.updateVRData()
 
-    def render(
-        self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True, render_text_pass=True
-    ):
+    def render(self, return_frame=False):
         """
         Renders VR scenes.
         """
@@ -323,7 +318,7 @@ class MeshRendererVR(MeshRenderer):
                 [right_cam_pos[0], right_cam_pos[1], 10], [right_cam_pos[0], right_cam_pos[1], 0]
             )
 
-            super().render(modes=("rgb"), return_buffer=False)
+            super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=True)
             self.vrsys.postRenderVRForEye("left", self.color_tex_rgb)
             # Render and submit right eye
             self.V = right_view
@@ -336,10 +331,13 @@ class MeshRendererVR(MeshRenderer):
             self.vrsys.postRenderVRForEye("right", self.color_tex_rgb)
 
             # Update HUD so it renders in the HMD
-            if self.vr_hud is not None:
+            if self.vr_hud:
                 self.vr_hud.refresh_text()
         else:
-            return super().render(modes=("rgb"), return_buffer=return_buffer)
+            if return_frame:
+                return super().render(modes=("rgb"), return_buffer=return_frame, render_shadow_pass=True)
+            else:
+                super().render(modes=("rgb"), return_buffer=False, render_shadow_pass=True)
 
     def vr_compositor_update(self):
         """

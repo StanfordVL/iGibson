@@ -7,7 +7,6 @@ import pybullet_data
 
 from igibson.scenes.indoor_scene import IndoorScene
 from igibson.utils.assets_utils import get_scene_path, get_texture_file
-from igibson.utils.constants import SemanticClass
 
 
 class StaticIndoorScene(IndoorScene):
@@ -25,8 +24,7 @@ class StaticIndoorScene(IndoorScene):
         build_graph=True,
         num_waypoints=10,
         waypoint_resolution=0.2,
-        pybullet_load_texture=True,
-        render_floor_plane=False,
+        pybullet_load_texture=False,
     ):
         """
         Load a building scene and compute traversability
@@ -39,7 +37,6 @@ class StaticIndoorScene(IndoorScene):
         :param num_waypoints: number of way points returned
         :param waypoint_resolution: resolution of adjacent way points
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
-        :param render_floor_plane: whether to render the additionally added floor planes
         """
         super(StaticIndoorScene, self).__init__(
             scene_id,
@@ -49,11 +46,9 @@ class StaticIndoorScene(IndoorScene):
             build_graph,
             num_waypoints,
             waypoint_resolution,
+            pybullet_load_texture,
         )
         logging.info("StaticIndoorScene scene: {}".format(scene_id))
-        self.pybullet_load_texture = pybullet_load_texture
-        self.render_floor_plane = render_floor_plane
-
         self.objects = []
 
     def load_floor_metadata(self):
@@ -67,7 +62,7 @@ class StaticIndoorScene(IndoorScene):
             self.floor_heights = sorted(list(map(float, f.readlines())))
             logging.debug("Floors {}".format(self.floor_heights))
 
-    def load_scene_mesh(self, simulator):
+    def load_scene_mesh(self):
         """
         Load scene mesh
         """
@@ -76,7 +71,7 @@ class StaticIndoorScene(IndoorScene):
             filename = os.path.join(get_scene_path(self.scene_id), "mesh_z_up.obj")
 
         collision_id = p.createCollisionShape(p.GEOM_MESH, fileName=filename, flags=p.GEOM_FORCE_CONCAVE_TRIMESH)
-        if simulator.use_pb_gui and self.pybullet_load_texture:
+        if self.pybullet_load_texture:
             visual_id = p.createVisualShape(p.GEOM_MESH, fileName=filename)
         else:
             visual_id = -1
@@ -84,7 +79,7 @@ class StaticIndoorScene(IndoorScene):
         self.mesh_body_id = p.createMultiBody(baseCollisionShapeIndex=collision_id, baseVisualShapeIndex=visual_id)
         p.changeDynamics(self.mesh_body_id, -1, lateralFriction=1)
 
-        if simulator.use_pb_gui and self.pybullet_load_texture:
+        if self.pybullet_load_texture:
             texture_filename = get_texture_file(filename)
             if texture_filename is not None:
                 texture_id = p.loadTexture(texture_filename)
@@ -101,26 +96,17 @@ class StaticIndoorScene(IndoorScene):
         p.setCollisionFilterPair(self.mesh_body_id, floor_body_id, -1, -1, enableCollision=0)
         self.floor_body_ids.append(floor_body_id)
 
-    def _load(self, simulator):
+    def _load(self):
         """
         Load the scene (including scene mesh and floor plane) into pybullet
         """
         self.load_floor_metadata()
-        self.load_scene_mesh(simulator)
+        self.load_scene_mesh()
         self.load_floor_planes()
 
         self.load_trav_map(get_scene_path(self.scene_id))
 
-        simulator.load_object_in_renderer(
-            None, self.mesh_body_id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False
-        )
-        if self.render_floor_plane:
-            for body_id in self.floor_body_ids:
-                simulator.load_object_in_renderer(
-                    None, body_id, SemanticClass.SCENE_OBJS, use_pbr=False, use_pbr_mapping=False
-                )
-
-        additional_object_body_ids = [x for obj in self.objects for x in obj.load(simulator)]
+        additional_object_body_ids = [x for obj in self.objects for x in obj.load()]
         return [self.mesh_body_id] + self.floor_body_ids + additional_object_body_ids
 
     def get_objects(self):

@@ -2,7 +2,9 @@
 #define GLFW_MESH_RENDERER_HEADER
 
 #include "mesh_renderer.h"
+#ifdef WIN32
 #include <GLFW/glfw3.h>
+#endif
 
 
 class GLFWRendererContext: public MeshRendererContext {

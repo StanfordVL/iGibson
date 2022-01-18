@@ -22,7 +22,6 @@ _ALL_STATES = frozenset(
         InsideRoomTypes,
         MaxTemperature,
         NextTo,
-        ObjectsInFOVOfRobot,
         OnFloor,
         OnTop,
         Open,
@@ -50,7 +49,7 @@ _ABILITY_TO_STATE_MAPPING = {
     "freezable": [Frozen],
     "heatSource": [HeatSourceOrSink],
     "openable": [Open],
-    "robot": ROOM_STATES + [ObjectsInFOVOfRobot],
+    "robot": ROOM_STATES,
     "sliceable": [Sliced],
     "slicer": [Slicer],
     "soakable": [Soaked],
@@ -128,7 +127,7 @@ def get_object_state_instance(state_class, obj, params=None):
     return state_class(obj, **params)
 
 
-def prepare_object_states(obj, abilities=None):
+def prepare_object_states(obj, abilities=None, online=True):
     """
     Prepare the state dictionary for an object by generating the appropriate
     object state instances.
@@ -139,6 +138,9 @@ def prepare_object_states(obj, abilities=None):
     :param obj: The object to generate states for.
     :param abilities: dict in the form of {ability: {param: value}} containing
         object abilities and parameters.
+    :param online: Whether or not the states should be generated for an online
+        object. Offline mode involves using dummy objects rather than real state
+        objects.
     """
     if abilities is None:
         abilities = {}

@@ -89,7 +89,7 @@ public:
     cudaGraphicsResource* cuda_res[MAX_NUM_RESOURCES];
 #endif
 
-    void init() {};
+    int init() {};
 
     void release() {};
 

@@ -39,6 +39,7 @@ def load_checkpoint(simulator, root_directory, frame):
     json_path = os.path.join(root_directory, "%d.json" % frame)
 
     # Restore the simulation state.
+    # p.restoreState(fileName=bullet_path)
     restoreState(fileName=bullet_path)
 
     with open(json_path, "r") as f:
