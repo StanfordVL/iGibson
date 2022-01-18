@@ -43,10 +43,12 @@ def main(random_selection=False, headless=False, short_exec=False):
         robots[robot_name] = (robot, position[1])
         logging.info("Loaded " + robot_name)
         logging.info("Moving " + robot_name)
-        # Set viewer in front
-        s.viewer.initial_pos = [1.6, 0, 1.3]
-        s.viewer.initial_view_direction = [-0.7, 0, -0.7]
-        s.viewer.reset_viewer()
+
+        if not headless:
+            # Set viewer in front
+            s.viewer.initial_pos = [1.6, 0, 1.3]
+            s.viewer.initial_view_direction = [-0.7, 0, -0.7]
+            s.viewer.reset_viewer()
 
         for _ in range(100):  # keep still for 10 seconds
             s.step()

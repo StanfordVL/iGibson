@@ -11,7 +11,7 @@ import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of rendering and visualizing a single 3D dense pointcloud
     Loads Rs (non interactive) and a robot and renders a dense panorama depth map from the robot's camera
@@ -60,10 +60,11 @@ def main():
     assert len(pts) == len(label)
 
     # Create visualization: 3D points with RGB color
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.scatter(pts[:, 0], pts[:, 2], pts[:, 1], s=3, c=color[:, :3])
-    plt.show()
+    if not headless:
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.scatter(pts[:, 0], pts[:, 2], pts[:, 1], s=3, c=color[:, :3])
+        plt.show()
 
 
 if __name__ == "__main__":

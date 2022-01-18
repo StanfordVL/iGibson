@@ -7,6 +7,7 @@ import yaml
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.external.pybullet_tools.utils import quat_from_euler
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
@@ -19,7 +20,7 @@ from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_categor
 from igibson.utils.utils import let_user_pick, parse_config
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     This demo shows how to load scaled objects from the iG object model dataset and
     additional objects from the YCB dataset in predefined locations
@@ -30,12 +31,17 @@ def main():
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     scene_options = ["Empty scene", "Interactive scene (iG)", "Static scene (Gibson)"]
-    type_of_scene = let_user_pick(scene_options) - 1
+    type_of_scene = let_user_pick(scene_options, random_selection=random_selection) - 1
 
     if type_of_scene == 0:  # Empty
         config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
         settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
-        s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
+        s = Simulator(
+            mode="gui_interactive" if not headless else "headless",
+            image_width=512,
+            image_height=512,
+            rendering_settings=settings,
+        )
         scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
         # scene.load_object_categories(benchmark_names)
         s.import_scene(scene)
@@ -53,7 +59,7 @@ def main():
         # Reduce texture scale for Mac.
         if platform == "darwin":
             config_data["texture_scale"] = 0.5
-        env = iGibsonEnv(config_file=config_data, mode="gui_interactive")
+        env = iGibsonEnv(config_file=config_data, mode="gui_interactive" if not headless else "headless")
         s = env.simulator
 
     elif type_of_scene == 2:  # Gibson
@@ -62,7 +68,12 @@ def main():
         # Reduce texture scale for Mac.
         if platform == "darwin":
             settings.texture_scale = 0.5
-        s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
+        s = Simulator(
+            mode="gui_interactive" if not headless else "headless",
+            image_width=512,
+            image_height=512,
+            rendering_settings=settings,
+        )
 
         scene = StaticIndoorScene("Rs", build_graph=True, pybullet_load_texture=False)
         s.import_scene(scene)
@@ -71,10 +82,11 @@ def main():
         turtlebot = Turtlebot(**robot_config)
         s.import_robot(turtlebot)
 
-    # Set a better viewing direction
-    s.viewer.initial_pos = [-2, 1.4, 1.2]
-    s.viewer.initial_view_direction = [0.6, -0.8, 0.1]
-    s.viewer.reset_viewer()
+    if not headless:
+        # Set a better viewing direction
+        s.viewer.initial_pos = [-2, 1.4, 1.2]
+        s.viewer.initial_view_direction = [0.6, -0.8, 0.1]
+        s.viewer.reset_viewer()
 
     # Objects to load: two tables, the first one is predefined model, the second, random for the same category
     table_objects_to_load = {
@@ -129,10 +141,9 @@ def main():
                 fit_avg_dim_volume=True,
                 texture_randomization=False,
                 overwrite_inertial=True,
-                initial_pos=obj["pos"],
-                initial_orn=obj["orn"],
             )
             s.import_object(simulator_obj)
+            simulator_obj.set_position_orientation(obj["pos"], quat_from_euler(obj["orn"]))
 
         for _ in range(10):
             obj = YCBObject("003_cracker_box")
@@ -140,7 +151,8 @@ def main():
             obj.set_position_orientation(np.append(np.random.uniform(low=0, high=2, size=2), [1.8]), [0, 0, 0, 1])
 
         if type_of_scene == 1:
-            for j in range(10):
+            max_iterations = 1 if short_exec else 10
+            for j in range(max_iterations):
                 logging.info("Resetting environment")
                 env.reset()
                 for i in range(100):
@@ -151,7 +163,8 @@ def main():
                             logging.info("Episode finished after {} timesteps".format(i + 1))
                             break
         else:
-            for i in range(10000):
+            max_steps = 100 if short_exec else 10000
+            for i in range(max_steps):
                 with Profiler("Simulator step"):
                     turtlebot.apply_action([0.1, 0.1])
                     s.step()

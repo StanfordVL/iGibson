@@ -47,14 +47,15 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, texture_wrapp
     return vertices, faces
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Minimal example of use of the PBR renderer. Loads Rs_int (interactive) or one object.
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     global _mouse_ix, _mouse_iy, down, view_direction
 
-    if len(sys.argv) > 1:
+    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests
+    if len(sys.argv) > 1 and not (random_selection and headless and short_exec):
         model_path = sys.argv[1]
     else:
         model_path = os.path.join(igibson.ig_dataset_path, "scenes", "Rs_int", "shape", "visual")
@@ -85,8 +86,14 @@ def main():
             i += 1
 
     # Logging some info
-    logging.info(renderer.visual_objects, renderer.instances)
-    logging.info(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx)
+    logging.info("renderer.visual_objects {}".format(renderer.visual_objects))
+    logging.info("renderer.instances {}".format(renderer.instances))
+    logging.info(
+        "renderer.material_idx_to_material_instance_mapping {}".format(
+            renderer.material_idx_to_material_instance_mapping
+        )
+    )
+    logging.info("renderer.shape_material_idx {}".format(renderer.shape_material_idx))
 
     # Create a simple viewer with OpenCV
     px = 1
@@ -116,29 +123,36 @@ def main():
         elif event == cv2.EVENT_LBUTTONUP:
             down = False
 
-    cv2.namedWindow("Viewer")
-    cv2.setMouseCallback("Viewer", change_dir)
+    if not headless:
+        cv2.namedWindow("Viewer")
+        cv2.setMouseCallback("Viewer", change_dir)
 
     # Move camera and render
-    while True:
+    max_steps = -1 if not short_exec else 1000
+    step = 0
+    while step != max_steps:
         with Profiler("Render"):
             frame = renderer.render(modes=("rgb", "normal", "seg", "ins_seg"))
-        cv2.imshow("Viewer", cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
 
-        q = cv2.waitKey(1)
-        if q == ord("w"):
-            px += 0.1
-        elif q == ord("s"):
-            px -= 0.1
-        elif q == ord("a"):
-            py += 0.1
-        elif q == ord("d"):
-            py -= 0.1
-        elif q == ord("q"):
-            break
+        if not headless:
+            cv2.imshow("Viewer", cv2.cvtColor(np.concatenate(frame, axis=1), cv2.COLOR_RGB2BGR))
+
+            q = cv2.waitKey(1)
+            if q == ord("w"):
+                px += 0.1
+            elif q == ord("s"):
+                px -= 0.1
+            elif q == ord("a"):
+                py += 0.1
+            elif q == ord("d"):
+                py -= 0.1
+            elif q == ord("q"):
+                break
 
         camera_pose = np.array([px, py, 1])
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
+
+        step += 1
 
     renderer.release()
 

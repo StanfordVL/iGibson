@@ -1,18 +1,26 @@
 import logging
+from sys import platform
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of randomization of the texture in a scene
     Loads Rs_int (interactive) and randomizes the texture of the objects
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    if platform == "darwin":
+        logging.error("Texture randomization currently works only with optimized renderer. Mac OS does not support it")
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive" if not headless else "headless",
+        image_width=512,
+        image_height=512,
+        rendering_settings=settings,
+    )
     scene = InteractiveIndoorScene(
         "Rs_int",
         # load_object_categories=[],  # To load only the building. Fast
@@ -21,10 +29,14 @@ def main():
     )
     s.import_scene(scene)
 
-    for i in range(10000):
-        if i % 1000 == 0:
+    num_resets = 10 if not short_exec else 2
+    num_steps_per_reset = 1000 if not short_exec else 10
+    total_steps = num_resets * num_steps_per_reset
+    for i in range(total_steps):
+        if i % num_steps_per_reset == 0:
             logging.info("Randomize texture")
             scene.randomize_texture()
+        logging.info("Step")
         s.step()
     s.disconnect()
 

@@ -10,7 +10,7 @@ from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Demo of temperature change
     Loads a stove, a microwave and an oven, all toggled on, and five frozen apples
@@ -18,11 +18,13 @@ def main():
     This demo also shows how to load objects ToggledOn and how to set the initial temperature of an object
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    s = Simulator(mode="gui_interactive", image_width=1280, image_height=720)
-    # Set a better viewing direction
-    s.viewer.initial_pos = [0.0, -0.7, 2.1]
-    s.viewer.initial_view_direction = [0.0, 0.8, -0.7]
-    s.viewer.reset_viewer()
+    s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
+
+    if not headless:
+        # Set a better viewing direction
+        s.viewer.initial_pos = [0.0, -0.7, 2.1]
+        s.viewer.initial_view_direction = [0.0, 0.8, -0.7]
+        s.viewer.reset_viewer()
 
     try:
         scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
@@ -91,7 +93,11 @@ def main():
         for apple in apples:
             apple.states[object_states.Temperature].set_value(-50)
 
-        while True:
+        steps = 0
+        max_steps = -1 if not short_exec else 1000
+
+        # Main recording loop
+        while steps != max_steps:
             s.step()
             for idx, apple in enumerate(apples):
                 logging.info(
@@ -105,6 +111,7 @@ def main():
                     )
                 )
             print()
+            steps += 1
     finally:
         s.disconnect()
 

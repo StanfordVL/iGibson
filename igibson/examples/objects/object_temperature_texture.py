@@ -12,7 +12,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 from igibson.utils.utils import parse_config
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Demo of the texture change for an object
     Loads an apple and increases manually its temperature to observe the texture change from frozen, to cooked, to burnt
@@ -21,12 +21,18 @@ def main():
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=True)
-    s = Simulator(mode="gui_interactive", image_width=512, image_height=512, rendering_settings=settings)
+    s = Simulator(
+        mode="gui_interactive" if not headless else "headless",
+        image_width=512,
+        image_height=512,
+        rendering_settings=settings,
+    )
 
-    # Set a better viewing direction
-    s.viewer.initial_pos = [0, 0.4, 0.2]
-    s.viewer.initial_view_direction = [-0.4, -0.9, 0]
-    s.viewer.reset_viewer()
+    if not headless:
+        # Set a better viewing direction
+        s.viewer.initial_pos = [0, 0.4, 0.2]
+        s.viewer.initial_view_direction = [-0.4, -0.9, 0]
+        s.viewer.reset_viewer()
 
     scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)

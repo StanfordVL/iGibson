@@ -413,7 +413,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     robot.keep_still()
 
     # Set initial viewer if using IG GUI
-    if gui != "pb":
+    if gui != "pb" and not headless:
         s.viewer.initial_pos = [1.6, 0, 1.3]
         s.viewer.initial_view_direction = [-0.7, 0, -0.7]
         s.viewer.reset_viewer()

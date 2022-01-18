@@ -103,7 +103,7 @@ def generate_data_lidar(nav_env, num_samples=3):
     return lidar_all, direction, rgb_all, label_all
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of rendering and visualizing a single lidar-like pointcloud
     Loads Rs (non interactive) and a robot and renders a dense panorama depth map from the robot's camera
@@ -128,11 +128,12 @@ def main():
     # Generate data
     pts, direction, color, label = generate_data_lidar(nav_env)
 
-    # Create visualization: 3D points with RGB color
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    ax.scatter(pts[:, 0], pts[:, 2], pts[:, 1], s=3, c=color[:, :3])
-    plt.show()
+    if not headless:
+        # Create visualization: 3D points with RGB color
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.scatter(pts[:, 0], pts[:, 2], pts[:, 1], s=3, c=color[:, :3])
+        plt.show()
 
 
 if __name__ == "__main__":
