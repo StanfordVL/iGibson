@@ -21,20 +21,17 @@ Welcome to iGibson's documentation!
 
    dataset.md
    assets.md
-   simulators.md
-   physics_engine.md
-   extended_states.md
    renderer.md
-   viewer.md
-   environments.md
+   physics_engine.md
    scenes.md
    objects.md
    robots.md
-   sampling.md
+   simulators.md
+   viewer.md
+   environments.md
    learning_framework.md
    ros_integration.md
    tests.md
-   examples.md
 
 .. toctree::
    :maxdepth: 1

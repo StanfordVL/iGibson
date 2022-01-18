@@ -5,7 +5,6 @@ from igibson.object_states.link_based_state_mixin import LinkBasedStateMixin
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.toggle import ToggledOn
 from igibson.objects.particles import WaterStream
-from igibson.utils.constants import SemanticClass
 
 _WATER_SOURCE_LINK_NAME = "water_source"
 
@@ -42,9 +41,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
             return
 
         water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
-        self.water_stream = WaterStream(
-            water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump, class_id=SemanticClass.SCENE_OBJS
-        )
+        self.water_stream = WaterStream(water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump)
         self.simulator.import_particle_system(self.water_stream)
         del self.initial_dump
 
@@ -65,7 +62,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
         # water reusing logic
         contacted_water_body_ids = set(item.bodyUniqueIdB for item in list(self.obj.states[ContactBodies].get_value()))
         for particle in self.water_stream.get_active_particles():
-            if particle.get_body_id() in contacted_water_body_ids:
+            if particle.body_id in contacted_water_body_ids:
                 self.water_stream.stash_particle(particle)
 
     def _set_value(self, new_value):

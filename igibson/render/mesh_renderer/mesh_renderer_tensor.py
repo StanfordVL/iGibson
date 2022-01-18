@@ -1,5 +1,4 @@
 import logging
-import platform
 
 from igibson.render.mesh_renderer.get_available_devices import get_cuda_device
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
@@ -23,8 +22,6 @@ try:
             rendering_settings=MeshRendererSettings(),
             simulator=None,
         ):
-            if platform.system() != "Linux":
-                raise Exception("Rendering to pytorch tensor is only available on Linux.")
             super(MeshRendererG2G, self).__init__(
                 width, height, vertical_fov, device_idx, rendering_settings, simulator
             )
@@ -33,8 +30,7 @@ try:
             with torch.cuda.device(self.cuda_idx):
                 self.image_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
-                self.seg_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
-                self.ins_seg_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
+                self.seg_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.pc_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
                 self.optical_flow_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
                 self.scene_flow_tensor = torch.cuda.FloatTensor(height, width, 4).cuda()
@@ -65,14 +61,6 @@ try:
                             int(self.color_tex_semantics), int(self.width), int(self.height), self.seg_tensor.data_ptr()
                         )
                         results.append(self.seg_tensor.clone())
-                    elif mode == "ins_seg":
-                        self.r.map_tensor(
-                            int(self.color_tex_ins_seg),
-                            int(self.width),
-                            int(self.height),
-                            self.ins_seg_tensor.data_ptr(),
-                        )
-                        results.append(self.ins_seg_tensor.clone())
                     elif mode == "3d":
                         self.r.map_tensor_float(
                             int(self.color_tex_3d), int(self.width), int(self.height), self.pc_tensor.data_ptr()
@@ -97,7 +85,7 @@ try:
 
             return results
 
-        def render(self, modes=AVAILABLE_MODALITIES, hidden=(), render_shadow_pass=True):
+        def render(self, modes=AVAILABLE_MODALITIES, hidden=(), return_buffer=True, render_shadow_pass=True):
             """
             A function to render all the instances in the renderer and read the output from framebuffer into pytorch tensor.
 
@@ -110,6 +98,7 @@ try:
             )
             return self.readbuffer_to_tensor(modes)
 
+
 except ImportError:
-    logging.warning("torch is not available, falling back to rendering to memory (instead of tensor)")
+    print("torch is not available, falling back to rendering to memory(instead of tensor)")
     MeshRendererG2G = MeshRenderer

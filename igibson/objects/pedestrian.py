@@ -3,18 +3,16 @@ import os
 import pybullet as p
 
 import igibson
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class Pedestrian(StatefulObject, SingleBodyObject):
+class Pedestrian(StatefulObject):
     """
     Pedestiran object
     """
 
-    def __init__(self, style="standing", pos=[0, 0, 0], **kwargs):
-        super(Pedestrian, self).__init__(**kwargs)
+    def __init__(self, style="standing", pos=[0, 0, 0]):
+        super(Pedestrian, self).__init__()
         self.collision_filename = os.path.join(
             igibson.assets_path, "models", "person_meshes", "person_{}".format(style), "meshes", "person_vhacd.obj"
         )
@@ -24,7 +22,7 @@ class Pedestrian(StatefulObject, SingleBodyObject):
         self.cid = None
         self.pos = pos
 
-    def _load(self, simulator):
+    def _load(self):
         """
         Load the object into pybullet
         """
@@ -46,9 +44,7 @@ class Pedestrian(StatefulObject, SingleBodyObject):
             parentFrameOrientation=[-0.5, -0.5, -0.5, 0.5],
         )  # facing x axis
 
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
-
-        return [body_id]
+        return body_id
 
     def reset_position_orientation(self, pos, orn):
         """

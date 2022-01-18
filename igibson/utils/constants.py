@@ -9,20 +9,6 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
 
-class ViewerMode(IntEnum):
-    NAVIGATION = 0
-    MANIPULATION = 1
-    PLANNING = 2
-
-
-class SimulatorMode(IntEnum):
-    GUI_INTERACTIVE = 1
-    GUI_NON_INTERACTIVE = 2
-    HEADLESS = 3
-    HEADLESS_TENSOR = 4
-    VR = 5
-
-
 class SemanticClass(IntEnum):
     BACKGROUND = 0
     ROBOTS = 1
@@ -42,12 +28,8 @@ class OccupancyGridState(object):
     FREESPACE = 1.0
 
 
-# PyBullet-related
 class PyBulletSleepState(IntEnum):
     AWAKE = 1
-
-
-PYBULLET_BASE_LINK_INDEX = -1
 
 
 # BEHAVIOR-related

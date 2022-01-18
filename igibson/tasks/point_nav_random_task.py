@@ -4,7 +4,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
-from igibson.utils.utils import l2_distance, restoreState
+from igibson.utils.utils import l2_distance
 
 
 class PointNavRandomTask(PointNavFixedTask):
@@ -39,10 +39,8 @@ class PointNavRandomTask(PointNavFixedTask):
             if self.target_dist_min < dist < self.target_dist_max:
                 break
         if not (self.target_dist_min < dist < self.target_dist_max):
-            logging.warning("Failed to sample initial and target positions")
+            print("WARNING: Failed to sample initial and target positions")
         initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
-        logging.info("Sampled initial pose: {}, {}".format(initial_pos, initial_orn))
-        logging.info("Sampled target position: {}".format(target_pos))
         return initial_pos, initial_orn, target_pos
 
     def reset_scene(self, env):
@@ -72,7 +70,7 @@ class PointNavRandomTask(PointNavFixedTask):
             reset_success = env.test_valid_position(
                 env.robots[0], initial_pos, initial_orn
             ) and env.test_valid_position(env.robots[0], target_pos)
-            restoreState(state_id)
+            p.restoreState(state_id)
             if reset_success:
                 break
 

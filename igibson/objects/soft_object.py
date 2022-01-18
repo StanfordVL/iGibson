@@ -1,11 +1,9 @@
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class SoftObject(StatefulObject, SingleBodyObject):
+class SoftObject(StatefulObject):
     """
     Soft object (WIP)
     """
@@ -30,9 +28,8 @@ class SoftObject(StatefulObject, SingleBodyObject):
         frictionCoeff=0,
         useFaceContact=0,
         useSelfCollision=0,
-        **kwargs
     ):
-        super(SoftObject, self).__init__(**kwargs)
+        super(SoftObject, self).__init__()
         self.filename = filename
         self.scale = scale
         self.basePosition = basePosition
@@ -52,7 +49,7 @@ class SoftObject(StatefulObject, SingleBodyObject):
         self.useFaceContact = useFaceContact
         self.useSelfCollision = useSelfCollision
 
-    def _load(self, simulator):
+    def _load(self):
         """
         Load the object into pybullet
         """
@@ -80,14 +77,10 @@ class SoftObject(StatefulObject, SingleBodyObject):
         # Set signed distance function voxel size (integrate to Simulator class?)
         p.setPhysicsEngineParameter(sparseSdfVoxelSize=0.1)
 
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params, softbody=True)
-
-        return [body_id]
+        return body_id
 
     def add_anchor(self, nodeIndex=-1, bodyUniqueId=-1, linkIndex=-1, bodyFramePosition=[0, 0, 0], physicsClientId=0):
         """
         Create soft body anchor
         """
-        p.createSoftBodyAnchor(
-            self.get_body_id(), nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId
-        )
+        p.createSoftBodyAnchor(self.body_id, nodeIndex, bodyUniqueId, linkIndex, bodyFramePosition, physicsClientId)

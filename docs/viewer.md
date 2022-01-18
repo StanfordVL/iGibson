@@ -2,24 +2,19 @@
 
 ### Overview
 
-We developed an easy-to-use iGibson-human interface called **Viewer** for users to inspect and interact with our scenes and objects. The Viewer will automatically pop up if you use `gui_non_interactive` or `gui_interactive` mode in `Simulator`.
+We developed an easy-to-use iGibson-human interface called **Viewer** for users to inspect and interact with our scenes and objects. The Viewer will automatically pop up if you use `gui` or `iggui` mode in `Simulator`.
 
 To play with an example of viewer, you can run the following command:
 
 ```bash
-python -m igibson.examples.environments.env_int_example
+python -m igibson.examples.demo.mouse_interaction
 ```
-or 
-```bash
-python -m igibson.examples.environments.env_nonint_example
-```
-after downloading the Rs_int or Rs scenes (interactive or non-interactive, see [the installation instructions](installation.md))
 ![viewer.png](images/viewer.png)
 
-In example image above, you can see on the top left corner `px 0.4 py -0.9 pz 1.2`, which indicates the camera position, `[1.0, 0.1, -0.1]`, which indicates the camera viewing direction, and `manip mode`, which indicates the current control mode you are in. There are three modes that we explain below.
+On the top left corner, you can see `px 0.4 py -0.9 pz 1.2`, which indicates the camera position, `[1.0, 0.1, -0.1]`, which indicates the camera orientation, and `manip mode`, which indicates the current control mode you are in (explained below).
 
 Keyboard control includes the following
-- `W`, `A`, `S`, `D`, `T`, `G`: translate forward/left/backward/right/up/down
+- `W`, `A`, `S`, `D`: translate forward/left/backward/right
 - `Q`, `E`: rotate left/right
 - `M`: choose between different control mode (navigation, manipulation and planning)
 - `R`: start/stop recording
@@ -45,4 +40,4 @@ Mouse control in planning mode
 
 In manipulation and planning modes, a visual indicator will be visualized in the `Viewer` to assist control (e.g. the blue sphere at the bottom in the image above).
 
-The code can be found in [igibson/render/viewer.py](https://github.com/StanfordVL/iGibson/tree/master/igibson/render/viewer.py).
+Most of the code can be found in [igibson/render/viewer.py](https://github.com/StanfordVL/iGibson/tree/master/igibson/render/viewer.py).

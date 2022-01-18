@@ -8,7 +8,6 @@ from igibson.object_states.touching import Touching
 from igibson.object_states.utils import clear_cached_states, get_center_extent, sample_kinematics
 
 # TODO: remove after split floors
-from igibson.utils.utils import restoreState
 
 
 class RoomFloor(object):
@@ -47,7 +46,7 @@ class OnFloor(RelativeObjectState, KinematicsMixin, BooleanState):
             if sampling_success:
                 break
             else:
-                restoreState(state_id)
+                p.restoreState(state_id)
 
         p.removeState(state_id)
 

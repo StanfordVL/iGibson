@@ -1,19 +1,17 @@
 import numpy as np
 import pybullet as p
 
-from igibson.objects.object_base import SingleBodyObject
 from igibson.objects.stateful_object import StatefulObject
-from igibson.utils.constants import SemanticClass
 
 
-class ShapeNetObject(StatefulObject, SingleBodyObject):
+class ShapeNetObject(StatefulObject):
     """
     ShapeNet object
     Reference: https://www.shapenet.org/
     """
 
-    def __init__(self, path, scale=1.0, position=[0, 0, 0], orientation=[0, 0, 0], **kwargs):
-        super(ShapeNetObject, self).__init__(**kwargs)
+    def __init__(self, path, scale=1.0, position=[0, 0, 0], orientation=[0, 0, 0]):
+        super(ShapeNetObject, self).__init__()
         self.filename = path
         self.scale = scale
         self.position = position
@@ -35,7 +33,7 @@ class ShapeNetObject(StatefulObject, SingleBodyObject):
             "orientation_quat": pose[1],
         }
 
-    def _load(self, simulator):
+    def _load(self):
         """
         Load the object into pybullet
         """
@@ -47,6 +45,4 @@ class ShapeNetObject(StatefulObject, SingleBodyObject):
             baseCollisionShapeIndex=collision_id,
             baseVisualShapeIndex=-1,
         )
-        simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
-
-        return [body_id]
+        return body_id

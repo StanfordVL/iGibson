@@ -1,0 +1,80 @@
+# scene
+scene_id: Beechwood_1_int
+clutter: false
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+should_open_all_doors: true
+
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
+# robot
+robot: FetchGripper
+use_ag: true
+ag_strict_mode: true
+default_arm_pose: diagonal30
+trunk_offset: 0.085
+controller:
+  mode: pose_delta_ori    # options are {pose_delta_ori, position_fixed_ori, position_compliant_ori}
+  kv_vel: -2.0
+  input_max: [1, 1, 1, 1, 1, 1]
+  input_min: [-1, -1, -1, -1, -1, -1]
+  output_max: [0.2, 0.2, 0.2, 0.5, 0.5, 0.5]
+  output_min: [-0.2, -0.2, -0.2, -0.5, -0.5, -0.5]
+  eef_always_in_frame: false      # if true, will add hard workspace left-right constraints to prevent EEF from moving off-frame in horizontal directions
+  neutral_xy: [0.25, 0]           # (x,y) relative pos values taken in robot base frame from which radius limits will be computed
+  radius_limit: 0.5               # x-y reaching limit
+  height_limits: [0.2, 1.5]       # min, max height limits
+
+# task
+task: cleaning_cupboards
+task_id: 0
+online_sampling: false
+target_dist_min: 1.0
+target_dist_max: 10.0
+goal_format: polar
+task_obs_dim: 4
+
+# reward
+reward_type: l2
+success_reward: 10.0
+potential_reward_weight: 1.0
+collision_reward_weight: -0.1
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition
+dist_tol: 0.36  # body width
+max_step: 500
+max_collisions_allowed: 500
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
+
+# sensor spec
+output: [proprioception, rgb, highlight, depth, seg, ins_seg]
+# image
+fisheye: false
+image_width: 512
+image_height: 512
+vertical_fov: 120
+# depth
+depth_low: 0.0
+depth_high: 10.0
+
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0
+
+# visual objects
+visual_object_at_initial_target_pos: true
+target_visual_object_visible_to_agent: false
+
+# speed limit
+hand_threshold: 0.4
+hand_speed: 0.3
+body_speed: 0.3

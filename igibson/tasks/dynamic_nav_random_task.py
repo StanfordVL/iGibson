@@ -1,9 +1,8 @@
 import numpy as np
 import pybullet as p
 
-from igibson.robots.turtlebot import Turtlebot
+from igibson.robots.turtlebot_robot import Turtlebot
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
-from igibson.utils.utils import restoreState
 
 
 class DynamicNavRandomTask(PointNavRandomTask):
@@ -49,7 +48,7 @@ class DynamicNavRandomTask(PointNavRandomTask):
                 _, pos = env.scene.get_random_point(floor=self.floor_num)
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
                 reset_success = env.test_valid_position(robot, pos, orn)
-                restoreState(state_id)
+                p.restoreState(state_id)
                 if reset_success:
                     break
 
