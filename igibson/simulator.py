@@ -221,6 +221,8 @@ class Simulator:
         :param scene: a scene object to load
         """
         assert isinstance(scene, Scene), "import_scene can only be called with Scene"
+        if not self.use_pb_gui:
+            scene.set_ignore_visual_shape(True)
         scene.load(self)
         self.scene = scene
 

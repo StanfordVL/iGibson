@@ -107,6 +107,14 @@ class VisionSensor(BaseSensor):
 
         return depth
 
+    def get_3d(self, raw_vision_obs):
+        """
+        :return: 3d sensor reading
+        """
+        depth = raw_vision_obs["3d"]
+
+        return depth
+
     def get_pc(self, raw_vision_obs):
         """
         :return: pointcloud sensor reading
@@ -165,6 +173,8 @@ class VisionSensor(BaseSensor):
             vision_obs["rgb_filled"] = self.get_rgb_filled(raw_vision_obs)
         if "depth" in self.modalities:
             vision_obs["depth"] = self.get_depth(raw_vision_obs)
+        if "3d" in self.modalities:
+            vision_obs["3d"] = self.get_3d(raw_vision_obs)
         if "pc" in self.modalities:
             vision_obs["pc"] = self.get_pc(raw_vision_obs)
         if "optical_flow" in self.modalities:

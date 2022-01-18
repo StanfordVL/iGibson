@@ -34,6 +34,7 @@ from igibson.utils import utils
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
 from igibson.utils.utils import get_transform_from_xyz_rpy, mat_to_quat_pos, quatXYZWFromRotMat, rotate_vector_3d
 
+from scipy.spatial.transform import Rotation
 
 class ArticulatedObject(StatefulObject):
     """
