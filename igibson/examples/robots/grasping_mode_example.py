@@ -1,9 +1,8 @@
 """
-Example script demo'ing robot control.
-
-Options for random actions, as well as selection of robot action space
+Example script demo'ing robot manipulation control with grasping.
 """
 import logging
+import os
 import platform
 import random
 import sys
@@ -13,19 +12,17 @@ from collections import OrderedDict
 import numpy as np
 import pybullet as p
 
-from igibson.robots import REGISTERED_ROBOTS, ManipulationRobot
+from igibson.objects.articulated_object import URDFObject
+from igibson.objects.ycb_object import YCBObject
+from igibson.robots import REGISTERED_ROBOTS
 from igibson.scenes.empty_scene import EmptyScene
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
+from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_category_path, get_ig_model_path
 
-CONTROL_MODES = OrderedDict(
-    random="Use autonomous random actions (default)",
-    teleop="Use keyboard control",
-)
-
-SCENES = OrderedDict(
-    Rs_int="Realistic interactive home environment (default)",
-    empty="Empty environment with no objects",
+GRASPING_MODES = OrderedDict(
+    sticky="Sticky Mitten - Objects are magnetized when they touch the fingers and a CLOSE command is given",
+    assisted="Assisted Grasping - Objects are fixed when they touch virtual rays cast between each finger and a CLOSE command is given",
+    physical="Physical Grasping - No additional grasping assistance applied",
 )
 
 GUIS = OrderedDict(
@@ -79,36 +76,6 @@ def choose_from_options(options, name, random_selection=False):
 
     # Return requested option
     return list(options)[k]
-
-
-def choose_controllers(robot, random_selection=False):
-    """
-    For a given robot, iterates over all components of the robot, and returns the requested controller type for each
-    component.
-
-    :param robot: BaseRobot, robot class from which to infer relevant valid controller options
-    :param random_selection: bool, if the selection is random (for automatic demo execution). Default False
-
-    :return OrderedDict: Mapping from individual robot component (e.g.: base, arm, etc.) to selected controller names
-    """
-    # Create new dict to store responses from user
-    controller_choices = OrderedDict()
-
-    # Grab the default controller config so we have the registry of all possible controller options
-    default_config = robot._default_controller_config
-
-    # Iterate over all components in robot
-    for component, controller_options in default_config.items():
-        # Select controller
-        options = list(sorted(controller_options.keys()))
-        choice = choose_from_options(
-            options=options, name="{} controller".format(component), random_selection=random_selection
-        )
-
-        # Add to user responses
-        controller_choices[component] = choice
-
-    return controller_choices
 
 
 class KeyboardController:
@@ -330,46 +297,20 @@ class KeyboardController:
 
 def main(random_selection=False, headless=False, short_exec=False):
     """
-    Robot control demo with selection
-    Queries the user to select a robot, the controllers, a scene and a type of input (random actions or teleop)
+    Robot grasping mode demo with selection
+    Queries the user to select a type of grasping mode and GUI
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
-    # Create an initial headless dummy scene so we can load the requested robot and extract useful info
-    s = Simulator(mode="headless", use_pb_gui=False)
-    scene = EmptyScene()
-    s.import_scene(scene)
-
-    # Get robot to create
-    robot_name = choose_from_options(
-        options=list(sorted(REGISTERED_ROBOTS.keys())), name="robot", random_selection=random_selection
-    )
-    robot = REGISTERED_ROBOTS[robot_name](action_type="continuous")
-    s.import_robot(robot)
-
-    # Get controller choice
-    controller_choices = choose_controllers(robot=robot, random_selection=random_selection)
-
-    # Choose control mode
-    if random_selection:
-        control_mode = "random"
-    else:
-        control_mode = choose_from_options(options=CONTROL_MODES, name="control mode")
-
-    # Choose scene to load
-    scene_id = choose_from_options(options=SCENES, name="scene", random_selection=random_selection)
+    # Choose type of grasping
+    grasping_mode = choose_from_options(options=GRASPING_MODES, name="grasping mode", random_selection=random_selection)
 
     # Choose GUI
     global gui
     gui = choose_from_options(options=GUIS, name="gui", random_selection=random_selection)
 
-    if (
-        gui == "ig"
-        and platform.system() != "Darwin"
-        and control_mode == "teleop"
-        and isinstance(robot, ManipulationRobot)
-        and controller_choices["arm"] == "InverseKinematicsController"
-    ):
+    # Warn user if using ig gui that arrow keys may not work
+    if gui == "ig" and platform.system() != "Darwin":
         message = "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
         logging.warning(message)
         gui = "pb"
@@ -386,28 +327,91 @@ def main(random_selection=False, headless=False, short_exec=False):
     if headless:
         render_mode, use_pb_gui = "headless", False
 
-    # Shut down dummy simulator and re-create actual simulator
-    s.disconnect()
-    del s
+    # Load simulator
     s = Simulator(mode=render_mode, use_pb_gui=use_pb_gui, image_width=512, image_height=512)
 
     # Load scene
-    scene = (
-        EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
-        if scene_id == "empty"
-        else InteractiveIndoorScene(scene_id)
-    )
+    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
-    # Load robot
-    robot = REGISTERED_ROBOTS[robot_name](
+    # Load Fetch robot
+    robot = REGISTERED_ROBOTS["Fetch"](
         action_type="continuous",
         action_normalize=True,
-        controller_config={
-            component: {"name": controller_name} for component, controller_name in controller_choices.items()
-        },
+        grasping_mode=grasping_mode,
     )
     s.import_robot(robot)
+
+    # Load objects (1 table)
+    objects_to_load = {
+        "table_1": {
+            "category": "breakfast_table",
+            "model": "1b4e6f9dd22a8c628ef9d976af675b86",
+            "bounding_box": (0.5, 0.5, 0.8),
+            "fit_avg_dim_volume": False,
+            "fixed_base": True,
+            "pos": (0.7, -0.1, 0.6),
+            "orn": (0, 0, 0.707, 0.707),
+        },
+        "chair_2": {
+            "category": "straight_chair",
+            "model": "2a8d87523e23a01d5f40874aec1ee3a6",
+            "bounding_box": None,
+            "fit_avg_dim_volume": True,
+            "fixed_base": False,
+            "pos": (0.45, 0.65, 0.425),
+            "orn": (0, 0, -0.9990215, -0.0442276),
+        },
+    }
+
+    # Load the specs of the object categories, e.g., common scaling factor
+    avg_category_spec = get_ig_avg_category_specs()
+
+    scene_objects = {}
+    for obj in objects_to_load.values():
+        category = obj["category"]
+        if category in scene_objects:
+            scene_objects[category] += 1
+        else:
+            scene_objects[category] = 1
+
+        # Get the path for all models of this category
+        category_path = get_ig_category_path(category)
+
+        # If the specific model is given, we use it. If not, we select one randomly
+        if "model" in obj:
+            model = obj["model"]
+        else:
+            model = np.random.choice(os.listdir(category_path))
+
+        # Create the full path combining the path for all models and the name of the model
+        model_path = get_ig_model_path(category, model)
+        filename = os.path.join(model_path, model + ".urdf")
+
+        # Create a unique name for the object instance
+        obj_name = "{}_{}".format(category, scene_objects[category])
+
+        # Create and import the object
+        simulator_obj = URDFObject(
+            filename,
+            name=obj_name,
+            category=category,
+            model_path=model_path,
+            bounding_box=obj["bounding_box"],
+            avg_obj_dims=avg_category_spec.get(category),
+            fit_avg_dim_volume=obj["fit_avg_dim_volume"],
+            fixed_base=obj["fixed_base"],
+            texture_randomization=False,
+            overwrite_inertial=True,
+        )
+        s.import_object(simulator_obj)
+        simulator_obj.set_position_orientation(pos=obj["pos"], orn=obj["orn"])
+
+    # Also load a box on the table
+    obj = YCBObject("003_cracker_box")
+    s.import_object(obj)
+    # Todo tune positions
+    obj.set_position_orientation([0.53, -0.1, 0.8], [0, 0, 0, 1])
 
     # Reset the robot
     robot.set_position([0, 0, 0])
@@ -415,29 +419,26 @@ def main(random_selection=False, headless=False, short_exec=False):
     robot.keep_still()
 
     # Set initial viewer if using IG GUI
-    if gui != "pb" and not headless:
-        s.viewer.initial_pos = [1.6, 0, 1.3]
-        s.viewer.initial_view_direction = [-0.7, 0, -0.7]
+    if gui != "pb":
+        s.viewer.initial_pos = [0.2, 0.5, 1.3]
+        s.viewer.initial_view_direction = [0.4, -0.5, -0.8]
         s.viewer.reset_viewer()
 
     # Create teleop controller
     action_generator = KeyboardController(robot=robot, simulator=s)
 
     # Print out relevant keyboard info if using keyboard teleop
-    if control_mode == "teleop":
-        action_generator.print_keyboard_teleop_info()
+    action_generator.print_keyboard_teleop_info()
 
     # Other helpful user info
-    print("Running demo. Switch to the viewer windows")
+    print("Running demo with grasping mode {}. Switch to the viewer windows".format(grasping_mode))
     print("Press ESC to quit")
 
     # Loop control until user quits
     max_steps = -1 if not short_exec else 100
     step = 0
     while step != max_steps:
-        action = (
-            action_generator.get_random_action() if control_mode == "random" else action_generator.get_teleop_action()
-        )
+        action = action_generator.get_random_action() if random_selection else action_generator.get_teleop_action()
         robot.apply_action(action)
         for _ in range(10):
             s.step()

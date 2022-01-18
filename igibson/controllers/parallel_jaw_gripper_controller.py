@@ -112,9 +112,9 @@ class ParallelJawGripperController(ManipulationController):
         if self.mode == "binary":
             # Use max control signal
             u = (
-                self.control_limits[ControlType.POSITION][1][self.joint_idx]
+                self.control_limits[ControlType.get_type(self.motor_type)][1][self.joint_idx]
                 if command[0] >= 0.0
-                else self.control_limits[ControlType.POSITION][0][self.joint_idx]
+                else self.control_limits[ControlType.get_type(self.motor_type)][0][self.joint_idx]
             )
         else:
             # Use continuous signal
