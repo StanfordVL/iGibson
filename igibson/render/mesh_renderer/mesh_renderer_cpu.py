@@ -890,6 +890,13 @@ class MeshRenderer(object):
         if self.optimized:
             self.update_optimized_texture()
 
+        # hide the objects that specified in hidden for optimized renderer
+        # non-optimized renderer handles hidden objects in a different way
+        if self.optimized and len(hidden) > 0:
+            for i in hidden:
+                i.hidden = True
+            self.update_hidden_highlight_state(hidden)
+
         if "seg" in modes and self.rendering_settings.msaa:
             logging.warning(
                 "Rendering segmentation masks with MSAA on may generate interpolation artifacts. "
@@ -1008,6 +1015,12 @@ class MeshRenderer(object):
                 text.render()
 
         self.r.render_meshrenderer_post()
+
+        # unhide the hidden objects for future rendering steps
+        if self.optimized and len(hidden) > 0:
+            for i in hidden:
+                i.hidden = False
+            self.update_hidden_highlight_state(hidden)
 
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
