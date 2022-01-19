@@ -15,7 +15,7 @@ class EmptyScene(Scene):
     An empty scene for debugging.
     """
 
-    def __init__(self, render_floor_plane=False, floor_plane_rgba=[1.0, 1.0, 1.0, 1.0]):
+    def __init__(self, render_floor_plane=True, floor_plane_rgba=[1.0, 1.0, 1.0, 1.0]):
         super(EmptyScene, self).__init__()
         self.objects = []
         self.render_floor_plane = render_floor_plane

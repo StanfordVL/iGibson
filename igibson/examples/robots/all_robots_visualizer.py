@@ -25,7 +25,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         image_height=512,
         rendering_settings=settings,
     )
-    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+    scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
     # Create one instance of each robot aligned along the y axis
@@ -61,7 +61,7 @@ def main(random_selection=False, headless=False, short_exec=False):
 
         robot.keep_still()
         s.reload()
-        scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+        scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
         s.import_scene(scene)
 
     s.disconnect()
