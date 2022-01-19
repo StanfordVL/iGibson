@@ -4,7 +4,6 @@ import logging
 import math
 import os
 import random
-import sys
 import time
 import xml.etree.ElementTree as ET
 
@@ -19,8 +18,6 @@ import igibson
 from igibson.external.pybullet_tools.utils import (
     get_all_links,
     get_center_extent,
-    get_joint_info,
-    get_joints,
     get_link_name,
     get_link_state,
     link_from_name,
@@ -33,7 +30,7 @@ from igibson.objects.stateful_object import StatefulObject
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.utils import utils
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
-from igibson.utils.utils import get_transform_from_xyz_rpy, mat_to_quat_pos, quatXYZWFromRotMat, rotate_vector_3d
+from igibson.utils.utils import mat_to_quat_pos, rotate_vector_3d
 
 
 class ArticulatedObject(StatefulObject):

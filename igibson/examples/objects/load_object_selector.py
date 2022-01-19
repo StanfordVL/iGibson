@@ -16,7 +16,6 @@ from igibson.simulator import Simulator
 from igibson.utils.assets_utils import (
     get_all_object_categories,
     get_ig_avg_category_specs,
-    get_ig_category_path,
     get_ig_model_path,
     get_object_models_of_category,
 )

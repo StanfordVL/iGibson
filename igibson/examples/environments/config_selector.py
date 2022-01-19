@@ -1,6 +1,5 @@
 import logging
 import os
-from random import random
 from sys import platform
 
 import yaml
@@ -8,7 +7,7 @@ import yaml
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.render.profiler import Profiler
-from igibson.utils.assets_utils import folder_is_hidden, get_available_ig_scenes
+from igibson.utils.assets_utils import folder_is_hidden
 from igibson.utils.utils import let_user_pick
 
 

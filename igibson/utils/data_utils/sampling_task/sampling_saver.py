@@ -4,13 +4,11 @@ import logging
 import os
 
 import bddl
-import pybullet as p
 from IPython import embed
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.simulator import Simulator
-from igibson.utils.utils import parse_config, restoreState
+from igibson.utils.utils import parse_config
 
 
 def parse_args():

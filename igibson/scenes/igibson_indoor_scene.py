@@ -4,24 +4,15 @@ import os
 import random
 import time
 import xml.etree.ElementTree as ET
-from collections import Counter, defaultdict
+from collections import defaultdict
 from xml.dom import minidom
 
 import numpy as np
 import pybullet as p
-from IPython import embed
 from PIL import Image
 
 import igibson
-from igibson.external.pybullet_tools.utils import (
-    euler_from_quat,
-    get_joint_names,
-    get_joint_positions,
-    get_joint_velocities,
-    get_joints,
-)
-from igibson.object_states.factory import get_state_from_name, get_state_name
-from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.external.pybullet_tools.utils import euler_from_quat, get_joint_names, get_joints
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots import REGISTERED_ROBOTS

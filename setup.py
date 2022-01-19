@@ -8,7 +8,6 @@ import subprocess
 import sys
 from distutils.command.build_py import build_py as _build_py
 from distutils.version import LooseVersion
-from subprocess import check_call
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext

@@ -1,9 +1,6 @@
 import importlib
-import os
 import pkgutil
 import signal
-import string
-import sys
 from multiprocessing import Process
 
 import igibson.examples as examples

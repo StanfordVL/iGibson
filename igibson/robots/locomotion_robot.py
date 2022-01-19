@@ -1,13 +1,11 @@
 from abc import abstractmethod
 
-import gym
 import numpy as np
 from transforms3d.euler import euler2quat
 from transforms3d.quaternions import qmult, quat2mat
 
 from igibson.controllers import LocomotionController
 from igibson.robots.robot_base import BaseRobot
-from igibson.utils.python_utils import assert_valid_key
 
 
 class LocomotionRobot(BaseRobot):

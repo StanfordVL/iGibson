@@ -5,7 +5,6 @@ import pybullet as p
 
 import igibson
 from igibson.controllers import ControlType
-from igibson.external.pybullet_tools.utils import set_joint_positions
 from igibson.robots.active_camera_robot import ActiveCameraRobot
 from igibson.robots.manipulation_robot import GraspingPoint, ManipulationRobot
 from igibson.robots.two_wheel_robot import TwoWheelRobot
