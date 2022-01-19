@@ -1025,8 +1025,6 @@ class BRHand(BRHandBase):
                 else:
                     ag_data = self.calculate_ag_object()
 
-                import ipdb; ipdb.set_trace()
-
                 # Return early if no AG-valid object can be grasped
                 if not ag_data:
                     return False
@@ -1142,7 +1140,6 @@ class BRHand(BRHandBase):
         # AG is only enable for the reduced joint hand
         if ASSIST_FRACTION > 0:
             grasp_success = self.handle_assisted_grasping(action)    
-            # import ipdb; ipdb.set_trace()
 
         super(BRHand, self).update(action)
 
