@@ -27,7 +27,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         s.viewer.reset_viewer()
 
     try:
-        scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+        scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
         s.import_scene(scene)
 
         # Load stove ON

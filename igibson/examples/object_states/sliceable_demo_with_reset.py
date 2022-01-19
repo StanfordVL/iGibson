@@ -30,7 +30,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         s.viewer.initial_pos = [-0.3, -0.3, 1.1]
         s.viewer.initial_view_direction = [0.7, 0.6, -0.4]
         s.viewer.reset_viewer()
-    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+    scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
     # Load a desk

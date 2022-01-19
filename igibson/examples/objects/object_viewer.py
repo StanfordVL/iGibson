@@ -32,7 +32,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         vertical_fov=70,
         rendering_settings=settings,
     )
-    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+    scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     # scene.load_object_categories(benchmark_names)
     s.import_scene(scene)
     s.renderer.set_light_position_direction([0, 0, 10], [0, 0, 0])
