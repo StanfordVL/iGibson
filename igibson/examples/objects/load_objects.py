@@ -48,7 +48,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         robot_config = config["robot"]
         robot_config.pop("name")
         turtlebot = Turtlebot(**robot_config)
-        s.import_robot(turtlebot)
+        s.import_object(turtlebot)
 
     elif type_of_scene == 1:  # iG
         config_filename = os.path.join(igibson.example_config_path, "turtlebot_nav.yaml")
@@ -80,7 +80,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         robot_config = config["robot"]
         robot_config.pop("name")
         turtlebot = Turtlebot(**robot_config)
-        s.import_robot(turtlebot)
+        s.import_object(turtlebot)
 
     if not headless:
         # Set a better viewing direction

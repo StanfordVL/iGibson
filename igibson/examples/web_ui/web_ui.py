@@ -204,7 +204,7 @@ class ToyEnv(object):
         scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
         self.robot = Turtlebot()
-        self.s.import_robot(self.robot)
+        self.s.import_object(self.robot)
 
         for _ in range(5):
             obj = YCBObject("003_cracker_box")
@@ -261,7 +261,7 @@ class ToyEnvInt(object):
         else:
             self.robot = Fetch()
 
-        self.s.import_robot(self.robot)
+        self.s.import_object(self.robot)
 
         for _ in range(5):
             obj = YCBObject("003_cracker_box")

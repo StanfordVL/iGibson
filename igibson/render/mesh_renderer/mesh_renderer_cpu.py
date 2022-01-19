@@ -1260,8 +1260,8 @@ class MeshRenderer(object):
                     frames.append(item)
 
         # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.
-        # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface, it is not
-        # added using import_robot and needs to be found & handled separately.
+        # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface,
+        # it needs to be found & handled separately.
         behavior_robots = (robot for robot in self.simulator.scene.robots if isinstance(robot, BehaviorRobot))
         for robot in behavior_robots:
             frames.extend(robot.render_camera_image(modes=modes))

@@ -41,7 +41,7 @@ def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
             )
             s.import_scene(scene)
             turtlebot = Turtlebot()
-            s.import_robot(turtlebot)
+            s.import_object(turtlebot)
 
             for mode in modality_list:
                 for _ in range(10):

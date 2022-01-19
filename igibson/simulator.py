@@ -259,23 +259,11 @@ class Simulator:
 
     @load_without_pybullet_vis
     def import_robot(self, robot):
-        """
-        Import a robot into the simulator.
-        :param robot: a robot object to load
-        """
-        # TODO: Remove this function in favor of unifying with import_object.
-        assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
-        assert self.scene is not None, "import_robot needs to be called after import_scene"
-
-        # TODO: remove this if statement after BehaviorRobot refactoring
-        if isinstance(robot, BaseRobot):
-            assert (
-                robot.control_freq is None
-            ), "control_freq should NOT be specified in robot config. Currently this value is automatically inferred from simulator.render_timestep!"
-            control_freq = 1.0 / self.render_timestep
-            robot.control_freq = control_freq
-
-        self.scene.add_object(robot, self, _is_call_from_simulator=True)
+        logging.warning(
+            "DEPRECATED: simulator.import_robot(...) has been deprecated in favor of import_object and will be removed "
+            "in a future release. Please use simulator.import_object(...) for equivalent functionality."
+        )
+        self.import_object(robot)
 
     @load_without_pybullet_vis
     def load_object_in_renderer(

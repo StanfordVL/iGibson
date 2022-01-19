@@ -222,7 +222,7 @@ if __name__ == "__main__":
     s.import_scene(scene)
 
     agent = BehaviorRobot(show_visual_head=True, use_ghost_hands=False)
-    s.import_robot(agent)
+    s.import_object(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
 

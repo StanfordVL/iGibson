@@ -28,7 +28,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     robot_config = config["robot"]
     robot_config.pop("name")
     turtlebot = Turtlebot(**robot_config)
-    s.import_robot(turtlebot)
+    s.import_object(turtlebot)
 
     turtlebot.apply_action([0.1, -0.1])
     s.step()

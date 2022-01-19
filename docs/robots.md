@@ -20,7 +20,7 @@ Below, we list the fully-supported robots:
 | JackRabbot      | `TwoWheeledRobot` <br> `ManipulationRobot`     | 2 & 7 | [Stanford Project Link](http://cvgl.stanford.edu/projects/jackrabbot/) | Base: {Torque, Velocity, Position, Differential Drive} <br> Arm: {Torque, Velocity, Position, Inverse Kinematics} |
 | LocoBot         | `TwoWheeledRobot`     | 2     | [ROS](http://wiki.ros.org/locobot), [Manufacturer](https://www.trossenrobotics.com/locobot-pyrobot-ros-rover.aspx) | Base: {Torque, Velocity, Position, Differential Drive} |
 
-Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in `igibson.assets_path`) and provide a `load` function that be invoked externally (usually by `import_robot` of `Simulator`). The `load` function imports the robot into PyBullet.
+Typically, these robot classes take in the URDF file or MuJoCo XML file of an robot (in `igibson.assets_path`) and provide a `load` function that be invoked externally (usually by `import_object` of `Simulator`). The `load` function imports the robot into PyBullet.
 
 ### Robot Class Hierarchy
 All robot classes inherit from `BaseRobot`, which provides the core interface for all Robot classes. From `BaseRobot`, there are additional abstract subclasses from which a robot can inherit from:

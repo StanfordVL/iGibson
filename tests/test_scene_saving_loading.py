@@ -75,7 +75,7 @@ def test_saving():
 
     # Import agents
     fetch = Fetch(name="agent_0")
-    s.import_robot(fetch)
+    s.import_object(fetch)
     fetch.set_position(FETCH_POS)
     fetch.joints["head_tilt_joint"].reset_state(*FETCH_JOINT)
 

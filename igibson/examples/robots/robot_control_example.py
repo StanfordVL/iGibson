@@ -345,7 +345,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         options=list(sorted(REGISTERED_ROBOTS.keys())), name="robot", random_selection=random_selection
     )
     robot = REGISTERED_ROBOTS[robot_name](action_type="continuous")
-    s.import_robot(robot)
+    s.import_object(robot)
 
     # Get controller choice
     controller_choices = choose_controllers(robot=robot, random_selection=random_selection)
@@ -407,7 +407,7 @@ def main(random_selection=False, headless=False, short_exec=False):
             component: {"name": controller_name} for component, controller_name in controller_choices.items()
         },
     )
-    s.import_robot(robot)
+    s.import_object(robot)
 
     # Reset the robot
     robot.set_position([0, 0, 0])

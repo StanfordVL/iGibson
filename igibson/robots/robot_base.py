@@ -1,19 +1,17 @@
+import inspect
 import logging
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from collections import OrderedDict
 from copy import deepcopy
 
 import gym
 import numpy as np
 import pybullet as p
-from future.utils import with_metaclass
 
 from igibson.controllers import ControlType, create_controller
 from igibson.external.pybullet_tools.utils import get_joint_info
-from igibson.object_states.factory import get_state_name, prepare_object_states
-from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.utils import clear_cached_states
-from igibson.utils.constants import SemanticClass
+from igibson.objects.stateful_object import StatefulObject
 from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
 from igibson.utils.utils import rotate_vector_3d
 
@@ -33,19 +31,13 @@ def register_robot(cls):
         REGISTERED_ROBOTS[cls.__name__] = cls
 
 
-class BaseRobot(with_metaclass(ABCMeta, object)):
+class BaseRobot(StatefulObject):
     """
     Base class for mujoco xml/ROS urdf based robot agents.
 
     This class handles object loading, and provides method interfaces that should be
     implemented by subclassed robots.
     """
-
-    DEFAULT_RENDERING_PARAMS = {
-        "use_pbr": True,
-        "use_pbr_mapping": True,
-        "shadow_caster": True,
-    }
 
     def __init_subclass__(cls, **kwargs):
         """
@@ -55,7 +47,8 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         directly in string-from in e.g., their config files, without having to manually set the str-to-class mapping
         in our code.
         """
-        register_robot(cls)
+        if not inspect.isabstract(cls):
+            register_robot(cls)
 
     def __init__(
         self,
@@ -69,13 +62,12 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         base_name=None,
         scale=1.0,
         self_collision=False,
-        class_id=SemanticClass.ROBOTS,
-        rendering_params=None,
+        **kwargs
     ):
         """
         :param name: None or str, name of the robot object
         :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
-            simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
+            simulator.import_object will automatically set the control frequency to be 1 / render_timestep by default.
         :param action_type: str, one of {discrete, continuous} - what type of action space to use
         :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
          specified by this class.
@@ -91,20 +83,14 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             None defaults to the base link name used in @model_file
         :param scale: int, scaling factor for model (default is 1)
         :param self_collision: bool, whether to enable self collision
-        :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
-        :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
-            See DEFAULT_RENDERING_PARAMS for the values passed by default.
         """
-        # Store arguments
         if type(name) == dict:
             raise ValueError(
                 "Robot name is a dict. You are probably using the deprecated constructor API which takes in robot_config (a dict) as input. Check the new API in BaseRobot."
             )
-        if name is None:
-            address = "%08X" % id(self)
-            name = "{}_{}".format(self.category, address)
 
-        self.name = name
+        super(BaseRobot, self).__init__(name=name, category="agent", abilities={"robot": {}}, **kwargs)
+
         self.base_name = base_name
         self.control_freq = control_freq
         self.scale = scale
@@ -139,47 +125,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             "at_limits": None,
         }
 
-        # TODO: Replace this with a reasonable StatefulObject inheritance.
-        prepare_object_states(self, abilities={"robot": {}})
-
-        # This logic is repeated because Robot does not inherit from Object.
-        # TODO: Remove this logic once the object refactoring is complete.
-        self.class_id = class_id
-        self._rendering_params = dict(self.DEFAULT_RENDERING_PARAMS)
-        if rendering_params is not None:
-            self._rendering_params.update(rendering_params)
-
-        self._loaded = False
-        self._body_ids = None
-
-    def load(self, simulator):
-        """
-        Load object into pybullet and return list of loaded body ids.
-
-        :param simulator: Simulator, iGibson simulator reference
-
-        :return Array[int]: List of unique pybullet IDs corresponding to this model. This will usually
-            only be a single value
-        """
-        if self._loaded:
-            raise ValueError("Cannot load a single model multiple times.")
-        self._loaded = True
-
-        # Store body ids and return them
-        _body_ids = self._load(simulator)
-
-        # Reset the robot and keep all joints still after loading
-        self.reset()
-        self.keep_still()
-
-        # A persistent reference to simulator is needed for AG in ManipulationRobot
-        self.simulator = simulator
-        return _body_ids
-
-    @property
-    def loaded(self):
-        return self._loaded
-
     def _load(self, simulator):
         """
         Loads this pybullet model into the simulation. Should return a list of unique body IDs corresponding
@@ -191,6 +136,21 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             only be a single value
         """
         logging.info("Loading robot model file: {}".format(self.model_file))
+
+        # A persistent reference to simulator is needed for AG in ManipulationRobot
+        self.simulator = simulator
+
+        # Set the control frequency if one was not provided.
+        expected_control_freq = 1.0 / simulator.render_timestep
+        if self.control_freq is None:
+            logging.info(
+                "Control frequency is None - being set to default of 1 / render_timestep: %.4f", expected_control_freq
+            )
+            self.control_freq = expected_control_freq
+        else:
+            assert np.isclose(
+                expected_control_freq, self.control_freq
+            ), "Stored control frequency does not match environment's render timestep."
 
         # Set flags for loading model
         flags = p.URDF_USE_MATERIAL_COLORS_FROM_MTL
@@ -209,15 +169,15 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             )
             body_ids = p.loadMJCF(self.model_file, flags=flags)
 
-        # Store body ids
-        self._body_ids = body_ids
-
         # Load into simulator and initialize states
-        for body_id in self._body_ids:
+        for body_id in body_ids:
             simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
-        for state in self.states.values():
-            state.initialize(simulator)
+        return body_ids
+
+    def load(self, simulator):
+        # Call the load function on the BaseObject through StatefulObject. This sets up the body_ids member.
+        body_ids = super(BaseRobot, self).load(simulator)
 
         # Grab relevant references from the body IDs
         self._setup_references()
@@ -240,6 +200,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
         # Validate this robot configuration
         self._validate_configuration()
+
+        # Reset the robot and keep all joints still after loading
+        self.reset()
+        self.keep_still()
 
         # Return the body IDs
         return body_ids
@@ -373,19 +337,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             point corresponding to a toggle marker. By default, we assume robot cannot toggle toggle markers
         """
         return False
-
-    def get_body_ids(self):
-        """
-        Gets the body ID for this robot.
-
-        If the object somehow has multiple bodies, this will be the default body that the default manipulation functions
-        will manipulate.
-
-        Should be implemented by all subclasses.
-
-        :return None or int: Body ID representing this model in simulation if it exists, else None
-        """
-        return self._body_ids
 
     def reset(self):
         """
@@ -534,19 +485,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         proprio_dict = self._get_proprioception_dict()
         return np.concatenate([proprio_dict[obs] for obs in self.proprio_obs])
 
-    def get_position(self):
-        """
-        :return Array[float]: (x,y,z) global cartesian coordinates of this model's body (as taken at its body_id)
-        """
-        return self.get_position_orientation()[0]
-
-    def get_orientation(self):
-        """
-        :return Array[float]: (x,y,z,w) global orientation in quaternion form of this model's body
-            (as taken at its body_id)
-        """
-        return self.get_position_orientation()[1]
-
     def get_position_orientation(self):
         """
         :return Tuple[Array[float], Array[float]]: pos (x,y,z) global cartesian coordinates, quat (x,y,z,w) global
@@ -562,38 +500,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         """
         return self.base_link.get_rpy()
 
-    def get_velocities(self):
-        """Get object bodies' velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
-        velocities = []
-        for body_id in self.get_body_ids():
-            lin, ang = p.getBaseVelocity(body_id)
-            velocities.append((np.array(lin), np.array(ang)))
-
-        return velocities
-
-    def set_velocities(self, velocities):
-        """Set object base velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
-        assert len(velocities) == len(self.get_body_ids()), "Number of velocities should match number of bodies."
-
-        for bid, (linear_velocity, angular_velocity) in zip(self.get_body_ids(), velocities):
-            p.resetBaseVelocity(bid, linear_velocity, angular_velocity)
-
     def set_joint_positions(self, joint_positions):
         """Set this robot's joint positions, where @joint_positions is an array"""
         for joint, joint_pos in zip(self._joints.values(), joint_positions):
             joint.reset_state(pos=joint_pos, vel=0.0)
-
-    def set_joint_states(self, joint_states):
-        """Set object joint states in the format of Dict[String: (q, q_dot)]]"""
-        for joint_name, joint in self._joints.items():
-            joint.reset_state(*joint_states[joint_name])
-
-    def get_joint_states(self):
-        """Get object joint states in the format of Dict[String: (q, q_dot)]]"""
-        joint_states = {}
-        for joint_name, joint in self._joints.items():
-            joint_states[joint_name] = joint.get_state()[:2]
-        return joint_states
 
     def get_linear_velocity(self):
         """
@@ -610,24 +520,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :return Array[float]: angular (ax,ay,az) velocity of this robot
         """
         return self.base_link.get_angular_velocity()
-
-    def set_position(self, pos):
-        """
-        Sets the model's global position
-
-        :param pos: Array[float], corresponding to (x,y,z) global cartesian coordinates to set
-        """
-        old_quat = self.get_orientation()
-        self.set_position_orientation(pos, old_quat)
-
-    def set_orientation(self, quat):
-        """
-        Set the model's global orientation
-
-        :param quat: Array[float], corresponding to (x,y,z,w) global quaternion orientation to set
-        """
-        old_pos = self.get_position()
-        self.set_position_orientation(old_pos, quat)
 
     def set_position_orientation(self, pos, quat):
         """
@@ -675,15 +567,10 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
             "rendering_params": self._rendering_params,
         }
 
-    # TODO: Replace this with a reasonable StatefulObject inheritance.
     def dump_state(self):
         """Dump the state of the object other than what's not included in pybullet state."""
         return {
-            "states": {
-                get_state_name(state_type): state_instance.dump()
-                for state_type, state_instance in self.states.items()
-                if issubclass(state_type, AbsoluteObjectState)
-            },
+            "parent_state": super(BaseRobot, self).dump_state(),
             "controllers": {
                 controller_name: controller.dump_state() for controller_name, controller in self._controllers.items()
             },
@@ -691,10 +578,7 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
 
     def load_state(self, dump):
         """Dump the state of the object other than what's not included in pybullet state."""
-        state_dump = dump["states"]
-        for state_type, state_instance in self.states.items():
-            if issubclass(state_type, AbsoluteObjectState):
-                state_instance.load(state_dump[get_state_name(state_type)])
+        super(BaseRobot, self).load_state(dump["parent_state"])
 
         controller_dump = dump["controllers"]
         for controller_name, controller in self._controllers.items():
@@ -880,13 +764,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         return np.array([j.has_limit for j in self._joints.values()])
 
     @property
-    def category(self):
-        """
-        :return str: Semantic category for robots
-        """
-        return "agent"
-
-    @property
     @abstractmethod
     def model_name(self):
         """
@@ -1066,10 +943,6 @@ class BaseRobot(with_metaclass(ABCMeta, object)):
         :return str: absolute path to robot model's URDF / MJCF file
         """
         raise NotImplementedError
-
-    def force_wakeup(self):
-        for link in self._links.values():
-            link.force_wakeup()
 
     def keep_still(self):
         """
