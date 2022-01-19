@@ -72,7 +72,7 @@ class ViewerSimple:
 
     def update(self):
         if not self.renderer is None:
-            frames = self.renderer.render_robot_cameras(modes=("rgb"))
+            frames = self.renderer.render_robot_cameras(modes=("rgb"), cache=False)
             if len(frames) > 0:
                 frame = cv2.cvtColor(np.concatenate(frames, axis=1), cv2.COLOR_RGB2BGR)
                 cv2.imshow("RobotView", frame)

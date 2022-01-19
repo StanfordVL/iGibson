@@ -1199,7 +1199,7 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_active_cameras(self, modes=("rgb")):
+    def render_active_cameras(self, modes=("rgb"), cache=True):
         """
         Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
         where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB).
@@ -1208,6 +1208,8 @@ class MeshRenderer(object):
         """
         frames = []
         hide_robot = self.rendering_settings.hide_robot
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
+        has_set_camera = False
         for instance in self.instances:
             if isinstance(instance.ig_object, BaseRobot):
                 for camera in instance.ig_object.cameras:
@@ -1219,7 +1221,12 @@ class MeshRenderer(object):
                             :3, :3
                         ]
                         camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1]))  # Mujoco camera points in -z
-                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        if need_flow_info and has_set_camera:
+                            raise ValueError("We only allow one robot in the scene when rendering optical/scene flow.")
+                        self.set_camera(
+                            camera_pos, camera_pos + camera_view_dir, [0, 0, 1], cache=need_flow_info and cache
+                        )
+                        has_set_camera = True
                         for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
                             frames.append(item)
         return frames
@@ -1235,6 +1242,9 @@ class MeshRenderer(object):
         :return: a list of frames (number of modalities x number of robots)
         """
         frames = []
+        hide_robot = self.rendering_settings.hide_robot
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
+        has_set_camera = False
         for instance in self.instances:
             if isinstance(instance.ig_object, BaseRobot):
                 camera_pos = instance.ig_object.eyes.get_position()
@@ -1242,11 +1252,11 @@ class MeshRenderer(object):
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 up_direction = mat.dot(np.array([0, 0, 1]))
-                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=cache)
-                hidden_instances = []
-                if self.rendering_settings.hide_robot:
-                    hidden_instances.append(instance)
-                for item in self.render(modes=modes, hidden=hidden_instances):
+                if need_flow_info and has_set_camera:
+                    raise ValueError("We only allow one robot in the scene when rendering optical/scene flow.")
+                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=need_flow_info and cache)
+                has_set_camera = True
+                for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
                     frames.append(item)
 
         # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.

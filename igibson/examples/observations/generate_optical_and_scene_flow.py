@@ -69,7 +69,7 @@ def main():
             obj.set_position_orientation(np.append(np.random.uniform(low=0, high=2, size=2), [1.8]), [0, 0, 0, 1])
         for i in range(50):
             with Profiler("Environment action step"):
-                # let the robot stay satatic, and objects will fall around the robot
+                # let the robot stay static, and objects will fall around the robot
                 state, reward, done, info = env.step([0, 0])
 
                 optical_flow = state["optical_flow"]
