@@ -5,7 +5,7 @@ and adapted by iGibson team.
 """
 from __future__ import print_function
 
-import os, shutil, sys
+import os, shutil
 #sys.args.append('build')
 
 from distutils.core import setup, Extension

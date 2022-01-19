@@ -1,6 +1,5 @@
 import logging
 import os
-from random import random
 from sys import platform
 
 import yaml

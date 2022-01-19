@@ -4,7 +4,6 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 cudnn.benchmark = True
 

@@ -1,7 +1,6 @@
 import numpy as np
 
 from igibson.controllers import ControlType, ManipulationController
-from igibson.utils.python_utils import assert_valid_key
 
 VALID_MODES = {
     "binary",

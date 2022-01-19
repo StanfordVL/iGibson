@@ -8,21 +8,13 @@ import pybullet as p
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
-    get_all_links,
-    get_joint_names,
-    get_joint_positions,
-    get_joints,
-    get_link_name,
     get_max_limits,
     get_min_limits,
-    get_movable_joints,
-    get_moving_links,
     get_sample_fn,
     joints_from_names,
     set_joint_positions,
 )
 from igibson.objects.visual_marker import VisualMarker
-from igibson.render.profiler import Profiler
 from igibson.robots.fetch import Fetch
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator

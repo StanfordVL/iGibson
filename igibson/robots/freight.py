@@ -1,11 +1,9 @@
 import os
 
-import gym
 import numpy as np
 
 import igibson
 from igibson.robots.two_wheel_robot import TwoWheelRobot
-from igibson.utils.constants import SemanticClass
 
 
 class Freight(TwoWheelRobot):

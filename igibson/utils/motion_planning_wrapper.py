@@ -11,7 +11,6 @@ from igibson.external.pybullet_tools.utils import (
     get_joint_positions,
     get_max_limits,
     get_min_limits,
-    get_moving_links,
     get_sample_fn,
     is_collision_free,
     joints_from_names,

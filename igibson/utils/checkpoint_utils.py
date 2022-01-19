@@ -1,10 +1,5 @@
 """This file contains utils for BEHAVIOR demo replay checkpoints."""
-import json
 import os
-
-import pybullet as p
-
-from igibson.utils.utils import restoreState
 
 
 def save_checkpoint(simulator, root_directory):

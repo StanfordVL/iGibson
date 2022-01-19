@@ -11,8 +11,6 @@ from transforms3d.euler import euler2quat
 
 from igibson import object_states
 from igibson.envs.env_base import BaseEnv
-from igibson.external.pybullet_tools.utils import stable_z_on_aabb
-from igibson.object_states.utils import get_center_extent
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor

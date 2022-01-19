@@ -5,7 +5,6 @@ import igibson
 from igibson import object_states
 from igibson.objects.articulated_object import URDFObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.render.profiler import Profiler
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_model_path

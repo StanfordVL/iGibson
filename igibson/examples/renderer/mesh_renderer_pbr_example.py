@@ -9,7 +9,6 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.profiler import Profiler
-from igibson.utils.assets_utils import get_scene_path
 
 
 def load_obj_np(filename_obj, normalization=False, texture_size=4, texture_wrapping="REPEAT", use_bilinear=True):

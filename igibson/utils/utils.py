@@ -5,7 +5,6 @@ import random
 
 import numpy as np
 import pybullet as p
-import scipy
 import yaml
 from PIL import Image
 from scipy.spatial.transform import Rotation as R

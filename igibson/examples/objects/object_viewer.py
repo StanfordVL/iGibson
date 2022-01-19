@@ -1,7 +1,6 @@
 import logging
 import os
 
-import igibson
 from igibson.objects.articulated_object import URDFObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.empty_scene import EmptyScene
@@ -11,9 +10,8 @@ from igibson.utils.assets_utils import (
     get_ig_avg_category_specs,
     get_ig_model_path,
     get_object_models_of_category,
-    get_scene_path,
 )
-from igibson.utils.utils import let_user_pick, parse_config
+from igibson.utils.utils import let_user_pick
 
 
 def main(random_selection=False, headless=False, short_exec=False):

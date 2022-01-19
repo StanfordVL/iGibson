@@ -1,5 +1,3 @@
-import os
-
 import pybullet as p
 
 import igibson

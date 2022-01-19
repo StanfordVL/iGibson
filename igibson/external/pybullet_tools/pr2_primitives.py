@@ -13,7 +13,6 @@ from itertools import islice
 import numpy as np
 
 from .ikfast.pr2.ik import is_ik_compiled, pr2_inverse_kinematics
-from .ikfast.utils import USE_CURRENT, USE_ALL
 from .pr2_problems import get_fixed_bodies
 from .pr2_utils import TOP_HOLDING_LEFT_ARM, SIDE_HOLDING_LEFT_ARM, GET_GRASPS, get_gripper_joints, \
     get_carry_conf, get_top_grasps, get_side_grasps, open_arm, arm_conf, get_gripper_link, get_arm_joints, \
@@ -26,9 +25,8 @@ from .utils import invert, multiply, get_name, set_pose, get_link_pose, is_place
     disable_real_time, enable_gravity, joint_controller_hold, get_distance, \
     get_min_limit, user_input, step_simulation, get_body_name, get_bodies, BASE_LINK, \
     add_segments, get_max_limit, link_from_name, BodySaver, get_aabb, Attachment, interpolate_poses, \
-    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, set_renderer, \
-    get_custom_limits, all_between, get_unit_vector, wait_for_user, \
-    set_base_values, euler_from_quat, INF, elapsed_time, get_moving_links, flatten_links
+    plan_direct_joint_motion, has_gui, create_attachment, wait_for_duration, get_extend_fn, get_custom_limits, all_between, get_unit_vector, wait_for_user, \
+    get_moving_links, flatten_links
 
 BASE_EXTENT = 3.5 # 2.5
 BASE_LIMITS = (-BASE_EXTENT*np.ones(2), BASE_EXTENT*np.ones(2))
