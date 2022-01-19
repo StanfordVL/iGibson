@@ -1017,7 +1017,6 @@ class BRHand(BRHandBase):
             # Detect valid trig fraction that is above threshold
             # print(new_trig_frac)
             if new_trig_frac >= 0.0 and new_trig_frac <= 1.0 and new_trig_frac > TRIGGER_FRACTION_THRESHOLD:
-                # import ipdb; ipdb.set_trace()
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
@@ -1025,6 +1024,8 @@ class BRHand(BRHandBase):
                         return False
                 else:
                     ag_data = self.calculate_ag_object()
+
+                import ipdb; ipdb.set_trace()
 
                 # Return early if no AG-valid object can be grasped
                 if not ag_data:

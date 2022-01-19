@@ -1,6 +1,7 @@
 """This file contains utils for BEHAVIOR demo replay checkpoints."""
 import json
 import os
+from igibson.objects.articulated_object import URDFObject
 
 import pybullet as p
 
@@ -37,15 +38,17 @@ def save_checkpoint(simulator, root_directory):
 def load_checkpoint(simulator, root_directory, frame):
     bullet_path = os.path.join(root_directory, "%d.bullet" % frame)
     json_path = os.path.join(root_directory, "%d.json" % frame)
-
     # Restore the simulation state.
     # p.restoreState(fileName=bullet_path)
     restoreState(fileName=bullet_path)
-
     with open(json_path, "r") as f:
         dump = json.load(f)
-
     load_internal_states(simulator, dump)
+    # NOTE: For all articulated objects, we need to force_wakeup
+    # for the visuals in the simulator to update
+    for obj in simulator.scene.get_objects():
+        if isinstance(obj, URDFObject):
+            obj.force_wakeup()
 
 
 def save_internal_states(simulator):
