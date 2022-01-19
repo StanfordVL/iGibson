@@ -83,7 +83,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
     bvr_robot = BehaviorRobot()
-    s.import_robot(bvr_robot)
+    s.import_object(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 

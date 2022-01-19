@@ -34,7 +34,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True):
 
     if import_robot:
         turtlebot = Turtlebot()
-        s.import_robot(turtlebot)
+        s.import_object(turtlebot)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     fps = []

@@ -59,9 +59,9 @@ def test_import_building_viewing():
     turtlebot2 = Turtlebot()
     turtlebot3 = Turtlebot()
 
-    s.import_robot(turtlebot1)
-    s.import_robot(turtlebot2)
-    s.import_robot(turtlebot3)
+    s.import_object(turtlebot1)
+    s.import_object(turtlebot2)
+    s.import_object(turtlebot3)
 
     turtlebot1.set_position([0.5, 0, 0.5])
     turtlebot2.set_position([0, 0, 0.5])

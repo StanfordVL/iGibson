@@ -54,7 +54,7 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         """
         :param name: None or str, name of the robot object
         :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
-            simulator.import_robot will automatically set the control frequency to be 1 / render_timestep by default.
+            simulator.import_object will automatically set the control frequency to be 1 / render_timestep by default.
         :param action_type: str, one of {discrete, continuous} - what type of action space to use
         :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
          specified by this class.
@@ -193,11 +193,11 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         """
         self.set_joint_positions(self.untucked_default_joint_pos)
 
-    def _load(self, simulator):
+    def load(self, simulator):
         # Run super method
-        ids = super()._load(simulator)
+        ids = super().load(simulator)
 
-        assert len(self.get_body_ids()) == 1, "Fetch robot is expected to have only one body ID."
+        assert len(ids) == 1, "Fetch robot is expected to have only one body ID."
 
         # Extend super method by increasing laterial friction for EEF
         for link in self.finger_joint_ids[self.default_arm]:

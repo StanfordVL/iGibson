@@ -20,7 +20,7 @@ def benchmark(render_to_tensor=False, resolution=512):
     scene = StaticIndoorScene("Rs", build_graph=True, pybullet_load_texture=True)
     s.import_scene(scene)
     turtlebot = Turtlebot()
-    s.import_robot(turtlebot)
+    s.import_object(turtlebot)
 
     n_frame = 500
     start = time.time()

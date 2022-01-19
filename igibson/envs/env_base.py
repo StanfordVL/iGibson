@@ -198,7 +198,7 @@ class BaseEnv(gym.Env):
             assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
-            self.simulator.import_robot(robot)
+            self.simulator.import_object(robot)
 
         self.scene = scene
         self.robots = scene.robots

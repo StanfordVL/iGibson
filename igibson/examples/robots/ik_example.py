@@ -63,7 +63,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     robot_config.pop("name")
 
     fetch = Fetch(**robot_config)
-    s.import_robot(fetch)
+    s.import_object(fetch)
 
     body_ids = fetch.get_body_ids()
     assert len(body_ids) == 1, "Fetch robot is expected to be single-body."

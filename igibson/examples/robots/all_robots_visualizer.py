@@ -36,7 +36,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         robot_config = config["robot"]
         robot_name = robot_config.pop("name")
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)
-        s.import_robot(robot)
+        s.import_object(robot)
         robot.set_position(position)
         robot.reset()
         robot.keep_still()

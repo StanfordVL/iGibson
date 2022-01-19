@@ -40,7 +40,7 @@ def main():
                               pybullet_load_texture=True)
     s.import_scene(scene)
     turtlebot = Turtlebot(config)
-    s.import_robot(turtlebot)
+    s.import_object(turtlebot)
 
     for _ in range(10):
         obj = YCBObject('003_cracker_box')
