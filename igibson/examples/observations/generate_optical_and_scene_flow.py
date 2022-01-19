@@ -30,7 +30,7 @@ def scene_flow_to_visualization(image):
     return np.clip((image * FLOW_SCALING_FACTOR + 127), 0, 255).astype(np.uint8)
 
 
-def main():
+def main(random_selection=False, headless=True, short_exec=True):
     """
     Example of rendering additional sensor modalities
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation
@@ -46,11 +46,13 @@ def main():
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
-    env = iGibsonEnv(config_file=config_data, mode="gui_interactive")
-    # Set a better viewing direction
-    env.simulator.viewer.initial_pos = [0, 1.1, 1.5]
-    env.simulator.viewer.initial_view_direction = [0, 1, 0.1]
-    env.simulator.viewer.reset_viewer()
+    env = iGibsonEnv(config_file=config_data, mode="gui_interactive" if not headless else "headless")
+
+    if not headless:
+        # Set a better viewing direction
+        env.simulator.viewer.initial_pos = [0, 1.1, 1.5]
+        env.simulator.viewer.initial_view_direction = [0, 1, 0.1]
+        env.simulator.viewer.reset_viewer()
 
     added_objects = []
 
@@ -60,7 +62,12 @@ def main():
         obj.set_position_orientation(np.append(np.random.uniform(low=0, high=2, size=2), [1.8]), [0, 0, 0, 1])
         added_objects.append(obj)
 
-    for j in range(100):
+    if short_exec:
+        episodes = 1
+    else:
+        episodes = 10
+
+    for j in range(episodes):
         logging.info("Resetting environment")
         env.reset()
         env.robots[0].set_position_orientation([0, 0, 0], [0, 0, 0, 1])
@@ -73,11 +80,11 @@ def main():
                 state, reward, done, info = env.step([0, 0])
 
                 optical_flow = state["optical_flow"]
-                cv2.imshow("Optical Flow", optical_flow_to_visualization(optical_flow))
-
                 scene_flow = state["scene_flow"]
-                print(np.max(scene_flow), np.min(scene_flow))
-                cv2.imshow("Scene Flow", scene_flow_to_visualization(scene_flow))
+
+                if not headless:
+                    cv2.imshow("Optical Flow", optical_flow_to_visualization(optical_flow))
+                    cv2.imshow("Scene Flow", scene_flow_to_visualization(scene_flow))
 
     env.close()
 
