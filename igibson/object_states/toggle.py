@@ -37,13 +37,13 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
             self.visual_marker_on = VisualMarker(
                 rgba_color=[0, 1, 0, 0.5],
                 radius=_TOGGLE_BUTTON_RADIUS,
-                class_id=SemanticClass.SCENE_OBJS,
+                class_id=SemanticClass.TOGGLE_MARKER,
                 rendering_params={"use_pbr": True, "use_pbr_mapping": True},
             )
             self.visual_marker_off = VisualMarker(
                 rgba_color=[1, 0, 0, 0.5],
                 radius=_TOGGLE_BUTTON_RADIUS,
-                class_id=SemanticClass.SCENE_OBJS,
+                class_id=SemanticClass.TOGGLE_MARKER,
                 rendering_params={"use_pbr": True, "use_pbr_mapping": True},
             )
             self.simulator.import_object(self.visual_marker_on)

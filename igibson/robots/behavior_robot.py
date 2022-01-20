@@ -440,7 +440,7 @@ class BRPart(object):
         "shadow_caster": True,
     }
 
-    def __init__(self, class_id=SemanticClass.USER_ADDED_OBJS, rendering_params=None):
+    def __init__(self, class_id=SemanticClass.ROBOTS, rendering_params=None):
         """
         Create an object instance with the minimum information of class ID and rendering parameters.
 

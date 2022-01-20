@@ -32,7 +32,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         base_name=None,
         scale=1.0,
         self_collision=True,
-        class_id=SemanticClass.ROBOTS,
+        class_id=None,
         rendering_params=None,
         grasping_mode="physical",
     ):
