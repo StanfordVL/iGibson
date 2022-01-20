@@ -8,6 +8,10 @@ from enum import IntEnum
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
+AVAILABLE_MODALITIES = ("rgb", "normal", "3d", "seg", "optical_flow", "scene_flow", "ins_seg")
+MAX_INSTANCE_COUNT = 1024
+MAX_CLASS_COUNT = 512
+
 
 class ViewerMode(IntEnum):
     NAVIGATION = 0
@@ -28,6 +32,13 @@ class SemanticClass(IntEnum):
     ROBOTS = 1
     USER_ADDED_OBJS = 2
     SCENE_OBJS = 3
+    # The following class ids count backwards from MAX_CLASS_COUNT (instead of counting forward from 4) because we want
+    # to maintain backward compatibility
+    DIRT = 507
+    STAIN = 508
+    WATER = 509
+    HEAT_SOURCE_MARKER = 510
+    TOGGLE_MARKER = 511
 
 
 class ShadowPass(IntEnum):
@@ -118,10 +129,6 @@ NamedRenderingPresets = {
         optimized=True,
     ),
 }
-
-AVAILABLE_MODALITIES = ("rgb", "normal", "3d", "seg", "optical_flow", "scene_flow", "ins_seg")
-MAX_INSTANCE_COUNT = 1024
-MAX_CLASS_COUNT = 512
 
 # Encodings
 RAW_ENCODING = 0

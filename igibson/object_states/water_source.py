@@ -43,7 +43,7 @@ class WaterSource(AbsoluteObjectState, LinkBasedStateMixin):
 
         water_source_position = list(np.array(water_source_position) + _OFFSET_FROM_LINK)
         self.water_stream = WaterStream(
-            water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump, class_id=SemanticClass.SCENE_OBJS
+            water_source_position, num=_NUM_DROPS, initial_dump=self.initial_dump, class_id=SemanticClass.WATER
         )
         self.simulator.import_particle_system(self.water_stream)
         del self.initial_dump
