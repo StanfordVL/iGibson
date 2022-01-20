@@ -193,7 +193,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         for pos in query_positions:
             logging.info("Querying joint configuration to current marker position")
             joint_pos = accurate_calculate_inverse_kinematics(
-                robot_id, fetch.eef_link.link_id, pos, threshold, max_iter
+                robot_id, fetch.eef_links[fetch.default_arm].link_id, pos, threshold, max_iter
             )
             if joint_pos is not None and len(joint_pos) > 0:
                 logging.info("Solution found. Setting new arm configuration.")
@@ -228,7 +228,7 @@ def main(random_selection=False, headless=False, short_exec=False):
                 if k == ord(" "):
                     logging.info("Querying joint configuration to current marker position")
                     joint_pos = accurate_calculate_inverse_kinematics(
-                        robot_id, fetch.eef_link.link_id, [x, y, z], threshold, max_iter
+                        robot_id, fetch.eef_links[fetch.default_arm].link_id, [x, y, z], threshold, max_iter
                     )
                     if joint_pos is not None and len(joint_pos) > 0:
                         logging.info("Solution found. Setting new arm configuration.")
