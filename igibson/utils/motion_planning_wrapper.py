@@ -294,7 +294,7 @@ class MotionPlanningWrapper(object):
             set_joint_positions(self.robot_id, self.arm_joint_ids, sample_fn())
             arm_joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
-                self.robot.eef_link.link_id,
+                self.robot.eef_links[self.robot.default_arm].link_id,
                 targetPosition=arm_ik_goal,
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
@@ -335,7 +335,9 @@ class MotionPlanningWrapper(object):
 
             # gripper should not have any self-collision
             collision_free = is_collision_free(
-                body_a=self.robot_id, link_a_list=[self.robot.eef_link.link_id], body_b=self.robot_id
+                body_a=self.robot_id,
+                link_a_list=[self.robot.eef_links[self.robot.default_arm].link_id],
+                body_b=self.robot_id,
             )
             if not collision_free:
                 n_attempt += 1
@@ -388,7 +390,7 @@ class MotionPlanningWrapper(object):
 
         allow_collision_links = []
         if self.robot_type == "Fetch":
-            allow_collision_links = [self.robot.eef_link.link_id] + [
+            allow_collision_links = [self.robot.eef_links[self.robot.default_arm].link_id] + [
                 finger.link_id for finger in self.robot.finger_links
             ]
         arm_path = plan_joint_motion(
@@ -475,7 +477,7 @@ class MotionPlanningWrapper(object):
 
             joint_positions = p.calculateInverseKinematics(
                 self.robot_id,
-                self.robot.eef_link.link_id,
+                self.robot.eef_links[self.robot.default_arm].link_id,
                 targetPosition=push_goal,
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
