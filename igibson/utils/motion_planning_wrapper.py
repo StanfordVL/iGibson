@@ -391,7 +391,7 @@ class MotionPlanningWrapper(object):
         allow_collision_links = []
         if self.robot_type == "Fetch":
             allow_collision_links = [self.robot.eef_links[self.robot.default_arm].link_id] + [
-                finger.link_id for finger in self.robot.finger_links
+                finger.link_id for finger in self.robot.finger_links[self.robot.default_arm]
             ]
         arm_path = plan_joint_motion(
             self.robot_id,
