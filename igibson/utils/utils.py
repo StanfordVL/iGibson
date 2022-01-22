@@ -232,3 +232,23 @@ def let_user_pick(options, print_intro=True, random_selection=False):
     except:
         pass
     return None
+
+# To dynamically modify wbm3_modifiable_full_obs.yaml file
+
+def modify_config_file(config_file, task_name, scene_id):
+    # Read in the file
+    with open(config_file, 'r') as file :
+        filedata = file.read()
+
+    # Replace the target string
+    filedata = filedata.replace('task_placeholder', task_name)
+    filedata = filedata.replace('scene_placeholder', scene_id)
+    #print(filedata)
+    
+    config_file = config_file + "_tmp"
+
+    # Write the file out again
+    with open(config_file, 'w') as file:
+        file.write(filedata)
+    
+    return config_file
