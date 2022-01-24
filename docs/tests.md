@@ -1,8 +1,8 @@
-# Tests
-### Overview
-We provide tests in [test](https://github.com/StanfordVL/iGibson/tree/master/igibson/test). You can run them by this:
+# Tests and Examples
+### Tests
+We provide tests in [this directory](https://github.com/StanfordVL/iGibson/tree/master/tests) in our repository. 
+You can run them executing:
 ```bash
-cd igibson/test
 pytest --ignore disabled --ignore benchmark
 ```
 It will take a few minutes. If all tests pass, you will see something like this
@@ -21,4 +21,3 @@ test_scene_importing.py ....                                                 [ 9
 test_simulator.py .                                                          [ 96% ]
 test_viewer.py
 ```
-

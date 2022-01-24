@@ -56,7 +56,7 @@ class Quadrotor(LocomotionRobot):
         """
         real_action = self.policy_action_to_robot_action(action)
         p.setGravity(0, 0, 0)
-        p.resetBaseVelocity(self.get_body_id(), real_action[:3], real_action[3:])
+        p.resetBaseVelocity(self.get_body_ids()[0], real_action[:3], real_action[3:])
 
     def setup_keys_to_action(self):
         self.keys_to_action = {

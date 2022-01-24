@@ -38,7 +38,7 @@ class Under(PositionalValidationMemoizedObjectStateMixin, RelativeObjectState, B
 
     def _get_value(self, other):
         adjacency = self.obj.states[VerticalAdjacency].get_value()
-        return (
-            other.get_body_id() in adjacency.positive_neighbors
-            and other.get_body_id() not in adjacency.negative_neighbors
+        other_ids = set(other.get_body_ids())
+        return not other_ids.isdisjoint(adjacency.positive_neighbors) and other_ids.isdisjoint(
+            adjacency.negative_neighbors
         )

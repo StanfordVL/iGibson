@@ -111,6 +111,7 @@ class BaseController:
         self._joint_idx = joint_idx
 
         # Initialize some other variables that will be filled in during runtime
+        self.control = None
         self._command = None
         self._command_scale_factor = None
         self._command_output_transform = None
@@ -219,13 +220,28 @@ class BaseController:
         :return Array[float]: numpy array of outputted control signals
         """
         control = self._command_to_control(command=self._command, control_dict=control_dict)
-        return self.clip_control(control=control)
+        self.control = self.clip_control(control=control)
+        return self.control
 
     def reset(self):
         """
         Resets this controller. Should be implemented by subclass.
         """
         raise NotImplementedError
+
+    def dump_state(self):
+        """
+        :return Any: the state of the object other than what's not included in pybullet state.
+        """
+        return None
+
+    def load_state(self, dump):
+        """
+        Load the state of the object other than what's not included in pybullet state.
+
+        :param dump: Any: the dumped state
+        """
+        return
 
     def _command_to_control(self, command, control_dict):
         """

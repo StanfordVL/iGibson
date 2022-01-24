@@ -158,7 +158,7 @@ class BehaviorMPEnv(BehaviorEnv):
                     if isinstance(obj, URDFObject) and hasattr(obj, "states") and object_states.AABB in obj.states:
                         lo, hi = obj.states[object_states.AABB].get_value()
                         volume = get_aabb_volume(lo, hi)
-                        if volume < 0.2 * 0.2 * 0.2 and not obj.main_body_is_fixed:  # we can only grasp small objects
+                        if volume < 0.2 * 0.2 * 0.2 and not obj.fixed_base:  # we can only grasp small objects
                             self.navigate_if_needed(obj)
                             self.grasp_obj(obj, hand)
                             obj_in_hand_id = self.robots[0].links[hand].object_in_hand

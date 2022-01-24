@@ -77,7 +77,7 @@ def compute_adjacencies(obj, axes, max_distance):
     # Use AABB center instead of position because we cannot get valid position
     # for fixed objects if fixed links are merged.
     object_position, _ = obj.states[Pose].get_value()
-    body_id = obj.get_body_id()
+    body_ids = obj.get_body_ids()
 
     # Cast rays repeatedly until the max number of casting is reached
     for i in range(_MAX_ITERATIONS):
@@ -108,7 +108,7 @@ def compute_adjacencies(obj, axes, max_distance):
 
         # Add the results to the appropriate lists
         for direction_idx, result in enumerate(obj_ids):
-            if result != -1 and result != body_id:
+            if result != -1 and result not in body_ids:
                 bodies_by_direction[direction_idx].append(result)
 
         # Set the finalization status of no-hit directions

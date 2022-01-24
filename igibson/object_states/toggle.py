@@ -37,13 +37,13 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
             self.visual_marker_on = VisualMarker(
                 rgba_color=[0, 1, 0, 0.5],
                 radius=_TOGGLE_BUTTON_RADIUS,
-                class_id=SemanticClass.SCENE_OBJS,
+                class_id=SemanticClass.TOGGLE_MARKER,
                 rendering_params={"use_pbr": True, "use_pbr_mapping": True},
             )
             self.visual_marker_off = VisualMarker(
                 rgba_color=[1, 0, 0, 0.5],
                 radius=_TOGGLE_BUTTON_RADIUS,
-                class_id=SemanticClass.SCENE_OBJS,
+                class_id=SemanticClass.TOGGLE_MARKER,
                 rendering_params={"use_pbr": True, "use_pbr_mapping": True},
             )
             self.simulator.import_object(self.visual_marker_on)
@@ -58,7 +58,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
 
         robot_can_toggle = False
         # detect marker and hand interaction
-        for robot in self.simulator.robots:
+        for robot in self.simulator.scene.robots:
             robot_can_toggle = robot.can_toggle(button_position_on_object, _TOGGLE_DISTANCE_THRESHOLD)
             if robot_can_toggle:
                 break
@@ -90,7 +90,7 @@ class ToggledOn(AbsoluteObjectState, BooleanState, LinkBasedStateMixin, TextureC
         else:
             activation_state = PyBulletSleepState.AWAKE
 
-        if activation_state == PyBulletSleepState.AWAKE:
+        if activation_state in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
             show_marker.set_position(button_position_on_object)
             hidden_marker.set_position(button_position_on_object)
 

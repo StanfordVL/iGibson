@@ -44,7 +44,7 @@ class CleaningTool(AbsoluteObjectState, LinkBasedStateMixin):
             # cleaning link.
             contact_bodies = self.obj.states[ContactBodies].get_value()
             touching_body = [
-                cb for cb in contact_bodies if cb.bodyUniqueIdB == particle_system.parent_obj.get_body_id()
+                cb for cb in contact_bodies if cb.bodyUniqueIdB in particle_system.parent_obj.get_body_ids()
             ]
             touching_link = any(self.link_id is None or cb.linkIndexA == self.link_id for cb in touching_body)
             if not touching_link:

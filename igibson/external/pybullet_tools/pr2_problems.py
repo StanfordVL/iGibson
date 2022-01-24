@@ -9,7 +9,7 @@ from .pr2_utils import set_arm_conf, REST_LEFT_ARM, open_arm, \
     close_arm, get_carry_conf, arm_conf, get_other_arm, set_group_conf, PR2_URDF, DRAKE_PR2_URDF, create_gripper
 from .utils import create_box, set_base_values, set_point, set_pose, get_pose, \
     get_bodies, z_rotation, load_model, load_pybullet, HideOutput, create_body, \
-    get_box_geometry, get_cylinder_geometry, create_shape_array, unit_pose, Pose, \
+    get_box_geometry, get_cylinder_geometry, create_shape_array, Pose, \
     Point, LockRenderer, FLOOR_URDF, TABLE_URDF, add_data_path
 
 

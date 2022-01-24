@@ -1,14 +1,9 @@
 import os
-from collections import OrderedDict
 
-import gym
 import numpy as np
 
 import igibson
-from igibson.controllers import ControlType
 from igibson.robots.two_wheel_robot import TwoWheelRobot
-from igibson.utils.constants import SemanticClass
-from igibson.utils.python_utils import assert_valid_key
 
 
 class Turtlebot(TwoWheelRobot):
@@ -18,9 +13,12 @@ class Turtlebot(TwoWheelRobot):
     Uses joint velocity control
     """
 
-    def get_proprioception(self):
-        # We only get velocity info
-        return np.concatenate([self.base_link.get_linear_velocity(), self.base_link.get_angular_velocity()])
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Turtlebot"
 
     @property
     def wheel_radius(self):

@@ -31,7 +31,7 @@ class DynamicNavRandomTask(PointNavRandomTask):
         dynamic_objects = []
         for _ in range(self.num_dynamic_objects):
             robot = Turtlebot(self.config)
-            env.simulator.import_robot(robot)
+            env.simulator.import_object(robot)
             dynamic_objects.append(robot)
         return dynamic_objects
 

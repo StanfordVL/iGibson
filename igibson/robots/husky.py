@@ -12,9 +12,12 @@ class Husky(LocomotionRobot):
     Reference: https://clearpathrobotics.com/, http://wiki.ros.org/Robots/Husky
     """
 
-    def get_proprioception(self):
-        # We only get velocity info
-        return np.concatenate([self.base_link.get_linear_velocity(), self.base_link.get_angular_velocity()])
+    @property
+    def model_name(self):
+        """
+        :return str: robot model name
+        """
+        return "Husky"
 
     def _create_discrete_action_space(self):
         raise ValueError("Husky does not support discrete actions!")

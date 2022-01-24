@@ -6,7 +6,7 @@ import numpy as np
 
 from pybullet_tools.pr2_utils import DRAKE_PR2_URDF, set_group_conf, REST_LEFT_ARM, rightarm_from_leftarm
 from pybullet_tools.utils import HideOutput, load_model, base_values_from_pose, has_joint, set_joint_position, \
-    joint_from_name, get_box_geometry, create_shape, Pose, Point, STATIC_MASS, NULL_ID, CLIENT, set_pose, \
+    joint_from_name, get_box_geometry, create_shape, Pose, Point, set_pose, \
     get_cylinder_geometry, get_sphere_geometry, create_shape_array, create_body
 
 

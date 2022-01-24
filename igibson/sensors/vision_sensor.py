@@ -117,7 +117,7 @@ class VisionSensor(BaseSensor):
         """
         :return: optical flow sensor reading
         """
-        return raw_vision_obs["optical_flow"][:, :, :3]
+        return raw_vision_obs["optical_flow"][:, :, :2]
 
     def get_scene_flow(self, raw_vision_obs):
         """

@@ -296,14 +296,14 @@ class SimulatorVR(Simulator):
 
         # Update haptics for body and hands
         if self.main_vr_robot:
-            vr_body_id = self.main_vr_robot.links["body"].get_body_id()
+            vr_body_id = self.main_vr_robot.links["body"].body_id
             vr_hands = [
                 ("left_controller", self.main_vr_robot.links["left_hand"]),
                 ("right_controller", self.main_vr_robot.links["right_hand"]),
             ]
 
             # Check for body haptics
-            wall_ids = [x.get_body_id() for x in self.scene.objects_by_category["walls"]]
+            wall_ids = [bid for x in self.scene.objects_by_category["walls"] for bid in x.get_body_ids()]
             for c_info in p.getContactPoints(vr_body_id):
                 if wall_ids and (c_info[1] in wall_ids or c_info[2] in wall_ids):
                     for controller in ["left_controller", "right_controller"]:
@@ -316,7 +316,7 @@ class SimulatorVR(Simulator):
             for hand_device, hand_obj in vr_hands:
                 is_valid, _, _ = self.get_data_for_vr_device(hand_device)
                 if is_valid:
-                    if len(p.getContactPoints(hand_obj.get_body_id())) > 0 or (
+                    if len(p.getContactPoints(hand_obj.body_id)) > 0 or (
                         hasattr(hand_obj, "object_in_hand") and hand_obj.object_in_hand
                     ):
                         # Only use 30% strength for normal collisions, to help add realism to the experience

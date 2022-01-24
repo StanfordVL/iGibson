@@ -24,7 +24,7 @@ class Soaked(AbsoluteObjectState, BooleanState, TextureChangeStateMixin):
                 item.bodyUniqueIdB for item in list(self.obj.states[ContactBodies].get_value())
             )
             for particle in water_source_obj.states[WaterSource].water_stream.get_active_particles():
-                if particle.get_body_id() in contacted_water_body_ids:
+                if not set(particle.get_body_ids()).isdisjoint(contacted_water_body_ids):
                     self.value = True
         self.update_texture()
 

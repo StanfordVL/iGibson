@@ -1,13 +1,8 @@
 from abc import abstractmethod
 
-import gym
 import numpy as np
-from transforms3d.euler import euler2quat
-from transforms3d.quaternions import qmult, quat2mat
 
-from igibson.controllers import LocomotionController
 from igibson.robots.robot_base import BaseRobot
-from igibson.utils.python_utils import assert_valid_key
 
 
 class ActiveCameraRobot(BaseRobot):
@@ -35,6 +30,22 @@ class ActiveCameraRobot(BaseRobot):
 
         # run super
         super()._validate_configuration()
+
+    def _get_proprioception_dict(self):
+        dic = super()._get_proprioception_dict()
+
+        # Add camera pos info
+        dic["camera_qpos"] = self.joint_positions[self.camera_control_idx]
+        dic["camera_qpos_sin"] = np.sin(self.joint_positions[self.camera_control_idx])
+        dic["camera_qpos_cos"] = np.cos(self.joint_positions[self.camera_control_idx])
+        dic["camera_qvel"] = self.joint_velocities[self.camera_control_idx]
+
+        return dic
+
+    @property
+    def default_proprio_obs(self):
+        obs_keys = super().default_proprio_obs
+        return obs_keys + ["camera_qpos_sin", "camera_qpos_cos"]
 
     @property
     def controller_order(self):

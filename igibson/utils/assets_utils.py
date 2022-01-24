@@ -1,5 +1,6 @@
 import argparse
 import json
+import logging
 import os
 import subprocess
 import tempfile
@@ -9,17 +10,31 @@ import yaml
 
 import igibson
 
+if os.name == "nt":
+    import win32api
+    import win32con
+
+
+def folder_is_hidden(p):
+    """
+    Removes hidden folders from a list. Works on Linux, Mac and Windows
+
+    :return: true if a folder is hidden in the OS
+    """
+    if os.name == "nt":
+        attribute = win32api.GetFileAttributes(p)
+        return attribute & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
+    else:
+        return p.startswith(".")  # linux-osx
+
 
 def get_ig_avg_category_specs():
     """
     Load average object specs (dimension and mass) for objects
     """
-    avg_obj_dim_file = os.path.join(igibson.ig_dataset_path, "objects", "avg_category_specs.json")
-    if os.path.isfile(avg_obj_dim_file):
-        with open(avg_obj_dim_file) as f:
-            return json.load(f)
-    else:
-        return {}
+    avg_obj_dim_file = os.path.join(igibson.ig_dataset_path, "metadata", "avg_category_specs.json")
+    with open(avg_obj_dim_file) as f:
+        return json.load(f)
 
 
 def get_ig_category_ids():
@@ -37,6 +52,20 @@ def get_ig_category_ids():
     return defaultdict(lambda: 255, name_to_id)
 
 
+def get_available_ig_scenes():
+    """
+    iGibson interactive scenes
+
+    :return: list of available iGibson interactive scenes
+    """
+    ig_dataset_path = igibson.ig_dataset_path
+    ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
+    available_ig_scenes = sorted(
+        [f for f in os.listdir(ig_scenes_path) if (not folder_is_hidden(f) and f != "background")]
+    )
+    return available_ig_scenes
+
+
 def get_ig_scene_path(scene_name):
     """
     Get iGibson scene path
@@ -46,7 +75,7 @@ def get_ig_scene_path(scene_name):
     """
     ig_dataset_path = igibson.ig_dataset_path
     ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
-    print("SCENE NAME:", scene_name)
+    logging.info("Scene name: {}".format(scene_name))
     assert scene_name in os.listdir(ig_scenes_path), "Scene {} does not exist".format(scene_name)
     return os.path.join(ig_scenes_path, scene_name)
 
@@ -105,6 +134,44 @@ def get_ig_model_path(category_name, model_name):
     return os.path.join(ig_category_path, model_name)
 
 
+def get_object_models_of_category(category_name, filter_method=None):
+    """
+    Get iGibson all object models of a given category
+
+    :return: a list of all object models of a given
+    """
+    models = []
+    ig_category_path = get_ig_category_path(category_name)
+    for model_name in os.listdir(ig_category_path):
+        if filter_method is None:
+            models.append(model_name)
+        elif filter_method in ["sliceable_part", "sliceable_whole"]:
+            model_path = get_ig_model_path(category_name, model_name)
+            metadata_json = os.path.join(model_path, "misc", "metadata.json")
+            with open(metadata_json) as f:
+                metadata = json.load(f)
+            if (filter_method == "sliceable_part" and "object_parts" not in metadata) or (
+                filter_method == "sliceable_whole" and "object_parts" in metadata
+            ):
+                models.append(model_name)
+        else:
+            raise Exception("Unknown filter method: {}".format(filter_method))
+    return models
+
+
+def get_all_object_categories():
+    """
+    Get iGibson all object categories
+
+    :return: a list of all object categories
+    """
+    ig_dataset_path = igibson.ig_dataset_path
+    ig_categories_path = os.path.join(ig_dataset_path, "objects")
+
+    categories = sorted([f for f in os.listdir(ig_categories_path) if not folder_is_hidden(f)])
+    return categories
+
+
 def get_all_object_models():
     """
     Get iGibson all object models
@@ -137,6 +204,17 @@ def get_ig_assets_version():
     )
     git_head_hash = str(process.communicate()[0].strip())
     return "{}".format(git_head_hash)
+
+
+def get_available_g_scenes():
+    """
+    Gibson scenes
+
+    :return: list of available Gibson scenes
+    """
+    data_path = igibson.g_dataset_path
+    available_g_scenes = sorted([f for f in os.listdir(data_path) if not folder_is_hidden(f)])
+    return available_g_scenes
 
 
 def get_scene_path(scene_id):
@@ -183,10 +261,14 @@ def download_assets():
 
     tmp_file = os.path.join(tempfile.gettempdir(), "assets_igibson.tar.gz")
 
-    if not os.path.exists(os.path.dirname(igibson.assets_path)):
-        os.makedirs(os.path.dirname(igibson.assets_path))
+    os.makedirs(os.path.dirname(igibson.assets_path), exist_ok=True)
 
     if not os.path.exists(igibson.assets_path):
+        logging.info(
+            "Downloading and decompressing assets from {}".format(
+                "https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz"
+            )
+        )
         os.system(
             "wget -c --retry-connrefused --tries=5 --timeout=5 "
             "https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz -O {}".format(tmp_file)
@@ -201,10 +283,14 @@ def download_demo_data():
 
     tmp_file = os.path.join(tempfile.gettempdir(), "Rs.tar.gz")
 
-    if not os.path.exists(igibson.g_dataset_path):
-        os.makedirs(igibson.g_dataset_path)
+    os.makedirs(igibson.g_dataset_path, exist_ok=True)
 
     if not os.path.exists(os.path.join(igibson.g_dataset_path, "Rs")):
+        logging.info(
+            "Downloading and decompressing Rs Gibson meshfile from {}".format(
+                "https://storage.googleapis.com/gibson_scenes/Rs.tar.gz"
+            )
+        )
         os.system(
             "wget -c --retry-connrefused --tries=5 --timeout=5  "
             "https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O {}".format(tmp_file)
@@ -218,18 +304,21 @@ def download_dataset(url):
     """
 
     if not os.path.exists(igibson.g_dataset_path):
+        logging.info("Creating Gibson dataset folder at {}".format(igibson.g_dataset_path))
         os.makedirs(igibson.g_dataset_path)
 
     file_name = url.split("/")[-1]
 
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
+    logging.info("Downloading and decompressing the full Gibson dataset from {}".format(url))
     os.system("wget -c --retry-connrefused --tries=5 --timeout=5 {} -O {}".format(url, tmp_file))
     os.system("tar -zxf {} --strip-components=1 --directory {}".format(tmp_file, igibson.g_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
 
 def download_ext_scene_assets():
+    logging.info("Downloading and decompressing 3DFront and Cubicasa")
     os.makedirs(igibson.threedfront_dataset_path, exist_ok=True)
     os.makedirs(igibson.cubicasa_dataset_path, exist_ok=True)
     url = "https://storage.googleapis.com/gibson_scenes/default_materials.tar.gz"
@@ -262,11 +351,14 @@ def download_ig_dataset():
         print("You need to agree to the terms for using iGibson dataset.")
 
     if not os.path.exists(igibson.ig_dataset_path):
+        logging.info("Creating iGibson dataset folder at {}".format(igibson.g_dataset_path))
         os.makedirs(igibson.ig_dataset_path)
+
     url = "https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz"
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
+    logging.info("Downloading and decompressing the full iGibson dataset of scenes from {}".format(url))
     os.system("wget -c --retry-connrefused --tries=5 --timeout=5 {} -O {}".format(url, tmp_file))
     os.system("tar -zxf {} --strip-components=1 --directory {}".format(tmp_file, igibson.ig_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
@@ -300,7 +392,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--download_ext_scene_assets", action="store_true", help="download external scene dataset assets"
     )
-    parser.add_argument("--change_data_path", action="store_true", help="change the path to store assets and datasert")
+    parser.add_argument("--change_data_path", action="store_true", help="change the path to store assets and datasets")
 
     args = parser.parse_args()
 
