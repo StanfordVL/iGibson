@@ -1,6 +1,7 @@
 import importlib
 import pkgutil
 import signal
+import sys
 from multiprocessing import Process
 
 import igibson.examples as examples
@@ -28,9 +29,8 @@ def timed_input(example_name):
 
 def main():
     """
-    Creates an iGibson environment from a config file with a turtlebot in Rs_int (interactive).
-    It steps the environment 100 times with random actions sampled from the action space,
-    using the Gym interface, resetting it 10 times.
+    Selector tool to see all available examples and pick one to run (in interactive or test mode), get more information,
+    or run all examples one after the other
     """
     examples_list = ["help", "all", "quit", "switch to test mode"]
     for kk in pkgutil.walk_packages(examples.__path__, examples.__name__ + "."):
@@ -46,6 +46,7 @@ def main():
         "| || |__| || || |_) |\__ \| (_) || | | |" + "\n"
         "|_| \_____||_||_.__/ |___/ \___/ |_| |_|" + "\n"
     )
+    excluded_examples = ["_ui", "vr_"]
     test_mode = False
     while selected_demo == 0 or selected_demo == 3:
         print(logo)
@@ -72,21 +73,10 @@ def main():
                 module_help = importlib.import_module("igibson.examples." + examples_list[help_demo])
                 print(module_help.main.__doc__)
             input("Press enter")
-        elif "web_ui" in examples_list[selected_demo]:
-            print(
-                "You have selected an example of the web UI to create new activity definitions. This demos require "
-                "some additional terminal commands. Please, follow the instructions in the README file within that "
-                "folder."
-            )
-            sys.exit(0)
-        elif selected_demo == 3:
-            test_mode = not test_mode
-            print("Test mode now " + ["OFF", "ON"][test_mode])
-            examples_list[3] = ["switch to test mode", "switch to interactive mode"][test_mode]
         elif selected_demo == 1:
             print("Executing all demos " + ["in interactive mode", "in test mode"][test_mode])
             for idx in range(4, len(examples_list)):
-                if "web_ui" not in examples_list[selected_demo]:
+                if not any(excluded_example in examples_list[selected_demo] for excluded_example in excluded_examples):
                     print("*" * 80)
                     print("*" * 80)
                     print(logo)
@@ -128,11 +118,20 @@ def main():
                         "The web UI demos to create new activity definitions require additional terminal commands. "
                         "Skipping them."
                     )
-
         elif selected_demo == 2:
             print("Exit")
             return
-        else:
+        elif selected_demo == 3:
+            test_mode = not test_mode
+            print("Test mode now " + ["OFF", "ON"][test_mode])
+            examples_list[3] = ["switch to test mode", "switch to interactive mode"][test_mode]
+        else:  # running a selected example
+            if any(excluded_example in examples_list[selected_demo] for excluded_example in excluded_examples):
+                print(
+                    "You have selected an example that requires additional terminal commands or packages "
+                    "(e.g. VR, web UI). Please, follow the instructions in the README of that example."
+                )
+                sys.exit(0)
             print(
                 "Executing " + examples_list[selected_demo] + " " + ["in interactive mode", "in test mode"][test_mode]
             )
