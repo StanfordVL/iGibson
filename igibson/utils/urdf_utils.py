@@ -172,7 +172,7 @@ def transform_element_xyzrpy(element, transformation):
     element.find("origin").attrib["rpy"] = "{0:f} {1:f} {2:f}".format(*transform_rpy)
 
 
-def save_urdfs_without_floating_joints(tree, main_body_is_fixed, file_prefix):
+def save_urdfs_without_floating_joints(tree, file_prefix):
     """
     Split one URDF into multiple URDFs if there are floating joints and save them
     """
@@ -250,14 +250,13 @@ def save_urdfs_without_floating_joints(tree, main_body_is_fixed, file_prefix):
         # Change 0 by the pose of this branch
 
         is_main_body = main_link_name == get_base_link_name(xml_tree_parent)
-        is_fixed = main_body_is_fixed if is_main_body else False
         transformation = extended_splitted_dict[esd_key][4]
-        urdfs_no_floating[esd_key] = (urdf_file_name, transformation, is_fixed, is_main_body)
+        urdfs_no_floating[esd_key] = (urdf_file_name, transformation, is_main_body)
         xml_tree_parent.write(urdf_file_name, xml_declaration=True)
         logging.info(urdf_file_name)
 
     # There should be exactly one main body
-    assert np.sum([val[3] for val in urdfs_no_floating.values()]) == 1
+    assert np.sum([val[2] for val in urdfs_no_floating.values()]) == 1
 
     return urdfs_no_floating
 

@@ -259,7 +259,10 @@ def main():
             if "links" not in meta:
                 meta["links"] = dict()
 
-            dynamics_info = p.getDynamicsInfo(obj.get_body_id(), -1)
+            body_ids = obj.get_body_ids()
+            assert len(body_ids) == 1, "Only single-body objects are supported."
+            body_id = body_ids[0]
+            dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
 
             rel_position, rel_orn = p.multiplyTransforms(

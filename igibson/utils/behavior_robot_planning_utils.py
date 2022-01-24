@@ -46,9 +46,10 @@ def plan_base_motion_br(
     difference_fn = get_base_difference_fn()
     distance_fn = get_base_distance_fn(weights=weights)
 
+    # TODO(behaviorrobot): Unify
     body_ids = []
     for part in ["body", "left_hand", "right_hand"]:
-        body_ids.append(robot.links[part].get_body_id())
+        body_ids.append(robot.links[part].body_id)
 
     def extend_fn(q1, q2):
         target_theta = np.arctan2(q2[1] - q1[1], q2[0] - q1[0])
@@ -184,14 +185,16 @@ def plan_hand_motion_br(
                 )
             )
 
+        # TODO(behaviorrobot): Unify
         collision = any(
-            pairwise_collision(robot.links["right_hand"].get_body_id(), obs, max_distance=max_distance)
-            for obs in obstacles
+            pairwise_collision(robot.links["right_hand"].body_id, obs, max_distance=max_distance) for obs in obstacles
         )
 
         if obj_in_hand is not None:
             collision = collision or any(
-                pairwise_collision(obj_in_hand.get_body_id(), obs, max_distance=max_distance) for obs in obstacles
+                pairwise_collision(bid, obs, max_distance=max_distance)
+                for obs in obstacles
+                for bid in obj_in_hand.get_body_ids()
             )
 
         return collision
@@ -218,12 +221,11 @@ if __name__ == "__main__":
     scene.objects_by_id = {}
     s.import_scene(scene)
 
-    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
-    s.import_robot(agent)
+    agent = BehaviorRobot(show_visual_head=True, use_ghost_hands=False)
+    s.import_object(agent)
     s.register_main_vr_robot(agent)
     initial_pos_z_offset = 0.7
 
-    s.robots.append(agent)
     agent.initial_z_offset = initial_pos_z_offset
     agent.set_position_orientation([0, 0, initial_pos_z_offset], [0, 0, 0, 1])
     # plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])

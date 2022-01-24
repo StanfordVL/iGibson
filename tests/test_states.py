@@ -93,8 +93,8 @@ def test_inside():
 
         # Open the doors of the cabinet and check that this still holds.
         for joint_id in [0, 1]:
-            max_pos = p.getJointInfo(obj2.get_body_id(), joint_id)[9]
-            p.resetJointState(obj2.get_body_id(), joint_id, max_pos)
+            max_pos = p.getJointInfo(obj2.get_body_ids()[0], joint_id)[9]
+            p.resetJointState(obj2.get_body_ids()[0], joint_id, max_pos)
         s.step()
         assert obj3.states[object_states.Touching].get_value(obj2)
         assert obj3.states[object_states.Inside].get_value(obj2)
@@ -139,8 +139,8 @@ def test_open():
         # PART 2: Set non-whitelisted joint to the max position
         # --------------------------------------------
         joint_id = 2
-        max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
-        p.resetJointState(obj.get_body_id(), joint_id, max_pos)
+        max_pos = p.getJointInfo(obj.get_body_ids()[0], joint_id)[9]
+        p.resetJointState(obj.get_body_ids()[0], joint_id, max_pos)
         s.step()
 
         # Check that the microwave is not open.
@@ -150,8 +150,8 @@ def test_open():
         # PART 3: Set whitelisted joint to the max position
         # --------------------------------------------
         joint_id = 0
-        max_pos = p.getJointInfo(obj.get_body_id(), joint_id)[9]
-        p.resetJointState(obj.get_body_id(), joint_id, max_pos)
+        max_pos = p.getJointInfo(obj.get_body_ids()[0], joint_id)[9]
+        p.resetJointState(obj.get_body_ids()[0], joint_id, max_pos)
         s.step()
 
         # Check that the microwave is open.
@@ -268,6 +268,8 @@ def test_water_source():
             s.step()
 
         # Check that we have some loaded particles here.
-        assert sink.states[object_states.WaterSource].water_stream.get_active_particles()[0].get_body_id() is not None
+        assert (
+            sink.states[object_states.WaterSource].water_stream.get_active_particles()[0].get_body_ids()[0] is not None
+        )
     finally:
         s.disconnect()

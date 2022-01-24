@@ -176,7 +176,7 @@ class MinitaurBase(LocomotionRobot):
         :param reload_urdf: whether to reload the urdf file. If not, reset() just place the minitaur back to its starting position.
         """
         if self.minitaur is None:
-            self.minitaur = self.get_body_id()
+            self.minitaur = self.get_body_ids()[0]
 
         if self.joint_name_to_id is None:
             self._BuildJointNameToIdDict()

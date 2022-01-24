@@ -25,7 +25,7 @@ jobs:
           registry: ${{ env.IMAGE_REGISTRY }}
 
       - name: install podman-compose
-        run: pip3 install https://github.com/containers/podman-compose/archive/devel.tar.gz
+        run: pip3 install podman-compose
 
       - name: Build and push images to quay
         run: |

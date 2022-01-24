@@ -4,7 +4,6 @@ from IPython import embed
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 task_choices = [

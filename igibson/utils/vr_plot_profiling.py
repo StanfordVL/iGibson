@@ -56,7 +56,7 @@ def main():
         for m in metrics.keys():
             if l.find(metrics[m]) == 0:
                 c_idx = l.find(":")
-                end_idx = None if m is not "Frame" else l.find("and") - 1
+                end_idx = None if m != "Frame" else l.find("and") - 1
                 val = float(l[c_idx + 2 : end_idx])
                 met_data[m].append(val)
 

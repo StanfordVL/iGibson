@@ -7,14 +7,14 @@ import pybullet as p
 import igibson
 from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
-from igibson.objects.object_base import SingleBodyObject
+from igibson.objects.object_base import BaseObject
 from igibson.utils import sampling_utils
-from igibson.utils.constants import PyBulletSleepState, SemanticClass
+from igibson.utils.constants import PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
 
-class Particle(SingleBodyObject):
+class Particle(BaseObject):
     """
     A particle object, used to simulate water stream and dust/stain
     """
@@ -105,14 +105,10 @@ class Particle(SingleBodyObject):
 
     def force_sleep(self, body_id=None):
         if body_id is None:
-            body_id = self.get_body_id()
+            body_id = self.get_body_ids()[0]
 
         activationState = p.ACTIVATION_STATE_SLEEP + p.ACTIVATION_STATE_DISABLE_WAKEUP
         p.changeDynamics(body_id, -1, activationState=activationState)
-
-    def force_wakeup(self):
-        activationState = p.ACTIVATION_STATE_WAKE_UP
-        p.changeDynamics(self.get_body_id(), -1, activationState=activationState)
 
 
 class ParticleSystem(object):
@@ -222,7 +218,7 @@ class ParticleSystem(object):
             particle = self._stashed_particles.popleft()
 
         # Lazy loading of the particle now if not already loaded
-        if not particle.get_body_id():
+        if particle.get_body_ids() is None:
             self._load_particle(particle)
 
         particle.set_position_orientation(position, orientation)
@@ -254,6 +250,17 @@ class AttachedParticleSystem(ParticleSystem):
         super(AttachedParticleSystem, self).__init__(**kwargs)
 
         self.parent_obj = parent_obj
+
+        # TODO: Avoid this logic. This is necessitated by the fact that all of our currently existing scenes are
+        # cached with single-body-attached particles. We don't need this to be true.
+        parent_body_ids = self.parent_obj.get_body_ids()
+        assert parent_body_ids, "Object needs to have a body ID."
+        if len(parent_body_ids) == 1:
+            self.parent_body_id = parent_body_ids[0]
+        else:
+            assert hasattr(self.parent_obj, "main_body"), "The main body ID needs to be annotated on the object."
+            self.parent_body_id = self.parent_obj.get_body_ids()[self.parent_obj.main_body]
+
         self._attachment_offsets = {}  # in the format of {particle: offset}
         self.initial_dump = initial_dump
 
@@ -274,9 +281,7 @@ class AttachedParticleSystem(ParticleSystem):
                 particle_attached_link_id = -1
                 if particle_attached_link_name is not None:
                     try:
-                        particle_attached_link_id = link_from_name(
-                            self.parent_obj.get_body_id(), particle_attached_link_name
-                        )
+                        particle_attached_link_id = link_from_name(self.parent_body_id, particle_attached_link_name)
                     except ValueError:
                         pass
 
@@ -299,7 +304,7 @@ class AttachedParticleSystem(ParticleSystem):
             attachment_source_pos = self.parent_obj.get_position()
             attachment_source_orn = self.parent_obj.get_orientation()
         else:
-            link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+            link_state = utils.get_link_state(self.parent_body_id, link_id)
             attachment_source_pos = link_state.linkWorldPosition
             attachment_source_orn = link_state.linkWorldOrientation
 
@@ -320,14 +325,14 @@ class AttachedParticleSystem(ParticleSystem):
         for particle in self.get_active_particles():
             link_id, (pos_offset, orn_offset) = self._attachment_offsets[particle]
 
-            dynamics_info = p.getDynamicsInfo(self.parent_obj.get_body_id(), link_id)
+            dynamics_info = p.getDynamicsInfo(self.parent_body_id, link_id)
 
             if len(dynamics_info) == 13:
                 activation_state = dynamics_info[12]
             else:
                 activation_state = PyBulletSleepState.AWAKE
 
-            if activation_state != PyBulletSleepState.AWAKE:
+            if activation_state not in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
                 # If parent object is in sleep, don't update particle poses
                 continue
 
@@ -335,7 +340,7 @@ class AttachedParticleSystem(ParticleSystem):
                 attachment_source_pos = self.parent_obj.get_position()
                 attachment_source_orn = self.parent_obj.get_orientation()
             else:
-                link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+                link_state = utils.get_link_state(self.parent_body_id, link_id)
                 attachment_source_pos = link_state.linkWorldPosition
                 attachment_source_orn = link_state.linkWorldOrientation
 
@@ -358,8 +363,8 @@ class AttachedParticleSystem(ParticleSystem):
                     attachment_source_pos = self.parent_obj.get_position()
                     attachment_source_orn = self.parent_obj.get_orientation()
                 else:
-                    link_name = get_link_name(self.parent_obj.get_body_id(), link_id)
-                    link_state = utils.get_link_state(self.parent_obj.get_body_id(), link_id)
+                    link_name = get_link_name(self.parent_body_id, link_id)
+                    link_state = utils.get_link_state(self.parent_body_id, link_id)
                     attachment_source_pos = link_state.linkWorldPosition
                     attachment_source_orn = link_state.linkWorldOrientation
 
@@ -373,26 +378,18 @@ class AttachedParticleSystem(ParticleSystem):
 
 class WaterStream(ParticleSystem):
     _DROP_PERIOD = 0.1  # new water every this many seconds.
-    _SIZE_OPTIONS = np.array(
-        [
-            [0.02] * 3,
-            [0.018] * 3,
-            [0.016] * 3,
-        ]
-    )
-    _COLOR_OPTIONS = np.array([(0.61, 0.82, 0.86, 1), (0.5, 0.77, 0.87, 1)])
+    _SIZE = np.array([0.02] * 3)
+    _COLOR = np.array([0.61, 0.82, 0.86, 1])
     DEFAULT_RENDERING_PARAMS = {"use_pbr": True}  # PBR needs to be on for the shiny water particles.
 
     def __init__(self, water_source_pos, num, initial_dump=None, **kwargs):
+        # Backward compatibility: we no longer randomize the sizes and colors because we want to reload scene with state caches
         if initial_dump is not None:
             self.sizes = np.array(initial_dump["sizes"])
             self.colors = np.array(initial_dump["colors"])
         else:
-            size_idxs = np.random.choice(len(self._SIZE_OPTIONS), num, replace=True)
-            self.sizes = self._SIZE_OPTIONS[size_idxs]
-
-            color_idxs = np.random.choice(len(self._COLOR_OPTIONS), num, replace=True)
-            self.colors = self._COLOR_OPTIONS[color_idxs]
+            self.sizes = np.tile(self._SIZE, (num, 1))
+            self.colors = np.tile(self._COLOR, (num, 1))
 
         super(WaterStream, self).__init__(
             num=num,
@@ -409,9 +406,10 @@ class WaterStream(ParticleSystem):
         self.initial_dump = initial_dump
 
     def reset_to_dump(self, dump):
+        # Need to comment out for backward compatibility for existing scene caches
         # Assert that the dump is compatible with the particle system state.
-        assert np.all(self.sizes == np.array(dump["sizes"])), "Incompatible WaterStream dump."
-        assert np.all(self.colors == np.array(dump["colors"])), "Incompatible WaterStream dump."
+        # assert np.all(self.sizes == np.array(dump["sizes"])), "Incompatible WaterStream dump."
+        # assert np.all(self.colors == np.array(dump["colors"])), "Incompatible WaterStream dump."
 
         self.steps_since_last_drop_step = dump["steps_since_last_drop_step"]
 
@@ -569,6 +567,7 @@ class Stain(_Dirt):
 
     def __init__(self, parent_obj, initial_dump=None, **kwargs):
         if initial_dump:
+            # Backward compatibility: we no longer randomize the bbox dims because we want to reload scene with state caches
             self.random_bbox_dims = np.array(initial_dump["random_bbox_dims"])
         else:
             # Particle size range changes based on parent object size.
@@ -594,9 +593,9 @@ class Stain(_Dirt):
                 self._BOUNDING_BOX_UPPER_LIMIT_MAX,
             )
 
-            # Here we randomize the size of the base (XY plane) of the stain while keeping height constant.
-            random_bbox_base_size = np.random.uniform(
-                bounding_box_lower_limit, bounding_box_upper_limit, self._PARTICLE_COUNT
+            # Fixed but different sizes
+            random_bbox_base_size = np.linspace(
+                bounding_box_lower_limit, bounding_box_upper_limit, num=self._PARTICLE_COUNT, endpoint=True
             )
             self.random_bbox_dims = np.stack(
                 [
@@ -621,8 +620,9 @@ class Stain(_Dirt):
         )
 
     def reset_to_dump(self, dump):
+        # Need to comment out for backward compatibility for existing scene caches
         # Assert that the dump is compatible.
-        assert np.all(np.array(dump["random_bbox_dims"]) == self.random_bbox_dims)
+        # assert np.all(np.array(dump["random_bbox_dims"]) == self.random_bbox_dims)
 
         # Call the dump resetter of the parent.
         super(Stain, self).reset_to_dump(dump["dirt_dump"])

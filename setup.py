@@ -8,7 +8,6 @@ import subprocess
 import sys
 from distutils.command.build_py import build_py as _build_py
 from distutils.version import LooseVersion
-from subprocess import check_call
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
@@ -130,7 +129,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.3",
+    version="2.0.5",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -140,7 +139,7 @@ setup(
     install_requires=[
         "gym>=0.12",
         "numpy>=1.16.0",
-        "scipy>=1.2.1",
+        "scipy>=1.4",
         "pybullet-svl>=3.1.6",
         "transforms3d>=0.3.1",
         "opencv-python>=3.4.8",
