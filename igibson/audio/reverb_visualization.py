@@ -48,7 +48,7 @@ def plotSpectrogram(data, name):
     plt.close()
 
 def renderAndPlot(scene_id, pos, name, reverb_gain, mat_override=None):
-    s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
+    s = Simulator(mode='gui_interactive', image_width=512, image_height=512, device_idx=0)
     scene = StaticIndoorScene(scene_id)
     #scene = StadiumScene()
     s.import_scene(scene)

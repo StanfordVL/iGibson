@@ -4,13 +4,12 @@ from igibson.utils.utils import l2_distance
 from igibson.objects import cube
 
 import igibson.audio.default_config as config
-import audio
+from igibson.audio import audio
 
 import wave
 import numpy as np
 import pybullet as p
 from scipy.io.wavfile import write
-import pyaudio
 
 # Mesh object required to be populated for AudioSystem
 class AcousticMesh:
@@ -39,7 +38,8 @@ class AudioSystem(object):
                  num_probes=config.NUM_REVERB_PROBES,
                  occl_multiplier=config.OCCLUSION_MULTIPLIER,
                  renderAmbisonics=False,
-                 renderReverbReflections=True
+                 renderReverbReflections=True,
+                 stream_audio=False
                  ):
         """
         :param scene: iGibson scene
@@ -122,15 +122,17 @@ class AudioSystem(object):
         self.current_output, self.complete_output = [], []
 
         # Try to stream audio live
-        self.streaming_input = []
-        def pyaudOutputCallback(in_data, frame_count, time_info, status):
-            return (bytes(self.current_output), pyaudio.paContinue)
-        def pyaudInputCallback(in_data, frame_count, time_info, status):
-            self.streaming_input = in_data
-            return (None, pyaudio.paContinue)
-        pyaud = pyaudio.PyAudio()
-        out_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudOutputCallback)
-        in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
+        if stream_audio:
+            import pyaudio
+            self.streaming_input = []
+            def pyaudOutputCallback(in_data, frame_count, time_info, status):
+                return (bytes(self.current_output), pyaudio.paContinue)
+            def pyaudInputCallback(in_data, frame_count, time_info, status):
+                self.streaming_input = in_data
+                return (None, pyaudio.paContinue)
+            pyaud = pyaudio.PyAudio()
+            out_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudOutputCallback)
+            in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
 
     def getClosestReverbProbe(self, pos):
         floor = 0

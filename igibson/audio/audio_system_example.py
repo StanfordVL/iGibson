@@ -23,9 +23,9 @@ import pyaudio
 
 
 def ig_example():
-    s = Simulator(mode='iggui', image_width=512, image_height=512, device_idx=0)
+    s = Simulator(mode='gui_interactive', image_width=512, image_height=512, device_idx=0)
     scene = InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)
-    s.import_ig_scene(scene)
+    s.import_scene(scene)
 
     obj_id = (scene.objects_by_category["loudspeaker"][0]).body_ids[0]
 
@@ -100,8 +100,8 @@ def mp3d_example():
     s.disconnect()
     
 def main():
-    mp3d_example()
-    #ig_example()
+    #mp3d_example()
+    ig_example()
 
 if __name__ == '__main__':
     main()

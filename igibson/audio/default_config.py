@@ -1,7 +1,7 @@
 # Default System Configuration - can be overwritten by AudioSystem callers!
 SAMPLE_RATE = 44100
 # Determines number of reverb/reflections probes in the scene. Actual number is num_probes ^ 2
-NUM_REVERB_PROBES = 10
+NUM_REVERB_PROBES = 5
 OCCLUSION_MULTIPLIER = 1.0
 
 

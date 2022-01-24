@@ -6,7 +6,7 @@ import librosa
 from skimage.measure import block_reduce
 
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots.turtlebot import Turtlebot
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
@@ -19,6 +19,7 @@ from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.utils.utils import parse_config
 from igibson.objects import cube
 from igibson.audio.audio_system import AudioSystem
+import igibson.audio.default_config as default_audio_config
 from utils.logs import logger
 from utils.dataset import dataset
 
@@ -389,6 +390,8 @@ class AVNavRLEnv(iGibsonEnv):
         
         if self.audio_system is not None:
             self.audio_system.disconnect()
+            del self.audio_system
+            self.audio_system = None
         
         if 'audio' in self.output:
             ## modified 1006 for mp3d audio
@@ -401,8 +404,9 @@ class AVNavRLEnv(iGibsonEnv):
                 
 #             self.audio_system = AudioSystem(self.simulator, self.robots[0], 
 #                                         is_Viewer=False, writeToFile=self.config['audio_write'], SR = self.SR)
+            occl_multiplier = self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER)
             self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
-                                          is_Viewer=False, writeToFile=self.config['audio_write'], SR = self.SR) 
+                                          is_Viewer=False, writeToFile=self.config['audio_write'], SR = self.SR, occl_multiplier=occl_multiplier) 
     
             ## end modification   
 
