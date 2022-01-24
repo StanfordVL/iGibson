@@ -17,8 +17,9 @@ def main():
         if (
             not package.ispkg
             and package.name[17:] != "example_selector"
-            and "web_ui" not in package.name[17:]
-            and "vr_" not in package.name[17:]
+            and "web_ui" not in package.name[17:]  # The WebUI examples require additional server setup
+            and "vr_" not in package.name[17:]  # The VR examples require additional dependencies
+            and "ray_" not in package.name[17:]  # The Ray/RLLib example does not run in a subprocess
         ):  # Consider removing the last condition if we have runnable VR tests
             examples_list += [package.name[17:]]
 
