@@ -19,11 +19,13 @@ Total size: 28
 """
 
 import os
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 import gym
 import numpy as np
 import pybullet as p
+from future.utils import with_metaclass
 
 from igibson import assets_path
 from igibson.external.pybullet_tools.utils import link_from_name, set_all_collisions
@@ -155,7 +157,6 @@ class BehaviorRobot(StatefulObject):
         self.action_space = gym.spaces.Box(shape=(self.action_dim,), low=-1.0, high=1.0, dtype=np.float32)
 
         # Activation parameters
-        self.activated = False
         self.first_frame = True
         self.constraints_active = {
             "left_hand": False,
@@ -188,15 +189,11 @@ class BehaviorRobot(StatefulObject):
         super(BehaviorRobot, self).__init__(abilities={"robot": {}}, **kwargs)
 
     def _load(self, simulator):
+        self.simulator = simulator
         # TODO: Remove hacky fix - constructor/config should contain this data.
-        if self.simulator.mode == SimulatorMode.VR:
-            self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
+        if simulator.mode == SimulatorMode.VR:
+            self.use_tracked_body = simulator.vr_settings.using_tracked_body
         return [id for part in self.links.values() for id in part.load(simulator)]
-
-    def set_colliders(self, enabled=False):
-        self.links["left_hand"].set_colliders(enabled)
-        self.links["right_hand"].set_colliders(enabled)
-        self.links["body"].set_colliders(enabled)
 
     def set_position_orientation(self, pos, orn):
         self.links["body"].set_position_orientation_unwrapped(pos, orn)
@@ -218,19 +215,6 @@ class BehaviorRobot(StatefulObject):
         self.links["right_hand"].set_position_orientation(right_hand_pos, right_hand_orn)
         eye_pos, eye_orn = p.multiplyTransforms(pos, orn, eye_loc_pose[0], eye_loc_pose[1])
         self.links["eye"].set_position_orientation(eye_pos, eye_orn)
-
-        for constraint, activated in self.constraints_active.items():
-            if not activated and constraint != "body":
-                self.links[constraint].activate_constraints()
-                self.constraints_active[constraint] = True
-
-        left_pos, left_orn = self.links["left_hand"].get_position_orientation()
-        right_pos, right_orn = self.links["right_hand"].get_position_orientation()
-
-        self.links["left_hand"].move(left_pos, left_orn)
-        self.links["right_hand"].move(right_pos, right_orn)
-        if self.constraints_active["body"]:
-            self.links["body"].move(pos, orn)
 
         clear_cached_states(self)
 
@@ -257,59 +241,20 @@ class BehaviorRobot(StatefulObject):
         """
         return self.action
 
-    def activate(self):
-        """
-        Activate BehaviorRobot and all its body parts.
-        This bypasses the activate mechanism used in VR with the trigger press
-        This is useful for non-VR setting, e.g. iGibsonEnv
-        """
-        self.first_frame = False
-        self.activated = True
-        for part_name in self.constraints_active:
-            self.constraints_active[part_name] = True
-            self.links[part_name].activated = True
-            if self.links[part_name].movement_cid is None:
-                self.links[part_name].activate_constraints()
-
     def apply_action(self, action):
         """
         Updates BehaviorRobot - transforms of all objects managed by this class.
         :param action: numpy array of actions.
-
-        Steps to activate:
-        1) Trigger reset action for left/right controller to activate (and teleport user to robot in VR)
-        2) Trigger reset actions for each hand to trigger colliders for that hand (in VR red ghost hands will disappear into hand when this is done correctly)
         """
         # Store input action, which is what will be saved
         self.action = action
-        if not self.activated:
-            frame_action = np.zeros((28,))
-            # Either trigger press will activate robot, and teleport the user to the robot if they are using VR
-            if action[19] > 0 or action[27] > 0:
-                self.activated = True
-                if self.simulator.mode == SimulatorMode.VR:
-                    body_pos = self.links["body"].get_position()
-                    self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
-        else:
-            frame_action = action
-
-        if self.first_frame:
-            # Disable colliders
-            self.set_colliders(enabled=False)
-            # Move user close to the body to start with
-            if self.simulator.mode == SimulatorMode.VR:
-                body_pos = self.links["body"].get_position()
-                self.simulator.set_vr_pos(pos=(body_pos[0], body_pos[1], 0), keep_height=True)
-            # Body constraint is the last one we need to activate
-            self.links["body"].activate_constraints()
-            self.first_frame = False
 
         # Must update body first before other Vr objects, since they
         # rely on its transform to calculate their own transforms,
         # as an action only contains local transforms relative to the body
-        self.links["body"].update(frame_action)
+        self.links["body"].update(action)
         for vr_obj_name in ["left_hand", "right_hand", "eye"]:
-            self.links[vr_obj_name].update(frame_action)
+            self.links[vr_obj_name].update(action)
 
     def render_camera_image(self, modes=("rgb")):
         # TODO: Remove this function once BehaviorRobot is BaseRobot-compliant.
@@ -431,7 +376,7 @@ class BehaviorRobot(StatefulObject):
 
 
 # TODO: Make this inherit RobotLink
-class BRPart(object):
+class BRPart(with_metaclass(ABCMeta, object)):
     """This is the interface that all BehaviorRobot parts must implement."""
 
     DEFAULT_RENDERING_PARAMS = {
@@ -464,8 +409,9 @@ class BRPart(object):
         self._loaded = True
         return self._load(simulator)
 
+    @abstractmethod
     def _load(self, simulator):
-        raise NotImplementedError("Child class should implement this.")
+        pass
 
     def get_position(self):
         """Get object position in the format of Array[x, y, z]"""
@@ -493,6 +439,11 @@ class BRPart(object):
     def set_position_orientation(self, pos, orn):
         """Set object position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
         p.resetBasePositionAndOrientation(self.body_id, pos, orn)
+        self.move_constraints(pos, orn)
+
+    @abstractmethod
+    def move_constraints(self, pos, orn):
+        pass
 
 
 class BRBody(BRPart):
@@ -512,7 +463,6 @@ class BRBody(BRPart):
         self.category = "agent"
         self.model = self.name
         self.movement_cid = None
-        self.activated = False
         self.new_pos = None
         self.new_orn = None
 
@@ -536,6 +486,21 @@ class BRBody(BRPart):
 
         simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
 
+        self.movement_cid = p.createConstraint(
+            self.body_id,
+            -1,
+            -1,
+            -1,
+            p.JOINT_FIXED,
+            [0, 0, 0],
+            [0, 0, 0],
+            self.get_position(),
+            [0, 0, 0, 1],
+            self.get_orientation(),
+        )
+
+        self.set_body_collision_filters()
+
         return [self.body_id]
 
     def set_position_orientation_unwrapped(self, pos, orn):
@@ -553,36 +518,6 @@ class BRBody(BRPart):
 
     def set_position_orientation(self, pos, orn):
         self.parent.set_position_orientation(pos, orn)
-
-    def set_colliders(self, enabled=False):
-        assert type(enabled) == bool
-        set_all_collisions(self.body_id, int(enabled))
-        if enabled == True:
-            self.set_body_collision_filters()
-
-    def activate_constraints(self):
-        """
-        Initializes BRBody to start in a specific location.
-        """
-        if self.movement_cid is not None:
-            raise ValueError(
-                "activate_constraints is called but the constraint has already been already activated: {}".format(
-                    self.movement_cid
-                )
-            )
-
-        self.movement_cid = p.createConstraint(
-            self.body_id,
-            -1,
-            -1,
-            -1,
-            p.JOINT_FIXED,
-            [0, 0, 0],
-            [0, 0, 0],
-            self.get_position(),
-            [0, 0, 0, 1],
-            self.get_orientation(),
-        )
 
     def set_body_collision_filters(self):
         """
@@ -604,7 +539,7 @@ class BRBody(BRPart):
                 for col_link_idx in col_link_idxs:
                     p.setCollisionFilterPair(self.body_id, col_id, body_link_idx, col_link_idx, 0)
 
-    def move(self, pos, orn):
+    def move_constraints(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=BODY_MOVING_FORCE)
 
     def clip_delta_pos_orn(self, delta_pos, delta_orn):
@@ -634,16 +569,11 @@ class BRBody(BRPart):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
 
-        # Reset agent activates the body and its collision filters
         reset_agent = action[19] > 0 or action[27] > 0
         if reset_agent:
-            if not self.activated:
-                self.set_colliders(enabled=True)
-                self.activated = True
-            self.set_position_unwrapped(self.new_pos)
-            self.set_orientation_unwrapped(self.new_orn)
+            self.set_position_orientation_unwrapped(self.new_pos, self.new_orn)
 
-        self.move(self.new_pos, self.new_orn)
+        self.move_constraints(self.new_pos, self.new_orn)
 
     def dump_part_state(self):
         pass
@@ -695,7 +625,6 @@ class BRHandBase(BRPart):
 
         # Bool indicating whether the hands have been spwaned by pressing the trigger reset
         self.movement_cid = None
-        self.activated = False
         self.name = "{}_hand_{}".format(self.hand, self.parent.robot_num)
         self.model = self.name
         self.category = "agent"
@@ -730,6 +659,9 @@ class BRHandBase(BRPart):
         body_ids = [self.body_id]
         if self.parent.use_ghost_hands:
             body_ids.extend(self.ghost_hand.load(simulator))
+            self.ghost_hand.set_position_orientation(*self.get_position_orientation())
+            p.changeVisualShape(self.ghost_hand.get_body_ids()[0], -1, rgbaColor=(0, 0, 0, 0))
+            # change it to transparent for visualization
 
         return body_ids
 
@@ -740,13 +672,6 @@ class BRHandBase(BRPart):
         """
         self.other_hand = other_hand
 
-    def activate_constraints(self):
-        # Start ghost hand where the VR hand starts
-        if self.parent.use_ghost_hands:
-            self.ghost_hand.set_position(self.get_position())
-            p.changeVisualShape(self.ghost_hand.get_body_ids()[0], -1, rgbaColor=(0, 0, 0, 0))
-            # change it to transparent for visualization
-
     def set_position_orientation(self, pos, orn):
         # set position and orientation of BRobot body part and update
         # local transforms, note this function gets around state bound
@@ -755,24 +680,13 @@ class BRHandBase(BRPart):
         self.new_orn = orn
         # Update pos and orientation of ghost hands as well
         if self.parent.use_ghost_hands:
-            self.ghost_hand.set_position(self.new_pos)
-            self.ghost_hand.set_orientation(self.new_orn)
+            self.ghost_hand.set_position_orientation(self.new_pos, self.new_orn)
 
     def get_local_position_orientation(self):
         body = self.parent.links["body"]
         return p.multiplyTransforms(
             *p.invertTransform(*body.get_position_orientation()), *self.get_position_orientation()
         )
-
-    def set_position(self, pos):
-        self.set_position_orientation(pos, self.get_orientation())
-
-    def set_orientation(self, orn):
-        self.set_position_orientation(self.get_position(), orn)
-
-    def set_colliders(self, enabled=False):
-        assert type(enabled) == bool
-        set_all_collisions(self.body_id, int(enabled))
 
     def clip_delta_pos_orn(self, delta_pos, delta_orn):
         """
@@ -839,18 +753,14 @@ class BRHandBase(BRPart):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
 
-        # Reset agent activates the body and its collision filters
         if self.hand == "left":
             reset_agent = action[19] > 0
         else:
             reset_agent = action[27] > 0
         if reset_agent:
-            if not self.activated:
-                self.set_colliders(enabled=True)
-                self.activated = True
             self.set_position_orientation(self.new_pos, self.new_orn)
 
-        self.move(self.new_pos, self.new_orn)
+        self.move_constraints(self.new_pos, self.new_orn)
 
         # Close hand and also update ghost hands, if they are enabled
         if self.hand == "left":
@@ -866,7 +776,7 @@ class BRHandBase(BRPart):
         if self.parent.use_ghost_hands:
             self.update_ghost_hands()
 
-    def move(self, pos, orn):
+    def move_constraints(self, pos, orn):
         p.changeConstraint(self.movement_cid, pos, orn, maxForce=HAND_LIFTING_FORCE)
 
     def set_close_fraction(self, close_frac):
@@ -879,9 +789,6 @@ class BRHandBase(BRPart):
         """
         Updates ghost hand to track real hand and displays it if the real and virtual hands are too far apart.
         """
-        if not self.activated:
-            return
-
         # Ghost hand tracks real hand whether it is hidden or not
         self.ghost_hand.set_position(self.new_pos)
         self.ghost_hand.set_orientation(self.new_orn)
@@ -939,17 +846,9 @@ class BRHand(BRHandBase):
         self.candidate_data = None
         self.movement_cid = None
 
-    def load(self, simulator):
-        ids = super(BRHand, self).load(simulator)
+    def _load(self, simulator):
+        ids = super(BRHand, self)._load(simulator)
 
-        self.palm_link_idx = link_from_name(self.body_id, PALM_LINK_NAME)
-        self.finger_tip_link_indices = {link_from_name(self.body_id, name) for name in FINGER_TIP_LINK_NAMES}
-        self.thumb_link_idx = link_from_name(self.body_id, THUMB_LINK_NAME)
-        self.non_thumb_fingers = self.finger_tip_link_indices - {self.thumb_link_idx}
-
-        return ids
-
-    def activate_constraints(self):
         p.changeDynamics(self.body_id, -1, mass=1, lateralFriction=HAND_FRICTION)
         for joint_index in range(p.getNumJoints(self.body_id)):
             # Make masses larger for greater stability
@@ -980,7 +879,18 @@ class BRHand(BRHandBase):
             [0.0, 0.0, 0.0, 1.0],
             self.get_orientation(),
         )
-        super(BRHand, self).activate_constraints()
+
+        return ids
+
+    def load(self, simulator):
+        ids = super(BRHand, self).load(simulator)
+
+        self.palm_link_idx = link_from_name(self.body_id, PALM_LINK_NAME)
+        self.finger_tip_link_indices = {link_from_name(self.body_id, name) for name in FINGER_TIP_LINK_NAMES}
+        self.thumb_link_idx = link_from_name(self.body_id, THUMB_LINK_NAME)
+        self.non_thumb_fingers = self.finger_tip_link_indices - {self.thumb_link_idx}
+
+        return ids
 
     def set_hand_coll_filter(self, target_id, enable):
         """
@@ -1125,7 +1035,7 @@ class BRHand(BRHandBase):
         if not force_data or (ag_bid, ag_link) not in force_data:
             return None
 
-        # Return None if any of the following edge cases are activated
+        # Return None if any of the following edge cases are true
         if (
             not self.parent.simulator.can_assisted_grasp(ag_bid, ag_link)
             or (self.other_hand and self.other_hand.object_in_hand == ag_bid)
@@ -1422,16 +1332,8 @@ class BRGripper(BRHandBase):
             **kwargs
         )
 
-    def activate_constraints(self):
-        """
-        Sets up constraints in addition to superclass hand setup.
-        """
-        if self.movement_cid is not None:
-            raise ValueError(
-                "activate_constraints is called but the constraint has already been already activated: {}".format(
-                    self.movement_cid
-                )
-            )
+    def _load(self, simulator):
+        ids = super(BRGripper, self)._load(simulator)
 
         for joint_idx in range(p.getNumJoints(self.body_id)):
             p.resetJointState(self.body_id, joint_idx, GRIPPER_JOINT_POSITIONS[joint_idx])
@@ -1453,7 +1355,8 @@ class BRGripper(BRHandBase):
             childFramePosition=[0, 0, 0],
         )
         p.changeConstraint(self.grip_cid, gearRatio=1, erp=0.5, relativePositionTarget=0.5, maxForce=3)
-        super(BRGripper, self).activate_constraints()
+
+        return ids
 
     def set_close_fraction(self, close_frac):
         # PyBullet recommmends doing this to keep the gripper centered/symmetric
@@ -1502,6 +1405,22 @@ class BREye(BRPart):
 
         body_ids = [self.body_id] + self.head_visual_marker.load(simulator)
 
+        # Create a rigid constraint between the body and the head such that the head will move with the body during the
+        # next physics simulation duration. Set the joint frame to be aligned with the child frame (URDF standard)
+        local_pos, local_orn = self.get_local_position_orientation()
+        self.neck_cid = p.createConstraint(
+            parentBodyUniqueId=self.parent.links["body"].body_id,
+            parentLinkIndex=-1,
+            childBodyUniqueId=self.body_id,
+            childLinkIndex=-1,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=local_pos,
+            childFramePosition=[0, 0, 0],
+            parentFrameOrientation=local_orn,
+            childFrameOrientation=[0, 0, 0, 1],
+        )
+
         return body_ids
 
     def get_local_position_orientation(self):
@@ -1518,11 +1437,22 @@ class BREye(BRPart):
         self.new_orn = orn
         self.head_visual_marker.set_position_orientation(self.new_pos, self.new_orn)
 
-    def set_position(self, pos):
-        self.set_position_orientation(pos, self.get_orientation())
-
-    def set_orientation(self, orn):
-        self.set_position_orientation(self.get_position(), orn)
+    def move_constraints(self, pos, orn):
+        body = self.parent.links["body"]
+        local_pos, local_orn = p.multiplyTransforms(*p.invertTransform(*body.get_position_orientation()), pos, orn)
+        p.removeConstraint(self.neck_cid)
+        self.neck_cid = p.createConstraint(
+            parentBodyUniqueId=self.parent.links["body"].body_id,
+            parentLinkIndex=-1,
+            childBodyUniqueId=self.body_id,
+            childLinkIndex=-1,
+            jointType=p.JOINT_FIXED,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=local_pos,
+            childFramePosition=[0, 0, 0],
+            parentFrameOrientation=local_orn,
+            childFrameOrientation=[0, 0, 0, 1],
+        )
 
     def clip_delta_pos_orn(self, delta_pos, delta_orn):
         """
@@ -1583,24 +1513,6 @@ class BREye(BRPart):
         self.new_pos = np.round(self.new_pos, 5).tolist()
         self.new_orn = np.round(self.new_orn, 5).tolist()
         self.set_position_orientation(self.new_pos, self.new_orn)
-
-        if self.neck_cid is not None:
-            p.removeConstraint(self.neck_cid)
-
-        # Create a rigid constraint between the body and the head such that the head will move with the body during the
-        # next physics simulation duration. Set the joint frame to be aligned with the child frame (URDF standard)
-        self.neck_cid = p.createConstraint(
-            parentBodyUniqueId=body.body_id,
-            parentLinkIndex=-1,
-            childBodyUniqueId=self.body_id,
-            childLinkIndex=-1,
-            jointType=p.JOINT_FIXED,
-            jointAxis=[0, 0, 0],
-            parentFramePosition=new_local_pos,
-            childFramePosition=[0, 0, 0],
-            parentFrameOrientation=new_local_orn,
-            childFrameOrientation=[0, 0, 0, 1],
-        )
 
     def dump_part_state(self):
         pass

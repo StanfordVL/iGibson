@@ -6,11 +6,10 @@ from igibson.object_states.kinematics import KinematicsMixin
 from igibson.object_states.object_state_base import BooleanState, RelativeObjectState
 from igibson.object_states.touching import Touching
 from igibson.object_states.utils import clear_cached_states, get_center_extent, sample_kinematics
-
-# TODO: remove after split floors
 from igibson.utils.utils import restoreState
 
 
+# TODO: remove after split floors
 class RoomFloor(object):
     def __init__(self, category, name, scene, room_instance, floor_obj):
         self.category = category
@@ -66,6 +65,13 @@ class OnFloor(RelativeObjectState, KinematicsMixin, BooleanState):
         assert len(floors) == 1, "has more than one floor object"
         # Use the floor object in the scene to detect contact points
         scene_floor = floors[0]
+
+        # Special case: the BehaviorRobot does not need to actually touch the floor of a room to be considered
+        # OnFloor in that room. As a hovering robot, BehaviorRobot won't actually touch the floor during operation.
+        from igibson.robots import BehaviorRobot
+
+        if isinstance(self.obj, BehaviorRobot):
+            return is_in_room
 
         touching = self.obj.states[Touching].get_value(scene_floor)
         return is_in_room and touching

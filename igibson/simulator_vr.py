@@ -58,6 +58,9 @@ class SimulatorVR(Simulator):
         # Blend highlight for VR overlay
         rendering_settings.blend_highlight = True
 
+        # Whether the VR system is actively hooked up to the VR agent.
+        self.vr_attached = False
+
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_settings = vr_settings
         self.vr_overlay_initialized = False
@@ -387,6 +390,17 @@ class SimulatorVR(Simulator):
 
         # Get VrData for the current frame
         v = self.gen_vr_data()
+
+        # If a double button press is recognized, attach/detach the VR system as needed. Forward a zero action to
+        # the robot.
+        attach_or_detach = all(v.query("reset_actions"))
+        if attach_or_detach:
+            self.vr_attached = not self.vr_attached
+            return action
+
+        # If the VR system is not attached to the robot, return a zero action.
+        if not self.vr_attached:
+            return action
 
         # Update body action space
         hmd_is_valid, hmd_pos, hmd_orn, hmd_r = v.query("hmd")[:4]
