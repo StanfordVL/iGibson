@@ -155,6 +155,7 @@ class MeshRenderer(object):
         else:
             raise Exception("Unsupported platform and renderer combination")
 
+        self.r.verbosity = 20 if logging.getLogger().isEnabledFor(logging.INFO) else 0
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()

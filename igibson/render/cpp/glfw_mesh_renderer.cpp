@@ -35,8 +35,6 @@
 namespace py = pybind11;
 
 int GLFWRendererContext::init() {
-    verbosity = 20;
-
     // Initialize GLFW context and window
     if (!glfwInit()) {
         fprintf(stderr, "ERROR: Failed to initialize GLFW.\n");
@@ -204,6 +202,9 @@ PYBIND11_MODULE(GLFWRendererContext, m) {
 	pymodule.def("genTextFramebuffer", &GLFWRendererContext::genTextFramebuffer, "TBA");
 	pymodule.def("renderBackgroundQuad", &GLFWRendererContext::renderBackgroundQuad, "TBA");
 	pymodule.def("read_fbo_color_tex_to_numpy", &GLFWRendererContext::read_fbo_color_tex_to_numpy, "TBA");
+
+	// verbosity
+	pymodule.def_readwrite("verbosity", &GLFWRendererContext::verbosity);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

@@ -921,6 +921,9 @@ PYBIND11_MODULE(VRRendererContext, m) {
 	pymodule.def("showOverlay", &VRRendererContext::showOverlay);
 	pymodule.def("updateOverlayTexture", &VRRendererContext::updateOverlayTexture);
 
+	// verbosity
+	pymodule.def_readwrite("verbosity", &VRRendererContext::verbosity);
+
 #ifdef VERSION_INFO
 	m.attr("__version__") = VERSION_INFO;
 #else
