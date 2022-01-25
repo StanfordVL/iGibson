@@ -34,8 +34,6 @@ namespace py = pybind11;
 
 int EGLRendererContext::init() {
 
-    verbosity = 20;
-
 #ifndef USE_GLAD
     PFNEGLQUERYDEVICESEXTPROC eglQueryDevicesEXT =
                (PFNEGLQUERYDEVICESEXTPROC) eglGetProcAddress("eglQueryDevicesEXT");
@@ -298,6 +296,9 @@ PYBIND11_MODULE(EGLRendererContext, m) {
 	pymodule.def("genTextFramebuffer", &EGLRendererContext::genTextFramebuffer, "TBA");
 	pymodule.def("renderBackgroundQuad", &EGLRendererContext::renderBackgroundQuad, "TBA");
 	pymodule.def("read_fbo_color_tex_to_numpy", &EGLRendererContext::read_fbo_color_tex_to_numpy, "TBA");
+
+	// verbosity
+	pymodule.def_readwrite("verbosity", &EGLRendererContext::verbosity);
 
 #ifdef VERSION_INFO
     m.attr("__version__") = VERSION_INFO;

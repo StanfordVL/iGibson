@@ -77,7 +77,6 @@ using CryptoPP::byte;
 class Image {
 public:
     static std::shared_ptr<Image> fromFile(const std::string &filename, int channels) {
-        std::printf("Loading image: %s\n", filename.c_str());
         stbi_set_flip_vertically_on_load(false);
         std::shared_ptr<Image> image{new Image};
 
@@ -826,6 +825,9 @@ void MeshRendererContext::generate_light_maps(
 
     // Load & convert equirectangular environment map to a cubemap texture.
     {
+        if (verbosity >= 20) {
+            std::printf("Loading image: %s\n", env_texture_filename.c_str());
+        }
         envTextureEquirect = createTexture(Image::fromFile(env_texture_filename, 3), GL_RGB, GL_RGB16F, 1);
         glUseProgram(equirectToCubeProgram);
         glBindTextureUnit(0, envTextureEquirect.id);
@@ -1007,7 +1009,9 @@ void MeshRendererContext::setup_pbr(std::string shader_path,
 
     glFinish();
 
-    std::cout << "INFO: compiled pbr shaders" << std::endl;
+    if (verbosity >= 20) {
+        std::cout << "INFO: compiled pbr shaders" << std::endl;
+    }
 }
 
 GLuint MeshRendererContext::linkProgram(std::initializer_list<GLuint> shaders) {
@@ -1056,7 +1060,9 @@ GLuint MeshRendererContext::compileShader(const std::string &filename, GLenum ty
     }
     const GLchar *srcBufferPtr = src.c_str();
 
-    std::printf("Compiling GLSL shader: %s\n", filename.c_str());
+    if (verbosity >= 20) {
+        std::printf("INFO: Compiling GLSL shader: %s\n", filename.c_str());
+    }
 
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &srcBufferPtr, nullptr);
@@ -1149,10 +1155,12 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		std::vector<int> texWidths;
 		std::vector<int> texChannels;
         std::vector<unsigned char> buffer;
-		printf("number of textures %d\n", num_textures);
+		printf("INFO: number of textures %d\n", num_textures);
 		for (int i = 0; i < num_textures; i++) {
 			std::string filename = filenames[i];
-			std::cout << "Filename is: " << filename << std::endl;
+			if (verbosity >= 20) {
+                std::cout << "Filename is: " << filename << std::endl;
+            }
 			int w;
 			int h;
 			int comp;
@@ -1166,7 +1174,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			// force to 3 channels
 			if (image == nullptr)
 				throw(std::string("Failed to load texture"));
-			std::cout << "Size is w: " << w << " by h: " << h << std::endl;
+		    if (verbosity >= 20) {
+			    std::cout << "Size is w: " << w << " by h: " << h << std::endl;
+			}
 			comp = 3;
 			image_data.push_back(image);
 			texHeights.push_back(h);
@@ -1213,7 +1223,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			std::string tex_filename = filenames[i];
 			bool contains_keyword = tex_filename.find("floor") != std::string::npos || tex_filename.find("wall") != std::string::npos || tex_filename.find("ceiling") != std::string::npos;
 			if (score >= texCutoff || contains_keyword) {
-				std::cout << "Appending texture with name: " << tex_filename << " to large bucket" << std::endl;
+			    if (verbosity >= 20) {
+                    std::cout << "Appending texture with name: " << tex_filename << " to large bucket" << std::endl;
+                }
 				texIndices[0].push_back(i);
 				tex_info_i.append(0);
 				tex_info_i.append(firstTexLayerNum);
@@ -1222,7 +1234,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 				firstTexLayerNum++;
 			}
 			else {
-				std::cout << "Appending texture with name: " << tex_filename << " to small bucket" << std::endl;
+			    if (verbosity >= 20) {
+				    std::cout << "Appending texture with name: " << tex_filename << " to small bucket" << std::endl;
+				}
 				texIndices[1].push_back(i);
 				tex_info_i.append(1);
 				tex_info_i.append(secondTexLayerNum);
@@ -1234,13 +1248,15 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 			texLayerData.append(tex_info_i);
 		}
 
-		printf("Texture 1 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[0], texLayerDims[1], firstTexLayerNum, texId1);
-		if (shouldShrinkSmallTextures) {
-			printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", smallTexBucketSize, smallTexBucketSize, secondTexLayerNum, texId2);
-		}
-		else {
-			printf("Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
-		}
+        if (verbosity >= 20) {
+            printf("INFO: Texture 1 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[0], texLayerDims[1], firstTexLayerNum, texId1);
+            if (shouldShrinkSmallTextures) {
+                printf("INFO: Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", smallTexBucketSize, smallTexBucketSize, secondTexLayerNum, texId2);
+            }
+            else {
+                printf("INFO: Texture 2 is w:%d by h:%d by depth:%d 3D array texture. ID %d\n", texLayerDims[2], texLayerDims[3], secondTexLayerNum, texId2);
+            }
+        }
 
 		for (int i = 0; i < 2; i++) {
 			GLuint currTexId = texId1;
@@ -1253,8 +1269,11 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 				GLint max_layers, max_size;
 				glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &max_layers);
 				glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &max_size);
-				printf("Max layer number: %d\n", max_layers);
-				printf("Max texture size: %d\n", max_size);
+
+				if (verbosity >= 20) {
+				    printf("INFO: Max layer number: %d\n", max_layers);
+				    printf("INFO: Max texture size: %d\n", max_size);
+				}
 			}
 
 			int layerNum = firstTexLayerNum;
@@ -1411,7 +1430,6 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		for (int i = 0; i < multidrawCount; i++) {
 			unsigned int offset = (unsigned int)indexOffsetPtr[i];
 			this->multidrawStartIndices.push_back(BUFFER_OFFSET((offset * sizeof(unsigned int))));
-			//printf("multidraw start idx %d\n", offset);
 		}
 
 		// Store for rendering
@@ -1442,7 +1460,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		glUniform1f(glGetUniformLocation(shaderProgram, "use_two_light_probe"), (float)m_use_two_light_probe);
 		glUniform1f(glGetUniformLocation(shaderProgram, "blend_highlight"), (float)blend_highlight);
 
-		printf("multidrawcount %d\n", multidrawCount);
+        if (verbosity >= 20) {
+		    printf("INFO: multidrawcount %d\n", multidrawCount);
+		}
 
 		glGenBuffers(1, &uboTexColorData);
 		glBindBuffer(GL_UNIFORM_BUFFER, uboTexColorData);
@@ -1753,7 +1773,7 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		int draw_count = this->multidrawCount;
 		if (draw_count > MAX_ARRAY_SIZE) {
 		    draw_count = MAX_ARRAY_SIZE;
-		    printf("Warning: not all objects are drawn\n");
+		    printf("WARN: not all objects are drawn\n");
 		}
 		glMultiDrawElements(GL_TRIANGLES, &this->multidrawCounts[0], GL_UNSIGNED_INT, &this->multidrawStartIndices[0], draw_count);
 	}
