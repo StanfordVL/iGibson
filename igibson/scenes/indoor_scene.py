@@ -75,6 +75,10 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
             else:
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
                 obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_no_obj_{}.png".format(floor))))
+
+            # If we do not initialize the original size of the traversability map, we obtain it from the image
+            # Then, we compute the final map size as the factor of scaling (default_resolution/resolution) times the
+            # original map size
             if self.trav_map_original_size is None:
                 height, width = trav_map.shape
                 assert height == width, "trav map is not a square"
@@ -82,13 +86,26 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
                 self.trav_map_size = int(
                     self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution
                 )
+
+            # Here it looks like we do not "care" about the traversability map: wherever the obstacle map is 0, we set
+            # the traversability map also to 0
             trav_map[obstacle_map == 0] = 0
+
+            # We resize the traversability map to the new size computed before
             trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
-            trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+
+            # We then erode the image. This is needed because the code that computes shortest path uses the global map
+            # and a point robot
+            if self.trav_map_erosion != 0:
+                trav_map = cv2.erode(trav_map, np.ones((self.trav_map_erosion, self.trav_map_erosion)))
+
+            # We make the pixels of the image to be either 0 or 255
             trav_map[trav_map < 255] = 0
 
+            # We search for the largest connected areas
             if self.build_graph:
                 self.build_trav_graph(maps_path, floor, trav_map)
+
             self.floor_map.append(trav_map)
 
     # TODO: refactor into C++ for speedup
@@ -134,6 +151,10 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         self.floor_graph.append(g)
 
         # update trav_map accordingly
+        # This overwrites the traversability map loaded before
+        # It sets everything to zero, then only sets to one the points where we have graph nodes
+        # Dangerous! if the traversability graph is not computed from the loaded map but from a file, it could overwrite
+        # it silently.
         trav_map[:, :] = 0
         for node in g.nodes:
             trav_map[node[0], node[1]] = 255

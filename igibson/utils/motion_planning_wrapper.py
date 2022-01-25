@@ -87,7 +87,7 @@ class MotionPlanningWrapper(object):
         if not self.collision_with_pb_2d_planning:
             self.base_mp_resolutions = np.array([0.05, 0.05, 2 * np.pi])
         else:
-            self.base_mp_resolutions = np.array([0.05, 0.05, 0.3])
+            self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
         self.optimize_iter = optimize_iter
         self.mode = self.env.mode
         self.initial_height = self.env.initial_pos_z_offset

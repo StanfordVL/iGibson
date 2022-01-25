@@ -70,11 +70,13 @@ def run_example(config, programmatic_actions, headless, short_exec):
         physics_timestep=1.0 / 120.0,
     )
 
+    full_observability_2d_planning = False
+    collision_with_pb_2d_planning = False
     motion_planner = MotionPlanningWrapper(
         env,
         optimize_iter=10,
-        full_observability_2d_planning=False,
-        collision_with_pb_2d_planning=False,
+        full_observability_2d_planning=full_observability_2d_planning,
+        collision_with_pb_2d_planning=collision_with_pb_2d_planning,
         visualize_2d_planning=not headless,
         visualize_2d_result=not headless,
     )
@@ -93,7 +95,11 @@ def run_example(config, programmatic_actions, headless, short_exec):
             env.simulator.viewer.reset_viewer()
 
         env.land(env.robots[0], [0, 0, 0], [0, 0, 0])
-        base_pose1 = [0.48253920783756465, -1.344157042454841, 1.9658493926322262]
+        env.robots[0].tuck()
+        if full_observability_2d_planning and not collision_with_pb_2d_planning:  # Only hard for the full map
+            base_pose1 = [-2.98253920783756465, -1.344157042454841, 1.9658493926322262]
+        else:
+            base_pose1 = [0.48253920783756465, -1.344157042454841, 1.9658493926322262]
 
         max_attempts = 10
         for attempt in range(1, max_attempts + 1):
@@ -105,6 +111,7 @@ def run_example(config, programmatic_actions, headless, short_exec):
                 logging.error(
                     "MP couldn't find path to the base location. Attempt {} of {}".format(attempt, max_attempts)
                 )
+
         if attempt == max_attempts:
             logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
             sys.exit()
@@ -122,6 +129,8 @@ def run_example(config, programmatic_actions, headless, short_exec):
         if attempt == max_attempts:
             logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
             sys.exit()
+
+        env.robots[0].untuck()
 
         success = False
         for attempt in range(1, max_attempts + 1):

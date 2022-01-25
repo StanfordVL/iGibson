@@ -3426,6 +3426,7 @@ def plan_base_motion_2d(body,
         if use_pb_for_collisions:
             set_base_values(body, q)
             in_collision = any(pairwise_collision(body, obs, max_distance=max_distance) for obs in obstacles)
+            set_base_values(body, start_conf)   # Reset the original configuration
         else:   # Use local or global map
             # If the point is outside of the map/occupancy map, then we return "collision"
             if pts[0] < robot_footprint_radius_in_map or pts[1] < robot_footprint_radius_in_map \
