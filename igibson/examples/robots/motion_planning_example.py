@@ -70,7 +70,14 @@ def run_example(config, programmatic_actions, headless, short_exec):
         physics_timestep=1.0 / 120.0,
     )
 
-    motion_planner = MotionPlanningWrapper(env)
+    motion_planner = MotionPlanningWrapper(
+        env,
+        optimize_iter=10,
+        full_observability_2d_planning=False,
+        collision_with_pb_2d_planning=False,
+        visualize_2d_planning=not headless,
+        visualize_2d_result=not headless,
+    )
     state = env.reset()
 
     for obj in env.scene.get_objects():
