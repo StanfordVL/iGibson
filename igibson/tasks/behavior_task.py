@@ -75,8 +75,6 @@ class BehaviorTask(BaseTask):
         self.initial_state = self.save_scene(env)
         if self.config.get("should_highlight_task_relevant_objs", True):
             self.highlight_task_relevant_objs(env)
-        if self.config.get("should_activate_behavior_robot", True):
-            env.robots[0].activate()
 
         self.episode_save_dir = self.config.get("episode_save_dir", None)
         if self.episode_save_dir is not None:
