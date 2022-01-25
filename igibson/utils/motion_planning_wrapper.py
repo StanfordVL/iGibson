@@ -31,7 +31,18 @@ class MotionPlanningWrapper(object):
     Motion planner wrapper that supports both base and arm motion
     """
 
-    def __init__(self, env=None, base_mp_algo="birrt", arm_mp_algo="birrt", optimize_iter=0, fine_motion_plan=True):
+    def __init__(
+        self,
+        env=None,
+        base_mp_algo="birrt",
+        arm_mp_algo="birrt",
+        optimize_iter=0,
+        fine_motion_plan=True,
+        full_observability_2d_planning=False,
+        collision_with_pb_2d_planning=False,
+        visualize_2d_planning=False,
+        visualize_2d_result=False,
+    ):
         """
         Get planning related parameters.
         """
@@ -41,18 +52,42 @@ class MotionPlanningWrapper(object):
         body_ids = self.env.robots[0].get_body_ids()
         assert len(body_ids) == 1, "Only single-body robots are supported."
         self.robot_id = body_ids[0]
-        # self.mesh_id = self.scene.mesh_body_id
-        # mesh id should not be used
-        self.map_size = self.env.scene.trav_map_original_size * self.env.scene.trav_map_default_resolution
 
-        self.grid_resolution = self.env.grid_resolution
-        self.occupancy_range = self.env.sensors["scan_occ"].occupancy_range
+        # Types of 2D planning
+        # full_observability_2d_planning=TRUE and collision_with_pb_2d_planning=TRUE -> We teleport the robot to locations and check for collisions
+        # full_observability_2d_planning=TRUE and collision_with_pb_2d_planning=FALSE -> We use the global occupancy map from the scene
+        # full_observability_2d_planning=FALSE and collision_with_pb_2d_planning=FALSE -> We use the occupancy_grid from the lidar sensor
+        # full_observability_2d_planning=FALSE and collision_with_pb_2d_planning=TRUE -> [not suported yet]
+        self.full_observability_2d_planning = full_observability_2d_planning
+        self.collision_with_pb_2d_planning = collision_with_pb_2d_planning
+        assert not ((not self.full_observability_2d_planning) and self.collision_with_pb_2d_planning)
+
         self.robot_footprint_radius = self.env.sensors["scan_occ"].robot_footprint_radius
-        self.robot_footprint_radius_in_map = self.env.sensors["scan_occ"].robot_footprint_radius_in_map
+        if self.full_observability_2d_planning:
+            # TODO: it may be better to unify and make that scene.floor_map uses OccupancyGridState values always
+            assert len(self.env.scene.floor_map) == 1  # We assume there is only one floor (not true for Gibson scenes)
+            self.map_2d = np.array(self.env.scene.floor_map[0])
+            self.map_2d = np.array((self.map_2d == 255)).astype(np.float32)
+            self.per_pixel_resolution = self.env.scene.trav_map_resolution
+            assert np.array(self.map_2d).shape[0] == np.array(self.map_2d).shape[1]
+            self.grid_resolution = self.map_2d.shape[0]
+            self.occupancy_range = self.grid_resolution * self.per_pixel_resolution
+            self.robot_footprint_radius_in_map = int(np.ceil(self.robot_footprint_radius / self.per_pixel_resolution))
+        else:
+            self.grid_resolution = self.env.grid_resolution
+            self.occupancy_range = self.env.sensors["scan_occ"].occupancy_range
+            self.robot_footprint_radius_in_map = self.env.sensors["scan_occ"].robot_footprint_radius_in_map
+
         self.robot = self.env.robots[0]
         self.base_mp_algo = base_mp_algo
         self.arm_mp_algo = arm_mp_algo
-        self.base_mp_resolutions = np.array([0.05, 0.05, 0.05])
+        # If we plan in the map, we do not need to check rotations: a location is in collision (or not) independently
+        # of the orientation. If we use pybullet, we may find some cases where the base orientation changes the
+        # collision value for the same location between True/False
+        if not self.collision_with_pb_2d_planning:
+            self.base_mp_resolutions = np.array([0.05, 0.05, 2 * np.pi])
+        else:
+            self.base_mp_resolutions = np.array([0.05, 0.05, 0.3])
         self.optimize_iter = optimize_iter
         self.mode = self.env.mode
         self.initial_height = self.env.initial_pos_z_offset
@@ -81,6 +116,9 @@ class MotionPlanningWrapper(object):
             )
             self.env.simulator.import_object(self.marker)
             self.env.simulator.import_object(self.marker_direction)
+
+        self.visualize_2d_planning = visualize_2d_planning
+        self.visualize_2d_result = visualize_2d_result
 
     def set_marker_position(self, pos):
         """
@@ -186,32 +224,57 @@ class MotionPlanningWrapper(object):
 
         state = self.env.get_state()
         x, y, theta = goal
-        grid = state["occupancy_grid"]
 
-        yaw = self.robot.get_rpy()[2]
-        half_occupancy_range = self.occupancy_range / 2.0
-        robot_position_xy = self.robot.get_position()[:2]
-        corners = [
-            robot_position_xy + rotate_vector_2d(local_corner, -yaw)
-            for local_corner in [
-                np.array([half_occupancy_range, half_occupancy_range]),
-                np.array([half_occupancy_range, -half_occupancy_range]),
-                np.array([-half_occupancy_range, half_occupancy_range]),
-                np.array([-half_occupancy_range, -half_occupancy_range]),
+        map_2d = state["occupancy_grid"] if not self.full_observability_2d_planning else self.map_2d
+
+        if not self.full_observability_2d_planning:
+            yaw = self.robot.get_rpy()[2]
+            half_occupancy_range = self.occupancy_range / 2.0
+            robot_position_xy = self.robot.get_position()[:2]
+            corners = [
+                robot_position_xy + rotate_vector_2d(local_corner, -yaw)
+                for local_corner in [
+                    np.array([half_occupancy_range, half_occupancy_range]),
+                    np.array([half_occupancy_range, -half_occupancy_range]),
+                    np.array([-half_occupancy_range, half_occupancy_range]),
+                    np.array([-half_occupancy_range, -half_occupancy_range]),
+                ]
             ]
-        ]
+        else:
+            top_left = self.env.scene.map_to_world(np.array([0, 0]))
+            bottom_right = self.env.scene.map_to_world(np.array(self.map_2d.shape) - np.array([1, 1]))
+            corners = [top_left, bottom_right]
+
+        if self.collision_with_pb_2d_planning:
+            obstacles = [
+                body_id
+                for body_id in self.env.scene.get_body_ids()
+                if body_id not in self.robot.get_body_ids()
+                and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+            ]
+        else:
+            obstacles = []
+
         path = plan_base_motion_2d(
             self.robot_id,
             [x, y, theta],
             (tuple(np.min(corners, axis=0)), tuple(np.max(corners, axis=0))),
-            map_2d=grid,
+            map_2d=map_2d,
             occupancy_range=self.occupancy_range,
             grid_resolution=self.grid_resolution,
-            robot_footprint_radius_in_map=self.robot_footprint_radius_in_map,
+            # If we use the global map, it has been eroded: we do not need to use the full size of the robot, a 1 px
+            # robot would be enough
+            robot_footprint_radius_in_map=[self.robot_footprint_radius_in_map, 1][self.full_observability_2d_planning],
             resolutions=self.base_mp_resolutions,
-            obstacles=[],
+            # Add all objects in the scene as obstacles except the robot itself and the floor
+            obstacles=obstacles,
             algorithm=self.base_mp_algo,
             optimize_iter=self.optimize_iter,
+            visualize_planning=self.visualize_2d_planning,
+            visualize_result=self.visualize_2d_result,
+            metric2map=[None, self.env.scene.world_to_map][self.full_observability_2d_planning],
+            flip_vertically=self.full_observability_2d_planning,
+            use_pb_for_collisions=self.collision_with_pb_2d_planning,
         )
 
         if path is not None and len(path) > 0:
