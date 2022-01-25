@@ -47,6 +47,13 @@ class ShadowPass(IntEnum):
     HAS_SHADOW_RENDER_SCENE = 2
 
 
+class CoordinateSystem(IntEnum):
+    OPENCV = 0
+    OPENGL = 1
+    PYBULLET = 2
+    SUNRGBD = 3
+
+
 class OccupancyGridState(object):
     OBSTACLES = 0.0
     UNKNOWN = 0.5

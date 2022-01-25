@@ -10,6 +10,8 @@ from PIL import Image
 from scipy.spatial.transform import Rotation as R
 from transforms3d import quaternions
 
+from igibson.utils.constants import CoordinateSystem
+
 # File I/O related
 
 
@@ -146,6 +148,47 @@ def quatXYZWFromRotMat(rot_mat):
     quatWXYZ = quaternions.mat2quat(rot_mat)
     quatXYZW = quatToXYZW(quatWXYZ, "wxyz")
     return quatXYZW
+
+
+def convertPointCoordSystem(xyz, from_system, to_system):
+    """
+    Convert point from from_system convention to to_system convention.
+
+    OpenCV coordinate system is (right, downward, forward).
+    OpenGL coordinate system is (right, upward, backward).
+    PyBullet coordinate system is (forward, left, upward).
+    SunRgbd coordinate system is (right, forward, upward).
+
+    :param xyz: (x, y, z) coordinate in from_system convension, or an ndarray with the
+        last dimension being (x, y, z) coordinates in from_system convension
+    :param from_system: choose from OpenCV, OpenGL, PyBullet, SunRgbd
+    :param to_system: choose from OpenCV, OpenGL, PyBullet, SunRgbd
+    :return: (x, y, z) coordinate in to_system convension, or an ndarray with the
+        last dimension being (x, y, z) coordinates in to_system convension
+    """
+    from_system = CoordinateSystem[from_system.upper()]
+    to_system = CoordinateSystem[to_system.upper()]
+
+    if isinstance(xyz, list):
+        xyz = np.array(xyz)
+    if not isinstance(xyz, np.ndarray) or xyz.shape[-1] != 3:
+        raise NotImplementedError
+
+    # Convert from from_system to PyBullet
+    if from_system == CoordinateSystem.OPENCV:
+        xyz = np.stack((xyz[..., 2], -xyz[..., 0], -xyz[..., 1]), axis=-1)
+    elif from_system == CoordinateSystem.OPENGL:
+        xyz = np.stack((-xyz[..., 2], -xyz[..., 0], xyz[..., 1]), axis=-1)
+    elif from_system == CoordinateSystem.SUNRGBD:
+        xyz = np.stack((xyz[..., 1], -xyz[..., 0], xyz[..., 2]), axis=-1)
+    # Convert from PyBullet to to_system.
+    if to_system == CoordinateSystem.OPENCV:
+        xyz = np.stack((-xyz[..., 1], -xyz[..., 2], xyz[..., 0]), axis=-1)
+    elif to_system == CoordinateSystem.OPENGL:
+        xyz = np.stack((-xyz[..., 1], xyz[..., 2], -xyz[..., 0]), axis=-1)
+    elif to_system == CoordinateSystem.SUNRGBD:
+        xyz = np.stack((-xyz[..., 1], xyz[..., 0], xyz[..., 2]), axis=-1)
+    return xyz
 
 
 # Represents a rotation by q1, followed by q0
