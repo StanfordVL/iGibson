@@ -116,12 +116,12 @@ class BehaviorEnv(iGibsonEnv):
         scene_id = self.config["scene_id"]
         clutter = self.config["clutter"]
         online_sampling = self.config["online_sampling"]
-        if online_sampling:
-            scene_kwargs = {}
-        else:
-            scene_kwargs = {
-                "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene_id, task, task_id, self.instance_id),
-            }
+        # if online_sampling:
+        #     scene_kwargs = {}
+        # else:
+        scene_kwargs = {
+            "urdf_file": "{}_task_{}_{}_{}_fixed_furniture".format(scene_id, task, task_id, self.instance_id),
+        }
         bddl.set_backend("iGibson")
         robot_class = self.config.get("robot")
         if robot_class == "BehaviorRobot":

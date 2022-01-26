@@ -272,7 +272,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     for joint in self.scene_tree.findall("joint")
                     if joint.find("child").attrib["link"] == object_name
                 ][0]
-
                 bddl_object_scope = link.attrib.get("object_scope", None)
                 joint_positions = (
                     json.loads(link.attrib["joint_positions"]) if "joint_positions" in link.keys() else None

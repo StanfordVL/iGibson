@@ -419,35 +419,36 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         self.simulator.reload()
         self.simulator.import_ig_scene(self.scene)
 
-        if not self.online_sampling:
-            for obj_inst in self.object_scope:
-                matched_sim_obj = None
+        # if not self.online_sampling:
+        for obj_inst in self.object_scope:
+            matched_sim_obj = None
 
-                # TODO: remove after split floors
-                if "floor.n.01" in obj_inst:
-                    for _, sim_obj in self.scene.objects_by_name.items():
-                        if sim_obj.bddl_object_scope is not None and obj_inst in sim_obj.bddl_object_scope:
-                            bddl_object_scope = sim_obj.bddl_object_scope.split(",")
-                            bddl_object_scope = {item.split(":")[0]: item.split(":")[1] for item in bddl_object_scope}
-                            assert obj_inst in bddl_object_scope
-                            room_inst = bddl_object_scope[obj_inst].replace("room_floor_", "")
-                            matched_sim_obj = RoomFloor(
-                                category="room_floor",
-                                name=bddl_object_scope[obj_inst],
-                                scene=self.scene,
-                                room_instance=room_inst,
-                                floor_obj=self.scene.objects_by_name["floors"],
-                            )
-                elif obj_inst == "agent.n.01_1":
-                    # Skip adding agent to object scope, handled later by import_agent()
-                    continue
-                else:
-                    for _, sim_obj in self.scene.objects_by_name.items():
-                        if sim_obj.bddl_object_scope == obj_inst:
-                            matched_sim_obj = sim_obj
-                            break
-                assert matched_sim_obj is not None, obj_inst
-                self.object_scope[obj_inst] = matched_sim_obj
+            # TODO: remove after split floors
+            if "floor.n.01" in obj_inst:
+                for _, sim_obj in self.scene.objects_by_name.items():
+                    if sim_obj.bddl_object_scope is not None and obj_inst in sim_obj.bddl_object_scope:
+                        bddl_object_scope = sim_obj.bddl_object_scope.split(",")
+                        bddl_object_scope = {item.split(":")[0]: item.split(":")[1] for item in bddl_object_scope}
+                        assert obj_inst in bddl_object_scope
+                        room_inst = bddl_object_scope[obj_inst].replace("room_floor_", "")
+                        matched_sim_obj = RoomFloor(
+                            category="room_floor",
+                            name=bddl_object_scope[obj_inst],
+                            scene=self.scene,
+                            room_instance=room_inst,
+                            floor_obj=self.scene.objects_by_name["floors"],
+                        )
+            elif obj_inst == "agent.n.01_1":
+                # Skip adding agent to object scope, handled later by import_agent()
+                continue
+            else:
+                for _, sim_obj in self.scene.objects_by_name.items():
+                    if sim_obj.bddl_object_scope == obj_inst:
+                        matched_sim_obj = sim_obj
+                        break
+
+            assert matched_sim_obj is not None, obj_inst
+            self.object_scope[obj_inst] = matched_sim_obj
 
     def sample(self, kinematic_only=False):
         feedback = {"init_success": "yes", "goal_success": "yes", "init_feedback": "", "goal_feedback": ""}
