@@ -14,7 +14,7 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.simulator import Simulator
+from igibson.simulator_vr import SimulatorVR
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
@@ -39,7 +39,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
 
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
