@@ -1136,8 +1136,8 @@ int MeshRendererContext::allocateTexture(int w, int h) {
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGBA,
-                 GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, w, h, 0, GL_RGBA,
+                 GL_UNSIGNED_BYTE, NULL);
     return texture;
 }
 
@@ -1145,7 +1145,13 @@ void MeshRendererContext::readbuffer_meshrenderer_shadow_depth(int width, int he
     glBindFramebuffer(GL_FRAMEBUFFER, fb2);
     // read buffer from 3d component
     glReadBuffer(GL_COLOR_ATTACHMENT4);
-	glCopyTextureSubImage2D(texture_id, 0, 0, 0, 0, 0, width, height);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, width, height); // Changed from glCopyTextureSubImage2D for openGL 4.1 compatibility
+    glBindTexture(GL_TEXTURE_2D, 0);
+
 }
 
 py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> filenames, int texCutoff, bool shouldShrinkSmallTextures, int smallTexBucketSize, std::string keyfilename) {
