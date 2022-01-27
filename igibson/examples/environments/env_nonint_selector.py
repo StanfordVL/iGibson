@@ -23,6 +23,11 @@ def main(random_selection=False, headless=False, short_exec=False):
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
+
+    # Shadows and PBR do not make much sense for a Gibson static mesh
+    config_data["enable_shadow"] = False
+    config_data["enable_pbr"] = False
+
     available_g_scenes = get_available_g_scenes()
     scene_id = available_g_scenes[let_user_pick(available_g_scenes, random_selection=random_selection) - 1]
     env = iGibsonEnv(config_file=config_data, scene_id=scene_id, mode="gui_interactive" if not headless else "headless")

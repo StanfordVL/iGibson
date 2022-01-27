@@ -55,8 +55,10 @@ class BaseEnv(gym.Env):
         self.object_randomization_idx = 0
         self.num_object_randomization_idx = 10
 
-        enable_shadow = self.config.get("enable_shadow", True)
-        enable_pbr = self.config.get("enable_pbr", True)
+        default_enable_shadows = False  # What to do if it is not specified in the config file
+        enable_shadow = self.config.get("enable_shadow", default_enable_shadows)
+        default_enable_pbr = False  # What to do if it is not specified in the config file
+        enable_pbr = self.config.get("enable_pbr", default_enable_pbr)
         texture_scale = self.config.get("texture_scale", 1.0)
 
         if self.rendering_settings is None:

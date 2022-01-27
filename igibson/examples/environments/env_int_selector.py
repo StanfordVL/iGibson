@@ -23,6 +23,11 @@ def main(random_selection=False, headless=False, short_exec=False):
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
+
+    # Improving visuals in the example (optional)
+    config_data["enable_shadow"] = True
+    config_data["enable_pbr"] = True
+
     # config_data["load_object_categories"] = []  # Uncomment this line to accelerate loading with only the building
     available_ig_scenes = get_available_ig_scenes()
     scene_id = available_ig_scenes[let_user_pick(available_ig_scenes, random_selection=random_selection) - 1]
