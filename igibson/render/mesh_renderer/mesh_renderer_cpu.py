@@ -650,6 +650,7 @@ class MeshRenderer(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body_name=None,
     ):
         """
         Create an instance group for a list of visual objects and link it to pybullet.
@@ -690,6 +691,7 @@ class MeshRenderer(object):
             use_pbr=use_pbr,
             use_pbr_mapping=use_pbr_mapping,
             shadow_caster=shadow_caster,
+            parent_body_name=parent_body_name,
         )
         self.instances.append(instance_group)
         self.update_instance_id_to_pb_id_map()
