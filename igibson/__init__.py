@@ -62,18 +62,19 @@ if not os.path.isabs(cubicasa_dataset_path):
 if not os.path.isabs(key_path):
     key_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), key_path)
 
-logging.info("Importing iGibson (igibson module)")
-logging.info("Assets path: {}".format(assets_path))
-logging.info("Gibson Dataset path: {}".format(g_dataset_path))
-logging.info("iG Dataset path: {}".format(ig_dataset_path))
-logging.info("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
-logging.info("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
-logging.info("iGibson Key path: {}".format(key_path))
+# NOTE: njk: turned off below logging prints to avoid cluttering terminal when running predicators code.
+# logging.info("Importing iGibson (igibson module)")
+# logging.info("Assets path: {}".format(assets_path))
+# logging.info("Gibson Dataset path: {}".format(g_dataset_path))
+# logging.info("iG Dataset path: {}".format(ig_dataset_path))
+# logging.info("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
+# logging.info("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
+# logging.info("iGibson Key path: {}".format(key_path))
 
 example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
 example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples", "configs")
 
-logging.info("Example path: {}".format(example_path))
-logging.info("Example config path: {}".format(example_config_path))
+# logging.info("Example path: {}".format(example_path))
+# logging.info("Example config path: {}".format(example_config_path))
 
 debug_sampling = False

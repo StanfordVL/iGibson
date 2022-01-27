@@ -104,7 +104,7 @@ def get_parallel_rays(
     return sources, destinations, ray_grid
 
 
-def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities):
+def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_stdev_fraction, axis_probabilities, random_seed_number=0):
     """
     Sample ray casting origin positions with a given distribution.
 
@@ -121,10 +121,13 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
     :param bimodal_stdev_fraction: float, the standard deviation of one side of the symmetric bimodal distribution as a
         fraction of the min-max range.
     :param axis_probabilities: Array of shape (3, ), the probability of ray casting along each axis.
+    :param random_seed_number: int, a number to seed np.random.seed when sampling, so that samples are produced in a
+        deterministic fashion
     :return: List of (ray cast axis index, bool whether the axis was sampled from the top side, [x, y, z]) tuples.
     """
     assert len(mins.shape) == 1
     assert mins.shape == maxes.shape
+    np.random.seed(seed=random_seed_number)
 
     results = []
     for i in range(count):
@@ -154,6 +157,7 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
         # Save the result.
         results.append((bimodal_axis, bimodal_axis_top_side, scaled_position))
 
+    print(results)
     return results
 
 
@@ -170,6 +174,7 @@ def sample_cuboid_on_object(
     max_angle_with_z_axis=_DEFAULT_MAX_ANGLE_WITH_Z_AXIS,
     hit_to_plane_threshold=_DEFAULT_HIT_TO_PLANE_THRESHOLD,
     refuse_downwards=False,
+    random_seed_number=0
 ):
     """
     Samples points on an object's surface using ray casting.
@@ -195,6 +200,8 @@ def sample_cuboid_on_object(
     :param hit_to_plane_threshold: float, how far any given hit position can be from the least-squares fit plane to
         all of the hit positions before the sample is rejected.
     :param refuse_downwards: bool, whether downward-facing hits (as defined by max_angle_with_z_axis) are allowed.
+    :param random_seed_number: int, a number to seed np.random.seed when sampling, so that samples are produced in a
+        deterministic fashion
     :return: List of num_samples elements where each element is a tuple in the form of
         (cuboid_centroid, cuboid_up_vector, cuboid_rotation, {refusal_reason: [refusal_details...]}). Cuboid positions
         are set to None when no successful sampling happens within the max number of attempts. Refusal details are only
@@ -229,6 +236,7 @@ def sample_cuboid_on_object(
             bimodal_mean_fraction,
             bimodal_stdev_fraction,
             axis_probabilities,
+            random_seed_number
         )
 
         refusal_reasons = results[i][4]
