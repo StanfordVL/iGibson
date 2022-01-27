@@ -161,6 +161,7 @@ setup(
         "six",
         "pandas",
         "packaging",
+        "bddl>=0.0.3",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),
