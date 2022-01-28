@@ -1,6 +1,6 @@
 import collections
 import os
-
+import random
 import numpy as np
 
 import pybullet as p
@@ -234,8 +234,7 @@ def let_user_pick(options, print_intro=True, random_selection=False):
     return None
 
 # To dynamically modify wbm3_modifiable_full_obs.yaml file
-
-def modify_config_file(config_file, task_name, scene_id):
+def modify_config_file(config_file, task_name, scene_id, randomize_init_state):
     # Read in the file
     with open(config_file, 'r') as file :
         filedata = file.read()
@@ -243,6 +242,7 @@ def modify_config_file(config_file, task_name, scene_id):
     # Replace the target string
     filedata = filedata.replace('task_placeholder', task_name)
     filedata = filedata.replace('scene_placeholder', scene_id)
+    filedata = filedata.replace('online_sampling_placeholder', str(randomize_init_state))
     #print(filedata)
     
     config_file = config_file + "_tmp"

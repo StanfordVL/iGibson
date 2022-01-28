@@ -571,7 +571,7 @@ class iGBEHAVIORActivityInstance(BEHAVIORActivityInstance):
         # For each room instance, perform maximum bipartite matching between object instance in scope to simulator objects
         # Left nodes: a list of object instance in scope
         # Right nodes: a list of simulator objects
-        # Edges: if the simulator object can support the sampling requirement of ths object instance
+        # Edges: if the simulator object can support the sampling requirement of this object instance
         for room_type in scene_object_scope_filtered:
             # The same room instances will be shared across all scene obj in a given room type
             some_obj = list(scene_object_scope_filtered[room_type].keys())[0]
