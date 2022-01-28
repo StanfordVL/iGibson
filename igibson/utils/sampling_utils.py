@@ -157,7 +157,6 @@ def sample_origin_positions(mins, maxes, count, bimodal_mean_fraction, bimodal_s
         # Save the result.
         results.append((bimodal_axis, bimodal_axis_top_side, scaled_position))
 
-    print(results)
     return results
 
 
