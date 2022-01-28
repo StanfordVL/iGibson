@@ -183,7 +183,7 @@ class KeyboardController:
                 self.keypress_mapping["u"] = {"idx": info["start_idx"] + 4, "val": -0.5}
                 self.keypress_mapping["v"] = {"idx": info["start_idx"] + 5, "val": 0.5}
                 self.keypress_mapping["c"] = {"idx": info["start_idx"] + 5, "val": -0.5}
-            elif info["name"] == "ParallelJawGripperController":
+            elif info["name"] == "MultiFingerGripperController":
                 if info["command_dim"] > 1:
                     for i in range(info["command_dim"]):
                         ctrl_idx = info["start_idx"] + i

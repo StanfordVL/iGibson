@@ -26,6 +26,6 @@ robot:
     arm_0:
       name: InverseKinematicsController
     gripper_0:
-      name: ParallelJawGripperController
+      name: MultiFingerGripperController
     camera:
       name: JointController

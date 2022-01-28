@@ -240,11 +240,11 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # Always call super first
         controllers = super()._default_controllers
 
-        # We use parallel jaw gripper, differential drive, and IK controllers as default
+        # We use multi finger gripper, differential drive, and IK controllers as default
         controllers["base"] = "DifferentialDriveController"
         controllers["camera"] = "JointController"
         controllers["arm_{}".format(self.default_arm)] = "InverseKinematicsController"
-        controllers["gripper_{}".format(self.default_arm)] = "ParallelJawGripperController"
+        controllers["gripper_{}".format(self.default_arm)] = "MultiFingerGripperController"
 
         return controllers
 

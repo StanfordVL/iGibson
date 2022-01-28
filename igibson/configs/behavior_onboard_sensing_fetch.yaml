@@ -31,7 +31,7 @@ robot:
       name: InverseKinematicsController
       kv: 2.0
     gripper_0:
-      name: ParallelJawGripperController
+      name: MultiFingerGripperController
       mode: binary
     camera:
       name: JointController

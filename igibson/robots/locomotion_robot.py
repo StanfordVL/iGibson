@@ -80,7 +80,6 @@ class LocomotionRobot(BaseRobot):
             "joint_idx": self.base_control_idx,
             "command_output_limits": "default",
             "use_delta_commands": False,
-            "use_compliant_mode": True,
         }
 
     @property

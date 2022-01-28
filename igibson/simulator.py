@@ -207,6 +207,10 @@ class Simulator:
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
 
+        # Set the collision mask mode to the AND mode, e.g. B3_FILTER_GROUPAMASKB_AND_GROUPBMASKA. This means two objs
+        # will collide only if *BOTH* of them have collision masks that enable collisions with the other.
+        p.setPhysicsEngineParameter(collisionFilterMode=0)
+
     def initialize_viewers(self):
         if self.mode == SimulatorMode.GUI_NON_INTERACTIVE:
             self.viewer = ViewerSimple(renderer=self.renderer)
