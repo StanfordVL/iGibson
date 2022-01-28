@@ -10,9 +10,9 @@ VALID_MODES = {
 }
 
 
-class ParallelJawGripperController(ManipulationController):
+class MultiFingerGripperController(ManipulationController):
     """
-    Controller class for parallel jaw gripper control. This either interprets an input as a binary
+    Controller class for multi finger gripper control. This either interprets an input as a binary
     command (open / close), continuous command (open / close with scaled velocities), or per-joint continuous command
 
     Each controller step consists of the following:
@@ -29,6 +29,7 @@ class ParallelJawGripperController(ManipulationController):
         joint_idx,
         command_input_limits="default",
         command_output_limits="default",
+        inverted=False,
         mode="binary",
         limit_tolerance=0.001,
     ):
@@ -53,6 +54,8 @@ class ParallelJawGripperController(ManipulationController):
             then all inputted command values will be scaled from the input range to the output range.
             If either is None, no scaling will be used. If "default", then this range will automatically be set
             to the @control_limits entry corresponding to self.control_type
+        :param inverted: bool, whether or not the command direction (grasp is negative) and the control direction are
+            inverted, e.g. to grasp you need to move the joint in the positive direction.
         :param mode: str, mode for this controller. Valid options are:
 
             "binary": 1D command, if preprocessed value > 0 is interpreted as an max open
@@ -65,7 +68,8 @@ class ParallelJawGripperController(ManipulationController):
         # Store arguments
         assert_valid_key(key=motor_type.lower(), valid_keys=ControlType.VALID_TYPES_STR, name="motor_type")
         self.motor_type = motor_type.lower()
-        assert_valid_key(key=mode, valid_keys=VALID_MODES, name="mode for parallel jaw gripper")
+        assert_valid_key(key=mode, valid_keys=VALID_MODES, name="mode for multi finger gripper")
+        self.inverted = inverted
         self.mode = mode
         self.limit_tolerance = limit_tolerance
 
@@ -89,7 +93,15 @@ class ParallelJawGripperController(ManipulationController):
     def _preprocess_command(self, command):
         # We extend this method to make sure command is always 2D
         if self.mode != "independent":
-            command = np.array([command] * 2) if type(command) in {int, float} else np.array([command[0]] * 2)
+            command = (
+                np.array([command] * self.command_dim)
+                if type(command) in {int, float}
+                else np.array([command[0]] * self.command_dim)
+            )
+
+        # Flip the command if the direction is inverted.
+        if self.inverted:
+            command = self.command_input_limits[1] - (command - self.command_input_limits[0])
 
         # Return from super method
         return super()._preprocess_command(command=command)
@@ -140,4 +152,4 @@ class ParallelJawGripperController(ManipulationController):
 
     @property
     def command_dim(self):
-        return 2 if self.mode == "independent" else 1
+        return len(self.joint_idx) if self.mode == "independent" else 1

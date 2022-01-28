@@ -99,9 +99,9 @@ class BaseController:
         self.control_freq = control_freq
         self.control_limits = {}
         for motor_type in {"position", "velocity", "torque"}:
-            assert (
-                motor_type in control_limits
-            ), "Expected motor_type {} to be in control_limits, but does not exist.".format(motor_type)
+            if motor_type not in control_limits:
+                continue
+
             self.control_limits[ControlType.get_type(motor_type)] = [
                 np.array(control_limits[motor_type][0]),
                 np.array(control_limits[motor_type][1]),
@@ -174,8 +174,8 @@ class BaseController:
                     command - self._command_input_transform
                 ) * self._command_scale_factor + self._command_output_transform
 
-            # Return processed command
-            return command
+        # Return processed command
+        return command
 
     def update_command(self, command):
         """

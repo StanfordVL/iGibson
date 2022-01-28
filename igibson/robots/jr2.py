@@ -130,7 +130,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         # In addition to normal reset, reset the joint configuration to be in default mode
         super().reset()
         joints = self.default_joint_pos
-        set_joint_positions(self.get_body_ids()[0], self.joint_ids, joints)
+        set_joint_positions(self.get_body_ids()[0], [j.joint_id for j in self.joints.values()], joints)
 
     @property
     def controller_order(self):

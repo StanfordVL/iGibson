@@ -1,5 +1,7 @@
 include LICENSE
 
-recursive-include igibson *
+graft igibson
+prune igibson/data
+prune igibson/render/openvr/samples
 
-include igibson/global_config.yaml
+global-exclude *.py[co]

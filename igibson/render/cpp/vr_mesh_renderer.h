@@ -51,6 +51,8 @@ public:
 		float trig_frac;
 		// analog touch vector - controllers only!
 		glm::vec2 touchpad_analog_vec;
+		// the buttons that are currently pressed, as a bit vector. bit at position i is state of button i.
+		uint64_t buttons_pressed;
 		// both indices are used to obtain analog data for trigger and touchpad - controllers only!
 		int trigger_axis_index;
 		int touchpad_axis_index;

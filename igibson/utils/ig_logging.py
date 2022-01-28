@@ -11,6 +11,7 @@ import h5py
 import numpy as np
 import pybullet as p
 
+from igibson.robots.behavior_robot import HAND_BASE_ROTS
 from igibson.utils.git_utils import project_git_info
 from igibson.utils.utils import dump_config, parse_str_config
 from igibson.utils.vr_utils import VR_BUTTON_COMBO_NUM, VrData, convert_button_data_to_binary
@@ -350,8 +351,8 @@ class IGLogWriter(object):
 
         if self.vr_robot:
             forces = {
-                "left_controller": p.getConstraintState(self.vr_robot.links["left_hand"].movement_cid),
-                "right_controller": p.getConstraintState(self.vr_robot.links["right_hand"].movement_cid),
+                "left_controller": p.getConstraintState(self.vr_robot._parts["left_hand"].movement_cid),
+                "right_controller": p.getConstraintState(self.vr_robot._parts["right_hand"].movement_cid),
             }
         for device in ["hmd", "left_controller", "right_controller"]:
             is_valid, trans, rot = self.sim.get_data_for_vr_device(device)
@@ -371,9 +372,9 @@ class IGLogWriter(object):
                     else:
                         # Calculate model rotation and store
                         if device == "left_controller":
-                            base_rot = self.vr_robot.links["left_hand"].base_rot
+                            base_rot = HAND_BASE_ROTS["left_hand"]
                         else:
-                            base_rot = self.vr_robot.links["right_hand"].base_rot
+                            base_rot = HAND_BASE_ROTS["right_hand"]
                         controller_rot = rot
                         # Use dummy translation to calculation final rotation
                         final_rot = p.multiplyTransforms([0, 0, 0], controller_rot, [0, 0, 0], base_rot)[1]
@@ -384,8 +385,7 @@ class IGLogWriter(object):
 
             if device == "left_controller" or device == "right_controller":
                 button_data_list = self.sim.get_button_data_for_controller(device)
-                if button_data_list[0] is not None:
-                    self.data_map["vr"]["vr_button_data"][device][self.frame_counter, ...] = np.array(button_data_list)
+                self.data_map["vr"]["vr_button_data"][device][self.frame_counter, ...] = np.array(button_data_list)
 
         is_valid, torso_trans, torso_rot = self.sim.get_data_for_vr_tracker(self.sim.vr_settings.torso_tracker_serial)
         torso_data_list = [is_valid]
@@ -397,7 +397,7 @@ class IGLogWriter(object):
         vr_pos_data.extend(list(self.sim.get_vr_pos()))
         vr_pos_data.extend(list(self.sim.get_vr_offset()))
         if self.vr_robot:
-            vr_pos_data.extend(p.getConstraintState(self.vr_robot.links["body"].movement_cid))
+            vr_pos_data.extend(p.getConstraintState(self.vr_robot._parts["body"].movement_cid))
         self.data_map["vr"]["vr_device_data"]["vr_position_data"][self.frame_counter, ...] = np.array(vr_pos_data)
 
         # On systems where eye tracking is not supported, we get dummy data and a guaranteed False validity reading

@@ -1245,29 +1245,29 @@ class MeshRenderer(object):
         :return: a list of frames (number of modalities x number of robots)
         """
         frames = []
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
+        if need_flow_info and len(self.simulator.scene.robots) > 1:
+            raise ValueError("We only allow one robot in the scene when rendering optical/scene flow.")
+
+        for robot in self.simulator.scene.robots:
+            frames.extend(self.render_single_robot_camera(robot, modes=modes, cache=cache))
+
+        return frames
+
+    def render_single_robot_camera(self, robot, modes=("rgb"), cache=True):
+        frames = []
         hide_robot = self.rendering_settings.hide_robot
         need_flow_info = "optical_flow" in modes or "scene_flow" in modes
-        has_set_camera = False
         for instance in self.instances:
-            if isinstance(instance.ig_object, BaseRobot):
+            if instance.ig_object == robot:  # TODO: Make this faster. Can't we just look it up?
                 camera_pos = instance.ig_object.eyes.get_position()
                 orn = instance.ig_object.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 up_direction = mat.dot(np.array([0, 0, 1]))
-                if need_flow_info and has_set_camera:
-                    raise ValueError("We only allow one robot in the scene when rendering optical/scene flow.")
                 self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=need_flow_info and cache)
-                has_set_camera = True
                 for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
                     frames.append(item)
-
-        # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.
-        # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface,
-        # it needs to be found & handled separately.
-        behavior_robots = (robot for robot in self.simulator.scene.robots if isinstance(robot, BehaviorRobot))
-        for robot in behavior_robots:
-            frames.extend(robot.render_camera_image(modes=modes))
 
         return frames
 

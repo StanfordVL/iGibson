@@ -41,6 +41,24 @@ class SemanticClass(IntEnum):
     TOGGLE_MARKER = 511
 
 
+# Note that we are starting this from bit 6 since bullet seems to be giving special meaning to groups 0-5.
+# Collision groups for objects. For special logic, different categories can be assigned different collision groups.
+ALL_COLLISION_GROUPS_MASK = -1
+DEFAULT_COLLISION_GROUP = 1
+SPECIAL_COLLISION_GROUPS = {
+    "floors": 7,
+    "carpet": 8,
+}
+
+
+def get_collision_group_mask(groups_to_exclude=[]):
+    """Get a collision group mask that has collisions enabled for every group except those in groups_to_exclude."""
+    collision_mask = ALL_COLLISION_GROUPS_MASK
+    for group in groups_to_exclude:
+        collision_mask &= ~(1 << group)
+    return collision_mask
+
+
 class ShadowPass(IntEnum):
     NO_SHADOW = 0
     HAS_SHADOW_RENDER_SHADOW = 1

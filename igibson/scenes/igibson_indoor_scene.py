@@ -1205,7 +1205,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if room is not None:
                 link.attrib["room"] = room
 
-            if isinstance(obj, (BaseRobot, BehaviorRobot)):
+            if isinstance(obj, BaseRobot):
                 link.attrib["robot_config"] = json.dumps(obj.dump_config(), cls=NumpyEncoder)
 
             new_joint = ET.SubElement(tree_root, "joint")

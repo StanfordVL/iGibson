@@ -30,29 +30,28 @@ namespace py = pybind11;
 // Public methods
 
 // Get button data for a specific controller - either left_controller or right_controller
-// Returns in order: trigger fraction, analog touch position x, analog touch position y
+// Returns in order: trigger fraction, analog touch position x, analog touch position y, pressed buttons bitvector
 // TIMELINE: Call directly after getDataForVRDevice (relies on isValid to determine data integrity)
 py::list VRRendererContext::getButtonDataForController(char* controllerType) {
-	float trigger_fraction, touch_x, touch_y;
-	bool isValid;
-
+    DeviceData device_data;
 	if (!strcmp(controllerType, "left_controller")) {
-		trigger_fraction = leftControllerData.trig_frac;
-		touch_x = leftControllerData.touchpad_analog_vec.x;
-		touch_y = leftControllerData.touchpad_analog_vec.y;
-		isValid = leftControllerData.isValidData;
+		device_data = leftControllerData;
 	}
 	else if (!strcmp(controllerType, "right_controller")) {
-		trigger_fraction = rightControllerData.trig_frac;
-		touch_x = rightControllerData.touchpad_analog_vec.x;
-		touch_y = rightControllerData.touchpad_analog_vec.y;
-		isValid = rightControllerData.isValidData;
+		device_data = rightControllerData;
 	}
 
+    float trigger_fraction = device_data.trig_frac;
+    float touch_x = device_data.touchpad_analog_vec.x;
+    float touch_y = device_data.touchpad_analog_vec.y;
+    uint64_t buttons_pressed = device_data.buttons_pressed;
+    bool isValid = device_data.isValidData;
+
 	py::list buttonData;
-	buttonData.append(trigger_fraction);
+	buttonData.append(device_data.trig_frac);
 	buttonData.append(touch_x);
 	buttonData.append(touch_y);
+	buttonData.append(buttons_pressed);
 
 	return buttonData;
 }
@@ -478,6 +477,7 @@ void VRRendererContext::updateVRData() {
 
 				leftControllerData.trig_frac = controllerState.rAxis[leftControllerData.trigger_axis_index].x;
 				leftControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[leftControllerData.touchpad_axis_index].x, controllerState.rAxis[leftControllerData.touchpad_axis_index].y);
+				leftControllerData.buttons_pressed = controllerState.ulButtonPressed;
 			}
 			else if (role == vr::TrackedControllerRole_RightHand) {
 				rightControllerData.index = idx;
@@ -496,6 +496,7 @@ void VRRendererContext::updateVRData() {
 
 				rightControllerData.trig_frac = controllerState.rAxis[rightControllerData.trigger_axis_index].x;
 				rightControllerData.touchpad_analog_vec = glm::vec2(controllerState.rAxis[rightControllerData.touchpad_axis_index].x, controllerState.rAxis[rightControllerData.touchpad_axis_index].y);
+				rightControllerData.buttons_pressed = controllerState.ulButtonPressed;
 			}
 		}
 		else if (trackedDeviceClass == vr::ETrackedDeviceClass::TrackedDeviceClass_GenericTracker) {
