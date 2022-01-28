@@ -9,7 +9,7 @@ from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
 from igibson.objects.object_base import BaseObject
 from igibson.utils import sampling_utils
-from igibson.utils.constants import PyBulletSleepState, SemanticClass
+from igibson.utils.constants import PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -332,7 +332,7 @@ class AttachedParticleSystem(ParticleSystem):
             else:
                 activation_state = PyBulletSleepState.AWAKE
 
-            if activation_state != PyBulletSleepState.AWAKE:
+            if activation_state not in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
                 # If parent object is in sleep, don't update particle poses
                 continue
 

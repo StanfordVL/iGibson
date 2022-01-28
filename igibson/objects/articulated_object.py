@@ -4,7 +4,6 @@ import logging
 import math
 import os
 import random
-import sys
 import time
 import xml.etree.ElementTree as ET
 
@@ -13,13 +12,12 @@ import networkx as nx
 import numpy as np
 import pybullet as p
 import trimesh
+from scipy.spatial.transform import Rotation
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
     get_all_links,
     get_center_extent,
-    get_joint_info,
-    get_joints,
     get_link_name,
     get_link_state,
     link_from_name,
@@ -32,7 +30,7 @@ from igibson.objects.stateful_object import StatefulObject
 from igibson.render.mesh_renderer.materials import ProceduralMaterial, RandomizedMaterial
 from igibson.utils import utils
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
-from igibson.utils.utils import get_transform_from_xyz_rpy, mat_to_quat_pos, quatXYZWFromRotMat, rotate_vector_3d
+from igibson.utils.utils import mat_to_quat_pos, rotate_vector_3d
 
 
 class ArticulatedObject(StatefulObject):
@@ -100,7 +98,6 @@ class URDFObject(StatefulObject):
         bddl_object_scope=None,
         visualize_primitives=False,
         merge_fixed_links=True,
-        ignore_visual_shape=False,
         **kwargs,
     ):
         """
@@ -124,7 +121,6 @@ class URDFObject(StatefulObject):
         :param joint_states: joint positions and velocities, keyed by body index and joint name, in the form of
             List[Dict[name, Tuple(position, velocity)]]
         :param merge_fixed_links: whether to merge fixed links when importing to pybullet
-        :param ignore_visual_shape: whether to ignore visual shape when importing to pybullet
         """
         super(URDFObject, self).__init__(**kwargs)
 
@@ -136,7 +132,6 @@ class URDFObject(StatefulObject):
         self.bddl_object_scope = bddl_object_scope
         self.merge_fixed_links = merge_fixed_links
         self.room_floor = None
-        self.ignore_visual_shape = ignore_visual_shape
 
         # Friction for all prismatic and revolute joints
         if joint_friction is not None:
@@ -269,9 +264,6 @@ class URDFObject(StatefulObject):
         self.prepare_link_based_bounding_boxes()
 
         self.prepare_visual_mesh_to_material()
-
-    def set_ignore_visual_shape(self, value):
-        self.ignore_visual_shape = value
 
     def load_supporting_surfaces(self):
         self.supporting_surfaces = {}
@@ -837,7 +829,7 @@ class URDFObject(StatefulObject):
         if self.merge_fixed_links:
             flags |= p.URDF_MERGE_FIXED_LINKS
 
-        if self.ignore_visual_shape:
+        if igibson.ignore_visual_shape:
             flags |= p.URDF_IGNORE_VISUAL_SHAPES
 
         for idx in range(len(self.urdf_paths)):

@@ -16,21 +16,29 @@ from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 from igibson.utils.utils import parse_config, parse_str_config
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of how to replay a previously recorded demo of a task
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    args = parse_args()
-    replay_demo(
-        args.log_path,
-        out_log_path=args.replay_log_path,
-        disable_save=args.disable_save,
-        frame_save_path=args.frame_save_path,
-        mode=args.mode,
-        profile=args.profile,
-        config_file=args.config,
-    )
+
+    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+    if not (random_selection and headless and short_exec):
+        args = parse_args()
+        replay_demo(
+            args.log_path,
+            out_log_path=args.replay_log_path,
+            disable_save=args.disable_save,
+            frame_save_path=args.frame_save_path,
+            mode=args.mode,
+            profile=args.profile,
+            config_file=args.config,
+        )
+    else:
+        replay_demo(
+            os.path.join("/", "tmp", "demo.hdf5"),
+        )
 
 
 def verify_determinism(in_log_path, out_log_path):

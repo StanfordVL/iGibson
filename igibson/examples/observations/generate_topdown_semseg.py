@@ -1,19 +1,16 @@
-import colorsys
 import logging
 
 import cv2
-import matplotlib.cm as cm
-import matplotlib.pyplot as plt
 import numpy as np
 
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
-from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
+from igibson.utils.constants import MAX_CLASS_COUNT
 from igibson.utils.vision_utils import segmentation_to_rgb
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of generating a topdown semantic segmentation map
     Loads Rs_int (interactive) with all or some objects (code can be commented)
@@ -47,11 +44,15 @@ def main():
     seg_int = np.round(seg[:, :, 0] * MAX_CLASS_COUNT).astype(np.int32)
     seg_color = segmentation_to_rgb(seg_int, MAX_CLASS_COUNT)
 
-    while True:
-        cv2.imshow("Topdown Semantic Segmentation", seg_color)
-        q = cv2.waitKey(1)
-        if q == ord("q"):
-            break
+    if not headless:
+        max_steps = -1 if not short_exec else 1000
+        step = 0
+        while step != max_steps:
+            cv2.imshow("Topdown Semantic Segmentation", seg_color)
+            q = cv2.waitKey(1)
+            if q == ord("q"):
+                break
+            step += 1
 
     s.disconnect()
 

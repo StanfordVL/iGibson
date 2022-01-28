@@ -4,24 +4,15 @@ import os
 import random
 import time
 import xml.etree.ElementTree as ET
-from collections import Counter, defaultdict
+from collections import defaultdict
 from xml.dom import minidom
 
 import numpy as np
 import pybullet as p
-from IPython import embed
 from PIL import Image
 
 import igibson
-from igibson.external.pybullet_tools.utils import (
-    euler_from_quat,
-    get_joint_names,
-    get_joint_positions,
-    get_joint_velocities,
-    get_joints,
-)
-from igibson.object_states.factory import get_state_from_name, get_state_name
-from igibson.object_states.object_state_base import AbsoluteObjectState
+from igibson.external.pybullet_tools.utils import euler_from_quat, get_joint_names, get_joints
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots import REGISTERED_ROBOTS
@@ -75,7 +66,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         seg_map_resolution=0.1,
         scene_source="IG",
         merge_fixed_links=True,
-        ignore_visual_shape=False,
         rendering_params=None,
         include_robots=True,
     ):
@@ -102,7 +92,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param seg_map_resolution: room segmentation map resolution
         :param scene_source: source of scene data; among IG, CUBICASA, THREEDFRONT
         :param merge_fixed_links: whether to merge fixed links in pybullet
-        :param ignore_visual_shape: whether to ignore visual shapes (skip loading) in pybullet
         :param rendering_params: additional rendering params to be passed into object initializers (e.g. texture scale)
         :param include_robots: whether to also include the robot(s) defined in the scene
         """
@@ -119,7 +108,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.texture_randomization = texture_randomization
         self.object_randomization = object_randomization
         self.should_open_all_doors = should_open_all_doors
-        self.ignore_visual_shape = ignore_visual_shape
         if scene_source not in SCENE_SOURCE:
             raise ValueError("Unsupported scene source: {}".format(scene_source))
         if scene_source == "IG":
@@ -314,7 +302,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     scene_instance_folder=self.scene_instance_folder,
                     bddl_object_scope=bddl_object_scope,
                     merge_fixed_links=self.merge_fixed_links,
-                    ignore_visual_shape=ignore_visual_shape,
                     rendering_params=rendering_params,
                 )
 
@@ -371,11 +358,6 @@ class InteractiveIndoorScene(StaticIndoorScene):
                         self.add_object(obj, simulator=None)
             else:
                 self.add_object(obj, simulator=None)
-
-    def set_ignore_visual_shape(self, value):
-        self.ignore_visual_shape = value
-        for obj in self.get_objects():
-            obj.set_ignore_visual_shape(value)
 
     def get_objects(self):
         return list(self.objects_by_name.values())
@@ -1223,7 +1205,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if room is not None:
                 link.attrib["room"] = room
 
-            if isinstance(obj, (BaseRobot, BehaviorRobot)):
+            if isinstance(obj, BaseRobot):
                 link.attrib["robot_config"] = json.dumps(obj.dump_config(), cls=NumpyEncoder)
 
             new_joint = ET.SubElement(tree_root, "joint")

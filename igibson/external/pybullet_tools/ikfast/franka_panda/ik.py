@@ -2,18 +2,17 @@
 Developed by Caelen Garrett in pybullet-planning repository (https://github.com/caelan/pybullet-planning)
 and adapted by iGibson team.
 """
-import random
 import numpy as np
 import time
 
-from itertools import product, islice
+from itertools import islice
 
 from pybullet_tools.ikfast.utils import IKFastInfo
 from ..utils import compute_inverse_kinematics
-from ...utils import multiply, get_link_pose, link_from_name, invert, set_joint_positions, joints_from_names, \
-    get_movable_joint_ancestors, get_joint_limits, inf_generator, get_joint_position, randomize, violates_limits, \
-    get_joint_positions, INF, get_difference_fn, get_distance_fn, get_link_ancestors, prune_fixed_joints, \
-    parent_joint_from_link, get_length, unit_generator, get_min_limits, get_max_limits, elapsed_time
+from ...utils import multiply, get_link_pose, link_from_name, invert, joints_from_names, \
+    randomize, violates_limits, \
+    get_joint_positions, INF, get_difference_fn, get_link_ancestors, prune_fixed_joints, \
+    get_length, unit_generator, get_min_limits, get_max_limits, elapsed_time
 
 PANDA_INFO = IKFastInfo(module_name='ikfast_panda_arm', base_link='panda_link0',
                         ee_link='panda_link8', free_joints=['panda_joint7'])

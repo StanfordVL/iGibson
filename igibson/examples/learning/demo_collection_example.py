@@ -2,36 +2,48 @@ import argparse
 import datetime
 import logging
 import os
-import sys
 import tempfile
+from collections import OrderedDict
 
 import numpy as np
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
-from igibson.render.mesh_renderer.mesh_renderer_vr import VrConditionSwitcher
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import parse_config
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Example of how to save a demo of a task
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    args = parse_args()
-    collect_demo(
-        args.scene,
-        args.task,
-        args.task_id,
-        args.instance_id,
-        args.log_path,
-        args.disable_save,
-        args.disable_scene_cache,
-        args.profile,
-        args.config,
-    )
+
+    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+    if not (random_selection and headless and short_exec):
+        args = parse_args()
+        collect_demo(
+            args.scene,
+            args.task,
+            args.task_id,
+            args.instance_id,
+            args.log_path,
+            args.disable_save,
+            args.disable_scene_cache,
+            args.profile,
+            args.config,
+            short_exec=headless,
+        )
+
+    else:
+        collect_demo(
+            "Benevolence_1_int",
+            "cleaning_out_drawers",
+            log_path=os.path.join("/", "tmp", "demo.hdf5"),
+            short_exec=headless,
+        )
 
 
 def parse_args():
@@ -91,7 +103,9 @@ def parse_args():
         "an instantiation of a BDDL activity definition)",
     )
     demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
-    parser.add_argument("--log_path", type=str, default=demo_file, help="Path (and filename) of log file")
+    parser.add_argument(
+        "--log_path", type=str, default=demo_file, required=False, help="Path (and filename) of log file"
+    )
     parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
     parser.add_argument(
         "--disable_scene_cache", action="store_true", help="Whether to disable using pre-initialized scene caches."
@@ -101,6 +115,7 @@ def parse_args():
         "--config",
         help="which config file to use [default: use yaml files in examples/configs]",
         default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+        required=False,
     )
     return parser.parse_args()
 
@@ -115,6 +130,7 @@ def collect_demo(
     disable_scene_cache=False,
     profile=False,
     config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+    short_exec=False,
 ):
     """ """
     # HDR files for PBR rendering
@@ -174,9 +190,10 @@ def collect_demo(
         log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
     steps = 0
+    max_steps = -1 if not short_exec else 1000
 
     # Main recording loop
-    while True:
+    while steps != max_steps:
         if robot.__class__.__name__ == "BehaviorRobot" and steps < 2:
             # Use the first 2 steps to activate BehaviorRobot
             action = np.zeros((28,))
@@ -193,6 +210,8 @@ def collect_demo(
 
         if done:
             break
+
+        steps += 1
 
     if log_writer and not disable_save:
         log_writer.end_log_session()

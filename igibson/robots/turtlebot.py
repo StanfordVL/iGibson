@@ -1,14 +1,9 @@
 import os
-from collections import OrderedDict
 
-import gym
 import numpy as np
 
 import igibson
-from igibson.controllers import ControlType
 from igibson.robots.two_wheel_robot import TwoWheelRobot
-from igibson.utils.constants import SemanticClass
-from igibson.utils.python_utils import assert_valid_key
 
 
 class Turtlebot(TwoWheelRobot):

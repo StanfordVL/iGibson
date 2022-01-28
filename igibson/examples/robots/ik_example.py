@@ -8,21 +8,13 @@ import pybullet as p
 
 import igibson
 from igibson.external.pybullet_tools.utils import (
-    get_all_links,
-    get_joint_names,
-    get_joint_positions,
-    get_joints,
-    get_link_name,
     get_max_limits,
     get_min_limits,
-    get_movable_joints,
-    get_moving_links,
     get_sample_fn,
     joints_from_names,
     set_joint_positions,
 )
 from igibson.objects.visual_marker import VisualMarker
-from igibson.render.profiler import Profiler
 from igibson.robots.fetch import Fetch
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
@@ -37,15 +29,21 @@ def main(random_selection=False, headless=False, short_exec=False):
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--programmatic",
-        "-p",
-        dest="programmatic_pos",
-        action="store_true",
-        help="if the IK solvers should be used with the GUI or programmatically",
-    )
-    args = parser.parse_args()
+    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+    if not (random_selection and headless and short_exec):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--programmatic",
+            "-p",
+            dest="programmatic_pos",
+            action="store_true",
+            help="if the IK solvers should be used with the GUI or programmatically",
+        )
+        args = parser.parse_args()
+        programmatic_pos = args.programmatic_pos
+    else:
+        programmatic_pos = True
 
     # Create simulator, scene and robot (Fetch)
     config = parse_config(os.path.join(igibson.example_config_path, "fetch_reaching.yaml"))
@@ -57,7 +55,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     robot_config.pop("name")
 
     fetch = Fetch(**robot_config)
-    s.import_robot(fetch)
+    s.import_object(fetch)
 
     body_ids = fetch.get_body_ids()
     assert len(body_ids) == 1, "Fetch robot is expected to be single-body."
@@ -190,12 +188,12 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     threshold = 0.03
     max_iter = 100
-    if args.programmatic_pos or headless:
+    if programmatic_pos or headless:
         query_positions = [[1, 0, 0.8], [1, 1, 1], [0.5, 0.5, 0], [0.5, 0.5, 0.5]]
         for pos in query_positions:
             logging.info("Querying joint configuration to current marker position")
             joint_pos = accurate_calculate_inverse_kinematics(
-                robot_id, fetch.eef_link.link_id, pos, threshold, max_iter
+                robot_id, fetch.eef_links[fetch.default_arm].link_id, pos, threshold, max_iter
             )
             if joint_pos is not None and len(joint_pos) > 0:
                 logging.info("Solution found. Setting new arm configuration.")
@@ -230,7 +228,7 @@ def main(random_selection=False, headless=False, short_exec=False):
                 if k == ord(" "):
                     logging.info("Querying joint configuration to current marker position")
                     joint_pos = accurate_calculate_inverse_kinematics(
-                        robot_id, fetch.eef_link.link_id, [x, y, z], threshold, max_iter
+                        robot_id, fetch.eef_links[fetch.default_arm].link_id, [x, y, z], threshold, max_iter
                     )
                     if joint_pos is not None and len(joint_pos) > 0:
                         logging.info("Solution found. Setting new arm configuration.")

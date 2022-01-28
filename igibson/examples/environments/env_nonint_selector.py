@@ -1,6 +1,5 @@
 import logging
 import os
-import random
 from sys import platform
 
 import yaml
@@ -12,7 +11,7 @@ from igibson.utils.assets_utils import get_available_g_scenes
 from igibson.utils.utils import let_user_pick
 
 
-def main(random_selection=False):
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Prompts the user to select any available non-interactive scene and loads a turtlebot into it.
     It steps the environment 100 times with random actions sampled from the action space,
@@ -24,10 +23,16 @@ def main(random_selection=False):
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
+
+    # Shadows and PBR do not make much sense for a Gibson static mesh
+    config_data["enable_shadow"] = False
+    config_data["enable_pbr"] = False
+
     available_g_scenes = get_available_g_scenes()
     scene_id = available_g_scenes[let_user_pick(available_g_scenes, random_selection=random_selection) - 1]
-    env = iGibsonEnv(config_file=config_filename, scene_id=scene_id, mode="gui_interactive")
-    for j in range(10):
+    env = iGibsonEnv(config_file=config_data, scene_id=scene_id, mode="gui_interactive" if not headless else "headless")
+    max_iterations = 10 if not short_exec else 1
+    for j in range(max_iterations):
         logging.info("Resetting environment")
         env.reset()
         for i in range(100):

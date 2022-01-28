@@ -203,8 +203,8 @@ class ToyEnv(object):
         self.s = Simulator(mode="headless", image_width=400, image_height=400, rendering_settings=settings)
         scene = StaticIndoorScene("Rs")
         self.s.import_scene(scene)
-        self.robot = Turtlebot(config)
-        self.s.import_robot(self.robot)
+        self.robot = Turtlebot()
+        self.s.import_object(self.robot)
 
         for _ in range(5):
             obj = YCBObject("003_cracker_box")
@@ -257,11 +257,11 @@ class ToyEnvInt(object):
         self.s.import_scene(scene)
 
         if robot == "turtlebot":
-            self.robot = Turtlebot(config)
+            self.robot = Turtlebot()
         else:
-            self.robot = Fetch(config)
+            self.robot = Fetch()
 
-        self.s.import_robot(self.robot)
+        self.s.import_object(self.robot)
 
         for _ in range(5):
             obj = YCBObject("003_cracker_box")

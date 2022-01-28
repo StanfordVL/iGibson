@@ -9,7 +9,10 @@ jobs:
   build:
     runs-on: "ubuntu-latest"
     steps:
-    - uses: actions/checkout@master
+    - name: Checkout iGibson source
+      uses: actions/checkout@master
+      with:
+        submodules: true
     - name: Set up Python 3.8
       uses: actions/setup-python@v1
       with:
@@ -20,6 +23,8 @@ jobs:
         pip install
         build
         --user
+    - name: Remove unnecessary files to reduce file size
+      run: rm -r igibson/render/openvr/samples
     - name: Build a binary wheel and a source tarball
       run: >-
         python -m

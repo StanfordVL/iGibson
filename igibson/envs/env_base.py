@@ -3,7 +3,6 @@ import gym
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import REGISTERED_ROBOTS
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
@@ -56,8 +55,10 @@ class BaseEnv(gym.Env):
         self.object_randomization_idx = 0
         self.num_object_randomization_idx = 10
 
-        enable_shadow = self.config.get("enable_shadow", True)
-        enable_pbr = self.config.get("enable_pbr", True)
+        default_enable_shadows = False  # What to do if it is not specified in the config file
+        enable_shadow = self.config.get("enable_shadow", default_enable_shadows)
+        default_enable_pbr = False  # What to do if it is not specified in the config file
+        enable_pbr = self.config.get("enable_pbr", default_enable_pbr)
         texture_scale = self.config.get("texture_scale", 1.0)
 
         if self.rendering_settings is None:
@@ -198,7 +199,7 @@ class BaseEnv(gym.Env):
             assert robot_name in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(robot_name)
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
-            self.simulator.import_robot(robot)
+            self.simulator.import_object(robot)
 
         self.scene = scene
         self.robots = scene.robots

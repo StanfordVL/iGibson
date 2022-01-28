@@ -60,7 +60,7 @@ class VrData(object):
     Values: is_valid, trans, rot
 
     Key: left_controller_button, right_controller_button
-    Values: trig_frac, touch_x, touch_y
+    Values: trig_frac, touch_x, touch_y, button_pressed_bitvector
 
     Key: eye_data
     Values: is_valid, origin, direction, left_pupil_diameter, right_pupil_diameter

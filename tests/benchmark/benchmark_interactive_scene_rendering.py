@@ -40,8 +40,8 @@ def benchmark_rendering(scene_list, rendering_presets_list, modality_list):
                 physics_timestep=1 / 240.0,
             )
             s.import_scene(scene)
-            turtlebot = Turtlebot(config)
-            s.import_robot(turtlebot)
+            turtlebot = Turtlebot()
+            s.import_object(turtlebot)
 
             for mode in modality_list:
                 for _ in range(10):

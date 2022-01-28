@@ -25,7 +25,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         image_height=512,
         rendering_settings=settings,
     )
-    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+    scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
 
     # Create one instance of each robot aligned along the y axis
@@ -36,17 +36,19 @@ def main(random_selection=False, headless=False, short_exec=False):
         robot_config = config["robot"]
         robot_name = robot_config.pop("name")
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)
-        s.import_robot(robot)
+        s.import_object(robot)
         robot.set_position(position)
         robot.reset()
         robot.keep_still()
         robots[robot_name] = (robot, position[1])
         logging.info("Loaded " + robot_name)
         logging.info("Moving " + robot_name)
-        # Set viewer in front
-        s.viewer.initial_pos = [1.6, 0, 1.3]
-        s.viewer.initial_view_direction = [-0.7, 0, -0.7]
-        s.viewer.reset_viewer()
+
+        if not headless:
+            # Set viewer in front
+            s.viewer.initial_pos = [1.6, 0, 1.3]
+            s.viewer.initial_view_direction = [-0.7, 0, -0.7]
+            s.viewer.reset_viewer()
 
         for _ in range(100):  # keep still for 10 seconds
             s.step()
@@ -59,7 +61,7 @@ def main(random_selection=False, headless=False, short_exec=False):
 
         robot.keep_still()
         s.reload()
-        scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+        scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
         s.import_scene(scene)
 
     s.disconnect()

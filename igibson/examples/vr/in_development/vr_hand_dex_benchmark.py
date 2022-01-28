@@ -323,7 +323,7 @@ def main():
         vr_agent.apply_action()
 
         if show_overlay:
-            ag_candidate_data = vr_agent.links["right_hand"].candidate_data
+            ag_candidate_data = vr_agent._parts["right_hand"].candidate_data
             if ag_candidate_data:
                 t = ""
                 for bid, link, dist in ag_candidate_data:

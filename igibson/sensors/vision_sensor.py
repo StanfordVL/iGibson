@@ -117,7 +117,7 @@ class VisionSensor(BaseSensor):
         """
         :return: optical flow sensor reading
         """
-        return raw_vision_obs["optical_flow"][:, :, :3]
+        return raw_vision_obs["optical_flow"][:, :, :2]
 
     def get_scene_flow(self, raw_vision_obs):
         """
@@ -151,10 +151,7 @@ class VisionSensor(BaseSensor):
 
         :return: vision sensor reading
         """
-        if isinstance(env.robots[0], BehaviorRobot):
-            raw_vision_obs = env.robots[0].render_camera_image(modes=self.raw_modalities)
-        else:
-            raw_vision_obs = env.simulator.renderer.render_robot_cameras(modes=self.raw_modalities)
+        raw_vision_obs = env.simulator.renderer.render_robot_cameras(modes=self.raw_modalities)
 
         raw_vision_obs = {mode: value for mode, value in zip(self.raw_modalities, raw_vision_obs)}
 

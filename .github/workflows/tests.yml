@@ -35,6 +35,10 @@ jobs:
         working-directory: igibson
         run: pip install -e .
 
+      - name: Uninstall pip bddl
+        working-directory: igibson
+        run: pip uninstall -y bddl
+
       - name: Checkout BDDL
         uses: actions/checkout@v2
         with:

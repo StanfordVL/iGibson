@@ -155,6 +155,7 @@ class MeshRenderer(object):
         else:
             raise Exception("Unsupported platform and renderer combination")
 
+        self.r.verbosity = 20 if logging.getLogger().isEnabledFor(logging.INFO) else 0
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
@@ -649,6 +650,7 @@ class MeshRenderer(object):
         use_pbr=True,
         use_pbr_mapping=True,
         shadow_caster=True,
+        parent_body_name=None,
     ):
         """
         Create an instance group for a list of visual objects and link it to pybullet.
@@ -689,6 +691,7 @@ class MeshRenderer(object):
             use_pbr=use_pbr,
             use_pbr_mapping=use_pbr_mapping,
             shadow_caster=shadow_caster,
+            parent_body_name=parent_body_name,
         )
         self.instances.append(instance_group)
         self.update_instance_id_to_pb_id_map()
@@ -890,6 +893,13 @@ class MeshRenderer(object):
         if self.optimized:
             self.update_optimized_texture()
 
+        # hide the objects that specified in hidden for optimized renderer
+        # non-optimized renderer handles hidden objects in a different way
+        if self.optimized and len(hidden) > 0:
+            for i in hidden:
+                i.hidden = True
+            self.update_hidden_highlight_state(hidden)
+
         if "seg" in modes and self.rendering_settings.msaa:
             logging.warning(
                 "Rendering segmentation masks with MSAA on may generate interpolation artifacts. "
@@ -898,7 +908,8 @@ class MeshRenderer(object):
 
         render_shadow_pass = render_shadow_pass and "rgb" in modes
         need_flow_info = "optical_flow" in modes or "scene_flow" in modes
-        self.update_dynamic_positions(need_flow_info=need_flow_info)
+        if self.optimized:
+            self.update_dynamic_positions(need_flow_info=need_flow_info)
 
         if self.enable_shadow and render_shadow_pass:
             # shadow pass
@@ -1007,6 +1018,12 @@ class MeshRenderer(object):
                 text.render()
 
         self.r.render_meshrenderer_post()
+
+        # unhide the hidden objects for future rendering steps
+        if self.optimized and len(hidden) > 0:
+            for i in hidden:
+                i.hidden = False
+            self.update_hidden_highlight_state(hidden)
 
         if self.msaa:
             self.r.blit_buffer(self.width, self.height, self.fbo_ms, self.fbo)
@@ -1185,7 +1202,7 @@ class MeshRenderer(object):
         pose_cam = self.V.dot(pose_trans.T).dot(pose_rot).T
         return np.concatenate([mat2xyz(pose_cam), safemat2quat(pose_cam[:3, :3].T)])
 
-    def render_active_cameras(self, modes=("rgb")):
+    def render_active_cameras(self, modes=("rgb"), cache=True):
         """
         Render camera images for the active cameras. This is applicable for robosuite integration with iGibson,
         where there are multiple cameras defined but only some are active (e.g., to switch between views with TAB).
@@ -1194,6 +1211,8 @@ class MeshRenderer(object):
         """
         frames = []
         hide_robot = self.rendering_settings.hide_robot
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
+        has_set_camera = False
         for instance in self.instances:
             if isinstance(instance.ig_object, BaseRobot):
                 for camera in instance.ig_object.cameras:
@@ -1205,38 +1224,50 @@ class MeshRenderer(object):
                             :3, :3
                         ]
                         camera_view_dir = camera_ori_mat.dot(np.array([0, 0, -1]))  # Mujoco camera points in -z
-                        self.set_camera(camera_pos, camera_pos + camera_view_dir, [0, 0, 1])
+                        if need_flow_info and has_set_camera:
+                            raise ValueError("We only allow one robot in the scene when rendering optical/scene flow.")
+                        self.set_camera(
+                            camera_pos, camera_pos + camera_view_dir, [0, 0, 1], cache=need_flow_info and cache
+                        )
+                        has_set_camera = True
                         for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
                             frames.append(item)
         return frames
 
-    def render_robot_cameras(self, modes=("rgb")):
+    def render_robot_cameras(self, modes=("rgb"), cache=True):
         """
         Render robot camera images.
+
+        :param modes: a tuple of modalities to render
+        :param cache: if cache is True, cache the robot pose for optical flow and scene flow calculation.
+        One simulation step can only have one rendering call with cache=True
 
         :return: a list of frames (number of modalities x number of robots)
         """
         frames = []
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
+        if need_flow_info and len(self.simulator.scene.robots) > 1:
+            raise ValueError("We only allow one robot in the scene when rendering optical/scene flow.")
+
+        for robot in self.simulator.scene.robots:
+            frames.extend(self.render_single_robot_camera(robot, modes=modes, cache=cache))
+
+        return frames
+
+    def render_single_robot_camera(self, robot, modes=("rgb"), cache=True):
+        frames = []
+        hide_robot = self.rendering_settings.hide_robot
+        need_flow_info = "optical_flow" in modes or "scene_flow" in modes
         for instance in self.instances:
-            if isinstance(instance.ig_object, BaseRobot):
+            if instance.ig_object == robot:  # TODO: Make this faster. Can't we just look it up?
                 camera_pos = instance.ig_object.eyes.get_position()
                 orn = instance.ig_object.eyes.get_orientation()
                 mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
                 view_direction = mat.dot(np.array([1, 0, 0]))
                 up_direction = mat.dot(np.array([0, 0, 1]))
-                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=True)
-                hidden_instances = []
-                if self.rendering_settings.hide_robot:
-                    hidden_instances.append(instance)
-                for item in self.render(modes=modes, hidden=hidden_instances):
+                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=need_flow_info and cache)
+                for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
                     frames.append(item)
-
-        # TODO: Fix this once BehaviorRobot is BaseRobot-compliant.
-        # Unfortunately since BehaviorRobot currently does not properly implement the BaseRobot interface, it is not
-        # added using import_robot and needs to be found & handled separately.
-        behavior_robots = (robot for robot in self.simulator.scene.robots if isinstance(robot, BehaviorRobot))
-        for robot in behavior_robots:
-            frames.extend(robot.render_camera_image(modes=modes))
 
         return frames
 

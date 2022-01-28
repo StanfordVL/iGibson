@@ -8,6 +8,10 @@ from enum import IntEnum
 import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 
+AVAILABLE_MODALITIES = ("rgb", "normal", "3d", "seg", "optical_flow", "scene_flow", "ins_seg")
+MAX_INSTANCE_COUNT = 1024
+MAX_CLASS_COUNT = 512
+
 
 class ViewerMode(IntEnum):
     NAVIGATION = 0
@@ -28,12 +32,44 @@ class SemanticClass(IntEnum):
     ROBOTS = 1
     USER_ADDED_OBJS = 2
     SCENE_OBJS = 3
+    # The following class ids count backwards from MAX_CLASS_COUNT (instead of counting forward from 4) because we want
+    # to maintain backward compatibility
+    DIRT = 507
+    STAIN = 508
+    WATER = 509
+    HEAT_SOURCE_MARKER = 510
+    TOGGLE_MARKER = 511
+
+
+# Note that we are starting this from bit 6 since bullet seems to be giving special meaning to groups 0-5.
+# Collision groups for objects. For special logic, different categories can be assigned different collision groups.
+ALL_COLLISION_GROUPS_MASK = -1
+DEFAULT_COLLISION_GROUP = 1
+SPECIAL_COLLISION_GROUPS = {
+    "floors": 7,
+    "carpet": 8,
+}
+
+
+def get_collision_group_mask(groups_to_exclude=[]):
+    """Get a collision group mask that has collisions enabled for every group except those in groups_to_exclude."""
+    collision_mask = ALL_COLLISION_GROUPS_MASK
+    for group in groups_to_exclude:
+        collision_mask &= ~(1 << group)
+    return collision_mask
 
 
 class ShadowPass(IntEnum):
     NO_SHADOW = 0
     HAS_SHADOW_RENDER_SHADOW = 1
     HAS_SHADOW_RENDER_SCENE = 2
+
+
+class CoordinateSystem(IntEnum):
+    OPENCV = 0
+    OPENGL = 1
+    PYBULLET = 2
+    SUNRGBD = 3
 
 
 class OccupancyGridState(object):
@@ -45,6 +81,7 @@ class OccupancyGridState(object):
 # PyBullet-related
 class PyBulletSleepState(IntEnum):
     AWAKE = 1
+    ISLAND_AWAKE = 3
 
 
 PYBULLET_BASE_LINK_INDEX = -1
@@ -117,10 +154,6 @@ NamedRenderingPresets = {
         optimized=True,
     ),
 }
-
-AVAILABLE_MODALITIES = ("rgb", "normal", "3d", "seg", "optical_flow", "scene_flow", "ins_seg")
-MAX_INSTANCE_COUNT = 1024
-MAX_CLASS_COUNT = 512
 
 # Encodings
 RAW_ENCODING = 0

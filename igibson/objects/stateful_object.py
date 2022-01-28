@@ -1,3 +1,5 @@
+import logging
+
 from igibson.object_states.factory import get_state_name, prepare_object_states
 from igibson.object_states.object_state_base import AbsoluteObjectState
 from igibson.object_states.utils import clear_cached_states

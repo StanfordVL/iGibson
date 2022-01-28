@@ -1,7 +1,6 @@
 import logging
 import os
 
-import igibson
 from igibson.objects.articulated_object import URDFObject
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.empty_scene import EmptyScene
@@ -11,12 +10,11 @@ from igibson.utils.assets_utils import (
     get_ig_avg_category_specs,
     get_ig_model_path,
     get_object_models_of_category,
-    get_scene_path,
 )
-from igibson.utils.utils import let_user_pick, parse_config
+from igibson.utils.utils import let_user_pick
 
 
-def main():
+def main(random_selection=False, headless=False, short_exec=False):
     """
     Minimal example to visualize all the models available in the iG dataset
     It queries the user to select an object category and a model of that category, loads it and visualizes it
@@ -26,20 +24,26 @@ def main():
 
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=True)
     s = Simulator(
-        mode="gui_interactive", image_width=512, image_height=512, vertical_fov=70, rendering_settings=settings
+        mode="gui_interactive" if not headless else "headless",
+        image_width=512,
+        image_height=512,
+        vertical_fov=70,
+        rendering_settings=settings,
     )
-    scene = EmptyScene(render_floor_plane=True, floor_plane_rgba=[0.6, 0.6, 0.6, 1])
+    scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     # scene.load_object_categories(benchmark_names)
     s.import_scene(scene)
     s.renderer.set_light_position_direction([0, 0, 10], [0, 0, 0])
 
     # Select a category to load
     available_obj_categories = get_all_object_categories()
-    obj_category = available_obj_categories[let_user_pick(available_obj_categories) - 1]
+    obj_category = available_obj_categories[
+        let_user_pick(available_obj_categories, random_selection=random_selection) - 1
+    ]
 
     # Select a model to load
     available_obj_models = get_object_models_of_category(obj_category)
-    obj_model = available_obj_models[let_user_pick(available_obj_models) - 1]
+    obj_model = available_obj_models[let_user_pick(available_obj_models, random_selection=random_selection) - 1]
 
     logging.info("Visualizing category {}, model {}".format(obj_category, obj_model))
 
@@ -64,18 +68,22 @@ def main():
             fit_avg_dim_volume=True,
             texture_randomization=False,
             overwrite_inertial=True,
-            initial_pos=[0.5, -0.5, 1.01],
         )
         s.import_object(simulator_obj)
+        simulator_obj.set_position([0.5, -0.5, 1.01])
 
         # Set a better viewing direction
-        s.viewer.initial_pos = [2.0, 0, 1.6]
-        s.viewer.initial_view_direction = [-1, 0, 0]
-        s.viewer.reset_viewer()
+        if not headless:
+            s.viewer.initial_pos = [2.0, 0, 1.6]
+            s.viewer.initial_view_direction = [-1, 0, 0]
+            s.viewer.reset_viewer()
 
-        # Visualize object
-        while True:
-            s.viewer.update()
+            # Visualize object
+            max_steps = 100 if short_exec else -1
+            step = 0
+            while step != max_steps:
+                s.viewer.update()
+                step += 1
 
     finally:
         s.disconnect()

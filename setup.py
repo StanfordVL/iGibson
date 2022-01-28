@@ -8,7 +8,6 @@ import subprocess
 import sys
 from distutils.command.build_py import build_py as _build_py
 from distutils.version import LooseVersion
-from subprocess import check_call
 
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
@@ -130,7 +129,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.4",
+    version="2.0.5",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -162,6 +161,7 @@ setup(
         "six",
         "pandas",
         "packaging",
+        "bddl>=0.0.3",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),

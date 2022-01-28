@@ -207,6 +207,10 @@ class Simulator:
         p.setGravity(0, 0, -self.gravity)
         p.setPhysicsEngineParameter(enableFileCaching=0)
 
+        # Set the collision mask mode to the AND mode, e.g. B3_FILTER_GROUPAMASKB_AND_GROUPBMASKA. This means two objs
+        # will collide only if *BOTH* of them have collision masks that enable collisions with the other.
+        p.setPhysicsEngineParameter(collisionFilterMode=0)
+
     def initialize_viewers(self):
         if self.mode == SimulatorMode.GUI_NON_INTERACTIVE:
             self.viewer = ViewerSimple(renderer=self.renderer)
@@ -259,24 +263,11 @@ class Simulator:
 
     @load_without_pybullet_vis
     def import_robot(self, robot):
-        """
-        Import a robot into the simulator.
-
-        :param robot: a robot object to load
-        """
-        # TODO: Remove this function in favor of unifying with import_object.
-        assert isinstance(robot, (BaseRobot, BehaviorRobot)), "import_robot can only be called with Robots"
-        assert self.scene is not None, "import_robot needs to be called after import_scene"
-
-        # TODO: remove this if statement after BehaviorRobot refactoring
-        if isinstance(robot, BaseRobot):
-            assert (
-                robot.control_freq is None
-            ), "control_freq should NOT be specified in robot config. Currently this value is automatically inferred from simulator.render_timestep!"
-            control_freq = 1.0 / self.render_timestep
-            robot.control_freq = control_freq
-
-        self.scene.add_object(robot, self, _is_call_from_simulator=True)
+        logging.warning(
+            "DEPRECATED: simulator.import_robot(...) has been deprecated in favor of import_object and will be removed "
+            "in a future release. Please use simulator.import_object(...) for equivalent functionality."
+        )
+        self.import_object(robot)
 
     @load_without_pybullet_vis
     def load_object_in_renderer(
@@ -544,7 +535,7 @@ class Simulator:
             else:
                 activation_state = PyBulletSleepState.AWAKE
 
-            if activation_state != PyBulletSleepState.AWAKE:
+            if activation_state not in [PyBulletSleepState.AWAKE, PyBulletSleepState.ISLAND_AWAKE]:
                 continue
 
             if link_id == PYBULLET_BASE_LINK_INDEX:

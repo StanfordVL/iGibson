@@ -148,3 +148,11 @@ class Scene(with_metaclass(ABCMeta)):
         :return: height of the given floor
         """
         return 0.0
+
+    def get_body_ids(self):
+        """Returns list of PyBullet body ids for all objects in the scene"""
+        body_ids = []
+        for obj in self.get_objects():
+            if obj.get_body_ids() is not None:
+                body_ids.extend(obj.get_body_ids())
+        return body_ids

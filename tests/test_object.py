@@ -99,8 +99,8 @@ def test_import_box():
 
     turtlebot1 = Turtlebot()
     turtlebot2 = Turtlebot()
-    s.import_robot(turtlebot1)
-    s.import_robot(turtlebot2)
+    s.import_object(turtlebot1)
+    s.import_object(turtlebot2)
     turtlebot1.set_position([6.0, -6.0, 0.0])
     turtlebot2.set_position([-3.0, 4.0, 0.0])
 
