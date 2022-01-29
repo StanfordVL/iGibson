@@ -1,11 +1,14 @@
 import random
+from enum import IntEnum
 from math import ceil
 
+import gym
 import numpy as np
 import pybullet as p
 
 from igibson import object_states
-from igibson.external.pybullet_tools.utils import get_center_extent, get_joint_position, set_joint_position
+from igibson.action_generators.generator_base import ActionGeneratorError, BaseActionGenerator
+from igibson.external.pybullet_tools.utils import get_joint_position, set_joint_position
 from igibson.motion_primitives import behavior_ik_controller
 from igibson.motion_primitives.behavior_grasp_planning_utils import (
     get_grasp_poses_for_object,
@@ -17,11 +20,11 @@ from igibson.motion_primitives.behavior_motion_planning_utils import (
     plan_hand_motion_br,
 )
 from igibson.object_states.on_floor import RoomFloor
-from igibson.object_states.utils import sample_kinematics
+from igibson.object_states.utils import get_center_extent, sample_kinematics
 from igibson.objects.articulated_object import URDFObject
-from igibson.robots import behavior_robot
-from igibson.robots.behavior_robot import BODY_OFFSET_FROM_FLOOR, BehaviorRobot
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.robots import BaseRobot, behavior_robot
+from igibson.robots.behavior_robot import DEFAULT_BODY_OFFSET_FROM_FLOOR, BehaviorRobot
+from igibson.utils.utils import restoreState
 
 MAX_STEPS_FOR_HAND_MOVE = 100
 MAX_STEPS_FOR_HAND_MOVE_WHEN_OPENING = 30
@@ -47,9 +50,7 @@ GRASP_APPROACH_DISTANCE = 0.2
 OPEN_GRASP_APPROACH_DISTANCE = 0.2
 HAND_DISTANCE_THRESHOLD = 0.9 * behavior_robot.HAND_DISTANCE_THRESHOLD
 
-
-class MotionPrimitiveError(ValueError):
-    pass
+ACTIVITY_RELEVANT_OBJECTS_ONLY = False
 
 
 class UndoableContext(object):
@@ -62,19 +63,69 @@ class UndoableContext(object):
 
     def __exit__(self, *args):
         self.robot.load_state(self.robot_data)
-        p.restoreState(self.state)
+        restoreState(self.state)
         p.removeState(self.state)
 
 
-class MotionPrimitiveController(object):
-    def __init__(self, scene, robot):
-        self.scene: InteractiveIndoorScene = scene
-        self.robot: BehaviorRobot = robot
+class MotionPrimitive(IntEnum):
+    GRASP = 0
+    PLACE_ON_TOP = 1
+    PLACE_INSIDE = 2
+    OPEN = 3
+    CLOSE = 4
+    NAVIGATE_TO = 5  # For mostly debugging purposes.
+
+
+class MotionPrimitiveActionGenerator(BaseActionGenerator):
+    def __init__(self, task, scene, robot):
+        super().__init__(task, scene, robot)
+        self.controller_functions = {
+            MotionPrimitive.GRASP: self.grasp,
+            MotionPrimitive.PLACE_ON_TOP: self.place_on_top,
+            MotionPrimitive.PLACE_INSIDE: self.place_inside,
+            MotionPrimitive.OPEN: self.open,
+            MotionPrimitive.CLOSE: self.close,
+            MotionPrimitive.NAVIGATE_TO: self._navigate_to_obj,
+        }
+        self.arm = "right_hand"
+
+    def get_action_space(self):
+        if ACTIVITY_RELEVANT_OBJECTS_ONLY:
+            self.addressable_objects = [
+                item
+                for item in self.task.object_scope.values()
+                if isinstance(item, URDFObject) or isinstance(item, RoomFloor)
+            ]
+        else:
+            self.addressable_objects = list(
+                set(self.task.simulator.scene.objects_by_name.values()) | set(self.task.object_scope.values())
+            )
+
+        # Filter out the robots.
+        self.addressable_objects = [obj for obj in self.addressable_objects if not isinstance(obj, BaseRobot)]
+
+        self.num_objects = len(self.addressable_objects)
+        return gym.spaces.Discrete(self.num_objects * len(MotionPrimitive))
+
+    def get_action_from_primitive_and_object(self, primitive: MotionPrimitive, object):
+        assert object in self.addressable_objects
+        primitive_int = int(primitive)
+        action = primitive_int * self.num_objects + self.addressable_objects.index(object)
+        return action
 
     def _get_obj_in_hand(self):
-        obj_in_hand_id = self.robot.parts["right_hand"].object_in_hand  # TODO(lowprio-replayMP): Generalize
+        obj_in_hand_id = self.robot._ag_obj_in_hand[self.arm]  # TODO(MP): Expose this interface.
         obj_in_hand = self.scene.objects_by_id[obj_in_hand_id] if obj_in_hand_id is not None else None
         return obj_in_hand
+
+    def generate(self, action):
+        # Find the target object.
+        obj_list_id = int(action) % self.num_objects
+        target_obj = self.addressable_objects[obj_list_id]
+
+        # Find the appropriate motion primitive goal generator.
+        motion_primitive = MotionPrimitive(int(action) // self.num_objects)
+        return self.controller_functions[motion_primitive](target_obj)
 
     def open(self, obj):
         yield from self._open_or_close(obj, True)
@@ -102,7 +153,7 @@ class MotionPrimitiveController(object):
                         return
                     else:
                         # We were trying to do something but didn't have the data.
-                        raise MotionPrimitiveError("Could not get grasp position for opening/closing.")
+                        raise ActionGeneratorError("Could not get grasp position for opening/closing.")
 
                 grasp_pose, target_poses, object_direction, joint_info, grasp_required = grasp_data
                 with UndoableContext(self.robot):
@@ -115,7 +166,8 @@ class MotionPrimitiveController(object):
                 approach_pose = (approach_pos, grasp_pose[1])
 
                 # If the grasp pose is too far, navigate
-                check_joint = (obj.get_body_id(), joint_info)
+                [bid] = obj.get_body_ids()  # TODO: Fix this!
+                check_joint = (bid, joint_info)
                 yield from self._navigate_if_needed(
                     obj, pos_on_obj=approach_pos, check_joint=check_joint, max_attempts=1
                 )
@@ -131,7 +183,7 @@ class MotionPrimitiveController(object):
 
                 try:
                     yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
-                except MotionPrimitiveError:
+                except ActionGeneratorError:
                     # An error will be raised when contact fails. If this happens, let's retry.
                     # Retreat back to the grasp pose.
                     yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
@@ -142,7 +194,7 @@ class MotionPrimitiveController(object):
                 if grasp_required:
                     try:
                         yield from self._execute_grasp()
-                    except MotionPrimitiveError:
+                    except ActionGeneratorError:
                         # Retreat back to the grasp pose.
                         yield from self._execute_release()
                         yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
@@ -156,7 +208,7 @@ class MotionPrimitiveController(object):
                 # Moving to target pose often fails. Let's get the hand to apply the correct actions for its current pos
                 # This prevents the hand from jerking into its desired position when we do a release.
                 yield from self._move_hand_direct(
-                    self.robot.parts["right_hand"].get_position_orientation(), ignore_failure=True
+                    self.robot.eef_links[self.arm].get_position_orientation(), ignore_failure=True
                 )
 
                 yield from self._execute_release()
@@ -164,10 +216,10 @@ class MotionPrimitiveController(object):
 
                 if obj.states[object_states.Open].get_value() == should_open:
                     return
-            except MotionPrimitiveError as e:
+            except ActionGeneratorError as e:
                 print("Retrying open/close:", e)
 
-        raise MotionPrimitiveError("Object could not be opened.")
+        raise ActionGeneratorError("Object could not be opened.")
 
     def grasp(self, obj):
         # Don't do anything if the object is already grasped.
@@ -176,7 +228,7 @@ class MotionPrimitiveController(object):
             if obj_in_hand == obj:
                 return
             else:
-                raise MotionPrimitiveError("Cannot grasp when hand is already full.")
+                raise ActionGeneratorError("Cannot grasp when hand is already full.")
 
         hand_collision_fn = get_pose3d_hand_collision_fn(
             self.robot, None, self._get_collision_body_ids(include_robot=True)
@@ -213,7 +265,7 @@ class MotionPrimitiveController(object):
                     print("Performing grasp approach.")
                     try:
                         yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
-                    except MotionPrimitiveError:
+                    except ActionGeneratorError:
                         # An error will be raised when contact fails. If this happens, let's retry.
                         # Retreat back to the grasp pose.
                         yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
@@ -222,7 +274,7 @@ class MotionPrimitiveController(object):
                     print("Grasping.")
                     try:
                         yield from self._execute_grasp()
-                    except MotionPrimitiveError:
+                    except ActionGeneratorError:
                         # Retreat back to the grasp pose.
                         yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
                         raise
@@ -232,10 +284,10 @@ class MotionPrimitiveController(object):
 
                 if self._get_obj_in_hand() == obj:
                     return
-            except MotionPrimitiveError as e:
+            except ActionGeneratorError as e:
                 print("Retrying grasp&reset:", e)
 
-        raise MotionPrimitiveError("Object could not be grasped.")
+        raise ActionGeneratorError("Object could not be grasped.")
 
     def place_on_top(self, obj):
         yield from self._place_with_predicate(obj, object_states.OnTop)
@@ -258,7 +310,7 @@ class MotionPrimitiveController(object):
         toggle_position = toggle_state.get_link_position()
         yield from self._navigate_if_needed(obj, toggle_position)
 
-        hand_orientation = self.robot.parts["right_hand"].get_orientation()  # Just keep the current hand orientation.
+        hand_orientation = self.robot.eef_links[self.arm].get_orientation()  # Just keep the current hand orientation.
         desired_hand_pose = (toggle_position, hand_orientation)
 
         yield from self._move_hand_direct(desired_hand_pose, ignore_failure=True)
@@ -267,17 +319,17 @@ class MotionPrimitiveController(object):
         yield from self._reset_hand()
 
         if obj.states[object_states.ToggledOn].get_value() != value:
-            raise MotionPrimitiveError("Failed to toggle object.")
+            raise ActionGeneratorError("Failed to toggle object.")
 
     def _place_with_predicate(self, obj, predicate):
         obj_in_hand = self._get_obj_in_hand()
         if obj_in_hand is None:
-            raise MotionPrimitiveError("Cannot place object if not holding one.")
+            raise ActionGeneratorError("Cannot place object if not holding one.")
 
         for _ in range(MAX_ATTEMPTS_FOR_OBJECT_PLACEMENT):
             obj_in_hand = self._get_obj_in_hand()
             if obj_in_hand is None:
-                raise MotionPrimitiveError("Looks like we might have dropped the object.")
+                raise ActionGeneratorError("Looks like we might have dropped the object.")
 
             try:
                 obj_pose = self._sample_pose_with_object_and_predicate(predicate, obj_in_hand, obj)
@@ -289,10 +341,10 @@ class MotionPrimitiveController(object):
 
                 if obj_in_hand.states[predicate].get_value(obj):
                     return
-            except MotionPrimitiveError as e:
+            except ActionGeneratorError as e:
                 print("Retrying placement:", e)
 
-        raise MotionPrimitiveError("Object could not be placed.")
+        raise ActionGeneratorError("Object could not be placed.")
 
     def _move_hand(self, target_pose):
         target_pose_in_correct_format = list(target_pose[0]) + list(p.getEulerFromQuaternion(target_pose[1]))
@@ -314,7 +366,7 @@ class MotionPrimitiveController(object):
             )
 
         if plan is None:
-            raise MotionPrimitiveError("Could not make a hand motion plan.")
+            raise ActionGeneratorError("Could not make a hand motion plan.")
 
         # Follow the plan to navigate.
         print("Plan has %d steps." % len(plan))
@@ -334,32 +386,27 @@ class MotionPrimitiveController(object):
         stop_on_contact=False,
     ):
         for _ in range(max_steps_for_hand_move):
-            if stop_on_contact and p.getContactPoints(self.robot.parts["right_hand"].get_body_id()):
+            if stop_on_contact and p.getContactPoints(self.robot.eef_links[self.arm].body_id):  # TODO(MP): Generalize
                 return
 
             action = behavior_ik_controller.get_action(self.robot, hand_target_pose=relative_target_pose)
             if action is None:
                 if stop_on_contact:
-                    raise MotionPrimitiveError("No contact was made.")
+                    raise ActionGeneratorError("No contact was made.")
                 return
 
             yield action
 
         if not ignore_failure:
-            raise MotionPrimitiveError("Could not move gripper to desired position.")
+            raise ActionGeneratorError("Could not move gripper to desired position.")
 
         if stop_on_contact:
-            raise MotionPrimitiveError("No contact was made.")
+            raise ActionGeneratorError("No contact was made.")
 
     def _execute_grasp(self):
         action = np.zeros(26)
         action[-1] = 1.0
         for _ in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
-            # If we're too grasped already, stop.
-            if self.robot.parts["right_hand"].trigger_fraction >= 1.0:
-                break
-
-            # Otherwise, keep applying the action!
             yield action
 
         # Do nothing for a bit so that AG can trigger.
@@ -367,17 +414,12 @@ class MotionPrimitiveController(object):
             yield np.zeros(26)
 
         if self._get_obj_in_hand() is None:
-            raise MotionPrimitiveError("Could not grasp object!")
+            raise ActionGeneratorError("Could not grasp object!")
 
     def _execute_release(self):
         action = np.zeros(26)
         action[-1] = -1.0
         for _ in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
-            # If we're too released already, stop.
-            trigger_fraction = self.robot.parts["right_hand"].trigger_fraction
-            if trigger_fraction <= 0.0:
-                break
-
             # Otherwise, keep applying the action!
             yield action
 
@@ -385,17 +427,19 @@ class MotionPrimitiveController(object):
         for _ in range(MAX_WAIT_FOR_GRASP_OR_RELEASE):
             yield np.zeros(26)
 
-        if self._get_obj_in_hand() is not None or self.robot.parts["right_hand"].trigger_fraction > 0.0:
-            raise MotionPrimitiveError("Could not release grasp!")
+        if self._get_obj_in_hand() is not None:
+            raise ActionGeneratorError("Could not release grasp!")
 
     def _reset_hand(self):
         default_pose = p.multiplyTransforms(
-            *self.robot.parts["body"].get_position_orientation(), *behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED
+            # TODO(MP): Generalize.
+            *self.robot.get_position_orientation(),
+            *behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED
         )
         yield from self._move_hand(default_pose)
 
     def _navigate_to_pose(self, pose_2d):
-        # TODO(lowprio-replayMP): Make this less awful.
+        # TODO(lowprio-MP): Make this less awful.
         start_xy = np.array(self.robot.get_position())[:2]
         end_xy = pose_2d[:2]
         center_xy = (start_xy + end_xy) / 2
@@ -424,7 +468,7 @@ class MotionPrimitiveController(object):
             )
 
         if plan is None:
-            raise MotionPrimitiveError("Could not make a navigation plan.")
+            raise ActionGeneratorError("Could not make a navigation plan.")
 
         # Follow the plan to navigate.
         print("Plan has %d steps." % len(plan))
@@ -464,14 +508,14 @@ class MotionPrimitiveController(object):
             try:
                 yield from self._navigate_to_obj_once(obj, **kwargs)
                 return
-            except MotionPrimitiveError as e:
+            except ActionGeneratorError as e:
                 print("Retrying object navigation: ", e)
 
-        raise MotionPrimitiveError("Could not navigate to object after multiple attempts.")
+        raise ActionGeneratorError("Could not navigate to object after multiple attempts.")
 
     def _navigate_to_obj_once(self, obj, pos_on_obj=None, **kwargs):
         if isinstance(obj, RoomFloor):
-            # TODO(lowprio-replayMP): Pos-on-obj for the room navigation?
+            # TODO(lowprio-MP): Pos-on-obj for the room navigation?
             pose = self._sample_pose_in_room(obj.room_instance)
         else:
             pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj, **kwargs)
@@ -494,7 +538,7 @@ class MotionPrimitiveController(object):
 
             yield action
 
-        raise MotionPrimitiveError("Could not move robot to desired waypoint.")
+        raise ActionGeneratorError("Could not move robot to desired waypoint.")
 
     def _sample_pose_near_object(self, obj, pos_on_obj=None, **kwargs):
         if pos_on_obj is None:
@@ -519,10 +563,10 @@ class MotionPrimitiveController(object):
 
             return pose_2d
 
-        raise MotionPrimitiveError("Could not find valid position near object.")
+        raise ActionGeneratorError("Could not find valid position near object.")
 
     def _sample_position_on_aabb_face(self, target_obj):
-        aabb_center, aabb_extent = get_center_extent(target_obj.get_body_id())
+        aabb_center, aabb_extent = get_center_extent(target_obj.states)
         # We want to sample only from the side-facing faces.
         face_normal_axis = random.choice([0, 1])
         face_normal_direction = random.choice([-1, 1])
@@ -535,7 +579,7 @@ class MotionPrimitiveController(object):
         return np.random.uniform(face_min, face_max)
 
     def _sample_pose_in_room(self, room: str):
-        # TODO(replayMP): Bias the sampling near the agent.
+        # TODO(MP): Bias the sampling near the agent.
         for _ in range(MAX_ATTEMPTS_FOR_SAMPLING_POSE_IN_ROOM):
             _, pos = self.scene.get_random_point_by_room_instance(room)
             yaw = np.random.uniform(-np.pi, np.pi)
@@ -543,7 +587,7 @@ class MotionPrimitiveController(object):
             if self._test_pose(pose):
                 return pose
 
-        raise MotionPrimitiveError("Could not find valid position in room.")
+        raise ActionGeneratorError("Could not find valid position in room.")
 
     def _sample_pose_with_object_and_predicate(self, predicate, held_obj, target_obj):
         with UndoableContext(self.robot):
@@ -560,7 +604,7 @@ class MotionPrimitiveController(object):
             )
 
             if not result:
-                raise MotionPrimitiveError("Could not sample position.")
+                raise ActionGeneratorError("Could not sample position.")
 
             pos, orn = held_obj.get_position_orientation()
             return pos, orn
@@ -568,7 +612,9 @@ class MotionPrimitiveController(object):
     @staticmethod
     def _detect_collision(bodyA, obj_in_hand=None):
         collision = []
-        obj_in_hand_id = obj_in_hand.get_body_id() if obj_in_hand is not None else None
+        obj_in_hand_id = None
+        if obj_in_hand is not None:
+            [obj_in_hand_id] = obj_in_hand.get_body_ids()
         for body_id in range(p.getNumBodies()):
             if body_id == bodyA or body_id == obj_in_hand_id:
                 continue
@@ -579,14 +625,15 @@ class MotionPrimitiveController(object):
         return collision
 
     def _detect_robot_collision(self):
+        # TODO(MP): Generalize.
         print("Start collision test.")
-        body = self._detect_collision(self.robot.parts["body"].get_body_id())
+        body = self._detect_collision(self.robot.links["body"].body_id)
         if body:
             print("Body has collision with objects ", body)
-        left = self._detect_collision(self.robot.parts["left_hand"].get_body_id())
+        left = self._detect_collision(self.robot.eef_links["left_hand"].body_id)
         if left:
             print("Left hand has collision with objects ", left)
-        right = self._detect_collision(self.robot.parts["right_hand"].get_body_id(), self._get_obj_in_hand())
+        right = self._detect_collision(self.robot.eef_links[self.arm].body_id, self._get_obj_in_hand())
         if right:
             print("Right hand has collision with objects ", right)
         print("End collision test.")
@@ -595,7 +642,6 @@ class MotionPrimitiveController(object):
 
     def _test_pose(self, pose_2d, pos_on_obj=None, check_joint=None):
         with UndoableContext(self.robot):
-            robot_pose = self.robot.parts["body"].get_position_orientation()
             self.robot.set_position_orientation(*self._get_robot_pose_from_2d_pose(pose_2d))
 
             if pos_on_obj is not None:
@@ -610,7 +656,6 @@ class MotionPrimitiveController(object):
 
             if check_joint is not None:
                 body_id, joint_info = check_joint
-                original_joint_position = get_joint_position(body_id, joint_info.jointIndex)
 
                 # Check at different positions of the joint.
                 joint_range = joint_info.jointUpperLimit - joint_info.jointLowerLimit
@@ -623,21 +668,15 @@ class MotionPrimitiveController(object):
                         print("Candidate position failed joint-move collision test.")
                         return False
 
-            # Now put everything back. There's a bug in the sleep logic that cares about this.
-            # TODO(lowprio-replayMP): Figure this out.
-            self.robot.set_position_orientation(*robot_pose)
-            if check_joint:
-                set_joint_position(body_id, joint_info.jointIndex, original_joint_position)
-
             return True
 
     def _get_robot_pose_from_2d_pose(self, pose_2d):
-        pos = np.array([pose_2d[0], pose_2d[1], BODY_OFFSET_FROM_FLOOR])
+        pos = np.array([pose_2d[0], pose_2d[1], DEFAULT_BODY_OFFSET_FROM_FLOOR])
         orn = p.getQuaternionFromEuler([0, 0, pose_2d[2]])
         return pos, orn
 
     def _get_pose_in_robot_frame(self, pose):
-        body_pose = self.robot.parts["body"].get_position_orientation()
+        body_pose = self.robot.get_position_orientation()
         world_to_body_frame = p.invertTransform(*body_pose)
         relative_target_pose = p.multiplyTransforms(*world_to_body_frame, *pose)
         return relative_target_pose
@@ -646,16 +685,20 @@ class MotionPrimitiveController(object):
         ids = []
         for object in self.scene.get_objects():
             if isinstance(object, URDFObject):
-                ids.extend(object.body_ids)
+                ids.extend(object.get_body_ids())
 
         if include_robot:
-            ids.append(self.robot.parts["left_hand"].get_body_id())
-            ids.append(self.robot.parts["body"].get_body_id())
+            # TODO(MP): Generalize
+            ids.append(self.robot.eef_links["left_hand"].body_id)
+            ids.append(self.robot.base_link.body_id)
 
         return ids
 
     def _get_dist_from_point_to_shoulder(self, pos):
-        shoulder_pos_in_base_frame = np.array(behavior_robot.RIGHT_SHOULDER_REL_POS_UNTRACKED)
+        # TODO(MP): Generalize
+        shoulder_pos_in_base_frame = np.array(
+            self.robot.links["%s_shoulder" % self.arm].get_local_position_orientation()[0]
+        )
         point_in_base_frame = np.array(self._get_pose_in_robot_frame((pos, [0, 0, 0, 1]))[0])
         shoulder_to_hand = point_in_base_frame - shoulder_pos_in_base_frame
         return np.linalg.norm(shoulder_to_hand)
@@ -667,7 +710,7 @@ class MotionPrimitiveController(object):
 
         # Get the object pose & the robot hand pose
         obj_in_world = obj_in_hand.get_position_orientation()
-        hand_in_world = self.robot.parts["right_hand"].get_position_orientation()
+        hand_in_world = self.robot.eef_links[self.arm].get_position_orientation()
 
         # Get the hand pose relative to the obj pose
         world_in_obj = p.invertTransform(*obj_in_world)

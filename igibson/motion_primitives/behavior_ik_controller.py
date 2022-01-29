@@ -49,7 +49,7 @@ def get_action(
     assert body_target_pose is not None or hand_target_pose is not None
 
     # Compute the body information from the current frame.
-    body = robot.parts["body"]
+    body = robot.base_link
     body_pose = body.get_position_orientation()
     world_frame_to_body_frame = p.invertTransform(*body_pose)
 
@@ -81,7 +81,7 @@ def get_action(
     # Take care of the right hand now.
     if hand_target_pose is not None:
         # Compute the needed right hand action
-        right_hand = robot.parts["right_hand"]
+        right_hand = robot.eef_links["right_hand"]
         right_hand_pose_in_body_frame = p.multiplyTransforms(
             *world_frame_to_body_frame, *right_hand.get_position_orientation()
         )
@@ -102,7 +102,7 @@ def get_action(
     # Move other parts to default positions.
     if reset_others:
         for part_name, start_idx, target_pose in parts_to_move_to_default_pos:
-            part = robot.parts[part_name]
+            part = robot.eef_links[part_name] if part_name != "eye" else robot.links["eyes"]
             part_pose_in_body_frame = p.multiplyTransforms(*world_frame_to_body_frame, *part.get_position_orientation())
             action[start_idx : start_idx + 6] = get_action_from_pose_to_pose(
                 part_pose_in_body_frame,

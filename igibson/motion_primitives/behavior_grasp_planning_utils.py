@@ -35,7 +35,8 @@ def get_grasp_position_for_open(robot, target_obj, should_open, link_id=None):
     random.shuffle(relevant_joints)
     selected_joint_info = None
     for joint_info in relevant_joints:
-        current_position = get_joint_position(target_obj.get_body_id(), joint_info.jointIndex)
+        [target_bid] = target_obj.get_body_ids()
+        current_position = get_joint_position(target_bid, joint_info.jointIndex)
         joint_range = joint_info.jointUpperLimit - joint_info.jointLowerLimit
         openness_fraction = (current_position - joint_info.jointLowerLimit) / joint_range
         if (should_open and openness_fraction < 0.8) or (not should_open and openness_fraction > 0.05):
@@ -123,7 +124,8 @@ def grasp_position_for_open_on_prismatic_joint(robot, target_obj, relevant_joint
 
     # To compute the rotation position, we want to decide how far along the rotation axis we'll go.
     target_joint_pos = relevant_joint_info.jointUpperLimit if should_open else relevant_joint_info.jointLowerLimit
-    current_joint_pos = get_joint_position(target_obj.get_body_id(), link_id)
+    [target_bid] = target_obj.get_body_ids()
+    current_joint_pos = get_joint_position(target_bid, link_id)
     required_pos_change = target_joint_pos - current_joint_pos
     push_vector_in_bbox_frame = canonical_push_direction * required_pos_change
     target_hand_pos_in_bbox_frame = grasp_position_in_bbox_frame + push_vector_in_bbox_frame
@@ -159,7 +161,8 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
     # Get the part of the object away from the joint position/axis.
     # The link origin is where the joint is. Let's get the position of the origin w.r.t the CoM.
-    dynamics_info = p.getDynamicsInfo(target_obj.get_body_id(), link_id)
+    [target_bid] = target_obj.get_body_ids()
+    dynamics_info = p.getDynamicsInfo(target_bid, link_id)
     com_wrt_origin = (dynamics_info[3], dynamics_info[4])
     bbox_wrt_origin = p.multiplyTransforms(*com_wrt_origin, bbox_center_in_link_frame, [0, 0, 0, 1])
     origin_wrt_bbox = p.invertTransform(*bbox_wrt_origin)
@@ -185,7 +188,7 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
     points_along_open_axis = (
         np.array([canonical_open_direction, -canonical_open_direction]) * bbox_extent_in_link_frame[open_axis_idx] / 2
     )
-    current_yaw = get_joint_position(target_obj.get_body_id(), link_id)
+    current_yaw = get_joint_position(target_bid, link_id)
     closed_yaw = relevant_joint_info.jointLowerLimit
     points_along_open_axis_after_rotation = [
         rotate_point_around_axis((point, [0, 0, 0, 1]), bbox_wrt_origin, joint_axis, closed_yaw - current_yaw)[0]

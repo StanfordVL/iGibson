@@ -10,7 +10,7 @@ import igibson
 from igibson.external.motion.motion_planners.rrt_connect import birrt
 from igibson.external.pybullet_tools.utils import PI, circular_difference, direct_path, get_aabb, pairwise_collision
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.robots.behavior_robot import BODY_OFFSET_FROM_FLOOR, BehaviorRobot
+from igibson.robots.behavior_robot import DEFAULT_BODY_OFFSET_FROM_FLOOR, BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
@@ -39,7 +39,7 @@ def plan_base_motion_br(
     distance_fn = lambda q1, q2: np.linalg.norm(np.array(q2[:2]) - np.array(q1[:2]))
     obstacles = set(obstacles)
     if obj_in_hand is not None:
-        obstacles -= {obj_in_hand.get_body_id()}
+        obstacles -= set(obj_in_hand.get_body_ids())
 
     def slippery_extender(q1, q2):
         aq1 = np.array(q1[:2])
@@ -95,15 +95,15 @@ def plan_base_motion_br(
 
     extend_fn = slippery_extender
 
-    body_ids = []
-    for part in ["body", "left_hand", "right_hand"]:
-        body_ids.append(robot.links[part].get_body_id())
+    body_ids = robot.get_body_ids()
 
     if obj_in_hand is not None:
-        body_ids.append(obj_in_hand.get_body_id())
+        body_ids.extend(obj_in_hand.get_body_ids())
 
     def collision_fn(q):
-        robot.set_position_orientation([q[0], q[1], BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, q[2])))
+        robot.set_position_orientation(
+            [q[0], q[1], DEFAULT_BODY_OFFSET_FROM_FLOOR], p.getQuaternionFromEuler((0, 0, q[2]))
+        )
         for body_id in body_ids:
             close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(body_id)))
             close_obstacles = close_objects & obstacles
@@ -195,8 +195,8 @@ def plan_hand_motion_br(
         r, p, yaw = np.random.uniform((-PI, -PI, -PI), (PI, PI, PI))
         return (x, y, z, r, p, yaw)
 
-    pos = robot.links["right_hand"].get_position()
-    orn = robot.links["right_hand"].get_orientation()
+    pos = robot.eef_links["right_hand"].get_position()
+    orn = robot.eef_links["right_hand"].get_orientation()
     rpy = p.getEulerFromQuaternion(orn)
     start_conf = [pos[0], pos[1], pos[2], rpy[0], rpy[1], rpy[2]]
 
@@ -251,17 +251,18 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
         obs
         for obs in obstacles
         if (
-            (obj_in_hand is None or obs != obj_in_hand.get_body_id())
-            and (obs != robot.links["right_hand"].get_body_id())
+            (obj_in_hand is None or obs not in obj_in_hand.get_body_ids())
+            and (obs != robot.eef_links["right_hand"].body_id)  # TODO(MP): Generalize
         )
     }
 
     def collision_fn(pose3d):
-        robot.links["right_hand"].set_position_orientation(*pose3d)
-        close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(robot.links["right_hand"].get_body_id())))
+        # TODO: Generalize
+        robot.eef_links["right_hand"].set_position_orientation(*pose3d)
+        close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(robot.eef_links["right_hand"].body_id)))
         close_obstacles = close_objects & non_hand_non_oih_obstacles
         collisions = [
-            (obs, pairwise_collision(robot.links["right_hand"].get_body_id(), obs, max_distance=max_distance))
+            (obs, pairwise_collision(robot.eef_links["right_hand"].body_id, obs, max_distance=max_distance))
             for obs in close_obstacles
         ]
         colliding_bids = [obs for obs, col in collisions if col]
@@ -270,11 +271,12 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
         collision = bool(colliding_bids)
 
         if obj_in_hand is not None:
-            oih_close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(obj_in_hand.get_body_id())))
+            # Generalize more.
+            [oih_bid] = obj_in_hand.get_body_ids()  # Generalize.
+            oih_close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(oih_bid)))
             oih_close_obstacles = (oih_close_objects & non_hand_non_oih_obstacles) | close_obstacles
             obj_collisions = [
-                (obs, pairwise_collision(obj_in_hand.get_body_id(), obs, max_distance=max_distance))
-                for obs in oih_close_obstacles
+                (obs, pairwise_collision(oih_bid, obs, max_distance=max_distance)) for obs in oih_close_obstacles
             ]
             obj_colliding_bids = [obs for obs, col in obj_collisions if col]
             if obj_colliding_bids:
@@ -301,13 +303,13 @@ if __name__ == "__main__":
     s.import_robot(agent)
 
     s.robots.append(agent)
-    agent.initial_z_offset = BODY_OFFSET_FROM_FLOOR
-    agent.set_position_orientation([0, 0, BODY_OFFSET_FROM_FLOOR], [0, 0, 0, 1])
+    agent.initial_z_offset = DEFAULT_BODY_OFFSET_FROM_FLOOR
+    agent.set_position_orientation([0, 0, DEFAULT_BODY_OFFSET_FROM_FLOOR], [0, 0, 0, 1])
     # plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])
     plan = plan_hand_motion_br(agent, [3, 3, 3, 0, 0, 0], ((-5, -5, -5), (5, 5, 5)))
     print(plan)
     for q in plan:
-        agent.links["right_hand"].set_position_orientation(
+        agent.eef_links["right_hand"].set_position_orientation(
             [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
         )
         time.sleep(0.05)
@@ -329,7 +331,7 @@ def dry_run_base_plan(robot: BehaviorRobot, plan):
 
 def dry_run_arm_plan(robot: BehaviorRobot, plan):
     for (x, y, z, roll, pitch, yaw) in plan:
-        robot.links["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+        robot.eef_links["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
         time.sleep(0.01)
 
 
