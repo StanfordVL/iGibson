@@ -329,7 +329,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
     def set_ignore_visual_shape(self, value):
         self.ignore_visual_shape = value
         for obj in self.get_objects():
-            obj.set_ignore_visual_shape(value)
+            # NOTE: (njk) need to ignore agent parts
+            # here to avoid crash, which happens because 
+            # we load scenes in predicators with already-
+            # existing agents
+            try:
+                if obj.name not in ["left_hand_1", "right_hand_1", "BRBody_1", "BREye_1"]:
+                    obj.set_ignore_visual_shape(value)
+            except AttributeError:
+                import ipdb; ipdb.set_trace()
 
     def get_objects(self):
         return list(self.objects_by_name.values())
@@ -571,8 +579,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         # build mapping from body_id to object name for debugging
         body_id_to_name = {}
         for name in self.objects_by_name:
-            for body_id in self.objects_by_name[name].body_ids:
-                body_id_to_name[body_id] = name
+            if self.objects_by_name[name].name not in ["left_hand_1", "right_hand_1", "BRBody_1", "BREye_1"]:
+                for body_id in self.objects_by_name[name].body_ids:
+                    body_id_to_name[body_id] = name
         self.body_id_to_name = body_id_to_name
 
         # collect body ids for overlapped bboxes (e.g. tables and chairs,
@@ -826,12 +835,19 @@ class InteractiveIndoorScene(StaticIndoorScene):
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
             new_ids = obj.load()
+            if isinstance(new_ids, int):
+                new_ids = [new_ids]
             for id in new_ids:
                 self.objects_by_id[id] = obj
-            body_ids += new_ids
-            visual_mesh_to_material += obj.visual_mesh_to_material
-            link_name_to_vm += obj.link_name_to_vm
-            fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.body_ids, obj.is_fixed) if is_fixed]
+            # NOTE: (njk) need to ignore agent parts
+            # here to avoid crash, which happens because 
+            # we load scenes in predicators with already-
+            # existing agents
+            if obj.name not in ["left_hand_1", "right_hand_1", "BRBody_1", "BREye_1"]:
+                body_ids += new_ids
+                visual_mesh_to_material += obj.visual_mesh_to_material
+                link_name_to_vm += obj.link_name_to_vm
+                fixed_body_ids += [body_id for body_id, is_fixed in zip(obj.body_ids, obj.is_fixed) if is_fixed]
         assert len(visual_mesh_to_material) == len(body_ids)
         assert len(link_name_to_vm) == len(body_ids)
 

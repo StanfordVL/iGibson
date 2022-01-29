@@ -66,6 +66,14 @@ def save_internal_states(simulator):
 
 
 def load_internal_states(simulator, dump):
+    # NOTE: sometimes notebooks turn into hardbacks here.
+    # i.e if you (1) create iGibson BehaviorEnv, (2) save it
+    # (3) create a new iGibson BehaviorEnv with the same random seed
+    # and other parameters and (4) try to load the saved values from (2)
+    # you might see a KeyError for a notebook or hardback, but this is
+    # simply because creating a new environment in (3) somehow may cause
+    # some notebooks to be renamed as hardbacks!!!
+     
     # Restore the object state.
     object_dump = dump["objects"]
     for name, obj in simulator.scene.objects_by_name.items():
