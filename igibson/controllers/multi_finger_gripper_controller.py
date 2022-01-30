@@ -5,6 +5,7 @@ from igibson.utils.python_utils import assert_valid_key
 
 VALID_MODES = {
     "binary",
+    "ternary",
     "smooth",
     "independent",
 }
@@ -74,7 +75,7 @@ class MultiFingerGripperController(ManipulationController):
         self.limit_tolerance = limit_tolerance
 
         # If we're using binary signal, we override the command output limits
-        if mode == "binary":
+        if mode == "binary" or mode == "ternary":
             command_output_limits = (-1.0, 1.0)
 
         # Run super init
@@ -128,6 +129,13 @@ class MultiFingerGripperController(ManipulationController):
                 if command[0] >= 0.0
                 else self.control_limits[ControlType.get_type(self.motor_type)][0][self.joint_idx]
             )
+        elif self.mode == "ternary":
+            if command[0] > 0.33:  # Closer to 1
+                u = self.control_limits[ControlType.get_type(self.motor_type)][1][self.joint_idx]
+            elif command[0] > -0.33:  # Closer to 0
+                u = joint_pos
+            else:  # Closer to -1
+                u = self.control_limits[ControlType.get_type(self.motor_type)][0][self.joint_idx]
         else:
             # Use continuous signal
             u = command
