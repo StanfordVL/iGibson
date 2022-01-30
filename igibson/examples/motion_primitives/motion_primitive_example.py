@@ -86,11 +86,11 @@ def main():
     controller = MotionPrimitiveActionGenerator(None, scene, robot)
 
     try:
-        go_to_sink_and_toggle(s, robot, controller)
+        # go_to_sink_and_toggle(s, robot, controller)
         grasp_tray(s, robot, controller)
         put_on_table(s, robot, controller)
-        open_and_close_fridge(s, robot, controller)
-        open_and_close_door(s, robot, controller)
+        # open_and_close_fridge(s, robot, controller)
+        # open_and_close_door(s, robot, controller)
         # open_and_close_cabinet(s, robot, controller)
 
         while True:

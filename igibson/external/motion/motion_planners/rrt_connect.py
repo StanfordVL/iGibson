@@ -20,7 +20,7 @@ def rrt_connect(q1, q2, distance_fn, sample_fn, extend_fn, collision_fn, iterati
     debugging_prints = False
     if debugging_prints:
         print("rrt_connect: check whether src and dst are collision free")
-    if collision_fn(q1) or collision_fn(q2):
+    if collision_fn(q2):
         if debugging_prints:
             print("rrt_connect: src or dst are in collision! End")
         return None
@@ -81,7 +81,7 @@ def rrt_connect(q1, q2, distance_fn, sample_fn, extend_fn, collision_fn, iterati
 
 def direct_path(q1, q2, extend_fn, collision_fn):
     debugging_prints = False
-    if collision_fn(q1) or collision_fn(q2):
+    if collision_fn(q2):
         return None
     path = [q1]
     for q in extend_fn(q1, q2):
@@ -98,8 +98,8 @@ def direct_path(q1, q2, extend_fn, collision_fn):
 def birrt(q1, q2, distance, sample, extend, collision, draw_path=None, draw_point=None,
           restarts=RRT_RESTARTS, iterations=RRT_ITERATIONS, smooth=RRT_SMOOTHING):
     debugging_prints = False
-    # If the initial or final configurations are in collision, there is no collision free path
-    if collision(q1) or collision(q2):
+    # If the final configurations are in collision, there is no collision free path
+    if collision(q2):
         return None
     # Test if there is a direct path between initial and final configurations
     if debugging_prints:
