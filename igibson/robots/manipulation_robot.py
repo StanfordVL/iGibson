@@ -412,7 +412,7 @@ class ManipulationRobot(BaseRobot):
         # Store the original EEF poses.
         original_poses = {}
         for arm in self.arm_names:
-            original_poses[arm] = self.get_eef_position(arm)
+            original_poses[arm] = (self.get_eef_position(arm), self.get_eef_orientation(arm))
 
         super(ManipulationRobot, self).set_position_orientation(pos, quat)
 
@@ -711,6 +711,27 @@ class ManipulationRobot(BaseRobot):
         """
         arm = self.default_arm if arm == "default" else arm
         return self._links[self.eef_link_names[arm]].get_orientation()
+
+    def set_eef_position_orientation(self, pos, orn, arm="default"):
+        # Store the original EEF poses.
+        original_pose = (self.get_eef_position(arm), self.get_eef_orientation(arm))
+
+        self._links[self.eef_link_names[arm]].set_position_orientation(pos, orn)
+
+        # If it was holding an AG object, teleport it.
+        if self._ag_obj_in_hand[arm] is not None:
+            # TODO(MP): Generalize.
+            obj = self.simulator.scene.objects_by_id[self._ag_obj_in_hand[arm]]
+
+            inv_original_pos, inv_original_orn = p.invertTransform(*original_pose)
+            local_pos, local_orn = p.multiplyTransforms(
+                inv_original_pos, inv_original_orn, *obj.get_position_orientation()
+            )
+            new_pos, new_orn = p.multiplyTransforms(
+                self.get_eef_position(arm), self.get_eef_orientation(arm), local_pos, local_orn
+            )
+
+            obj.set_position_orientation(new_pos, new_orn)
 
     def get_relative_eef_pose(self, arm="default", mat=False):
         """
@@ -1183,9 +1204,7 @@ class ManipulationRobot(BaseRobot):
             self._ag_obj_in_hand[arm] = robot_dump[_ag_obj_in_hand_str]
             self._ag_release_counter[arm] = robot_dump[_ag_release_counter_str]
             self._ag_freeze_gripper[arm] = robot_dump[_ag_freeze_gripper_str]
-            self._ag_freeze_joint_pos[arm] = {
-                int(key): val for key, val in robot_dump[_ag_freeze_joint_pos_str].items()
-            }
+            self._ag_freeze_joint_pos[arm] = {key: val for key, val in robot_dump[_ag_freeze_joint_pos_str].items()}
             self._ag_obj_cid[arm] = robot_dump[_ag_obj_cid_str]
             self._ag_obj_cid_params[arm] = robot_dump[_ag_obj_cid_params_str]
             if self._ag_obj_cid[arm] is not None:

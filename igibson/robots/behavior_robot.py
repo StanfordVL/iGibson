@@ -208,16 +208,19 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         return body_ids
 
     def _setup_virtual_joints(self):
-        # Create a world-base joint.
         virtual_joints = []
+
+        # This joint is a bit weird - it's between the body and the body. We can't do world-body since that would make
+        # the actions in the world frame rather than the base frame. Instead we do this trick, and we interpret absolute
+        # actions as relative.
         virtual_joints.extend(
             Virtual6DOFJoint(
-                joint_name="world__body",
-                parent_link=None,
+                joint_name="body__body",
+                parent_link=self.base_link,
                 child_link=self.base_link,
                 command_callback=self._parts["body"].command_position,
-                lower_limits=[None, None, BODY_HEIGHT_RANGE[0], None, None, None],
-                upper_limits=[None, None, BODY_HEIGHT_RANGE[1], None, None, None],
+                lower_limits=[None, None, None, None, None, None],
+                upper_limits=[None, None, None, None, None, None],
             ).get_joints()
         )
         virtual_joints.extend(
@@ -358,7 +361,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     @property
     def base_control_idx(self):
         joints = list(self.joints.keys())
-        return tuple(joints.index("world__body_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES)
+        return tuple(joints.index("body__body_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES)
 
     @property
     def camera_control_idx(self):
@@ -443,7 +446,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             "name": "JointController",
             "control_freq": self.control_freq,
             "control_limits": self.control_limits,
-            "use_delta_commands": True,
+            "use_delta_commands": False,
             "motor_type": "position",
             "compute_delta_in_quat_space": [(3, 4, 5)],
             "joint_idx": self.base_control_idx,
@@ -699,11 +702,15 @@ class BRBody(BRPart):
         Updates BRBody to new position and rotation, via constraints.
         :param action: numpy array of actions.
         """
-        self.new_pos = action[:3]
-        self.new_orn = p.getQuaternionFromEuler(action[3:6])
+        # Compute the target world position from the delta position.
+        delta_pos, delta_orn = action[:3], p.getQuaternionFromEuler(action[3:6])
+        target_pos, target_orn = p.multiplyTransforms(*self.get_position_orientation(), delta_pos, delta_orn)
 
-        self.new_pos = np.round(self.new_pos, 5).tolist()
-        self.new_orn = np.round(self.new_orn, 5).tolist()
+        # Clip the height.
+        target_pos = [target_pos[0], target_pos[1], max(BODY_HEIGHT_RANGE[0], min(BODY_HEIGHT_RANGE[1], target_pos[2]))]
+
+        self.new_pos = np.round(target_pos, 5).tolist()
+        self.new_orn = np.round(target_orn, 5).tolist()
 
         self.move_constraints(self.new_pos, self.new_orn)
 
