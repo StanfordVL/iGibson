@@ -259,7 +259,7 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
 
     def collision_fn(pose3d):
         # TODO: Generalize
-        robot.eef_links["right_hand"].set_position_orientation(*pose3d)
+        robot.set_eef_position_orientation(*pose3d, "right_hand")
         close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(robot.eef_links["right_hand"].body_id)))
         close_obstacles = close_objects & non_hand_non_oih_obstacles
         collisions = [
@@ -297,7 +297,7 @@ def dry_run_base_plan(robot: BehaviorRobot, plan):
 
 def dry_run_arm_plan(robot: BehaviorRobot, plan):
     for (x, y, z, roll, pitch, yaw) in plan:
-        robot.eef_links["right_hand"].set_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]))
+        robot.set_eef_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]), "right_hand")
         time.sleep(0.01)
 
 

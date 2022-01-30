@@ -78,7 +78,7 @@ def main():
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
     robot.apply_action(
         np.zeros(
-            28,
+            robot.action_dim,
         )
     )
 
@@ -96,7 +96,7 @@ def main():
         # open_and_close_cabinet(s, robot, controller)
 
         while True:
-            action = np.zeros(28)
+            action = np.zeros(robot.action_dim)
             robot.apply_action(action)
             s.step()
     finally:

@@ -1164,6 +1164,13 @@ def all_between(lower_limits, values, upper_limits):
 
 def get_child_frame_pose(parent_bid, parent_link, child_bid, child_link):
     # TODO(mjlbach):Mostly shared with BRRobot, can be made a util
+    # TOOD(MP): Isn't this in the wrong direction???
+
+    # Different pos/orn calculations for base/links
+    if parent_link == -1:
+        parent_pos, parent_orn = p.getBasePositionAndOrientation(parent_bid)
+    else:
+        parent_pos, parent_orn = p.getLinkState(parent_bid, parent_link)[:2]
 
     # Different pos/orn calculations for base/links
     if child_link == -1:
@@ -1173,11 +1180,9 @@ def get_child_frame_pose(parent_bid, parent_link, child_bid, child_link):
 
     # Get inverse world transform of body frame
     inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-    link_state = p.getLinkState(parent_bid, parent_link)
-    link_pos = link_state[0]
-    link_orn = link_state[1]
+
     # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-    child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
+    child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, parent_pos, parent_orn)
 
     return child_frame_pos, child_frame_orn
 #####################################
