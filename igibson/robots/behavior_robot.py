@@ -432,7 +432,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 "joint_idx": self.gripper_control_idx[arm],
                 "command_output_limits": "default",
                 "inverted": True,
-                "mode": "smooth",
+                "mode": "ternary",
                 "limit_tolerance": 0.001,
             }
         return dic
@@ -775,17 +775,8 @@ class BRHand(BRPart):
             # Mass is in kg, friction is coefficient
             p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=HAND_FRICTION)
             p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
-            p.setJointMotorControl2(
-                self.body_id,
-                joint_index,
-                controlMode=p.POSITION_CONTROL,
-                targetPosition=0,
-                targetVelocity=0.0,
-                positionGain=0.1,
-                velocityGain=0.1,
-                force=0,
-            )
             p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
+
         # Create constraint that can be used to move the hand
         self.movement_cid = p.createConstraint(
             self.body_id,

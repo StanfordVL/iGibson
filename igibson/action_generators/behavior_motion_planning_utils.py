@@ -13,6 +13,7 @@ from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSett
 from igibson.robots.behavior_robot import DEFAULT_BODY_OFFSET_FROM_FLOOR, BehaviorRobot
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
+from igibson.utils.indented_print import indented_print
 from igibson.utils.utils import parse_config
 
 SEARCHED = []
@@ -114,7 +115,7 @@ def plan_base_motion_br(
             ]
             colliding_bids = [obs for obs, col in collisions if col]
             if colliding_bids:
-                # print("Found collision w/ ", colliding_bids)
+                # indented_print("Found collision w/ ", colliding_bids)
                 return True
 
         # The below code is useful for plotting the RRT tree.
@@ -142,10 +143,10 @@ def plan_base_motion_br(
     yaw = p.getEulerFromQuaternion(robot.get_orientation())[2]
     start_conf = (pos[0], pos[1], yaw)
     # if collision_fn(start_conf):
-    #     print("Warning: initial configuration is in collision")
+    #     indented_print("Warning: initial configuration is in collision")
     #     return None
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        indented_print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
@@ -213,10 +214,10 @@ def plan_hand_motion_br(
     collision_fn = get_xyzrpy_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=max_distance)
 
     # if collision_fn(start_conf):
-    #     print("Warning: initial configuration is in collision")
+    #     indented_print("Warning: initial configuration is in collision")
     #     return None
     if collision_fn(end_conf):
-        print("Warning: end configuration is in collision")
+        indented_print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
@@ -267,7 +268,7 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
         ]
         colliding_bids = [obs for obs, col in collisions if col]
         if colliding_bids:
-            print("Hand collision with objects: ", colliding_bids)
+            indented_print("Hand collision with objects: ", colliding_bids)
         collision = bool(colliding_bids)
 
         if obj_in_hand is not None:
@@ -280,47 +281,12 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
             ]
             obj_colliding_bids = [obs for obs, col in obj_collisions if col]
             if obj_colliding_bids:
-                print("Held object collision with objects: ", obj_colliding_bids)
+                indented_print("Held object collision with objects: ", obj_colliding_bids)
             collision = collision or bool(obj_colliding_bids)
 
         return collision
 
     return collision_fn
-
-
-if __name__ == "__main__":
-    config = parse_config(os.path.join(igibson.example_config_path, "behavior.yaml"))
-    settings = MeshRendererSettings(enable_shadow=False, msaa=False)
-    s = Simulator(
-        mode="gui_interactive", use_pb_gui=True, image_width=256, image_height=256, rendering_settings=settings
-    )
-
-    scene = EmptyScene()
-    scene.objects_by_id = {}
-    s.import_scene(scene)
-
-    agent = BehaviorRobot(s, show_visual_head=True, use_ghost_hands=False)
-    s.import_robot(agent)
-
-    s.robots.append(agent)
-    agent.initial_z_offset = DEFAULT_BODY_OFFSET_FROM_FLOOR
-    agent.set_position_orientation([0, 0, DEFAULT_BODY_OFFSET_FROM_FLOOR], [0, 0, 0, 1])
-    # plan = plan_base_motion_br(agent, [3,3,1], [(-5,-5), (5,5)])
-    plan = plan_hand_motion_br(agent, [3, 3, 3, 0, 0, 0], ((-5, -5, -5), (5, 5, 5)))
-    print(plan)
-    for q in plan:
-        agent.eef_links["right_hand"].set_position_orientation(
-            [q[0], q[1], q[2]], p.getQuaternionFromEuler([q[3], q[4], q[5]])
-        )
-        time.sleep(0.05)
-
-    for i in range(10000):
-        action = np.zeros((28,))
-        if i < 2:
-            action[19] = 1
-            action[27] = 1
-        agent.apply_action(action)
-        s.step()
 
 
 def dry_run_base_plan(robot: BehaviorRobot, plan):

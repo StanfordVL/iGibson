@@ -11,8 +11,8 @@ DEFAULT_ANGLE_THRESHOLD = 0.05
 LOW_PRECISION_DIST_THRESHOLD = 0.1
 LOW_PRECISION_ANGLE_THRESHOLD = 0.2
 
-BODY_KV = 0.5
-BODY_KW = 0.5
+BODY_KV = 0.15
+BODY_KW = 0.2
 BODY_MAX_V = 0.3
 BODY_MAX_W = 1
 
@@ -31,7 +31,7 @@ def get_action_from_pose_to_pose(start_pose, end_pose, kv, kw, max_v, max_w, dis
 
     diff_rot = end_rot * start_rot.inv()
     # Use pb to avoid the weirdness around intrinsic / extrinsic rotations
-    diff_angles = np.array(p.getEulerFromQuaternion(diff_rot.as_quat()))
+    diff_angles = np.array(p.getEulerFromQuaternion(diff_rot.as_quat()))  # TODO(MP): Use slerp for kw multiplication?
 
     diff_pos = np.array(end_pos) - np.array(start_pos)
 
@@ -54,14 +54,14 @@ def get_action(
     world_frame_to_body_frame = p.invertTransform(*body_pose)
 
     # Accumulate the actions in the correct order.
-    action = np.zeros(26)
+    action = np.zeros(28)
 
     dist_threshold = LOW_PRECISION_DIST_THRESHOLD if low_precision else DEFAULT_DIST_THRESHOLD
     angle_threshold = LOW_PRECISION_ANGLE_THRESHOLD if low_precision else DEFAULT_ANGLE_THRESHOLD
 
     # Compute the needed body motion
     if body_target_pose is not None:
-        action[:6] = get_action_from_pose_to_pose(
+        action[robot.controller_action_idx["base"]] = get_action_from_pose_to_pose(
             ([0, 0, 0], [0, 0, 0, 1]),
             body_target_pose,
             BODY_KV,
@@ -74,8 +74,8 @@ def get_action(
 
     # Keep a list of parts we'll move to default positions later. This is in correct order.
     parts_to_move_to_default_pos = [
-        ("eye", 6, behavior_robot.EYE_LOC_POSE_TRACKED),
-        ("left_hand", 12, behavior_robot.LEFT_HAND_LOC_POSE_TRACKED),
+        ("eye", "camera", behavior_robot.EYE_LOC_POSE_TRACKED),
+        ("left_hand", "arm_left_hand", behavior_robot.LEFT_HAND_LOC_POSE_TRACKED),
     ]
 
     # Take care of the right hand now.
@@ -85,7 +85,7 @@ def get_action(
         right_hand_pose_in_body_frame = p.multiplyTransforms(
             *world_frame_to_body_frame, *right_hand.get_position_orientation()
         )
-        action[19:25] = get_action_from_pose_to_pose(
+        action[robot.controller_action_idx["arm_right_hand"]] = get_action_from_pose_to_pose(
             right_hand_pose_in_body_frame,
             hand_target_pose,
             LIMB_KV,
@@ -97,14 +97,16 @@ def get_action(
         )
     else:
         # Move it back to the default position in with the below logic.
-        parts_to_move_to_default_pos.append(("right_hand", 19, behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED))
+        parts_to_move_to_default_pos.append(
+            ("right_hand", "arm_right_hand", behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED)
+        )
 
     # Move other parts to default positions.
     if reset_others:
-        for part_name, start_idx, target_pose in parts_to_move_to_default_pos:
+        for part_name, controller_name, target_pose in parts_to_move_to_default_pos:
             part = robot.eef_links[part_name] if part_name != "eye" else robot.links["eyes"]
             part_pose_in_body_frame = p.multiplyTransforms(*world_frame_to_body_frame, *part.get_position_orientation())
-            action[start_idx : start_idx + 6] = get_action_from_pose_to_pose(
+            action[robot.controller_action_idx[controller_name]] = get_action_from_pose_to_pose(
                 part_pose_in_body_frame,
                 target_pose,
                 LIMB_KV,

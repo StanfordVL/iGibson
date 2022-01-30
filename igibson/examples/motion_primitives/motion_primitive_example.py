@@ -13,10 +13,7 @@ from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_model_p
 
 def execute_controller(ctrl_gen, robot, s):
     for action in ctrl_gen:
-        new_action = np.zeros(28)  # Add the reset dimensions
-        new_action[:19] = action[:19]
-        new_action[20:27] = action[19:]
-        robot.apply_action(new_action)
+        robot.apply_action(action)
         s.step()
 
 
@@ -79,6 +76,11 @@ def main():
     robot = BehaviorRobot(s)
     s.import_robot(robot)
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
+    robot.apply_action(
+        np.zeros(
+            28,
+        )
+    )
 
     for _ in range(300):
         s.step()
