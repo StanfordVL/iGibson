@@ -7,18 +7,18 @@ import numpy as np
 import pybullet as p
 
 from igibson import object_states
-from igibson.action_generators.generator_base import ActionGeneratorError, BaseActionGenerator
-from igibson.external.pybullet_tools.utils import get_joint_position, set_joint_position
-from igibson.motion_primitives import behavior_ik_controller
-from igibson.motion_primitives.behavior_grasp_planning_utils import (
+from igibson.action_generators import behavior_ik_controller
+from igibson.action_generators.behavior_grasp_planning_utils import (
     get_grasp_poses_for_object,
     get_grasp_position_for_open,
 )
-from igibson.motion_primitives.behavior_motion_planning_utils import (
+from igibson.action_generators.behavior_motion_planning_utils import (
     get_pose3d_hand_collision_fn,
     plan_base_motion_br,
     plan_hand_motion_br,
 )
+from igibson.action_generators.generator_base import ActionGeneratorError, BaseActionGenerator
+from igibson.external.pybullet_tools.utils import set_joint_position
 from igibson.object_states.on_floor import RoomFloor
 from igibson.object_states.utils import get_center_extent, sample_kinematics
 from igibson.objects.articulated_object import URDFObject
