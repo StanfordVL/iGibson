@@ -162,6 +162,8 @@ setup(
         "pandas",
         "packaging",
         "bddl>=0.0.3",
+        "urllib3>=1.20",
+        "progressbar>=2.5",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),
