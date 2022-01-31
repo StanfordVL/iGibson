@@ -44,10 +44,10 @@ class SemanticClass(IntEnum):
 # Note that we are starting this from bit 6 since bullet seems to be giving special meaning to groups 0-5.
 # Collision groups for objects. For special logic, different categories can be assigned different collision groups.
 ALL_COLLISION_GROUPS_MASK = -1
-DEFAULT_COLLISION_GROUP = 1
+DEFAULT_COLLISION_GROUP = 0
 SPECIAL_COLLISION_GROUPS = {
-    "floors": 7,
-    "carpet": 8,
+    "floors": 6,
+    "carpet": 7,
 }
 
 
