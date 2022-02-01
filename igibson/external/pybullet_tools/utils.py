@@ -861,12 +861,12 @@ def save_image(filename, rgba):
 def get_projection_matrix(width, height, vertical_fov, near, far):
     """
     OpenGL projection matrix
-    :param width: 
-    :param height: 
+    :param width:
+    :param height:
     :param vertical_fov: vertical field of view in radians
-    :param near: 
-    :param far: 
-    :return: 
+    :param near:
+    :param far:
+    :return:
     """
     # http://www.songho.ca/opengl/gl_projectionmatrix.html
     # http://www.songho.ca/opengl/gl_transform.html#matrix
@@ -1162,24 +1162,6 @@ def all_between(lower_limits, values, upper_limits):
     return np.less_equal(lower_limits, values).all() and \
         np.less_equal(values, upper_limits).all()
 
-def get_child_frame_pose(parent_bid, parent_link, child_bid, child_link):
-    # TODO(mjlbach):Mostly shared with BRRobot, can be made a util
-
-    # Different pos/orn calculations for base/links
-    if child_link == -1:
-        body_pos, body_orn = p.getBasePositionAndOrientation(child_bid)
-    else:
-        body_pos, body_orn = p.getLinkState(child_bid, child_link)[:2]
-
-    # Get inverse world transform of body frame
-    inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-    link_state = p.getLinkState(parent_bid, parent_link)
-    link_pos = link_state[0]
-    link_orn = link_state[1]
-    # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-    child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, link_pos, link_orn)
-
-    return child_frame_pos, child_frame_orn
 #####################################
 
 # Bodies
@@ -2654,7 +2636,7 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
 
 def body_collision(body1, body2, max_distance=MAX_DISTANCE):  # 10000
     # TODO: confirm that this doesn't just check the base link
-    
+
     #for i in range(p.getNumJoints(body1)):
     #    for j in range(p.getNumJoints(body2)):
     #        #if len(p.getContactPoints(body1, body2, i, j)) > 0:
@@ -3478,7 +3460,7 @@ def plan_base_motion_2d(body,
         if debugging_prints:
             print("Warning: end configuration is in collision")
         return None
-    
+
     if algorithm == 'direct':
         path = direct_path(start_conf, end_conf, extend_fn, collision_fn)
     elif algorithm == 'birrt':

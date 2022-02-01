@@ -242,9 +242,9 @@ class KeyboardController:
                     if idx is not None:
                         action[idx] = val
 
-        sys.stdout.write("\033[K")
-        print("Pressed {}. Action: {}".format(keypress, action))
-        sys.stdout.write("\033[F")
+            sys.stdout.write("\033[K")
+            print("Pressed {}. Action: {}".format(keypress, action))
+            sys.stdout.write("\033[F")
 
         # Update last keypress
         self.last_keypress = keypress
@@ -368,7 +368,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         and platform.system() != "Darwin"
         and control_mode == "teleop"
         and isinstance(robot, ManipulationRobot)
-        and controller_choices["arm"] == "InverseKinematicsController"
+        and "InverseKinematicsController" in controller_choices.values()
     ):
         message = "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
         logging.warning(message)
