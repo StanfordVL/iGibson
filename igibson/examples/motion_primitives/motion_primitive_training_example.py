@@ -87,6 +87,15 @@ def main():
 
     controller = MotionPrimitiveActionGenerator(None, scene, robot)
 
+    """
+        Notes:
+        - Check task success reward: use percentage of completed task
+            - use "evaluate_state" to get currently satisfied predicates
+            - or use, "get_potential" from behavior_task directly
+            - Could be a better way to do this for complex tasks instead of only checking percentage of task completed
+        - 
+    """
+
     try:
         # go_to_sink_and_toggle(s, robot, controller)
         grasp_tray(s, robot, controller)

@@ -161,6 +161,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         self._parts["body"] = BRBody(self, **kwargs)
         self._parts["eye"] = BREye(self, **kwargs)
 
+        self.main_body = -1
+
     @property
     def model_name(self):
         return "BehaviorRobot"
