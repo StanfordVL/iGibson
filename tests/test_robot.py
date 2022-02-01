@@ -142,3 +142,115 @@ def show_action_sensor_space():
         s.step()
 
     s.disconnect()
+
+
+def test_behavior_robot():
+    s = Simulator(mode="headless")
+    scene = StadiumScene()
+    s.import_scene(scene)
+
+    robot = REGISTERED_ROBOTS["BehaviorRobot"]()
+    s.import_object(robot)
+
+    parts_and_controllers = [
+        ("eye", "camera"),
+        ("left_hand", "arm_left_hand"),
+        ("right_hand", "arm_right_hand"),
+    ]
+
+    # Rotate the robot CCW 90 degrees, and each of the limbs a further CCW 90 degrees. This makes the X of each outer
+    # frame align with the Y axis of the inner one.
+    BODY_POS = np.array([10, 20, 0.7])
+    robot.set_position_orientation(BODY_POS, p.getQuaternionFromEuler([0, 0, np.pi / 2]))
+    for part_name, _ in parts_and_controllers:
+        part = robot._parts[part_name]
+        part_pos = part.get_position()
+        part.set_position_orientation(part_pos, p.getQuaternionFromEuler([0, 0, np.pi]))
+
+    # Now we'll take some steps to settle things down.
+    for _ in range(50):
+        robot.apply_action(np.zeros(robot.action_dim))
+        s.step()
+
+    # # ============================ PART 1 : BODY DELTA POSITION ============================
+    action = np.zeros(robot.action_dim)
+    action[robot.controller_action_idx["base"]] = [0.2, 0, 0, 0, 0, 0]
+
+    # Execute.
+    robot.apply_action(action)
+    for _ in range(10):
+        s.step()
+
+    # Check that the body has moved where we expected it to.
+    EXPECTED_BODY_DELTA = np.array([0, 0.2, 0])
+    assert np.all(np.isclose(robot.get_position(), BODY_POS + EXPECTED_BODY_DELTA, atol=1e-4))
+
+    # ============================ PART 2 : LIMB DELTA POSITION ============================
+    action = np.zeros(robot.action_dim)
+    for part_name, controller_name in parts_and_controllers:
+        action[robot.controller_action_idx[controller_name]] = [0.15, 0, 0, 0, 0, 0]
+
+    # Execute.
+    robot.apply_action(action)
+    for _ in range(10):
+        s.step()
+
+    EXPECTED_PART_DELTA = np.array([0, 0.15, 0])
+
+    # The constants below are the EYE_LOC_POSE_TRACKED etc constants from behavior_robot, rotated CCW 90deg.
+    assert np.all(
+        np.isclose(
+            robot._parts["eye"].get_position(),
+            BODY_POS + [0, 0.05, 0.4] + EXPECTED_BODY_DELTA + EXPECTED_PART_DELTA,  # rotated EYE_LOC_POSE_TRACKED
+            atol=1e-4,
+        )
+    )
+    assert np.all(
+        np.isclose(
+            robot._parts["right_hand"].get_position(),
+            BODY_POS
+            + [0.12, 0.1, 0.05]
+            + EXPECTED_BODY_DELTA
+            + EXPECTED_PART_DELTA,  # rotated RIGHT_HAND_LOC_POSE_TRACKED
+            atol=1e-4,
+        )
+    )
+    assert np.all(
+        np.isclose(
+            robot._parts["left_hand"].get_position(),
+            BODY_POS
+            + [-0.12, 0.1, 0.05]
+            + EXPECTED_BODY_DELTA
+            + EXPECTED_PART_DELTA,  # rotated LEFT_HAND_LOC_POSE_TRACKED
+            atol=1e-4,
+        )
+    )
+
+    # ============================ PART 3 : LIMB DELTA ORIENTATION ============================
+    # Try rotating the hand CCW 90deg to make sure that this rotation happens in the base frame (and not world/hand).
+    action = np.zeros(robot.action_dim)
+    action[robot.controller_action_idx["arm_right_hand"]] = [0, 0, 0, 0, 0, np.pi / 4]
+    robot.apply_action(action)
+    for _ in range(10):
+        s.step()
+
+    action = np.zeros(robot.action_dim)
+    action[robot.controller_action_idx["arm_right_hand"]] = [0, 0, 0, 0, 0, np.pi / 4]
+    robot.apply_action(action)
+    for _ in range(10):
+        s.step()
+
+    action = np.zeros(robot.action_dim)
+    action[robot.controller_action_idx["arm_right_hand"]] = [0, 0, 0, 0, np.pi / 4, 0]
+    robot.apply_action(action)
+    for _ in range(10):
+        s.step()
+
+    action = np.zeros(robot.action_dim)
+    action[robot.controller_action_idx["arm_right_hand"]] = [0, 0, 0, 0, np.pi / 4, 0]
+    robot.apply_action(action)
+    for _ in range(10):
+        s.step()
+
+    EXPECTED_HAND_ROTATION = p.getQuaternionFromEuler([-np.pi / 2, -np.pi / 2, 0])
+    assert np.all(np.isclose(robot._parts["right_hand"].get_orientation(), EXPECTED_HAND_ROTATION, atol=1e-4))
