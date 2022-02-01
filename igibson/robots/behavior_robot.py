@@ -92,6 +92,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         show_visual_head=False,
         use_tracked_body=True,
         control_freq=None,
+        action_type="continuous",
         action_normalize=False,
         proprio_obs="default",
         controller_config=None,
@@ -111,6 +112,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             Different robot models are loaded based on this value. True is recommended.
         :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
             simulator.import_object will automatically set the control frequency to be 1 / render_timestep by default.
+        :param action_type: str, one of {discrete, continuous} - what type of action space to use
         :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
             specified by this class. False is recommended to match the announced BEHAVIOR action space.
         :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
@@ -132,10 +134,12 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
 
+        assert action_type == "continuous", "Only continuous control is supported by BehaviorRobot currently."
+
         super(BehaviorRobot, self).__init__(
             name=name,
             control_freq=control_freq,
-            action_type="continuous",
+            action_type=action_type,
             action_normalize=action_normalize,
             proprio_obs=proprio_obs,
             reset_joint_pos=None,
@@ -204,16 +208,21 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         return body_ids
 
     def _setup_virtual_joints(self):
-        # Create a world-base joint.
         virtual_joints = []
+
+        # This joint is a bit weird - it's between the body and the body. We can't do world-body since that would make
+        # the actions in the world frame rather than the base frame. Instead we do this trick. The absolute value set
+        # for the body-body joint is interpreted by the body as the displacement it should make, in its own frame. As
+        # a result, a zero value for this joint means staying in place, and a non-zero action is a delta pose in the
+        # body frame.
         virtual_joints.extend(
             Virtual6DOFJoint(
-                joint_name="world__body",
-                parent_link=None,
+                joint_name="body__body",
+                parent_link=self.base_link,
                 child_link=self.base_link,
                 command_callback=self._parts["body"].command_position,
-                lower_limits=[None, None, BODY_HEIGHT_RANGE[0], None, None, None],
-                upper_limits=[None, None, BODY_HEIGHT_RANGE[1], None, None, None],
+                lower_limits=[None, None, None, None, None, None],
+                upper_limits=[None, None, None, None, None, None],
             ).get_joints()
         )
         virtual_joints.extend(
@@ -354,7 +363,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     @property
     def base_control_idx(self):
         joints = list(self.joints.keys())
-        return tuple(joints.index("world__body_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES)
+        return tuple(joints.index("body__body_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES)
 
     @property
     def camera_control_idx(self):
@@ -439,7 +448,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             "name": "JointController",
             "control_freq": self.control_freq,
             "control_limits": self.control_limits,
-            "use_delta_commands": True,
+            "use_delta_commands": False,
             "motor_type": "position",
             "compute_delta_in_quat_space": [(3, 4, 5)],
             "joint_idx": self.base_control_idx,
@@ -695,11 +704,15 @@ class BRBody(BRPart):
         Updates BRBody to new position and rotation, via constraints.
         :param action: numpy array of actions.
         """
-        self.new_pos = action[:3]
-        self.new_orn = p.getQuaternionFromEuler(action[3:6])
+        # Compute the target world position from the delta position.
+        delta_pos, delta_orn = action[:3], p.getQuaternionFromEuler(action[3:6])
+        target_pos, target_orn = p.multiplyTransforms(*self.get_position_orientation(), delta_pos, delta_orn)
 
-        self.new_pos = np.round(self.new_pos, 5).tolist()
-        self.new_orn = np.round(self.new_orn, 5).tolist()
+        # Clip the height.
+        target_pos = [target_pos[0], target_pos[1], np.clip(target_pos[2], BODY_HEIGHT_RANGE[0], BODY_HEIGHT_RANGE[1])]
+
+        self.new_pos = np.round(target_pos, 5).tolist()
+        self.new_orn = np.round(target_orn, 5).tolist()
 
         self.move_constraints(self.new_pos, self.new_orn)
 
