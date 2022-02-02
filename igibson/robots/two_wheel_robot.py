@@ -60,7 +60,7 @@ class TwoWheelRobot(LocomotionRobot):
         self.action_list = action_list
 
         # Return this action space
-        return gym.spaces.Box(len(self.action_list))
+        return gym.spaces.Discrete(len(self.action_list))
 
     def _get_proprioception_dict(self):
         dic = super()._get_proprioception_dict()
