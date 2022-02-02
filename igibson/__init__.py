@@ -5,6 +5,15 @@ import yaml
 
 __version__ = "2.0.5"
 
+__logo__ = """
+ _   _____  _  _ 
+(_) / ____|(_)| |
+ _ | |  __  _ | |__   ___   ___   _ __
+| || | |_ || || '_ \ / __| / _ \ | '_ \ 
+| || |__| || || |_) |\__ \| (_) || | | |
+|_| \_____||_||_.__/ |___/ \___/ |_| |_|
+"""
+
 logging.getLogger().setLevel(logging.INFO)
 
 with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "global_config.yaml")) as f:
@@ -63,6 +72,7 @@ if not os.path.isabs(key_path):
     key_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), key_path)
 
 logging.info("Importing iGibson (igibson module)")
+print(__logo__)
 logging.info("Assets path: {}".format(assets_path))
 logging.info("Gibson Dataset path: {}".format(g_dataset_path))
 logging.info("iG Dataset path: {}".format(ig_dataset_path))
