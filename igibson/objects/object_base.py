@@ -126,6 +126,16 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         assert len(self.get_body_ids()) == 1, "Base implementation only works with single-body objects."
         p.resetBasePositionAndOrientation(self.get_body_ids()[0], pos, orn)
 
+    def get_base_link_position_orientation(self):
+        """Get object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        assert len(self.get_body_ids()) == 1, "Base implementation only works with single-body objects."
+        dynamics_info = p.getDynamicsInfo(self.get_body_ids()[0], -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[0])
+        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        return np.array(base_link_position), np.array(base_link_orientation)
+
     def set_base_link_position_orientation(self, pos, orn):
         """Set object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
         dynamics_info = p.getDynamicsInfo(self.get_body_ids()[0], -1)

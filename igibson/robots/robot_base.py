@@ -84,6 +84,7 @@ class BaseRobot(StatefulObject):
             None defaults to the base link name used in @model_file
         :param scale: int, scaling factor for model (default is 1)
         :param self_collision: bool, whether to enable self collision
+        :param **kwargs: see StatefulObject
         """
         if type(name) == dict:
             raise ValueError(
@@ -528,6 +529,20 @@ class BaseRobot(StatefulObject):
         for joint, joint_pos in zip(self._joints.values(), joint_positions):
             joint.reset_state(pos=joint_pos, vel=0.0)
 
+    def set_joint_states(self, joint_states):
+        """Set this robot's joint states in the format of Dict[String: (q, q_dot)]]"""
+        for joint_name, joint in self._joints.items():
+            joint_position, joint_velocity = joint_states[joint_name]
+            joint.reset_state(pos=joint_position, vel=joint_velocity)
+
+    def get_joint_states(self):
+        """Get this robot's joint states in the format of Dict[String: (q, q_dot)]]"""
+        joint_states = {}
+        for joint_name, joint in self._joints.items():
+            joint_position, joint_velocity, _ = joint.get_state()
+            joint_states[joint_name] = (joint_position, joint_velocity)
+        return joint_states
+
     def get_linear_velocity(self):
         """
         Get linear velocity of this robot (velocity associated with base link)
@@ -553,6 +568,22 @@ class BaseRobot(StatefulObject):
         """
         p.resetBasePositionAndOrientation(self.base_link.body_id, pos, quat)
         clear_cached_states(self)
+
+    def set_base_link_position_orientation(self, pos, orn):
+        """Set object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        dynamics_info = p.getDynamicsInfo(self.base_link.body_id, -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
+        self.set_position_orientation(pos, orn)
+
+    def get_base_link_position_orientation(self):
+        """Get object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        dynamics_info = p.getDynamicsInfo(self.base_link.body_id, -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.getBasePositionAndOrientation(self.base_link.body_id)
+        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        return np.array(base_link_position), np.array(base_link_orientation)
 
     def get_control_dict(self):
         """
@@ -582,16 +613,16 @@ class BaseRobot(StatefulObject):
     def dump_config(self):
         """Dump robot config"""
         return {
+            "name": self.name,
             "control_freq": self.control_freq,
             "action_type": self.action_type,
             "action_normalize": self.action_normalize,
             "proprio_obs": self.proprio_obs,
+            "reset_joint_pos": self.reset_joint_pos,
             "controller_config": self.controller_config,
             "base_name": self.base_name,
             "scale": self.scale,
             "self_collision": self.self_collision,
-            "class_id": self.class_id,
-            "rendering_params": self._rendering_params,
         }
 
     def dump_state(self):
@@ -1383,7 +1414,16 @@ class VirtualJoint(RobotJoint):
     Such a joint can also be used as a way of controlling an arbitrary non-joint mechanism on the robot.
     """
 
-    def __init__(self, joint_name, joint_type, get_pos_callback, set_pos_callback, lower_limit=None, upper_limit=None):
+    def __init__(
+        self,
+        joint_name,
+        joint_type,
+        get_pos_callback,
+        set_pos_callback,
+        reset_pos_callback,
+        lower_limit=None,
+        upper_limit=None,
+    ):
         self._joint_name = joint_name
 
         assert joint_type in (p.JOINT_REVOLUTE, p.JOINT_PRISMATIC)
@@ -1391,6 +1431,7 @@ class VirtualJoint(RobotJoint):
 
         self._get_pos_callback = get_pos_callback
         self._set_pos_callback = set_pos_callback
+        self._reset_pos_callback = reset_pos_callback
 
         self._lower_limit = lower_limit if lower_limit is not None else 0
         self._upper_limit = upper_limit if upper_limit is not None else -1
@@ -1447,7 +1488,9 @@ class VirtualJoint(RobotJoint):
         raise NotImplementedError("This feature is not available for virtual joints.")
 
     def reset_state(self, pos, vel):
-        raise NotImplementedError("This feature is not implemented yet for virtual joints.")
+        # VirtualJoint doesn't support resetting joint velocity yet
+        del vel
+        self._reset_pos_callback(pos)
 
     def __str__(self):
         return "Virtual Joint name: {}".format(self.joint_name)
@@ -1463,11 +1506,21 @@ class Virtual6DOFJoint(object):
 
     COMPONENT_SUFFIXES = ["x", "y", "z", "rx", "ry", "rz"]
 
-    def __init__(self, joint_name, parent_link, child_link, command_callback, lower_limits=None, upper_limits=None):
+    def __init__(
+        self,
+        joint_name,
+        parent_link,
+        child_link,
+        command_callback,
+        reset_callback,
+        lower_limits=None,
+        upper_limits=None,
+    ):
         self.joint_name = joint_name
         self.parent_link = parent_link
         self.child_link = child_link
         self._command_callback = command_callback
+        self._reset_callback = reset_callback
 
         self._joints = [
             VirtualJoint(
@@ -1475,6 +1528,7 @@ class Virtual6DOFJoint(object):
                 joint_type=p.JOINT_PRISMATIC if i < 3 else p.JOINT_REVOLUTE,
                 get_pos_callback=lambda dof=i: (self.get_state()[dof], None, None),
                 set_pos_callback=lambda pos, dof=i: self.set_pos(dof, pos),
+                reset_pos_callback=lambda pos, dof=i: self.reset_pos(dof, pos),
                 lower_limit=lower_limits[i] if lower_limits is not None else None,
                 upper_limit=upper_limits[i] if upper_limits is not None else None,
             )
@@ -1482,6 +1536,7 @@ class Virtual6DOFJoint(object):
         ]
 
         self._reset_stored_control()
+        self._reset_stored_reset()
 
     def get_state(self):
         pos, orn = self.child_link.get_position_orientation()
@@ -1504,5 +1559,16 @@ class Virtual6DOFJoint(object):
             self._command_callback(self._stored_control)
             self._reset_stored_control()
 
+    def reset_pos(self, dof, val):
+        """Calls the reset callback with values for all 6 DOF once the setter has been called for each of them."""
+        self._stored_reset[dof] = val
+
+        if all(reset_val is not None for reset_val in self._stored_reset):
+            self._reset_callback(self._stored_reset)
+            self._reset_stored_reset()
+
     def _reset_stored_control(self):
         self._stored_control = [None] * len(self._joints)
+
+    def _reset_stored_reset(self):
+        self._stored_reset = [None] * len(self._joints)
