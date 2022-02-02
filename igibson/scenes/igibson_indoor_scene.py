@@ -27,6 +27,7 @@ from igibson.utils.assets_utils import (
     get_ig_model_path,
     get_ig_scene_path,
 )
+from igibson.utils.semantics_utils import ROOM_NAME_TO_ROOM_ID
 from igibson.utils.utils import NumpyEncoder, restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
@@ -443,9 +444,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         img_ins = np.array(img_ins.resize((self.seg_map_size, self.seg_map_size), Image.NEAREST))
         img_sem = np.array(img_sem.resize((self.seg_map_size, self.seg_map_size), Image.NEAREST))
 
-        room_categories = os.path.join(igibson.ig_dataset_path, "metadata", "room_categories.txt")
-        with open(room_categories, "r") as fp:
-            room_cats = [line.rstrip() for line in fp.readlines()]
+        room_cats = list(ROOM_NAME_TO_ROOM_ID.keys())
 
         sem_id_to_ins_id = {}
         unique_ins_ids = np.unique(img_ins)
@@ -466,7 +465,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             sem_name = room_cats[sem_id - 1]
             room_sem_name_to_sem_id[sem_name] = sem_id
             for i, ins_id in enumerate(ins_ids):
-                # valid class start from 1
+                # valid room class starts from 1
                 ins_name = "{}_{}".format(sem_name, i)
                 room_ins_name_to_ins_id[ins_name] = ins_id
                 if sem_name not in room_sem_name_to_ins_name:
