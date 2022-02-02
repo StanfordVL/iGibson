@@ -83,25 +83,25 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     four parts: an elliptical body, two floating hands, and a floating and collisionless head.
     """
 
+    DEFAULT_RENDERING_PARAMS = {
+        "use_pbr": False,
+        "use_pbr_mapping": False,
+        "shadow_caster": True,
+    }
+
     def __init__(
         self,
-        name=None,
         hands=("left", "right"),
         use_ghost_hands=True,
         normal_color=True,
         show_visual_head=False,
         use_tracked_body=True,
-        control_freq=None,
-        action_type="continuous",
-        action_normalize=False,
-        proprio_obs="default",
-        controller_config=None,
-        self_collision=True,
+        reset_joint_pos=None,
+        base_name="body",
         grasping_mode="assisted",
         **kwargs
     ):
         """
-        :param name: None or str, name of the robot object
         :param hands: list containing left, right or no hands
         :param use_ghost_hands: Whether ghost hands (e.g. red, collisionless hands indicating where the user is trying
             to move the hand when the current and requested positions differ by more than a threshold) should be shown.
@@ -110,23 +110,22 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         :param show_visual_head: whether to render a head for the BehaviorRobot. The head does not have collisions.
         :param use_tracked_body: whether the robot is intended for use with a VR kit that has a body tracker or not.
             Different robot models are loaded based on this value. True is recommended.
-        :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
-            simulator.import_object will automatically set the control frequency to be 1 / render_timestep by default.
-        :param action_type: str, one of {discrete, continuous} - what type of action space to use
-        :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
-            specified by this class. False is recommended to match the announced BEHAVIOR action space.
-        :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
-            observations. If str, should be exactly "default" -- this results in the default proprioception observations
-            being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
-        :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
-            configurations for this robot. This will override any default values specified by this class.
-        :param self_collision: bool, whether to enable self collision
-        :param grasping_mode: None or str, One of {"physical", "assisted", "sticky"}. Assisted is recommended.
+        :param reset_joint_pos: None or str or Array[float], if specified, should be the joint positions that the robot
+            should be set to during a reset. If str, should be one of {tuck, untuck}, corresponds to default
+            configurations for un/tucked modes. If None (default), self.default_joint_pos (untuck mode) will be used
+            instead.
+        :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
+            this should correspond to one of the link names found in this robot's corresponding URDF / MJCF file.
+            None defaults to the base link name used in @model_file
+        :param grasping_mode: None or str, One of {"physical", "assisted", "sticky"}.
             If "physical", no assistive grasping will be applied (relies on contact friction + finger force).
             If "assisted", will magnetize any object touching and within the gripper's fingers.
             If "sticky", will magnetize any object touching the gripper's fingers.
-        :param kwargs: Arguments like class ID and rendering params to pass into each part to be loaded into renderer.
+        :param **kwargs: see ManipulationRobot, LocomotionRobot, ActiveCameraRobot
         """
+        assert reset_joint_pos is None, "BehaviorRobot doesn't support hand-specified reset_joint_pos"
+        assert base_name == "body", "BehaviorRobot needs the base_name to be 'body'"
+
         # Basic parameters
         self.hands = hands
         self.use_tracked_body = use_tracked_body
@@ -134,32 +133,20 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
 
-        assert action_type == "continuous", "Only continuous control is supported by BehaviorRobot currently."
-
         super(BehaviorRobot, self).__init__(
-            name=name,
-            control_freq=control_freq,
-            action_type=action_type,
-            action_normalize=action_normalize,
-            proprio_obs=proprio_obs,
-            reset_joint_pos=None,
-            controller_config=controller_config,
-            base_name="body",
-            self_collision=self_collision,
-            grasping_mode=grasping_mode,
-            **kwargs
+            reset_joint_pos=reset_joint_pos, base_name=base_name, grasping_mode=grasping_mode, **kwargs
         )
 
         # Set up body parts
         self._parts = dict()
 
         if "left" in self.hands:
-            self._parts["left_hand"] = BRHand(self, hand="left", **kwargs)
+            self._parts["left_hand"] = BRHand(self, hand="left")
         if "right" in self.hands:
-            self._parts["right_hand"] = BRHand(self, hand="right", **kwargs)
+            self._parts["right_hand"] = BRHand(self, hand="right")
 
-        self._parts["body"] = BRBody(self, **kwargs)
-        self._parts["eye"] = BREye(self, **kwargs)
+        self._parts["body"] = BRBody(self)
+        self._parts["eye"] = BREye(self)
 
     @property
     def model_name(self):
@@ -221,6 +208,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 parent_link=self.base_link,
                 child_link=self.base_link,
                 command_callback=self._parts["body"].command_position,
+                reset_callback=self._parts["body"].reset_position,
                 lower_limits=[None, None, None, None, None, None],
                 upper_limits=[None, None, None, None, None, None],
             ).get_joints()
@@ -231,6 +219,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 parent_link=self.links["neck"],
                 child_link=self.links["eyes"],
                 command_callback=self._parts["eye"].command_position,
+                reset_callback=self._parts["eye"].command_position,  # reset and command are the same for eye
                 lower_limits=[-HEAD_DISTANCE_THRESHOLD] * 3 + [None] * 3,
                 upper_limits=[HEAD_DISTANCE_THRESHOLD] * 3 + [None] * 3,
             ).get_joints(),
@@ -243,6 +232,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                     parent_link=self.links["%s_shoulder" % arm_name],
                     child_link=arm_link,
                     command_callback=self._parts[arm_name].command_position,
+                    reset_callback=self._parts[arm_name].reset_position,
                     lower_limits=[-HAND_DISTANCE_THRESHOLD] * 3 + [None] * 3,
                     upper_limits=[HAND_DISTANCE_THRESHOLD] * 3 + [None] * 3,
                 ).get_joints(),
@@ -253,6 +243,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                     joint_type=p.JOINT_PRISMATIC,
                     get_pos_callback=lambda: (0, None, None),
                     set_pos_callback=self._parts[arm_name].command_reset,
+                    reset_pos_callback=lambda _: None,  # don't need to reset joint for the reset button
                     lower_limit=0,
                     upper_limit=1,
                 )
@@ -296,7 +287,6 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         """Dump robot config"""
         parent_info = super(BehaviorRobot, self).dump_config()
         this_info = {
-            "name": self.name,
             "hands": self.hands,
             "use_ghost_hands": self.use_ghost_hands,
             "normal_color": self.normal_color,
@@ -353,9 +343,11 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     def arm_control_idx(self):
         joints = list(self.joints.keys())
         return {
-            arm: tuple(
-                joints.index("%s_shoulder__%s_%s" % (arm, arm, component))
-                for component in Virtual6DOFJoint.COMPONENT_SUFFIXES
+            arm: np.array(
+                [
+                    joints.index("%s_shoulder__%s_%s" % (arm, arm, component))
+                    for component in Virtual6DOFJoint.COMPONENT_SUFFIXES
+                ]
             )
             for arm in self.arm_names
         }
@@ -363,23 +355,29 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     @property
     def base_control_idx(self):
         joints = list(self.joints.keys())
-        return tuple(joints.index("body__body_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES)
+        return np.array(
+            [joints.index("body__body_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES]
+        )
 
     @property
     def camera_control_idx(self):
         joints = list(self.joints.keys())
-        return tuple(joints.index("neck__camera_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES)
+        return np.array(
+            [joints.index("neck__camera_%s" % (component)) for component in Virtual6DOFJoint.COMPONENT_SUFFIXES]
+        )
 
     @property
     def reset_control_idx(self):
         joints = list(self.joints.keys())
-        return {arm: [joints.index("reset_%s" % arm)] for arm in self.arm_names}
+        return {arm: np.array([joints.index("reset_%s" % arm)]) for arm in self.arm_names}
 
     @property
     def gripper_control_idx(self):
-        # Get the indices of all of the joints for each arm.
         joints = list(self.joints.values())
-        return {arm: [joints.index(joint) for joint in arm_joints] for arm, arm_joints in self.finger_joints.items()}
+        return {
+            arm: np.array([joints.index(joint) for joint in finger_joints])
+            for arm, finger_joints in self.finger_joints.items()
+        }
 
     @property
     def control_limits(self):
@@ -522,7 +520,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     @property
     def default_joint_pos(self):
-        return np.zeros(self.n_joints)  # TODO: Is this really necessary?
+        # NOT actually being used for reset, because the reset function is overwritten
+        return None
 
     def _create_discrete_action_space(self):
         raise ValueError("BehaviorRobot does not support discrete actions!")
@@ -563,25 +562,11 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 class BRPart(with_metaclass(ABCMeta, object)):
     """This is the interface that all BehaviorRobot parts must implement."""
 
-    DEFAULT_RENDERING_PARAMS = {
-        "use_pbr": True,
-        "use_pbr_mapping": True,
-        "shadow_caster": True,
-    }
-
-    def __init__(self, class_id=SemanticClass.ROBOTS, rendering_params=None):
+    def __init__(self):
         """
         Create an object instance with the minimum information of class ID and rendering parameters.
-
-        @param class_id: What class ID the object should be assigned in semantic segmentation rendering mode.
-        @param rendering_params: Any keyword arguments to be passed into simulator.load_object_into_renderer(...).
         """
-        self.states = {}
-        self.class_id = class_id
         self.renderer_instances = []
-        self._rendering_params = dict(self.DEFAULT_RENDERING_PARAMS)
-        if rendering_params is not None:
-            self._rendering_params.update(rendering_params)
 
         self._loaded = False
         self.body_id = None
@@ -635,12 +620,7 @@ class BRBody(BRPart):
     A simple ellipsoid representing the robot's body.
     """
 
-    DEFAULT_RENDERING_PARAMS = {
-        "use_pbr": False,
-        "use_pbr_mapping": False,
-    }
-
-    def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
+    def __init__(self, parent, **kwargs):
         # Set up class
         self.parent = parent
         self.name = "BRBody_{}".format(self.parent.name)
@@ -654,7 +634,7 @@ class BRBody(BRPart):
         body_path = "normal_color" if self.parent.normal_color else "alternative_color"
         body_path_suffix = "vr_body.urdf" if not self.parent.use_tracked_body else "vr_body_tracker.urdf"
         self.vr_body_fpath = os.path.join(assets_path, "models", "vr_agent", "vr_body", body_path, body_path_suffix)
-        super(BRBody, self).__init__(class_id=class_id, **kwargs)
+        super(BRBody, self).__init__(**kwargs)
 
     def _load(self, simulator):
         """
@@ -668,7 +648,9 @@ class BRBody(BRPart):
         p.changeDynamics(self.body_id, 0, mass=self.mass)
         p.changeDynamics(self.body_id, -1, mass=1e-9)
 
-        simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
+        simulator.load_object_in_renderer(
+            self.parent, self.body_id, self.parent.class_id, **self.parent._rendering_params
+        )
 
         self.movement_cid = p.createConstraint(
             self.body_id,
@@ -716,6 +698,28 @@ class BRBody(BRPart):
 
         self.move_constraints(self.new_pos, self.new_orn)
 
+    def reset_position(self, reset_val):
+        """
+        Reset BRBody to new position and rotation, via teleportation.
+        :param reset_val: numpy array of joint values to reset
+        """
+        # Compute the target world position from the delta position.
+        delta_pos, delta_orn = reset_val[:3], p.getQuaternionFromEuler(reset_val[3:6])
+        target_pos, target_orn = p.multiplyTransforms(*self.get_position_orientation(), delta_pos, delta_orn)
+
+        # Clip the height.
+        target_pos = [target_pos[0], target_pos[1], np.clip(target_pos[2], BODY_HEIGHT_RANGE[0], BODY_HEIGHT_RANGE[1])]
+
+        self.new_pos = np.round(self.new_pos, 5).tolist()
+        self.new_orn = np.round(self.new_orn, 5).tolist()
+
+        self.set_position_orientation(self.new_pos, self.new_orn)
+
+    def set_position_orientation(self, pos, orn):
+        super(BRBody, self).set_position_orientation(pos, orn)
+        self.new_pos = pos
+        self.new_orn = orn
+
     def command_reset(self, val):
         if val > 0.5:  # The unnormalized action space for this button is 0 to 1. This thresholds that space into half.
             self.set_position_orientation(self.new_pos, self.new_orn)
@@ -726,12 +730,10 @@ class BRHand(BRPart):
     Represents the human hand used for VR programs and robotics applications.
     """
 
-    DEFAULT_RENDERING_PARAMS = {
-        "use_pbr": False,
-        "use_pbr_mapping": False,
-    }
+    def __init__(self, parent, hand="right"):
+        if hand not in ["left", "right"]:
+            raise ValueError("ERROR: BRHand can only accept left or right as a hand argument!")
 
-    def __init__(self, parent, hand="right", class_id=SemanticClass.ROBOTS, **kwargs):
         hand_path = "normal_color" if parent.normal_color else "alternative_color"
         self.vr_hand_folder = os.path.join(assets_path, "models", "vr_agent", "vr_hand", hand_path)
         final_suffix = "vr_hand_{}.urdf".format(hand)
@@ -748,6 +750,8 @@ class BRHand(BRPart):
         self.model = self.name
         self.category = "agent"
 
+        super(BRHand, self).__init__()
+
         # Keeps track of previous ghost hand hidden state
         self.prev_ghost_hand_hidden_state = False
         if self.parent.use_ghost_hands:
@@ -757,19 +761,17 @@ class BRHand(BRPart):
                     assets_path, "models", "vr_agent", "vr_hand", "ghost_hand_{}.obj".format(self.hand)
                 ),
                 scale=[0.001] * 3,
-                class_id=class_id,
+                class_id=self.parent.class_id,
             )
             self.ghost_hand.category = "agent"
-
-        if self.hand not in ["left", "right"]:
-            raise ValueError("ERROR: BRHand can only accept left or right as a hand argument!")
-        super(BRHand, self).__init__(class_id=class_id, **kwargs)
 
     def _load(self, simulator):
         self.body_id = p.loadURDF(self.fpath, flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
         self.mass = p.getDynamicsInfo(self.body_id, -1)[0]
 
-        simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
+        simulator.load_object_in_renderer(
+            self.parent, self.body_id, self.parent.class_id, **self.parent._rendering_params
+        )
 
         body_ids = [self.body_id]
         if self.parent.use_ghost_hands:
@@ -856,6 +858,30 @@ class BRHand(BRPart):
         if self.parent.use_ghost_hands:
             self.update_ghost_hands()
 
+    def reset_position(self, reset_val):
+        """
+        Reset BRHand to new position and rotation, via teleportation.
+        :param reset_val: numpy array of joint values to reset
+        """
+        # These are relative to the shoulder.
+        new_local_pos = reset_val[0:3]
+        new_local_orn = p.getQuaternionFromEuler(reset_val[3:6])
+
+        # Calculate new world position based on local transform and new body pose
+        body = self.parent._parts["body"]
+        shoulder = self.parent.links[self.hand + "_hand_shoulder"]
+        new_shoulder_pos, new_shoulder_orn = p.multiplyTransforms(
+            body.new_pos, body.new_orn, *shoulder.get_local_position_orientation()
+        )
+        self.new_pos, self.new_orn = p.multiplyTransforms(
+            new_shoulder_pos, new_shoulder_orn, new_local_pos, new_local_orn
+        )
+        # Round to avoid numerical inaccuracies
+        self.new_pos = np.round(self.new_pos, 5).tolist()
+        self.new_orn = np.round(self.new_orn, 5).tolist()
+
+        self.set_position_orientation(self.new_pos, self.new_orn)
+
     def command_reset(self, val):
         self.parent._parts["body"].command_reset(val)
         if val > 0.5:  # The unnormalized action space for this button is 0 to 1. This thresholds that space into half.
@@ -898,7 +924,7 @@ class BREye(BRPart):
     to move the camera and render the same thing that the VR users see.
     """
 
-    def __init__(self, parent, class_id=SemanticClass.ROBOTS, **kwargs):
+    def __init__(self, parent):
         # Set up class
         self.parent = parent
 
@@ -910,11 +936,11 @@ class BREye(BRPart):
         color_folder = "normal_color" if self.parent.normal_color else "alternative_color"
         self.head_visual_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", color_folder, "vr_head.obj")
         self.eye_path = os.path.join(assets_path, "models", "vr_agent", "vr_eye", "vr_eye.urdf")
-        super(BREye, self).__init__(class_id=class_id, **kwargs)
+        super(BREye, self).__init__()
 
         self.should_hide = True
         self.head_visual_marker = VisualMarker(
-            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3, class_id=class_id
+            visual_shape=p.GEOM_MESH, filename=self.head_visual_path, scale=[0.08] * 3, class_id=self.parent.class_id
         )
         self.neck_cid = None
 
@@ -926,7 +952,9 @@ class BREye(BRPart):
         self.mass = 1e-9
         p.changeDynamics(self.body_id, -1, self.mass)
 
-        simulator.load_object_in_renderer(self, self.body_id, self.class_id, **self._rendering_params)
+        simulator.load_object_in_renderer(
+            self.parent, self.body_id, self.parent.class_id, **self.parent._rendering_params
+        )
 
         body_ids = [self.body_id] + self.head_visual_marker.load(simulator)
 

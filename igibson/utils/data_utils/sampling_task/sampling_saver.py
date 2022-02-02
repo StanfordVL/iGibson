@@ -83,7 +83,7 @@ def main():
                 sim_obj_to_bddl_obj = {
                     value.name: {"object_scope": key} for key, value in env.task.object_scope.items()
                 }
-                env.scene.save(urdf_path, additional_attribs_by_name=sim_obj_to_bddl_obj)
+                env.scene.save(urdf_path, save_agent_pose_only=True, additional_attribs_by_name=sim_obj_to_bddl_obj)
                 logging.warning(("Saved:", urdf_path))
                 env.close()
                 embed()

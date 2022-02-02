@@ -20,50 +20,13 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     Reference: https://cvgl.stanford.edu/projects/jackrabbot/
     """
 
-    def __init__(
-        self,
-        name=None,
-        control_freq=None,
-        action_type="continuous",
-        action_normalize=True,
-        proprio_obs="default",
-        reset_joint_pos=None,
-        controller_config=None,
-        base_name=None,
-        scale=1.0,
-        self_collision=True,
-        class_id=None,
-        rendering_params=None,
-        grasping_mode="physical",
-    ):
+    def __init__(self, reset_joint_pos=None, **kwargs):
         """
-        :param name: None or str, name of the robot object
-        :param control_freq: float, control frequency (in Hz) at which to control the robot. If set to be None,
-            simulator.import_object will automatically set the control frequency to be 1 / render_timestep by default.
-        :param action_type: str, one of {discrete, continuous} - what type of action space to use
-        :param action_normalize: bool, whether to normalize inputted actions. This will override any default values
-         specified by this class.
-        :param proprio_obs: str or tuple of str, proprioception observation key(s) to use for generating proprioceptive
-            observations. If str, should be exactly "default" -- this results in the default proprioception observations
-            being used, as defined by self.default_proprio_obs. See self._get_proprioception_dict for valid key choices
         :param reset_joint_pos: None or str or Array[float], if specified, should be the joint positions that the robot
             should be set to during a reset. If str, should be one of {tuck, untuck}, corresponds to default
             configurations for un/tucked modes. If None (default), self.default_joint_pos (untuck mode) will be used
             instead.
-        :param controller_config: None or Dict[str, ...], nested dictionary mapping controller name(s) to specific controller
-            configurations for this robot. This will override any default values specified by this class.
-        :param base_name: None or str, robot link name that will represent the entire robot's frame of reference. If not None,
-            this should correspond to one of the link names found in this robot's corresponding URDF / MJCF file.
-            None defaults to the first link name used in @model_file
-        :param scale: int, scaling factor for model (default is 1)
-        :param self_collision: bool, whether to enable self collision
-        :param class_id: SemanticClass, semantic class this robot belongs to. Default is SemanticClass.ROBOTS.
-        :param rendering_params: None or Dict[str, Any], If not None, should be keyword-mapped rendering options to set.
-            See DEFAULT_RENDERING_PARAMS for the values passed by default.
-        :param grasping_mode: None or str, One of {"physical", "assisted", "sticky"}.
-            If "physical", no assistive grasping will be applied (relies on contact friction + finger force).
-            If "assisted", will magnetize any object touching and within the gripper's fingers.
-            If "sticky", will magnetize any object touching the gripper's fingers.
+        :param **kwargs: see ManipulationRobot, TwoWheelRobot
         """
         # Parse reset joint pos if specifying special string
         if isinstance(reset_joint_pos, str):
@@ -75,21 +38,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
             )
 
         # Run super init
-        super().__init__(
-            name=name,
-            control_freq=control_freq,
-            action_type=action_type,
-            action_normalize=action_normalize,
-            proprio_obs=proprio_obs,
-            reset_joint_pos=reset_joint_pos,
-            controller_config=controller_config,
-            base_name=base_name,
-            scale=scale,
-            self_collision=self_collision,
-            class_id=class_id,
-            rendering_params=rendering_params,
-            grasping_mode=grasping_mode,
-        )
+        super().__init__(reset_joint_pos=reset_joint_pos, **kwargs)
 
     @property
     def model_name(self):
