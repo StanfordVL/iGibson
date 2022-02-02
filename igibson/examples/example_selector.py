@@ -4,6 +4,7 @@ import signal
 import sys
 from multiprocessing import Process
 
+import igibson
 import igibson.examples as examples
 from igibson.utils.utils import let_user_pick
 
@@ -39,17 +40,10 @@ def main():
             examples_list += [kk.name[17:]]
 
     selected_demo = 0
-    logo = (
-        " _   _____  _  _" + "\n" + "(_) / ____|(_)| |" + "\n"
-        " _ | |  __  _ | |__   ___   ___   _ __" + "\n"
-        "| || | |_ || || '_ \ / __| / _ \ | '_ \\" + "\n"
-        "| || |__| || || |_) |\__ \| (_) || | | |" + "\n"
-        "|_| \_____||_||_.__/ |___/ \___/ |_| |_|" + "\n"
-    )
     excluded_examples = ["_ui", "vr_"]
     test_mode = False
     while selected_demo == 0 or selected_demo == 3:
-        print(logo)
+        print(igibson.__logo__)
         print(
             "Select a demo/example, 'help' for information about a specific demo, 'all' to run all demos, or 'test' "
             "to toggle on the test-only mode:"
@@ -79,7 +73,7 @@ def main():
                 if not any(excluded_example in examples_list[selected_demo] for excluded_example in excluded_examples):
                     print("*" * 80)
                     print("*" * 80)
-                    print(logo)
+                    print(igibson.__logo__)
                     print("*" * 80)
                     print("*" * 80)
                     signal.alarm(TIMEOUT)
