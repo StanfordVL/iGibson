@@ -272,7 +272,7 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
             state["bump"] = self.sensors["bump"].get_obs(self)
-        if "proprioception" in self.sensors:
+        if "proprioception" in self.output:
             state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
