@@ -1300,7 +1300,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if category == "multiplexer":
                 self.objects_by_name[object_name].set_selection(int(link.attrib["current_index"]))
 
-            if category in ["grouper", "multiplexer"]:
+            if category in ["grouper", "multiplexer", "agent_pose"]:
                 continue
 
             object_states[object_name]["bbox_center_pose"] = None
