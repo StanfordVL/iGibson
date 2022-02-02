@@ -858,13 +858,21 @@ class URDFObject(StatefulObject):
 
             body_ids.append(body_id)
 
-        self.load_supporting_surfaces()
+        return body_ids
 
+    def load(self, simulator):
+        body_ids = super(URDFObject, self).load(simulator)
+        self.load_supporting_surfaces()
         return body_ids
 
     def set_bbox_center_position_orientation(self, pos, orn):
         rotated_offset = p.multiplyTransforms([0, 0, 0], orn, self.scaled_bbxc_in_blf, [0, 0, 0, 1])[0]
         self.set_base_link_position_orientation(pos + rotated_offset, orn)
+
+    def get_position_orientation(self):
+        # TODO: replace this with super() call once URDFObject no longer works with multiple body ids
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[self.main_body])
+        return np.array(pos), np.array(orn)
 
     def set_position_orientation(self, pos, orn):
         # TODO: replace this with super() call once URDFObject no longer works with multiple body ids
@@ -899,6 +907,15 @@ class URDFObject(StatefulObject):
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
+
+    def get_base_link_position_orientation(self):
+        """Get object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        dynamics_info = p.getDynamicsInfo(self.get_body_ids()[self.main_body], -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[self.main_body])
+        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        return np.array(base_link_position), np.array(base_link_orientation)
 
     def add_meta_links(self, meta_links):
         """

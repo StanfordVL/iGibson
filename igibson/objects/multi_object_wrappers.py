@@ -253,6 +253,9 @@ class ObjectMultiplexer(BaseObject):
     def set_base_link_position_orientation(self, pos, orn):
         return self.current_selection().set_base_link_position_orientation(pos, orn)
 
+    def get_base_link_position_orientation(self):
+        return self.current_selection().get_base_link_position_orientation()
+
     def dump_state(self):
         return {
             "current_index": self.current_index,

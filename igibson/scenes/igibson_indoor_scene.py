@@ -16,7 +16,6 @@ from igibson.external.pybullet_tools.utils import euler_from_quat, get_joint_nam
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots import REGISTERED_ROBOTS
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.utils.assets_utils import (
@@ -176,7 +175,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.link_collision_tolerance = link_collision_tolerance
 
         # Agent placeholder
-        self.agent = {}
+        self.agent_poses = {}
 
         # ObjectMultiplexer
         self.object_multiplexers = defaultdict(dict)
@@ -211,6 +210,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 self.object_multiplexers[link.attrib["multiplexer"]]["grouper"] = object_name
                 continue
 
+            if category == "agent_pose":
+                # Simply store the agent pose. The robot will be created outside and its initial pose will be set accordingly.
+                connecting_joint = [
+                    joint
+                    for joint in self.scene_tree.findall("joint")
+                    if joint.find("child").attrib["link"] == link.attrib["name"]
+                ][0]
+                pos = np.array([float(val) for val in connecting_joint.find("origin").attrib["xyz"].split(" ")])
+                euler = np.array([float(val) for val in connecting_joint.find("origin").attrib["rpy"].split(" ")])
+                self.agent_poses[link.attrib["name"]] = (pos, np.array(p.getQuaternionFromEuler(euler)))
+                continue
+
             if category == "agent" and not self.include_robots:
                 continue
 
@@ -220,7 +231,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if category == "agent":
                 robot_config = json.loads(link.attrib["robot_config"]) if "robot_config" in link.attrib else {}
                 assert model in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(model)
-                obj = REGISTERED_ROBOTS[model](name=object_name, **robot_config)
+                assert (
+                    object_name == robot_config["name"]
+                ), "the robot name saved in link doesn't match the robot name stored in the robot config"
+                obj = REGISTERED_ROBOTS[model](**robot_config)
 
             # Non-robot object
             else:
@@ -832,7 +846,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if not obj.loaded:
             return
 
-        # If the object state is empty (which happens if an object is added after the scene URDF is parsed), skip
+        # If the object state is empty (which happens if an object is manually added after the scene URDF is parsed), skip
         if not obj_kin_state:
             return
 
@@ -1077,9 +1091,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 ids.extend(self.objects_by_name[obj_name].get_body_ids())
         return ids
 
-    def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
+    def save_obj_or_multiplexer(self, obj, tree_root, save_agent_pose_only, additional_attribs_by_name):
         if not isinstance(obj, ObjectMultiplexer):
-            self.save_obj(obj, tree_root, additional_attribs_by_name)
+            self.save_obj(obj, tree_root, save_agent_pose_only, additional_attribs_by_name)
             return
 
         multiplexer_link = ET.SubElement(tree_root, "link")
@@ -1111,7 +1125,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                 additional_attribs_by_name[group_sub_obj.name][key] = additional_attribs_by_name[
                                     obj.name
                                 ][key]
-                    self.save_obj(group_sub_obj, tree_root, additional_attribs_by_name)
+                    self.save_obj(group_sub_obj, tree_root, save_agent_pose_only, additional_attribs_by_name)
             else:
                 # Store reference to multiplexer
                 if sub_obj.name not in additional_attribs_by_name:
@@ -1122,25 +1136,20 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     if obj.name in additional_attribs_by_name:
                         for key in additional_attribs_by_name[obj.name]:
                             additional_attribs_by_name[sub_obj.name][key] = additional_attribs_by_name[obj.name][key]
-                self.save_obj(sub_obj, tree_root, additional_attribs_by_name)
+                self.save_obj(sub_obj, tree_root, save_agent_pose_only, additional_attribs_by_name)
 
-    def save_obj(self, obj, tree_root, additional_attribs_by_name):
+    def save_obj(self, obj, tree_root, save_agent_pose_only, additional_attribs_by_name):
+        if save_agent_pose_only and obj.category == "agent":
+            # Save the agent pose and return
+            self.save_agent_pose(obj, tree_root)
+            return
+
         name = obj.name
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
-        body_ids = obj.get_body_ids()
-        main_body_id = body_ids[0] if len(body_ids) == 1 else body_ids[obj.main_body]
-
-        dynamics_info = p.getDynamicsInfo(main_body_id, -1)
-        inertial_pos = dynamics_info[3]
-        inertial_orn = dynamics_info[4]
-
-        # TODO: replace this with obj.get_position_orientation() once URDFObject no longer works with multiple body ids
-        pos, orn = p.getBasePositionAndOrientation(main_body_id)
-        pos, orn = np.array(pos), np.array(orn)
-        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
-        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        pos, orn = obj.get_position_orientation()
+        base_link_position, base_link_orientation = obj.get_base_link_position_orientation()
 
         # Convert to XYZ position for URDF
         euler = euler_from_quat(orn)
@@ -1233,6 +1242,31 @@ class InteractiveIndoorScene(StaticIndoorScene):
             for key in additional_attribs_by_name[name]:
                 link.attrib[key] = additional_attribs_by_name[name][key]
 
+    def save_agent_pose(self, obj, tree_root):
+        pos, orn = obj.get_position_orientation()
+        euler = euler_from_quat(orn)
+
+        xyz = " ".join([str(p) for p in pos])
+        rpy = " ".join([str(e) for e in euler])
+
+        name = obj.model_name
+        category = obj.category
+
+        link = ET.SubElement(tree_root, "link")
+        link.attrib = {
+            "name": name,
+            "category": "agent_pose",
+        }
+
+        new_joint = ET.SubElement(tree_root, "joint")
+        new_joint.attrib = {"name": "j_{}".format(name), "type": "floating"}
+        new_origin = ET.SubElement(new_joint, "origin")
+        new_origin.attrib = {"rpy": rpy, "xyz": xyz}
+        new_child = ET.SubElement(new_joint, "child")
+        new_child.attrib["link"] = name
+        new_parent = ET.SubElement(new_joint, "parent")
+        new_parent.attrib["link"] = "world"
+
     def restore(self, urdf_name=None, urdf_path=None, scene_tree=None, pybullet_filename=None, pybullet_state_id=None):
         """
         Restore a already-loaded scene with a given URDF file plus pybullet_filename or pybullet_state_id (optional)
@@ -1289,6 +1323,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         urdf_path=None,
         pybullet_filename=None,
         pybullet_save_state=False,
+        save_agent_pose_only=False,
         additional_attribs_by_name={},
     ):
         """
@@ -1298,6 +1333,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param urdf_path: full path of URDF file to save (with .urdf), assumes higher priority than urdf_name
         :param pybullet_filename: optional specification of which pybullet file to save to
         :param pybullet_save_state: whether to save to pybullet state
+        :param save_agent_pose_only: whether to only save the agent pose in the urdf, rather than the agent itself
         :param additional_attribs_by_name: additional attributes to be added to object link in the scene URDF
         """
         if urdf_path is None and urdf_name is not None:
@@ -1306,7 +1342,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         scene_tree = ET.parse(self.scene_file)
         tree_root = scene_tree.getroot()
         for name in self.objects_by_name:
-            self.save_obj_or_multiplexer(self.objects_by_name[name], tree_root, additional_attribs_by_name)
+            self.save_obj_or_multiplexer(
+                self.objects_by_name[name], tree_root, save_agent_pose_only, additional_attribs_by_name
+            )
 
         if urdf_path is not None:
             xmlstr = minidom.parseString(ET.tostring(tree_root).replace(b"\n", b"").replace(b"\t", b"")).toprettyxml()

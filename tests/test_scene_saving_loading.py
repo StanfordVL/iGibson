@@ -7,6 +7,7 @@ import igibson
 from igibson.object_states import *
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
+from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch import Fetch
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
@@ -21,6 +22,8 @@ CABINET_JOINT = {
 }
 FETCH_POS = np.array([0.5, -2.5, 0])
 FETCH_JOINT = np.array([1.0, 0.5])
+BROBOT_POS = np.array([0.0, 0.5, 0.5])
+BROBOT_JOINT = np.array([0.5, None])
 
 
 def test_saving():
@@ -28,7 +31,7 @@ def test_saving():
 
     scene = InteractiveIndoorScene(
         "Rs_int",
-        # load_object_categories=["breakfast_table", "bed"],
+        # load_object_categories=["bottom_cabinet", "pot_plant", "floor_lamp"],
     )
     s.import_scene(scene)
 
@@ -78,6 +81,13 @@ def test_saving():
     s.import_object(fetch)
     fetch.set_position(FETCH_POS)
     fetch.joints["head_tilt_joint"].reset_state(*FETCH_JOINT)
+
+    brobot = BehaviorRobot(name="agent_1")
+    s.import_object(brobot)
+    brobot.set_position(BROBOT_POS)
+
+    for direction in ["x", "y", "z", "rx", "ry", "rz"]:
+        brobot.joints["right_hand_shoulder__right_hand_{}".format(direction)].reset_state(*BROBOT_JOINT)
 
     # Save
     scene.save(urdf_path="changed_structure.urdf", pybullet_filename="changed_structure.bullet")
@@ -134,10 +144,16 @@ def test_loading_state_with_sliceable():
     assert scene.objects_by_name["pot_plant_1"].states[Soaked].get_value()
     assert scene.objects_by_name["floor_lamp_3"].states[ToggledOn].get_value()
     assert scene.objects_by_name["00_0_multiplexer"].states[Sliced].get_value()
-    assert np.array_equal(scene.objects_by_name["agent_0"].get_position(), FETCH_POS)
-    assert np.array_equal(
-        np.array(scene.objects_by_name["agent_0"].joints["head_tilt_joint"].get_state()[:2]), FETCH_JOINT
-    )
+    assert np.allclose(scene.objects_by_name["agent_0"].get_position(), FETCH_POS)
+    assert np.allclose(scene.objects_by_name["agent_0"].joints["head_tilt_joint"].get_state()[:2], FETCH_JOINT)
+    assert np.allclose(scene.objects_by_name["agent_1"].get_position(), BROBOT_POS)
+    for direction in ["x", "y", "z", "rx", "ry", "rz"]:
+        np.allclose(
+            scene.objects_by_name["agent_1"]
+            .joints["right_hand_shoulder__right_hand_{}".format(direction)]
+            .get_state()[0],
+            BROBOT_JOINT[0],
+        )
     s.disconnect()
 
 
@@ -158,10 +174,16 @@ def test_loading_structure_with_bullet_file():
     assert scene.objects_by_name["pot_plant_1"].states[Soaked].get_value()
     assert scene.objects_by_name["floor_lamp_3"].states[ToggledOn].get_value()
     assert scene.objects_by_name["00_0_multiplexer"].states[Sliced].get_value()
-    assert np.array_equal(scene.objects_by_name["agent_0"].get_position(), FETCH_POS)
-    assert np.array_equal(
-        np.array(scene.objects_by_name["agent_0"].joints["head_tilt_joint"].get_state()[:2]), FETCH_JOINT
-    )
+    assert np.allclose(scene.objects_by_name["agent_0"].get_position(), FETCH_POS)
+    assert np.allclose(scene.objects_by_name["agent_0"].joints["head_tilt_joint"].get_state()[:2], FETCH_JOINT)
+    assert np.allclose(scene.objects_by_name["agent_1"].get_position(), BROBOT_POS)
+    for direction in ["x", "y", "z", "rx", "ry", "rz"]:
+        np.allclose(
+            scene.objects_by_name["agent_1"]
+            .joints["right_hand_shoulder__right_hand_{}".format(direction)]
+            .get_state()[0],
+            BROBOT_JOINT[0],
+        )
     s.disconnect()
 
 
@@ -181,10 +203,17 @@ def test_loading_structure_without_bullet_file():
     assert scene.objects_by_name["pot_plant_1"].states[Soaked].get_value()
     assert scene.objects_by_name["floor_lamp_3"].states[ToggledOn].get_value()
     assert scene.objects_by_name["00_0_multiplexer"].states[Sliced].get_value()
-    assert np.array_equal(scene.objects_by_name["agent_0"].get_position(), FETCH_POS)
-    assert np.array_equal(
-        np.array(scene.objects_by_name["agent_0"].joints["head_tilt_joint"].get_state()[:2]), FETCH_JOINT
-    )
+    assert np.allclose(scene.objects_by_name["agent_0"].get_position(), FETCH_POS)
+    assert np.allclose(scene.objects_by_name["agent_0"].joints["head_tilt_joint"].get_state()[:2], FETCH_JOINT)
+    assert np.allclose(scene.objects_by_name["agent_1"].get_position(), BROBOT_POS)
+    for direction in ["x", "y", "z", "rx", "ry", "rz"]:
+        np.allclose(
+            scene.objects_by_name["agent_1"]
+            .joints["right_hand_shoulder__right_hand_{}".format(direction)]
+            .get_state()[0],
+            BROBOT_JOINT[0],
+        )
+
     s.disconnect()
 
 
