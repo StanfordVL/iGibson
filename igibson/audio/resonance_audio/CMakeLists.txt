@@ -39,15 +39,8 @@ endmacro(use_cxx11)
 project(ResonanceAudio)
 
 # Build options
-option(BUILD_RESONANCE_AUDIO_API "Build Resonance Audio API." OFF)
-option(BUILD_RESONANCE_AUDIO_TESTS "Build Resonance Audio Unit Tests" OFF)
-option(BUILD_UNITY_PLUGIN "Build Unity Resonance Audio Plugin" OFF)
-option(BUILD_IGIBSON_PLUGIN "Build iGibson Resonance Audio Plugin" OFF)
+option(BUILD_IGIBSON_PLUGIN "Build iGibson Resonance Audio Plugin" ON)
 option(BUILD_GEOMETRICAL_ACOUSTICS_TESTS "Build Resonance Audio's Geometrical Acoustics Tests" OFF)
-option(BUILD_WWISE_AUTHORING_PLUGIN "Build Resonance Audio WWise Authoring Plugin" OFF)
-option(BUILD_WWISE_SOUND_ENGINE_PLUGIN "Build Resonance Audio WWise Sound Engine Plugin." OFF)
-option(BUILD_FMOD_PLUGIN "Build FMOD Resonance Audio Plugin" OFF)
-option(BUILD_VST_MONITOR_PLUGIN "Build Resonance Audio VST Monitor Plugin" OFF)
 
 if (MSVC)
     configure_msvc_runtime()

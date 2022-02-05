@@ -65,7 +65,6 @@ velocity: 2.0
 output: [depth, audio]
 #task_obs, 
 extra_rgb: false
-audio_write: false
 
 # image
 # ASUS Xtion PRO LIVE

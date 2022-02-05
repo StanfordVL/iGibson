@@ -48,22 +48,28 @@ trav_map_erosion: 2
 should_open_all_doors: true
 
 # task
-task: point_nav_AVNav
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
 task_obs_dim: 4
 
 # robot
-robot: AVNavTurtlebot
-is_discrete: true
-#change to false
-velocity: 2.0
+robot:
+  name: AVNavTurtlebot
+  action_type: discrete
+  action_normalize: true
+  base_name: null
+  scale: 1.0
+  self_collision: false
+  rendering_params: null
+  controller_config:
+    base:
+      name: DifferentialDriveController
 
 # sensor spec
 output: [depth, audio, rgb]
 extra_rgb: true
-audio_write: true
+audio_fname: "ig_vid"
 
 # image
 fisheye: false
