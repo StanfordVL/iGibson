@@ -58,6 +58,7 @@ class AudioSystem(object):
         self.renderAmbisonics = renderAmbisonics
         self.reverb = renderReverbReflections
         self.occl_multiplier = occl_multiplier
+        self.occl_intensity = -1
 
         def getViewerOrientation():
             #from numpy-quaternion github
@@ -230,7 +231,8 @@ class AudioSystem(object):
                         if self.single_occl_hit_per_obj and hit_id not in self.alwaysCountCollisionIDs:
                             hit_objects.add(hit_id)
                     hit_num += 1
-                audio.SetSourceOcclusion(self.sourceToResonanceID[source], occl_hits*self.occl_multiplier)
+                self.occl_intensity = occl_hits*self.occl_multiplier
+                audio.SetSourceOcclusion(self.sourceToResonanceID[source], self.occl_intensity)
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, source_audio)
             else:
                 audio.ProcessSource(self.sourceToResonanceID[source], self.framesPerBuf, np.zeros(self.framesPerBuf, dtype=np.int16))

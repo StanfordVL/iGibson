@@ -14,50 +14,121 @@ from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
 from igibson.utils.mesh_util import lookat, mat2xyz, ortho, perspective, quat2rotmat, safemat2quat, xyz2mat, xyzw2wxyz
 from audio_system import AudioSystem
+import librosa
+import librosa.display
+
+N_FFT = 512
+librosa_FS = 22050
+freq_bins = np.arange(0, 1 + N_FFT / 2) * librosa_FS / N_FFT
 
 class FakeViewer:
     def __init__(self):
         self.px, self.py, self.pz = 0, 1, 0
         self.phi, self.theta = 0, 0
 
+
+def worldToPixel(xy, map_size, res=0.01):
+    px = int(xy[1] / res) + map_size // 2
+    py = -1 * int(xy[0] / res) + map_size // 2
+    return [px, py]
+
+def pixelToWorld(pxy, map_size, res=0.01):
+    y = (pxy[0] - map_size // 2) * res
+    x = -1 * (pxy[1] - map_size // 2) * res
+    return [x, y]
+
+def compute_stft(signal, signal_sr):
+    hop_length = 160
+    win_length = 400
+    signal_resampled = librosa.resample(signal, signal_sr, librosa_FS)
+    stft = np.abs(librosa.stft(signal_resampled, n_fft=N_FFT, hop_length=hop_length, win_length=win_length))
+    return stft
+    
+def plot_spectrogram(stft, fname="spectrogram.png"):
+    fig, ax = plt.subplots()
+    img = librosa.display.specshow(librosa.amplitude_to_db(stft,
+                                                       ref=np.max),
+                               y_axis='log', x_axis='time', ax=ax)
+    ax.set_title('Power spectrogram')
+    fig.colorbar(img, ax=ax, format="%+2.0f dB")
+    plt.savefig(fname)
+
+def stft_power(stft):
+    stft_db = librosa.amplitude_to_db(stft, ref=np.max)
+    #avg_power = np.sum(stft_db) / stft_db.shape[1]
+    #if avg_power == 0:
+    #    print(stft_db)
+    #S, _ = librosa.magphase(stft)
+    rms = librosa.feature.rms(S=stft_db, frame_length=512, hop_length=160)
+    avg_rms = np.sum(rms) / np.size(rms)
+    return avg_rms
+
+def img_mtx_to_overlay(overlay):
+    overlay_scaled = overlay.copy()
+    max_val = np.max(overlay[np.nonzero(overlay)])
+    min_val = np.min(overlay[np.nonzero(overlay)])
+    for i in range(overlay_scaled.shape[0]):
+        for j in range(overlay_scaled.shape[1]):
+            if overlay_scaled[i, j] != 0:
+                scaled_val = 255 * (overlay_scaled[i, j] - min_val) / (max_val - min_val)
+                overlay_scaled[i, j] = scaled_val
+
+    overlay_scaled = overlay_scaled.astype(np.uint8)
+    overlay_cmap = cv2.applyColorMap(overlay_scaled, cv2.COLORMAP_JET)
+    overlay_cmap = cv2.cvtColor(overlay_cmap, cv2.COLOR_RGB2RGBA)
+    for i in range(overlay.shape[0]):
+        for j in range(overlay.shape[1]):
+            if overlay[i, j] == 0:
+                overlay_cmap[i, j] = [0, 0, 0, 0]
+
+    return overlay_cmap
+
 def main():
-    scene_choices = [
-        "1pXnuDYAj8r",
-        #"1LXtFkjw3qL",
-        #"Ihlen_0_int",
-    ]
+    scene_choices = {
+        "Rs_int": "ig",
+        #"1LXtFkjw3qL: "mp3d"",
+        #"1pXnuDYAj8r: "mp3d"",
+        #"Ihlen_0_int": "mp3d",
+    }
     scene_trav_map_size = {
         "1pXnuDYAj8r": 4000,
-        #"1LXtFkjw3qL": 3000,
+        "1LXtFkjw3qL": 3600,
+        "Rs_int": 1000,
         #"Ihlen_0_int": 2000
     }
-    for scene_id in scene_choices:
+    for scene_id, scene_type in scene_choices.items():
         map_size = scene_trav_map_size[scene_id]
         settings = MeshRendererSettings(enable_shadow=False, msaa=False)
         s = Simulator(mode="headless", image_width=map_size, image_height=map_size, rendering_settings=settings)
-        scene = StaticIndoorScene(
-            scene_id, 
-            #trav_map_resolution = 0.1,
-        )
+
+        if scene_type == "ig":
+            scene = InteractiveIndoorScene(scene_id, texture_randomization=False, object_randomization=False, trav_map_resolution = 0.1,)
+            s.import_scene(scene)
+            acousticMesh = getIgAcousticMesh(s)
+            camera_pose = np.array([0, 0, -0.5])
+            view_direction = np.array([0, 0, 0.5])
+        else:
+            scene = StaticIndoorScene(scene_id,  trav_map_resolution = 0.1)
+            s.import_scene(scene)
+            acousticMesh = getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/{}/sem_map.png".format(scene_id))
+            camera_pose = np.array([0, 0, -1.0])
+            view_direction = np.array([0, 0, 1.0])
         
-        s.import_scene(scene)
         renderer = s.renderer
         print(scene.trav_map_original_size)
-
-        points = scene.get_points_grid(5)[0]
-
-        acousticMesh = getMatterportAcousticMesh(s, "/cvgl/group/Gibson/matterport3d-downsized/v2/{}/sem_map.png".format(scene_id))
+        trav_res = scene.trav_map_default_resolution
+        points = scene.get_points_grid(100)[0]
+        
+        
         fake_viewer = FakeViewer()
-        audioSystem = AudioSystem(s, fake_viewer, acousticMesh, is_Viewer=True)
+        audioSystem = AudioSystem(s, fake_viewer, acousticMesh, is_Viewer=True, renderReverbReflections=False, renderAmbisonics=True)
         s.attachAudioSystem(audioSystem)
 
-
         #s.step()
+        
         obj1 = cube.Cube(pos=points[0], dim=[0.1,0.1,0.01], visual_only=True, mass=0, color=[1,0,0,1])
-        obj2 = cube.Cube(pos=points[-1], dim=[0.1,0.1,0.01], visual_only=True, mass=0, color=[0,0,1,1])
         s.import_object(obj1)
-        s.import_object(obj2)
-        obj_id = obj1.get_body_id()
+        obj_id = obj1.get_body_ids()[0]
         
         # Attach wav file to imported cube obj
         audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
@@ -65,13 +136,10 @@ def main():
         audioSystem.setSourceRepeat(obj_id)
         s.step()
 
-        camera_pose = np.array([0, 0, -1.0])
-        view_direction = np.array([0, 0, 1.0])
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 1, 0])
         # cache original P and recover for robot cameras
         p_range = map_size / 200.0
         renderer.P = ortho(-p_range, p_range, -p_range, p_range, -10, 20.0)
-        intrinsics = renderer.get_intrinsics()
         frame, three_d = renderer.render(modes=("rgb", "3d"))
         depth = -three_d[:, :, 2]
         # white bg
@@ -79,46 +147,53 @@ def main():
         frame = cv2.flip(frame, 0)
         bg = (frame[:, :, 0:3][:, :, ::-1] * 255).astype(np.uint8)
         print(bg.shape)
-        overlay = np.ones_like(bg) * 255
+        overlay = np.zeros((bg.shape[0], bg.shape[1]))
+        occl_overlay = np.zeros((bg.shape[0], bg.shape[1]))
         cv2.imwrite("floorplan/{}.png".format(scene_id), bg)
-        print(intrinsics)
-
-
+        
+        bg = cv2.cvtColor(bg, cv2.COLOR_RGB2RGBA)
+        max_intensity = -1 * np.inf
+        min_intensity = np.inf
+        max_pt = None
         for idx, world_point in enumerate(points):
-            #print(world_point)
-            #renderer_pt = renderer.P @ renderer.V @ np.append(world_point, 1)
-            #print(renderer_pt)
-            #camera_coords = renderer.transform_pose(np.append(world_point, [1, 0, 0, 0]))
-            camera_coords = renderer.transform_point(world_point)
-            renderer_pt = renderer.P @ np.append(camera_coords, 1)
-            print("World point: {}, Camera point: {}, renderer_pt: {}".format(world_point, camera_coords, renderer_pt))
-            #fake_viewer.px = world_point[0]
-            #fake_viewer.py = world_point[1]
-            #fake_viewer.pz = world_point[2]
-            #s.step()
-            #obj = cube.Cube(pos=world_point, dim=[0.01, 0.01, 0.01], visual_only=True, mass=0, color=[1,0,0,0.5])
-            #s.import_object(obj)
-            py = int(renderer_pt[0] * renderer_pt[3] * map_size) // 2 + map_size // 2
-            px = int(renderer_pt[1] * renderer_pt[3] * map_size) // 2 + map_size // 2
-            #py = int(-1 * renderer_pt[0])
-            #px = int(-1 * renderer_pt[1])
-            for i in range(10):
-                for j in range(10):
-                    if idx == 0:
-                        overlay[px + i, py + j] = [0, 0, 255]
-                    elif idx == len(points) - 1:
-                        overlay[px + i, py + j] = [255, 0, 0]
-                    else:
-                        overlay[px + i, py + j] = [0, 0, 0]
+            fake_viewer.px = world_point[0]
+            fake_viewer.py = world_point[1]
+            fake_viewer.pz = world_point[2]
+            s.step()
+            stft = compute_stft(np.array(audioSystem.ambisonic_output[0]), audioSystem.SR)
+            if idx == 0:
+                plot_spectrogram(stft)
+            
+            intensity = stft_power(stft)
+            if intensity == 0.0:
+                continue
 
+            if intensity > max_intensity:
+                max_intensity = intensity
+                max_pt = world_point
+            min_intensity = min(min_intensity, intensity)
+            px, py = worldToPixel(world_point, map_size, trav_res)
+            for i in range(20):
+                for j in range(20):
+                    overlay[px + i, py + j] = intensity
+                    occl_overlay[px + i, py + j] = audioSystem.occl_intensity
 
+        print("Max RMS = " + str(max_intensity) + " Min RMS = " + str(min_intensity))
+        print("Obj 0 at" + str(points[0]))
+        print("Max RMS at " + str(max_pt))
+        intensity_overlay = img_mtx_to_overlay(overlay)
+        cv2.imwrite("floorplan/{}_trav.png".format(scene_id), intensity_overlay)
 
-        cv2.imwrite("floorplan/{}_trav.png".format(scene_id), overlay)
-        img = cv2.addWeighted(bg, 0.9, overlay, 0.4, 0)
-        cv2.imwrite("floorplan/{}_combined.png".format(scene_id), img)
+        occl_overlay = img_mtx_to_overlay(occl_overlay)
+        cv2.imwrite("floorplan/{}_trav.png".format(scene_id), occl_overlay)
+  
+        img = cv2.addWeighted(bg, 1, intensity_overlay, 0.4, 0)
+        cv2.imwrite("floorplan/{}_intensity.png".format(scene_id), img)
+
+        img = cv2.addWeighted(bg, 1, occl_overlay, 0.4, 0)
+        cv2.imwrite("floorplan/{}_occl.png".format(scene_id), img)
 
         s.disconnect()
-
 
 if __name__ == "__main__":
     main()

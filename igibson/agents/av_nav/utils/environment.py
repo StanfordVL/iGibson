@@ -6,8 +6,10 @@ import librosa
 from skimage.measure import block_reduce
 
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.robots import REGISTERED_ROBOTS
 from igibson.robots.turtlebot import Turtlebot
 from igibson.robots.robot_base import BaseRobot
+from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
 from igibson.reward_functions.reward_function_base import BaseRewardFunction
@@ -107,10 +109,8 @@ class AVNavRLEnv(iGibsonEnv):
         Load task setup
         """
         super().load_task_setup()
-        if self.config['task'] == 'point_nav_AVNav':
-            self.task = PointNavAVNav(self)
-    
-    
+        self.task = PointNavAVNav(self)
+        
     def load_observation_space(self):
         """
         Load observation space
@@ -241,8 +241,6 @@ class AVNavRLEnv(iGibsonEnv):
                     'trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 trav_map_type=self.config.get('trav_map_type', 'with_obj'),
-                pybullet_load_texture=self.config.get(
-                    'pybullet_load_texture', False),
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
                 object_randomization_idx=self.object_randomization_idx,
@@ -258,32 +256,12 @@ class AVNavRLEnv(iGibsonEnv):
             first_n = self.config.get('_set_first_n_objects', -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
-            self.simulator.import_ig_scene(scene)
+            self.simulator.import_scene(scene)
             
         
-        if self.config['robot'] == 'AVNavTurtlebot':
-            robot = AVNavTurtlebot(self.config)
-        elif self.config['robot'] == 'Turtlebot':
-            robot = Turtlebot(self.config)
-        elif self.config['robot'] == 'Husky':
-            robot = Husky(self.config)
-        elif self.config['robot'] == 'Ant':
-            robot = Ant(self.config)
-        elif self.config['robot'] == 'Humanoid':
-            robot = Humanoid(self.config)
-        elif self.config['robot'] == 'JR2':
-            robot = JR2(self.config)
-        elif self.config['robot'] == 'JR2_Kinova':
-            robot = JR2_Kinova(self.config)
-        elif self.config['robot'] == 'Freight':
-            robot = Freight(self.config)
-        elif self.config['robot'] == 'Fetch':
-            robot = Fetch(self.config)
-        elif self.config['robot'] == 'Locobot':
-            robot = Locobot(self.config)
-        else:
-            raise Exception(
-                'unknown robot type: {}'.format(self.config['robot']))
+        robot_config = self.config["robot"]
+        robot_name = robot_config.pop("name")
+        robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
         self.scene = scene
         self.robots = [robot]
@@ -311,14 +289,14 @@ class AVNavRLEnv(iGibsonEnv):
         return spectrogram
 
     
-    def get_state(self, collision_links=[]):
+    def get_state(self):
         """
         Get the current observation
 
         :param collision_links: collisions from last physics timestep
         :return: observation as a dictionary
         """
-        state = super().get_state(collision_links)
+        state = super().get_state()
         if 'audio' in self.output:
             current_output = self.audio_system.current_output.astype(np.float32, order='C') / 32768.0
             state['audio'] = self.compute_spectrogram(current_output)
@@ -344,7 +322,7 @@ class AVNavRLEnv(iGibsonEnv):
         self.collision_links = collision_links
         self.collision_step += int(len(collision_links) > 0)
 
-        state = self.get_state(collision_links)
+        state = self.get_state()
         info = {}
         reward, info = self.task.get_reward(
             self, collision_links, action, info)
@@ -384,9 +362,7 @@ class AVNavRLEnv(iGibsonEnv):
         self.randomize_domain()
         # move robot away from the scene
         self.robots[0].set_position([100.0, 100.0, 100.0])
-        
-        self.task.reset_scene(self)
-        self.task.reset_agent(self) # sample_initial_pose_and_target_pos
+        self.task.reset(self)
         
         if self.audio_system is not None:
             self.audio_system.disconnect()
@@ -394,6 +370,8 @@ class AVNavRLEnv(iGibsonEnv):
             self.audio_system = None
         
         if 'audio' in self.output:
+            write_to_file = self.config.get('audio_write', "")
+
             ## modified 1006 for mp3d audio
             if self.config['scene'] == 'gibson' or self.config['scene'] == 'mp3d':
                 print("scene:", self.config['scene_id'])
@@ -402,11 +380,9 @@ class AVNavRLEnv(iGibsonEnv):
             elif self.config['scene'] == 'igibson':
                 acousticMesh = getIgAcousticMesh(self.simulator)
                 
-#             self.audio_system = AudioSystem(self.simulator, self.robots[0], 
-#                                         is_Viewer=False, writeToFile=self.config['audio_write'], SR = self.SR)
             occl_multiplier = self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER)
             self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
-                                          is_Viewer=False, writeToFile=self.config['audio_write'], SR = self.SR, occl_multiplier=occl_multiplier) 
+                                          is_Viewer=False, writeToFile=write_to_file, SR = self.SR, occl_multiplier=occl_multiplier) 
     
             ## end modification   
 
@@ -415,81 +391,14 @@ class AVNavRLEnv(iGibsonEnv):
                                        visual_only=False, 
                                        mass=0.5, color=[255, 0, 0, 1]) # pos initialized with default
             self.simulator.import_object(self.audio_obj)
-            self.audio_obj_id = self.audio_obj.get_body_id()
+            self.audio_obj_id = self.audio_obj.get_body_ids()[0]
             self.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'], enabled=True)
             self.audio_system.setSourceRepeat(self.audio_obj_id)
             self.simulator.attachAudioSystem(self.audio_system)
 
             self.audio_system.step()
-        self.simulator.sync()
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 
-        return state
-    
-    
-    def test_valid_position(self, obj, pos, orn=None):
-        """
-        Test if the robot or the object can be placed with no collision
-
-        :param obj: an instance of robot or object
-        :param pos: position
-        :param orn: orientation
-        :return: validity
-        """
-        is_robot = isinstance(obj, BaseRobot)
-
-        self.set_pos_orn_with_z_offset(obj, pos, orn)
-
-        if is_robot:
-            obj.robot_specific_reset()
-            obj.keep_still()
-
-        body_id = obj.robot_ids[0] if is_robot else obj.body_id
-        
-        self.simulator.step(audio=False)
-        collisions = list(p.getContactPoints(bodyA=body_id))
-
-        if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
-            for item in collisions:
-                logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(
-                    item[1], item[2], item[3], item[4]))
-
-        has_collision = len(collisions) == 0
-
-        return has_collision
-    
-    
-    def land(self, obj, pos, orn):
-        """
-        Land the robot or the object onto the floor, given a valid position and orientation
-
-        :param obj: an instance of robot or object
-        :param pos: position
-        :param orn: orientation
-        """
-        is_robot = isinstance(obj, BaseRobot)
-
-        self.set_pos_orn_with_z_offset(obj, pos, orn)
-
-        if is_robot:
-            obj.robot_specific_reset()
-            obj.keep_still()
-
-        body_id = obj.robot_ids[0] if is_robot else obj.body_id
-
-        land_success = False
-        # land for maximum 1 second, should fall down ~5 meters
-        max_simulator_step = int(1.0 / self.action_timestep)
-        for _ in range(max_simulator_step):
-            self.simulator.step(audio=False)
-            if len(p.getContactPoints(bodyA=body_id)) > 0:
-                land_success = True
-                break
-
-        if not land_success:
-            print("WARNING: Failed to land")
-
-        if is_robot:
-            obj.robot_specific_reset()
-            obj.keep_still()
+        return state    

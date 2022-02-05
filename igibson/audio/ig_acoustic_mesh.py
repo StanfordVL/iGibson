@@ -35,7 +35,7 @@ def getIgAcousticMesh(simulator):
     #For ig_scenes, we only load a mesh of large, static objects for reverb/reflection baking
     for category in ["walls", "floors", "ceilings", "window"]:
         for obj in simulator.scene.objects_by_category[category]:
-            for id in obj.body_ids:
+            for id in obj.get_body_ids():
                 obj_verts, obj_faces = dumpFromRenderer(simulator.renderer, [id])
                 mat.extend([ResonanceMaterialToId[iGibsonToResonanceMaterialMap[category]]] * len(obj_faces))
                 vert.extend(obj_verts)
