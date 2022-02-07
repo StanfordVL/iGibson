@@ -1,4 +1,4 @@
-name: Examples as Test
+name: Exhaustive Examples as Test
 
 on:
   schedule:
