@@ -10,7 +10,7 @@ from igibson.render.profiler import Profiler
 from igibson.utils.assets_utils import download_assets
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Creates an iGibson environment from a config file with a turtlebot in Rs_int (interactive).
     It steps the environment 100 times with random actions sampled from the action space,

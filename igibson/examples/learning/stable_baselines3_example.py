@@ -95,7 +95,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         return th.cat(encoded_tensor_list, dim=1)
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example to set a training process with Stable Baselines 3
     Loads a scene and starts the training process for a navigation task with images using PPO

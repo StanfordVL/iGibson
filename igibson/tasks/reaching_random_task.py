@@ -29,7 +29,7 @@ class ReachingRandomTask(PointNavRandomTask):
         :param env: environment instance
         :return: potential based on L2 distance to goal
         """
-        return l2_distance(env.robots[0].get_end_effector_position(), self.target_pos)
+        return l2_distance(env.robots[0].get_eef_position(), self.target_pos)
 
     def get_potential(self, env):
         """
@@ -60,7 +60,7 @@ class ReachingRandomTask(PointNavRandomTask):
         """
         task_obs = super(ReachingRandomTask, self).get_task_obs(env)
         goal_z_local = self.global_to_local(env, self.target_pos)[2]
-        end_effector_pos_local = self.global_to_local(env, env.robots[0].get_end_effector_position())
+        end_effector_pos_local = self.global_to_local(env, env.robots[0].get_eef_position())
 
         task_obs = np.append(task_obs, goal_z_local)
         task_obs = np.append(task_obs, end_effector_pos_local)

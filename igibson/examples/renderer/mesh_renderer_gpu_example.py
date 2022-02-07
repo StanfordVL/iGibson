@@ -11,7 +11,7 @@ from igibson.render.profiler import Profiler
 from igibson.utils.assets_utils import get_scene_path
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of usage of the direct GPU rendering, tensor-to-tensor
     ONLY ON LINUX

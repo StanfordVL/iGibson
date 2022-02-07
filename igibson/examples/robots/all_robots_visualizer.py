@@ -11,7 +11,7 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Robot demo
     Loads all robots in an empty scene, generate random actions

@@ -14,7 +14,7 @@ from igibson.utils.assets_utils import (
 from igibson.utils.utils import let_user_pick
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Minimal example to visualize all the models available in the iG dataset
     It queries the user to select an object category and a model of that category, loads it and visualizes it
@@ -36,14 +36,16 @@ def main(random_selection=False, headless=False, short_exec=False):
     s.renderer.set_light_position_direction([0, 0, 10], [0, 0, 0])
 
     # Select a category to load
-    available_obj_categories = get_all_object_categories()
-    obj_category = available_obj_categories[
-        let_user_pick(available_obj_categories, random_selection=random_selection) - 1
-    ]
+    available_obj_categories = get_first_options()
+    obj_category = available_obj_categories[let_user_pick(available_obj_categories, selection=selection) - 1]
 
     # Select a model to load
     available_obj_models = get_object_models_of_category(obj_category)
-    obj_model = available_obj_models[let_user_pick(available_obj_models, random_selection=random_selection) - 1]
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+    obj_model = available_obj_models[let_user_pick(available_obj_models, selection=selection) - 1]
 
     logging.info("Visualizing category {}, model {}".format(obj_category, obj_model))
 
@@ -87,6 +89,10 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     finally:
         s.disconnect()
+
+
+def get_first_options():
+    return get_all_object_categories()
 
 
 if __name__ == "__main__":

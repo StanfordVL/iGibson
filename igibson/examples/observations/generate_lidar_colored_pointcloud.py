@@ -103,7 +103,7 @@ def generate_data_lidar(nav_env, num_samples=3):
     return lidar_all, direction, rgb_all, label_all
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of rendering and visualizing a single lidar-like pointcloud
     Loads Rs (non interactive) and a robot and renders a dense panorama depth map from the robot's camera

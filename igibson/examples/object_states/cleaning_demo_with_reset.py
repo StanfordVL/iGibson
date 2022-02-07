@@ -12,7 +12,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 from igibson.utils.utils import restoreState
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Demo of a cleaning task that resets after everything has been cleaned
     To save/load state it combines pybullet save/load functionality and additional iG functions for the extended states

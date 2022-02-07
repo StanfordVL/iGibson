@@ -22,7 +22,7 @@ from igibson.utils.assets_utils import (
 from igibson.utils.utils import let_user_pick, parse_config
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     This demo shows how to load any scaled objects from the iG object model dataset and
     additional objects from the YCB dataset in predefined locations
@@ -32,8 +32,8 @@ def main(random_selection=False, headless=False, short_exec=False):
     and executing actions
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    scene_options = ["Empty scene", "Interactive scene (iG)", "Static scene (Gibson)"]
-    type_of_scene = let_user_pick(scene_options, random_selection=random_selection) - 1
+    scene_options = get_first_options()
+    type_of_scene = let_user_pick(scene_options, selection=selection) - 1
 
     if type_of_scene == 0:  # Empty
         config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
@@ -92,13 +92,19 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     # Select a category to load
     available_obj_categories = get_all_object_categories()
-    obj_category = available_obj_categories[
-        let_user_pick(available_obj_categories, random_selection=random_selection) - 1
-    ]
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+    obj_category = available_obj_categories[let_user_pick(available_obj_categories, selection=selection) - 1]
 
     # Select a model to load
     available_obj_models = get_object_models_of_category(obj_category)
-    obj_model = available_obj_models[let_user_pick(available_obj_models, random_selection=random_selection) - 1]
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+    obj_model = available_obj_models[let_user_pick(available_obj_models, selection=selection) - 1]
 
     # Load the specs of the object categories, e.g., common scaling factor
     avg_category_spec = get_ig_avg_category_specs()
@@ -150,6 +156,10 @@ def main(random_selection=False, headless=False, short_exec=False):
             env.close()
         else:
             s.disconnect()
+
+
+def get_first_options():
+    return ["Empty scene", "Interactive scene (iG)", "Static scene (Gibson)"]
 
 
 if __name__ == "__main__":

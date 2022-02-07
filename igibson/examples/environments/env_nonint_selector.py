@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_available_g_scenes
 from igibson.utils.utils import let_user_pick
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Prompts the user to select any available non-interactive scene and loads a turtlebot into it.
     It steps the environment 100 times with random actions sampled from the action space,
@@ -28,8 +28,8 @@ def main(random_selection=False, headless=False, short_exec=False):
     config_data["enable_shadow"] = False
     config_data["enable_pbr"] = False
 
-    available_g_scenes = get_available_g_scenes()
-    scene_id = available_g_scenes[let_user_pick(available_g_scenes, random_selection=random_selection) - 1]
+    available_g_scenes = get_first_options()
+    scene_id = available_g_scenes[let_user_pick(available_g_scenes, selection=selection) - 1]
     env = iGibsonEnv(config_file=config_data, scene_id=scene_id, mode="gui_interactive" if not headless else "headless")
     max_iterations = 10 if not short_exec else 1
     for j in range(max_iterations):
@@ -43,6 +43,10 @@ def main(random_selection=False, headless=False, short_exec=False):
                     logging.info("Episode finished after {} timesteps".format(i + 1))
                     break
     env.close()
+
+
+def get_first_options():
+    return get_available_g_scenes()
 
 
 if __name__ == "__main__":

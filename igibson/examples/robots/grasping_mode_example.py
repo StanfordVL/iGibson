@@ -44,14 +44,14 @@ ARROWS = {
 gui = "ig"
 
 
-def choose_from_options(options, name, random_selection=False):
+def choose_from_options(options, name, selection="user"):
     """
     Prints out options from a list, and returns the requested option.
 
     :param options: dict or Array, options to choose from. If dict, the value entries are assumed to be docstrings
         explaining the individual options
     :param name: str, name of the options
-    :param random_selection: bool, if the selection is random (for automatic demo execution). Default False
+    :param selection: string, type of selection random (for automatic demo execution), user (for user selection). Default "user"
 
     :return str: Requested option
     """
@@ -63,7 +63,7 @@ def choose_from_options(options, name, random_selection=False):
         print("[{}] {}{}".format(k + 1, option, docstring))
     print()
 
-    if not random_selection:
+    if not selection != "user":
         try:
             s = input("Choose a {} (enter a number from 1 to {}): ".format(name, len(options)))
             # parse input into a number within range
@@ -71,8 +71,10 @@ def choose_from_options(options, name, random_selection=False):
         except:
             k = 0
             print("Input is not valid. Use {} by default.".format(list(options)[k]))
-    else:
+    elif selection == "random":
         k = random.choice(range(len(options)))
+    else:
+        k = selection - 1
 
     # Return requested option
     return list(options)[k]
@@ -295,7 +297,7 @@ class KeyboardController:
         print()
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Robot grasping mode demo with selection
     Queries the user to select a type of grasping mode and GUI
@@ -303,11 +305,15 @@ def main(random_selection=False, headless=False, short_exec=False):
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Choose type of grasping
-    grasping_mode = choose_from_options(options=GRASPING_MODES, name="grasping mode", random_selection=random_selection)
+    grasping_mode = choose_from_options(options=GRASPING_MODES, name="grasping mode", selection=selection)
 
     # Choose GUI
     global gui
-    gui = choose_from_options(options=GUIS, name="gui", random_selection=random_selection)
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+    gui = choose_from_options(options=GUIS, name="gui", selection=selection)
 
     # Warn user if using ig gui that arrow keys may not work
     if gui == "ig" and platform.system() != "Darwin":
@@ -438,13 +444,17 @@ def main(random_selection=False, headless=False, short_exec=False):
     max_steps = -1 if not short_exec else 100
     step = 0
     while step != max_steps:
-        action = action_generator.get_random_action() if random_selection else action_generator.get_teleop_action()
+        action = action_generator.get_random_action() if selection != "user" else action_generator.get_teleop_action()
         robot.apply_action(action)
         for _ in range(10):
             s.step()
             step += 1
 
     s.disconnect()
+
+
+def get_first_options():
+    return list(sorted(GRASPING_MODES.keys()))
 
 
 if __name__ == "__main__":

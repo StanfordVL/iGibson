@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 from collections import namedtuple
 from enum import IntEnum
@@ -137,6 +138,10 @@ class ManipulationRobot(BaseRobot):
         # run super
         super()._validate_configuration()
 
+    def is_grasping_all_arms(self, candidate_obj=None):
+        grasped_with_hand = [self.is_grasping(arm=arm, candidate_obj=candidate_obj) for arm in self.arm_names]
+        return np.array(grasped_with_hand)
+
     def is_grasping(self, arm="default", candidate_obj=None):
         """
         Returns True if the robot is grasping the target option @candidate_obj or any object if @candidate_obj is None.
@@ -216,10 +221,9 @@ class ManipulationRobot(BaseRobot):
                         min_pos = self.joint_lower_limits[self.gripper_control_idx[arm]]
                         max_pos = self.joint_upper_limits[self.gripper_control_idx[arm]]
 
-                        # Make sure we don't have any invalid values (i.e.: fingers should be within the limits)
-                        assert np.all(
-                            (min_pos <= finger_pos) * (finger_pos <= max_pos)
-                        ), "Got invalid finger joint positions when checking for grasp!"
+                        # Check we don't have any invalid values (i.e.: fingers should be within the limits)
+                        if not np.all((min_pos <= finger_pos) * (finger_pos <= max_pos)):
+                            logging.warning("Finger joint positions are outside of the joint limits")
 
                         # Check distance from both ends of the joint limits
                         dist_from_lower_limit = finger_pos - min_pos

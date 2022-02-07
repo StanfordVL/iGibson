@@ -14,7 +14,7 @@ from igibson.simulator import Simulator
 from igibson.utils import utils
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Shows how to obtain the bounding box of an articulated object.
     Draws the bounding box around the loaded object, a cabinet, while it moves.

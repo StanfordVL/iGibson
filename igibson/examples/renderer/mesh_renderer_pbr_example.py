@@ -46,15 +46,15 @@ def load_obj_np(filename_obj, normalization=False, texture_size=4, texture_wrapp
     return vertices, faces
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Minimal example of use of the PBR renderer. Loads Rs_int (interactive) or one object.
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     global _mouse_ix, _mouse_iy, down, view_direction
 
-    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests
-    if len(sys.argv) > 1 and not (random_selection and headless and short_exec):
+    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests
+    if len(sys.argv) > 1 and not (selection != "user" and headless and short_exec):
         model_path = sys.argv[1]
     else:
         model_path = os.path.join(igibson.ig_dataset_path, "scenes", "Rs_int", "shape", "visual")

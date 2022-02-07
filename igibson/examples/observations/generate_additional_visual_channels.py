@@ -13,7 +13,7 @@ from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.vision_utils import randomize_colors, segmentation_to_rgb
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of rendering additional sensor modalities
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation

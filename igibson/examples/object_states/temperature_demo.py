@@ -10,7 +10,7 @@ from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Demo of temperature change
     Loads a stove, a microwave and an oven, all toggled on, and five frozen apples
