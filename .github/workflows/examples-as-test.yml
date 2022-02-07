@@ -69,7 +69,7 @@ jobs:
 
       - name: Create tests of examples
         working-directory: igibson
-        run: python tests/create_tests_of_examples.py --exhaustive
+        run: python tests/create_tests_of_examples.py
 
       - name: Run tests
         working-directory: igibson
