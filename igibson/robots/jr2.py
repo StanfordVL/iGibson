@@ -51,18 +51,6 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         # JR2 does not support discrete actions if we're controlling the arm as well
         raise ValueError("Full JR2 does not support discrete actions!")
 
-    def _validate_configuration(self):
-        # Make sure we're not using assisted grasping
-        assert self.grasping_mode == "physical", "Cannot use assisted grasping modes for JR2 since gripper is disabled!"
-
-        # Make sure we're using a null controller for the gripper
-        assert (
-            self.controller_config["gripper_{}".format(self.default_arm)]["name"] == "NullGripperController"
-        ), "JR2 robot has its gripper disabled, so cannot use any controller other than NullGripperController!"
-
-        # run super
-        super()._validate_configuration()
-
     def tuck(self):
         """
         Immediately set this robot's configuration to be in tucked mode
@@ -94,18 +82,28 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         # We use differential drive with joint controller for arm, since arm only has 5DOF
         controllers["base"] = "DifferentialDriveController"
         controllers["arm_{}".format(self.default_arm)] = "JointController"
-        controllers["gripper_{}".format(self.default_arm)] = "NullGripperController"
+        controllers["gripper_{}".format(self.default_arm)] = "MultiFingerGripperController"
 
         return controllers
 
     @property
+    def _default_gripper_multi_finger_controller_configs(self):
+        # Modify the default by inverting the command --> positive corresponds to gripper closed, not open!
+        dic = super()._default_gripper_multi_finger_controller_configs
+
+        for arm in self.arm_names:
+            dic[arm]["inverted"] = True
+
+        return dic
+
+    @property
     def tucked_default_joint_pos(self):
         # todo: tune values
-        return np.array([0.0, 0.0, -np.pi / 2, np.pi / 2, np.pi / 2, np.pi / 2, 0.0])
+        return np.array([0.0, 0.0, -np.pi / 2, np.pi / 2, np.pi / 2, np.pi / 2, 0.0, 0.0, 0.0, 0.0])
 
     @property
     def untucked_default_joint_pos(self):
-        return np.array([0.0, 0.0, -np.pi / 2, np.pi / 2, np.pi / 2, np.pi / 2, 0.0])
+        return np.array([0.0, 0.0, -np.pi / 2, np.pi / 2, np.pi / 2, np.pi / 2, 0.0, 0.0, 0.0, 0.0])
 
     @property
     def default_joint_pos(self):
@@ -132,7 +130,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to arm joints.
         """
-        return {self.default_arm: np.array([2, 3, 4, 5, 6])}
+        return {self.default_arm: np.array([2, 3, 4, 5, 6, 7])}
 
     @property
     def gripper_control_idx(self):
@@ -140,7 +138,7 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {self.default_arm: np.array([], dtype=np.int)}
+        return {self.default_arm: np.array([8, 9], dtype=np.int)}
 
     @property
     def disabled_collision_pairs(self):
@@ -159,12 +157,12 @@ class JR2(ManipulationRobot, TwoWheelRobot):
 
     @property
     def finger_link_names(self):
-        return {self.default_arm: []}
+        return {self.default_arm: ["m1n6s200_link_finger_1", "m1n6s200_link_finger_2"]}
 
     @property
     def finger_joint_names(self):
-        return {self.default_arm: []}
+        return {self.default_arm: ["m1n6s200_joint_finger_1", "m1n6s200_joint_finger_2"]}
 
     @property
     def model_file(self):
-        return os.path.join(igibson.assets_path, "models/jr2_urdf/jr2_kinova.urdf")
+        return os.path.join(igibson.assets_path, "models/jr2_urdf/jr2_kinova_gripper.urdf")

@@ -84,12 +84,13 @@ class ManipulationRobot(BaseRobot):
                 values specified, but setting these individual kwargs will override them
     """
 
-    def __init__(self, grasping_mode="physical", **kwargs):
+    def __init__(self, grasping_mode="physical", self_collision=True, **kwargs):
         """
         :param grasping_mode: None or str, One of {"physical", "assisted", "sticky"}.
             If "physical", no assistive grasping will be applied (relies on contact friction + finger force).
             If "assisted", will magnetize any object touching and within the gripper's fingers.
             If "sticky", will magnetize any object touching the gripper's fingers.
+        :param self_collision: bool, whether to enable self collision
         :param **kwargs: see BaseRobot
         """
         # Store relevant internal vars
@@ -108,7 +109,7 @@ class ManipulationRobot(BaseRobot):
         self._ag_release_counter = {arm: None for arm in self.arm_names}
 
         # Call super() method
-        super().__init__(**kwargs)
+        super().__init__(self_collision=self_collision, **kwargs)
 
     def _validate_configuration(self):
         # Iterate over all arms
@@ -867,6 +868,7 @@ class ManipulationRobot(BaseRobot):
                 "control_limits": self.control_limits,
                 "joint_idx": self.gripper_control_idx[arm],
                 "command_output_limits": "default",
+                "inverted": False,
                 "mode": "binary",
                 "limit_tolerance": 0.001,
             }
