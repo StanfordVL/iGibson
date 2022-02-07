@@ -10,7 +10,7 @@ from igibson.utils.constants import MAX_CLASS_COUNT
 from igibson.utils.vision_utils import segmentation_to_rgb
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of generating a topdown semantic segmentation map
     Loads Rs_int (interactive) with all or some objects (code can be commented)

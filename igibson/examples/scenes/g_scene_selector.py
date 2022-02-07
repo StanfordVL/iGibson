@@ -11,15 +11,15 @@ from igibson.utils.assets_utils import get_available_g_scenes
 from igibson.utils.utils import let_user_pick
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Prompts the user to select any available non-interactive scene and loads it.
     Shows how to load directly scenes without the Environment interface
     Shows how to sample points in the scene and how to compute geodesic distance and the shortest path
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    available_g_scenes = get_available_g_scenes()
-    scene_id = available_g_scenes[let_user_pick(available_g_scenes, random_selection=random_selection) - 1]
+    available_g_scenes = get_first_options()
+    scene_id = available_g_scenes[let_user_pick(available_g_scenes, selection=selection) - 1]
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
     # Reduce texture scale for Mac.
     if platform == "darwin":
@@ -60,6 +60,10 @@ def main(random_selection=False, headless=False, short_exec=False):
             step += 1
 
     s.disconnect()
+
+
+def get_first_options():
+    return get_available_g_scenes()
 
 
 if __name__ == "__main__":

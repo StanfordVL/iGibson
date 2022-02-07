@@ -21,6 +21,6 @@ class ReachingGoal(BaseTerminationCondition):
         :param env: environment instance
         :return: done, info
         """
-        done = l2_distance(env.robots[0].get_end_effector_position(), task.target_pos) < self.dist_tol
+        done = l2_distance(env.robots[0].get_eef_position(), task.target_pos) < self.dist_tol
         success = done
         return done, success

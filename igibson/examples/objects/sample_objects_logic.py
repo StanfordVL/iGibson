@@ -14,7 +14,7 @@ from igibson.utils.assets_utils import download_assets
 download_assets()
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Demo to use the raycasting-based sampler to load objects onTop and/or inside another
     Loads a cabinet, a microwave open on top of it, and two plates with apples on top, one inside and one on top of the cabinet

@@ -30,7 +30,7 @@ def scene_flow_to_visualization(image):
     return np.clip((image * FLOW_SCALING_FACTOR + 127), 0, 255).astype(np.uint8)
 
 
-def main(random_selection=False, headless=True, short_exec=True):
+def main(selection="user", headless=True, short_exec=True):
     """
     Example of rendering additional sensor modalities
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation

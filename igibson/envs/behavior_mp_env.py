@@ -7,7 +7,7 @@ import numpy as np
 import pybullet as p
 
 from igibson import object_states
-from igibson.envs.behavior_env import BehaviorEnv
+from igibson.envs.igibson_env import iGibsonEnv
 from igibson.external.pybullet_tools.utils import CIRCULAR_LIMITS
 from igibson.object_states.on_floor import RoomFloor
 from igibson.object_states.utils import sample_kinematics
@@ -56,7 +56,7 @@ def detect_robot_collision(robot):
     )
 
 
-class BehaviorMPEnv(BehaviorEnv):
+class BehaviorMPEnv(iGibsonEnv):
     """
     iGibson Environment (OpenAI Gym interface)
     """
@@ -84,7 +84,7 @@ class BehaviorMPEnv(BehaviorEnv):
         @param device_idx: which GPU to run the simulation and rendering on
         @param automatic_reset: whether to automatic reset after an episode finishes
         @param seed: RNG seed for sampling
-        @param action_filter: see BehaviorEnv
+        @param action_filter: see iGibsonEnv
         @param use_motion_planning: Whether motion-planned primitives or magic primitives should be used
         @param activity_relevant_objects_only: Whether the actions should be parameterized by AROs or all scene objs.
         """

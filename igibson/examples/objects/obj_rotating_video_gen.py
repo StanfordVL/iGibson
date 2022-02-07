@@ -76,7 +76,7 @@ def load_obj_np(
         return vertices, faces
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Generates videos rotating a camera around an object
     """
@@ -84,9 +84,9 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     global _mouse_ix, _mouse_iy, down, view_direction
 
-    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
-    if not (random_selection and headless and short_exec):
+    if not (selection != "user" and headless and short_exec):
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--model_path",

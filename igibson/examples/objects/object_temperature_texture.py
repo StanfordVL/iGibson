@@ -11,7 +11,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 from igibson.utils.utils import parse_config
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Demo of the texture change for an object
     Loads an apple and increases manually its temperature to observe the texture change from frozen, to cooked, to burnt

@@ -16,16 +16,16 @@ from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_scene_path
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Generates videos navigating in the iG scenes
     Loads an iG scene, predefined paths and produces a video. Alternate random textures and/or objects, on demand.
     """
     logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
-    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
-    if not (random_selection and headless and short_exec):
+    if not (selection != "user" and headless and short_exec):
         parser = argparse.ArgumentParser()
         parser.add_argument("--scene", type=str, help="Name of the scene in the iG Dataset", default="Rs_int")
         parser.add_argument("--save_dir", type=str, help="Directory to save the frames.", default="misc")

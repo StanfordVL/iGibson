@@ -6,7 +6,7 @@ from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Loads the Stadium scene
     This scene is default in pybullet but is not really useful in iGibson

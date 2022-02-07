@@ -9,7 +9,7 @@ from PIL import Image
 from igibson.utils.assets_utils import get_scene_path
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Traversable map demo
     Loads the floor plan and obstacles for the Rs scene, and overlays them in a visual figure such that the

@@ -11,7 +11,7 @@ import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of rendering and visualizing a single 3D dense pointcloud
     Loads Rs (non interactive) and a robot and renders a dense panorama depth map from the robot's camera
