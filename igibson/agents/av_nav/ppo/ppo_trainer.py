@@ -226,12 +226,14 @@ class PPOTrainer(BaseRLTrainer):
         )
         
         data = dataset(self.config['scene'])
-        self.scene_splits = data.split(self.config['NUM_PROCESSES'])
+#         self.scene_splits = data.split(self.config['NUM_PROCESSES'])
         
-        scene_ids = []
-        for i in range(self.config['NUM_PROCESSES']):
-            idx = np.random.randint(len(self.scene_splits[i]))
-            scene_ids.append(self.scene_splits[i][idx])
+#         scene_ids = []
+#         for i in range(self.config['NUM_PROCESSES']):
+#             idx = np.random.randint(len(self.scene_splits[i]))
+#             scene_ids.append(self.scene_splits[i][idx])
+        
+        scene_ids = data.SCENE_SPLITS["train"]
         
         def load_env(scene_id):
             return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)

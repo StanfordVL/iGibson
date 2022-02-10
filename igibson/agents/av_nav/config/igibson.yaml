@@ -1,7 +1,6 @@
 ## SoundSpaces
-NUM_PROCESSES: 1
+NUM_PROCESSES: 9
 EVAL_NUM_PROCESS: 1
-NUM_EPISODES_PER_SCENE: 0
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
 LOG_FILE: "data/data_igibson_1104/train.log"
@@ -46,9 +45,9 @@ scene: igibson
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
-trav_map_type: no_obj
+trav_map_type: with_obj
 trav_map_resolution: 0.1
-trav_map_erosion: 2
+trav_map_erosion: 3
 should_open_all_doors: true
 
 # task
@@ -71,7 +70,7 @@ robot:
       name: DifferentialDriveController
 
 # sensor spec
-output: [depth, audio]
+output: [depth, audio, bump]
 # add task_obs for audiopointgoal
 extra_rgb: false
 
@@ -79,8 +78,8 @@ extra_rgb: false
 fisheye: false
 # image_width: 160
 # image_height: 120
-image_width: 128
-image_height: 128
+image_width: 160
+image_height: 160
 vertical_fov: 45
 # depth
 depth_low: 0.8
@@ -101,7 +100,7 @@ target_visual_object_visible_to_agent: false
 reward_type: geodesic
 success_reward: 10.0
 potential_reward_weight: 1.0
-collision_reward_weight: -0.1
+collision_reward_weight: -0.005
 time_reward_weight: -0.01
 
 # termination condition

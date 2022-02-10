@@ -184,6 +184,8 @@ def batch_obs(
         batch[sensor] = torch.stack(batch[sensor], dim=0).to(
             device=device, dtype=torch.float
         )
+        if sensor == "bump":
+            batch["bump"] = batch["bump"][:, None]
 
     return batch
 
