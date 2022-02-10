@@ -25,9 +25,9 @@ The minimum system requirements are the following:
     - CMake >= 2.8.12 (can install with `pip install cmake`)
     - Microsoft Visual Studio 2017 with visual C++ tool and latest Windows 10 SDK
 - Mac OS X
-    - Tested on 10.15
+    - Tested on several versions (10.15, 11.6, ...)
     - PBR features not supported
-    - CMake >= 2.8.12 (can install with `pip install cmake`)
+    - CMake >= 2.8.12 or CMake >= 2.17 for M1-chip (do NOT install with `pip install cmake`, but system-wide for example with Homebrew)
 
 Other system configurations may work, but we haven't tested them extensively and we probably won't be able to provide as much support as we want.
 
@@ -197,6 +197,14 @@ pip install -e . # This step takes about 4 minutes
 We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
 Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
+
+### Issues
+
+First, check our section for installation issues [here](issues.md). We include solutions to past known problems there.
+
+If you do not find a solution, search open and closed issues in our github issues page [here](https://github.com/StanfordVL/iGibson/issues).
+
+If still no-luck, open a new issue in our github. Our turnaround is usually a couple of days.
 
 ### The SVL pybullet fork
 
