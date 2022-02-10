@@ -87,7 +87,7 @@ class PointNavAVNav(PointNavRandomTask):
         super().__init__(env)
         self.reward_functions = [
             PotentialReward(self.config), # geodesic distance, potential_reward_weight
-            # CollisionReward(self.config),
+            CollisionReward(self.config),
             PointGoalReward(self.config), # success_reward
             TimeReward(self.config), # time_reward_weight
         ]
@@ -101,6 +101,9 @@ class AVNavRLEnv(iGibsonEnv):
         self.SR = 44100
         self.audio_system = None
         self.audio_len = 4410
+        time_len = 2
+        self.audio_channel1 = np.zeros(self.audio_len*time_len)
+        self.audio_channel2 = np.zeros(self.audio_len*time_len)
         super().__init__(config_file, scene_id, mode, automatic_reset=True)
         
 
@@ -272,6 +275,14 @@ class AVNavRLEnv(iGibsonEnv):
         self.load_action_space()
         self.load_miscellaneous_variables()
         
+        if self.config['scene'] == 'igibson':
+            carpets = []
+            if "carpet" in self.scene.objects_by_category.keys():
+                carpets = self.scene.objects_by_category["carpet"]
+            for carpet in carpets:
+                for robot_link_id in range(p.getNumJoints(self.robots[0].get_body_id())):
+                    p.setCollisionFilterPair(carpet.get_body_id(), self.robots[0].get_body_id(), -1, robot_link_id, 0)
+        
         
     def compute_spectrogram(self, audio_data):
         def compute_stft(signal):
@@ -282,8 +293,12 @@ class AVNavRLEnv(iGibsonEnv):
 #             stft = block_reduce(stft, block_size=(4, 4), func=np.mean)
             return stft
         
-        channel1_magnitude = np.log1p(compute_stft(audio_data[::2]))
-        channel2_magnitude = np.log1p(compute_stft(audio_data[1::2]))
+        self.audio_channel1 = np.append(self.audio_channel1[self.audio_len:], audio_data[::2])
+        self.audio_channel2 = np.append(self.audio_channel2[self.audio_len:], audio_data[1::2])
+        channel1_magnitude = np.log1p(compute_stft(self.audio_channel1))
+        channel2_magnitude = np.log1p(compute_stft(self.audio_channel2))
+#         channel1_magnitude = np.log1p(compute_stft(audio_data[::2]))
+#         channel2_magnitude = np.log1p(compute_stft(audio_data[1::2]))
         spectrogram = np.stack([channel1_magnitude, channel2_magnitude], axis=-1)
 
         return spectrogram
@@ -315,7 +330,7 @@ class AVNavRLEnv(iGibsonEnv):
         :return: done: whether the episode is terminated
         :return: info: info dictionary with any useful information
         """
-        global COUNT_CURR_EPISODE
+#         global COUNT_CURR_EPISODE
         if action is not None:
             self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
@@ -334,22 +349,22 @@ class AVNavRLEnv(iGibsonEnv):
         if done and self.automatic_reset:
             info['last_observation'] = state
             
-            if COUNT_CURR_EPISODE == self.config['NUM_EPISODES_PER_SCENE']:
-                if train:
-                    idx = np.random.randint(len(scene_splits[i_env]))
-                    next_scene_id = scene_splits[i_env][idx]
-                else:
-                    next_scenes = dataset.SCENE_SPLITS['val']
-                    idx = np.random.randint(len(next_scenes))
-                    next_scene_id = next_scenes[idx]
+#             if COUNT_CURR_EPISODE == self.config['NUM_EPISODES_PER_SCENE']:
+#                 if train:
+#                     idx = np.random.randint(len(scene_splits[i_env]))
+#                     next_scene_id = scene_splits[i_env][idx]
+#                 else:
+#                     next_scenes = dataset.SCENE_SPLITS['val']
+#                     idx = np.random.randint(len(next_scenes))
+#                     next_scene_id = next_scenes[idx]
 
-                logger.info("reloading scene {} for env {}".format(next_scene_id, i_env))
-                self.reload_model(next_scene_id) # disconnects the simulator
+#                 logger.info("reloading scene {} for env {}".format(next_scene_id, i_env))
+#                 self.reload_model(next_scene_id) # disconnects the simulator
                 
-                COUNT_CURR_EPISODE = 0
+#                 COUNT_CURR_EPISODE = 0
                 
             state = self.reset()
-            COUNT_CURR_EPISODE += 1
+#             COUNT_CURR_EPISODE += 1
 
         return state, reward, done, info
     
@@ -374,7 +389,6 @@ class AVNavRLEnv(iGibsonEnv):
 
             ## modified 1006 for mp3d audio
             if self.config['scene'] == 'gibson' or self.config['scene'] == 'mp3d':
-                print("scene:", self.config['scene_id'])
                 acousticMesh = getMatterportAcousticMesh(self.simulator, 
                               "/cvgl/group/Gibson/matterport3d-downsized/v2/"+self.config['scene_id']+"/sem_map.png")
             elif self.config['scene'] == 'igibson':
@@ -402,3 +416,70 @@ class AVNavRLEnv(iGibsonEnv):
         self.reset_variables()
 
         return state    
+
+    
+    def test_valid_position(self, obj, pos, orn=None):
+        """
+        Test if the robot or the object can be placed with no collision
+
+        :param obj: an instance of robot or object
+        :param pos: position
+        :param orn: orientation
+        :return: validity
+        """
+        is_robot = isinstance(obj, BaseRobot)
+
+        self.set_pos_orn_with_z_offset(obj, pos, orn)
+
+        if is_robot:
+            obj.robot_specific_reset()
+            obj.keep_still()
+
+        body_id = obj.robot_ids[0] if is_robot else obj.body_id
+        
+        self.simulator.step(audio=False)
+        collisions = list(p.getContactPoints(bodyA=body_id))
+
+        if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
+            for item in collisions:
+                logging.debug('bodyA:{}, bodyB:{}, linkA:{}, linkB:{}'.format(
+                    item[1], item[2], item[3], item[4]))
+
+        has_collision = len(collisions) == 0
+
+        return has_collision
+    
+    
+    def land(self, obj, pos, orn):
+        """
+        Land the robot or the object onto the floor, given a valid position and orientation
+
+        :param obj: an instance of robot or object
+        :param pos: position
+        :param orn: orientation
+        """
+        is_robot = isinstance(obj, BaseRobot)
+
+        self.set_pos_orn_with_z_offset(obj, pos, orn)
+
+        if is_robot:
+            obj.robot_specific_reset()
+            obj.keep_still()
+
+        body_id = obj.robot_ids[0] if is_robot else obj.body_id
+
+        land_success = False
+        # land for maximum 1 second, should fall down ~5 meters
+        max_simulator_step = int(1.0 / self.action_timestep)
+        for _ in range(max_simulator_step):
+            self.simulator.step(audio=False)
+            if len(p.getContactPoints(bodyA=body_id)) > 0:
+                land_success = True
+                break
+
+        if not land_success:
+            print("WARNING: Failed to land")
+
+        if is_robot:
+            obj.robot_specific_reset()
+            obj.keep_still()
