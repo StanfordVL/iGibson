@@ -14,6 +14,8 @@ except ImportError:
     print("BDDL could not be imported - object taxonomy / abilities will be unavailable.", file=sys.stderr)
     OBJECT_TAXONOMY = None
 
+log = logging.getLogger(__name__)
+
 
 class StatefulObject(BaseObject):
     """Objects that support object states."""
@@ -56,7 +58,7 @@ class StatefulObject(BaseObject):
                 if state_name in dump:
                     state_instance.load(dump[state_name])
                 else:
-                    logging.warning("Missing object state [{}] in the state dump".format(state_name))
+                    log.warning("Missing object state [{}] in the state dump".format(state_name))
 
     def set_position_orientation(self, pos, orn):
         super(StatefulObject, self).set_position_orientation(pos, orn)

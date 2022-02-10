@@ -1,7 +1,7 @@
 """Generate the (original) traversability maps based on where the floors are, but without taking
 clutter into account.
 """
-
+import logging
 import os
 import sys
 
@@ -154,4 +154,5 @@ def gen_trav_map(mp3d_dir, add_clutter=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     gen_trav_map(sys.argv[1], True)

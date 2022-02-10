@@ -11,7 +11,7 @@ def main(selection="user", headless=False, short_exec=False):
     Example of randomization of the texture in a scene
     Loads Rs_int (interactive) and randomizes the texture of the objects
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     if platform == "darwin":
         logging.error("Texture randomization currently works only with optimized renderer. Mac OS does not support it")
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
@@ -32,7 +32,7 @@ def main(selection="user", headless=False, short_exec=False):
     num_resets = 10 if not short_exec else 2
     num_steps_per_reset = 1000 if not short_exec else 10
     for _ in range(num_resets):
-        logging.info("Randomize texture")
+        print("Randomize texture")
         scene.randomize_texture()
         for _ in range(num_steps_per_reset):
             s.step()
@@ -40,4 +40,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

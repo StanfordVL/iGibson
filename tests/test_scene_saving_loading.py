@@ -215,12 +215,3 @@ def test_loading_structure_without_bullet_file():
         )
 
     s.disconnect()
-
-
-# if __name__ == "__main__":
-#     test_saving()
-#     test_loading_state_with_bullet_file()
-#     test_loading_state_without_bullet_file()
-#     test_loading_state_with_sliceable()
-#     test_loading_structure_with_bullet_file()
-#     test_loading_structure_without_bullet_file()

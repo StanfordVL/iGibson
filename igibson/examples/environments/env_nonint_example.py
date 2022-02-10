@@ -16,7 +16,7 @@ def main(selection="user", headless=False, short_exec=False):
     It steps the environment 100 times with random actions sampled from the action space,
     using the Gym interface, resetting it 10 times.
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # If they have not been downloaded before, download assets and Rs Gibson (non-interactive) models
     download_assets()
     download_demo_data()
@@ -33,17 +33,18 @@ def main(selection="user", headless=False, short_exec=False):
     env = iGibsonEnv(config_file=config_data, mode="gui_interactive" if not headless else "headless")
     max_iterations = 10 if not short_exec else 1
     for j in range(max_iterations):
-        logging.info("Resetting environment")
+        print("Resetting environment")
         env.reset()
         for i in range(100):
             with Profiler("Environment action step"):
                 action = env.action_space.sample()
                 state, reward, done, info = env.step(action)
                 if done:
-                    logging.info("Episode finished after {} timesteps".format(i + 1))
+                    print("Episode finished after {} timesteps".format(i + 1))
                     break
     env.close()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

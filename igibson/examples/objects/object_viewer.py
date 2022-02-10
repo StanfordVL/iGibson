@@ -20,7 +20,7 @@ def main(selection="user", headless=False, short_exec=False):
     It queries the user to select an object category and a model of that category, loads it and visualizes it
     No physical simulation
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=True)
     s = Simulator(
@@ -47,7 +47,7 @@ def main(selection="user", headless=False, short_exec=False):
         selection = "random"
     obj_model = available_obj_models[let_user_pick(available_obj_models, selection=selection) - 1]
 
-    logging.info("Visualizing category {}, model {}".format(obj_category, obj_model))
+    print("Visualizing category {}, model {}".format(obj_category, obj_model))
 
     # Load the specs of the object categories, e.g., common scaling factor
     avg_category_spec = get_ig_avg_category_specs()
@@ -96,4 +96,5 @@ def get_first_options():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

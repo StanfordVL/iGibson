@@ -1,7 +1,7 @@
 """ VR demo to test that eye tracking is working by visualizing a gaze marker where
 the user is looking.
 """
-
+import logging
 import os
 
 import numpy as np
@@ -115,4 +115,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

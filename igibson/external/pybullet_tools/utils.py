@@ -31,6 +31,8 @@ from igibson.utils.constants import OccupancyGridState
 import cv2
 import logging
 
+log = logging.getLogger(__name__)
+
 # from future_builtins import map, filter
 # from builtins import input # TODO - use future
 try:
@@ -3237,7 +3239,6 @@ def plan_base_motion_2d(body,
                         metric2map=None,
                         flip_vertically=False,
                         use_pb_for_collisions=False,
-                        debugging_prints = False,
                         upsampling_factor = 4,
                         **kwargs):
     """
@@ -3266,7 +3267,6 @@ def plan_base_motion_2d(body,
     :param flip_vertically: If the image needs to be flipped (for global maps)
     :param use_pb_for_collisions:  If pybullet is used to check for collisions. If not, we use the local or global 2D
            traversable map
-    :param debugging_prints: Boolean to activate debugging prints
     :param upsampling_factor: Upscaling factor to enlarge the maps
     :param kwargs:
     :return: Path (if found)
@@ -3321,7 +3321,7 @@ def plan_base_motion_2d(body,
     # Do not plan for goals that are very close by
     # This makes it impossible to "plan" for pure rotations. Use a negative min_goal_dist to allow pure rotations
     if np.abs(start_conf[0] - end_conf[0]) < min_goal_dist and np.abs(start_conf[1] - end_conf[1]) < min_goal_dist:
-        print("Warning: goal is too close to the initial position. Returning")
+        log.debug("goal is too close to the initial position. Returning")
         return None
 
     def transform_point_to_occupancy_map(q):
@@ -3346,8 +3346,7 @@ def plan_base_motion_2d(body,
         else:
             pts = metric2map(np.array(q[0:2]))
 
-        if debugging_prints:
-            print("original point {} and in image: {}".format(q, pts))
+        log.debug("original point {} and in image: {}".format(q, pts))
         return pts
 
     # Draw the initial situation of the planning problem: src, dst and occupancy map
@@ -3437,8 +3436,8 @@ def plan_base_motion_2d(body,
             draw_point(pts, 1, radius=robot_footprint_radius_in_map)
             cv2.waitKey(10) #Extra wait to visualize better the process
 
-        if debugging_prints:
-            print("In collision? {}".format(in_collision))
+        log.debug("In collision? {}".format(in_collision))
+
         if visualize_planning:
             planning_map_2d[pts[0] - robot_footprint_radius_in_map: pts[0] + robot_footprint_radius_in_map + 1, pts[1] - robot_footprint_radius_in_map: pts[1] + robot_footprint_radius_in_map + 1] = planning_map_2d_cpy
             planning_map_2d_upsampled = cv2.resize(planning_map_2d, None, None, upsampling_factor, upsampling_factor, cv2.INTER_NEAREST)
@@ -3452,13 +3451,12 @@ def plan_base_motion_2d(body,
 
     # Do not plan if the initial pose is in collision
     if collision_fn(start_conf):
-        if debugging_prints:
-            print("Warning: initial configuration is in collision")
+        log.debug("Warning: initial configuration is in collision")
         return None
+
     # Do not plan if the final pose is in collision
     if collision_fn(end_conf):
-        if debugging_prints:
-            print("Warning: end configuration is in collision")
+        log.debug("Warning: end configuration is in collision")
         return None
 
     if algorithm == 'direct':
@@ -3475,7 +3473,7 @@ def plan_base_motion_2d(body,
         path = None
 
     if optimize_iter > 0 and path is not None:
-        logging.info("Optimizing the path found")
+        log.info("Optimizing the path found")
         path = optimize_path(path, extend_fn, collision_fn, iterations=optimize_iter)
 
     if visualize_result and path is not None:

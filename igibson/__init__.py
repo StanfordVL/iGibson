@@ -14,7 +14,9 @@ __logo__ = """
 |_| \_____||_||_.__/ |___/ \___/ |_| |_|
 """
 
-logging.getLogger().setLevel(logging.INFO)
+log = logging.getLogger(__name__)
+_LOG_LEVEL = os.environ.get("IG_LOG_LEVEL", "INFO").upper()
+log.setLevel(level=_LOG_LEVEL)
 
 with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "global_config.yaml")) as f:
     global_config = yaml.load(f, Loader=yaml.FullLoader)
@@ -71,20 +73,22 @@ if not os.path.isabs(cubicasa_dataset_path):
 if not os.path.isabs(key_path):
     key_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), key_path)
 
-logging.info("Importing iGibson (igibson module)")
-print(__logo__)
-logging.info("Assets path: {}".format(assets_path))
-logging.info("Gibson Dataset path: {}".format(g_dataset_path))
-logging.info("iG Dataset path: {}".format(ig_dataset_path))
-logging.info("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
-logging.info("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
-logging.info("iGibson Key path: {}".format(key_path))
+if log.isEnabledFor(logging.INFO):
+    print(__logo__)
+
+log.debug("Importing iGibson (igibson module)")
+log.debug("Assets path: {}".format(assets_path))
+log.debug("Gibson Dataset path: {}".format(g_dataset_path))
+log.debug("iG Dataset path: {}".format(ig_dataset_path))
+log.debug("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
+log.debug("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
+log.debug("iGibson Key path: {}".format(key_path))
 
 example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
 example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 
-logging.info("Example path: {}".format(example_path))
-logging.info("Example config path: {}".format(example_config_path))
+log.debug("Example path: {}".format(example_path))
+log.debug("Example config path: {}".format(example_config_path))
 
 # whether to enable debugging mode for object sampling
 debug_sampling = False

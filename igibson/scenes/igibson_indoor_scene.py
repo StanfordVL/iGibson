@@ -32,6 +32,8 @@ from igibson.utils.utils import NumpyEncoder, restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
 
+log = logging.getLogger(__name__)
+
 
 class InteractiveIndoorScene(StaticIndoorScene):
     """
@@ -134,7 +136,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             self.fname = fname
             self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
 
-        logging.info("Loading scene URDF: {}".format(self.scene_file))
+        log.debug("Loading scene URDF: {}".format(self.scene_file))
 
         self.scene_source = scene_source
         self.scene_dir = scene_dir
@@ -409,7 +411,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if room_instance in self.room_ins_name_to_ins_id:
                     load_room_instances_filtered.append(room_instance)
                 else:
-                    logging.warning("room_instance [{}] does not exist.".format(room_instance))
+                    log.warning("room_instance [{}] does not exist.".format(room_instance))
             self.load_room_instances = load_room_instances_filtered
         elif load_room_types is not None:
             if isinstance(load_room_types, str):
@@ -419,7 +421,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if room_type in self.room_sem_name_to_ins_name:
                     load_room_instances_filtered.extend(self.room_sem_name_to_ins_name[room_type])
                 else:
-                    logging.warning("room_type [{}] does not exist.".format(room_type))
+                    log.warning("room_type [{}] does not exist.".format(room_type))
             self.load_room_instances = load_room_instances_filtered
         else:
             self.load_room_instances = None
@@ -520,7 +522,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         # Give the object a name if it doesn't already have one.
         if obj.name in self.objects_by_name.keys():
-            logging.error("Object names need to be unique! Existing name " + obj.name)
+            log.error("Object names need to be unique! Existing name " + obj.name)
             exit(-1)
 
         # Add object to database
@@ -553,7 +555,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         Randomize texture/material for all objects in the scene
         """
         if not self.texture_randomization:
-            logging.warning("calling randomize_texture while texture_randomization is False during initialization.")
+            log.warning("calling randomize_texture while texture_randomization is False during initialization.")
             return
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
@@ -684,7 +686,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.body_collision_set = set()
         for body_a, body_b in body_body_collision:
-            logging.warning(
+            log.warning(
                 "scene quality check: {} and {} has collision.".format(
                     body_id_to_name[body_a],
                     body_id_to_name[body_b],
@@ -695,7 +697,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.link_collision_set = set()
         for body_id in body_link_collision:
-            logging.warning(
+            log.warning(
                 "scene quality check: {} has joint that cannot extend for >66%.".format(
                     body_id_to_name[body_id],
                 )
@@ -962,7 +964,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :return: floor (always 0), a randomly sampled point in [x, y, z]
         """
         if room_type not in self.room_sem_name_to_sem_id:
-            logging.warning("room_type [{}] does not exist.".format(room_type))
+            log.warning("room_type [{}] does not exist.".format(room_type))
             return None, None
 
         sem_id = self.room_sem_name_to_sem_id[room_type]
@@ -983,7 +985,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :return: floor (always 0), a randomly sampled point in [x, y, z]
         """
         if room_instance not in self.room_ins_name_to_ins_id:
-            logging.warning("room_instance [{}] does not exist.".format(room_instance))
+            log.warning("room_instance [{}] does not exist.".format(room_instance))
             return None, None
 
         ins_id = self.room_ins_name_to_ins_id[room_instance]
@@ -1003,7 +1005,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param room_instance: room instance (e.g. bathroom_1)
         """
         if room_instance not in self.room_ins_name_to_ins_id:
-            logging.warning("room_instance [{}] does not exist.".format(room_instance))
+            log.warning("room_instance [{}] does not exist.".format(room_instance))
             return None, None
 
         ins_id = self.room_ins_name_to_ins_id[room_instance]

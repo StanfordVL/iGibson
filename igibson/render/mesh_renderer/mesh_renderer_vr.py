@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -357,6 +358,7 @@ class MeshRendererVR(MeshRenderer):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     x = {"hello": 8, 8: 10, "test": 99}
     x_str = dump_config(x)
     print(type(x_str))

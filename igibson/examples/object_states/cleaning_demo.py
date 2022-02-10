@@ -12,7 +12,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads an interactive scene and sets all object surface to be dirty
     Loads also a cleaning tool that can be soaked in water and used to clean objects if moved manually
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     s = Simulator(
         mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720, device_idx=0
     )
@@ -42,15 +42,15 @@ def main(selection="user", headless=False, short_exec=False):
     )
     for obj in stateful_objects:
         if object_states.Dusty in obj.states:
-            logging.info("Setting object to be Dusty")
+            print("Setting object to be Dusty")
             obj.states[object_states.Dusty].set_value(True)
 
         if object_states.Stained in obj.states:
-            logging.info("Setting object to be Stained")
+            print("Setting object to be Stained")
             obj.states[object_states.Stained].set_value(True)
 
         if object_states.WaterSource in obj.states and object_states.ToggledOn in obj.states:
-            logging.info("Setting water source object to be ToggledOn")
+            print("Setting water source object to be ToggledOn")
             obj.states[object_states.ToggledOn].set_value(True)
 
     max_steps = -1 if not short_exec else 1000
@@ -64,4 +64,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

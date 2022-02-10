@@ -4,6 +4,7 @@ Multiple environments are only supported on Linux. If issues arise, please ensur
 are installed *without* MKL support.
 """
 import argparse
+import logging
 import time
 
 import ray
@@ -23,6 +24,7 @@ class iGibsonRayEnv(iGibsonEnv):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", help="which config file to use [default: use yaml files in examples/configs]")
     parser.add_argument(

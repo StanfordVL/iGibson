@@ -80,7 +80,7 @@ def main(selection="user", headless=False, short_exec=False):
     """
     Generates videos rotating a camera around an object
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     global _mouse_ix, _mouse_iy, down, view_direction
 
@@ -97,7 +97,7 @@ def main(selection="user", headless=False, short_exec=False):
         model_path = args.model_path
     else:
         model_path = os.path.join(igibson.ig_dataset_path, "objects", "rocking_chair", "rocking_chair_0002")
-    logging.info("Loading model: {}".format(model_path))
+    print("Loading model: {}".format(model_path))
 
     model_id = os.path.basename(model_path)
     category = os.path.basename(os.path.dirname(model_path))
@@ -128,7 +128,7 @@ def main(selection="user", headless=False, short_exec=False):
             v.append(vertices)
 
     v = np.vstack(v)
-    logging.info("v.shape: {}".format(v.shape))
+    print("v.shape: {}".format(v.shape))
     xlen = np.max(v[:, 0]) - np.min(v[:, 0])
     ylen = np.max(v[:, 1]) - np.min(v[:, 1])
     zlen = np.max(v[:, 2]) - np.min(v[:, 2])
@@ -139,13 +139,13 @@ def main(selection="user", headless=False, short_exec=False):
     center = (np.max(v, axis=0) + np.min(v, axis=0)) / 2.0
 
     urdf_path = os.path.join(model_path, "{}.urdf".format(model_id))
-    logging.info("URDF path: {}".format(urdf_path))
+    print("URDF path: {}".format(urdf_path))
     obj = ArticulatedObject(filename=urdf_path, scale=scale)
     s.import_object(obj)
     obj.set_position(center)
     s.sync()
-    logging.info("Visual objects: {}".format(s.renderer.visual_objects))
-    logging.info("Render instances: {}".format(s.renderer.instances))
+    print("Visual objects: {}".format(s.renderer.visual_objects))
+    print("Render instances: {}".format(s.renderer.instances))
 
     _mouse_ix, _mouse_iy = -1, -1
     down = False
@@ -178,4 +178,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

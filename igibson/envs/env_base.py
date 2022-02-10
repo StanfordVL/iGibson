@@ -15,6 +15,8 @@ from igibson.simulator import Simulator
 from igibson.simulator_vr import SimulatorVR
 from igibson.utils.utils import parse_config
 
+log = logging.getLogger(__name__)
+
 
 class BaseEnv(gym.Env):
     """
@@ -226,7 +228,7 @@ class BaseEnv(gym.Env):
                     )
                     for bid in robot.get_body_ids()
                 ):
-                    logging.warning("Robot's cached initial pose has collisions.")
+                    log.warning("Robot's cached initial pose has collisions.")
 
         self.scene = scene
         self.robots = scene.robots

@@ -1,7 +1,7 @@
 """ This is a VR demo in a simple scene consisting of some objects to interact with, and space to move around.
 Can be used to verify everything is working in VR, and iterate on current VR designs.
 """
-
+import logging
 import os
 
 import pybullet as p
@@ -103,4 +103,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

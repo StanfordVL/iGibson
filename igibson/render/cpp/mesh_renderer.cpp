@@ -1161,7 +1161,9 @@ py::list MeshRendererContext::generateArrayTextures(std::vector<std::string> fil
 		std::vector<int> texWidths;
 		std::vector<int> texChannels;
         std::vector<unsigned char> buffer;
-		printf("INFO: number of textures %d\n", num_textures);
+        if (verbosity >= 20) {
+		    printf("INFO: number of textures %d\n", num_textures);
+		}
 		for (int i = 0; i < num_textures; i++) {
 			std::string filename = filenames[i];
 			if (verbosity >= 20) {

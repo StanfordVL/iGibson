@@ -17,7 +17,7 @@ def main(selection="user", headless=False, short_exec=False):
     The user can move the apples to see them change from frozen, to normal temperature, to cooked and burnt
     This demo also shows how to load objects ToggledOn and how to set the initial temperature of an object
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
 
     if not headless:
@@ -100,7 +100,7 @@ def main(selection="user", headless=False, short_exec=False):
         while steps != max_steps:
             s.step()
             for idx, apple in enumerate(apples):
-                logging.info(
+                print(
                     "Apple %d Temperature: %.2f. Frozen: %r. Cooked: %r. Burnt: %r."
                     % (
                         idx + 1,
@@ -117,4 +117,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

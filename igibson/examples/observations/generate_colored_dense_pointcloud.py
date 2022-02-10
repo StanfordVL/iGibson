@@ -18,7 +18,7 @@ def main(selection="user", headless=False, short_exec=False):
     It plots the point cloud with matplotlib, colored with the RGB values
     It also generates semantic segmentation
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Create iGibsonEnvironment with the Fetch rearrangement config
     mode = "headless"
@@ -68,4 +68,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

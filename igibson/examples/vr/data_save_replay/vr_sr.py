@@ -13,6 +13,7 @@ This demo saves to vr_logs/vr_sr.h5
 Run this demo (and also change the filename) if you would like to save your own data."""
 
 import argparse
+import logging
 import os
 
 import numpy as np
@@ -195,6 +196,7 @@ def run_action_sr(mode):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="VR state saving and replay demo")
     parser.add_argument("--mode", default="save", help="Mode to run in: either save or replay")
     args = parser.parse_args()

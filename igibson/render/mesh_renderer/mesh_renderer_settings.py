@@ -4,6 +4,8 @@ import platform
 
 import igibson
 
+log = logging.getLogger(__name__)
+
 
 class MeshRendererSettings(object):
     def __init__(
@@ -61,7 +63,7 @@ class MeshRendererSettings(object):
 
         if platform.system() == "Darwin":
             if optimized:
-                logging.warning("Darwin does not support optimized renderer, automatically disabling")
+                log.warning("WARN: Darwin does not support optimized renderer, automatically disabling")
             self.optimized = False
         else:
             self.optimized = optimized

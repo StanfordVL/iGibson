@@ -17,7 +17,7 @@ def main(selection="user", headless=False, short_exec=False):
     Shows how to load directly scenes without the Environment interface
     Shows how to sample points in the scene by room type and how to compute geodesic distance and the shortest path
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     available_ig_scenes = get_first_options()
     scene_id = available_ig_scenes[let_user_pick(available_ig_scenes, selection=selection) - 1]
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
@@ -41,17 +41,17 @@ def main(selection="user", headless=False, short_exec=False):
     np.random.seed(0)
     for _ in range(10):
         pt = scene.get_random_point_by_room_type("living_room")[1]
-        logging.info("Random point in living_room: {}".format(pt))
+        print("Random point in living_room: {}".format(pt))
 
     for _ in range(10):
         random_floor = scene.get_random_floor()
         p1 = scene.get_random_point(random_floor)[1]
         p2 = scene.get_random_point(random_floor)[1]
         shortest_path, geodesic_distance = scene.get_shortest_path(random_floor, p1[:2], p2[:2], entire_path=True)
-        logging.info("Random point 1: {}".format(p1))
-        logging.info("Random point 2: {}".format(p2))
-        logging.info("Geodesic distance between p1 and p2: {}".format(geodesic_distance))
-        logging.info("Shortest path from p1 to p2: {}".format(shortest_path))
+        print("Random point 1: {}".format(p1))
+        print("Random point 2: {}".format(p2))
+        print("Geodesic distance between p1 and p2: {}".format(geodesic_distance))
+        print("Shortest path from p1 to p2: {}".format(shortest_path))
 
     if not headless:
         input("Press enter")
@@ -71,4 +71,5 @@ def get_first_options():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -1,6 +1,7 @@
 import atexit
 import base64
 import binascii
+import logging
 import multiprocessing
 import os
 import sys
@@ -433,5 +434,6 @@ def video_feed():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     port = int(sys.argv[1])
     app.run(host="0.0.0.0", port=port)

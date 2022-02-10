@@ -35,6 +35,8 @@ from igibson.robots.manipulation_robot import GraspingPoint, ManipulationRobot
 from igibson.robots.robot_base import Virtual6DOFJoint, VirtualJoint
 from igibson.utils.constants import SPECIAL_COLLISION_GROUPS, SemanticClass, SimulatorMode, get_collision_group_mask
 
+log = logging.getLogger(__name__)
+
 # Part offset parameters
 EYE_LOC_POSE_UNTRACKED = ([0.05, 0, 0], [0, 0, 0, 1])
 RIGHT_HAND_LOC_POSE_UNTRACKED = ([0.1, -0.12, -0.4], [-0.7, 0.7, 0.0, 0.15])
@@ -165,15 +167,13 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
         :return Array[int]: List of unique pybullet IDs corresponding to this robot.
         """
-        logging.info("Loading BehaviorRobot")
-
         # A persistent reference to simulator is needed for AG in ManipulationRobot
         self.simulator = simulator
 
         # Set the control frequency if one was not provided.
         expected_control_freq = 1.0 / simulator.render_timestep
         if self.control_freq is None:
-            logging.info(
+            log.debug(
                 "Control frequency is None - being set to default of 1 / render_timestep: %.4f", expected_control_freq
             )
             self.control_freq = expected_control_freq

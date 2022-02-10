@@ -111,7 +111,7 @@ def main(selection="user", headless=False, short_exec=False):
     It plots the point cloud with matplotlib, colored with the RGB values
     It also generates segmentation and "direction"
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Create environment
     mode = "headless"
@@ -137,4 +137,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

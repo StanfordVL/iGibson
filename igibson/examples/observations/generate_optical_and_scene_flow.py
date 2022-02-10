@@ -10,8 +10,6 @@ import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.objects.ycb_object import YCBObject
 from igibson.render.profiler import Profiler
-from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
-from igibson.utils.vision_utils import randomize_colors, segmentation_to_rgb
 
 FLOW_SCALING_FACTOR = 500
 
@@ -35,7 +33,7 @@ def main(selection="user", headless=True, short_exec=True):
     Example of rendering additional sensor modalities
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config_filename = os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml")
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
@@ -68,7 +66,7 @@ def main(selection="user", headless=True, short_exec=True):
         episodes = 10
 
     for j in range(episodes):
-        logging.info("Resetting environment")
+        print("Resetting environment")
         env.reset()
         env.robots[0].set_position_orientation([0, 0, 0], [0, 0, 0, 1])
 
@@ -90,4 +88,5 @@ def main(selection="user", headless=True, short_exec=True):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

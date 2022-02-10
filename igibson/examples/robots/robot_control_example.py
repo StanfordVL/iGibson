@@ -331,7 +331,7 @@ def main(selection="user", headless=False, short_exec=False):
     Robot control demo with selection
     Queries the user to select a robot, the controllers, a scene and a type of input (random actions or teleop)
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Create an initial headless dummy scene so we can load the requested robot and extract useful info
     s = Simulator(mode="headless", use_pb_gui=False)
@@ -371,8 +371,9 @@ def main(selection="user", headless=False, short_exec=False):
         and isinstance(robot, ManipulationRobot)
         and "InverseKinematicsController" in controller_choices.values()
     ):
-        message = "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
-        logging.warning(message)
+        logging.warning(
+            "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
+        )
         gui = "pb"
 
     # Infer what GUI(s) to use
@@ -448,4 +449,5 @@ def get_first_options():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
