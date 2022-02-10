@@ -27,7 +27,7 @@ def main(selection="user", headless=False, short_exec=False):
     This is a pybullet functionality but we keep an example because it can be useful and we do not provide a direct
     API from iGibson
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
@@ -134,7 +134,7 @@ def main(selection="user", headless=False, short_exec=False):
     joint_damping = [0.1 for _ in joint_range]
 
     def accurate_calculate_inverse_kinematics(robot_id, eef_link_id, target_pos, threshold, max_iter):
-        logging.info("IK solution to end effector position {}".format(target_pos))
+        print("IK solution to end effector position {}".format(target_pos))
         # Save initial robot pose
         state_id = p.saveState()
 
@@ -142,7 +142,7 @@ def main(selection="user", headless=False, short_exec=False):
         solution_found = False
         joint_poses = None
         for attempt in range(1, max_attempts + 1):
-            logging.info("Attempt {} of {}".format(attempt, max_attempts))
+            print("Attempt {} of {}".format(attempt, max_attempts))
             # Get a random robot pose to start the IK solver iterative process
             # We attempt from max_attempt different initial random poses
             sample_fn = get_sample_fn(robot_id, arm_joint_ids)
@@ -176,10 +176,10 @@ def main(selection="user", headless=False, short_exec=False):
                 it += 1
 
             if solution_found:
-                logging.info("Solution found at iter: " + str(it) + ", residual: " + str(dist))
+                print("Solution found at iter: " + str(it) + ", residual: " + str(dist))
                 break
             else:
-                logging.info("Attempt failed. Retry")
+                print("Attempt failed. Retry")
                 joint_poses = None
 
         restoreState(state_id)
@@ -191,15 +191,15 @@ def main(selection="user", headless=False, short_exec=False):
     if programmatic_pos or headless:
         query_positions = [[1, 0, 0.8], [1, 1, 1], [0.5, 0.5, 0], [0.5, 0.5, 0.5]]
         for pos in query_positions:
-            logging.info("Querying joint configuration to current marker position")
+            print("Querying joint configuration to current marker position")
             joint_pos = accurate_calculate_inverse_kinematics(
                 robot_id, fetch.eef_links[fetch.default_arm].link_id, pos, threshold, max_iter
             )
             if joint_pos is not None and len(joint_pos) > 0:
-                logging.info("Solution found. Setting new arm configuration.")
+                print("Solution found. Setting new arm configuration.")
                 set_joint_positions(robot_id, arm_joint_ids, joint_pos)
             else:
-                logging.info("EE position not reachable.")
+                print("EE position not reachable.")
             fetch.set_position_orientation([0, 0, 0], [0, 0, 0, 1])
             fetch.keep_still()
             time.sleep(10)
@@ -226,20 +226,20 @@ def main(selection="user", headless=False, short_exec=False):
                 if k == ord("x") and (v & p.KEY_IS_DOWN):
                     z -= 0.01
                 if k == ord(" "):
-                    logging.info("Querying joint configuration to current marker position")
+                    print("Querying joint configuration to current marker position")
                     joint_pos = accurate_calculate_inverse_kinematics(
                         robot_id, fetch.eef_links[fetch.default_arm].link_id, [x, y, z], threshold, max_iter
                     )
                     if joint_pos is not None and len(joint_pos) > 0:
-                        logging.info("Solution found. Setting new arm configuration.")
+                        print("Solution found. Setting new arm configuration.")
                         set_joint_positions(robot_id, arm_joint_ids, joint_pos)
                         print_message()
                     else:
-                        logging.info(
+                        print(
                             "No configuration to reach that point. Move the marker to a different configuration and try again."
                         )
                 if k == ord("q"):
-                    logging.info("Quit.")
+                    print("Quit.")
                     quit_now = True
                     break
 
@@ -264,4 +264,5 @@ def print_message():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

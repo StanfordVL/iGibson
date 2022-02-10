@@ -1,6 +1,6 @@
 """ Test code showing how to use a VrConditionSwitcher.
 """
-
+import logging
 import os
 
 import pybullet as p
@@ -84,4 +84,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

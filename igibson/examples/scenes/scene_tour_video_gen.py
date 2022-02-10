@@ -21,7 +21,7 @@ def main(selection="user", headless=False, short_exec=False):
     Generates videos navigating in the iG scenes
     Loads an iG scene, predefined paths and produces a video. Alternate random textures and/or objects, on demand.
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
@@ -116,4 +116,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

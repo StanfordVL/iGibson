@@ -14,7 +14,7 @@ def main(selection="user", headless=False, short_exec=False):
     It also demonstrates how to apply an action on all instances of objects of a given category
     ONLY WORKS WITH OPTIMIZED RENDERING (not on Mac)
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     settings = MeshRendererSettings(optimized=True, enable_shadow=True, blend_highlight=True)
     s = Simulator(
         mode="gui_interactive" if not headless else "headless",
@@ -32,12 +32,12 @@ def main(selection="user", headless=False, short_exec=False):
     while i != max_steps:
         s.step()
         if i % 100 == 0:
-            logging.info("Highlighting windows")
+            print("Highlighting windows")
             for obj in scene.objects_by_category["window"]:
                 obj.highlight()
 
         if i % 100 == 50:
-            logging.info("Deactivating the highlight on windows")
+            print("Deactivating the highlight on windows")
             for obj in scene.objects_by_category["window"]:
                 obj.unhighlight()
 
@@ -45,4 +45,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

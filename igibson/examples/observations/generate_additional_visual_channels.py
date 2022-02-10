@@ -18,7 +18,7 @@ def main(selection="user", headless=False, short_exec=False):
     Example of rendering additional sensor modalities
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config_filename = os.path.join(igibson.example_config_path, "turtlebot_nav.yaml")
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
     # Only load a few objects
@@ -49,7 +49,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     max_iterations = 100 if not short_exec else 1
     for j in range(max_iterations):
-        logging.info("Resetting environment")
+        print("Resetting environment")
         env.reset()
         for i in range(300):
             with Profiler("Environment action step"):
@@ -79,4 +79,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

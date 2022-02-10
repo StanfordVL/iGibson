@@ -16,7 +16,7 @@ def main(selection="user", headless=False, short_exec=False):
     Robot demo
     Loads all robots in an empty scene, generate random actions
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # Create empty scene
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
     s = Simulator(
@@ -41,8 +41,8 @@ def main(selection="user", headless=False, short_exec=False):
         robot.reset()
         robot.keep_still()
         robots[robot_name] = (robot, position[1])
-        logging.info("Loaded " + robot_name)
-        logging.info("Moving " + robot_name)
+        print("Loaded " + robot_name)
+        print("Moving " + robot_name)
 
         if not headless:
             # Set viewer in front
@@ -68,4 +68,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

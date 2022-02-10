@@ -18,7 +18,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads Rs (non interactive) and a robot and renders a velodyne signal from the robot's camera
     It plots the velodyne point cloud with matplotlib
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.01)
     s = Simulator(mode="headless", image_width=256, image_height=256, rendering_settings=settings)
@@ -35,7 +35,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Get velodyne lidar
     lidar = s.renderer.get_lidar_all()
-    logging.info("Dimensions of the lidar observation: {}".format(lidar.shape))
+    print("Dimensions of the lidar observation: {}".format(lidar.shape))
 
     if not headless:
         # Visualize velodyne lidar
@@ -51,4 +51,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

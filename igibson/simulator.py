@@ -15,12 +15,12 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.viewer import Viewer, ViewerSimple
-from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs
 from igibson.utils.constants import PYBULLET_BASE_LINK_INDEX, PyBulletSleepState, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
+
+log = logging.getLogger(__name__)
 
 
 def load_without_pybullet_vis(load_func):
@@ -93,12 +93,12 @@ class Simulator:
         plt = platform.system()
         if plt == "Darwin" and self.mode == SimulatorMode.GUI_INTERACTIVE and use_pb_gui:
             self.use_pb_gui = False  # for mac os disable pybullet rendering
-            logging.warning(
+            log.warning(
                 "Simulator mode gui_interactive is not supported when `use_pb_gui` is true on macOS. Default to use_pb_gui = False."
             )
         if plt != "Linux" and self.mode == SimulatorMode.HEADLESS_TENSOR:
             self.mode = SimulatorMode.HEADLESS
-            logging.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
+            log.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
 
         self.viewer = None
         self.renderer = None
@@ -263,7 +263,7 @@ class Simulator:
 
     @load_without_pybullet_vis
     def import_robot(self, robot):
-        logging.warning(
+        log.warning(
             "DEPRECATED: simulator.import_robot(...) has been deprecated in favor of import_object and will be removed "
             "in a future release. Please use simulator.import_object(...) for equivalent functionality."
         )
@@ -359,7 +359,7 @@ class Simulator:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cylinder16.obj")
                 dimensions = [dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]]
                 if not os.path.exists(filename):
-                    logging.info(
+                    log.info(
                         "Cylinder mesh file cannot be found in the assets. Consider removing the assets folder and downloading the newest version using download_assets(). Using a cube for backcompatibility"
                     )
                     filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")

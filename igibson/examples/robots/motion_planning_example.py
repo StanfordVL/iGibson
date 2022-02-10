@@ -139,9 +139,9 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
             plan = motion_planner.plan_arm_push(hit_pos, np.array(hit_normal))
             if plan is not None and len(plan) > 0:
-                logging.info("Executing planned arm push")
+                print("Executing planned arm push")
                 motion_planner.execute_arm_push(plan, hit_pos, np.array(hit_normal))
-                logging.info("End of the execution")
+                print("End of the execution")
                 success = True
             else:
                 logging.error(
@@ -174,7 +174,7 @@ def main(selection="user", headless=False, short_exec=False):
     The user can select to control the MP through the GUI or see the execution of a series of programmatic base
     and arm goals
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
@@ -203,4 +203,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

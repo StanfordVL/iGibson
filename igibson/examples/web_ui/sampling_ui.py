@@ -1,5 +1,6 @@
 import atexit
 import json
+import logging
 import multiprocessing
 import os
 import sys
@@ -439,6 +440,7 @@ scheduler.add_job(id=PERIODIC_CLEANUP_TASK_ID, func=periodic_cleanup, seconds=5,
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     port = int(sys.argv[1])
     # app.run(host="0.0.0.0", port=port, debug=True)
     app.run(host="0.0.0.0", port=port)

@@ -16,7 +16,7 @@ def main(selection="user", headless=False, short_exec=False):
     Creates renderer and renders panorama images in Rs (no interactive). No physics.
     The camera view can be controlled.
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     global _mouse_ix, _mouse_iy, down, view_direction
 
     # If a model is given, we load it, otherwise we load Rs mesh (non interactive)
@@ -32,8 +32,8 @@ def main(selection="user", headless=False, short_exec=False):
     renderer.add_instance_group([0])
 
     # Print some information about the loaded model
-    logging.info("visual objects {}, instances {}".format(renderer.visual_objects, renderer.instances))
-    logging.info("{} {}".format(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx))
+    print("visual objects {}, instances {}".format(renderer.visual_objects, renderer.instances))
+    print("{} {}".format(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx))
 
     # Create a simple viewer with OpenCV and a keyboard navigation
     px = 0
@@ -102,4 +102,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

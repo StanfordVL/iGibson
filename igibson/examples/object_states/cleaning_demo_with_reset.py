@@ -19,7 +19,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads an empty scene with a sink, a dusty table and a dirty and stained bowl, and a cleaning tool
     If everything is cleaned, or after N steps, the scene resets to the initial state
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
 
     if not headless:
@@ -83,11 +83,11 @@ def main(selection="user", headless=False, short_exec=False):
     # Save the initial state.
     pb_initial_state = p.saveState()  # Save pybullet state (kinematics)
     brush_initial_extended_state = brush.dump_state()  # Save brush extended state
-    logging.info(brush_initial_extended_state)
+    print(brush_initial_extended_state)
     desk_initial_extended_state = desk.dump_state()  # Save desk extended state
-    logging.info(desk_initial_extended_state)
+    print(desk_initial_extended_state)
     bowl_initial_extended_state = bowl.dump_state()  # Save bowl extended state
-    logging.info(bowl_initial_extended_state)
+    print(bowl_initial_extended_state)
 
     # Main simulation loop.
     max_steps = 1000
@@ -104,14 +104,14 @@ def main(selection="user", headless=False, short_exec=False):
             ):
                 steps += 1
                 s.step()
-                logging.info("Step {}".format(steps))
+                print("Step {}".format(steps))
 
             if not desk.states[object_states.Dusty].get_value():
-                logging.info("Reset because Table cleaned")
+                print("Reset because Table cleaned")
             elif not bowl.states[object_states.Stained].get_value():
-                logging.info("Reset because Bowl cleaned")
+                print("Reset because Bowl cleaned")
             else:
-                logging.info("Reset because max steps")
+                print("Reset because max steps")
 
             # Reset to the initial state
             restoreState(pb_initial_state)
@@ -129,4 +129,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

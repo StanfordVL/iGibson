@@ -17,7 +17,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads an apple and increases manually its temperature to observe the texture change from frozen, to cooked, to burnt
     Also shows how to change object-specific parameters such as the burning temperature
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=True)
     s = Simulator(
@@ -47,11 +47,11 @@ def main(selection="user", headless=False, short_exec=False):
     # Manually increase the temperature of the apple
     for i in range(-10, 100):
         temp = i * 5
-        logging.info("Apple temperature: {} degrees Celsius".format(temp))
+        print("Apple temperature: {} degrees Celsius".format(temp))
         apple.states[object_states.Temperature].set_value(temp)
-        logging.info("Frozen(Apple)? {}".format(apple.states[object_states.Frozen].get_value()))
-        logging.info("Cooked(Apple)? {}".format(apple.states[object_states.Cooked].get_value()))
-        logging.info("Burnt(Apple)? {}".format(apple.states[object_states.Burnt].get_value()))
+        print("Frozen(Apple)? {}".format(apple.states[object_states.Frozen].get_value()))
+        print("Cooked(Apple)? {}".format(apple.states[object_states.Cooked].get_value()))
+        print("Burnt(Apple)? {}".format(apple.states[object_states.Burnt].get_value()))
         for j in range(10):
             # with Profiler("Simulator step"):
             s.step()
@@ -59,4 +59,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

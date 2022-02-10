@@ -302,7 +302,7 @@ def main(selection="user", headless=False, short_exec=False):
     Robot grasping mode demo with selection
     Queries the user to select a type of grasping mode and GUI
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Choose type of grasping
     grasping_mode = choose_from_options(options=GRASPING_MODES, name="grasping mode", selection=selection)
@@ -317,8 +317,9 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Warn user if using ig gui that arrow keys may not work
     if gui == "ig" and platform.system() != "Darwin":
-        message = "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
-        logging.warning(message)
+        logging.warning(
+            "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
+        )
         gui = "pb"
 
     # Infer what GUI(s) to use
@@ -458,4 +459,5 @@ def get_first_options():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

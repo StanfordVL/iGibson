@@ -15,6 +15,8 @@ from igibson.robots.manipulation_robot import IsGraspingState
 from igibson.simulator import Simulator
 from igibson.utils.vr_utils import VR_CONTROLLERS, VR_DEVICES, VrData, calc_offset, calc_z_rot_from_right
 
+log = logging.getLogger(__name__)
+
 ATTACHMENT_BUTTON_TIME_THRESHOLD = 1  # second
 
 
@@ -408,7 +410,6 @@ class SimulatorVR(Simulator):
         if attach_or_detach:
             # If the button just recently started being pressed, record the time.
             if self._vr_attachment_button_press_timestamp is None:
-                logging.info("Double button press detected.")
                 self._vr_attachment_button_press_timestamp = time.time()
 
             # If the button has been pressed for ATTACHMENT_BUTTON_TIME_THRESHOLD seconds, attach/detach.
@@ -418,7 +419,7 @@ class SimulatorVR(Simulator):
 
                 # Flip the attachment state.
                 self.vr_attached = not self.vr_attached
-                logging.info("VR kit {} BehaviorRobot.".format("attached to" if self.vr_attached else "detached from"))
+                log.info("VR kit {} BehaviorRobot.".format("attached to" if self.vr_attached else "detached from"))
 
                 # We don't want to fill in an action in this case.
                 return action

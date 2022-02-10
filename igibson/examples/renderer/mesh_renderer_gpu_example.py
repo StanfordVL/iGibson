@@ -16,7 +16,7 @@ def main(selection="user", headless=False, short_exec=False):
     Example of usage of the direct GPU rendering, tensor-to-tensor
     ONLY ON LINUX
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     if platform.system() != "Linux":
         logging.error("Rendering to pytorch tensor is only available on Linux.")
         sys.exit(0)
@@ -30,8 +30,8 @@ def main(selection="user", headless=False, short_exec=False):
     renderer.load_object(model_path)
     renderer.add_instance_group([0])
 
-    logging.info("visual objects {}, instances {}".format(renderer.visual_objects, renderer.instances))
-    logging.info("{} {}".format(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx))
+    print("visual objects {}, instances {}".format(renderer.visual_objects, renderer.instances))
+    print("{} {}".format(renderer.material_idx_to_material_instance_mapping, renderer.shape_material_idx))
     camera_pose = np.array([0, 0, 1.2])
     view_direction = np.array([1, 0, 0])
     renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 0, 1])
@@ -42,7 +42,7 @@ def main(selection="user", headless=False, short_exec=False):
         with Profiler("Render"):
             frame = renderer.render(modes=("rgb", "normal", "3d"))
 
-    logging.info(frame)
+    print(frame)
     img_np = frame[0].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
     normal_np = frame[1].flip(0).data.cpu().numpy().reshape(renderer.height, renderer.width, 4)
 
@@ -52,4 +52,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

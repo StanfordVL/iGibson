@@ -20,7 +20,7 @@ def main(selection="user", headless=False, short_exec=False):
     Draws the bounding box around the loaded object, a cabinet, while it moves.
     Visible only in the pybullet GUI.
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     s = Simulator(mode="headless", use_pb_gui=True if not headless else False)
     scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1])
     s.import_scene(scene)
@@ -81,4 +81,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

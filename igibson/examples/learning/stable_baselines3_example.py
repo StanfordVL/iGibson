@@ -101,7 +101,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads a scene and starts the training process for a navigation task with images using PPO
     Saves the checkpoint and loads it again
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config_file = "turtlebot_nav.yaml"
     tensorboard_log_dir = "log_dir"
     num_environments = 8 if not short_exec else 1
@@ -166,4 +166,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

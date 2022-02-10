@@ -18,7 +18,7 @@ def main(selection="user", headless=False, short_exec=False):
     This is also an example of how to load a scene without the ceiling to facilitate creating visualizations
     Quit with q
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.01)
     s = Simulator(mode="headless", image_width=512, image_height=512, device_idx=0, rendering_settings=settings)
     scene = InteractiveIndoorScene(
@@ -58,4 +58,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

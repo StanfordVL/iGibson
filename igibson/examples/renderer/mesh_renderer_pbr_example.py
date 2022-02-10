@@ -50,7 +50,7 @@ def main(selection="user", headless=False, short_exec=False):
     """
     Minimal example of use of the PBR renderer. Loads Rs_int (interactive) or one object.
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     global _mouse_ix, _mouse_iy, down, view_direction
 
     # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests
@@ -72,7 +72,7 @@ def main(selection="user", headless=False, short_exec=False):
             v.append(vertices)
 
     v = np.vstack(v)
-    logging.info("Number of vertices {}".format(v.shape))
+    print("Number of vertices {}".format(v.shape))
     xlen = np.max(v[:, 0]) - np.min(v[:, 0])
     ylen = np.max(v[:, 1]) - np.min(v[:, 1])
     scale = 2.0 / (max(xlen, ylen))
@@ -85,14 +85,14 @@ def main(selection="user", headless=False, short_exec=False):
             i += 1
 
     # Logging some info
-    logging.info("renderer.visual_objects {}".format(renderer.visual_objects))
-    logging.info("renderer.instances {}".format(renderer.instances))
-    logging.info(
+    print("renderer.visual_objects {}".format(renderer.visual_objects))
+    print("renderer.instances {}".format(renderer.instances))
+    print(
         "renderer.material_idx_to_material_instance_mapping {}".format(
             renderer.material_idx_to_material_instance_mapping
         )
     )
-    logging.info("renderer.shape_material_idx {}".format(renderer.shape_material_idx))
+    print("renderer.shape_material_idx {}".format(renderer.shape_material_idx))
 
     # Create a simple viewer with OpenCV
     px = 1
@@ -157,4 +157,5 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -1,4 +1,5 @@
 import atexit
+import logging
 import multiprocessing
 import os
 import sys
@@ -236,13 +237,14 @@ class ProcessPyEnvironment(object):
             etype, evalue, tb = sys.exc_info()
             stacktrace = "".join(traceback.format_exception(etype, evalue, tb))
             message = "Error in environment process: {}".format(stacktrace)
-            # tf.logging.error(message)
+            # tf.logging.getLogger(__name__).error(message)
             conn.send((self._EXCEPTION, stacktrace))
         finally:
             conn.close()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     config_filename = os.path.join(os.path.dirname(igibson.__file__), "..", "tests", "test.yaml")
 
     def load_env():

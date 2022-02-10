@@ -9,7 +9,7 @@ Important - VR functionality and where to find it:
 4) The VR renderer can be found in igibson/render/mesh_renderer.py
 5) The underlying VR C++ code can be found in vr_mesh_render.h and .cpp in igibson/render/cpp
 """
-
+import logging
 import os
 
 import numpy as np
@@ -101,4 +101,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

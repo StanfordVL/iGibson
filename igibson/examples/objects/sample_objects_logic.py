@@ -20,7 +20,7 @@ def main(selection="user", headless=False, short_exec=False):
     Loads a cabinet, a microwave open on top of it, and two plates with apples on top, one inside and one on top of the cabinet
     Then loads a shelf and YCB cracker boxes inside of it
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=False)
     s = Simulator(
         mode="gui_interactive" if not headless else "headless",
@@ -63,7 +63,7 @@ def sample_microwave_plates_apples(simulator):
     apple_filename = os.path.join(apple_dir, "00_0.urdf")
 
     # Load cabinet, set position manually, and step 100 times
-    logging.info("Loading cabinet")
+    print("Loading cabinet")
     cabinet = URDFObject(filename=cabinet_filename, category="cabinet", scale=np.array([2.0, 2.0, 2.0]))
     simulator.import_object(cabinet)
     cabinet.set_position([0, 0, 0.5])
@@ -71,18 +71,18 @@ def sample_microwave_plates_apples(simulator):
         simulator.step()
 
     # Load microwave, set position on top of the cabinet, open it, and step 100 times
-    logging.info("Loading microwave Open and OnTop of the cabinet")
+    print("Loading microwave Open and OnTop of the cabinet")
     microwave = URDFObject(
         filename=microwave_filename, category="microwave", model_path=microwave_dir, scale=np.array([0.5, 0.5, 0.5])
     )
     simulator.import_object(microwave)
     assert microwave.states[object_states.OnTop].set_value(cabinet, True, use_ray_casting_method=True)
     assert microwave.states[object_states.Open].set_value(True)
-    logging.info("Microwave loaded and placed")
+    print("Microwave loaded and placed")
     for _ in range(100):
         simulator.step()
 
-    logging.info("Loading plates")
+    print("Loading plates")
     for i in range(3):
         plate = URDFObject(
             filename=plate_filename, category="plate", model_path=plate_dir, bounding_box=[0.25, 0.25, 0.05]
@@ -91,22 +91,22 @@ def sample_microwave_plates_apples(simulator):
 
         # Put the 1st plate in the microwave
         if i == 0:
-            logging.info("Loading plate Inside the microwave")
+            print("Loading plate Inside the microwave")
             assert plate.states[object_states.Inside].set_value(microwave, True, use_ray_casting_method=True)
         else:
-            logging.info("Loading plate OnTop the microwave")
+            print("Loading plate OnTop the microwave")
             assert plate.states[object_states.OnTop].set_value(microwave, True, use_ray_casting_method=True)
 
-        logging.info("Plate %d loaded and placed." % i)
+        print("Plate %d loaded and placed." % i)
         for _ in range(100):
             simulator.step()
 
-        logging.info("Loading three apples OnTop of the plate")
+        print("Loading three apples OnTop of the plate")
         for j in range(3):
             apple = URDFObject(filename=apple_filename, category="apple", model_path=apple_dir)
             simulator.import_object(apple)
             assert apple.states[object_states.OnTop].set_value(plate, True, use_ray_casting_method=True)
-            logging.info("Apple %d loaded and placed." % j)
+            print("Apple %d loaded and placed." % j)
             for _ in range(100):
                 simulator.step()
 
@@ -144,4 +144,5 @@ def sample_boxes_on_shelf(simulator):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

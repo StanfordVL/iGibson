@@ -16,6 +16,8 @@ from igibson.objects.stateful_object import StatefulObject
 from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
 from igibson.utils.utils import rotate_vector_3d
 
+log = logging.getLogger(__name__)
+
 # Global dicts that will contain mappings
 REGISTERED_ROBOTS = {}
 ROBOT_TEMPLATE_CLASSES = {
@@ -138,7 +140,7 @@ class BaseRobot(StatefulObject):
         :return Array[int]: List of unique pybullet IDs corresponding to this model. This will usually
             only be a single value
         """
-        logging.info("Loading robot model file: {}".format(self.model_file))
+        log.debug("Loading robot model file: {}".format(self.model_file))
 
         # A persistent reference to simulator is needed for AG in ManipulationRobot
         self.simulator = simulator
@@ -146,7 +148,7 @@ class BaseRobot(StatefulObject):
         # Set the control frequency if one was not provided.
         expected_control_freq = 1.0 / simulator.render_timestep
         if self.control_freq is None:
-            logging.info(
+            log.debug(
                 "Control frequency is None - being set to default of 1 / render_timestep: %.4f", expected_control_freq
             )
             self.control_freq = expected_control_freq
@@ -239,7 +241,7 @@ class BaseRobot(StatefulObject):
                 self._mass += p.getDynamicsInfo(body_id, j)[0]
                 p.setJointMotorControl2(body_id, j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
                 _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, link_name, _, _, _, _ = p.getJointInfo(body_id, j)
-                logging.debug("Robot joint: {}".format(p.getJointInfo(body_id, j)))
+                log.debug("Robot joint: {}".format(p.getJointInfo(body_id, j)))
                 joint_name = joint_name.decode("utf8")
                 assert (
                     joint_name not in self._joints

@@ -11,6 +11,8 @@ from igibson.termination_conditions.out_of_bound import OutOfBound
 from igibson.termination_conditions.timeout import Timeout
 from igibson.utils.utils import restoreState
 
+log = logging.getLogger(__name__)
+
 
 class RoomRearrangementTask(BaseTask):
     """
@@ -107,7 +109,7 @@ class RoomRearrangementTask(BaseTask):
                 break
 
         if not reset_success:
-            logging.warning("WARNING: Failed to reset robot without collision")
+            log.warning("WARNING: Failed to reset robot without collision")
 
         env.land(env.robots[0], initial_pos, initial_orn)
         p.removeState(state_id)

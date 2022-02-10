@@ -17,10 +17,11 @@ from igibson.render.mesh_renderer.materials import Material, ProceduralMaterial,
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.text import Text, TextManager
 from igibson.render.mesh_renderer.visual_object import VisualObject
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.utils.constants import AVAILABLE_MODALITIES, MAX_CLASS_COUNT, MAX_INSTANCE_COUNT, ShadowPass
 from igibson.utils.mesh_util import lookat, mat2xyz, ortho, perspective, quat2rotmat, safemat2quat, xyz2mat, xyzw2wxyz
+
+log = logging.getLogger(__name__)
 
 Image.MAX_IMAGE_PIXELS = None
 NO_MATERIAL_DEFINED_IN_SHAPE_AND_NO_OVERWRITE_SUPPLIED = -1
@@ -89,7 +90,7 @@ class MeshRenderer(object):
 
         if self.platform == "Darwin":
             if self.optimized:
-                logging.error("Optimized renderer is not supported on Mac")
+                log.error("Optimized renderer is not supported on Mac")
                 exit()
             from igibson.render.mesh_renderer import GLFWRendererContext  # type: ignore
 
@@ -130,7 +131,7 @@ class MeshRenderer(object):
             device = os.environ.get("GIBSON_DEVICE_ID", None)
             if device:
                 device = int(device)
-                logging.info(
+                log.debug(
                     "GIBSON_DEVICE_ID environment variable has been manually set. "
                     "Using device {} for rendering".format(device)
                 )
@@ -138,10 +139,10 @@ class MeshRenderer(object):
                 available_devices, _ = get_available_devices()
                 if device_idx < len(available_devices):
                     device = available_devices[device_idx]
-                    logging.info("Using device {} for rendering".format(device))
+                    log.debug("Using device {} for rendering".format(device))
                 else:
-                    logging.info("Device index is larger than number of devices, falling back to use 0")
-                    logging.info(
+                    log.warning("Device index is larger than number of devices, falling back to use 0")
+                    log.warning(
                         "If you have trouble using EGL, please visit our trouble shooting guide"
                         "at http://svl.stanford.edu/igibson/docs/issues.html",
                     )
@@ -155,18 +156,23 @@ class MeshRenderer(object):
         else:
             raise Exception("Unsupported platform and renderer combination")
 
-        self.r.verbosity = 20 if logging.getLogger().isEnabledFor(logging.INFO) else 0
+        if log.isEnabledFor(logging.DEBUG):
+            self.r.verbosity = 20
+        elif log.isEnabledFor(logging.INFO):
+            self.r.verbosity = 10
+        else:
+            self.r.verbosity = 0
         self.r.init()
 
         self.glstring = self.r.getstring_meshrenderer()
 
-        logging.debug("Rendering device and GL version")
-        logging.debug(self.glstring)
+        log.debug("Rendering device and GL version")
+        log.debug(self.glstring)
 
         self.colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
         self.lightcolor = [1, 1, 1]
 
-        logging.debug("Is using fisheye camera: {}".format(self.fisheye))
+        log.debug("Is using fisheye camera: {}".format(self.fisheye))
 
         if self.rendering_settings.glsl_version_override:
             glsl_version = str(self.rendering_settings.glsl_version_override)
@@ -176,7 +182,7 @@ class MeshRenderer(object):
             glsl_version = "460"
 
         if self.fisheye:
-            logging.error("Fisheye is currently not supported.")
+            log.error("Fisheye is currently not supported.")
             exit(1)
         else:
             if self.platform == "Darwin":
@@ -276,7 +282,7 @@ class MeshRenderer(object):
                 self.rendering_settings.light_dimming_factor,
             )
         else:
-            logging.warning("Environment texture not available, cannot use PBR.")
+            log.warning("Environment texture not available, cannot use PBR.")
         if self.rendering_settings.enable_pbr:
             self.r.loadSkyBox(self.skyboxShaderProgram, self.skybox_size)
 
@@ -414,13 +420,11 @@ class MeshRenderer(object):
         :return: VAO_ids
         """
         if self.optimization_process_executed and self.optimized:
-            logging.error(
-                "Using optimized renderer and optimization process is already excuted, cannot add new objects"
-            )
+            log.error("Using optimized renderer and optimization process is already excuted, cannot add new objects")
             return
 
         reader = tinyobjloader.ObjReader()
-        logging.info("Loading {}".format(obj_path))
+        log.debug("Loading {}".format(obj_path))
         if obj_path.endswith("encrypted.obj"):
             if not os.path.exists(igibson.key_path):
                 raise FileNotFoundError(
@@ -432,32 +436,32 @@ class MeshRenderer(object):
         vertex_data_indices = []
         face_indices = []
         if not ret:
-            logging.error("Warning: {}".format(reader.Warning()))
-            logging.error("Error: {}".format(reader.Error()))
-            logging.error("Failed to load: {}".format(obj_path))
+            log.error("Warning: {}".format(reader.Warning()))
+            log.error("Error: {}".format(reader.Error()))
+            log.error("Failed to load: {}".format(obj_path))
             sys.exit(-1)
 
         if reader.Warning():
-            logging.warning("Warning: {}".format(reader.Warning()))
+            log.warning("Warning: {}".format(reader.Warning()))
 
         attrib = reader.GetAttrib()
-        logging.debug("Num vertices = {}".format(len(attrib.vertices)))
-        logging.debug("Num normals = {}".format(len(attrib.normals)))
-        logging.debug("Num texcoords = {}".format(len(attrib.texcoords)))
+        log.debug("Num vertices = {}".format(len(attrib.vertices)))
+        log.debug("Num normals = {}".format(len(attrib.normals)))
+        log.debug("Num texcoords = {}".format(len(attrib.texcoords)))
 
         materials = reader.GetMaterials()
-        logging.debug("Num materials: {}".format(len(materials)))
+        log.debug("Num materials: {}".format(len(materials)))
 
-        if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
+        if log.isEnabledFor(logging.DEBUG):  # Only going into this if it is for logging --> efficiency
             for m in materials:
-                logging.debug("Material name: {}".format(m.name))
-                logging.debug("Material diffuse: {}".format(m.diffuse))
+                log.debug("Material name: {}".format(m.name))
+                log.debug("Material diffuse: {}".format(m.diffuse))
 
         shapes = reader.GetShapes()
-        logging.debug("Num shapes: {}".format(len(shapes)))
+        log.debug("Num shapes: {}".format(len(shapes)))
 
         if overwrite_material is not None and len(materials) > 1:
-            logging.warning("passed in one material ends up overwriting multiple materials")
+            log.warning("passed in one material ends up overwriting multiple materials")
 
         # set the default values of variable before being modified later.
         num_existing_mats = len(self.material_idx_to_material_instance_mapping)  # Number of current Material elements
@@ -525,7 +529,7 @@ class MeshRenderer(object):
         vertex_texcoord = np.array(attrib.texcoords).reshape((len(attrib.texcoords) // 2, 2))
 
         for shape in shapes:
-            logging.debug("Shape name: {}".format(shape.name))
+            log.debug("Shape name: {}".format(shape.name))
             if len(shape.mesh.material_ids) == 0 or shape.mesh.material_ids[0] == -1:
                 # material not found, or invalid material, as defined here
                 # https://github.com/tinyobjloader/tinyobjloader/blob/master/tiny_obj_loader.h#L2997
@@ -539,8 +543,8 @@ class MeshRenderer(object):
                 material_id = shape.mesh.material_ids[0]
                 # assumption: each shape only have one material
 
-            logging.debug("material_id = {}".format(material_id))
-            logging.debug("num_indices = {}".format(len(shape.mesh.indices)))
+            log.debug("material_id = {}".format(material_id))
+            log.debug("num_indices = {}".format(len(shape.mesh.indices)))
             n_indices = len(shape.mesh.indices)
             np_indices = shape.mesh.numpy_indices().reshape((n_indices, 3))
 
@@ -622,7 +626,7 @@ class MeshRenderer(object):
             else:
                 self.shape_material_idx.append(material_id + num_existing_mats)
 
-            logging.debug("shape_material_idx: {}".format(self.shape_material_idx))
+            log.debug("shape_material_idx: {}".format(self.shape_material_idx))
             VAO_ids.append(self.get_num_objects() - 1)
 
         new_obj = VisualObject(
@@ -669,9 +673,7 @@ class MeshRenderer(object):
         """
 
         if self.optimization_process_executed and self.optimized:
-            logging.error(
-                "Using optimized renderer and optimization process is already excuted, cannot add new " "objects"
-            )
+            log.error("Using optimized renderer and optimization process is already excuted, cannot add new " "objects")
             return
 
         use_pbr = use_pbr and self.rendering_settings.enable_pbr
@@ -901,7 +903,7 @@ class MeshRenderer(object):
             self.update_hidden_highlight_state(hidden)
 
         if "seg" in modes and self.rendering_settings.msaa:
-            logging.warning(
+            log.warning(
                 "Rendering segmentation masks with MSAA on may generate interpolation artifacts. "
                 "It is recommended to turn MSAA off when rendering segmentation."
             )
@@ -1098,7 +1100,7 @@ class MeshRenderer(object):
         """
         Clean everything, and release the openGL context.
         """
-        logging.debug("Releasing. {}".format(self.glstring))
+        log.debug("Releasing. {}".format(self.glstring))
         self.clean()
         self.r.release()
 
@@ -1318,7 +1320,7 @@ class MeshRenderer(object):
         Optimize vertex and texture for optimized renderer.
         """
         for tex_file in self.texture_files:
-            print("Texture: ", tex_file)
+            log.debug("Texture: ", tex_file)
         # Set cutoff about 4096, otherwise we end up filling VRAM very quickly
         cutoff = 5000 * 5000
         shouldShrinkSmallTextures = True
@@ -1329,8 +1331,8 @@ class MeshRenderer(object):
         self.tex_id_1, self.tex_id_2, self.tex_id_layer_mapping = self.r.generateArrayTextures(
             texture_files, cutoff, shouldShrinkSmallTextures, smallTexSize, igibson.key_path
         )
-        print(self.tex_id_layer_mapping)
-        print(len(self.texture_files), self.texture_files)
+        log.debug(self.tex_id_layer_mapping)
+        log.debug(len(self.texture_files), self.texture_files)
         self.textures.append(self.tex_id_1)
         self.textures.append(self.tex_id_2)
 
@@ -1495,9 +1497,9 @@ class MeshRenderer(object):
         self.merged_uv_data = np.ascontiguousarray(np.concatenate(uv_data, axis=0), np.float32)
 
         merged_vertex_data = np.concatenate(self.vertex_data, axis=0)
-        print("Merged vertex data shape:")
-        print(merged_vertex_data.shape)
-        print("Enable pbr: {}".format(self.rendering_settings.enable_pbr))
+        log.debug("Merged vertex data shape:")
+        log.debug(merged_vertex_data.shape)
+        log.debug("Enable pbr: {}".format(self.rendering_settings.enable_pbr))
 
         if self.msaa:
             buffer = self.fbo_ms
@@ -1679,7 +1681,7 @@ class MeshRenderer(object):
         """
 
         if not self.optimization_process_executed:
-            logging.warning("Trying to set hidden state before vertices are merged, converted to no-op")
+            log.warning("Trying to set hidden state before vertices are merged, converted to no-op")
             return
         for instance in instances:
             buf_idxs = instance.or_buffer_indices

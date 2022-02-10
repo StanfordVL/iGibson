@@ -20,7 +20,7 @@ def main(selection="user", headless=False, short_exec=False):
     """
     Example of how to replay a previously recorded demo of a task
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
@@ -51,7 +51,7 @@ def verify_determinism(in_log_path, out_log_path):
                 )
                 is_deterministic = is_deterministic and is_close.all()
                 if not is_close.all():
-                    logging.info(
+                    logging.warning(
                         "Mismatch for obj {} with mismatched attribute {} starting at timestep {}".format(
                             obj, attribute, np.where(is_close == False)[0][0]
                         )
@@ -257,7 +257,7 @@ def replay_demo(
             if not disable_save:
                 log_writer.process_frame()
 
-        logging.info("Demo was successfully completed: {}".format(task_done))
+        print("Demo was successfully completed: {}".format(task_done))
 
         demo_statistics = {}
         for callback in end_callbacks:
@@ -270,7 +270,7 @@ def replay_demo(
     is_deterministic = None
     if not disable_save:
         is_deterministic = verify_determinism(in_log_path, out_log_path)
-        logging.info("Demo was deterministic: {}".format(is_deterministic))
+        print("Demo was deterministic: {}".format(is_deterministic))
 
     demo_statistics = {
         "deterministic": is_deterministic,
@@ -292,4 +292,5 @@ def safe_replay_demo(*args, **kwargs):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

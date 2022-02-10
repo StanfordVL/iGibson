@@ -6,6 +6,8 @@ import pybullet as p
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.utils.utils import l2_distance, restoreState
 
+log = logging.getLogger(__name__)
+
 
 class PointNavRandomTask(PointNavFixedTask):
     """
@@ -39,10 +41,10 @@ class PointNavRandomTask(PointNavFixedTask):
             if self.target_dist_min < dist < self.target_dist_max:
                 break
         if not (self.target_dist_min < dist < self.target_dist_max):
-            logging.warning("Failed to sample initial and target positions")
+            log.warning("Failed to sample initial and target positions")
         initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
-        logging.info("Sampled initial pose: {}, {}".format(initial_pos, initial_orn))
-        logging.info("Sampled target position: {}".format(target_pos))
+        log.debug("Sampled initial pose: {}, {}".format(initial_pos, initial_orn))
+        log.debug("Sampled target position: {}".format(target_pos))
         return initial_pos, initial_orn, target_pos
 
     def reset_scene(self, env):
@@ -77,7 +79,7 @@ class PointNavRandomTask(PointNavFixedTask):
                 break
 
         if not reset_success:
-            logging.warning("WARNING: Failed to reset robot without collision")
+            log.warning("WARNING: Failed to reset robot without collision")
 
         p.removeState(state_id)
 

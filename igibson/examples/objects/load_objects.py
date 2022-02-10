@@ -29,7 +29,7 @@ def main(selection="user", headless=False, short_exec=False):
     The example also shows how to use the Environment API or directly the Simulator API, loading objects and robots
     and executing actions
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     scene_options = get_first_options()
     type_of_scene = let_user_pick(scene_options, selection=selection) - 1
 
@@ -153,14 +153,14 @@ def main(selection="user", headless=False, short_exec=False):
         if type_of_scene == 1:
             max_iterations = 1 if short_exec else 10
             for j in range(max_iterations):
-                logging.info("Resetting environment")
+                print("Resetting environment")
                 env.reset()
                 for i in range(100):
                     with Profiler("Environment action step"):
                         # action = env.action_space.sample()
                         state, reward, done, info = env.step([0.1, 0.1])
                         if done:
-                            logging.info("Episode finished after {} timesteps".format(i + 1))
+                            print("Episode finished after {} timesteps".format(i + 1))
                             break
         else:
             max_steps = 100 if short_exec else 10000
@@ -182,4 +182,5 @@ def get_first_options():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
