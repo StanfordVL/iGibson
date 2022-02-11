@@ -1,9 +1,10 @@
 import logging
 import os
 
+import semver
 import yaml
 
-__version__ = "2.0.5"
+__version__ = "2.0.6"
 
 __logo__ = """
  _   _____  _  _ 
@@ -83,6 +84,45 @@ log.debug("iG Dataset path: {}".format(ig_dataset_path))
 log.debug("3D-FRONT Dataset path: {}".format(threedfront_dataset_path))
 log.debug("CubiCasa5K Dataset path: {}".format(cubicasa_dataset_path))
 log.debug("iGibson Key path: {}".format(key_path))
+
+
+def get_version(dataset_path):
+    try:
+        version_filename = os.path.join(dataset_path, "VERSION")
+        with open(version_filename, "r") as version_file:
+            return semver.VersionInfo.parse(version_file.read())
+    except (IOError, ValueError):
+        raise ValueError("Could not read version file at %s - please update your assets and ig_dataset.", dataset_path)
+
+
+# Assert that the assets and dataset versions are both sub-versions of the iGibson version.
+_parsed_version = semver.VersionInfo.parse(__version__)
+
+if os.path.exists(assets_path):
+    _assets_version = get_version(assets_path)
+    assert (
+        # The version numbers should be same at the major/minor/patch level but can differ at the 4th level.
+        _parsed_version
+        <= _assets_version
+        < _parsed_version.bump_patch()
+    ), "ig_assets version %s does not match iGibson version %s (need %s.*)" % (
+        str(_assets_version),
+        str(_parsed_version),
+        str(_assets_version),
+    )
+
+if os.path.exists(ig_dataset_path):
+    _ig_dataset_version = get_version(ig_dataset_path)
+    assert (
+        # The version numbers should be same at the major/minor/patch level but can differ at the 4th level.
+        _parsed_version
+        <= _ig_dataset_version
+        < _parsed_version.bump_patch()
+    ), "ig_dataset version %s does not match iGibson version %s (need %s.*)" % (
+        str(_ig_dataset_version),
+        str(_parsed_version),
+        str(_ig_dataset_version),
+    )
 
 example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
 example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")

@@ -219,7 +219,7 @@ def get_all_object_models():
     return models
 
 
-def get_ig_assets_version():
+def get_ig_assets_hash():
     """
     Get iGibson asset version
 

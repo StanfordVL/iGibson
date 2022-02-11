@@ -164,6 +164,7 @@ setup(
         "bddl>=0.0.3",
         "urllib3>=1.20",
         "progressbar>=2.5",
+        "semver>=2.13.0",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),
