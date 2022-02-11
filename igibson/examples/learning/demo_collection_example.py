@@ -29,11 +29,11 @@ def main(selection="user", headless=False, short_exec=False):
             args.task,
             args.task_id,
             args.instance_id,
-            args.log_path,
+            args.demo_file,
             args.disable_save,
             args.disable_scene_cache,
             args.profile,
-            args.config,
+            args.config_file,
             short_exec=headless,
         )
 
@@ -41,7 +41,7 @@ def main(selection="user", headless=False, short_exec=False):
         collect_demo(
             "Benevolence_1_int",
             "cleaning_out_drawers",
-            log_path=os.path.join("/", "tmp", "demo.hdf5"),
+            demo_file=os.path.join("/", "tmp", "demo.hdf5"),
             short_exec=headless,
         )
 
@@ -104,7 +104,7 @@ def parse_args():
     )
     demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
     parser.add_argument(
-        "--log_path", type=str, default=demo_file, required=False, help="Path (and filename) of log file"
+        "--demo_file", type=str, default=demo_file, required=False, help="Path (and filename) of demo file"
     )
     parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
     parser.add_argument(
@@ -112,7 +112,7 @@ def parse_args():
     )
     parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
     parser.add_argument(
-        "--config",
+        "--config_file",
         help="which config file to use [default: use yaml files in examples/configs]",
         default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
         required=False,
@@ -125,7 +125,7 @@ def collect_demo(
     task,
     task_id=0,
     instance_id=0,
-    log_path=None,
+    demo_file=None,
     disable_save=False,
     disable_scene_cache=False,
     profile=False,
@@ -175,11 +175,11 @@ def collect_demo(
     log_writer = None
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        if log_path is None:
-            log_path = "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, instance_id, timestamp)
+        if demo_file is None:
+            demo_file = "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, instance_id, timestamp)
         log_writer = IGLogWriter(
             env.simulator,
-            log_filepath=log_path,
+            log_filepath=demo_file,
             task=env.task,
             store_vr=False,
             vr_robot=robot,

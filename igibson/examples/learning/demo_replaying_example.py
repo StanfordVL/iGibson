@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import pprint
+import tempfile
 
 import h5py
 import numpy as np
@@ -16,86 +17,90 @@ from igibson.utils.ig_logging import IGLogReader, IGLogWriter
 from igibson.utils.utils import parse_config, parse_str_config
 
 
-def main(selection="user", headless=False, short_exec=False):
-    """
-    Example of how to replay a previously recorded demo of a task
-    """
-    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-
-    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
-    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
-    if not (selection != "user" and headless and short_exec):
-        args = parse_args()
-        replay_demo(
-            args.log_path,
-            out_log_path=args.replay_log_path,
-            disable_save=args.disable_save,
-            frame_save_path=args.frame_save_path,
-            mode=args.mode,
-            profile=args.profile,
-            config_file=args.config,
-        )
-    else:
-        replay_demo(
-            os.path.join("/", "tmp", "demo.hdf5"),
-        )
-
-
 def verify_determinism(in_log_path, out_log_path):
     is_deterministic = True
     with h5py.File(in_log_path) as original_file, h5py.File(out_log_path) as new_file:
-        for obj in original_file["physics_data"]:
-            for attribute in original_file["physics_data"][obj]:
-                is_close = np.isclose(
-                    original_file["physics_data"][obj][attribute], new_file["physics_data"][obj][attribute]
+        if sorted(list(original_file["physics_data"])) != sorted(list(new_file["physics_data"])):
+            logging.warning(
+                "Object in the original demo and the replay have different number of objects logged: {} vs. {}".format(
+                    sorted(list(original_file["physics_data"])), sorted(list(new_file["physics_data"]))
                 )
-                is_deterministic = is_deterministic and is_close.all()
-                if not is_close.all():
-                    logging.warning(
-                        "Mismatch for obj {} with mismatched attribute {} starting at timestep {}".format(
-                            obj, attribute, np.where(is_close == False)[0][0]
-                        )
+            )
+            is_deterministic = False
+        else:
+            for obj in original_file["physics_data"]:
+                for attribute in original_file["physics_data"][obj]:
+                    is_close = np.isclose(
+                        original_file["physics_data"][obj][attribute], new_file["physics_data"][obj][attribute]
                     )
+                    is_deterministic = is_deterministic and is_close.all()
+                    if not is_close.all():
+                        logging.warning(
+                            "Mismatch for obj {} with mismatched attribute {} starting at timestep {}".format(
+                                obj, attribute, np.where(is_close == False)[0][0]
+                            )
+                        )
     return bool(is_deterministic)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Run and collect an ATUS demo")
-    parser.add_argument("--log_path", type=str, required=True, help="Path (and filename) of log to replay")
-    parser.add_argument(
-        "--replay_log_path", type=str, help="Path (and filename) of file to save replay to (for debugging)"
+def parse_args(defaults=False):
+
+    args_dict = dict()
+    args_dict["in_demo_file"] = os.path.join(
+        igibson.ig_dataset_path,
+        "tests",
+        "cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5",
     )
-    parser.add_argument(
-        "--frame_save_path",
-        type=str,
-        help="Path to save frames (frame number added automatically, as well as .jpg extension)",
-    )
-    parser.add_argument(
-        "--disable_save",
-        action="store_true",
-        help="Whether to disable saving log of replayed trajectory, used for validation.",
-    )
-    parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
-    parser.add_argument(
-        "--mode",
-        type=str,
-        default="gui_non_interactive",
-        choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
-        help="Mode to run simulator in",
-    )
-    parser.add_argument(
-        "--config",
-        help="which config file to use [default: use yaml files in examples/configs]",
-        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
-    )
-    return parser.parse_args()
+    args_dict["config"] = os.path.join(igibson.example_config_path, "behavior_vr.yaml")
+
+    if not defaults:
+        parser = argparse.ArgumentParser(description="Replay a BEHAVIOR demo")
+        parser.add_argument("--in_demo_file", type=str, help="Path (and filename) of demo to replay")
+        parser.add_argument(
+            "--replay_demo_file",
+            type=str,
+            help="Path (and filename) of file to save replay to (for debugging)",
+        )
+        parser.add_argument(
+            "--frame_save_dir",
+            type=str,
+            help="Path to save frames (frame number added automatically, as well as .jpg extension)",
+        )
+        parser.add_argument(
+            "--disable_save",
+            action="store_true",
+            help="Whether to disable saving log of replayed trajectory, used for validation.",
+        )
+        parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
+        parser.add_argument(
+            "--mode",
+            type=str,
+            choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
+            help="Mode for replaying",
+        )
+        parser.add_argument(
+            "--config",
+            help="which config file to use [default: use yaml files in examples/configs]",
+            default=args_dict["config"],
+        )
+        args = parser.parse_args()
+
+        args_dict["in_demo_file"] = args.in_demo_file
+        args_dict["replay_demo_file"] = args.replay_demo_file
+        args_dict["disable_save"] = args.disable_save
+        args_dict["frame_save_dir"] = args.frame_save_dir
+        args_dict["mode"] = args.mode
+        args_dict["profile"] = args.profile
+        args_dict["config"] = args.config
+
+    return args_dict
 
 
 def replay_demo(
-    in_log_path,
-    out_log_path=None,
+    in_demo_file,
+    replay_demo_file=None,
     disable_save=False,
-    frame_save_path=None,
+    frame_save_dir=None,
     verbose=True,
     mode="headless",
     config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
@@ -112,14 +117,16 @@ def replay_demo(
     Note that this returns, but does not check for determinism. Use safe_replay_demo to assert for determinism
     when using in scenarios where determinism is important.
 
-    @param in_log_path: the path of the BEHAVIOR demo log to replay.
-    @param out_log_path: the path of the new BEHAVIOR demo log to save from the replay.
+    @param in_demo_file: the path and filename of the BEHAVIOR demo to replay.
+    @param replay_demo_file: the path and filename of the new BEHAVIOR demo to save from the replay.
     @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
-    @param frame_save_path: the path to save frame images to. None to disable frame image saving.
+    @param frame_save_dir: the path to save frame images to. None to disable frame image saving.
     @param verbose: Whether to print out git diff in detail
     @param mode: which rendering mode ("headless", "headless_tensor", "gui_non_interactive", "vr"). In gui_non_interactive
         mode, the demo will be replayed with simple robot view.
     @param config_file: environment config file
+    @param disable_save: Whether saving the replay as a BEHAVIOR demo log should be disabled.
+    @param profile: Whether the replay should be profiled, with profiler output to stdout.
     @param start_callback: A callback function that will be called immediately before starting to replay steps. Should
         take two arguments: iGibsonEnv and IGLogReader
     @param step_callback: A callback function that will be called immediately following each replayed step. Should
@@ -157,17 +164,18 @@ def replay_demo(
     assert mode in ["headless", "headless_tensor", "vr", "gui_non_interactive"]
 
     # Initialize settings to save action replay frames
-    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_log_path, "/metadata/vr_settings"))
-    vr_settings.set_frame_save_path(frame_save_path)
+    vr_settings = VrSettings(config_str=IGLogReader.read_metadata_attr(in_demo_file, "/metadata/vr_settings"))
+    vr_settings.set_frame_save_path(frame_save_dir)
 
-    task = IGLogReader.read_metadata_attr(in_log_path, "/metadata/atus_activity")
-    task_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/activity_definition")
-    scene = IGLogReader.read_metadata_attr(in_log_path, "/metadata/scene_id")
-    physics_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/physics_timestep")
-    render_timestep = IGLogReader.read_metadata_attr(in_log_path, "/metadata/render_timestep")
-    filter_objects = IGLogReader.read_metadata_attr(in_log_path, "/metadata/filter_objects")
-    instance_id = IGLogReader.read_metadata_attr(in_log_path, "/metadata/instance_id")
-    urdf_file = IGLogReader.read_metadata_attr(in_log_path, "/metadata/urdf_file")
+    # Get the information from the input log file
+    task = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/atus_activity")
+    task_id = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/activity_definition")
+    scene = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/scene_id")
+    physics_timestep = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/physics_timestep")
+    render_timestep = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/render_timestep")
+    filter_objects = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/filter_objects")
+    instance_id = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/instance_id")
+    urdf_file = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/urdf_file")
 
     if urdf_file is None:
         urdf_file = "{}_task_{}_{}_0_fixed_furniture".format(scene, task, task_id)
@@ -175,14 +183,17 @@ def replay_demo(
     if instance_id is None:
         instance_id = 0
 
-    logged_git_info = IGLogReader.read_metadata_attr(in_log_path, "/metadata/git_info")
+    logged_git_info = IGLogReader.read_metadata_attr(in_demo_file, "/metadata/git_info")
     logged_git_info = parse_str_config(logged_git_info)
+
+    # Get current git info
     git_info = project_git_info()
     pp = pprint.PrettyPrinter(indent=4)
 
+    # Check if the current git info and the one in the log are the same
     for key in logged_git_info.keys():
         if key not in git_info:
-            print(
+            logging.info(
                 "Warning: {} not present in current git info. It might be installed through PyPI, "
                 "so its version cannot be validated.".format(key)
             )
@@ -197,6 +208,7 @@ def replay_demo(
             print("Current git info:\n")
             pp.pprint(git_info[key])
 
+    # Get some information from the config and some other copy it from the input log
     config = parse_config(config_file)
     config["task"] = task
     config["task_id"] = task_id
@@ -207,6 +219,7 @@ def replay_demo(
     config["image_height"] = image_size[1]
     config["online_sampling"] = False
 
+    print("Creating environment and resetting it")
     env = iGibsonEnv(
         config_file=config,
         mode=mode,
@@ -219,16 +232,21 @@ def replay_demo(
     env.reset()
     robot = env.robots[0]
 
-    log_reader = IGLogReader(in_log_path, log_status=False)
+    if not in_demo_file:
+        raise RuntimeError("Must provide a log path to run action replay!")
+    log_reader = IGLogReader(in_demo_file, log_status=False)
+
     log_writer = None
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        if out_log_path is None:
-            out_log_path = "{}_{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, instance_id, timestamp)
+        if replay_demo_file is None:
+            temp_folder = tempfile.TemporaryDirectory()
+            replay_demo_file = "{}_{}_{}_{}_{}_replay.hdf5".format(task, task_id, scene, instance_id, timestamp)
+            replay_demo_file = os.path.join(temp_folder.name, replay_demo_file)
 
         log_writer = IGLogWriter(
             env.simulator,
-            log_filepath=out_log_path,
+            log_filepath=replay_demo_file,
             task=env.task,
             store_vr=False,
             vr_robot=robot,
@@ -243,6 +261,7 @@ def replay_demo(
 
         task_done = False
 
+        print("Replaying demo")
         while log_reader.get_data_left_to_read():
             env.step(log_reader.get_agent_action("vr_robot"))
             task_done |= env.task.check_success()[0]
@@ -257,19 +276,34 @@ def replay_demo(
             if not disable_save:
                 log_writer.process_frame()
 
-        print("Demo was successfully completed: {}".format(task_done))
+        # Per-step determinism check. Activate if necessary.
+        # things_to_compare = [thing for thing in log_writer.name_path_data if thing[0] == "physics_data"]
+        # for thing in things_to_compare:
+        #     thing_path = "/".join(thing)
+        #     fc = log_reader.frame_counter % log_writer.frames_before_write
+        #     if fc == log_writer.frames_before_write - 1:
+        #         continue
+        #     replayed = log_writer.get_data_for_name_path(thing)[fc]
+        #     original = log_reader.read_value(thing_path)
+        #     if not np.all(replayed == original):
+        #         print("%s not equal in %d" % (thing_path, log_reader.frame_counter))
+        #     if not np.isclose(replayed, original).all():
+        #         print("%s not close in %d" % (thing_path, log_reader.frame_counter))
+
+        print("Demo ended in success: {}".format(task_done))
 
         demo_statistics = {}
         for callback in end_callbacks:
             callback(env, log_reader)
     finally:
-        env.close()
+        print("End of the replay.")
         if not disable_save:
             log_writer.end_log_session()
+        env.close()
 
     is_deterministic = None
     if not disable_save:
-        is_deterministic = verify_determinism(in_log_path, out_log_path)
+        is_deterministic = verify_determinism(in_demo_file, replay_demo_file)
         print("Demo was deterministic: {}".format(is_deterministic))
 
     demo_statistics = {
@@ -283,7 +317,7 @@ def replay_demo(
     return demo_statistics
 
 
-def safe_replay_demo(*args, **kwargs):
+def replay_demo_with_determinism_check(*args, **kwargs):
     """Replays a demo, asserting that it was deterministic."""
     demo_statistics = replay_demo(*args, **kwargs)
     assert (
@@ -291,6 +325,27 @@ def safe_replay_demo(*args, **kwargs):
     ), "Replay was not deterministic (or was executed with disable_save=True)."
 
 
+def main(selection="user", headless=False, short_exec=False):
+    """
+    Example of how to replay a previously recorded demo of a task
+    """
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+
+    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
+    # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+    if not (selection != "user" and headless and short_exec):
+        args_dict = parse_args()
+    else:
+        args_dict = parse_args(True)
+
+    in_demo_file = args_dict.pop("in_demo_file")
+    replay_demo(in_demo_file, **args_dict)
+
+
+RUN_AS_TEST = False  # Change to True to run this example in test mode
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main()
+    if RUN_AS_TEST:
+        main(selection="random", headless=True, short_exec=True)
+    else:
+        main()

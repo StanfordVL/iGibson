@@ -4,6 +4,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.metrics.metric_base import MetricBase
+from igibson.objects.visual_marker import VisualMarker
 
 
 class GazeVizMarker(object):
@@ -16,7 +17,12 @@ class GazeVizMarker(object):
         self.s = s
         self.radius = radius
         self.color = color
-        self.marker_instance = self.s.load_visual_sphere(self.radius, color=self.color)
+        self.marker_instance = VisualMarker(
+            visual_shape=p.GEOM_SPHERE,
+            rgba_color=[1, self.color[0], self.color[1], self.color[2]],
+            radius=self.radius,
+        )
+        self.s.import_object(self.marker_instance)
 
     def set_pos(self, pos):
         self.marker_instance.set_position(pos)
