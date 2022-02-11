@@ -129,7 +129,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.5",
+    version="2.0.6.dev0",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -140,7 +140,7 @@ setup(
         "gym>=0.12",
         "numpy>=1.16.0",
         "scipy>=1.4",
-        "pybullet-svl>=3.1.6",
+        "pybullet-svl>=3.1.6.4",
         "transforms3d>=0.3.1",
         "opencv-python>=3.4.8",
         "Pillow>=5.4.0",
