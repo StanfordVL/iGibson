@@ -72,6 +72,7 @@ class BaseController:
         joint_idx,
         command_input_limits="default",
         command_output_limits="default",
+        inverted=False,
     ):
         """
         :param control_freq: int, controller loop frequency
@@ -94,6 +95,8 @@ class BaseController:
             then all inputted command values will be scaled from the input range to the output range.
             If either is None, no scaling will be used. If "default", then this range will automatically be set
             to the @control_limits entry corresponding to self.control_type
+        :param inverted: bool, indicating whether the input command should be inverted in the range before being scaled
+            to the output range. For example, 0.8 in the (0, 1) range will get mapped to 0.2.
         """
         # Store arguments
         self.control_freq = control_freq
@@ -143,6 +146,7 @@ class BaseController:
                 self.nums2array(command_output_limits[1], self.command_dim),
             )
         )
+        self.inverted = inverted
 
     def _preprocess_command(self, command):
         """
@@ -159,6 +163,11 @@ class BaseController:
         if self.command_input_limits is not None:
             # Clip
             command = command.clip(*self.command_input_limits)
+
+            # Flip if inverted.
+            if self.inverted:
+                command = self.command_input_limits[1] - (command - self.command_input_limits[0])
+
             if self.command_output_limits is not None:
                 # If we haven't calculated how to scale the command, do that now (once)
                 if self._command_scale_factor is None:

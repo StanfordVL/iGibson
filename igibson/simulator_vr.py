@@ -109,8 +109,6 @@ class SimulatorVR(Simulator):
             5e-3 if self.vr_settings.curr_device == "OCULUS" else 10e-3
         )
 
-        self._most_recent_trigger_fraction = {}
-
     def initialize_renderer(self):
         self.visual_objects = {}
         self.renderer = MeshRendererVR(
@@ -513,21 +511,21 @@ class SimulatorVR(Simulator):
 
             # Process trigger fraction and reset for controllers
             if part_name in ["right_hand", "left_hand"]:
+                fingers = self.main_vr_robot.gripper_control_idx[part_name]
+
+                # The normalized joint positions are inverted and scaled to the (0, 1) range to match VR controller.
+                current_trig_frac = 1 - (np.mean(self.main_vr_robot.joint_positions_normalized[fingers]) + 1) / 2
+
                 if valid:
                     button_name = "{}_controller_button".format(part_name.replace("_hand", ""))
                     trig_frac = v.query(button_name)[0]
-                    self._most_recent_trigger_fraction[part_name] = trig_frac
+                    delta_trig_frac = trig_frac - current_trig_frac
                 else:
                     # Use the last trigger fraction if no valid input was received from controller.
-                    trig_frac = (
-                        self._most_recent_trigger_fraction[part_name]
-                        if part_name in self._most_recent_trigger_fraction
-                        else 0.0
-                    )
+                    delta_trig_frac = 0
 
                 grip_controller_name = "gripper_" + part_name
-                scaled_trig_frac = -2 * trig_frac + 1  # Map from (0, 1) to (-1, 1) range, inverted.
-                action[self.main_vr_robot.controller_action_idx[grip_controller_name]] = scaled_trig_frac
+                action[self.main_vr_robot.controller_action_idx[grip_controller_name]] = delta_trig_frac
 
                 # If we reset, action is 1, otherwise 0
                 reset_action = v.query("reset_actions")[0] if part_name == "left" else v.query("reset_actions")[1]

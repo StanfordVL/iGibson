@@ -24,6 +24,8 @@ class JointController(LocomotionController, ManipulationController):
         joint_idx,
         command_input_limits="default",
         command_output_limits="default",
+        parallel_mode=False,
+        inverted=False,
         use_delta_commands=False,
         compute_delta_in_quat_space=[],
     ):
@@ -49,6 +51,10 @@ class JointController(LocomotionController, ManipulationController):
             then all inputted command values will be scaled from the input range to the output range.
             If either is None, no scaling will be used. If "default", then this range will automatically be set
             to the @control_limits entry corresponding to self.control_type
+        :param parallel_mode: bool, indicating whether the controller should accept a single input and scale it
+            appropriately for each joint (True), or accept a separate input for each joint (False).
+        :param inverted: bool, indicating whether the inputs should be mapped to outputs directly or in the inverse
+            direction (e.g. high command => low control).
         :param use_delta_commands: bool, whether inputted commands should be interpreted as delta or absolute values
         :param compute_delta_in_quat_space: List[(rx_idx, ry_idx, rz_idx), ...], groups of joints that need to be
             processed in quaternion space to avoid gimbal lock issues normally faced by 3 DOF rotation joints. Each
@@ -58,6 +64,7 @@ class JointController(LocomotionController, ManipulationController):
         # Store arguments
         assert_valid_key(key=motor_type.lower(), valid_keys=ControlType.VALID_TYPES_STR, name="motor_type")
         self.motor_type = motor_type.lower()
+        self.parallel_mode = parallel_mode
         self.use_delta_commands = use_delta_commands
         self.compute_delta_in_quat_space = compute_delta_in_quat_space
 
@@ -74,6 +81,7 @@ class JointController(LocomotionController, ManipulationController):
             joint_idx=joint_idx,
             command_input_limits=command_input_limits,
             command_output_limits=command_output_limits,
+            inverted=inverted,
         )
 
     def reset(self):
@@ -131,4 +139,4 @@ class JointController(LocomotionController, ManipulationController):
 
     @property
     def command_dim(self):
-        return len(self.joint_idx)
+        return 1 if self.parallel_mode else len(self.joint_idx)

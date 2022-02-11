@@ -33,7 +33,7 @@ from igibson.robots.active_camera_robot import ActiveCameraRobot
 from igibson.robots.locomotion_robot import LocomotionRobot
 from igibson.robots.manipulation_robot import GraspingPoint, ManipulationRobot
 from igibson.robots.robot_base import Virtual6DOFJoint, VirtualJoint
-from igibson.utils.constants import SPECIAL_COLLISION_GROUPS, SemanticClass, SimulatorMode, get_collision_group_mask
+from igibson.utils.constants import SPECIAL_COLLISION_GROUPS, SimulatorMode, get_collision_group_mask
 
 log = logging.getLogger(__name__)
 
@@ -78,6 +78,10 @@ HEAD_LINEAR_VELOCITY = 0.3  # linear velocity thresholds in meters/frame
 HEAD_ANGULAR_VELOCITY = 1  # angular velocity thresholds in radians/frame
 HEAD_DISTANCE_THRESHOLD = 0.5  # distance threshold in meters
 
+# RL mode action scaling
+LOWER_LIMITS_POSITION_COEFFICIENT = 0.5
+LOWER_LIMITS_VELOCITY_COEFFICIENT = 0.01
+
 
 class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     """
@@ -96,11 +100,12 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         hands=("left", "right"),
         use_ghost_hands=True,
         normal_color=True,
-        show_visual_head=False,
+        show_visual_head=True,
         use_tracked_body=True,
         reset_joint_pos=None,
         base_name="body",
         grasping_mode="assisted",
+        higher_limits=False,
         **kwargs
     ):
         """
@@ -123,6 +128,9 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             If "physical", no assistive grasping will be applied (relies on contact friction + finger force).
             If "assisted", will magnetize any object touching and within the gripper's fingers.
             If "sticky", will magnetize any object touching the gripper's fingers.
+        :param higher_limits: bool, indicating whether the limbs' velocity and position limits should be set
+            in the extended mode which allows for the instant responsiveness required for VR. Defaults to True.
+            learning-based agents should set this parameter to False for a more realistic capability set.
         :param **kwargs: see ManipulationRobot, LocomotionRobot, ActiveCameraRobot
         """
         assert reset_joint_pos is None, "BehaviorRobot doesn't support hand-specified reset_joint_pos"
@@ -134,6 +142,9 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         self.use_ghost_hands = use_ghost_hands
         self.normal_color = normal_color
         self.show_visual_head = show_visual_head
+
+        self._position_limit_coefficient = 1 if higher_limits else LOWER_LIMITS_POSITION_COEFFICIENT
+        self._velocity_limit_coefficient = 1 if higher_limits else LOWER_LIMITS_VELOCITY_COEFFICIENT
 
         super(BehaviorRobot, self).__init__(
             reset_joint_pos=reset_joint_pos, base_name=base_name, grasping_mode=grasping_mode, **kwargs
@@ -213,6 +224,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 upper_limits=[None, None, None, None, None, None],
             ).get_joints()
         )
+
         virtual_joints.extend(
             Virtual6DOFJoint(
                 joint_name="neck__camera",
@@ -220,8 +232,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 child_link=self.links["eyes"],
                 command_callback=self._parts["eye"].command_position,
                 reset_callback=self._parts["eye"].command_position,  # reset and command are the same for eye
-                lower_limits=[-HEAD_DISTANCE_THRESHOLD] * 3 + [None] * 3,
-                upper_limits=[HEAD_DISTANCE_THRESHOLD] * 3 + [None] * 3,
+                lower_limits=[-HEAD_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
+                upper_limits=[HEAD_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
             ).get_joints(),
         )
 
@@ -233,15 +245,15 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                     child_link=arm_link,
                     command_callback=self._parts[arm_name].command_position,
                     reset_callback=self._parts[arm_name].reset_position,
-                    lower_limits=[-HAND_DISTANCE_THRESHOLD] * 3 + [None] * 3,
-                    upper_limits=[HAND_DISTANCE_THRESHOLD] * 3 + [None] * 3,
+                    lower_limits=[-HAND_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
+                    upper_limits=[HAND_DISTANCE_THRESHOLD * self._position_limit_coefficient] * 3 + [None] * 3,
                 ).get_joints(),
             )
             virtual_joints.append(
                 VirtualJoint(
                     joint_name="reset_%s" % arm_name,
                     joint_type=p.JOINT_PRISMATIC,
-                    get_pos_callback=lambda: (0, None, None),
+                    get_state_callback=lambda: (0, 0, 0),
                     set_pos_callback=self._parts[arm_name].command_reset,
                     reset_pos_callback=lambda _: None,  # don't need to reset joint for the reset button
                     lower_limit=0,
@@ -295,6 +307,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         # Move the constraint for each part to its current position.
         for part in self._parts.values():
             part.set_position_orientation(*part.get_position_orientation())
+
+        super(BehaviorRobot, self).keep_still()
 
     def dump_config(self):
         """Dump robot config"""
@@ -429,28 +443,37 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 "compute_delta_in_quat_space": [(3, 4, 5)],
                 "joint_idx": self.arm_control_idx[arm],
                 "command_input_limits": (
-                    [-HAND_LINEAR_VELOCITY] * 3 + [-HAND_ANGULAR_VELOCITY] * 3,  # Lower limit
-                    [HAND_LINEAR_VELOCITY] * 3 + [HAND_ANGULAR_VELOCITY] * 3,  # Upper limit
+                    np.array([-HAND_LINEAR_VELOCITY] * 3 + [-HAND_ANGULAR_VELOCITY] * 3)
+                    * self._velocity_limit_coefficient,
+                    np.array([-HAND_LINEAR_VELOCITY] * 3 + [-HAND_ANGULAR_VELOCITY] * 3)
+                    * self._velocity_limit_coefficient,
                 ),
                 "command_output_limits": None,
             }
         return dic
 
     @property
-    def _default_gripper_multi_finger_controller_configs(self):
-        dic = {}
+    def _default_gripper_joint_controller_configs(self):
+        # The use case for the joint controller for the BehaviorRobot is supporting the VR action space. We configure
+        # this accordingly.
+        dic = super(BehaviorRobot, self)._default_gripper_joint_controller_configs
+
         for arm in self.arm_names:
-            dic[arm] = {
-                "name": "MultiFingerGripperController",
-                "control_freq": self.control_freq,
-                "motor_type": "position",
-                "control_limits": self.control_limits,
-                "joint_idx": self.gripper_control_idx[arm],
-                "command_output_limits": "default",
-                "inverted": True,
-                "mode": "smooth",
-                "limit_tolerance": 0.001,
-            }
+            # Compute the command output limits that would allow -1 to fully open and 1 to fully close.
+            joint_lower_limits = self.control_limits["position"][0][self.gripper_control_idx[arm]]
+            joint_upper_limits = self.control_limits["position"][1][self.gripper_control_idx[arm]]
+            ranges = joint_upper_limits - joint_lower_limits
+            output_ranges = (-ranges, ranges)
+            dic[arm].update(
+                {
+                    "motor_type": "position",
+                    "parallel_mode": True,
+                    "inverted": True,
+                    "command_input_limits": (0, 1),
+                    "command_output_limits": output_ranges,
+                    "use_delta_commands": True,
+                }
+            )
         return dic
 
     @property
@@ -464,8 +487,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             "compute_delta_in_quat_space": [(3, 4, 5)],
             "joint_idx": self.base_control_idx,
             "command_input_limits": (
-                [-BODY_LINEAR_VELOCITY] * 3 + [-BODY_ANGULAR_VELOCITY] * 3,  # Lower limit
-                [BODY_LINEAR_VELOCITY] * 3 + [BODY_ANGULAR_VELOCITY] * 3,  # Upper limit
+                np.array([-BODY_LINEAR_VELOCITY] * 3 + [-BODY_ANGULAR_VELOCITY] * 3) * self._velocity_limit_coefficient,
+                np.array([BODY_LINEAR_VELOCITY] * 3 + [BODY_ANGULAR_VELOCITY] * 3) * self._velocity_limit_coefficient,
             ),
             "command_output_limits": None,
         }
@@ -482,8 +505,8 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             "compute_delta_in_quat_space": [(3, 4, 5)],
             "joint_idx": self.camera_control_idx,
             "command_input_limits": (
-                [-HEAD_LINEAR_VELOCITY] * 3 + [-HEAD_ANGULAR_VELOCITY] * 3,  # Lower limit
-                [HEAD_LINEAR_VELOCITY] * 3 + [HEAD_ANGULAR_VELOCITY] * 3,  # Upper limit
+                np.array([-HEAD_LINEAR_VELOCITY] * 3 + [-HEAD_ANGULAR_VELOCITY] * 3) * self._velocity_limit_coefficient,
+                np.array([HEAD_LINEAR_VELOCITY] * 3 + [HEAD_ANGULAR_VELOCITY] * 3) * self._velocity_limit_coefficient,
             ),
             "command_output_limits": None,
         }
@@ -519,6 +542,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 % arm: {
                     "NullGripperController": self._default_gripper_null_controller_configs[arm],
                     "MultiFingerGripperController": self._default_gripper_multi_finger_controller_configs[arm],
+                    "JointController": self._default_gripper_joint_controller_configs[arm],
                 }
                 for arm in self.arm_names
             }
@@ -723,8 +747,8 @@ class BRBody(BRPart):
         # Clip the height.
         target_pos = [target_pos[0], target_pos[1], np.clip(target_pos[2], BODY_HEIGHT_RANGE[0], BODY_HEIGHT_RANGE[1])]
 
-        self.new_pos = np.round(self.new_pos, 5).tolist()
-        self.new_orn = np.round(self.new_orn, 5).tolist()
+        self.new_pos = np.round(target_pos, 5).tolist()
+        self.new_orn = np.round(target_orn, 5).tolist()
 
         self.set_position_orientation(self.new_pos, self.new_orn)
 
@@ -798,18 +822,7 @@ class BRHand(BRPart):
             # Make masses larger for greater stability
             # Mass is in kg, friction is coefficient
             p.changeDynamics(self.body_id, joint_index, mass=0.1, lateralFriction=HAND_FRICTION)
-            p.resetJointState(self.body_id, joint_index, targetValue=0, targetVelocity=0.0)
-            p.setJointMotorControl2(
-                self.body_id,
-                joint_index,
-                controlMode=p.POSITION_CONTROL,
-                targetPosition=0,
-                targetVelocity=0.0,
-                positionGain=0.1,
-                velocityGain=0.1,
-                force=0,
-            )
-            p.setJointMotorControl2(self.body_id, joint_index, controlMode=p.VELOCITY_CONTROL, targetVelocity=0.0)
+
         # Create constraint that can be used to move the hand
         self.movement_cid = p.createConstraint(
             self.body_id,
@@ -823,6 +836,7 @@ class BRHand(BRPart):
             [0.0, 0.0, 0.0, 1.0],
             self.get_orientation(),
         )
+        p.changeConstraint(self.movement_cid, maxForce=HAND_LIFTING_FORCE)
 
         return body_ids
 

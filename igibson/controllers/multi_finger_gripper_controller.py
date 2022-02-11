@@ -5,15 +5,17 @@ from igibson.utils.python_utils import assert_valid_key
 
 VALID_MODES = {
     "binary",
-    "smooth",
-    "independent",
+    "ternary",
 }
 
 
 class MultiFingerGripperController(ManipulationController):
     """
-    Controller class for multi finger gripper control. This either interprets an input as a binary
-    command (open / close), continuous command (open / close with scaled velocities), or per-joint continuous command
+    Controller class for **discrete** multi finger gripper control. This either interprets an input as a binary
+    command (open / close), or ternary (open / stay at current position / close). Ternary mode can only be used as a
+    position controller.
+
+    **For continuous gripper control, the JointController should be used instead.**
 
     Each controller step consists of the following:
         1. Clip + Scale inputted command according to @command_input_limits and @command_output_limits
@@ -28,7 +30,6 @@ class MultiFingerGripperController(ManipulationController):
         control_limits,
         joint_idx,
         command_input_limits="default",
-        command_output_limits="default",
         inverted=False,
         mode="binary",
         limit_tolerance=0.001,
@@ -49,19 +50,15 @@ class MultiFingerGripperController(ManipulationController):
         :param command_input_limits: None or "default" or Tuple[float, float] or Tuple[Array[float], Array[float]],
             if set, is the min/max acceptable inputted command. Values outside of this range will be clipped.
             If None, no clipping will be used. If "default", range will be set to (-1, 1)
-        :param command_output_limits: None or "default" or Tuple[float, float] or Tuple[Array[float], Array[float]], if set,
-            is the min/max scaled command. If both this value and @command_input_limits is not None,
-            then all inputted command values will be scaled from the input range to the output range.
-            If either is None, no scaling will be used. If "default", then this range will automatically be set
-            to the @control_limits entry corresponding to self.control_type
         :param inverted: bool, whether or not the command direction (grasp is negative) and the control direction are
-            inverted, e.g. to grasp you need to move the joint in the positive direction.
+            inverted, e.g. if True, to grasp you need to apply commands in the positive direction.
         :param mode: str, mode for this controller. Valid options are:
 
             "binary": 1D command, if preprocessed value > 0 is interpreted as an max open
                 (send max pos / vel / tor signal), otherwise send max close control signals
-            "smooth": 1D command, sends symmetric signal to both finger joints equal to the preprocessed commands
-            "independent": 2D command, sends independent signals to each finger joint equal to the preprocessed command
+            "ternary": 1D command, if preprocessed value > 0.33, is interpreted as max open (send max position) signal.
+                if -0.33 < value < 0.33, the value is interpreted as "keep still", where position control to current
+                position is sent. If value < -0.33, maximum close signal is sent.
         :param limit_tolerance: float, sets the tolerance from the joint limit ends, below which controls will be zeroed
             out if the control is using velocity or torque control
         """
@@ -73,9 +70,9 @@ class MultiFingerGripperController(ManipulationController):
         self.mode = mode
         self.limit_tolerance = limit_tolerance
 
-        # If we're using binary signal, we override the command output limits
-        if mode == "binary":
-            command_output_limits = (-1.0, 1.0)
+        assert not (
+            self.mode == "ternary" and self.motor_type != "position"
+        ), "MultiFingerGripperController's ternary mode only works with position control."
 
         # Run super init
         super().__init__(
@@ -83,28 +80,13 @@ class MultiFingerGripperController(ManipulationController):
             control_limits=control_limits,
             joint_idx=joint_idx,
             command_input_limits=command_input_limits,
-            command_output_limits=command_output_limits,
+            command_output_limits=(-1.0, 1.0),
+            inverted=inverted,
         )
 
     def reset(self):
         # No-op
         pass
-
-    def _preprocess_command(self, command):
-        # We extend this method to make sure command is always 2D
-        if self.mode != "independent":
-            command = (
-                np.array([command] * self.command_dim)
-                if type(command) in {int, float}
-                else np.array([command[0]] * self.command_dim)
-            )
-
-        # Flip the command if the direction is inverted.
-        if self.inverted:
-            command = self.command_input_limits[1] - (command - self.command_input_limits[0])
-
-        # Return from super method
-        return super()._preprocess_command(command=command)
 
     def _command_to_control(self, command, control_dict):
         """
@@ -122,15 +104,18 @@ class MultiFingerGripperController(ManipulationController):
         joint_pos = control_dict["joint_position"][self.joint_idx]
         # Choose what to do based on control mode
         if self.mode == "binary":
-            # Use max control signal
             u = (
                 self.control_limits[ControlType.get_type(self.motor_type)][1][self.joint_idx]
                 if command[0] >= 0.0
                 else self.control_limits[ControlType.get_type(self.motor_type)][0][self.joint_idx]
             )
-        else:
-            # Use continuous signal
-            u = command
+        else:  # Ternary mode
+            if command[0] > 0.33:  # Closer to 1
+                u = self.control_limits[ControlType.get_type(self.motor_type)][1][self.joint_idx]
+            elif command[0] > -0.33:  # Closer to 0
+                u = joint_pos  # This is why ternary mode only works with position control.
+            else:  # Closer to -1
+                u = self.control_limits[ControlType.get_type(self.motor_type)][0][self.joint_idx]
 
         # If we're near the joint limits and we're using velocity / torque control, we zero out the action
         if self.motor_type in {"velocity", "torque"}:
@@ -152,4 +137,4 @@ class MultiFingerGripperController(ManipulationController):
 
     @property
     def command_dim(self):
-        return len(self.joint_idx) if self.mode == "independent" else 1
+        return 1
