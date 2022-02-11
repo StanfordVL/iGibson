@@ -1,9 +1,8 @@
 import os
 
 import numpy as np
-from IPython import embed
+import pybullet as p
 
-import igibson
 from igibson.object_states import *
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
@@ -24,6 +23,7 @@ FETCH_POS = np.array([0.5, -2.5, 0])
 FETCH_JOINT = np.array([1.0, 0.5])
 BROBOT_POS = np.array([0.0, 0.5, 0.5])
 BROBOT_JOINT = np.array([0.5, None])
+PILLOW_POS = np.array([1, 33, 7])
 
 
 def test_saving():
@@ -42,6 +42,11 @@ def test_saving():
     # Change non-kinematic states of existing object
     scene.objects_by_name["pot_plant_1"].states[Soaked].set_value(True)
     scene.objects_by_name["floor_lamp_3"].states[ToggledOn].set_value(True)
+
+    # Find a bed, move one of its pillows.
+    bed = scene.objects_by_name["bed_28"]
+    pillow_bid = next(bid for bid in bed.get_body_ids() if bid != bed.get_body_ids()[bed.main_body])
+    p.resetBasePositionAndOrientation(pillow_bid, PILLOW_POS, [0, 0, 0, 1])
 
     # Save
     scene.save(urdf_path="changed_state.urdf", pybullet_filename="changed_state.bullet")
@@ -108,6 +113,12 @@ def test_loading_state_with_bullet_file():
         assert np.array_equal(np.array(joint_states[key]), np.array(CABINET_JOINT[key]))
     assert scene.objects_by_name["pot_plant_1"].states[Soaked].get_value()
     assert scene.objects_by_name["floor_lamp_3"].states[ToggledOn].get_value()
+
+    # Check if non-main bodies are also correctly moved.
+    bed = scene.objects_by_name["bed_28"]
+    pillow_bid = next(bid for bid in bed.get_body_ids() if bid != bed.get_body_ids()[bed.main_body])
+    assert np.array_equal(p.getBasePositionAndOrientation(pillow_bid)[0], PILLOW_POS)
+
     s.disconnect()
 
 
@@ -124,6 +135,12 @@ def test_loading_state_without_bullet_file():
         assert np.array_equal(np.array(joint_states[key]), np.array(CABINET_JOINT[key]))
     assert scene.objects_by_name["pot_plant_1"].states[Soaked].get_value()
     assert scene.objects_by_name["floor_lamp_3"].states[ToggledOn].get_value()
+
+    # Check if non-main bodies are also correctly moved.
+    bed = scene.objects_by_name["bed_28"]
+    pillow_bid = next(bid for bid in bed.get_body_ids() if bid != bed.get_body_ids()[bed.main_body])
+    assert np.array_equal(p.getBasePositionAndOrientation(pillow_bid)[0], PILLOW_POS)
+
     s.disconnect()
 
 

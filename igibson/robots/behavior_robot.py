@@ -274,6 +274,19 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
         clear_cached_states(self)
 
+    def set_poses(self, poses):
+        assert len(poses) == len(self._parts), "Number of poses (%d) does not match number of parts (%d)" % (
+            len(poses),
+            len(self._parts),
+        )
+        bid_to_pose = {bid: pose for bid, pose in zip(self.get_body_ids(), poses)}
+        part_names = ["body"] + list(set(self._parts.keys()) - {"body"})  # Make sure we do body first
+        for part_name in part_names:
+            part_pose = bid_to_pose[self._parts[part_name].body_id]
+            self._parts[part_name].set_position_orientation(*part_pose)
+
+        clear_cached_states(self)
+
     def reset(self):
         # Move the constraint for each part to the default position.
         self.set_position_orientation(*self.get_position_orientation())
