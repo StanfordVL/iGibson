@@ -226,7 +226,7 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene="Rs_int"):
-        config_file = os.path.join(igibson.configs_path, "behavior_vr.yaml")
+        config_file = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
         env_config = parse_config(config_file)
         env_config["scene_id"] = scene
         env_config["task"] = "trivial"

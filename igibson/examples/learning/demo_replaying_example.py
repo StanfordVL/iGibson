@@ -51,7 +51,7 @@ def parse_args(defaults=False):
         "tests",
         "cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5",
     )
-    args_dict["config"] = os.path.join(igibson.configs_path, "behavior_vr.yaml")
+    args_dict["config_file"] = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
 
     if not defaults:
         parser = argparse.ArgumentParser(description="Replay a BEHAVIOR demo")
@@ -77,11 +77,12 @@ def parse_args(defaults=False):
             type=str,
             choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
             help="Mode for replaying",
+            default="headless",
         )
         parser.add_argument(
-            "--config",
+            "--config_file",
             help="which config file to use [default: use yaml files in examples/configs]",
-            default=args_dict["config"],
+            default=args_dict["config_file"],
         )
         args = parser.parse_args()
 
@@ -91,7 +92,7 @@ def parse_args(defaults=False):
         args_dict["frame_save_dir"] = args.frame_save_dir
         args_dict["mode"] = args.mode
         args_dict["profile"] = args.profile
-        args_dict["config"] = args.config
+        args_dict["config_file"] = args.config_file
 
     return args_dict
 
@@ -103,7 +104,7 @@ def replay_demo(
     frame_save_dir=None,
     verbose=True,
     mode="headless",
-    config_file=os.path.join(igibson.configs_path, "behavior_vr.yaml"),
+    config_file=os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"),
     start_callbacks=[],
     step_callbacks=[],
     end_callbacks=[],
