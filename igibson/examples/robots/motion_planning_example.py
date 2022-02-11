@@ -183,7 +183,7 @@ def main(selection="user", headless=False, short_exec=False):
         parser.add_argument(
             "--config",
             "-c",
-            default=os.path.join(igibson.example_config_path, "fetch_motion_planning.yaml"),
+            default=os.path.join(igibson.configs_path, "fetch_motion_planning.yaml"),
             help="which config file to use [default: use yaml files in examples/configs]",
         )
         parser.add_argument(
@@ -197,7 +197,7 @@ def main(selection="user", headless=False, short_exec=False):
         config = args.config
         programmatic_actions = args.programmatic_actions
     else:
-        config = os.path.join(igibson.example_config_path, "fetch_motion_planning.yaml")
+        config = os.path.join(igibson.configs_path, "fetch_motion_planning.yaml")
         programmatic_actions = True
     run_example(config, programmatic_actions, headless, short_exec)
 

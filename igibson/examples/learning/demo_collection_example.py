@@ -114,7 +114,7 @@ def parse_args():
     parser.add_argument(
         "--config_file",
         help="which config file to use [default: use yaml files in examples/configs]",
-        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+        default=os.path.join(igibson.configs_path, "behavior_vr.yaml"),
         required=False,
     )
     return parser.parse_args()
@@ -129,7 +129,7 @@ def collect_demo(
     disable_save=False,
     disable_scene_cache=False,
     profile=False,
-    config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+    config_file=os.path.join(igibson.configs_path, "behavior_vr.yaml"),
     short_exec=False,
 ):
     """ """

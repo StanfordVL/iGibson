@@ -22,7 +22,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Create iGibsonEnvironment with the Fetch rearrangement config
     mode = "headless"
-    config = os.path.join(igibson.example_config_path, "fetch_rearrangement.yaml")
+    config = os.path.join(igibson.configs_path, "fetch_rearrangement.yaml")
     config_data = yaml.load(open(config, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":

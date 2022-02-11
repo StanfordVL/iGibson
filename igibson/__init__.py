@@ -124,11 +124,11 @@ if os.path.exists(ig_dataset_path):
         str(_ig_dataset_version),
     )
 
-example_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
-example_config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
+examples_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
+configs_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs")
 
-log.debug("Example path: {}".format(example_path))
-log.debug("Example config path: {}".format(example_config_path))
+log.debug("Example path: {}".format(examples_path))
+log.debug("Example config path: {}".format(configs_path))
 
 # whether to enable debugging mode for object sampling
 debug_sampling = False

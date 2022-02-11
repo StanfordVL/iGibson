@@ -22,7 +22,7 @@ def main(selection="user", headless=False, short_exec=False):
     available_configs = get_first_options()
     config_id = available_configs[let_user_pick(available_configs, selection=selection) - 1]
     print("Using config file " + config_id)
-    config_filename = os.path.join(igibson.example_config_path, config_id)
+    config_filename = os.path.join(igibson.configs_path, config_id)
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":
@@ -47,7 +47,7 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 def get_first_options():
-    ig_config_path = igibson.example_config_path
+    ig_config_path = igibson.configs_path
     available_configs = sorted(
         [
             f

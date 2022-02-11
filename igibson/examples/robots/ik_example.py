@@ -46,7 +46,7 @@ def main(selection="user", headless=False, short_exec=False):
         programmatic_pos = True
 
     # Create simulator, scene and robot (Fetch)
-    config = parse_config(os.path.join(igibson.example_config_path, "fetch_reaching.yaml"))
+    config = parse_config(os.path.join(igibson.configs_path, "fetch_reaching.yaml"))
     s = Simulator(mode="headless", use_pb_gui=True if not headless else False)
     scene = EmptyScene()
     s.import_scene(scene)

@@ -18,7 +18,7 @@ def main(selection="user", headless=False, short_exec=False):
     Also shows how to change object-specific parameters such as the burning temperature
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
+    config = parse_config(os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml"))
     settings = MeshRendererSettings(enable_shadow=True, msaa=False, optimized=True)
     s = Simulator(
         mode="gui_interactive" if not headless else "headless",

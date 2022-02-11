@@ -217,7 +217,7 @@ def main(selection="user", headless=False, short_exec=False):
     #
     # train_batch size should be divisble by sgd_minibatch_size **and** (rollout fragment length * num_workers)
     # Good config: train_batch_size = 1000, rollout_fragment_length = 200, num_workers = 5, sgd_minibatch_size = largest your GPU can support that train_batch_size is divisble by (500 for Titan X)
-    config_filename = os.path.join(igibson.example_config_path, config)
+    config_filename = os.path.join(igibson.configs_path, config)
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
     config_data["image_width"] = 160
