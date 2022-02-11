@@ -19,7 +19,7 @@ class GazeVizMarker(object):
         self.color = color
         self.marker_instance = VisualMarker(
             visual_shape=p.GEOM_SPHERE,
-            rgba_color=[1, self.color[0], self.color[1], self.color[2]],
+            rgba_color=[self.color[0], self.color[1], self.color[2], 1],
             radius=self.radius,
         )
         self.s.import_object(self.marker_instance)
