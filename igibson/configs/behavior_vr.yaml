@@ -1,6 +1,6 @@
 # scene
 scene: igibson
-scene_id: Beechwood_1_int
+scene_id: Rs_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -15,12 +15,20 @@ object_randomization_freq: null
 robot:
   name: BehaviorRobot
 
+  # For the VR use case, we use the higher set of joint speed/position limits, and a different gripper action space.
+  show_visual_head: False
+  higher_limits: True
+  controller_config:
+    gripper_right_hand:
+      name: JointController
+    gripper_left_hand:
+      name: JointController
+
 # task
-task: cleaning_cupboards
+task: cleaning_kitchen_cupboard
 task_id: 0
 instance_id: 0
 online_sampling: false
-should_activate_behavior_robot: false
 should_highlight_task_relevant_objs: false
 
 # discount factor

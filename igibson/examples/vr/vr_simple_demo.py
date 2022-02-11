@@ -11,12 +11,12 @@ import igibson
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots.behavior_robot import BehaviorRobot
+from igibson.robots import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.simulator import Simulator
 
 # HDR files for PBR rendering
 from igibson.simulator_vr import SimulatorVR
+from igibson.utils.utils import parse_config
 
 hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
 hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
@@ -84,7 +84,9 @@ def main(selection="user", headless=False, short_exec=False):
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
-    bvr_robot = BehaviorRobot()
+    config = parse_config(os.path.join(igibson.example_config_path, "behavior_vr.yaml"))
+
+    bvr_robot = BehaviorRobot(**config["robot"])
     s.import_object(bvr_robot)
     s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
