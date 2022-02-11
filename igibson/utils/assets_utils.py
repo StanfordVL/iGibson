@@ -354,15 +354,15 @@ def download_ext_scene_assets():
 
 def download_ig_dataset():
     """
-    Download iGibson dataset
+    Download iGibson 1.0 dataset of scenes and objects
     """
     while (
         input(
-            "Do you agree to the terms for using iGibson dataset (http://svl.stanford.edu/igibson/assets/GDS_agreement.pdf)? [y/n]"
+            "Do you agree to the terms for using iGibson 1.0 dataset (http://svl.stanford.edu/igibson/assets/GDS_agreement.pdf)? [y/n]"
         )
         != "y"
     ):
-        print("You need to agree to the terms for using iGibson dataset.")
+        print("You need to agree to the terms for using iGibson 1.0 dataset.")
 
     if not os.path.exists(igibson.ig_dataset_path):
         log.info("Creating iGibson dataset folder at {}".format(igibson.ig_dataset_path))
@@ -372,9 +372,9 @@ def download_ig_dataset():
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
-    log.info("Downloading the full iGibson Dataset of Objects and Interactive Scenes from {}".format(url))
+    log.info("Downloading the full iGibson 1.0 Dataset of Objects and Interactive Scenes from {}".format(url))
     urlretrieve(url, tmp_file, show_progress)
-    log.info("Decompressing the full iGibson Dataset into {}".format(igibson.ig_dataset_path))
+    log.info("Decompressing the full iGibson 1.0 Dataset into {}".format(igibson.ig_dataset_path))
     os.system("tar -zxf {} --strip-components=1 --directory {}".format(tmp_file, igibson.ig_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 

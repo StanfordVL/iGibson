@@ -19,7 +19,7 @@ def main(selection="user", headless=False, short_exec=False):
     It plots the velodyne point cloud with matplotlib
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
+    config = parse_config(os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml"))
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.01)
     s = Simulator(mode="headless", image_width=256, image_height=256, rendering_settings=settings)
 

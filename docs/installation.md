@@ -138,7 +138,7 @@ In case you want to build without CUDA support (used for the "rendering to GPU t
 
 ### Installing iGibson
 
-We provide 3 methods to install the simulator.
+We provide 3 methods to install the simulator. After installing the simulator, you will need to download assets and datasets of scenes and object models.
 
 #### 1. pip
 
@@ -150,7 +150,27 @@ pip install igibson  # This step takes about 4 minutes
 python -m igibson.examples.environments.env_nonint_example
 ```
 
-#### 2. Docker image
+#### 2. Compile from source
+
+Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). Then: 
+
+```bash
+git clone https://github.com/StanfordVL/iGibson --recursive
+cd iGibson
+
+# if you didn't create the conda environment before:
+conda create -y -n igibson python=3.8
+conda activate igibson
+
+pip install -e . # This step takes about 4 minutes
+```
+
+We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
+
+Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
+
+
+#### 3. Docker image
 
 Docker provides an easy way to reproduce the development environment across platforms without manually installing the software dependencies. We have prepared docker images that contain everything you need to get started with iGibson.  
 
@@ -178,31 +198,11 @@ cd iGibson/docker/headless-gui
 ./build.sh
 ```
 
-
-#### 3. Compile from source
-
-Alternatively, iGibson can be compiled from source: [iGibson GitHub Repo](https://github.com/StanfordVL/iGibson). First, you need to install anaconda following the guide on [their website](https://www.anaconda.com/). 
-
-```bash
-git clone https://github.com/StanfordVL/iGibson --recursive
-cd iGibson
-
-# if you didn't create the conda environment before:
-conda create -y -n igibson python=3.8
-conda activate igibson
-
-pip install -e . # This step takes about 4 minutes
-```
-
-We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
-
-Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
-
 ### Issues
 
-First, check our section for installation issues [here](issues.md). We include solutions to past known problems there.
+If you have installation issues, first, check our section for issues [here](issues.md). We have included solutions to previous known problems there.
 
-If you do not find a solution, search open and closed issues in our github issues page [here](https://github.com/StanfordVL/iGibson/issues).
+If you couldn't find a solution, search open and closed issues in our github issues page [here](https://github.com/StanfordVL/iGibson/issues).
 
 If still no-luck, open a new issue in our github. Our turnaround is usually a couple of days.
 
@@ -253,7 +253,7 @@ python -m igibson.utils.assets_utils --download_demo_data
 
 ## Examples
 
-We provide multiple examples to get you started!
+We provide a lot of examples to get you started in your research!
 Check the folder [igibson/examples](https://github.com/StanfordVL/iGibson/tree/master/igibson/examples) and the description [here](examples.md).
 
 After installing the code and downloading the demo data, you should be able to try out a simple robot navigation demo executing:
@@ -271,7 +271,8 @@ python
 ```
 
 For a full suite of tests and benchmarks, you can refer to [tests](tests.md) for more details. 
-(For Mac users) Some tests will fail as they require a Nvidia GPU.
+
+You can also run all tests by executing `pytest` within the iGibson installation folder. (For Mac users) Some tests will fail as they require a Nvidia GPU.
 
 ## Uninstalling
 Uninstalling iGibson is easy: `pip uninstall igibson`

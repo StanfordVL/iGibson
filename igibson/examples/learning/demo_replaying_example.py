@@ -51,7 +51,7 @@ def parse_args(defaults=False):
         "tests",
         "cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5",
     )
-    args_dict["config"] = os.path.join(igibson.example_config_path, "behavior_vr.yaml")
+    args_dict["config"] = os.path.join(igibson.configs_path, "behavior_vr.yaml")
 
     if not defaults:
         parser = argparse.ArgumentParser(description="Replay a BEHAVIOR demo")
@@ -103,7 +103,7 @@ def replay_demo(
     frame_save_dir=None,
     verbose=True,
     mode="headless",
-    config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+    config_file=os.path.join(igibson.configs_path, "behavior_vr.yaml"),
     start_callbacks=[],
     step_callbacks=[],
     end_callbacks=[],

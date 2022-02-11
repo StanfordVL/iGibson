@@ -34,7 +34,7 @@ def main(selection="user", headless=True, short_exec=True):
     Loads Rs_int (interactive) with some objects and and renders depth, normals, semantic and instance segmentation
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config_filename = os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml")
+    config_filename = os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml")
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
     config_data["vertical_fov"] = 90

@@ -18,7 +18,7 @@ def main(selection="user", headless=False, short_exec=False):
     using the Gym interface, resetting it 10 times.
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config_filename = os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml")
+    config_filename = os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml")
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":

@@ -36,7 +36,7 @@ def main(selection="user", headless=False, short_exec=False):
     type_of_scene = let_user_pick(scene_options, selection=selection) - 1
 
     if type_of_scene == 0:  # Empty
-        config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
+        config = parse_config(os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml"))
         settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
         s = Simulator(
             mode="gui_interactive" if not headless else "headless",
@@ -53,7 +53,7 @@ def main(selection="user", headless=False, short_exec=False):
         s.import_object(turtlebot)
 
     elif type_of_scene == 1:  # iG
-        config_filename = os.path.join(igibson.example_config_path, "turtlebot_nav.yaml")
+        config_filename = os.path.join(igibson.configs_path, "turtlebot_nav.yaml")
         config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
         config_data["load_object_categories"] = []  # Uncomment this line to accelerate loading with only the building
         config_data["visible_target"] = False
@@ -65,7 +65,7 @@ def main(selection="user", headless=False, short_exec=False):
         s = env.simulator
 
     elif type_of_scene == 2:  # Gibson
-        config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
+        config = parse_config(os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml"))
         settings = MeshRendererSettings(enable_shadow=False, msaa=False)
         # Reduce texture scale for Mac.
         if platform == "darwin":

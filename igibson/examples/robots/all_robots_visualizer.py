@@ -31,8 +31,8 @@ def main(selection="user", headless=False, short_exec=False):
     # Create one instance of each robot aligned along the y axis
     position = [0, 0, 0]
     robots = {}
-    for robot_config_file in os.listdir(os.path.join(igibson.example_config_path, "robots")):
-        config = parse_config(os.path.join(igibson.example_config_path, "robots", robot_config_file))
+    for robot_config_file in os.listdir(os.path.join(igibson.configs_path, "robots")):
+        config = parse_config(os.path.join(igibson.configs_path, "robots", robot_config_file))
         robot_config = config["robot"]
         robot_name = robot_config.pop("name")
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)

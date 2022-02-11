@@ -2,34 +2,40 @@
 
 ### Overview
 
-We provide **Environments** that follow the [OpenAI gym](https://github.com/openai/gym) interface for applications such as reinforcement learning algorithms. Generally speaking, an **Environment** instantiates **Scene**, **Object** and **Robot** and import them into its **Simulator**. An **Environment** also instantiates a list of **Sensors** (usually as part of the observation space) and a **Task**, which further includes a list of **Reward Functions** and **Termination Conditions**.
+We provide several **Environments** that follow the [OpenAI gym](https://github.com/openai/gym) interface facilitating training reinforcement learning agents for navigation and mobile manipulation tasks. An **Environment** instantiates a **Scene**, **Object**(s) and **Robot**(s) and import them into the contained **Simulator**. An **Environment** also instantiates a list of **Sensors** (usually as part of the observation space) and a **Task**, which further includes a list of **Reward Functions** and **Termination Conditions**.
 
-Most of the code can be found here: [igibson/envs/igibson_env.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/envs/igibson_env.py).
+The most general environment is the `iGibsonEnv`, which code can be found here: [igibson/envs/igibson_env.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/envs/igibson_env.py).
+
+For further information about the [Scenes](scenes.md), [Objects](objects.md), [Robots](robots.md), [Simulator](simulators.md) or [Renderer](renderer.md) we refer to the corresponding pages. Here, we summarize additional information about `Sensors`, and `Tasks`.
 
 #### Sensors
 
-We provide different types of sensors as lightweight wrappers around the renderer. Currently we support RGB, surface normal, segmentation, 3D point cloud, depth map, optical flow, and scene flow, and also 1-beam and 16-beam LiDAR signals. Additionally, we provide a sensor noise model with random dropout (currently only for depth map and 1-beam LiDAR) to simulate real-world sensor noise. The amount of noise can be controlled by `depth_noise_rate` and `scan_noise_rate` in the config files. Contribution of more noise models is most welcome.
+We provide different types of sensors as lightweight wrappers around the renderer. Currently, we support RGB, surface normal, segmentation, 3D point cloud, depth map, optical flow, and scene flow, and also 1-beam and 16-beam LiDAR signals. Additionally, we provide a sensor noise model with random dropout (currently only for depth map and 1-beam LiDAR) to simulate real-world sensor noise and facilitate sim2real. The amount of noise can be controlled by `depth_noise_rate` and `scan_noise_rate` in the config files. Contributions of new noise models are welcome.
 
 Most of the code can be found in [igibson/sensors](https://github.com/StanfordVL/iGibson/tree/master/igibson/sensors).
 
 #### Tasks
 
-Each **Task** should implement `reset_scene`, `reset_agent`, `step` and `get_task_obs`.
+**Task** is an abstraction to define what needs to be achieved by an agent in a scene. The same scenes could hold multiple tasks. Each **Task** should implement `reset_scene`, `reset_agent`, `step` and `get_task_obs`.
 - `reset_scene` and `reset_agent` will be called during `env.reset` and should include task-specific details to reset the scene and the agent, respectively.
 - `step` will be called during `env.step` and should include task-specific details of what needs to be done at every timestep. 
 - `get_task_obs` returns task-specific observation (non-sensory observation) as a numpy array. For instance, typical goal-oriented robotics tasks should include goal information and proprioceptive states in `get_task_obs`.
-Each **Task** should also include a list of **Reward Functions** and **Termination Conditions** defined below.
-We provide a few Embodied AI tasks.
-- PointGoalFixedTask
-- PointGoalRandomTask
-- InteractiveNavRandomTask
-- DynamicNavRandomTask
-- ReachingRandomTask
-- RoomRearrangementTask
+Each **Task** should also include a list of **Reward Functions** and **Termination Conditions** as explained below.
 
-Most of the code can be found in [igibson/tasks](https://github.com/StanfordVL/iGibson/tree/master/igibson/tasks).
+We provide several useful predefined Embodied AI **Tasks**, ready to be used:
+- PointNavFixedTask: the agent should navigate to a predefined goal (point) location.
+- PointNavRandomTask: the agent should navigate to a goal (point) location that changes randomly after each reset.
+- InteractiveNavRandomTask: the agent should navigate to a goal (point) location that changes randomly after each reset dealing with multiple interactive obstacles in the way.
+- DynamicNavRandomTask: the agent should navigate to a goal (point) location that changes randomly after each reset, while avoiding several dynamically moving obstacles (other robots).
+- ReachingRandomTask: the agent should reach with its end-effector a target point that changes randomly after each reset.
+- RoomRearrangementTask: the agent needs to move multiple objects to a predefined goal configuration.
+- BehaviorTask: the agent should complete a long-horizon household activity defined in logic language (for more information, visit [https://behavior.stanford.edu/](https://behavior.stanford.edu/)).
 
-#### Reward Functions
+The relevant code can be found in [igibson/tasks](https://github.com/StanfordVL/iGibson/tree/master/igibson/tasks).
+
+In the following, we explain further the reward functions and termination conditions included as part of the tasks.
+
+##### Reward Functions
 
 At each timestep, `env.step` will call `task.get_reward`, which in turn sums up all the reward terms. 
 We provide a few common reward functions for robotics tasks.
@@ -38,9 +44,9 @@ We provide a few common reward functions for robotics tasks.
 - PotentialReward
 - CollisionReward
 
-Most of the code can be found in [igibson/reward_functions](https://github.com/StanfordVL/iGibson/tree/master/igibson/reward_functions).
+The code can be found in [igibson/reward_functions](https://github.com/StanfordVL/iGibson/tree/master/igibson/reward_functions).
 
-#### Termination Conditions
+##### Termination Conditions
 
 At each timestep, `env.step` will call `task.get_termination`, which in turn checks each of the termination condition to see if the episode is done and/or successful. 
 We provide a few common termination conditions for robotics tasks.
@@ -49,95 +55,22 @@ We provide a few common termination conditions for robotics tasks.
 - MaxCollision
 - Timeout
 - OutOfBound
-Most of the code can be found in [igibson/termination_conditions](https://github.com/StanfordVL/iGibson/tree/master/igibson/termination_conditions).
+
+The code can be found in [igibson/termination_conditions](https://github.com/StanfordVL/iGibson/tree/master/igibson/termination_conditions).
 
 #### Configs
-To instantiate an **Environment**, we first need to create a YAML config file. It will specify parameters for the **Environment** (e.g. robot type, action frequency, etc), the **Sensors** (e.g. sensor types, image resolution, noise rate, etc), the **Task** (e.g. task type, goal distance range, etc), the **Reward Functions** (e.g. reward types, reward scale, etc) and the **Termination Conditions** (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: [configs](https://github.com/StanfordVL/iGibson/tree/master/igibson/configs).
+While **Environments** can be instantiated manually, it is easier to use a config file, a YAML file containing the relevant parameters. The config file specifies parameters such as the robot type, action frequency, etc., but also information about the **Sensors** (e.g. sensor types, image resolution, noise rate, etc), the **Task** (e.g. task type, goal distance range, etc), the **Reward Functions** (e.g. reward types, reward scale, etc), and the **Termination Conditions** (e.g. goal convergence threshold, time limit, etc). Many useful examples of config files can be found here: [configs](https://github.com/StanfordVL/iGibson/tree/master/igibson/configs).
 
 Here is one example: [configs/turtlebot_nav.yaml](https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/turtlebot_nav.yaml)
 
-```yaml
-# scene
-scene: igibson
-scene_id: Rs_int
-build_graph: true
-load_texture: true
-pybullet_load_texture: true
-trav_map_type: no_obj
-trav_map_resolution: 0.1
-trav_map_erosion: 2
-should_open_all_doors: true
-
-# domain randomization
-texture_randomization_freq: null
-object_randomization_freq: null
-
-# robot
-robot: Turtlebot
-is_discrete: false
-velocity: 1.0
-
-# task
-task: point_nav_random
-target_dist_min: 1.0
-target_dist_max: 10.0
-goal_format: polar
-task_obs_dim: 4
-
-# reward
-reward_type: geodesic
-success_reward: 10.0
-potential_reward_weight: 1.0
-collision_reward_weight: -0.1
-
-# discount factor
-discount_factor: 0.99
-
-# termination condition
-dist_tol: 0.36  # body width
-max_step: 500
-max_collisions_allowed: 500
-
-# misc config
-initial_pos_z_offset: 0.1
-collision_ignore_link_a_ids: [1, 2, 3, 4]  # ignore collisions with these robot links
-
-# sensor spec
-output: [task_obs, rgb, depth, scan]
-# image
-# ASUS Xtion PRO LIVE
-# https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
-fisheye: false
-image_width: 160
-image_height: 120
-vertical_fov: 45
-# depth
-depth_low: 0.8
-depth_high: 3.5
-# scan
-# Hokuyo URG-04LX-UG01
-# https://www.hokuyo-aut.jp/search/single.php?serial=166
-# n_horizontal_rays is originally 683, sub-sampled 1/3
-n_horizontal_rays: 228
-n_vertical_beams: 1
-laser_linear_range: 5.6
-laser_angular_range: 240.0
-min_laser_dist: 0.05
-laser_link_name: scan_link
-
-# sensor noise
-depth_noise_rate: 0.0
-scan_noise_rate: 0.0
-
-# visual objects
-visible_target: true
-
+```{literalinclude} ../igibson/configs/turtlebot_nav.yaml
+:language: yaml
 ```
 
-Parameters of this config file are explained below:
+In the following, we explain th parameters included in this config:
 
-| Attribute | Example Value | Expalanation |
-| ----------| ------------- | ------------ |
+| Attribute | Example Value | Explanation |
+| ----------| ------------- | ----------- |
 | scene | igibson | which type of scene: [empty, stadium, gibson, igibson] |
 | scene_id | Rs_int | scene_id for the gibson or igibson scene |
 | build_graph | true | whether to build traversability graph for the building scene |
@@ -166,7 +99,7 @@ Parameters of this config file are explained below:
 | max_step | 500 | maximum number of timesteps allowed in an episode |
 | max_collisions_allowed | 500 | maximum number of timesteps with robot collision allowed in an episode |
 | initial_pos_z_offset | 0.1 | z-offset (in meters) when placing the robots and the objects to accommodate uneven floor surface |
-| collision_ignore_link_a_ids | [1, 2, 3, 4] | collision with these robot links will not result in collision penalty. These usually are links of wheels 
+| collision_ignore_link_a_ids | [1, 2, 3, 4] | collision with these robot links will not result in collision penalty. These usually are links of wheels |
 | output | [task_obs, rgb, depth, scan] | what observation space is. sensor means task-specific, non-sensory information (e.g. goal info, proprioceptive state), rgb and depth mean RGBD camera sensing, scan means LiDAR sensing |
 | fisheye | false | whether to use fisheye camera |
 | image_width | 640 | image width for the camera |
@@ -187,19 +120,25 @@ Parameters of this config file are explained below:
 
 ### Examples
 
-#### Static Environments
-In this example, we show how to instantiate `iGibsonEnv` and how to step through the environment. At the beginning of each episode, we need to call `env.reset()`. Then we need to call `env.step(action)` to step through the environment and retrieve `(state, reward, done, info)`.
+#### Using a Static Scene with an iGibsonEnv
+
+In this example, we show how to instantiate an `iGibsonEnv` with a Gibson static model, and how to step through the environment. At the beginning of each episode, we need to call `env.reset()`. Then we need to call `env.step(action)` to step through the environment and retrieve `(state, reward, done, info)`.
 - `state`: a python dictionary of observations, e.g. `state['rgb']` will be a H x W x 3 numpy array that represents the current image
 - `reward`: a scalar that represents the current reward
 - `done`: a boolean that indicates whether the episode should terminate
 - `info`: a python dictionary for bookkeeping purpose
 The code can be found here: [igibson/examples/environments/env_nonint_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/environments/env_nonint_example.py).
 
-If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.
-
 ```{literalinclude} ../igibson/examples/environments/env_nonint_example.py
 :language: python
 ```
 
-#### Interactive Environments
+(Mac users) If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.
+
+#### Using an Interactive Scene with an iGibsonEnv
+
 In this example, we show how to instantiate `iGibsonEnv` with a fully interactive scene `Rs_int`. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: [igibson/examples/environments/env_int_example.py](https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/env_int_example.py).
+
+```{literalinclude} ../igibson/examples/environments/env_int_example.py
+:language: python
+```
