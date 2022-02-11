@@ -67,3 +67,7 @@ class StatefulObject(BaseObject):
     def set_base_link_position_orientation(self, pos, orn):
         super(StatefulObject, self).set_base_link_position_orientation(pos, orn)
         clear_cached_states(self)
+
+    def set_poses(self, poses):
+        super(StatefulObject, self).set_poses(poses)
+        clear_cached_states(self)

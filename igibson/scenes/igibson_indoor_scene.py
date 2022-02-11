@@ -188,7 +188,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Store the original states retrieved from the URDF
         # self.object_states[object_name]["bbox_center_pose"] = ([x, y, z], [x, y, z, w])
-        # self.object_states[object_name]["base_com_pose"] = ([x, y, z], [x, y, z, w])
+        # self.object_states[object_name]["base_poses"] = [([x, y, z], [x, y, z, w]), ...]
         # self.object_states[object_name]["base_velocities"] = (vx, vy, vz], [wx, wy, wz])
         # self.object_states[object_name]["joint_states"] = {joint_name: (q, q_dot)}
         # self.object_states[object_name]["non_kinematic_states"] = dict()
@@ -331,7 +331,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 bbx_center_orn = np.array([0.0, 0.0, 0.0])
             bbx_center_orn = p.getQuaternionFromEuler(bbx_center_orn)
 
-            base_com_pose = json.loads(link.attrib["base_com_pose"]) if "base_com_pose" in link.attrib else None
+            base_poses = json.loads(link.attrib["base_poses"]) if "base_poses" in link.attrib else None
             base_velocities = json.loads(link.attrib["base_velocities"]) if "base_velocities" in link.attrib else None
             if "joint_states" in link.keys():
                 joint_states = json.loads(link.attrib["joint_states"])
@@ -349,7 +349,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 non_kinematic_states = None
 
             self.object_states[object_name]["bbox_center_pose"] = (bbox_center_pos, bbx_center_orn)
-            self.object_states[object_name]["base_com_pose"] = base_com_pose
+            self.object_states[object_name]["base_poses"] = base_poses
             self.object_states[object_name]["base_velocities"] = base_velocities
             self.object_states[object_name]["joint_states"] = joint_states
             self.object_states[object_name]["non_kinematic_states"] = non_kinematic_states
@@ -851,9 +851,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if not obj_kin_state:
             return
 
-        # TODO: For velocities, we are now storing each body's com. Should we somehow do the same for positions?
-        if obj_kin_state["base_com_pose"] is not None:
-            obj.set_position_orientation(*obj_kin_state["base_com_pose"])
+        if obj_kin_state["base_poses"] is not None:
+            obj.set_poses(obj_kin_state["base_poses"])
         else:
             if isinstance(obj, BaseRobot):
                 # Backward compatibility, existing scene cache saves robot's base link CoM frame as bbox_center_pose
@@ -1228,9 +1227,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             new_parent.attrib["link"] = "world"
 
         # Common logic for objects that are both in the scene & otherwise.
-        base_com_pose = (pos, orn)
         joint_states = obj.get_joint_states()
-        link.attrib["base_com_pose"] = json.dumps(base_com_pose, cls=NumpyEncoder)
+        link.attrib["base_poses"] = json.dumps(obj.get_poses(), cls=NumpyEncoder)
         link.attrib["base_velocities"] = json.dumps(obj.get_velocities(), cls=NumpyEncoder)
         link.attrib["joint_states"] = json.dumps(joint_states, cls=NumpyEncoder)
 
@@ -1306,7 +1304,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 continue
 
             object_states[object_name]["bbox_center_pose"] = None
-            object_states[object_name]["base_com_pose"] = json.loads(link.attrib["base_com_pose"])
+            object_states[object_name]["base_poses"] = json.loads(link.attrib["base_poses"])
             object_states[object_name]["base_velocities"] = json.loads(link.attrib["base_velocities"])
             object_states[object_name]["joint_states"] = json.loads(link.attrib["joint_states"])
             object_states[object_name]["non_kinematic_states"] = json.loads(link.attrib["states"])
