@@ -24,9 +24,8 @@
 # for igibson
 SCENE_SPLITS = {
     "train": ["Pomaria_1_int", "Benevolence_2_int", "Beechwood_1_int", "Ihlen_0_int", "Benevolence_1_int", 
-              #"Pomaria_2_int", 
-              "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int"],
-    "val": ["Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int"] #, "Pomaria_0_int"]
+              "Pomaria_2_int", "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int"],
+    "val": ["Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"]
 }
 # "Benevolence_0_int" in train
 
@@ -49,20 +48,14 @@ CATEGORY_MAP = {
                 'cushion': 4,
                 'sofa': 5,
                 'bed': 6,
-#                 'chest_of_drawers': 13,
                 'plant': 7,
                 'sink': 8,
                 'toilet': 9,
                 'stool': 10,
-#                 'towel': 20,
                 'standing_tv': 11,
                 'shower': 12,
                 'bathtub': 13,
                 'counter': 14,
-#                 'fireplace': 27,
-#                 'gym_equipment': 33,
-#                 'seating': 34,
-#                 'clothes': 38
             }
 
 

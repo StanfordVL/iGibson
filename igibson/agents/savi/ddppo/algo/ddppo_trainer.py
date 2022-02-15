@@ -68,12 +68,19 @@ class DDPPOTrainer(PPOTrainer):
         self.action_space = self.envs.action_space
 
         has_distractor_sound = self.config['HAS_DISTRACTOR_SOUND']
+        if self.config["robot"]["action_type"] == "discrete":
+            is_discrete = True
+        elif self.config["robot"]["action_type"] == "continuous":
+            is_discrete=False
+        else:
+            raise ValueError("Robot action_type ('continuous' or 'discrete') must be defined in config")
+        
         if self.config['policy_type'] == 'rnn':
             self.actor_critic = AudioNavBaselinePolicy(
                 observation_space=self.envs.observation_space,
                 action_space=self.envs.action_space,
                 hidden_size=self.config['hidden_size'],
-                is_discrete=self.config['is_discrete'],
+                is_discrete=is_discrete,
                 min_std=self.config['min_std'], max_std=self.config['max_std'],
                 min_log_std=self.config['min_log_std'], max_log_std=self.config['max_log_std'], 
                 use_log_std=self.config['use_log_std'], use_softplus=self.config['use_softplus'],
@@ -83,8 +90,6 @@ class DDPPOTrainer(PPOTrainer):
             )
 
             if self.config['use_belief_predictor']:
-#                 belief_cfg = self.config['BELIEF_PREDICTOR']
-#                 bp_class = BeliefPredictorDDP if belief_cfg.online_training else BeliefPredictor
                 bp_class = BeliefPredictorDDP if self.config['online_training'] else BeliefPredictor
                 self.belief_predictor = bp_class(self.config, self.device, None, None,
                                                  self.config['hidden_size'], self.envs.batch_size, has_distractor_sound
@@ -99,14 +104,12 @@ class DDPPOTrainer(PPOTrainer):
                 self.belief_predictor.freeze_encoders()
 
         elif self.config['policy_type'] == 'smt':
-#             smt_cfg = ppo_cfg.SCENE_MEMORY_TRANSFORMER
-#             belief_cfg = ppo_cfg.BELIEF_PREDICTOR
             self.actor_critic = AudioNavSMTPolicy(
                 observation_space=self.envs.observation_space,
                 action_space=self.envs.action_space,
                 hidden_size=self.config['smt_cfg_hidden_size'],
                 
-                is_discrete=self.config['is_discrete'],
+                is_discrete=is_discrete,
                 min_std=self.config['min_std'], max_std=self.config['max_std'],
                 min_log_std=self.config['min_log_std'], max_log_std=self.config['max_log_std'], 
                 use_log_std=self.config['use_log_std'], use_softplus=self.config['use_softplus'],
@@ -152,7 +155,6 @@ class DDPPOTrainer(PPOTrainer):
 
         self.actor_critic.to(self.device)
 
-        # pretraining: false
         if self.config['pretrained']: 
             # load weights for both actor critic and the encoder
             pretrained_state = torch.load(self.config['pretrained_weights'], map_location="cpu")
@@ -180,7 +182,6 @@ class DDPPOTrainer(PPOTrainer):
                 },
             )
 
-#         if self.config.RL.DDPPO.reset_critic:
         if self.config['reset_critic']:
             nn.init.orthogonal_(self.actor_critic.critic.fc.weight)
             nn.init.constant_(self.actor_critic.critic.fc.bias, 0)
@@ -235,9 +236,6 @@ class DDPPOTrainer(PPOTrainer):
         else:
             self.device = torch.device("cpu")
 
-#         self.envs = construct_envs(
-#             self.config, get_env_class(self.config.ENV_NAME)
-#         )
         dataset.initialize(self.config['NUM_PROCESSES'])
         scene_splits = dataset.getValue()
         
@@ -253,8 +251,6 @@ class DDPPOTrainer(PPOTrainer):
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_ids], blocking=False)
         
-
-#         ppo_cfg = self.config.RL.PPO
         if (
             not os.path.isdir(self.config['CHECKPOINT_FOLDER'])
             and self.world_rank == 0
@@ -263,7 +259,6 @@ class DDPPOTrainer(PPOTrainer):
 
         self._setup_actor_critic_agent()
         self.agent.init_distributed(find_unused_params=True)
-#         if ppo_cfg.use_belief_predictor and ppo_cfg.BELIEF_PREDICTOR.online_training:
         if self.config['use_belief_predictor'] and self.config['online_training']:
             self.belief_predictor.init_distributed(find_unused_params=True)
 
@@ -441,13 +436,12 @@ class DDPPOTrainer(PPOTrainer):
 
                 num_rollouts_done_store.add("num_done", 1)
 
-                self.agent.train() # set to train mode
+                self.agent.train()
                 if self.config['use_belief_predictor']:
                     self.belief_predictor.train()
                     self.belief_predictor.set_eval_encoders()
                 if self._static_smt_encoder:
                     self.actor_critic.net.set_eval_encoders()
-#                 print("rollouts", rollouts.observations)
                 if self.config['use_belief_predictor'] and self.config['online_training']:
                     location_predictor_loss, prediction_accuracy = self.train_belief_predictor(rollouts)
                 else:
@@ -458,7 +452,6 @@ class DDPPOTrainer(PPOTrainer):
                     value_loss,
                     action_loss,
                     dist_entropy,
-#                 ) = self._update_agent(ppo_cfg, rollouts)
                 ) = self._update_agent(rollouts)
                 pth_time += delta_pth_time
 

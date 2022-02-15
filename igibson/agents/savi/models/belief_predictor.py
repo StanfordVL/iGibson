@@ -150,37 +150,8 @@ class BeliefPredictor(nn.Module):
                 pointgoals = self.cnn_forward(observations).cpu().numpy()
 
             for i in range(batch_size):
-#                 pose = observations['pose_sensor'][i].cpu().numpy()
-#                 pointgoal = pointgoals[i]
-#                 if dones is not None and dones[i]:
-#                     self.last_pointgoal[i] = None
-
-#                 if observations["audio"][i].sum().item() != 0:
-#                     # pointgoal_with_gps_compass: X is forward, Y is rightward,
-#                     # pose: same XY but heading is positive from X to -Y defined based on the initial pose
-#                     pointgoal_base = np.array([-pointgoal[1], pointgoal[0]]) #[forward, rightward] in the agent's frame
-#                     if self.last_pointgoal[i] is None:
-#                         pointgoal_avg = pointgoal_base
-#                     else:
-#                         if self.config['current_pred_only']:
-#                             pointgoal_avg = pointgoal_base
-#                         else:
-#                             w = self.config['weighting_factor']
-#                             pointgoal_avg = (1-w) * pointgoal_base + w * odom_to_base(self.last_pointgoal[i], pose)
-#                     self.last_pointgoal[i] = base_to_odom(pointgoal_avg, pose)
-#                 else:
-#                     if self.last_pointgoal[i] is None:
-#                         pointgoal_avg = np.array([10, 10])
-#                     else:
-#                         pointgoal_avg = odom_to_base(self.last_pointgoal[i], pose)
-
-#                 observations['location_belief'][i].copy_(torch.from_numpy(pointgoal_avg))
-
-
-# modified 0101 base: agent's frame; odom: global frame
                 pose = observations['pose_sensor'][i].cpu().numpy()
                 pos = pose[:3]
-#                 orn = pose[3:7]
                 rpy = pose[3:6]
 
                 pointgoal = pointgoals[i]
