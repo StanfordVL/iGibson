@@ -448,14 +448,14 @@ class Simulator:
             if hasattr(obj, "procedural_material") and obj.procedural_material is not None:
                 obj.procedural_material.update()
 
-    def step(self):
+    def step(self, audio=True):
         """
         Step the simulation at self.render_timestep and update positions in renderer.
         """
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
 
-        if self.audio_system is not None:
+        if self.audio_system is not None and audio:
             self.audio_system.step()
 
         self.sync()
