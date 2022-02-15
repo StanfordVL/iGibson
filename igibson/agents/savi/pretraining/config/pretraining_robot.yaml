@@ -1,0 +1,4 @@
+# robot
+robot: Turtlebot
+is_discrete: true
+velocity: 1.0
