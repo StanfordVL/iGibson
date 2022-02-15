@@ -40,29 +40,3 @@ class AudioGoalPredictor(nn.Module):
         audio_observations = audio_observations.permute(0, 3, 1, 2)
         return self.predictor(audio_observations)
 
-#     def update(self, observations, envs, predict_location):
-#         """
-#         update the current observations with estimated location in the agent's current coordinate frame
-#         if spectrogram in the current obs is zero, transform last estimate to agent's current coordinate frame
-#         """
-#         num_env = envs.num_envs
-#         if self.last_global_coords is None:
-#             self.last_global_coords = [None] * num_env
-
-#         for i in range(num_env):
-#             if observations[i]['spectrogram'].sum() != 0:
-#                 if predict_location:
-#                     pred_location = self.forward(observations[i])[0, -2:].cpu().numpy()
-#                 else:
-#                     offsets = [0, +1, -1, +2, -2]
-#                     gt_location = observations[i]['pointgoal_with_gps_compass']
-#                     pred_location = np.array([gt_location[1] + random.choice(offsets),
-#                                           -gt_location[0] + random.choice(offsets)])
-#                 self.last_global_coords[i] = envs.call_at(i, 'egocentric_to_global', {'pg': pred_location})
-#             else:
-#                 pred_location = envs.call_at(i, 'global_to_egocentric', {'pg': self.last_global_coords[i]})
-#                 if not predict_location:
-#                     pred_location = np.array([-pred_location[1], pred_location[0]])
-#             observations[i]['pointgoal_with_gps_compass'] = pred_location
-
-

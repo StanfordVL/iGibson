@@ -1,4 +1,4 @@
-NUM_PROCESSES: 1
+NUM_PROCESSES: 9
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
@@ -13,7 +13,6 @@ SEED: 0
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
 
-
 #ppo & DDPPO config
 hidden_size: 512
 ppo_epoch: 2
@@ -23,9 +22,7 @@ num_steps: 150
 value_loss_coef: 0.5
 entropy_coef: 0.05
 lr: 0.00025
-# 2.5e-4
 eps: 0.00001
-# 1e-5
 max_grad_norm: 0.2
 use_linear_clip_decay: False
 use_linear_lr_decay: False
@@ -81,9 +78,9 @@ scene: igibson
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
-trav_map_type: no_obj
+trav_map_type: with_obj
 trav_map_resolution: 0.1
-trav_map_erosion: 2
+trav_map_erosion: 3
 should_open_all_doors: true
 
 is_discrete: True
@@ -96,16 +93,22 @@ use_softplus: False
 action_activation: tanh
 
 # task
-task: SAVi
 target_dist_min: 1.0
 target_dist_max: 10.0
-goal_format: polar
 task_obs_dim: 4
 
 # robot
-robot: AVNavTurtlebot
-is_discrete: true
-velocity: 2.0
+robot:
+   name: AVNavTurtlebot
+   action_type: discrete
+   action_normalize: true
+   base_name: null
+   scale: 1.0
+   self_collision: false
+   rendering_params: null
+   controller_config:
+     base:
+       name: DifferentialDriveController
 
 # sensor spec
 goal_format: "cartesian"
@@ -136,7 +139,7 @@ target_visual_object_visible_to_agent: false
 reward_type: geodesic
 success_reward: 10.0
 potential_reward_weight: 1.0
-collision_reward_weight: -0.1
+collision_reward_weight: -0.005
 time_reward_weight: -0.01
 
 # termination condition

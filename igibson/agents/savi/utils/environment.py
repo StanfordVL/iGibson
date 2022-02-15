@@ -13,8 +13,10 @@ import os
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.robots.turtlebot_robot import Turtlebot
+from igibson.robots import REGISTERED_ROBOTS
+from igibson.robots.turtlebot import Turtlebot
 from igibson.robots.robot_base import BaseRobot
+from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
 from igibson.reward_functions.reward_function_base import BaseRewardFunction
@@ -23,8 +25,10 @@ from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
+from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.objects import cube
 from igibson.audio.audio_system import AudioSystem
+import igibson.audio.default_config as default_audio_config
 from utils.logs import logger
 from utils import dataset
 # from utils.utils import quaternion_from_coeff, cartesian_to_polar
@@ -90,10 +94,11 @@ class SAViTask(PointNavRandomTask):
         self.reward_funcions = [
             PotentialReward(self.config), # geodesic distance, potential_reward_weight
             PointGoalReward(self.config), # success_reward
+            CollisionReward(self.config),
             TimeReward(self.config), # time_reward_weight
         ]
         self.termination_conditions = [
-#             MaxCollision(self.config),
+            MaxCollision(self.config),
             Timeout(self.config),
             OutOfBound(self.config),
             PointGoal(self.config),
@@ -148,7 +153,6 @@ class AVNavRLEnv(iGibsonEnv):
     Redefine the environment (robot, task, dataset)
     """
     def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4'):
-        # config_file is 'str'   
         
 #         self.audio_obj = None
         self.SR = 44100
@@ -171,11 +175,11 @@ class AVNavRLEnv(iGibsonEnv):
         Load task setup
         """
         super().load_task_setup()
-        if self.config['task'] == 'point_nav_AVNav':
-            self.task = PointNavAVNav(self)
-        elif self.config['task'] == 'SAVi':
-            self.task = SAViTask(self)
-            
+#         if self.config['task'] == 'point_nav_AVNav':
+#             self.task = PointNavAVNav(self)
+#         elif self.config['task'] == 'SAVi':
+#             self.task = SAViTask(self)
+        self.task = SAViTask(self)  
             
     def load_observation_space(self):
         """
@@ -199,9 +203,6 @@ class AVNavRLEnv(iGibsonEnv):
             observation_space['location_belief'] = self.build_obs_space(
                 shape=(2,), low=0.0, high=1.0)
         if 'pose_sensor' in self.output:
-# modified 0101
-#             observation_space['pose_sensor'] = self.build_obs_space(
-#                 shape=(4,), low=-np.inf, high=np.inf)
             observation_space['pose_sensor'] = self.build_obs_space(
                 shape=(7,), low=-np.inf, high=np.inf)
         if 'category' in self.output:
@@ -326,8 +327,8 @@ class AVNavRLEnv(iGibsonEnv):
                     'trav_map_resolution', 0.1),
                 trav_map_erosion=self.config.get('trav_map_erosion', 2),
                 trav_map_type=self.config.get('trav_map_type', 'with_obj'),
-                pybullet_load_texture=self.config.get(
-                    'pybullet_load_texture', False),
+#                 pybullet_load_texture=self.config.get(
+#                     'pybullet_load_texture', False),
                 texture_randomization=self.texture_randomization_freq is not None,
                 object_randomization=self.object_randomization_freq is not None,
                 object_randomization_idx=self.object_randomization_idx,
@@ -343,33 +344,13 @@ class AVNavRLEnv(iGibsonEnv):
             first_n = self.config.get('_set_first_n_objects', -1)
             if first_n != -1:
                 scene._set_first_n_objects(first_n)
-            self.simulator.import_ig_scene(scene)
+            self.simulator.import_scene(scene)
             
-        
-        if self.config['robot'] == 'AVNavTurtlebot':
-            robot = AVNavTurtlebot(self.config)
-        elif self.config['robot'] == 'Turtlebot':
-            robot = Turtlebot(self.config)
-        elif self.config['robot'] == 'Husky':
-            robot = Husky(self.config)
-        elif self.config['robot'] == 'Ant':
-            robot = Ant(self.config)
-        elif self.config['robot'] == 'Humanoid':
-            robot = Humanoid(self.config)
-        elif self.config['robot'] == 'JR2':
-            robot = JR2(self.config)
-        elif self.config['robot'] == 'JR2_Kinova':
-            robot = JR2_Kinova(self.config)
-        elif self.config['robot'] == 'Freight':
-            robot = Freight(self.config)
-        elif self.config['robot'] == 'Fetch':
-            robot = Fetch(self.config)
-        elif self.config['robot'] == 'Locobot':
-            robot = Locobot(self.config)
-        else:
-            raise Exception(
-                'unknown robot type: {}'.format(self.config['robot']))
 
+        robot_config = self.config["robot"]
+        robot_name = robot_config.pop("name")
+        robot = REGISTERED_ROBOTS[robot_name](**robot_config)
+        
         self.scene = scene
         self.robots = [robot]
         for robot in self.robots:
@@ -397,7 +378,6 @@ class AVNavRLEnv(iGibsonEnv):
             stft = block_reduce(stft, block_size=(4, 4), func=np.mean)
             return stft
         
-        # length of audio_data[::2]: 4410
         self.audio_channel1 = np.append(self.audio_channel1[self.audio_len:], audio_data[::2])
         self.audio_channel2 = np.append(self.audio_channel2[self.audio_len:], audio_data[1::2])
         channel1_magnitude_cat = np.log1p(compute_stft_cat(self.audio_channel1))
@@ -411,69 +391,24 @@ class AVNavRLEnv(iGibsonEnv):
 
         return spectrogram, spectrogram_cat
     
-#     def quaternion_rotate_vector(self, quat, v) -> np.array:
-#         r"""Rotates a vector by a quaternion
-#         Args:
-#             quaternion: The quaternion to rotate by
-#             v: The vector to rotate
-#         Returns:
-#             np.array: The rotated vector
-#         """
-#         vq = np.quaternion(0, 0, 0, 0)
-#         vq.imag = v
-#         return (quat * vq * quat.inverse()).imag
-    
-#     def _quat_to_xy_heading(self, quat):
-#         direction_vector = np.array([0, 0, -1])
 
-#         heading_vector = self.quaternion_rotate_vector(quat, direction_vector)
-
-#         phi = cartesian_to_polar(-heading_vector[2], heading_vector[0])[1]
-#         return np.array([phi], dtype=np.float32)
-    
-    
-    def get_state(self, collision_links=[]):
+    def get_state(self):
         """
         Get the current observation
 
         :param collision_links: collisions from last physics timestep
         :return: observation as a dictionary
         """
-        state = super().get_state(collision_links)
+        state = super().get_state()
         if 'audio' in self.output:
             current_output = self.audio_system.current_output.astype(np.float32, order='C') / 32768.0
             state['audio'], state['audio_concat'] = self.compute_spectrogram(current_output)
-# modified 0101
-#         if 'pose_sensor' in self.output:
-#             # pose sensor in the episode frame
-#             pos = self.robots[0].get_position() #[x,y,z]
-#             orn = self.robots[0].get_orientation() # [x,y,z,w]
-#             #task_obs: [x, y, ..] in the agent's frame
-#             initial_pos = self.initial_pos
-#             initial_orn = self.initial_orn 
-                      
-#             rotation_world_start = quaternion_from_coeff(quatToXYZW(euler2quat(*initial_orn), "xyzw"))
-#             rotation_world_agent = quaternion_from_coeff(orn)
-            
-#             agent_position_xyz = self.quaternion_rotate_vector(
-#                 rotation_world_start.inverse(), pos - initial_pos
-#             )
 
-#             agent_heading = self._quat_to_xy_heading(
-#                 rotation_world_agent.inverse() * rotation_world_start
-#             )
-            
-#             state['pose_sensor'] = np.array(
-#                 [-agent_position_xyz[2], agent_position_xyz[0], agent_heading, self._episode_time],
-#                 dtype=np.float32)
-#             self._episode_time += 1.0
         
         if 'pose_sensor' in self.output:
             # pose sensor in the episode frame
             pos = self.robots[0].get_position() #[x,y,z]
-#             orn = self.robots[0].get_orientation() # [x,y,z,w]
             rpy = self.robots[0].get_rpy() #(3,)
-#             initial_pos = self.initial_pos
             
             state['pose_sensor'] = np.array(
                 [*pos, *rpy, self._episode_time],
@@ -507,16 +442,13 @@ class AVNavRLEnv(iGibsonEnv):
         :return: done: whether the episode is terminated
         :return: info: info dictionary with any useful information
         """
-        global COUNT_CURR_EPISODE
-        
-        self.current_step += 1
         if action is not None:
             self.robots[0].apply_action(action)
         collision_links = self.run_simulation()
         self.collision_links = collision_links
         self.collision_step += int(len(collision_links) > 0)
 
-        state = self.get_state(collision_links)
+        state = self.get_state()
         info = {}
         reward, info = self.task.get_reward(
             self, collision_links, action, info)
@@ -527,25 +459,7 @@ class AVNavRLEnv(iGibsonEnv):
 
         if done and self.automatic_reset:
             info['last_observation'] = state
-            self._episode_time = 0.0
-            
-            if COUNT_CURR_EPISODE == 10:
-                if train:
-                    scene_splits = dataset.getValue()
-                    idx = np.random.randint(len(scene_splits[i_env]))
-                    next_scene_id = scene_splits[i_env][idx]
-                else:
-                    next_scenes = dataset.getValValue()
-                    idx = np.random.randint(len(next_scenes))
-                    next_scene_id = next_scenes[idx]
-
-                logger.info("reloading scene {} for env {}".format(next_scene_id, i_env))
-                self.reload_model(next_scene_id) # disconnects the simulator
-                
-                COUNT_CURR_EPISODE = 0
-                
             state = self.reset()
-            COUNT_CURR_EPISODE += 1
 
         return state, reward, done, info
     
@@ -558,34 +472,32 @@ class AVNavRLEnv(iGibsonEnv):
         self.randomize_domain()
         # move robot away from the scene
         self.robots[0].set_position([100.0, 100.0, 100.0])  
-        self.task.reset_scene(self)
-        self.task.reset_agent(self) # sample_initial_pose_and_target_pos
+        self.task.reset(self)
         if self.audio_system is not None:
             self.audio_system.disconnect()
             del self.audio_system
             self.audio_system = None
         
         if 'audio' in self.output:
-            ## modified 1006
+            write_to_file = self.config.get('audio_write', "")
+            
             if self.config['scene'] == 'gibson' or self.config['scene'] == 'mp3d':
                 acousticMesh = getMatterportAcousticMesh(self.simulator, 
                               "/cvgl/group/Gibson/matterport3d-downsized/v2/"+self.config['scene_id']+"/sem_map.png")
             elif self.config['scene'] == 'igibson':
                 acousticMesh = getIgAcousticMesh(self.simulator)
-                
-#             self.audio_system = AudioSystem(self.simulator, self.robots[0], 
-#                                         is_Viewer=False, writeToFile=self.config['audio_write'], SR = self.SR)
 
+            occl_multiplier = self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER)
             self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
-                                          is_Viewer=False, writeToFile=self.config['audio_write'], 
-                                            SR = self.SR, num_probes=4) 
-            ## end modification   
+                                          is_Viewer=False, writeToFile=write_to_file, SR = self.SR,
+                                          occl_multiplier=occl_multiplier)
 
             source_location = self.task.target_pos
             self.audio_obj = cube.Cube(pos=source_location, dim=[0.05, 0.05, 0.05], 
                                        visual_only=False, 
                                        mass=0.5, color=[255, 0, 0, 1]) # pos initialized with default
-            self.audio_obj_id = self.simulator.import_object(self.audio_obj)
+            self.simulator.import_object(self.audio_obj)
+            self.audio_obj_id = self.audio_obj.get_body_id()[0]
             # for savi
             if train:
                 self.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'] \
@@ -599,7 +511,7 @@ class AVNavRLEnv(iGibsonEnv):
             self.audio_channel2 = np.zeros(self.audio_len*self.time_len)
 
             self.audio_system.step()
-        self.simulator.sync()
+        self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()
 

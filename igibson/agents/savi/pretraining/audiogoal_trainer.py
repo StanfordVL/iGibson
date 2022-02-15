@@ -13,11 +13,6 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchsummary import summary
 
-# from soundspaces.utils import load_metadata
-# from ss_baselines.savi.pretraining.audiogoal_predictor import AudioGoalPredictor
-# from ss_baselines.savi.pretraining.audiogoal_dataset import AudioGoalDataset
-# from ss_baselines.savi.config.default import get_config
-# from soundspaces.mp3d_utils import SCENE_SPLITS
 from igibson.agents.savi.pretraining.audiogoal_predictor import AudioGoalPredictor
 from igibson.agents.savi.pretraining.audiogoal_dataset import AudioGoalDataset
 
@@ -31,32 +26,24 @@ class AudioGoalPredictorTrainer:
         self.model_dir = model_dir
         self.device = (torch.device("cuda", 0))
 
-        self.batch_size = 80 # 1024
-        self.num_worker = 4 #8 related to mem
+        self.batch_size = 90
+        self.num_worker = 4
         self.lr = 1e-3
         self.weight_decay = None
-        self.num_epoch = 50 # 50
+        self.num_epoch = 50
         self.audiogoal_predictor = AudioGoalPredictor(predict_label=predict_label,
                                                       predict_location=predict_location).to(device=self.device)
         self.predict_label = predict_label
         self.predict_location = predict_location
-        summary(self.audiogoal_predictor.predictor, (2, 65, 69), device='cuda') # input size [65 26]
+        summary(self.audiogoal_predictor.predictor, (2, 65, 69), device='cuda')
 
     def run(self, splits, writer=None):
-#         meta_dir = self.config.TASK_CONFIG.SIMULATOR.AUDIO.METADATA_DIR
-        # splits: ['train', 'val']
         datasets = dict()
         dataloaders = dict()
         dataset_sizes = dict()
         for split in splits:
             scenes = SCENE_SPLITS[split]
-            # use collect subgoal dataset
-#             scene_graphs = dict()
-#             for scene in scenes:
-#                 points, graph = load_metadata(os.path.join(meta_dir, 'mp3d', scene))
-#                 scene_graphs[scene] = graph
             datasets[split] = AudioGoalDataset(
-#                 scene_graphs=scene_graphs,
                 scenes=scenes,
                 split=split,
                 use_polar_coordinates=False,
@@ -103,51 +90,30 @@ class AudioGoalPredictorTrainer:
                 running_classifier_corrects = 0
                 # Iterating over data once is one epoch
                 for i, data in enumerate(tqdm(dataloaders[split])):
-#                     print("split", split)
-                    
                     # get the inputs
                     inputs, gts = data
-#                     inputs: 1,batch_size,65,69
-#                     print("inputs", inputs)
-#                     print("inputs", len(inputs), len(inputs[0]), len(inputs[0][0]), len(inputs[0][0][0]))
-                    # remove alpha channel
                     inputs = [x.to(device=self.device, dtype=torch.float) for x in inputs]
                     gts = gts.to(device=self.device, dtype=torch.float)
                     # zero the parameter gradients
                     optimizer.zero_grad()
                     # forward
                     predicts = model({input_type: x for input_type, x in zip(['spectrogram'], inputs)})
-#                     print("predicts:", predicts)
-#                     print("gts:", gts)
                     if self.predict_label and self.predict_location:
                         classifier_loss = classifier_criterion(predicts[:, :-2], gts[:, 0].long())
                         regressor_loss = regressor_criterion(predicts[:, -2:], gts[:, -2:])
                     elif self.predict_label:
-#                         predicts: batch_size, 15
-#                         print(gts[:, 0].long())
-#                         print("predicts", predicts)
-#                         print("gts!", gts[:, 0])
                         classifier_loss = classifier_criterion(predicts, gts[:, 0].long())
-#                         print("classifier_loss", classifier_loss)
-#                         print("3.5")
-#                         regressor_loss = torch.tensor([0], device=self.device)
-#                         print("3.75")
-#                         print("regressor_loss", regressor_loss)
                     elif self.predict_location:
                         regressor_loss = regressor_criterion(predicts, gts[:, -2:])
                         classifier_loss = torch.tensor([0], device=self.device)
                     else:
                         raise ValueError('Must predict one item.')
                     loss = classifier_loss #+ regressor_loss
-#                     print("4")
-                    # backward + optimize only if in training phase
                     if split == 'train':
                         loss.backward()
                         optimizer.step()
-#                     print("5")
                     running_total_loss += loss.item() * gts.size(0)
                     running_classifier_loss += classifier_loss.item() * gts.size(0)
-#                     running_regressor_loss += regressor_loss.item() * gts.size(0)
 
                     pred_x = np.round(predicts.cpu().detach().numpy())
                     pred_y = np.round(predicts.cpu().detach().numpy())
@@ -163,23 +129,18 @@ class AudioGoalPredictorTrainer:
                     elif self.predict_label:
                         running_classifier_corrects += torch.sum(
                             torch.argmax(torch.abs(predicts), dim=1) == gts[:, 0]).item()
-#                         running_regressor_corrects = 0
                     elif self.predict_location:
                         running_regressor_corrects += np.sum(np.bitwise_and(
                             pred_x[:, 0] == gt_x[:, -2], pred_y[:, 1] == gt_y[:, -1]))
                         running_classifier_corrects = 0
 
                 epoch_total_loss = running_total_loss / dataset_sizes[split]
-#                 epoch_regressor_loss = running_regressor_loss / dataset_sizes[split]
                 epoch_classifier_loss = running_classifier_loss / dataset_sizes[split]
-#                 epoch_regressor_acc = running_regressor_corrects / dataset_sizes[split]
                 epoch_classifier_acc = running_classifier_corrects / dataset_sizes[split]
                 if writer is not None:
                     writer.add_scalar(f'Loss/{split}_total', epoch_total_loss, epoch)
                     writer.add_scalar(f'Loss/{split}_classifier', epoch_classifier_loss, epoch)
-#                     writer.add_scalar(f'Loss/{split}_regressor', epoch_regressor_loss, epoch)
                     writer.add_scalar(f'Accuracy/{split}_classifier', epoch_classifier_acc, epoch)
-#                     writer.add_scalar(f'Accuracy/{split}_regressor', epoch_regressor_acc, epoch)
                 logging.info(f'{split.upper()} Total loss: {epoch_total_loss:.4f}, '
                              f'label loss: {epoch_classifier_loss:.4f},' #  xy loss: {epoch_regressor_loss},
                              f' label acc: {epoch_classifier_acc:.4f},') #  xy acc: {epoch_regressor_acc}
@@ -250,17 +211,9 @@ def main():
         action='store_true',
         help="Modify config options from command line"
     )
-#     parser.add_argument(
-#         "--exp-config",
-#         default="config/savi.yaml",
-#         help="config file path"
-#     )
     args = parser.parse_args()
     config = parse_config('pretraining/config/savi.yaml')
     
-#     config = get_config(config_paths='ss_baselines/savi/config/semantic_audionav/savi.yaml',
-#                         opts=None,
-#                         run_type=None)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s, %(levelname)s: %(message)s',
                         datefmt="%Y-%m-%d %H:%M:%S")
 
