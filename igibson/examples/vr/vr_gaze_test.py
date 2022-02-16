@@ -85,7 +85,6 @@ def main(selection="user", headless=False, short_exec=False):
 
     bvr_robot = BehaviorRobot()
     s.import_object(bvr_robot)
-    s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
     # Represents gaze

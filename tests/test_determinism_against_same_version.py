@@ -12,7 +12,7 @@ def test_determinism_with_new_demo():
     with tempfile.TemporaryDirectory() as directory:
         demo_file = os.path.join(directory, "demo.hdf5")
         print("Saving demo.")
-        collect_demo("Benevolence_1_int", "cleaning_out_drawers", 0, 0, demo_file=demo_file)
+        collect_demo("Benevolence_1_int", "cleaning_out_drawers", 0, 0, demo_file=demo_file, short_exec=True)
 
         # Then replay the random demo.
         print("Replaying demo.")

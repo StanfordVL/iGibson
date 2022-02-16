@@ -6,6 +6,7 @@ import numpy as np
 import igibson
 from igibson import object_states
 from igibson.objects.articulated_object import URDFObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 
@@ -18,7 +19,13 @@ def main(selection="user", headless=False, short_exec=False):
     This demo also shows how to load objects ToggledOn and how to set the initial temperature of an object
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
+    settings = MeshRendererSettings(optimized=True)
+    s = Simulator(
+        mode="gui_interactive" if not headless else "headless",
+        image_width=1280,
+        image_height=720,
+        rendering_settings=settings,
+    )
 
     if not headless:
         # Set a better viewing direction

@@ -24,7 +24,7 @@ class MeshRendererSettings(object):
         fullscreen=False,
         glfw_gl_version=None,
         texture_scale=1.0,
-        hide_robot=True,
+        hide_robot=False,
         show_glfw_window=False,
         blend_highlight=False,
         is_robosuite=False,

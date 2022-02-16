@@ -1,3 +1,4 @@
+import copy
 import datetime
 import logging
 from collections import OrderedDict
@@ -37,6 +38,7 @@ from igibson.utils.constants import (
     MAX_TASK_RELEVANT_OBJS,
     NON_SAMPLEABLE_OBJECTS,
     TASK_RELEVANT_OBJS_OBS_DIM,
+    SimulatorMode,
 )
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import restoreState
@@ -83,6 +85,22 @@ class BehaviorTask(BaseTask):
             os.makedirs(self.episode_save_dir, exist_ok=True)
         self.log_writer = None
 
+        if env.simulator.mode == SimulatorMode.VR:
+            self.vr_overlay_prev_obj_list = []
+            self.vr_overlay_start_text = "Welcome!\nPlease press toggle\nto see the next goal condition!"
+
+            self.vr_overlay_is_showing = True
+
+            # Text displaying next conditions
+            self.condition_text = env.simulator.add_vr_overlay_text(
+                text_data=self.vr_overlay_start_text,
+                font_size=40,
+                font_style="Bold",
+                color=[0, 0, 0],
+                pos=[0, 75],
+                size=[90, 50],
+            )
+
     def highlight_task_relevant_objs(self, env):
         for obj_name, obj in self.object_scope.items():
             if isinstance(obj, BaseRobot) or isinstance(obj, RoomFloor):
@@ -116,6 +134,7 @@ class BehaviorTask(BaseTask):
         self.currently_viewed_instruction = self.instruction_order[self.currently_viewed_index]
         self.current_success = False
         self.current_goal_status = {"satisfied": [], "unsatisfied": []}
+        self.previous_goal_status = copy.deepcopy(self.current_goal_status)
         self.natural_language_goal_conditions = get_natural_goal_conditions(self.conds)
 
     def get_potential(self, env):
@@ -175,6 +194,53 @@ class BehaviorTask(BaseTask):
     def step(self, env):
         if self.log_writer is not None:
             self.log_writer.process_frame()
+
+        # Update the overlay.
+        if env.simulator.mode == SimulatorMode.VR:
+            if self.current_goal_status != self.previous_goal_status:
+                self.refresh_overlay(switch=False)
+
+            if env.simulator.query_vr_event("right_controller", "overlay_toggle"):
+                self.refresh_overlay()
+
+            if env.simulator.query_vr_event("left_controller", "overlay_toggle"):
+                self.toggle_overlay(env.simulator)
+
+        # Record the current goal status as the next state's previous.
+        self.previous_goal_status = self.current_goal_status
+
+    def refresh_overlay(self, switch=True):
+        """
+        Switches to the next condition. This involves displaying the text for
+        the new condition, as well as highlighting/un-highlighting the appropriate objects.
+        """
+        # 1) Query bddl for next state - get (text, color, obj_list) tuple
+        if switch:
+            self.iterate_instruction()
+        new_text, new_color, new_obj_list = self.show_instruction()
+        # 2) Render new text
+        self.condition_text.set_text(new_text)
+        self.condition_text.set_attribs(color=new_color)
+        # 3) Un-highlight previous objects, then highlight new objects
+        for prev_obj in self.vr_overlay_prev_obj_list:
+            prev_obj.unhighlight()
+        if self.vr_overlay_is_showing:
+            for new_obj in new_obj_list:
+                new_obj.highlight()
+        self.vr_overlay_prev_obj_list = new_obj_list
+
+    def toggle_overlay(self, simulator):
+        """
+        Toggles show state of switcher (which is on by default)
+        """
+        simulator.set_hud_show_state(not simulator.get_hud_show_state())
+        self.vr_overlay_is_showing = not self.vr_overlay_is_showing
+        if self.vr_overlay_is_showing:
+            for obj in self.vr_overlay_prev_obj_list:
+                obj.highlight()
+        else:
+            for obj in self.vr_overlay_prev_obj_list:
+                obj.unhighlight()
 
     def initialize(self, env):
         accept_scene = True

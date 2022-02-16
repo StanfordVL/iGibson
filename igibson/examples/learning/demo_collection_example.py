@@ -13,6 +13,9 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import parse_config
 
+PHYSICS_WARMING_TIMESTEPS = 200
+POST_SUCCESS_STEPS = 200
+
 
 def main(selection="user", headless=False, short_exec=False):
     """
@@ -32,6 +35,7 @@ def main(selection="user", headless=False, short_exec=False):
             args.demo_file,
             args.disable_save,
             args.disable_scene_cache,
+            args.mode,
             args.profile,
             args.config_file,
             short_exec=headless,
@@ -117,6 +121,13 @@ def parse_args():
         default=os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"),
         required=False,
     )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
+        help="Mode for replaying",
+        default="headless",
+    )
     return parser.parse_args()
 
 
@@ -128,6 +139,7 @@ def collect_demo(
     demo_file=None,
     disable_save=False,
     disable_scene_cache=False,
+    mode="headless",
     profile=False,
     config_file=os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"),
     short_exec=False,
@@ -141,7 +153,6 @@ def collect_demo(
     )
     background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
-    # Rendering settings
     rendering_settings = MeshRendererSettings(
         optimized=True,
         fullscreen=False,
@@ -162,9 +173,12 @@ def collect_demo(
     config["instance_id"] = instance_id
     config["online_sampling"] = disable_scene_cache
     config["load_clutter"] = True
+    if short_exec:
+        config["max_step"] = 500
+
     env = iGibsonEnv(
         config_file=config,
-        mode="headless",
+        mode=mode,
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
         rendering_settings=rendering_settings,
@@ -189,29 +203,38 @@ def collect_demo(
         log_writer.set_up_data_storage()
         log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
-    steps = 0
-    max_steps = -1 if not short_exec else 1000
-
     # Main recording loop
-    while steps != max_steps:
-        if robot.__class__.__name__ == "BehaviorRobot" and steps < 2:
-            # Use the first 2 steps to activate BehaviorRobot
-            action = np.zeros((28,))
-            action[19] = 1
-            action[27] = 1
+    done = False
+    steps_after_success = 0
+    while not done:
+        if env.current_step < PHYSICS_WARMING_TIMESTEPS:
+            action = np.zeros(robot.action_dim)
+        elif mode == "vr":
+            action = env.simulator.gen_vr_robot_action()
         else:
             action = np.random.uniform(-0.01, 0.01, size=(robot.action_dim,))
 
         # Execute the action
         state, reward, done, info = env.step(action)
+        success = info["success"]
 
         if log_writer and not disable_save:
             log_writer.process_frame()
 
-        if done:
+        # Time out
+        if done and not success:
             break
 
-        steps += 1
+        if success:
+            steps_after_success += 1
+        else:
+            steps_after_success = 0
+
+        # Consecutive success for POST_SUCCESS_STEPS steps
+        if steps_after_success >= POST_SUCCESS_STEPS:
+            break
+
+    assert env.current_step > PHYSICS_WARMING_TIMESTEPS, "No actions were applied."
 
     if log_writer and not disable_save:
         log_writer.end_log_session()

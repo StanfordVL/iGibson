@@ -129,7 +129,7 @@ class ObjectGrouper(BaseObject):
 
         # These attributes are used during object import and should return
         # the concatenation results of all objects in self.objects
-        if item in ["visual_mesh_to_material", "link_name_to_vm", "body_ids", "is_fixed"]:
+        if item in ["visual_mesh_to_material", "link_name_to_vm", "body_ids", "is_fixed", "renderer_instances"]:
             return list(itertools.chain.from_iterable(attrs))
 
         # Otherwise, check that it's the same for everyone and then just return the value.

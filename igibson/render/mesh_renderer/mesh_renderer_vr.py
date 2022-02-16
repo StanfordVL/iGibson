@@ -91,67 +91,6 @@ class VrStaticImageOverlay(VrOverlayBase):
         )
 
 
-class VrConditionSwitcher(object):
-    """
-    Class that handles switching of various ATUS conditions - including overlays and objects.
-    """
-
-    def __init__(self, s, show_instr_func, switch_instr_func):
-        """
-        :param s: reference to simulator
-        """
-        self.s = s
-        # Store list of previous objects, so they can be un-highlighted
-        self.prev_obj_list = []
-        self.start_text = "Welcome!\nPlease press toggle\nto see the next goal condition!"
-        self.show_instr_func = show_instr_func
-        self.switch_instr_func = switch_instr_func
-
-        self.is_showing = True
-
-        # Text displaying next conditions
-        self.condition_text = s.add_vr_overlay_text(
-            text_data=self.start_text, font_size=40, font_style="Bold", color=[0, 0, 0], pos=[0, 75], size=[90, 50]
-        )
-
-    def refresh_condition(self, switch=True):
-        """
-        Switches to the next condition. This involves displaying the text for
-        the new condition, as well as highlighting/un-highlighting the appropriate objects.
-        """
-        # 1) Query bddl for next state - get (text, color, obj_list) tuple
-        if switch:
-            self.switch_instr_func()
-        new_text, new_color, new_obj_list = self.show_instr_func()
-        # 2) Render new text
-        self.condition_text.set_text(new_text)
-        self.condition_text.set_attribs(color=new_color)
-        # 3) Un-highlight previous objects, then highlight new objects
-        for prev_obj in self.prev_obj_list:
-            # TODO: certain objects (floor) do not yet have the ability to be unhighlighted
-            if hasattr(prev_obj, "unhighlight"):
-                prev_obj.unhighlight()
-        if self.is_showing:
-            for new_obj in new_obj_list:
-                # TODO: certain objects (floor) do not yet have the ability to be highlighted
-                if hasattr(new_obj, "highlight"):
-                    new_obj.highlight()
-        self.prev_obj_list = new_obj_list
-
-    def toggle_show_state(self):
-        """
-        Toggles show state of switcher (which is on by default)
-        """
-        self.s.set_hud_show_state(not self.s.get_hud_show_state())
-        self.is_showing = not self.is_showing
-        if self.is_showing:
-            for obj in self.prev_obj_list:
-                obj.highlight()
-        else:
-            for obj in self.prev_obj_list:
-                obj.unhighlight()
-
-
 class VrSettings(object):
     """
     Class containing VR settings pertaining to both the VR renderer
@@ -199,7 +138,7 @@ class VrSettings(object):
         self.use_tracked_body = shared_settings["use_tracked_body"]
         self.torso_tracker_serial = shared_settings["torso_tracker_serial"]
         # Both body-related values need to be set in order to use the torso-tracked body
-        self.using_tracked_body = self.use_tracked_body and self.torso_tracker_serial
+        self.using_tracked_body = self.use_tracked_body and bool(self.torso_tracker_serial)
         if self.torso_tracker_serial == "":
             self.torso_tracker_serial = None
 

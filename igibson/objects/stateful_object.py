@@ -58,7 +58,7 @@ class StatefulObject(BaseObject):
                 if state_name in dump:
                     state_instance.load(dump[state_name])
                 else:
-                    log.warning("Missing object state [{}] in the state dump".format(state_name))
+                    log.debug("Missing object state [{}] in the state dump".format(state_name))
 
     def set_position_orientation(self, pos, orn):
         super(StatefulObject, self).set_position_orientation(pos, orn)

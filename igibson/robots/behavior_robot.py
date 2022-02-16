@@ -195,7 +195,9 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
         # TODO: Remove hacky fix - constructor/config should contain this data.
         if self.simulator.mode == SimulatorMode.VR:
-            self.use_tracked_body = self.simulator.vr_settings.using_tracked_body
+            assert (
+                self.use_tracked_body == self.simulator.vr_settings.using_tracked_body
+            ), "Robot and VR config do not match in terms of whether to use tracked body. Please update either config."
 
         return [id for part in self._parts.values() for id in part.load(simulator)]
 

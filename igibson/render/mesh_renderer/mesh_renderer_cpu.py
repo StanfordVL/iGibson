@@ -1258,18 +1258,16 @@ class MeshRenderer(object):
 
     def render_single_robot_camera(self, robot, modes=("rgb"), cache=True):
         frames = []
-        hide_robot = self.rendering_settings.hide_robot
+        hide_instances = robot.renderer_instances if self.rendering_settings.hide_robot else []
         need_flow_info = "optical_flow" in modes or "scene_flow" in modes
-        for instance in self.instances:
-            if instance.ig_object == robot:  # TODO: Make this faster. Can't we just look it up?
-                camera_pos = instance.ig_object.eyes.get_position()
-                orn = instance.ig_object.eyes.get_orientation()
-                mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
-                view_direction = mat.dot(np.array([1, 0, 0]))
-                up_direction = mat.dot(np.array([0, 0, 1]))
-                self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=need_flow_info and cache)
-                for item in self.render(modes=modes, hidden=[[], [instance]][hide_robot]):
-                    frames.append(item)
+        camera_pos = robot.eyes.get_position()
+        orn = robot.eyes.get_orientation()
+        mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+        view_direction = mat.dot(np.array([1, 0, 0]))
+        up_direction = mat.dot(np.array([0, 0, 1]))
+        self.set_camera(camera_pos, camera_pos + view_direction, up_direction, cache=need_flow_info and cache)
+        for item in self.render(modes=modes, hidden=hide_instances):
+            frames.append(item)
 
         return frames
 

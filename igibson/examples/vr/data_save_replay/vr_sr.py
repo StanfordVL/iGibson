@@ -90,7 +90,6 @@ def run_action_sr(mode):
     # Note: set show_visual_head to True upon replay to see the VR head
     bvr_robot = BehaviorRobot(show_visual_head=False)
     s.import_object(bvr_robot)
-    s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
     # Objects to interact with
