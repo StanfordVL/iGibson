@@ -13,11 +13,12 @@ from tqdm import tqdm
 from scipy.io import wavfile
 from scipy.signal import fftconvolve
 from skimage.measure import block_reduce
-
+from igibson import object_states
 from igibson.agents.av_nav.utils.utils import to_tensor
 from igibson.simulator import Simulator
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.robots.turtlebot import Turtlebot
+from igibson.robots.robot_base import BaseRobot
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.audio.audio_system import AudioSystem
 from igibson.objects import cube
@@ -28,7 +29,9 @@ from transforms3d.euler import euler2quat
 
 from igibson.agents.savi.utils.dataset import CATEGORY_MAP
 # from soundspaces.mp3d_utils import CATEGORY_INDEX_MAPPING
-
+from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
+from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
+import igibson.audio.default_config as default_audio_config
 
 class AudioGoalDataset(Dataset):
     def __init__(self, scenes, split, use_polar_coordinates=False, use_cache=False, filter_rule='',
@@ -106,42 +109,48 @@ class AudioGoalDataset(Dataset):
                       image_height=128,
                       device_idx=0,
                       rendering_settings=settings)
-        s.import_ig_scene(scene)
+        s.import_scene(scene)
 
         if import_robot:
             initial_pos, initial_orn, target_pos = self.sample_initial_pose_and_target_pos(scene)
-            turtlebot = Turtlebot(config)
+            robot_config = config["robot"]
+            turtlebot = Turtlebot(**robot_config)
             s.import_robot(turtlebot)
             
             self.set_pos_orn_with_z_offset(turtlebot, initial_pos, initial_orn)
-            turtlebot.robot_specific_reset()
+            turtlebot.reset()
             turtlebot.keep_still()
-            body_id = turtlebot.robot_ids[0]
             land_success = False
             # land for maximum 1 second, should fall down ~5 meters
 #             max_simulator_step = int(1.0 / self.action_timestep)
             max_simulator_step = int(1.0 / (1/10.0))
             for _ in range(max_simulator_step):
                 s.step(audio=False)
-                if len(p.getContactPoints(bodyA=body_id)) > 0:
+                if any(len(p.getContactPoints(bodyA=body_id)) > 0 for body_id in turtlebot.get_body_ids()):
                     land_success = True
                     break
             if not land_success:
                 print("WARNING: Failed to land")
-            turtlebot.robot_specific_reset()
+            turtlebot.reset()
             turtlebot.keep_still()
             
             if num_sources > 0:
-                audioSystem = AudioSystem(s, turtlebot, is_Viewer=False, writeToFile=True, SR = 44100)
+                acousticMesh = getIgAcousticMesh(s)
+                occl_multiplier = config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER)
+                audioSystem = AudioSystem(s, turtlebot, acousticMesh, 
+                                          is_Viewer=False, writeToFile=True, SR = 44100, 
+                                          occl_multiplier = occl_multiplier)
                 for i in range(num_sources):
                     obj = cube.Cube(pos=target_pos, 
                                     dim=[0.05, 0.05, 0.05], 
                                     visual_only=False, mass=0.5, color=[255, 0, 0, 1])
-                    obj_id = s.import_object(obj)
+                    s.import_object(obj)
+                    obj_id = obj.get_body_ids()[0]
+                    
                     audioSystem.registerSource(obj_id, 
                                                "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits/"
                                                +self.split+"/"+sound_file, 
-                                               enabled=True, repeat=False)
+                                               enabled=True)
 #                     audioSystem.setSourceRepeat(obj_id)
                 s.attachAudioSystem(audioSystem)
 
@@ -188,13 +197,14 @@ class AudioGoalDataset(Dataset):
             orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
 
         if offset is None:
-            offset = 0.1 #self.initial_pos_z_offset
+            offset = 0.1
 
-        body_id = obj.robot_ids[0]
         # first set the correct orientation
-        obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), 'wxyz'))
-        # compute stable z based on this orientation
-        stable_z = stable_z_on_aabb(body_id, [pos, pos])
+        obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), "wxyz"))
+        # get the AABB in this orientation
+        lower, _ = obj.states[object_states.AABB].get_value()
+        # Get the stable Z
+        stable_z = pos[2] + (pos[2] - lower[2])
         # change the z-value of position with stable_z + additional offset
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
