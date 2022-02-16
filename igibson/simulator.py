@@ -165,7 +165,7 @@ class Simulator:
         """
         Initialize the MeshRenderer.
         """
-        self.visual_objects = {}
+        self.visual_object_cache = {}
         if self.mode == SimulatorMode.HEADLESS_TENSOR:
             self.renderer = MeshRendererG2G(
                 width=self.image_width,
@@ -378,7 +378,12 @@ class Simulator:
                     self.renderer.load_procedural_material(overwrite_material, texture_scale)
 
             # Load the visual object if it doesn't already exist.
-            if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
+            caching_allowed = type == p.GEOM_MESH and overwrite_material is None
+            cache_key = (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
+
+            if caching_allowed and cache_key in self.visual_object_cache:
+                visual_object = self.visual_object_cache[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+            else:
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -388,12 +393,12 @@ class Simulator:
                     texture_scale=texture_scale,
                     overwrite_material=overwrite_material,
                 )
-                self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
-                    len(self.renderer.visual_objects) - 1
-                )
+                visual_object = len(self.renderer.visual_objects) - 1
+                if caching_allowed:
+                    self.visual_object_cache[cache_key] = visual_object
 
             # Keep track of the objects we just loaded.
-            visual_objects.append(self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
+            visual_objects.append(visual_object)
             link_ids.append(link_id)
 
             # Keep track of the positions.

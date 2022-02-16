@@ -34,8 +34,8 @@ should_highlight_task_relevant_objs: false
 # discount factor
 discount_factor: 0.99
 
-# termination condition
-max_step: 500
+# termination condition (VR demo collection should last forever)
+max_step: 10000000000
 
 # sensor spec
 output: [proprioception]

@@ -740,7 +740,6 @@ class ManipulationRobot(BaseRobot):
         # Immediately return if there are no valid candidates
         if len(candidates_set) == 0:
             return None
-
         # Find the closest object to the gripper center
         gripper_pos, gripper_orn = self.eef_links[arm].get_position_orientation()
         gripper_center_pos, _ = p.multiplyTransforms(
@@ -1040,6 +1039,15 @@ class ManipulationRobot(BaseRobot):
                 + ASSIST_ACTIVATION_THRESHOLD * self.joint_upper_limits
             )[joint_idxes]
 
+            # We will clip the current positions just near the limits of the joint. This is necessary because the
+            # desired joint positions can never reach the unclipped current positions when the current positions
+            # are outside the joint limits, since the desired positions are clipped in the controller.
+            clipped_current_positions = np.clip(
+                current_positions,
+                self.joint_lower_limits[joint_idxes] + 1e-3,
+                self.joint_upper_limits[joint_idxes] - 1e-3,
+            )
+
             if self._ag_obj_in_hand[arm] is None:
                 # We are not currently assisted-grasping an object and are eligible to start.
                 # We activate if the desired joint position is above the activation threshold, regardless of whether or
@@ -1060,7 +1068,8 @@ class ManipulationRobot(BaseRobot):
                     constraint_violated = (
                         get_constraint_violation(self._ag_obj_cid[arm]) > CONSTRAINT_VIOLATION_THRESHOLD
                     )
-                    releasing_grasp = np.all(desired_positions > np.maximum(current_positions, activation_thresholds))
+                    thresholds = np.maximum(clipped_current_positions, activation_thresholds)
+                    releasing_grasp = np.all(desired_positions > thresholds)
                     if constraint_violated or releasing_grasp:
                         self._release_grasp(arm=arm)
 

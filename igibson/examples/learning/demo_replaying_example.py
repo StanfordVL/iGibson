@@ -293,7 +293,6 @@ def replay_demo(
 
         print("Demo ended in success: {}".format(task_done))
 
-        demo_statistics = {}
         for callback in end_callbacks:
             callback(env, log_reader)
     finally:
