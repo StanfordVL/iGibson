@@ -112,7 +112,7 @@ robot:
 
 # sensor spec
 goal_format: "cartesian"
-output: [depth, rgb, audio, category_belief, location_belief, pose_sensor, task_obs, category]
+output: [depth, rgb, audio, category_belief, location_belief, pose_sensor, task_obs, category, bump]
 extra_rgb: false
 audio_write: ""
 

@@ -55,16 +55,16 @@ task_obs_dim: 4
 
 # robot
 robot:
-  name: AVNavTurtlebot
-  action_type: discrete
-  action_normalize: true
-  base_name: null
-  scale: 1.0
-  self_collision: false
-  rendering_params: null
-  controller_config:
-    base:
-      name: DifferentialDriveController
+    name: AVNavTurtlebot
+    action_type: discrete
+    action_normalize: true
+    base_name: null
+    scale: 1.0
+    self_collision: false
+    rendering_params: null
+    controller_config:
+        base:
+            name: DifferentialDriveController
 
 # sensor spec
 output: [depth, audio, rgb]
