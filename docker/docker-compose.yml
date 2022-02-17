@@ -12,14 +12,3 @@ services:
     build:
       context: ./tensorflow
       dockerfile: Dockerfile
-
-  behavior:
-    image: ${REGISTRY}/${REPO}:${VERSION}-behavior
-    build:
-      context: ./behavior
-      dockerfile: Dockerfile
-      args:
-        - VERSION=${VERSION}
-        - REGISTRY=${REGISTRY}
-        - REPO=${REPO}
-
