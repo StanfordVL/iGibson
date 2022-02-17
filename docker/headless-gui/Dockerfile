@@ -21,5 +21,5 @@ COPY entrypoint.sh /opt/misc
 
 ENV QT_X11_NO_MITSHM=1
 ENV DISPLAY=:0
-WORKDIR /opt/igibson/igibson/examples/demo
+WORKDIR /opt/iGibson/igibson/examples/demo
 ENTRYPOINT ["/opt/misc/entrypoint.sh"]
