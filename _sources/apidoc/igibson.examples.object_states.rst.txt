@@ -1,0 +1,45 @@
+igibson.examples.object\_states package
+=======================================
+
+Submodules
+----------
+
+igibson.examples.object\_states.cleaning\_demo module
+-----------------------------------------------------
+
+.. automodule:: igibson.examples.object_states.cleaning_demo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.object\_states.cleaning\_demo\_with\_reset module
+------------------------------------------------------------------
+
+.. automodule:: igibson.examples.object_states.cleaning_demo_with_reset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.object\_states.sliceable\_demo\_with\_reset module
+-------------------------------------------------------------------
+
+.. automodule:: igibson.examples.object_states.sliceable_demo_with_reset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.object\_states.temperature\_demo module
+--------------------------------------------------------
+
+.. automodule:: igibson.examples.object_states.temperature_demo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.object_states
+   :members:
+   :undoc-members:
+   :show-inheritance:

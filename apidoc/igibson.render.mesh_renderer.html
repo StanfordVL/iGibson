@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>igibson.render.mesh_renderer package &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="igibson.reward_functions package" href="igibson.reward_functions.html" />
+    <link rel="prev" title="igibson.render package" href="igibson.render.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.6
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">igibson</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="igibson.html">igibson package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.examples.html">igibson.examples package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.html">igibson.external package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.learn.html">igibson.learn package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.metrics.html">igibson.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.object_states.html">igibson.object_states package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.objects.html">igibson.objects package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.physics.html">igibson.physics package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="igibson.render.html">igibson.render package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.reward_functions.html">igibson.reward_functions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html">igibson.robots package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.scenes.html">igibson.scenes package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.sensors.html">igibson.sensors package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.tasks.html">igibson.tasks package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.termination_conditions.html">igibson.termination_conditions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html">igibson.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-module">igibson.simulator module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-vr-module">igibson.simulator_vr module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#module-igibson">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../issues.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">igibson</a> &raquo;</li>
+          <li><a href="igibson.html">igibson package</a> &raquo;</li>
+          <li><a href="igibson.render.html">igibson.render package</a> &raquo;</li>
+      <li>igibson.render.mesh_renderer package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/apidoc/igibson.render.mesh_renderer.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="igibson-render-mesh-renderer-package">
+<h1>igibson.render.mesh_renderer package<a class="headerlink" href="#igibson-render-mesh-renderer-package" title="Permalink to this headline"></a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.render.mesh_renderer.get_available_devices">
+<span id="igibson-render-mesh-renderer-get-available-devices-module"></span><h2>igibson.render.mesh_renderer.get_available_devices module<a class="headerlink" href="#module-igibson.render.mesh_renderer.get_available_devices" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt id="igibson.render.mesh_renderer.get_available_devices.get_available_devices">
+<code class="sig-prename descclassname"><span class="pre">igibson.render.mesh_renderer.get_available_devices.</span></code><code class="sig-name descname"><span class="pre">get_available_devices</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.render.mesh_renderer.get_available_devices.get_available_devices" title="Permalink to this definition"></a></dt>
+<dd><p>Find available devices to run EGL on. It will return the minor numbers,
+The minor number for the device is such that the Nvidia device node
+file for each GPU will have the form /dev/nvidia[minor number]. Avail-
+able only on Linux platform.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Minor number</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.render.mesh_renderer.get_available_devices.get_cuda_device">
+<code class="sig-prename descclassname"><span class="pre">igibson.render.mesh_renderer.get_available_devices.</span></code><code class="sig-name descname"><span class="pre">get_cuda_device</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">minor_idx</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.render.mesh_renderer.get_available_devices.get_cuda_device" title="Permalink to this definition"></a></dt>
+<dd><p>Get the device index to use in pytorch</p>
+<p>The minor number for the device is such that the Nvidia device node
+file for each GPU will have the form /dev/nvidia[minor number]. Avail-
+able only on Linux platform.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>minor_idx</strong> – Minor index for a GPU</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>index to use in torch.cuda.device()</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-render-mesh-renderer-instances-module">
+<h2>igibson.render.mesh_renderer.instances module<a class="headerlink" href="#igibson-render-mesh-renderer-instances-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-render-mesh-renderer-materials-module">
+<h2>igibson.render.mesh_renderer.materials module<a class="headerlink" href="#igibson-render-mesh-renderer-materials-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-render-mesh-renderer-mesh-renderer-cpu-module">
+<h2>igibson.render.mesh_renderer.mesh_renderer_cpu module<a class="headerlink" href="#igibson-render-mesh-renderer-mesh-renderer-cpu-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.render.mesh_renderer.mesh_renderer_settings">
+<span id="igibson-render-mesh-renderer-mesh-renderer-settings-module"></span><h2>igibson.render.mesh_renderer.mesh_renderer_settings module<a class="headerlink" href="#module-igibson.render.mesh_renderer.mesh_renderer_settings" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.render.mesh_renderer.mesh_renderer_settings.MeshRendererSettings">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.render.mesh_renderer.mesh_renderer_settings.</span></code><code class="sig-name descname"><span class="pre">MeshRendererSettings</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">use_fisheye</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">msaa</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_shadow</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enable_pbr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_texture_filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/iGibson/iGibson/igibson/data/ig_dataset/scenes/background/photo_studio_01_2k.hdr'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_texture_filename2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/iGibson/iGibson/igibson/data/ig_dataset/scenes/background/photo_studio_01_2k.hdr'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env_texture_filename3</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'/home/runner/work/iGibson/iGibson/igibson/data/ig_dataset/scenes/background/photo_studio_01_2k.hdr'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">light_modulation_map_filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimized</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skybox_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">light_dimming_factor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fullscreen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">glfw_gl_version</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">texture_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hide_robot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_glfw_window</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">blend_highlight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_robosuite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">glsl_version_override</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">460</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">load_textures</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.render.mesh_renderer.mesh_renderer_settings.MeshRendererSettings" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="igibson.render.mesh_renderer.mesh_renderer_settings.MeshRendererSettings.get_best">
+<code class="sig-name descname"><span class="pre">get_best</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.render.mesh_renderer.mesh_renderer_settings.MeshRendererSettings.get_best" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="igibson.render.mesh_renderer.mesh_renderer_settings.MeshRendererSettings.get_fastest">
+<code class="sig-name descname"><span class="pre">get_fastest</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.render.mesh_renderer.mesh_renderer_settings.MeshRendererSettings.get_fastest" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-render-mesh-renderer-mesh-renderer-tensor-module">
+<h2>igibson.render.mesh_renderer.mesh_renderer_tensor module<a class="headerlink" href="#igibson-render-mesh-renderer-mesh-renderer-tensor-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-render-mesh-renderer-mesh-renderer-vr-module">
+<h2>igibson.render.mesh_renderer.mesh_renderer_vr module<a class="headerlink" href="#igibson-render-mesh-renderer-mesh-renderer-vr-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-render-mesh-renderer-text-module">
+<h2>igibson.render.mesh_renderer.text module<a class="headerlink" href="#igibson-render-mesh-renderer-text-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.render.mesh_renderer.visual_object">
+<span id="igibson-render-mesh-renderer-visual-object-module"></span><h2>igibson.render.mesh_renderer.visual_object module<a class="headerlink" href="#module-igibson.render.mesh_renderer.visual_object" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.render.mesh_renderer.visual_object.VisualObject">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.render.mesh_renderer.visual_object.</span></code><code class="sig-name descname"><span class="pre">VisualObject</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">VAO_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vertex_data_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">face_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renderer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.render.mesh_renderer.visual_object.VisualObject" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A visual object manages a set of VAOs and textures
+A wavefront obj file is loaded into openGL and managed by a VisualObject</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-igibson.render.mesh_renderer">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-igibson.render.mesh_renderer" title="Permalink to this headline"></a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="igibson.render.html" class="btn btn-neutral float-left" title="igibson.render package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="igibson.reward_functions.html" class="btn btn-neutral float-right" title="igibson.reward_functions package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

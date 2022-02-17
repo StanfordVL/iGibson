@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quickstart &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Quickstart &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -44,10 +44,10 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#igibson-in-action">iGibson in Action</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#using-docker-and-remote-gui-access-via-vnc">Using Docker and remote GUI access via VNC</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#benchmarks">Benchmarks</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#benchmark-static-scene-gibson-scenes">Benchmark static scene (Gibson scenes)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#benchmark-physics-simulation-in-interactive-scenes-igibson-scene">Benchmark physics simulation in interactive scenes (iGibson scene)</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#benchmark-rendering-in-interactive-scenes">Benchmark rendering in interactive scenes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#measuring-the-performance-of-the-simulator">Measuring the performance of the simulator</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#measuring-the-performance-in-static-scene-gibson-scenes">Measuring the performance in static scene (Gibson scenes)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene">Measuring the performance of the physics simulation in interactive scenes (iGibson scene)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#measuring-the-performance-of-rendering-in-interactive-scenes">Measuring the performance of rendering in interactive scenes</a></li>
 </ul>
 </li>
 </ul>
@@ -59,7 +59,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -73,9 +72,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -104,21 +107,23 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="quickstart">
+  <div class="section" id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Permalink to this headline"></a></h1>
 <div class="section" id="igibson-in-action">
 <h2>iGibson in Action<a class="headerlink" href="#igibson-in-action" title="Permalink to this headline"></a></h2>
-<p>Assume you finished installation and assets downloading. Let’s get our hands dirty and see iGibson in action.</p>
+<p>Let’s assume you finished the installation and downloading some assets and datasets. Let’s now get our hands dirty and see iGibson in action!</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 <p>If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.</p>
-<p>You should see something like this. If you are on Mac OS X, you will only see the two small windows.
+<p>You should see something like this, but as default, you will only see the two small windows, without the PyBullet viewer.
 <img alt="quickstart.png" src="_images/quickstart.png" /></p>
-<p>The main window shows PyBullet visualization. The robot (TurtleBot) is moving around with random actions in a realistic house (called “Rs”, the one you just downloaded!).</p>
-<p>On the right hand side, you can see two windows from our mesh renderer. The top one (RobotView) shows the robot’s first person view. The bottom one (ExternalView) shows the view of a virtual camera floating in the air.</p>
+<p>The robot (TurtleBot) is moving around with random actions in a realistic house model called “Rs” that is automatically downloaded. The model is not interactive: objects won’t move if the robot collides with them.</p>
+<p>On the right side, you can see two windows from our mesh renderer. The top one (RobotView) shows the robot’s first person view. The bottom one (ExternalView) shows the view of a virtual camera floating in the air.</p>
+<p>The large window shows PyBullet visualization. This visualization is deactivated as default, you would need to explicitly activate it using the argument <code class="docutils literal notranslate"><span class="pre">use_pb_gui</span></code> of the <strong>Environment</strong>.</p>
 <p>If you want to have a virtual tour around the house yourself, you can click on the ExternalView window, and then translate the virtual camera to a different location by pressing “WASD” on your keyboard and rotate it to a different angle by dragging your mouse.</p>
-<p>That’s it!</p>
+<p>Enjoy!</p>
+<p>Explore other examples by executing <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">igibson.examples.XXXX</span></code>. Please, consider that some of the examples require to download the iGibson 1.0 or iGibson 2.0 datasets of scenes and/or the BEHAVIOR dataset of objects. See how to download them <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a>.</p>
 </div>
 <div class="section" id="using-docker-and-remote-gui-access-via-vnc">
 <h2>Using Docker and remote GUI access via VNC<a class="headerlink" href="#using-docker-and-remote-gui-access-via-vnc" title="Permalink to this headline"></a></h2>
@@ -143,12 +148,11 @@
 </pre></div>
 </div>
 </div>
-<div class="section" id="benchmarks">
-<h2>Benchmarks<a class="headerlink" href="#benchmarks" title="Permalink to this headline"></a></h2>
-<p>Performance is a big designing focus for iGibson. We provide a few scripts to benchmark the rendering and physics
-simulation framerate in iGibson.</p>
-<div class="section" id="benchmark-static-scene-gibson-scenes">
-<h3>Benchmark static scene (Gibson scenes)<a class="headerlink" href="#benchmark-static-scene-gibson-scenes" title="Permalink to this headline"></a></h3>
+<div class="section" id="measuring-the-performance-of-the-simulator">
+<h2>Measuring the performance of the simulator<a class="headerlink" href="#measuring-the-performance-of-the-simulator" title="Permalink to this headline"></a></h2>
+<p>Performance is a big designing focus for iGibson. We provide a few scripts to measure the performance of rendering and physics simulation in your target machine.</p>
+<div class="section" id="measuring-the-performance-in-static-scene-gibson-scenes">
+<h3>Measuring the performance in static scene (Gibson scenes)<a class="headerlink" href="#measuring-the-performance-in-static-scene-gibson-scenes" title="Permalink to this headline"></a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.test.benchmark.benchmark_static_scene
 </pre></div>
 </div>
@@ -166,16 +170,16 @@ simulation framerate in iGibson.</p>
 </pre></div>
 </div>
 </div>
-<div class="section" id="benchmark-physics-simulation-in-interactive-scenes-igibson-scene">
-<h3>Benchmark physics simulation in interactive scenes (iGibson scene)<a class="headerlink" href="#benchmark-physics-simulation-in-interactive-scenes-igibson-scene" title="Permalink to this headline"></a></h3>
+<div class="section" id="measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene">
+<h3>Measuring the performance of the physics simulation in interactive scenes (iGibson scene)<a class="headerlink" href="#measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene" title="Permalink to this headline"></a></h3>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.test.benchmark.benchmark_interactive_scene
 </pre></div>
 </div>
 <p>It will generate a report like below:</p>
 <p><img alt="" src="_images/scene_benchmark_Rs_int_o_True_r_True.png" /></p>
 </div>
-<div class="section" id="benchmark-rendering-in-interactive-scenes">
-<h3>Benchmark rendering in interactive scenes<a class="headerlink" href="#benchmark-rendering-in-interactive-scenes" title="Permalink to this headline"></a></h3>
+<div class="section" id="measuring-the-performance-of-rendering-in-interactive-scenes">
+<h3>Measuring the performance of rendering in interactive scenes<a class="headerlink" href="#measuring-the-performance-of-rendering-in-interactive-scenes" title="Permalink to this headline"></a></h3>
 <p>To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.test.benchmark.benchmark_interactive_scene_rendering
 </pre></div>

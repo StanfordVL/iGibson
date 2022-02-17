@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>igibson.physics package &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="igibson.render package" href="igibson.render.html" />
+    <link rel="prev" title="igibson.objects package" href="igibson.objects.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.6
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">igibson</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="igibson.html">igibson package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.examples.html">igibson.examples package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.html">igibson.external package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.learn.html">igibson.learn package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.metrics.html">igibson.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.object_states.html">igibson.object_states package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.objects.html">igibson.objects package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">igibson.physics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.render.html">igibson.render package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.reward_functions.html">igibson.reward_functions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html">igibson.robots package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.scenes.html">igibson.scenes package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.sensors.html">igibson.sensors package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.tasks.html">igibson.tasks package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.termination_conditions.html">igibson.termination_conditions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html">igibson.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-module">igibson.simulator module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-vr-module">igibson.simulator_vr module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#module-igibson">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../issues.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">igibson</a> &raquo;</li>
+          <li><a href="igibson.html">igibson package</a> &raquo;</li>
+      <li>igibson.physics package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/apidoc/igibson.physics.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="igibson-physics-package">
+<h1>igibson.physics package<a class="headerlink" href="#igibson-physics-package" title="Permalink to this headline"></a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.physics.motor">
+<span id="igibson-physics-motor-module"></span><h2>igibson.physics.motor module<a class="headerlink" href="#module-igibson.physics.motor" title="Permalink to this headline"></a></h2>
+<p>This file implements an accurate motor model.</p>
+<dl class="py class">
+<dt id="igibson.physics.motor.MotorModel">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.physics.motor.</span></code><code class="sig-name descname"><span class="pre">MotorModel</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">torque_control_enabled</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kp</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">kd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.motor.MotorModel" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>The accurate motor model, which is based on the physics of DC motors.</p>
+<p>The motor model support two types of control: position control and torque
+control. In position control mode, a desired motor angle is specified, and a
+torque is computed based on the internal motor model. When the torque control
+is specified, a pwm signal in the range of [-1.0, 1.0] is converted to the
+torque.</p>
+<p>The internal motor model takes the following factors into consideration:
+pd gains, viscous friction, back-EMF voltage and current-torque profile.</p>
+<dl class="py method">
+<dt id="igibson.physics.motor.MotorModel.convert_to_torque">
+<code class="sig-name descname"><span class="pre">convert_to_torque</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">motor_commands</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_motor_angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_motor_velocity</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.motor.MotorModel.convert_to_torque" title="Permalink to this definition"></a></dt>
+<dd><p>Convert the commands (position control or torque control) to torque.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>motor_commands</strong> – The desired motor angle if the motor is in position
+control mode. The pwm signal if the motor is in torque control mode.</p></li>
+<li><p><strong>current_motor_angle</strong> – The motor angle at the current time step.</p></li>
+<li><p><strong>current_motor_velocity</strong> – The motor velocity at the current time step.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return actual_torque</dt>
+<dd class="field-even"><p>The torque that needs to be applied to the motor.</p>
+</dd>
+<dt class="field-odd">Return observed_torque</dt>
+<dd class="field-odd"><p>The torque observed by the sensor.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.physics.motor.MotorModel.get_viscous_dampling">
+<code class="sig-name descname"><span class="pre">get_viscous_dampling</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.motor.MotorModel.get_viscous_dampling" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="igibson.physics.motor.MotorModel.get_voltage">
+<code class="sig-name descname"><span class="pre">get_voltage</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.motor.MotorModel.get_voltage" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="igibson.physics.motor.MotorModel.set_viscous_damping">
+<code class="sig-name descname"><span class="pre">set_viscous_damping</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">viscous_damping</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.motor.MotorModel.set_viscous_damping" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="igibson.physics.motor.MotorModel.set_voltage">
+<code class="sig-name descname"><span class="pre">set_voltage</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">voltage</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.motor.MotorModel.set_voltage" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-igibson.physics.settings">
+<span id="igibson-physics-settings-module"></span><h2>igibson.physics.settings module<a class="headerlink" href="#module-igibson.physics.settings" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.physics.settings.PhysicsSettings">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.physics.settings.</span></code><code class="sig-name descname"><span class="pre">PhysicsSettings</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">solver_iterations</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">enhanced_determinism</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.physics.settings.PhysicsSettings" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-igibson.physics">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-igibson.physics" title="Permalink to this headline"></a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="igibson.objects.html" class="btn btn-neutral float-left" title="igibson.objects package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="igibson.render.html" class="btn btn-neutral float-right" title="igibson.render package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

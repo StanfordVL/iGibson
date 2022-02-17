@@ -1,0 +1,21 @@
+igibson.learn package
+=====================
+
+Submodules
+----------
+
+igibson.learn.completion module
+-------------------------------
+
+.. automodule:: igibson.learn.completion
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.learn
+   :members:
+   :undoc-members:
+   :show-inheritance:

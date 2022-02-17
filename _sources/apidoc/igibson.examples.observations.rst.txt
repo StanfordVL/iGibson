@@ -1,0 +1,61 @@
+igibson.examples.observations package
+=====================================
+
+Submodules
+----------
+
+igibson.examples.observations.generate\_additional\_visual\_channels module
+---------------------------------------------------------------------------
+
+.. automodule:: igibson.examples.observations.generate_additional_visual_channels
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.observations.generate\_colored\_dense\_pointcloud module
+-------------------------------------------------------------------------
+
+.. automodule:: igibson.examples.observations.generate_colored_dense_pointcloud
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.observations.generate\_lidar\_colored\_pointcloud module
+-------------------------------------------------------------------------
+
+.. automodule:: igibson.examples.observations.generate_lidar_colored_pointcloud
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.observations.generate\_lidar\_velodyne module
+--------------------------------------------------------------
+
+.. automodule:: igibson.examples.observations.generate_lidar_velodyne
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.observations.generate\_optical\_and\_scene\_flow module
+------------------------------------------------------------------------
+
+.. automodule:: igibson.examples.observations.generate_optical_and_scene_flow
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.observations.generate\_topdown\_semseg module
+--------------------------------------------------------------
+
+.. automodule:: igibson.examples.observations.generate_topdown_semseg
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.observations
+   :members:
+   :undoc-members:
+   :show-inheritance:

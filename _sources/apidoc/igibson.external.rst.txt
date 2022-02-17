@@ -1,0 +1,19 @@
+igibson.external package
+========================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   igibson.external.motion
+   igibson.external.pybullet_tools
+
+Module contents
+---------------
+
+.. automodule:: igibson.external
+   :members:
+   :undoc-members:
+   :show-inheritance:

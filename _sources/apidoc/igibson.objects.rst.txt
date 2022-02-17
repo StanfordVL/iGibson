@@ -1,0 +1,101 @@
+igibson.objects package
+=======================
+
+Submodules
+----------
+
+igibson.objects.articulated\_object module
+------------------------------------------
+
+.. automodule:: igibson.objects.articulated_object
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.cube module
+---------------------------
+
+.. automodule:: igibson.objects.cube
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.multi\_object\_wrappers module
+----------------------------------------------
+
+.. automodule:: igibson.objects.multi_object_wrappers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.object\_base module
+-----------------------------------
+
+.. automodule:: igibson.objects.object_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.particles module
+--------------------------------
+
+.. automodule:: igibson.objects.particles
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.pedestrian module
+---------------------------------
+
+.. automodule:: igibson.objects.pedestrian
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.shapenet\_object module
+---------------------------------------
+
+.. automodule:: igibson.objects.shapenet_object
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.soft\_object module
+-----------------------------------
+
+.. automodule:: igibson.objects.soft_object
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.stateful\_object module
+---------------------------------------
+
+.. automodule:: igibson.objects.stateful_object
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.visual\_marker module
+-------------------------------------
+
+.. automodule:: igibson.objects.visual_marker
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.objects.ycb\_object module
+----------------------------------
+
+.. automodule:: igibson.objects.ycb_object
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.objects
+   :members:
+   :undoc-members:
+   :show-inheritance:

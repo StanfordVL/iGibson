@@ -1,0 +1,61 @@
+igibson.examples.learning package
+=================================
+
+Submodules
+----------
+
+igibson.examples.learning.demo\_collection\_example module
+----------------------------------------------------------
+
+.. automodule:: igibson.examples.learning.demo_collection_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.learning.demo\_replaying\_batch module
+-------------------------------------------------------
+
+.. automodule:: igibson.examples.learning.demo_replaying_batch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.learning.demo\_replaying\_batch\_manifest\_generator module
+----------------------------------------------------------------------------
+
+.. automodule:: igibson.examples.learning.demo_replaying_batch_manifest_generator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.learning.demo\_replaying\_example module
+---------------------------------------------------------
+
+.. automodule:: igibson.examples.learning.demo_replaying_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.learning.ray\_rllib\_example module
+----------------------------------------------------
+
+.. automodule:: igibson.examples.learning.ray_rllib_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.learning.stable\_baselines3\_example module
+------------------------------------------------------------
+
+.. automodule:: igibson.examples.learning.stable_baselines3_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.learning
+   :members:
+   :undoc-members:
+   :show-inheritance:

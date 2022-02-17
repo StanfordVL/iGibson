@@ -1,0 +1,61 @@
+igibson.controllers package
+===========================
+
+Submodules
+----------
+
+igibson.controllers.controller\_base module
+-------------------------------------------
+
+.. automodule:: igibson.controllers.controller_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.controllers.dd\_controller module
+-----------------------------------------
+
+.. automodule:: igibson.controllers.dd_controller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.controllers.ik\_controller module
+-----------------------------------------
+
+.. automodule:: igibson.controllers.ik_controller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.controllers.joint\_controller module
+--------------------------------------------
+
+.. automodule:: igibson.controllers.joint_controller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.controllers.multi\_finger\_gripper\_controller module
+-------------------------------------------------------------
+
+.. automodule:: igibson.controllers.multi_finger_gripper_controller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.controllers.null\_gripper\_controller module
+----------------------------------------------------
+
+.. automodule:: igibson.controllers.null_gripper_controller
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.controllers
+   :members:
+   :undoc-members:
+   :show-inheritance:

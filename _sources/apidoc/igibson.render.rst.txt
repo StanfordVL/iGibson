@@ -1,0 +1,37 @@
+igibson.render package
+======================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   igibson.render.mesh_renderer
+
+Submodules
+----------
+
+igibson.render.profiler module
+------------------------------
+
+.. automodule:: igibson.render.profiler
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.render.viewer module
+----------------------------
+
+.. automodule:: igibson.render.viewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.render
+   :members:
+   :undoc-members:
+   :show-inheritance:

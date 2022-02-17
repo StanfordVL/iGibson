@@ -1,0 +1,37 @@
+igibson.examples.web\_ui package
+================================
+
+Submodules
+----------
+
+igibson.examples.web\_ui.sampling\_feedback\_test module
+--------------------------------------------------------
+
+.. automodule:: igibson.examples.web_ui.sampling_feedback_test
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.web\_ui.sampling\_ui module
+--------------------------------------------
+
+.. automodule:: igibson.examples.web_ui.sampling_ui
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.web\_ui.web\_ui module
+---------------------------------------
+
+.. automodule:: igibson.examples.web_ui.web_ui
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.web_ui
+   :members:
+   :undoc-members:
+   :show-inheritance:

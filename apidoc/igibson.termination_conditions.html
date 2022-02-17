@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>igibson.termination_conditions package &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="igibson.utils package" href="igibson.utils.html" />
+    <link rel="prev" title="igibson.tasks package" href="igibson.tasks.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.6
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">igibson</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="igibson.html">igibson package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.examples.html">igibson.examples package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.html">igibson.external package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.learn.html">igibson.learn package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.metrics.html">igibson.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.object_states.html">igibson.object_states package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.objects.html">igibson.objects package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.physics.html">igibson.physics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.render.html">igibson.render package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.reward_functions.html">igibson.reward_functions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html">igibson.robots package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.scenes.html">igibson.scenes package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.sensors.html">igibson.sensors package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.tasks.html">igibson.tasks package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">igibson.termination_conditions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html">igibson.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-module">igibson.simulator module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-vr-module">igibson.simulator_vr module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#module-igibson">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../issues.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">igibson</a> &raquo;</li>
+          <li><a href="igibson.html">igibson package</a> &raquo;</li>
+      <li>igibson.termination_conditions package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/apidoc/igibson.termination_conditions.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="igibson-termination-conditions-package">
+<h1>igibson.termination_conditions package<a class="headerlink" href="#igibson-termination-conditions-package" title="Permalink to this headline"></a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.termination_conditions.max_collision">
+<span id="igibson-termination-conditions-max-collision-module"></span><h2>igibson.termination_conditions.max_collision module<a class="headerlink" href="#module-igibson.termination_conditions.max_collision" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.termination_conditions.max_collision.MaxCollision">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.termination_conditions.max_collision.</span></code><code class="sig-name descname"><span class="pre">MaxCollision</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.max_collision.MaxCollision" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#igibson.termination_conditions.termination_condition_base.BaseTerminationCondition" title="igibson.termination_conditions.termination_condition_base.BaseTerminationCondition"><code class="xref py py-class docutils literal notranslate"><span class="pre">igibson.termination_conditions.termination_condition_base.BaseTerminationCondition</span></code></a></p>
+<p>MaxCollision used for navigation tasks
+Episode terminates if the robot has collided more than
+max_collisions_allowed times</p>
+<dl class="py method">
+<dt id="igibson.termination_conditions.max_collision.MaxCollision.get_termination">
+<code class="sig-name descname"><span class="pre">get_termination</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.max_collision.MaxCollision.get_termination" title="Permalink to this definition"></a></dt>
+<dd><p>Return whether the episode should terminate.
+Terminate if the robot has collided more than self.max_collisions_allowed times</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – task instance</p></li>
+<li><p><strong>env</strong> – environment instance</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>done, info</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-termination-conditions-out-of-bound-module">
+<h2>igibson.termination_conditions.out_of_bound module<a class="headerlink" href="#igibson-termination-conditions-out-of-bound-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-termination-conditions-point-goal-module">
+<h2>igibson.termination_conditions.point_goal module<a class="headerlink" href="#igibson-termination-conditions-point-goal-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-termination-conditions-predicate-goal-module">
+<h2>igibson.termination_conditions.predicate_goal module<a class="headerlink" href="#igibson-termination-conditions-predicate-goal-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-termination-conditions-reaching-goal-module">
+<h2>igibson.termination_conditions.reaching_goal module<a class="headerlink" href="#igibson-termination-conditions-reaching-goal-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.termination_conditions.termination_condition_base">
+<span id="igibson-termination-conditions-termination-condition-base-module"></span><h2>igibson.termination_conditions.termination_condition_base module<a class="headerlink" href="#module-igibson.termination_conditions.termination_condition_base" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.termination_conditions.termination_condition_base.BaseTerminationCondition">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.termination_conditions.termination_condition_base.</span></code><code class="sig-name descname"><span class="pre">BaseTerminationCondition</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.termination_condition_base.BaseTerminationCondition" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base TerminationCondition class
+Condition-specific get_termination method is implemented in subclasses</p>
+<dl class="py method">
+<dt id="igibson.termination_conditions.termination_condition_base.BaseTerminationCondition.get_termination">
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">get_termination</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.termination_condition_base.BaseTerminationCondition.get_termination" title="Permalink to this definition"></a></dt>
+<dd><p>Return whether the episode should terminate. Overwritten by subclasses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – task instance</p></li>
+<li><p><strong>env</strong> – environment instance</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>done, info</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.termination_conditions.termination_condition_base.BaseTerminationCondition.reset">
+<code class="sig-name descname"><span class="pre">reset</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.termination_condition_base.BaseTerminationCondition.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Termination condition-specific reset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – task instance</p></li>
+<li><p><strong>env</strong> – environment instance</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-igibson.termination_conditions.timeout">
+<span id="igibson-termination-conditions-timeout-module"></span><h2>igibson.termination_conditions.timeout module<a class="headerlink" href="#module-igibson.termination_conditions.timeout" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.termination_conditions.timeout.Timeout">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.termination_conditions.timeout.</span></code><code class="sig-name descname"><span class="pre">Timeout</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.timeout.Timeout" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#igibson.termination_conditions.termination_condition_base.BaseTerminationCondition" title="igibson.termination_conditions.termination_condition_base.BaseTerminationCondition"><code class="xref py py-class docutils literal notranslate"><span class="pre">igibson.termination_conditions.termination_condition_base.BaseTerminationCondition</span></code></a></p>
+<p>Episode terminates if max_step steps have passed</p>
+<dl class="py method">
+<dt id="igibson.termination_conditions.timeout.Timeout.get_termination">
+<code class="sig-name descname"><span class="pre">get_termination</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">env</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.termination_conditions.timeout.Timeout.get_termination" title="Permalink to this definition"></a></dt>
+<dd><p>Return whether the episode should terminate.
+Terminate if max_step steps have passed</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – task instance</p></li>
+<li><p><strong>env</strong> – environment instance</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>done, info</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-igibson.termination_conditions">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-igibson.termination_conditions" title="Permalink to this headline"></a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="igibson.tasks.html" class="btn btn-neutral float-left" title="igibson.tasks package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="igibson.utils.html" class="btn btn-neutral float-right" title="igibson.utils package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

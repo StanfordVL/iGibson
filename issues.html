@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Trouble Shooting &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Troubleshooting &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -16,7 +16,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Projects using Gibson/iGibson" href="projects.html" />
-    <link rel="prev" title="Code Examples" href="examples.html" /> 
+    <link rel="prev" title="igibson.utils package" href="apidoc/igibson.utils.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,7 +49,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -63,10 +62,25 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Trouble Shooting</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#unable-to-initialize-egl">Unable to initialize EGL</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Troubleshooting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#installation-issues">Installation Issues</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#modulenotfounderror-no-module-named-cmake"><code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError:</span> <span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'cmake'</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nsbundle-h-91-143-error-function-does-not-return-nsstring"><code class="docutils literal notranslate"><span class="pre">.../NSBundle.h:91:143:</span> <span class="pre">error:</span> <span class="pre">function</span> <span class="pre">does</span> <span class="pre">not</span> <span class="pre">return</span> <span class="pre">NSString</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tried-xxxxx-so-mach-o-file-but-is-an-incompatible-architecture-have-x86-64-need-arm64e"><code class="docutils literal notranslate"><span class="pre">tried:</span> <span class="pre">'XXXXX.so'</span> <span class="pre">(mach-o</span> <span class="pre">file,</span> <span class="pre">but</span> <span class="pre">is</span> <span class="pre">an</span> <span class="pre">incompatible</span> <span class="pre">architecture</span> <span class="pre">(have</span> <span class="pre">'x86_64',</span> <span class="pre">need</span> <span class="pre">'arm64e'))</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#error-could-not-build-wheels-for-h5py-which-is-required-to-install-pyproject-toml-based-projects"><code class="docutils literal notranslate"><span class="pre">ERROR:</span> <span class="pre">Could</span> <span class="pre">not</span> <span class="pre">build</span> <span class="pre">wheels</span> <span class="pre">for</span> <span class="pre">h5py,</span> <span class="pre">which</span> <span class="pre">is</span> <span class="pre">required</span> <span class="pre">to</span> <span class="pre">install</span> <span class="pre">pyproject.toml-based</span> <span class="pre">projects</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#execution-issues">Execution Issues</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#runtimeerror-freetype-library-not-found"><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Freetype</span> <span class="pre">library</span> <span class="pre">not</span> <span class="pre">found</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#unable-to-initialize-egl">Unable to initialize EGL</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#other-issues">Other issues</a></li>
 </ul>
 </li>
@@ -88,7 +102,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Trouble Shooting</li>
+      <li>Troubleshooting</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/issues.md.txt" rel="nofollow"> View page source</a>
       </li>
@@ -98,10 +112,46 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="trouble-shooting">
-<h1>Trouble Shooting<a class="headerlink" href="#trouble-shooting" title="Permalink to this headline"></a></h1>
+  <div class="section" id="troubleshooting">
+<h1>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permalink to this headline"></a></h1>
+<div class="section" id="installation-issues">
+<h2>Installation Issues<a class="headerlink" href="#installation-issues" title="Permalink to this headline"></a></h2>
+<div class="section" id="modulenotfounderror-no-module-named-cmake">
+<h3><code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError:</span> <span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'cmake'</span></code><a class="headerlink" href="#modulenotfounderror-no-module-named-cmake" title="Permalink to this headline"></a></h3>
+<p>This problem appears often on MacOS. You should have CMake installed in your computer <strong>system-wide</strong>. On Mac, you can use brew to install it: <code class="docutils literal notranslate"><span class="pre">brew</span> <span class="pre">install</span> <span class="pre">cmake</span></code> (search how to install the package manager Homebrew if it is the first time you use it). If you use cmake installed with pip (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code>) or in conda (<code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">cmake</span></code>), this installation issue may appear.</p>
+</div>
+<div class="section" id="nsbundle-h-91-143-error-function-does-not-return-nsstring">
+<h3><code class="docutils literal notranslate"><span class="pre">.../NSBundle.h:91:143:</span> <span class="pre">error:</span> <span class="pre">function</span> <span class="pre">does</span> <span class="pre">not</span> <span class="pre">return</span> <span class="pre">NSString</span></code><a class="headerlink" href="#nsbundle-h-91-143-error-function-does-not-return-nsstring" title="Permalink to this headline"></a></h3>
+<p>This problem appears in MacOS. The entire error message should be something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Developer</span><span class="o">/</span><span class="n">CommandLineTools</span><span class="o">/</span><span class="n">SDKs</span><span class="o">/</span><span class="n">MacOSX12</span><span class="mf">.1</span><span class="o">.</span><span class="n">sdk</span><span class="o">/</span><span class="n">System</span><span class="o">/</span><span class="n">Library</span><span class="o">/</span><span class="n">Frameworks</span><span class="o">/</span><span class="n">Foundation</span><span class="o">.</span><span class="n">framework</span><span class="o">/</span><span class="n">Headers</span><span class="o">/</span><span class="n">NSBundle</span><span class="o">.</span><span class="n">h</span><span class="p">:</span><span class="mi">91</span><span class="p">:</span><span class="mi">143</span><span class="p">:</span> <span class="n">error</span><span class="p">:</span> <span class="n">function</span> <span class="n">does</span> <span class="ow">not</span> <span class="k">return</span> <span class="n">NSString</span>
+</pre></div>
+</div>
+<p>This error is caused by a change in the Command-line tools (CLT) of MacOS. CLT can be installed as part of Xcode or as stand-alone suite. If you have Xcode, consider downgrading or upgrading it to a different version. If you do not have Xcode, we have seen success on Big Sur by installing an older version of the CLT:</p>
+<ol class="arabic simple">
+<li><p>Removing your current version of Command-line tools following the instructions <a class="reference external" href="https://mac.install.guide/commandlinetools/6.html">here</a></p></li>
+<li><p>Grabbing an older version. On Big Sur (11.6), you can use the version 12.0 (see that the error message indicated 12.1). Go to <a class="reference external" href="https://developer.apple.com/download/all/?q=command%20line%20tools">this page</a>, login with your itunes account, download and install the older version. Recompile.</p></li>
+</ol>
+<p>However, compilation is again successful with newer versions of Xcode/CLT as well (tested with Xcode.</p>
+</div>
+<div class="section" id="tried-xxxxx-so-mach-o-file-but-is-an-incompatible-architecture-have-x86-64-need-arm64e">
+<h3><code class="docutils literal notranslate"><span class="pre">tried:</span> <span class="pre">'XXXXX.so'</span> <span class="pre">(mach-o</span> <span class="pre">file,</span> <span class="pre">but</span> <span class="pre">is</span> <span class="pre">an</span> <span class="pre">incompatible</span> <span class="pre">architecture</span> <span class="pre">(have</span> <span class="pre">'x86_64',</span> <span class="pre">need</span> <span class="pre">'arm64e'))</span></code><a class="headerlink" href="#tried-xxxxx-so-mach-o-file-but-is-an-incompatible-architecture-have-x86-64-need-arm64e" title="Permalink to this headline"></a></h3>
+<p>We have observed this error when compiled on MacOS with an old version of CMake. Consider installing systemwide a newer version of CMake, e.g., using Homebrew, to a version &gt; 2.17.</p>
+</div>
+<div class="section" id="error-could-not-build-wheels-for-h5py-which-is-required-to-install-pyproject-toml-based-projects">
+<h3><code class="docutils literal notranslate"><span class="pre">ERROR:</span> <span class="pre">Could</span> <span class="pre">not</span> <span class="pre">build</span> <span class="pre">wheels</span> <span class="pre">for</span> <span class="pre">h5py,</span> <span class="pre">which</span> <span class="pre">is</span> <span class="pre">required</span> <span class="pre">to</span> <span class="pre">install</span> <span class="pre">pyproject.toml-based</span> <span class="pre">projects</span></code><a class="headerlink" href="#error-could-not-build-wheels-for-h5py-which-is-required-to-install-pyproject-toml-based-projects" title="Permalink to this headline"></a></h3>
+<p>This error has been observed on arm64 MacOS.</p>
+<p>Solution: <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">h5py</span></code></p>
+</div>
+</div>
+<div class="section" id="execution-issues">
+<h2>Execution Issues<a class="headerlink" href="#execution-issues" title="Permalink to this headline"></a></h2>
+<div class="section" id="runtimeerror-freetype-library-not-found">
+<h3><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Freetype</span> <span class="pre">library</span> <span class="pre">not</span> <span class="pre">found</span></code><a class="headerlink" href="#runtimeerror-freetype-library-not-found" title="Permalink to this headline"></a></h3>
+<p>This error has been observed on arm64 MacOS. The pip package <code class="docutils literal notranslate"><span class="pre">freetype-py</span></code> may install binaries for the wrong architecture.</p>
+<p>Solution: <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">install</span> <span class="pre">freetype</span></code></p>
+</div>
 <div class="section" id="unable-to-initialize-egl">
-<h2>Unable to initialize EGL<a class="headerlink" href="#unable-to-initialize-egl" title="Permalink to this headline"></a></h2>
+<h3>Unable to initialize EGL<a class="headerlink" href="#unable-to-initialize-egl" title="Permalink to this headline"></a></h3>
 <ol class="arabic simple">
 <li><p>Is nvidia driver properly installed? Nvidia drivers prior to 460.80 and 465.27 have a bug with cgroups that prevent utilize all but GPU 0 on a node. You can check your driver version by running nvidia-smi and update if necessary.</p></li>
 <li><p>Is libegl1 installed? You can determine this by <code class="docutils literal notranslate"><span class="pre">apt</span> <span class="pre">list</span> <span class="pre">--installed</span> <span class="pre">|</span> <span class="pre">grep</span> <span class="pre">libegl1</span></code></p></li>
@@ -123,6 +173,7 @@
 <p>Make sure EGL is not linked to mesa, because in order for gibson to work, linking to Nvidia’s EGL is required. For example, this will cause problems: <code class="docutils literal notranslate"><span class="pre">/usr/lib/x86_64-linux-gnu/libEGL.so</span> <span class="pre">-&gt;</span> <span class="pre">mesa-egl/libEGL.so</span></code></p>
 <p>The EGL setup part is borrowed from Erwin Coumans <a class="reference external" href="https://github.com/erwincoumans/egl_example">egl_example</a>. It would be informative to see if that repository can run on your machine.</p>
 </div>
+</div>
 <div class="section" id="other-issues">
 <h2>Other issues<a class="headerlink" href="#other-issues" title="Permalink to this headline"></a></h2>
 <p>For other issues, please submit an issue in our <a class="reference external" href="https://github.com/StanfordVL/iGibson/issues">github repository</a>.</p>
@@ -133,7 +184,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="examples.html" class="btn btn-neutral float-left" title="Code Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="apidoc/igibson.utils.html" class="btn btn-neutral float-left" title="igibson.utils package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="projects.html" class="btn btn-neutral float-right" title="Projects using Gibson/iGibson" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

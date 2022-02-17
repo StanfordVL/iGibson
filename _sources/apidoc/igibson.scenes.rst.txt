@@ -1,0 +1,61 @@
+igibson.scenes package
+======================
+
+Submodules
+----------
+
+igibson.scenes.empty\_scene module
+----------------------------------
+
+.. automodule:: igibson.scenes.empty_scene
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.scenes.gibson\_indoor\_scene module
+-------------------------------------------
+
+.. automodule:: igibson.scenes.gibson_indoor_scene
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.scenes.igibson\_indoor\_scene module
+--------------------------------------------
+
+.. automodule:: igibson.scenes.igibson_indoor_scene
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.scenes.indoor\_scene module
+-----------------------------------
+
+.. automodule:: igibson.scenes.indoor_scene
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.scenes.scene\_base module
+---------------------------------
+
+.. automodule:: igibson.scenes.scene_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.scenes.stadium\_scene module
+------------------------------------
+
+.. automodule:: igibson.scenes.stadium_scene
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.scenes
+   :members:
+   :undoc-members:
+   :show-inheritance:

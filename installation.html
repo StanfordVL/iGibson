@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Installation &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -46,10 +46,11 @@
 <li class="toctree-l3"><a class="reference internal" href="#installing-dependencies-in-linux-machines">Installing dependencies in Linux machines</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#installing-igibson">Installing iGibson</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#pip">1. pip</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#docker-image">2. Docker image</a></li>
-<li class="toctree-l4"><a class="reference internal" href="#compile-from-source">3. Compile from source</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#compile-from-source">2. Compile from source</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#docker-image">3. Docker image</a></li>
 </ul>
 </li>
+<li class="toctree-l3"><a class="reference internal" href="#issues">Issues</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#the-svl-pybullet-fork">The SVL pybullet fork</a></li>
 </ul>
 </li>
@@ -67,7 +68,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -81,9 +81,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -112,7 +116,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="installation">
+  <div class="section" id="installation">
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline"></a></h1>
 <p>There are two steps to install iGibson, the Interactive Gibson Environment, on your computer.</p>
 <p>First, you need to install the simulation environment. This may require installing additional dependencies. Then, you need to download the assets: models of the robotic agents, the interactive objects and 3D reconstructed real-world large environments for your agents to train.</p>
@@ -145,9 +149,9 @@
 </li>
 <li><p>Mac OS X</p>
 <ul>
-<li><p>Tested on 10.15</p></li>
+<li><p>Tested on several versions (10.15, 11.6, …)</p></li>
 <li><p>PBR features not supported</p></li>
-<li><p>CMake &gt;= 2.8.12 (can install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code>)</p></li>
+<li><p>CMake &gt;= 2.8.12 or CMake &gt;= 2.17 for M1-chip (do NOT install with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">cmake</span></code>, but system-wide for example with Homebrew)</p></li>
 </ul>
 </li>
 </ul>
@@ -250,7 +254,7 @@ Build cuda_11.1.TC455_06.29190527_0
 </div>
 <div class="section" id="installing-igibson">
 <h3>Installing iGibson<a class="headerlink" href="#installing-igibson" title="Permalink to this headline"></a></h3>
-<p>We provide 3 methods to install the simulator.</p>
+<p>We provide 3 methods to install the simulator. After installing the simulator, you will need to download assets and datasets of scenes and object models.</p>
 <div class="section" id="pip">
 <h4>1. pip<a class="headerlink" href="#pip" title="Permalink to this headline"></a></h4>
 <p>iGibson’s simulator can be installed as a python package using pip:</p>
@@ -260,8 +264,24 @@ python -m igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 </div>
+<div class="section" id="compile-from-source">
+<h4>2. Compile from source<a class="headerlink" href="#compile-from-source" title="Permalink to this headline"></a></h4>
+<p>Alternatively, iGibson can be compiled from source: <a class="reference external" href="https://github.com/StanfordVL/iGibson">iGibson GitHub Repo</a>. First, you need to install anaconda following the guide on <a class="reference external" href="https://www.anaconda.com/">their website</a>. Then:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
+<span class="nb">cd</span> iGibson
+
+<span class="c1"># if you didn&#39;t create the conda environment before:</span>
+conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+conda activate igibson
+
+pip install -e . <span class="c1"># This step takes about 4 minutes</span>
+</pre></div>
+</div>
+<p>We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.</p>
+<p>Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).</p>
+</div>
 <div class="section" id="docker-image">
-<h4>2. Docker image<a class="headerlink" href="#docker-image" title="Permalink to this headline"></a></h4>
+<h4>3. Docker image<a class="headerlink" href="#docker-image" title="Permalink to this headline"></a></h4>
 <p>Docker provides an easy way to reproduce the development environment across platforms without manually installing the software dependencies. We have prepared docker images that contain everything you need to get started with iGibson.</p>
 <p>First, install Docker from the <a class="reference external" href="https://www.docker.com/">official website</a>. Please make sure that the docker version is at least v19.0 to enable native GPU support.</p>
 <p>Next, download our pre-built images with the script in the <code class="docutils literal notranslate"><span class="pre">iGibson</span></code> repo:</p>
@@ -285,22 +305,12 @@ python -m igibson.examples.environments.env_nonint_example
 </pre></div>
 </div>
 </div>
-<div class="section" id="compile-from-source">
-<h4>3. Compile from source<a class="headerlink" href="#compile-from-source" title="Permalink to this headline"></a></h4>
-<p>Alternatively, iGibson can be compiled from source: <a class="reference external" href="https://github.com/StanfordVL/iGibson">iGibson GitHub Repo</a>. First, you need to install anaconda following the guide on <a class="reference external" href="https://www.anaconda.com/">their website</a>.</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
-<span class="nb">cd</span> iGibson
-
-<span class="c1"># if you didn&#39;t create the conda environment before:</span>
-conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
-conda activate igibson
-
-pip install -e . <span class="c1"># This step takes about 4 minutes</span>
-</pre></div>
 </div>
-<p>We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.</p>
-<p>Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).</p>
-</div>
+<div class="section" id="issues">
+<h3>Issues<a class="headerlink" href="#issues" title="Permalink to this headline"></a></h3>
+<p>If you have installation issues, first, check our section for issues <a class="reference internal" href="issues.html"><span class="doc std std-doc">here</span></a>. We have included solutions to previous known problems there.</p>
+<p>If you couldn’t find a solution, search open and closed issues in our github issues page <a class="reference external" href="https://github.com/StanfordVL/iGibson/issues">here</a>.</p>
+<p>If still no-luck, open a new issue in our github. Our turnaround is usually a couple of days.</p>
 </div>
 <div class="section" id="the-svl-pybullet-fork">
 <h3>The SVL pybullet fork<a class="headerlink" href="#the-svl-pybullet-fork" title="Permalink to this headline"></a></h3>
@@ -342,7 +352,7 @@ To download this demo data, run:</p>
 </div>
 <div class="section" id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
-<p>We provide multiple examples to get you started!
+<p>We provide a lot of examples to get you started in your research!
 Check the folder <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/examples">igibson/examples</a> and the description <a class="reference internal" href="examples.html"><span class="doc std std-doc">here</span></a>.</p>
 <p>After installing the code and downloading the demo data, you should be able to try out a simple robot navigation demo executing:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.examples.environments.env_nonint_example
@@ -356,8 +366,8 @@ Check the folder <a class="reference external" href="https://github.com/Stanford
 &gt;&gt; import igibson
 </pre></div>
 </div>
-<p>For a full suite of tests and benchmarks, you can refer to <a class="reference internal" href="tests.html"><span class="doc std std-doc">tests</span></a> for more details.
-(For Mac users) Some tests will fail as they require a Nvidia GPU.</p>
+<p>For a full suite of tests and benchmarks, you can refer to <a class="reference internal" href="tests.html"><span class="doc std std-doc">tests</span></a> for more details.</p>
+<p>You can also run all tests by executing <code class="docutils literal notranslate"><span class="pre">pytest</span></code> within the iGibson installation folder. (For Mac users) Some tests will fail as they require a Nvidia GPU.</p>
 </div>
 <div class="section" id="uninstalling">
 <h2>Uninstalling<a class="headerlink" href="#uninstalling" title="Permalink to this headline"></a></h2>

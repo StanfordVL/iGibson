@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Assets &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Assets &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,13 +49,12 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Assets</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#models">Models</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#pretrained-network">Pretrained network</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#test-meshes">Test meshes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#robot-and-object-models-models">Robot and Object Models (<code class="docutils literal notranslate"><span class="pre">models</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pretrained-network-networks">Pretrained network (<code class="docutils literal notranslate"><span class="pre">networks</span></code>)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#test-meshes-test">Test meshes (<code class="docutils literal notranslate"><span class="pre">test</span></code>)</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -69,9 +68,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -100,15 +103,16 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="assets">
+  <div class="section" id="assets">
 <h1>Assets<a class="headerlink" href="#assets" title="Permalink to this headline"></a></h1>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h2>
-<p>Assets includes necessary files for constructing a scene in iGibson simulator. The files include robot models, interactive objects, articulated objects and mesh files for tests. These files are too large to include in a version control system so we distribute them separately. The assets file can be downloaded to the path set in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default to <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data/assets</span></code>) with running</p>
+<p>The iGibson assets includes the necessary files to create simulation scenes and other utilities: robot URDF models, models of some interactive objects and articulated objects for testing, copies of the <a class="reference external" href="https://tu-rbo.github.io/articulated-objects/">RBO</a> and <a class="reference external" href="http://www.ycbbenchmarks.com/object-models/">YCB</a> datasets of objects to include them in the scenes, a copy of the neural network filler developed in Gibson V1, and some mesh files used to perform installation tests. Due to their large size, these files are not distributed as part of our pip/git packages, but as separate packages.</p>
+<p>The assets file can be downloaded and decompressed to the path set in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default to <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data/assets</span></code>) by executing:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_assets
 </pre></div>
 </div>
-<p>The folder structure will look like below (in the future we might add more models):</p>
+<p>The folder structure will look like below:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>assets
 ├── models
 │   ├── ant
@@ -117,7 +121,9 @@
 │   ├── cabinet
 │   ├── cabinet2
 │   ├── cassie
+│   ├── dust
 │   ├── fetch
+│   ├── fire
 │   ├── humanoid
 │   ├── husky
 │   ├── jr1_urdf
@@ -126,84 +132,38 @@
 │   ├── laikago
 │   ├── locobot
 │   ├── mjcf_primitives
+│   ├── person_meshes
 │   ├── quadrotor
 │   ├── quadruped
 │   ├── rbo
+│   │    └── ...
 │   ├── scene_components
+│   │    └── ...
+│   ├── stain
 │   ├── turtlebot
+│   ├── vr_agent
 │   └── ycb
+│        └── ...
 ├── networks
 │   └── model.pth
-├── test
-│   └── mesh
-└── example_configs
-    └── {}.yaml (deprecated, will be removed)
-
+└── test
+    └── mesh
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">models</span></code> contains robot models and interactive objects, <code class="docutils literal notranslate"><span class="pre">networks</span></code> contain the neural network filler used in Gibson V1, <code class="docutils literal notranslate"><span class="pre">test</span></code> contains files for performing tests of installation.</p>
+<p>In the following, we include some details of what is included in each subfolder: ‘models’, ‘networks’, and ‘test’.</p>
 </div>
-<div class="section" id="models">
-<h2>Models<a class="headerlink" href="#models" title="Permalink to this headline"></a></h2>
-<p>The robots folders correspond to <a class="reference internal" href="robots.html"><span class="doc std std-doc">robot</span></a> models.</p>
-<table border="1" class="docutils">
-<thead>
-<tr>
-<th align="center">Agent Name</th>
-<th align="center">Folder</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td align="center">Mujoco Ant</td>
-<td align="center"><code>ant</code></td>
-</tr>
-<tr>
-<td align="center">Mujoco Humanoid</td>
-<td align="center"><code>humanoid</code></td>
-</tr>
-<tr>
-<td align="center">Husky Robot</td>
-<td align="center"><code>husky</code></td>
-</tr>
-<tr>
-<td align="center">Minitaur Robot</td>
-<td align="center"><code>quadruped</code></td>
-</tr>
-<tr>
-<td align="center">Quadrotor</td>
-<td align="center"><code>quadrotor</code></td>
-</tr>
-<tr>
-<td align="center">TurtleBot</td>
-<td align="center"><code>turtlebot</code></td>
-</tr>
-<tr>
-<td align="center">Freight</td>
-<td align="center"><code>fetch</code></td>
-</tr>
-<tr>
-<td align="center">Fetch</td>
-<td align="center"><code>fetch</code></td>
-</tr>
-<tr>
-<td align="center">JackRabbot</td>
-<td align="center"><code>jr2_urdf</code></td>
-</tr>
-<tr>
-<td align="center">LocoBot</td>
-<td align="center"><code>locobot</code></td>
-</tr>
-</tbody>
-</table>
-<p>We also include <a class="reference external" href="http://www.ycbbenchmarks.com/object-models/">YCB objects</a> in <code class="docutils literal notranslate"><span class="pre">ycb</span></code> folder, <a class="reference external" href="https://tu-rbo.github.io/articulated-objects/">RBO models</a> in <code class="docutils literal notranslate"><span class="pre">rbo</span></code> folder, and a few commonly used primitives for home environments such as doors (in <code class="docutils literal notranslate"><span class="pre">scene_components</span></code>) and cabinets (in <code class="docutils literal notranslate"><span class="pre">cabinet</span></code> and <code class="docutils literal notranslate"><span class="pre">cabinet2</span></code>). You can refer to <a class="reference internal" href="objects.html"><span class="doc std std-doc">objects</span></a> page to see how to use these models in gibson scenes. Don’t forget to cite related papers when using these assets.</p>
+<div class="section" id="robot-and-object-models-models">
+<h2>Robot and Object Models (<code class="docutils literal notranslate"><span class="pre">models</span></code>)<a class="headerlink" href="#robot-and-object-models-models" title="Permalink to this headline"></a></h2>
+<p>URDF and mesh models of robots and objects to load in iGibson scenes.</p>
+<p>While we include many robot URDF models, only a subset of those are currently available in iGibson through a corresponding python class (see <a class="reference internal" href="robots.html"><span class="doc std std-doc">robots</span></a>). Users could create their own robot classes for the missing URDF models.</p>
+<p>We also include <a class="reference external" href="http://www.ycbbenchmarks.com/object-models/">YCB objects</a>, <a class="reference external" href="https://tu-rbo.github.io/articulated-objects/">RBO objects</a>, and a few simple objects commonly used in home environments such as doors (in <code class="docutils literal notranslate"><span class="pre">scene_components</span></code>) and cabinets (in <code class="docutils literal notranslate"><span class="pre">cabinet</span></code> and <code class="docutils literal notranslate"><span class="pre">cabinet2</span></code>). You can refer to <a class="reference internal" href="objects.html"><span class="doc std std-doc">objects</span></a> page to see how to use these models in gibson scenes. Don’t forget to cite the corresponding YCB and/or RBO publications if you use these assets in your experiments.</p>
 </div>
-<div class="section" id="pretrained-network">
-<h2>Pretrained network<a class="headerlink" href="#pretrained-network" title="Permalink to this headline"></a></h2>
+<div class="section" id="pretrained-network-networks">
+<h2>Pretrained network (<code class="docutils literal notranslate"><span class="pre">networks</span></code>)<a class="headerlink" href="#pretrained-network-networks" title="Permalink to this headline"></a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">networks</span></code> folder contains a pretrained network checkpoint <code class="docutils literal notranslate"><span class="pre">model.pth</span></code>, which is the “goggle” network used in Gibson V1. It is used to fix artifacts caused by imperfect reconstruction. In previous version we used image based rendering and there are more visible artifacts, therefore the “goggle” network is important. In this version, mesh rendering creates photorealstic visuals, so we recommend not using it (to gain more framerate).</p>
 </div>
-<div class="section" id="test-meshes">
-<h2>Test meshes<a class="headerlink" href="#test-meshes" title="Permalink to this headline"></a></h2>
+<div class="section" id="test-meshes-test">
+<h2>Test meshes (<code class="docutils literal notranslate"><span class="pre">test</span></code>)<a class="headerlink" href="#test-meshes-test" title="Permalink to this headline"></a></h2>
 <p>In <code class="docutils literal notranslate"><span class="pre">test</span></code> folder we save a mesh file to test the renderer is compiled correctly, it is used by <code class="docutils literal notranslate"><span class="pre">test/test_render.py</span></code>.</p>
 </div>
 </div>

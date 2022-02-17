@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Code Examples &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Code Examples &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -15,7 +15,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Trouble Shooting" href="issues.html" />
+    <link rel="next" title="igibson" href="apidoc/modules.html" />
     <link rel="prev" title="Tests and Examples" href="tests.html" /> 
 </head>
 
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,7 +49,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -63,9 +62,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -94,7 +97,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="code-examples">
+  <div class="section" id="code-examples">
 <h1>Code Examples<a class="headerlink" href="#code-examples" title="Permalink to this headline"></a></h1>
 <p>In this section, we include a description of most of the code examples you can find under <code class="docutils literal notranslate"><span class="pre">igibson/examples/</span></code>.
 There may be new examples since we wrote this, so check that folder!</p>
@@ -104,7 +107,7 @@ There may be new examples since we wrote this, so check that folder!</p>
 <li><p>environments: how to instantiate iGibson environments with interactive or static scenes, optionally with a scene selector.</p></li>
 <li><p>learning: how to train RL policies for robot navigation using stable baselines 3, and how to save and replay demos of agents for imitation learning.</p></li>
 <li><p>objects: how to create, load, and place objects to predefined locations or using a logic sampler (e.g. onTop(A, B)), how to change texture as a function of the temperature, and how to generate the minimum volume bounding boxes of objects.</p></li>
-<li><p>object_states: how to change various objects states, including dusty, stained, (water sources) toggled on, (cleaning tool) soaked, sliced, and temprature, and how to save and reload object states.</p></li>
+<li><p>object_states: how to change various objects states, including dusty, stained, (water sources) toggled on, (cleaning tool) soaked, sliced, and temperature, and how to save and reload object states.</p></li>
 <li><p>observations: how to generate different observation modalities such as RGB, depth, LiDAR, segmentation, etc.</p></li>
 <li><p>renderer: how to use the renderer directly, without the physics engine.</p></li>
 <li><p>robots: how to (keyboard) control robots with differential drive controllers, IK controllers and sampling-based motion planners.</p></li>
@@ -120,7 +123,7 @@ There may be new examples since we wrote this, so check that folder!</p>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="tests.html" class="btn btn-neutral float-left" title="Tests and Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="issues.html" class="btn btn-neutral float-right" title="Trouble Shooting" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="apidoc/modules.html" class="btn btn-neutral float-right" title="igibson" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

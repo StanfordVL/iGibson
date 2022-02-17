@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Environments &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Environments &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,22 +49,23 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Environments</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#sensors">Sensors</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#tasks">Tasks</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#reward-functions">Reward Functions</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#termination-conditions">Termination Conditions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tasks">Tasks</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#reward-functions">Reward Functions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#termination-conditions">Termination Conditions</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="#configs">Configs</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#examples">Examples</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#static-environments">Static Environments</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#interactive-environments">Interactive Environments</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-a-static-scene-with-an-igibsonenv">Using a Static Scene with an iGibsonEnv</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#using-an-interactive-scene-with-an-igibsonenv">Using an Interactive Scene with an iGibsonEnv</a></li>
 </ul>
 </li>
 </ul>
@@ -78,9 +79,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -109,37 +114,41 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="environments">
+  <div class="section" id="environments">
 <h1>Environments<a class="headerlink" href="#environments" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
-<p>We provide <strong>Environments</strong> that follow the <a class="reference external" href="https://github.com/openai/gym">OpenAI gym</a> interface for applications such as reinforcement learning algorithms. Generally speaking, an <strong>Environment</strong> instantiates <strong>Scene</strong>, <strong>Object</strong> and <strong>Robot</strong> and import them into its <strong>Simulator</strong>. An <strong>Environment</strong> also instantiates a list of <strong>Sensors</strong> (usually as part of the observation space) and a <strong>Task</strong>, which further includes a list of <strong>Reward Functions</strong> and <strong>Termination Conditions</strong>.</p>
-<p>Most of the code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/envs/igibson_env.py">igibson/envs/igibson_env.py</a>.</p>
+<p>We provide several <strong>Environments</strong> that follow the <a class="reference external" href="https://github.com/openai/gym">OpenAI gym</a> interface facilitating training reinforcement learning agents for navigation and mobile manipulation tasks. An <strong>Environment</strong> instantiates a <strong>Scene</strong>, <strong>Object</strong>(s) and <strong>Robot</strong>(s) and import them into the contained <strong>Simulator</strong>. An <strong>Environment</strong> also instantiates a list of <strong>Sensors</strong> (usually as part of the observation space) and a <strong>Task</strong>, which further includes a list of <strong>Reward Functions</strong> and <strong>Termination Conditions</strong>.</p>
+<p>The most general environment is the <code class="docutils literal notranslate"><span class="pre">iGibsonEnv</span></code>, which code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/envs/igibson_env.py">igibson/envs/igibson_env.py</a>.</p>
+<p>For further information about the <a class="reference internal" href="scenes.html"><span class="doc std std-doc">Scenes</span></a>, <a class="reference internal" href="objects.html"><span class="doc std std-doc">Objects</span></a>, <a class="reference internal" href="robots.html"><span class="doc std std-doc">Robots</span></a>, <a class="reference internal" href="simulators.html"><span class="doc std std-doc">Simulator</span></a> or <a class="reference internal" href="renderer.html"><span class="doc std std-doc">Renderer</span></a> we refer to the corresponding pages. Here, we summarize additional information about <code class="docutils literal notranslate"><span class="pre">Sensors</span></code>, and <code class="docutils literal notranslate"><span class="pre">Tasks</span></code>.</p>
 <div class="section" id="sensors">
 <h3>Sensors<a class="headerlink" href="#sensors" title="Permalink to this headline"></a></h3>
-<p>We provide different types of sensors as lightweight wrappers around the renderer. Currently we support RGB, surface normal, segmentation, 3D point cloud, depth map, optical flow, and scene flow, and also 1-beam and 16-beam LiDAR signals. Additionally, we provide a sensor noise model with random dropout (currently only for depth map and 1-beam LiDAR) to simulate real-world sensor noise. The amount of noise can be controlled by <code class="docutils literal notranslate"><span class="pre">depth_noise_rate</span></code> and <code class="docutils literal notranslate"><span class="pre">scan_noise_rate</span></code> in the config files. Contribution of more noise models is most welcome.</p>
+<p>We provide different types of sensors as lightweight wrappers around the renderer. Currently, we support RGB, surface normal, segmentation, 3D point cloud, depth map, optical flow, and scene flow, and also 1-beam and 16-beam LiDAR signals. Additionally, we provide a sensor noise model with random dropout (currently only for depth map and 1-beam LiDAR) to simulate real-world sensor noise and facilitate sim2real. The amount of noise can be controlled by <code class="docutils literal notranslate"><span class="pre">depth_noise_rate</span></code> and <code class="docutils literal notranslate"><span class="pre">scan_noise_rate</span></code> in the config files. Contributions of new noise models are welcome.</p>
 <p>Most of the code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/sensors">igibson/sensors</a>.</p>
 </div>
 <div class="section" id="tasks">
 <h3>Tasks<a class="headerlink" href="#tasks" title="Permalink to this headline"></a></h3>
-<p>Each <strong>Task</strong> should implement <code class="docutils literal notranslate"><span class="pre">reset_scene</span></code>, <code class="docutils literal notranslate"><span class="pre">reset_agent</span></code>, <code class="docutils literal notranslate"><span class="pre">step</span></code> and <code class="docutils literal notranslate"><span class="pre">get_task_obs</span></code>.</p>
+<p><strong>Task</strong> is an abstraction to define what needs to be achieved by an agent in a scene. The same scenes could hold multiple tasks. Each <strong>Task</strong> should implement <code class="docutils literal notranslate"><span class="pre">reset_scene</span></code>, <code class="docutils literal notranslate"><span class="pre">reset_agent</span></code>, <code class="docutils literal notranslate"><span class="pre">step</span></code> and <code class="docutils literal notranslate"><span class="pre">get_task_obs</span></code>.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">reset_scene</span></code> and <code class="docutils literal notranslate"><span class="pre">reset_agent</span></code> will be called during <code class="docutils literal notranslate"><span class="pre">env.reset</span></code> and should include task-specific details to reset the scene and the agent, respectively.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">step</span></code> will be called during <code class="docutils literal notranslate"><span class="pre">env.step</span></code> and should include task-specific details of what needs to be done at every timestep.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">get_task_obs</span></code> returns task-specific observation (non-sensory observation) as a numpy array. For instance, typical goal-oriented robotics tasks should include goal information and proprioceptive states in <code class="docutils literal notranslate"><span class="pre">get_task_obs</span></code>.
-Each <strong>Task</strong> should also include a list of <strong>Reward Functions</strong> and <strong>Termination Conditions</strong> defined below.
-We provide a few Embodied AI tasks.</p></li>
-<li><p>PointGoalFixedTask</p></li>
-<li><p>PointGoalRandomTask</p></li>
-<li><p>InteractiveNavRandomTask</p></li>
-<li><p>DynamicNavRandomTask</p></li>
-<li><p>ReachingRandomTask</p></li>
-<li><p>RoomRearrangementTask</p></li>
+Each <strong>Task</strong> should also include a list of <strong>Reward Functions</strong> and <strong>Termination Conditions</strong> as explained below.</p></li>
 </ul>
-<p>Most of the code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/tasks">igibson/tasks</a>.</p>
-</div>
+<p>We provide several useful predefined Embodied AI <strong>Tasks</strong>, ready to be used:</p>
+<ul class="simple">
+<li><p>PointNavFixedTask: the agent should navigate to a predefined goal (point) location.</p></li>
+<li><p>PointNavRandomTask: the agent should navigate to a goal (point) location that changes randomly after each reset.</p></li>
+<li><p>InteractiveNavRandomTask: the agent should navigate to a goal (point) location that changes randomly after each reset dealing with multiple interactive obstacles in the way.</p></li>
+<li><p>DynamicNavRandomTask: the agent should navigate to a goal (point) location that changes randomly after each reset, while avoiding several dynamically moving obstacles (other robots).</p></li>
+<li><p>ReachingRandomTask: the agent should reach with its end-effector a target point that changes randomly after each reset.</p></li>
+<li><p>RoomRearrangementTask: the agent needs to move multiple objects to a predefined goal configuration.</p></li>
+<li><p>BehaviorTask: the agent should complete a long-horizon household activity defined in logic language (for more information, visit <a class="reference external" href="https://behavior.stanford.edu/">https://behavior.stanford.edu/</a>).</p></li>
+</ul>
+<p>The relevant code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/tasks">igibson/tasks</a>.</p>
+<p>In the following, we explain further the reward functions and termination conditions included as part of the tasks.</p>
 <div class="section" id="reward-functions">
-<h3>Reward Functions<a class="headerlink" href="#reward-functions" title="Permalink to this headline"></a></h3>
+<h4>Reward Functions<a class="headerlink" href="#reward-functions" title="Permalink to this headline"></a></h4>
 <p>At each timestep, <code class="docutils literal notranslate"><span class="pre">env.step</span></code> will call <code class="docutils literal notranslate"><span class="pre">task.get_reward</span></code>, which in turn sums up all the reward terms.
 We provide a few common reward functions for robotics tasks.</p>
 <ul class="simple">
@@ -148,10 +157,10 @@ We provide a few common reward functions for robotics tasks.</p>
 <li><p>PotentialReward</p></li>
 <li><p>CollisionReward</p></li>
 </ul>
-<p>Most of the code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/reward_functions">igibson/reward_functions</a>.</p>
+<p>The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/reward_functions">igibson/reward_functions</a>.</p>
 </div>
 <div class="section" id="termination-conditions">
-<h3>Termination Conditions<a class="headerlink" href="#termination-conditions" title="Permalink to this headline"></a></h3>
+<h4>Termination Conditions<a class="headerlink" href="#termination-conditions" title="Permalink to this headline"></a></h4>
 <p>At each timestep, <code class="docutils literal notranslate"><span class="pre">env.step</span></code> will call <code class="docutils literal notranslate"><span class="pre">task.get_termination</span></code>, which in turn checks each of the termination condition to see if the episode is done and/or successful.
 We provide a few common termination conditions for robotics tasks.</p>
 <ul class="simple">
@@ -159,13 +168,14 @@ We provide a few common termination conditions for robotics tasks.</p>
 <li><p>ReachingGoal</p></li>
 <li><p>MaxCollision</p></li>
 <li><p>Timeout</p></li>
-<li><p>OutOfBound
-Most of the code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/termination_conditions">igibson/termination_conditions</a>.</p></li>
+<li><p>OutOfBound</p></li>
 </ul>
+<p>The code can be found in <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/termination_conditions">igibson/termination_conditions</a>.</p>
+</div>
 </div>
 <div class="section" id="configs">
 <h3>Configs<a class="headerlink" href="#configs" title="Permalink to this headline"></a></h3>
-<p>To instantiate an <strong>Environment</strong>, we first need to create a YAML config file. It will specify parameters for the <strong>Environment</strong> (e.g. robot type, action frequency, etc), the <strong>Sensors</strong> (e.g. sensor types, image resolution, noise rate, etc), the <strong>Task</strong> (e.g. task type, goal distance range, etc), the <strong>Reward Functions</strong> (e.g. reward types, reward scale, etc) and the <strong>Termination Conditions</strong> (e.g. goal convergence threshold, time limit, etc). Exapmles of config files can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/configs">configs</a>.</p>
+<p>While <strong>Environments</strong> can be instantiated manually, it is easier to use a config file, a YAML file containing the relevant parameters. The config file specifies parameters such as the robot type, action frequency, etc., but also information about the <strong>Sensors</strong> (e.g. sensor types, image resolution, noise rate, etc), the <strong>Task</strong> (e.g. task type, goal distance range, etc), the <strong>Reward Functions</strong> (e.g. reward types, reward scale, etc), and the <strong>Termination Conditions</strong> (e.g. goal convergence threshold, time limit, etc). Many useful examples of config files can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/configs">configs</a>.</p>
 <p>Here is one example: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/configs/turtlebot_nav.yaml">configs/turtlebot_nav.yaml</a></p>
 <div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="c1"># scene</span><span class="w"></span>
 <span class="nt">scene</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">igibson</span><span class="w"></span>
@@ -183,9 +193,17 @@ Most of the code can be found in <a class="reference external" href="https://git
 <span class="nt">object_randomization_freq</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
 
 <span class="c1"># robot</span><span class="w"></span>
-<span class="nt">robot</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Turtlebot</span><span class="w"></span>
-<span class="nt">is_discrete</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
-<span class="nt">velocity</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
+<span class="nt">robot</span><span class="p">:</span><span class="w"></span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Turtlebot</span><span class="w"></span>
+<span class="w">  </span><span class="nt">action_type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">continuous</span><span class="w"></span>
+<span class="w">  </span><span class="nt">action_normalize</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
+<span class="w">  </span><span class="nt">base_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
+<span class="w">  </span><span class="nt">scale</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span><span class="w"></span>
+<span class="w">  </span><span class="nt">self_collision</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
+<span class="w">  </span><span class="nt">rendering_params</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">null</span><span class="w"></span>
+<span class="w">  </span><span class="nt">controller_config</span><span class="p">:</span><span class="w"></span>
+<span class="w">    </span><span class="nt">base</span><span class="p">:</span><span class="w"></span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">DifferentialDriveController</span><span class="w"></span>
 
 <span class="c1"># task</span><span class="w"></span>
 <span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">point_nav_random</span><span class="w"></span>
@@ -218,8 +236,8 @@ Most of the code can be found in <a class="reference external" href="https://git
 <span class="c1"># ASUS Xtion PRO LIVE</span><span class="w"></span>
 <span class="c1"># https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE</span><span class="w"></span>
 <span class="nt">fisheye</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
-<span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">160</span><span class="w"></span>
-<span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">120</span><span class="w"></span>
+<span class="nt">image_width</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">640</span><span class="w"></span>
+<span class="nt">image_height</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">480</span><span class="w"></span>
 <span class="nt">vertical_fov</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">45</span><span class="w"></span>
 <span class="c1"># depth</span><span class="w"></span>
 <span class="nt">depth_low</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.8</span><span class="w"></span>
@@ -241,15 +259,16 @@ Most of the code can be found in <a class="reference external" href="https://git
 
 <span class="c1"># visual objects</span><span class="w"></span>
 <span class="nt">visible_target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"></span>
+<span class="nt">visible_path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"></span>
 </pre></div>
 </div>
-<p>Parameters of this config file are explained below:</p>
+<p>In the following, we explain th parameters included in this config:</p>
 <table border="1" class="docutils">
 <thead>
 <tr>
 <th>Attribute</th>
 <th>Example Value</th>
-<th>Expalanation</th>
+<th>Explanation</th>
 </tr>
 </thead>
 <tbody>
@@ -489,9 +508,9 @@ Most of the code can be found in <a class="reference external" href="https://git
 </div>
 <div class="section" id="examples">
 <h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h2>
-<div class="section" id="static-environments">
-<h3>Static Environments<a class="headerlink" href="#static-environments" title="Permalink to this headline"></a></h3>
-<p>In this example, we show how to instantiate <code class="docutils literal notranslate"><span class="pre">iGibsonEnv</span></code> and how to step through the environment. At the beginning of each episode, we need to call <code class="docutils literal notranslate"><span class="pre">env.reset()</span></code>. Then we need to call <code class="docutils literal notranslate"><span class="pre">env.step(action)</span></code> to step through the environment and retrieve <code class="docutils literal notranslate"><span class="pre">(state,</span> <span class="pre">reward,</span> <span class="pre">done,</span> <span class="pre">info)</span></code>.</p>
+<div class="section" id="using-a-static-scene-with-an-igibsonenv">
+<h3>Using a Static Scene with an iGibsonEnv<a class="headerlink" href="#using-a-static-scene-with-an-igibsonenv" title="Permalink to this headline"></a></h3>
+<p>In this example, we show how to instantiate an <code class="docutils literal notranslate"><span class="pre">iGibsonEnv</span></code> with a Gibson static model, and how to step through the environment. At the beginning of each episode, we need to call <code class="docutils literal notranslate"><span class="pre">env.reset()</span></code>. Then we need to call <code class="docutils literal notranslate"><span class="pre">env.step(action)</span></code> to step through the environment and retrieve <code class="docutils literal notranslate"><span class="pre">(state,</span> <span class="pre">reward,</span> <span class="pre">done,</span> <span class="pre">info)</span></code>.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">state</span></code>: a python dictionary of observations, e.g. <code class="docutils literal notranslate"><span class="pre">state['rgb']</span></code> will be a H x W x 3 numpy array that represents the current image</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">reward</span></code>: a scalar that represents the current reward</p></li>
@@ -499,7 +518,6 @@ Most of the code can be found in <a class="reference external" href="https://git
 <li><p><code class="docutils literal notranslate"><span class="pre">info</span></code>: a python dictionary for bookkeeping purpose
 The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/environments/env_nonint_example.py">igibson/examples/environments/env_nonint_example.py</a>.</p></li>
 </ul>
-<p>If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">platform</span>
@@ -512,43 +530,103 @@ The code can be found here: <a class="reference external" href="https://github.c
 <span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">download_assets</span><span class="p">,</span> <span class="n">download_demo_data</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates an iGibson environment from a config file with a turtlebot in Rs (not interactive).</span>
 <span class="sd">    It steps the environment 100 times with random actions sampled from the action space,</span>
 <span class="sd">    using the Gym interface, resetting it 10 times.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
     <span class="c1"># If they have not been downloaded before, download assets and Rs Gibson (non-interactive) models</span>
     <span class="n">download_assets</span><span class="p">()</span>
     <span class="n">download_demo_data</span><span class="p">()</span>
-    <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">)</span>
+    <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">configs_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">)</span>
     <span class="n">config_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">config_filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
     <span class="c1"># Reduce texture scale for Mac.</span>
     <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
         <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;texture_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Resetting environment&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Shadows and PBR do not make much sense for a Gibson static mesh</span>
+    <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;enable_shadow&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;enable_pbr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">)</span>
+    <span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Resetting environment&quot;</span><span class="p">)</span>
         <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
             <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Environment action step&quot;</span><span class="p">):</span>
                 <span class="n">action</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
                 <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
-                    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
                     <span class="k">break</span>
     <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
+<p>(Mac users) If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.</p>
 </div>
-<div class="section" id="interactive-environments">
-<h3>Interactive Environments<a class="headerlink" href="#interactive-environments" title="Permalink to this headline"></a></h3>
-<p>In this example, we show how to instantiate <code class="docutils literal notranslate"><span class="pre">iGibsobEnv</span></code> with a fully interactive scene <code class="docutils literal notranslate"><span class="pre">Rs_int</span></code>. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/env_int_example.py">igibson/examples/environments/env_int_example.py</a>.</p>
+<div class="section" id="using-an-interactive-scene-with-an-igibsonenv">
+<h3>Using an Interactive Scene with an iGibsonEnv<a class="headerlink" href="#using-an-interactive-scene-with-an-igibsonenv" title="Permalink to this headline"></a></h3>
+<p>In this example, we show how to instantiate <code class="docutils literal notranslate"><span class="pre">iGibsonEnv</span></code> with a fully interactive scene <code class="docutils literal notranslate"><span class="pre">Rs_int</span></code>. In this scene, the robot can interact with all the objects in the scene (chairs, tables, couches, etc). The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/env_int_example.py">igibson/examples/environments/env_int_example.py</a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">platform</span>
+
+<span class="kn">import</span> <span class="nn">yaml</span>
+
+<span class="kn">import</span> <span class="nn">igibson</span>
+<span class="kn">from</span> <span class="nn">igibson.envs.igibson_env</span> <span class="kn">import</span> <span class="n">iGibsonEnv</span>
+<span class="kn">from</span> <span class="nn">igibson.render.profiler</span> <span class="kn">import</span> <span class="n">Profiler</span>
+<span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">download_assets</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates an iGibson environment from a config file with a turtlebot in Rs_int (interactive).</span>
+<span class="sd">    It steps the environment 100 times with random actions sampled from the action space,</span>
+<span class="sd">    using the Gym interface, resetting it 10 times.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="c1"># If they have not been downloaded before, download assets</span>
+    <span class="n">download_assets</span><span class="p">()</span>
+    <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">configs_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_nav.yaml&quot;</span><span class="p">)</span>
+    <span class="n">config_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">config_filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
+    <span class="c1"># Reduce texture scale for Mac.</span>
+    <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
+        <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;texture_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
+
+    <span class="c1"># Improving visuals in the example (optional)</span>
+    <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;enable_shadow&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;enable_pbr&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># config_data[&quot;load_object_categories&quot;] = []  # Uncomment this line to accelerate loading with only the building</span>
+    <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">)</span>
+    <span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">10</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Resetting environment&quot;</span><span class="p">)</span>
+        <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
+            <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Environment action step&quot;</span><span class="p">):</span>
+                <span class="n">action</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">action_space</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+                <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">(</span><span class="n">action</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                    <span class="k">break</span>
+    <span class="n">env</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
 </div>
 </div>
 </div>

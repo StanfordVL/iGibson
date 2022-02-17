@@ -1,0 +1,53 @@
+igibson.reward\_functions package
+=================================
+
+Submodules
+----------
+
+igibson.reward\_functions.collision\_reward module
+--------------------------------------------------
+
+.. automodule:: igibson.reward_functions.collision_reward
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.reward\_functions.point\_goal\_reward module
+----------------------------------------------------
+
+.. automodule:: igibson.reward_functions.point_goal_reward
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.reward\_functions.potential\_reward module
+--------------------------------------------------
+
+.. automodule:: igibson.reward_functions.potential_reward
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.reward\_functions.reaching\_goal\_reward module
+-------------------------------------------------------
+
+.. automodule:: igibson.reward_functions.reaching_goal_reward
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.reward\_functions.reward\_function\_base module
+-------------------------------------------------------
+
+.. automodule:: igibson.reward_functions.reward_function_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.reward_functions
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>igibson.external.pybullet_tools package &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="igibson.external.pybullet_tools.ikfast package" href="igibson.external.pybullet_tools.ikfast.html" />
+    <link rel="prev" title="igibson.external.motion.motion_planners package" href="igibson.external.motion.motion_planners.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.6
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">igibson</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="igibson.html">igibson package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.examples.html">igibson.examples package</a></li>
+<li class="toctree-l4 current"><a class="reference internal" href="igibson.external.html">igibson.external package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.learn.html">igibson.learn package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.metrics.html">igibson.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.object_states.html">igibson.object_states package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.objects.html">igibson.objects package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.physics.html">igibson.physics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.render.html">igibson.render package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.reward_functions.html">igibson.reward_functions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html">igibson.robots package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.scenes.html">igibson.scenes package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.sensors.html">igibson.sensors package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.tasks.html">igibson.tasks package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.termination_conditions.html">igibson.termination_conditions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html">igibson.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-module">igibson.simulator module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-vr-module">igibson.simulator_vr module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#module-igibson">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../issues.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">igibson</a> &raquo;</li>
+          <li><a href="igibson.html">igibson package</a> &raquo;</li>
+          <li><a href="igibson.external.html">igibson.external package</a> &raquo;</li>
+      <li>igibson.external.pybullet_tools package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/apidoc/igibson.external.pybullet_tools.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="igibson-external-pybullet-tools-package">
+<h1>igibson.external.pybullet_tools package<a class="headerlink" href="#igibson-external-pybullet-tools-package" title="Permalink to this headline"></a></h1>
+<div class="section" id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this headline"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.html">igibson.external.pybullet_tools.ikfast package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.franka_panda.html">igibson.external.pybullet_tools.ikfast.franka_panda package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.franka_panda.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.franka_panda.html#igibson-external-pybullet-tools-ikfast-franka-panda-ik-module">igibson.external.pybullet_tools.ikfast.franka_panda.ik module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.franka_panda.html#module-igibson.external.pybullet_tools.ikfast.franka_panda.setup">igibson.external.pybullet_tools.ikfast.franka_panda.setup module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.franka_panda.html#module-igibson.external.pybullet_tools.ikfast.franka_panda">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.pr2.html">igibson.external.pybullet_tools.ikfast.pr2 package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.pr2.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.pr2.html#igibson-external-pybullet-tools-ikfast-pr2-ik-module">igibson.external.pybullet_tools.ikfast.pr2.ik module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.pr2.html#igibson-external-pybullet-tools-ikfast-pr2-setup-module">igibson.external.pybullet_tools.ikfast.pr2.setup module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.pr2.html#module-igibson.external.pybullet_tools.ikfast.pr2">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.html#igibson-external-pybullet-tools-ikfast-utils-module">igibson.external.pybullet_tools.ikfast.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="igibson.external.pybullet_tools.ikfast.html#module-igibson.external.pybullet_tools.ikfast">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-kuka-primitives-module">
+<h2>igibson.external.pybullet_tools.kuka_primitives module<a class="headerlink" href="#igibson-external-pybullet-tools-kuka-primitives-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-parse-json-module">
+<h2>igibson.external.pybullet_tools.parse_json module<a class="headerlink" href="#igibson-external-pybullet-tools-parse-json-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.external.pybullet_tools.pr2_never_collisions">
+<span id="igibson-external-pybullet-tools-pr2-never-collisions-module"></span><h2>igibson.external.pybullet_tools.pr2_never_collisions module<a class="headerlink" href="#module-igibson.external.pybullet_tools.pr2_never_collisions" title="Permalink to this headline"></a></h2>
+<p>Developed by Caelen Garrett in pybullet-planning repository (<a class="reference external" href="https://github.com/caelan/pybullet-planning">https://github.com/caelan/pybullet-planning</a>)
+and adapted by iGibson team.</p>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-pr2-primitives-module">
+<h2>igibson.external.pybullet_tools.pr2_primitives module<a class="headerlink" href="#igibson-external-pybullet-tools-pr2-primitives-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-pr2-problems-module">
+<h2>igibson.external.pybullet_tools.pr2_problems module<a class="headerlink" href="#igibson-external-pybullet-tools-pr2-problems-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-pr2-utils-module">
+<h2>igibson.external.pybullet_tools.pr2_utils module<a class="headerlink" href="#igibson-external-pybullet-tools-pr2-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.external.pybullet_tools.transformations">
+<span id="igibson-external-pybullet-tools-transformations-module"></span><h2>igibson.external.pybullet_tools.transformations module<a class="headerlink" href="#module-igibson.external.pybullet_tools.transformations" title="Permalink to this headline"></a></h2>
+<p>Homogeneous Transformation Matrices and Quaternions.
+A library for calculating 4x4 matrices for translating, rotating, reflecting,
+scaling, shearing, projecting, orthogonalizing, and superimposing arrays of
+3D homogeneous coordinates as well as for converting between rotation matrices,
+Euler angles, and quaternions. Also includes an Arcball control object and
+functions to decompose transformation matrices.
+:Authors:</p>
+<blockquote>
+<div><p><a class="reference external" href="http://www.lfd.uci.edu/~gohlke/">Christoph Gohlke</a>,
+Laboratory for Fluorescence Dynamics, University of California, Irvine</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Version</dt>
+<dd class="field-odd"><p>20090418</p>
+</dd>
+</dl>
+<div class="section" id="requirements">
+<h3>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline"></a></h3>
+<ul class="simple">
+<li><p><a class="reference external" href="http://www.python.org">Python 2.6</a></p></li>
+<li><p><a class="reference external" href="http://numpy.scipy.org">Numpy 1.3</a></p></li>
+<li><p><a class="reference external" href="http://www.lfd.uci.edu/~gohlke/">transformations.c 20090418</a>
+(optional implementation of some functions in C)</p></li>
+</ul>
+</div>
+<div class="section" id="notes">
+<h3>Notes<a class="headerlink" href="#notes" title="Permalink to this headline"></a></h3>
+<p>Matrices (M) can be inverted using numpy.linalg.inv(M), concatenated using
+numpy.dot(M0, M1), or used to transform homogeneous coordinates (v) using
+numpy.dot(M, v) for shape (4, *) “point of arrays”, respectively
+numpy.dot(v, M.T) for shape (*, 4) “array of points”.
+Calculations are carried out with numpy.float64 precision.
+This Python implementation is not optimized for speed.
+Vector, point, quaternion, and matrix function arguments are expected to be
+“array like”, i.e. tuple, list, or numpy arrays.
+Return types are numpy arrays unless specified otherwise.
+Angles are in radians unless specified otherwise.
+Quaternions ix+jy+kz+w are represented as [x, y, z, w].
+Use the transpose of transformation matrices for OpenGL glMultMatrixd().
+A triple of Euler angles can be applied/interpreted in 24 ways, which can
+be specified using a 4 character string or encoded 4-tuple:</p>
+<blockquote>
+<div><p><em>Axes 4-string</em>: e.g. ‘sxyz’ or ‘ryxy’
+- first character : rotations are applied to ‘s’tatic or ‘r’otating frame
+- remaining characters : successive rotation axis ‘x’, ‘y’, or ‘z’
+<em>Axes 4-tuple</em>: e.g. (0, 0, 0, 0) or (1, 1, 1, 1)
+- inner axis: code of axis (‘x’:0, ‘y’:1, ‘z’:2) of rightmost matrix.
+- parity : even (0) if inner axis ‘x’ is followed by ‘y’, ‘y’ is followed</p>
+<blockquote>
+<div><p>by ‘z’, or ‘z’ is followed by ‘x’. Otherwise odd (1).</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>repetition : first and last axis are same (1) or different (0).</p></li>
+<li><p>frame : rotations are applied to static (0) or rotating (1) frame.</p></li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="references">
+<h3>References<a class="headerlink" href="#references" title="Permalink to this headline"></a></h3>
+<ol class="arabic simple">
+<li><p>Matrices and transformations. Ronald Goldman.
+In “Graphics Gems I”, pp 472-475. Morgan Kaufmann, 1990.</p></li>
+<li><p>More matrices and transformations: shear and pseudo-perspective.
+Ronald Goldman. In “Graphics Gems II”, pp 320-323. Morgan Kaufmann, 1991.</p></li>
+<li><p>Decomposing a matrix into simple transformations. Spencer Thomas.
+In “Graphics Gems II”, pp 320-323. Morgan Kaufmann, 1991.</p></li>
+<li><p>Recovering the data from the transformation matrix. Ronald Goldman.
+In “Graphics Gems II”, pp 324-331. Morgan Kaufmann, 1991.</p></li>
+<li><p>Euler angle conversion. Ken Shoemake.
+In “Graphics Gems IV”, pp 222-229. Morgan Kaufmann, 1994.</p></li>
+<li><p>Arcball rotation control. Ken Shoemake.
+In “Graphics Gems IV”, pp 175-192. Morgan Kaufmann, 1994.</p></li>
+<li><p>Representing attitude: Euler angles, unit quaternions, and rotation
+vectors. James Diebel. 2006.</p></li>
+<li><p>A discussion of the solution for the best rotation to relate two sets
+of vectors. W Kabsch. Acta Cryst. 1978. A34, 827-828.</p></li>
+<li><p>Closed-form solution of absolute orientation using unit quaternions.
+BKP Horn. J Opt Soc Am A. 1987. 4(4), 629-642.</p></li>
+<li><p>Quaternions. Ken Shoemake.
+<a class="reference external" href="http://www.sfu.ca/~jwa3/cmpt461/files/quatut.pdf">http://www.sfu.ca/~jwa3/cmpt461/files/quatut.pdf</a></p></li>
+<li><p>From quaternion to matrix and back. JMP van Waveren. 2005.
+<a class="reference external" href="http://www.intel.com/cd/ids/developer/asmo-na/eng/293748.htm">http://www.intel.com/cd/ids/developer/asmo-na/eng/293748.htm</a></p></li>
+<li><p>Uniform random rotations. Ken Shoemake.
+In “Graphics Gems III”, pp 124-132. Morgan Kaufmann, 1992.</p></li>
+</ol>
+</div>
+<div class="section" id="examples">
+<h3>Examples<a class="headerlink" href="#examples" title="Permalink to this headline"></a></h3>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span> <span class="o">=</span> <span class="mf">0.123</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.234</span><span class="p">,</span> <span class="mf">2.345</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">origin</span><span class="p">,</span> <span class="n">xaxis</span><span class="p">,</span> <span class="n">yaxis</span><span class="p">,</span> <span class="n">zaxis</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">I</span> <span class="o">=</span> <span class="n">identity_matrix</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Rx</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">xaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Ry</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="n">yaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Rz</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">gamma</span><span class="p">,</span> <span class="n">zaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">R</span> <span class="o">=</span> <span class="n">concatenate_matrices</span><span class="p">(</span><span class="n">Rx</span><span class="p">,</span> <span class="n">Ry</span><span class="p">,</span> <span class="n">Rz</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">euler</span> <span class="o">=</span> <span class="n">euler_from_matrix</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s1">&#39;rxyz&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">([</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span><span class="p">],</span> <span class="n">euler</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Re</span> <span class="o">=</span> <span class="n">euler_matrix</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="n">gamma</span><span class="p">,</span> <span class="s1">&#39;rxyz&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Re</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">al</span><span class="p">,</span> <span class="n">be</span><span class="p">,</span> <span class="n">ga</span> <span class="o">=</span> <span class="n">euler_from_matrix</span><span class="p">(</span><span class="n">Re</span><span class="p">,</span> <span class="s1">&#39;rxyz&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">Re</span><span class="p">,</span> <span class="n">euler_matrix</span><span class="p">(</span><span class="n">al</span><span class="p">,</span> <span class="n">be</span><span class="p">,</span> <span class="n">ga</span><span class="p">,</span> <span class="s1">&#39;rxyz&#39;</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qx</span> <span class="o">=</span> <span class="n">quaternion_about_axis</span><span class="p">(</span><span class="n">alpha</span><span class="p">,</span> <span class="n">xaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qy</span> <span class="o">=</span> <span class="n">quaternion_about_axis</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="n">yaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">qz</span> <span class="o">=</span> <span class="n">quaternion_about_axis</span><span class="p">(</span><span class="n">gamma</span><span class="p">,</span> <span class="n">zaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">quaternion_multiply</span><span class="p">(</span><span class="n">qx</span><span class="p">,</span> <span class="n">qy</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">quaternion_multiply</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">qz</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Rq</span> <span class="o">=</span> <span class="n">quaternion_matrix</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">Rq</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">S</span> <span class="o">=</span> <span class="n">scale_matrix</span><span class="p">(</span><span class="mf">1.23</span><span class="p">,</span> <span class="n">origin</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">T</span> <span class="o">=</span> <span class="n">translation_matrix</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">Z</span> <span class="o">=</span> <span class="n">shear_matrix</span><span class="p">(</span><span class="n">beta</span><span class="p">,</span> <span class="n">xaxis</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">zaxis</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">R</span> <span class="o">=</span> <span class="n">random_rotation_matrix</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M</span> <span class="o">=</span> <span class="n">concatenate_matrices</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">R</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">S</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">scale</span><span class="p">,</span> <span class="n">shear</span><span class="p">,</span> <span class="n">angles</span><span class="p">,</span> <span class="n">trans</span><span class="p">,</span> <span class="n">persp</span> <span class="o">=</span> <span class="n">decompose_matrix</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="mf">1.23</span><span class="p">)</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">trans</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">shear</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">tan</span><span class="p">(</span><span class="n">beta</span><span class="p">),</span> <span class="mi">0</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">euler_matrix</span><span class="p">(</span><span class="n">axes</span><span class="o">=</span><span class="s1">&#39;sxyz&#39;</span><span class="p">,</span> <span class="o">*</span><span class="n">angles</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M1</span> <span class="o">=</span> <span class="n">compose_matrix</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">shear</span><span class="p">,</span> <span class="n">angles</span><span class="p">,</span> <span class="n">trans</span><span class="p">,</span> <span class="n">persp</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">M1</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<dl class="py class">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">Arcball</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">initial</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Virtual Trackball Control.
+&gt;&gt;&gt; ball = Arcball()
+&gt;&gt;&gt; ball = Arcball(initial=numpy.identity(4))
+&gt;&gt;&gt; ball.place([320, 320], 320)
+&gt;&gt;&gt; ball.down([500, 250])
+&gt;&gt;&gt; ball.drag([475, 275])
+&gt;&gt;&gt; R = ball.matrix()
+&gt;&gt;&gt; numpy.allclose(numpy.sum(R), 3.90583455)
+True
+&gt;&gt;&gt; ball = Arcball(initial=[0, 0, 0, 1])
+&gt;&gt;&gt; ball.place([320, 320], 320)
+&gt;&gt;&gt; ball.setaxes([1,1,0], [-1, 1, 0])
+&gt;&gt;&gt; ball.setconstrain(True)
+&gt;&gt;&gt; ball.down([400, 200])
+&gt;&gt;&gt; ball.drag([200, 400])
+&gt;&gt;&gt; R = ball.matrix()
+&gt;&gt;&gt; numpy.allclose(numpy.sum(R), 0.2055924)
+True
+&gt;&gt;&gt; ball.next()</p>
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.down">
+<code class="sig-name descname"><span class="pre">down</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.down" title="Permalink to this definition"></a></dt>
+<dd><p>Set initial cursor window coordinates and pick constrain-axis.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.drag">
+<code class="sig-name descname"><span class="pre">drag</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.drag" title="Permalink to this definition"></a></dt>
+<dd><p>Update current cursor window coordinates.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.getconstrain">
+<code class="sig-name descname"><span class="pre">getconstrain</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.getconstrain" title="Permalink to this definition"></a></dt>
+<dd><p>Return state of constrain to axis mode.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.matrix">
+<code class="sig-name descname"><span class="pre">matrix</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return homogeneous rotation matrix.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.next">
+<code class="sig-name descname"><span class="pre">next</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">acceleration</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.next" title="Permalink to this definition"></a></dt>
+<dd><p>Continue rotation in direction of last drag.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.place">
+<code class="sig-name descname"><span class="pre">place</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.place" title="Permalink to this definition"></a></dt>
+<dd><p>Place Arcball, e.g. when window size changes.
+center : sequence[2]</p>
+<blockquote>
+<div><p>Window coordinates of trackball center.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>radius<span class="classifier">float</span></dt><dd><p>Radius of trackball in window coordinates.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.setaxes">
+<code class="sig-name descname"><span class="pre">setaxes</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">axes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.setaxes" title="Permalink to this definition"></a></dt>
+<dd><p>Set axes to constrain rotations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.external.pybullet_tools.transformations.Arcball.setconstrain">
+<code class="sig-name descname"><span class="pre">setconstrain</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constrain</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.Arcball.setconstrain" title="Permalink to this definition"></a></dt>
+<dd><p>Set state of constrain to axis mode.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.arcball_constrain_to_axis">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">arcball_constrain_to_axis</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.arcball_constrain_to_axis" title="Permalink to this definition"></a></dt>
+<dd><p>Return sphere point perpendicular to axis.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.arcball_map_to_sphere">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">arcball_map_to_sphere</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.arcball_map_to_sphere" title="Permalink to this definition"></a></dt>
+<dd><p>Return unit sphere coordinates from window coordinates.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.arcball_nearest_axis">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">arcball_nearest_axis</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.arcball_nearest_axis" title="Permalink to this definition"></a></dt>
+<dd><p>Return axis, which arc is nearest to point.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.clip_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">clip_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">left</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">right</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bottom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">near</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">far</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perspective</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.clip_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to obtain normalized device coordinates from frustrum.
+The frustrum bounds are axis-aligned along x (left, right),
+y (bottom, top) and z (near, far).
+Normalized device coordinates are in range [-1, 1] if coordinates are
+inside the frustrum.
+If perspective is True the frustrum is a truncated pyramid with the
+perspective point at origin and direction along z axis, otherwise an
+orthographic canonical view volume (a box).
+Homogeneous coordinates transformed by the perspective clip matrix
+need to be dehomogenized (devided by w coordinate).
+&gt;&gt;&gt; frustrum = numpy.random.rand(6)
+&gt;&gt;&gt; frustrum[1] += frustrum[0]
+&gt;&gt;&gt; frustrum[3] += frustrum[2]
+&gt;&gt;&gt; frustrum[5] += frustrum[4]
+&gt;&gt;&gt; M = clip_matrix(<a href="#id1"><span class="problematic" id="id2">*</span></a>frustrum, perspective=False)
+&gt;&gt;&gt; numpy.dot(M, [frustrum[0], frustrum[2], frustrum[4], 1.0])
+array([-1., -1., -1.,  1.])
+&gt;&gt;&gt; numpy.dot(M, [frustrum[1], frustrum[3], frustrum[5], 1.0])
+array([ 1.,  1.,  1.,  1.])
+&gt;&gt;&gt; M = clip_matrix(<a href="#id3"><span class="problematic" id="id4">*</span></a>frustrum, perspective=True)
+&gt;&gt;&gt; v = numpy.dot(M, [frustrum[0], frustrum[2], frustrum[4], 1.0])
+&gt;&gt;&gt; v / v[3]
+array([-1., -1., -1.,  1.])
+&gt;&gt;&gt; v = numpy.dot(M, [frustrum[1], frustrum[3], frustrum[4], 1.0])
+&gt;&gt;&gt; v / v[3]
+array([ 1.,  1., -1.,  1.])</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.compose_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">compose_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shear</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">translate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perspective</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.compose_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return transformation matrix from sequence of transformations.
+This is the inverse of the decompose_matrix function.
+Sequence of transformations:</p>
+<blockquote>
+<div><p>scale : vector of 3 scaling factors
+shear : list of shear factors for x-y, x-z, y-z axes
+angles : list of Euler angles about static x, y, z axes
+translate : translation vector along x, y, z axes
+perspective : perspective partition of matrix</p>
+</div></blockquote>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">scale</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">shear</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">angles</span> <span class="o">=</span> <span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">trans</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">persp</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M0</span> <span class="o">=</span> <span class="n">compose_matrix</span><span class="p">(</span><span class="n">scale</span><span class="p">,</span> <span class="n">shear</span><span class="p">,</span> <span class="n">angles</span><span class="p">,</span> <span class="n">trans</span><span class="p">,</span> <span class="n">persp</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">result</span> <span class="o">=</span> <span class="n">decompose_matrix</span><span class="p">(</span><span class="n">M0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">M1</span> <span class="o">=</span> <span class="n">compose_matrix</span><span class="p">(</span><span class="o">*</span><span class="n">result</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">M0</span><span class="p">,</span> <span class="n">M1</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.concatenate_matrices">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">concatenate_matrices</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">matrices</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.concatenate_matrices" title="Permalink to this definition"></a></dt>
+<dd><p>Return concatenation of series of transformation matrices.
+&gt;&gt;&gt; M = numpy.random.rand(16).reshape((4, 4)) - 0.5
+&gt;&gt;&gt; numpy.allclose(M, concatenate_matrices(M))
+True
+&gt;&gt;&gt; numpy.allclose(numpy.dot(M, M.T), concatenate_matrices(M, M.T))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.decompose_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">decompose_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.decompose_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return sequence of transformations from transformation matrix.
+matrix : array_like</p>
+<blockquote>
+<div><p>Non-degenerative homogeneous transformation matrix</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Return tuple of:</dt><dd><p>scale : vector of 3 scaling factors
+shear : list of shear factors for x-y, x-z, y-z axes
+angles : list of Euler angles about static x, y, z axes
+translate : translation vector along x, y, z axes
+perspective : perspective partition of matrix</p>
+</dd>
+</dl>
+<p>Raise ValueError if matrix is of wrong type or degenerative.
+&gt;&gt;&gt; T0 = translation_matrix((1, 2, 3))
+&gt;&gt;&gt; scale, shear, angles, trans, persp = decompose_matrix(T0)
+&gt;&gt;&gt; T1 = translation_matrix(trans)
+&gt;&gt;&gt; numpy.allclose(T0, T1)
+True
+&gt;&gt;&gt; S = scale_matrix(0.123)
+&gt;&gt;&gt; scale, shear, angles, trans, persp = decompose_matrix(S)
+&gt;&gt;&gt; scale[0]
+0.123
+&gt;&gt;&gt; R0 = euler_matrix(1, 2, 3)
+&gt;&gt;&gt; scale, shear, angles, trans, persp = decompose_matrix(R0)
+&gt;&gt;&gt; R1 = euler_matrix(<a href="#id5"><span class="problematic" id="id6">*</span></a>angles)
+&gt;&gt;&gt; numpy.allclose(R0, R1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.euler_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">euler_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sxyz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.euler_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return Euler angles from rotation matrix for specified axis sequence.
+axes : One of 24 axis sequences as string or encoded tuple
+Note that many Euler angle triplets can describe one matrix.
+&gt;&gt;&gt; R0 = euler_matrix(1, 2, 3, ‘syxz’)
+&gt;&gt;&gt; al, be, ga = euler_from_matrix(R0, ‘syxz’)
+&gt;&gt;&gt; R1 = euler_matrix(al, be, ga, ‘syxz’)
+&gt;&gt;&gt; numpy.allclose(R0, R1)
+True
+&gt;&gt;&gt; angles = (4.0*math.pi) * (numpy.random.random(3) - 0.5)
+&gt;&gt;&gt; for axes in _AXES2TUPLE.keys():
+…    R0 = euler_matrix(axes=axes, <a href="#id7"><span class="problematic" id="id8">*</span></a>angles)
+…    R1 = euler_matrix(axes=axes, <a href="#id9"><span class="problematic" id="id10">*</span></a>euler_from_matrix(R0, axes))
+…    if not numpy.allclose(R0, R1): print axes, “failed”</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.euler_from_quaternion">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">euler_from_quaternion</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sxyz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.euler_from_quaternion" title="Permalink to this definition"></a></dt>
+<dd><p>Return Euler angles from quaternion for specified axis sequence.
+&gt;&gt;&gt; angles = euler_from_quaternion([0.06146124, 0, 0, 0.99810947])
+&gt;&gt;&gt; numpy.allclose(angles, [0.123, 0, 0])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.euler_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">euler_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ai</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ak</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sxyz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.euler_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return homogeneous rotation matrix from Euler angles and axis sequence.
+ai, aj, ak : Euler’s roll, pitch and yaw angles
+axes : One of 24 axis sequences as string or encoded tuple
+&gt;&gt;&gt; R = euler_matrix(1, 2, 3, ‘syxz’)
+&gt;&gt;&gt; numpy.allclose(numpy.sum(R[0]), -1.34786452)
+True
+&gt;&gt;&gt; R = euler_matrix(1, 2, 3, (0, 1, 0, 1))
+&gt;&gt;&gt; numpy.allclose(numpy.sum(R[0]), -0.383436184)
+True
+&gt;&gt;&gt; ai, aj, ak = (4.0*math.pi) * (numpy.random.random(3) - 0.5)
+&gt;&gt;&gt; for axes in _AXES2TUPLE.keys():
+…    R = euler_matrix(ai, aj, ak, axes)
+&gt;&gt;&gt; for axes in _TUPLE2AXES.keys():
+…    R = euler_matrix(ai, aj, ak, axes)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.identity_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">identity_matrix</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.identity_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return 4x4 identity/unit matrix.
+&gt;&gt;&gt; I = identity_matrix()
+&gt;&gt;&gt; numpy.allclose(I, numpy.dot(I, I))
+True
+&gt;&gt;&gt; numpy.sum(I), numpy.trace(I)
+(4.0, 4.0)
+&gt;&gt;&gt; numpy.allclose(I, numpy.identity(4, dtype=numpy.float64))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.inverse_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">inverse_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.inverse_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return inverse of square transformation matrix.
+&gt;&gt;&gt; M0 = random_rotation_matrix()
+&gt;&gt;&gt; M1 = inverse_matrix(M0.T)
+&gt;&gt;&gt; numpy.allclose(M1, numpy.linalg.inv(M0.T))
+True
+&gt;&gt;&gt; for size in range(1, 7):
+…     M0 = numpy.random.rand(size, size)
+…     M1 = inverse_matrix(M0)
+…     if not numpy.allclose(M1, numpy.linalg.inv(M0)): print size</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.is_same_transform">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">is_same_transform</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matrix1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.is_same_transform" title="Permalink to this definition"></a></dt>
+<dd><p>Return True if two matrices perform same transformation.
+&gt;&gt;&gt; is_same_transform(numpy.identity(4), numpy.identity(4))
+True
+&gt;&gt;&gt; is_same_transform(numpy.identity(4), random_rotation_matrix())
+False</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.orthogonalization_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">orthogonalization_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lengths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">angles</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.orthogonalization_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return orthogonalization matrix for crystallographic cell coordinates.
+Angles are expected in degrees.
+The de-orthogonalization matrix is the inverse.
+&gt;&gt;&gt; O = orthogonalization_matrix((10., 10., 10.), (90., 90., 90.))
+&gt;&gt;&gt; numpy.allclose(O[:3, :3], numpy.identity(3, float) * 10)
+True
+&gt;&gt;&gt; O = orthogonalization_matrix([9.8, 12.0, 15.5], [87.2, 80.7, 69.7])
+&gt;&gt;&gt; numpy.allclose(numpy.sum(O), 43.063229)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.projection_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">projection_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pseudo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.projection_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return projection plane and perspective point from projection matrix.
+Return values are same as arguments for projection_matrix function:
+point, normal, direction, perspective, and pseudo.
+&gt;&gt;&gt; point = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; normal = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; direct = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; persp = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; P0 = projection_matrix(point, normal)
+&gt;&gt;&gt; result = projection_from_matrix(P0)
+&gt;&gt;&gt; P1 = projection_matrix(<a href="#id11"><span class="problematic" id="id12">*</span></a>result)
+&gt;&gt;&gt; is_same_transform(P0, P1)
+True
+&gt;&gt;&gt; P0 = projection_matrix(point, normal, direct)
+&gt;&gt;&gt; result = projection_from_matrix(P0)
+&gt;&gt;&gt; P1 = projection_matrix(<a href="#id13"><span class="problematic" id="id14">*</span></a>result)
+&gt;&gt;&gt; is_same_transform(P0, P1)
+True
+&gt;&gt;&gt; P0 = projection_matrix(point, normal, perspective=persp, pseudo=False)
+&gt;&gt;&gt; result = projection_from_matrix(P0, pseudo=False)
+&gt;&gt;&gt; P1 = projection_matrix(<a href="#id15"><span class="problematic" id="id16">*</span></a>result)
+&gt;&gt;&gt; is_same_transform(P0, P1)
+True
+&gt;&gt;&gt; P0 = projection_matrix(point, normal, perspective=persp, pseudo=True)
+&gt;&gt;&gt; result = projection_from_matrix(P0, pseudo=True)
+&gt;&gt;&gt; P1 = projection_matrix(<a href="#id17"><span class="problematic" id="id18">*</span></a>result)
+&gt;&gt;&gt; is_same_transform(P0, P1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.projection_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">projection_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">perspective</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pseudo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.projection_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to project onto plane defined by point and normal.
+Using either perspective point, projection direction, or none of both.
+If pseudo is True, perspective projections will preserve relative depth
+such that Perspective = dot(Orthogonal, PseudoPerspective).
+&gt;&gt;&gt; P = projection_matrix((0, 0, 0), (1, 0, 0))
+&gt;&gt;&gt; numpy.allclose(P[1:, 1:], numpy.identity(4)[1:, 1:])
+True
+&gt;&gt;&gt; point = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; normal = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; direct = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; persp = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; P0 = projection_matrix(point, normal)
+&gt;&gt;&gt; P1 = projection_matrix(point, normal, direction=direct)
+&gt;&gt;&gt; P2 = projection_matrix(point, normal, perspective=persp)
+&gt;&gt;&gt; P3 = projection_matrix(point, normal, perspective=persp, pseudo=True)
+&gt;&gt;&gt; is_same_transform(P2, numpy.dot(P0, P3))
+True
+&gt;&gt;&gt; P = projection_matrix((3, 0, 0), (1, 1, 0), (1, 0, 0))
+&gt;&gt;&gt; v0 = (numpy.random.rand(4, 5) - 0.5) * 20.0
+&gt;&gt;&gt; v0[3] = 1.0
+&gt;&gt;&gt; v1 = numpy.dot(P, v0)
+&gt;&gt;&gt; numpy.allclose(v1[1], v0[1])
+True
+&gt;&gt;&gt; numpy.allclose(v1[0], 3.0-v1[1])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_about_axis">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_about_axis</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_about_axis" title="Permalink to this definition"></a></dt>
+<dd><p>Return quaternion for rotation about axis.
+&gt;&gt;&gt; q = quaternion_about_axis(0.123, (1, 0, 0))
+&gt;&gt;&gt; numpy.allclose(q, [0.06146124, 0, 0, 0.99810947])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_conjugate">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_conjugate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_conjugate" title="Permalink to this definition"></a></dt>
+<dd><p>Return conjugate of quaternion.
+&gt;&gt;&gt; q0 = random_quaternion()
+&gt;&gt;&gt; q1 = quaternion_conjugate(q0)
+&gt;&gt;&gt; q1[3] == q0[3] and all(q1[:3] == -q0[:3])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_from_euler">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_from_euler</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ai</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">aj</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ak</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sxyz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_from_euler" title="Permalink to this definition"></a></dt>
+<dd><p>Return quaternion from Euler angles and axis sequence.
+ai, aj, ak : Euler’s roll, pitch and yaw angles
+axes : One of 24 axis sequences as string or encoded tuple
+&gt;&gt;&gt; q = quaternion_from_euler(1, 2, 3, ‘ryxz’)
+&gt;&gt;&gt; numpy.allclose(q, [0.310622, -0.718287, 0.444435, 0.435953])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return quaternion from rotation matrix.
+&gt;&gt;&gt; R = rotation_matrix(0.123, (1, 2, 3))
+&gt;&gt;&gt; q = quaternion_from_matrix(R)
+&gt;&gt;&gt; numpy.allclose(q, [0.0164262, 0.0328524, 0.0492786, 0.9981095])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_inverse">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_inverse</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_inverse" title="Permalink to this definition"></a></dt>
+<dd><p>Return inverse of quaternion.
+&gt;&gt;&gt; q0 = random_quaternion()
+&gt;&gt;&gt; q1 = quaternion_inverse(q0)
+&gt;&gt;&gt; numpy.allclose(quaternion_multiply(q0, q1), [0, 0, 0, 1])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return homogeneous rotation matrix from quaternion.
+&gt;&gt;&gt; R = quaternion_matrix([0.06146124, 0, 0, 0.99810947])
+&gt;&gt;&gt; numpy.allclose(R, rotation_matrix(0.123, (1, 0, 0)))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_multiply">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_multiply</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quaternion0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_multiply" title="Permalink to this definition"></a></dt>
+<dd><p>Return multiplication of two quaternions.
+&gt;&gt;&gt; q = quaternion_multiply([1, -2, 3, 4], [-5, 6, 7, 8])
+&gt;&gt;&gt; numpy.allclose(q, [-44, -14, 48, 28])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.quaternion_slerp">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">quaternion_slerp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quat0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quat1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fraction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shortestpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.quaternion_slerp" title="Permalink to this definition"></a></dt>
+<dd><p>Return spherical linear interpolation between two quaternions.
+&gt;&gt;&gt; q0 = random_quaternion()
+&gt;&gt;&gt; q1 = random_quaternion()
+&gt;&gt;&gt; q = quaternion_slerp(q0, q1, 0.0)
+&gt;&gt;&gt; numpy.allclose(q, q0)
+True
+&gt;&gt;&gt; q = quaternion_slerp(q0, q1, 1.0, 1)
+&gt;&gt;&gt; numpy.allclose(q, q1)
+True
+&gt;&gt;&gt; q = quaternion_slerp(q0, q1, 0.5)
+&gt;&gt;&gt; angle = math.acos(numpy.dot(q0, q))
+&gt;&gt;&gt; numpy.allclose(2.0, math.acos(numpy.dot(q0, q1)) / angle) or         numpy.allclose(2.0, math.acos(-numpy.dot(q0, q1)) / angle)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.random_quaternion">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">random_quaternion</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rand</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.random_quaternion" title="Permalink to this definition"></a></dt>
+<dd><p>Return uniform random unit quaternion.
+rand: array like or None</p>
+<blockquote>
+<div><p>Three independent random variables that are uniformly distributed
+between 0 and 1.</p>
+</div></blockquote>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">random_quaternion</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">vector_norm</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">random_quaternion</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">q</span><span class="o">.</span><span class="n">shape</span>
+<span class="go">(4,)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.random_rotation_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">random_rotation_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rand</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.random_rotation_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return uniform random rotation matrix.
+rnd: array like</p>
+<blockquote>
+<div><p>Three independent random variables that are uniformly distributed
+between 0 and 1 for each returned quaternion.</p>
+</div></blockquote>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">R</span> <span class="o">=</span> <span class="n">random_rotation_matrix</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">R</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">R</span><span class="p">),</span> <span class="n">numpy</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.random_vector">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">random_vector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.random_vector" title="Permalink to this definition"></a></dt>
+<dd><p>Return array of random doubles in the half-open interval [0.0, 1.0).
+&gt;&gt;&gt; v = random_vector(10000)
+&gt;&gt;&gt; numpy.all(v &gt;= 0.0) and numpy.all(v &lt; 1.0)
+True
+&gt;&gt;&gt; v0 = random_vector(10)
+&gt;&gt;&gt; v1 = random_vector(10)
+&gt;&gt;&gt; numpy.any(v0 == v1)
+False</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.reflection_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">reflection_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.reflection_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return mirror plane point and normal vector from reflection matrix.
+&gt;&gt;&gt; v0 = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; v1 = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; M0 = reflection_matrix(v0, v1)
+&gt;&gt;&gt; point, normal = reflection_from_matrix(M0)
+&gt;&gt;&gt; M1 = reflection_matrix(point, normal)
+&gt;&gt;&gt; is_same_transform(M0, M1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.reflection_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">reflection_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normal</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.reflection_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to mirror at plane defined by point and normal vector.
+&gt;&gt;&gt; v0 = numpy.random.random(4) - 0.5
+&gt;&gt;&gt; v0[3] = 1.0
+&gt;&gt;&gt; v1 = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; R = reflection_matrix(v0, v1)
+&gt;&gt;&gt; numpy.allclose(2., numpy.trace(R))
+True
+&gt;&gt;&gt; numpy.allclose(v0, numpy.dot(R, v0))
+True
+&gt;&gt;&gt; v2 = v0.copy()
+&gt;&gt;&gt; v2[:3] += v1
+&gt;&gt;&gt; v3 = v0.copy()
+&gt;&gt;&gt; v2[:3] -= v1
+&gt;&gt;&gt; numpy.allclose(v2, numpy.dot(R, v3))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.rotation_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">rotation_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.rotation_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return rotation angle and axis from rotation matrix.
+&gt;&gt;&gt; angle = (random.random() - 0.5) * (2*math.pi)
+&gt;&gt;&gt; direc = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; point = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; R0 = rotation_matrix(angle, direc, point)
+&gt;&gt;&gt; angle, direc, point = rotation_from_matrix(R0)
+&gt;&gt;&gt; R1 = rotation_matrix(angle, direc, point)
+&gt;&gt;&gt; is_same_transform(R0, R1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.rotation_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">rotation_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.rotation_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to rotate about axis defined by point and direction.
+&gt;&gt;&gt; angle = (random.random() - 0.5) * (2*math.pi)
+&gt;&gt;&gt; direc = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; point = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; R0 = rotation_matrix(angle, direc, point)
+&gt;&gt;&gt; R1 = rotation_matrix(angle-2*math.pi, direc, point)
+&gt;&gt;&gt; is_same_transform(R0, R1)
+True
+&gt;&gt;&gt; R0 = rotation_matrix(angle, direc, point)
+&gt;&gt;&gt; R1 = rotation_matrix(-angle, -direc, point)
+&gt;&gt;&gt; is_same_transform(R0, R1)
+True
+&gt;&gt;&gt; I = numpy.identity(4, numpy.float64)
+&gt;&gt;&gt; numpy.allclose(I, rotation_matrix(math.pi*2, direc))
+True
+&gt;&gt;&gt; numpy.allclose(2., numpy.trace(rotation_matrix(math.pi/2,
+…                                                direc, point)))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.scale_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">scale_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.scale_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return scaling factor, origin and direction from scaling matrix.
+&gt;&gt;&gt; factor = random.random() * 10 - 5
+&gt;&gt;&gt; origin = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; direct = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; S0 = scale_matrix(factor, origin)
+&gt;&gt;&gt; factor, origin, direction = scale_from_matrix(S0)
+&gt;&gt;&gt; S1 = scale_matrix(factor, origin, direction)
+&gt;&gt;&gt; is_same_transform(S0, S1)
+True
+&gt;&gt;&gt; S0 = scale_matrix(factor, origin, direct)
+&gt;&gt;&gt; factor, origin, direction = scale_from_matrix(S0)
+&gt;&gt;&gt; S1 = scale_matrix(factor, origin, direction)
+&gt;&gt;&gt; is_same_transform(S0, S1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.scale_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">scale_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">factor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.scale_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to scale by factor around origin in direction.
+Use factor -1 for point symmetry.
+&gt;&gt;&gt; v = (numpy.random.rand(4, 5) - 0.5) * 20.0
+&gt;&gt;&gt; v[3] = 1.0
+&gt;&gt;&gt; S = scale_matrix(-1.234)
+&gt;&gt;&gt; numpy.allclose(numpy.dot(S, v)[:3], -1.234*v[:3])
+True
+&gt;&gt;&gt; factor = random.random() * 10 - 5
+&gt;&gt;&gt; origin = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; direct = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; S = scale_matrix(factor, origin)
+&gt;&gt;&gt; S = scale_matrix(factor, origin, direct)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.shear_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">shear_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.shear_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return shear angle, direction and plane from shear matrix.
+&gt;&gt;&gt; angle = (random.random() - 0.5) * 4*math.pi
+&gt;&gt;&gt; direct = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; point = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; normal = numpy.cross(direct, numpy.random.random(3))
+&gt;&gt;&gt; S0 = shear_matrix(angle, direct, point, normal)
+&gt;&gt;&gt; angle, direct, point, normal = shear_from_matrix(S0)
+&gt;&gt;&gt; S1 = shear_matrix(angle, direct, point, normal)
+&gt;&gt;&gt; is_same_transform(S0, S1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.shear_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">shear_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normal</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.shear_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to shear by angle along direction vector on shear plane.
+The shear plane is defined by a point and normal vector. The direction
+vector must be orthogonal to the plane’s normal vector.
+A point P is transformed by the shear matrix into P” such that
+the vector P-P” is parallel to the direction vector and its extent is
+given by the angle of P-P’-P”, where P’ is the orthogonal projection
+of P onto the shear plane.
+&gt;&gt;&gt; angle = (random.random() - 0.5) * 4*math.pi
+&gt;&gt;&gt; direct = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; point = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; normal = numpy.cross(direct, numpy.random.random(3))
+&gt;&gt;&gt; S = shear_matrix(angle, direct, point, normal)
+&gt;&gt;&gt; numpy.allclose(1.0, numpy.linalg.det(S))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.superimposition_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">superimposition_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">usesvd</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.superimposition_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to transform given vector set into second vector set.
+v0 and v1 are shape (3, *) or (4, *) arrays of at least 3 vectors.
+If usesvd is True, the weighted sum of squared deviations (RMSD) is
+minimized according to the algorithm by W. Kabsch [8]. Otherwise the
+quaternion based algorithm by B. Horn [9] is used (slower when using
+this Python implementation).
+The returned matrix performs rotation, translation and uniform scaling
+(if specified).
+&gt;&gt;&gt; v0 = numpy.random.rand(3, 10)
+&gt;&gt;&gt; M = superimposition_matrix(v0, v0)
+&gt;&gt;&gt; numpy.allclose(M, numpy.identity(4))
+True
+&gt;&gt;&gt; R = random_rotation_matrix(numpy.random.random(3))
+&gt;&gt;&gt; v0 = ((1,0,0), (0,1,0), (0,0,1), (1,1,1))
+&gt;&gt;&gt; v1 = numpy.dot(R, v0)
+&gt;&gt;&gt; M = superimposition_matrix(v0, v1)
+&gt;&gt;&gt; numpy.allclose(v1, numpy.dot(M, v0))
+True
+&gt;&gt;&gt; v0 = (numpy.random.rand(4, 100) - 0.5) * 20.0
+&gt;&gt;&gt; v0[3] = 1.0
+&gt;&gt;&gt; v1 = numpy.dot(R, v0)
+&gt;&gt;&gt; M = superimposition_matrix(v0, v1)
+&gt;&gt;&gt; numpy.allclose(v1, numpy.dot(M, v0))
+True
+&gt;&gt;&gt; S = scale_matrix(random.random())
+&gt;&gt;&gt; T = translation_matrix(numpy.random.random(3)-0.5)
+&gt;&gt;&gt; M = concatenate_matrices(T, R, S)
+&gt;&gt;&gt; v1 = numpy.dot(M, v0)
+&gt;&gt;&gt; v0[:3] += numpy.random.normal(0.0, 1e-9, 300).reshape(3, -1)
+&gt;&gt;&gt; M = superimposition_matrix(v0, v1, scaling=True)
+&gt;&gt;&gt; numpy.allclose(v1, numpy.dot(M, v0))
+True
+&gt;&gt;&gt; M = superimposition_matrix(v0, v1, scaling=True, usesvd=False)
+&gt;&gt;&gt; numpy.allclose(v1, numpy.dot(M, v0))
+True
+&gt;&gt;&gt; v = numpy.empty((4, 100, 3), dtype=numpy.float64)
+&gt;&gt;&gt; v[:, :, 0] = v0
+&gt;&gt;&gt; M = superimposition_matrix(v0, v1, scaling=True, usesvd=False)
+&gt;&gt;&gt; numpy.allclose(v1, numpy.dot(M, v[:, :, 0]))
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.translation_from_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">translation_from_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.translation_from_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return translation vector from translation matrix.
+&gt;&gt;&gt; v0 = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; v1 = translation_from_matrix(translation_matrix(v0))
+&gt;&gt;&gt; numpy.allclose(v0, v1)
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.translation_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">translation_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">direction</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.translation_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Return matrix to translate by direction vector.
+&gt;&gt;&gt; v = numpy.random.random(3) - 0.5
+&gt;&gt;&gt; numpy.allclose(v, translation_matrix(v)[:3, 3])
+True</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.unit_vector">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">unit_vector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.unit_vector" title="Permalink to this definition"></a></dt>
+<dd><p>Return ndarray normalized by length, i.e. eucledian norm, along axis.
+&gt;&gt;&gt; v0 = numpy.random.random(3)
+&gt;&gt;&gt; v1 = unit_vector(v0)
+&gt;&gt;&gt; numpy.allclose(v1, v0 / numpy.linalg.norm(v0))
+True
+&gt;&gt;&gt; v0 = numpy.random.rand(5, 4, 3)
+&gt;&gt;&gt; v1 = unit_vector(v0, axis=-1)
+&gt;&gt;&gt; v2 = v0 / numpy.expand_dims(numpy.sqrt(numpy.sum(v0*v0, axis=2)), 2)
+&gt;&gt;&gt; numpy.allclose(v1, v2)
+True
+&gt;&gt;&gt; v1 = unit_vector(v0, axis=1)
+&gt;&gt;&gt; v2 = v0 / numpy.expand_dims(numpy.sqrt(numpy.sum(v0*v0, axis=1)), 1)
+&gt;&gt;&gt; numpy.allclose(v1, v2)
+True
+&gt;&gt;&gt; v1 = numpy.empty((5, 4, 3), dtype=numpy.float64)
+&gt;&gt;&gt; unit_vector(v0, axis=1, out=v1)
+&gt;&gt;&gt; numpy.allclose(v1, v2)
+True
+&gt;&gt;&gt; list(unit_vector([]))
+[]
+&gt;&gt;&gt; list(unit_vector([1.0]))
+[1.0]</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.external.pybullet_tools.transformations.vector_norm">
+<code class="sig-prename descclassname"><span class="pre">igibson.external.pybullet_tools.transformations.</span></code><code class="sig-name descname"><span class="pre">vector_norm</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.external.pybullet_tools.transformations.vector_norm" title="Permalink to this definition"></a></dt>
+<dd><p>Return length, i.e. eucledian norm, of ndarray along axis.
+&gt;&gt;&gt; v = numpy.random.random(3)
+&gt;&gt;&gt; n = vector_norm(v)
+&gt;&gt;&gt; numpy.allclose(n, numpy.linalg.norm(v))
+True
+&gt;&gt;&gt; v = numpy.random.rand(6, 5, 3)
+&gt;&gt;&gt; n = vector_norm(v, axis=-1)
+&gt;&gt;&gt; numpy.allclose(n, numpy.sqrt(numpy.sum(v*v, axis=2)))
+True
+&gt;&gt;&gt; n = vector_norm(v, axis=1)
+&gt;&gt;&gt; numpy.allclose(n, numpy.sqrt(numpy.sum(v*v, axis=1)))
+True
+&gt;&gt;&gt; v = numpy.random.rand(5, 4, 3)
+&gt;&gt;&gt; n = numpy.empty((5, 3), dtype=numpy.float64)
+&gt;&gt;&gt; vector_norm(v, axis=1, out=n)
+&gt;&gt;&gt; numpy.allclose(n, numpy.sqrt(numpy.sum(v*v, axis=1)))
+True
+&gt;&gt;&gt; vector_norm([])
+0.0
+&gt;&gt;&gt; vector_norm([1.0])
+1.0</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-utils-module">
+<h2>igibson.external.pybullet_tools.utils module<a class="headerlink" href="#igibson-external-pybullet-tools-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-external-pybullet-tools-voxels-module">
+<h2>igibson.external.pybullet_tools.voxels module<a class="headerlink" href="#igibson-external-pybullet-tools-voxels-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.external.pybullet_tools">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-igibson.external.pybullet_tools" title="Permalink to this headline"></a></h2>
+<p>Developed by Caelen Garrett in pybullet-planning repository (<a class="reference external" href="https://github.com/caelan/pybullet-planning">https://github.com/caelan/pybullet-planning</a>)
+and adapted by iGibson team.</p>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="igibson.external.motion.motion_planners.html" class="btn btn-neutral float-left" title="igibson.external.motion.motion_planners package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="igibson.external.pybullet_tools.ikfast.html" class="btn btn-neutral float-right" title="igibson.external.pybullet_tools.ikfast package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

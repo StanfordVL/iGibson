@@ -1,0 +1,77 @@
+igibson.examples.objects package
+================================
+
+Submodules
+----------
+
+igibson.examples.objects.draw\_bounding\_box module
+---------------------------------------------------
+
+.. automodule:: igibson.examples.objects.draw_bounding_box
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.highlight\_objects module
+--------------------------------------------------
+
+.. automodule:: igibson.examples.objects.highlight_objects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.load\_object\_selector module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.objects.load_object_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.load\_objects module
+---------------------------------------------
+
+.. automodule:: igibson.examples.objects.load_objects
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.obj\_rotating\_video\_gen module
+---------------------------------------------------------
+
+.. automodule:: igibson.examples.objects.obj_rotating_video_gen
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.object\_temperature\_texture module
+------------------------------------------------------------
+
+.. automodule:: igibson.examples.objects.object_temperature_texture
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.object\_viewer module
+----------------------------------------------
+
+.. automodule:: igibson.examples.objects.object_viewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.objects.sample\_objects\_logic module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.objects.sample_objects_logic
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.objects
+   :members:
+   :undoc-members:
+   :show-inheritance:

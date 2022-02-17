@@ -1,0 +1,53 @@
+igibson.examples.robots package
+===============================
+
+Submodules
+----------
+
+igibson.examples.robots.all\_robots\_visualizer module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.robots.all_robots_visualizer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.robots.grasping\_mode\_example module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.robots.grasping_mode_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.robots.ik\_example module
+------------------------------------------
+
+.. automodule:: igibson.examples.robots.ik_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.robots.motion\_planning\_example module
+--------------------------------------------------------
+
+.. automodule:: igibson.examples.robots.motion_planning_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.robots.robot\_control\_example module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.robots.robot_control_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.robots
+   :members:
+   :undoc-members:
+   :show-inheritance:

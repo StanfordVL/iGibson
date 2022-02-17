@@ -1,0 +1,10 @@
+igibson.examples.ros package
+============================
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.ros
+   :members:
+   :undoc-members:
+   :show-inheritance:

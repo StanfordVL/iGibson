@@ -1,0 +1,53 @@
+igibson package
+===============
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   igibson.controllers
+   igibson.envs
+   igibson.examples
+   igibson.external
+   igibson.learn
+   igibson.metrics
+   igibson.object_states
+   igibson.objects
+   igibson.physics
+   igibson.render
+   igibson.reward_functions
+   igibson.robots
+   igibson.scenes
+   igibson.sensors
+   igibson.tasks
+   igibson.termination_conditions
+   igibson.utils
+
+Submodules
+----------
+
+igibson.simulator module
+------------------------
+
+.. automodule:: igibson.simulator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.simulator\_vr module
+----------------------------
+
+.. automodule:: igibson.simulator_vr
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson
+   :members:
+   :undoc-members:
+   :show-inheritance:

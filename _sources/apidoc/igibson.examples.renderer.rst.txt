@@ -1,0 +1,53 @@
+igibson.examples.renderer package
+=================================
+
+Submodules
+----------
+
+igibson.examples.renderer.mesh\_renderer\_example module
+--------------------------------------------------------
+
+.. automodule:: igibson.examples.renderer.mesh_renderer_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.renderer.mesh\_renderer\_gpu\_example module
+-------------------------------------------------------------
+
+.. automodule:: igibson.examples.renderer.mesh_renderer_gpu_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.renderer.mesh\_renderer\_pano\_example module
+--------------------------------------------------------------
+
+.. automodule:: igibson.examples.renderer.mesh_renderer_pano_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.renderer.mesh\_renderer\_pbr\_example module
+-------------------------------------------------------------
+
+.. automodule:: igibson.examples.renderer.mesh_renderer_pbr_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.renderer.mesh\_renderer\_simple\_example module
+----------------------------------------------------------------
+
+.. automodule:: igibson.examples.renderer.mesh_renderer_simple_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.renderer
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,29 @@
+igibson.examples.vr package
+===========================
+
+Submodules
+----------
+
+igibson.examples.vr.vr\_gaze\_test module
+-----------------------------------------
+
+.. automodule:: igibson.examples.vr.vr_gaze_test
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.vr.vr\_simple\_demo module
+-------------------------------------------
+
+.. automodule:: igibson.examples.vr.vr_simple_demo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.vr
+   :members:
+   :undoc-members:
+   :show-inheritance:

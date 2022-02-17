@@ -1,0 +1,39 @@
+igibson.examples package
+========================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   igibson.examples.environments
+   igibson.examples.learning
+   igibson.examples.object_states
+   igibson.examples.objects
+   igibson.examples.observations
+   igibson.examples.renderer
+   igibson.examples.robots
+   igibson.examples.ros
+   igibson.examples.scenes
+   igibson.examples.vr
+   igibson.examples.web_ui
+
+Submodules
+----------
+
+igibson.examples.example\_selector module
+-----------------------------------------
+
+.. automodule:: igibson.examples.example_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples
+   :members:
+   :undoc-members:
+   :show-inheritance:

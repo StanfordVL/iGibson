@@ -1,0 +1,77 @@
+igibson.examples.scenes package
+===============================
+
+Submodules
+----------
+
+igibson.examples.scenes.g\_scene\_selector module
+-------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.g_scene_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.ig\_scene\_selector module
+--------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.ig_scene_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.scene\_object\_rand\_example module
+-----------------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.scene_object_rand_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.scene\_partial\_loading\_example module
+---------------------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.scene_partial_loading_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.scene\_texture\_rand\_example module
+------------------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.scene_texture_rand_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.scene\_tour\_video\_gen module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.scene_tour_video_gen
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.stadium\_example module
+-----------------------------------------------
+
+.. automodule:: igibson.examples.scenes.stadium_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.scenes.traversability\_map\_example module
+-----------------------------------------------------------
+
+.. automodule:: igibson.examples.scenes.traversability_map_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.scenes
+   :members:
+   :undoc-members:
+   :show-inheritance:

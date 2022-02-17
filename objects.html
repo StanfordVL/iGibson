@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Objects &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Objects &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,7 +49,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -69,9 +68,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -100,7 +103,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="objects">
+  <div class="section" id="objects">
 <h1>Objects<a class="headerlink" href="#objects" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -197,6 +200,7 @@
 
 <span class="kn">import</span> <span class="nn">igibson</span>
 <span class="kn">from</span> <span class="nn">igibson.envs.igibson_env</span> <span class="kn">import</span> <span class="n">iGibsonEnv</span>
+<span class="kn">from</span> <span class="nn">igibson.external.pybullet_tools.utils</span> <span class="kn">import</span> <span class="n">quat_from_euler</span>
 <span class="kn">from</span> <span class="nn">igibson.objects.articulated_object</span> <span class="kn">import</span> <span class="n">URDFObject</span>
 <span class="kn">from</span> <span class="nn">igibson.objects.ycb_object</span> <span class="kn">import</span> <span class="n">YCBObject</span>
 <span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_cpu</span> <span class="kn">import</span> <span class="n">MeshRendererSettings</span>
@@ -209,7 +213,7 @@
 <span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">let_user_pick</span><span class="p">,</span> <span class="n">parse_config</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This demo shows how to load scaled objects from the iG object model dataset and</span>
 <span class="sd">    additional objects from the YCB dataset in predefined locations</span>
@@ -218,24 +222,29 @@
 <span class="sd">    The example also shows how to use the Environment API or directly the Simulator API, loading objects and robots</span>
 <span class="sd">    and executing actions</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
-    <span class="n">scene_options</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Empty scene&quot;</span><span class="p">,</span> <span class="s2">&quot;Interactive scene (iG)&quot;</span><span class="p">,</span> <span class="s2">&quot;Static scene (Gibson)&quot;</span><span class="p">]</span>
-    <span class="n">type_of_scene</span> <span class="o">=</span> <span class="n">let_user_pick</span><span class="p">(</span><span class="n">scene_options</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">scene_options</span> <span class="o">=</span> <span class="n">get_first_options</span><span class="p">()</span>
+    <span class="n">type_of_scene</span> <span class="o">=</span> <span class="n">let_user_pick</span><span class="p">(</span><span class="n">scene_options</span><span class="p">,</span> <span class="n">selection</span><span class="o">=</span><span class="n">selection</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
     <span class="k">if</span> <span class="n">type_of_scene</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># Empty</span>
-        <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">))</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">configs_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">))</span>
         <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">texture_scale</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
-        <span class="n">scene</span> <span class="o">=</span> <span class="n">EmptyScene</span><span class="p">(</span><span class="n">render_floor_plane</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">floor_plane_rgba</span><span class="o">=</span><span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">,</span>
+            <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+            <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+            <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">scene</span> <span class="o">=</span> <span class="n">EmptyScene</span><span class="p">(</span><span class="n">floor_plane_rgba</span><span class="o">=</span><span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
         <span class="c1"># scene.load_object_categories(benchmark_names)</span>
         <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
         <span class="n">robot_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;robot&quot;</span><span class="p">]</span>
         <span class="n">robot_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
         <span class="n">turtlebot</span> <span class="o">=</span> <span class="n">Turtlebot</span><span class="p">(</span><span class="o">**</span><span class="n">robot_config</span><span class="p">)</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">import_robot</span><span class="p">(</span><span class="n">turtlebot</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">import_object</span><span class="p">(</span><span class="n">turtlebot</span><span class="p">)</span>
 
     <span class="k">elif</span> <span class="n">type_of_scene</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># iG</span>
-        <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_nav.yaml&quot;</span><span class="p">)</span>
+        <span class="n">config_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">configs_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_nav.yaml&quot;</span><span class="p">)</span>
         <span class="n">config_data</span> <span class="o">=</span> <span class="n">yaml</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">config_filename</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">),</span> <span class="n">Loader</span><span class="o">=</span><span class="n">yaml</span><span class="o">.</span><span class="n">FullLoader</span><span class="p">)</span>
         <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;load_object_categories&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># Uncomment this line to accelerate loading with only the building</span>
         <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;visible_target&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
@@ -243,28 +252,34 @@
         <span class="c1"># Reduce texture scale for Mac.</span>
         <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
             <span class="n">config_data</span><span class="p">[</span><span class="s2">&quot;texture_scale&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span>
-        <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">)</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="n">iGibsonEnv</span><span class="p">(</span><span class="n">config_file</span><span class="o">=</span><span class="n">config_data</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">)</span>
         <span class="n">s</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">simulator</span>
 
     <span class="k">elif</span> <span class="n">type_of_scene</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># Gibson</span>
-        <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">example_config_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">))</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="n">parse_config</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">igibson</span><span class="o">.</span><span class="n">configs_path</span><span class="p">,</span> <span class="s2">&quot;turtlebot_static_nav.yaml&quot;</span><span class="p">))</span>
         <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="c1"># Reduce texture scale for Mac.</span>
         <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
             <span class="n">settings</span><span class="o">.</span><span class="n">texture_scale</span> <span class="o">=</span> <span class="mf">0.5</span>
-        <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span>
+            <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">,</span>
+            <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+            <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+            <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">,</span>
+        <span class="p">)</span>
 
         <span class="n">scene</span> <span class="o">=</span> <span class="n">StaticIndoorScene</span><span class="p">(</span><span class="s2">&quot;Rs&quot;</span><span class="p">,</span> <span class="n">build_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">pybullet_load_texture</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
         <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
         <span class="n">robot_config</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s2">&quot;robot&quot;</span><span class="p">]</span>
         <span class="n">robot_config</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
         <span class="n">turtlebot</span> <span class="o">=</span> <span class="n">Turtlebot</span><span class="p">(</span><span class="o">**</span><span class="n">robot_config</span><span class="p">)</span>
-        <span class="n">s</span><span class="o">.</span><span class="n">import_robot</span><span class="p">(</span><span class="n">turtlebot</span><span class="p">)</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">import_object</span><span class="p">(</span><span class="n">turtlebot</span><span class="p">)</span>
 
-    <span class="c1"># Set a better viewing direction</span>
-    <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">initial_pos</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]</span>
-    <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">initial_view_direction</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]</span>
-    <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">reset_viewer</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span><span class="p">:</span>
+        <span class="c1"># Set a better viewing direction</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">initial_pos</span> <span class="o">=</span> <span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">initial_view_direction</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.8</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">]</span>
+        <span class="n">s</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">reset_viewer</span><span class="p">()</span>
 
     <span class="c1"># Objects to load: two tables, the first one is predefined model, the second, random for the same category</span>
     <span class="n">table_objects_to_load</span> <span class="o">=</span> <span class="p">{</span>
@@ -319,10 +334,9 @@
                 <span class="n">fit_avg_dim_volume</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                 <span class="n">texture_randomization</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">overwrite_inertial</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                <span class="n">initial_pos</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;pos&quot;</span><span class="p">],</span>
-                <span class="n">initial_orn</span><span class="o">=</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;orn&quot;</span><span class="p">],</span>
             <span class="p">)</span>
             <span class="n">s</span><span class="o">.</span><span class="n">import_object</span><span class="p">(</span><span class="n">simulator_obj</span><span class="p">)</span>
+            <span class="n">simulator_obj</span><span class="o">.</span><span class="n">set_position_orientation</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;pos&quot;</span><span class="p">],</span> <span class="n">quat_from_euler</span><span class="p">(</span><span class="n">obj</span><span class="p">[</span><span class="s2">&quot;orn&quot;</span><span class="p">]))</span>
 
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
             <span class="n">obj</span> <span class="o">=</span> <span class="n">YCBObject</span><span class="p">(</span><span class="s2">&quot;003_cracker_box&quot;</span><span class="p">)</span>
@@ -330,18 +344,20 @@
             <span class="n">obj</span><span class="o">.</span><span class="n">set_position_orientation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">low</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">high</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="p">[</span><span class="mf">1.8</span><span class="p">]),</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
 
         <span class="k">if</span> <span class="n">type_of_scene</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
-                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Resetting environment&quot;</span><span class="p">)</span>
+            <span class="n">max_iterations</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">10</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iterations</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Resetting environment&quot;</span><span class="p">)</span>
                 <span class="n">env</span><span class="o">.</span><span class="n">reset</span><span class="p">()</span>
                 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">100</span><span class="p">):</span>
                     <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Environment action step&quot;</span><span class="p">):</span>
                         <span class="c1"># action = env.action_space.sample()</span>
                         <span class="n">state</span><span class="p">,</span> <span class="n">reward</span><span class="p">,</span> <span class="n">done</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">env</span><span class="o">.</span><span class="n">step</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
                         <span class="k">if</span> <span class="n">done</span><span class="p">:</span>
-                            <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Episode finished after </span><span class="si">{}</span><span class="s2"> timesteps&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">))</span>
                             <span class="k">break</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10000</span><span class="p">):</span>
+            <span class="n">max_steps</span> <span class="o">=</span> <span class="mi">100</span> <span class="k">if</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">10000</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_steps</span><span class="p">):</span>
                 <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
                     <span class="n">turtlebot</span><span class="o">.</span><span class="n">apply_action</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
                     <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
@@ -354,9 +370,13 @@
             <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
-    <span class="n">main</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">get_first_options</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;Empty scene&quot;</span><span class="p">,</span> <span class="s2">&quot;Interactive scene (iG)&quot;</span><span class="p">,</span> <span class="s2">&quot;Static scene (Gibson)&quot;</span><span class="p">]</span>
 
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+    <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
 </div>

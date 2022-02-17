@@ -1,0 +1,18 @@
+igibson.external.motion package
+===============================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   igibson.external.motion.motion_planners
+
+Module contents
+---------------
+
+.. automodule:: igibson.external.motion
+   :members:
+   :undoc-members:
+   :show-inheritance:

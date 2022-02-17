@@ -1,0 +1,29 @@
+igibson.external.pybullet\_tools.ikfast.pr2 package
+===================================================
+
+Submodules
+----------
+
+igibson.external.pybullet\_tools.ikfast.pr2.ik module
+-----------------------------------------------------
+
+.. automodule:: igibson.external.pybullet_tools.ikfast.pr2.ik
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.external.pybullet\_tools.ikfast.pr2.setup module
+--------------------------------------------------------
+
+.. automodule:: igibson.external.pybullet_tools.ikfast.pr2.setup
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.external.pybullet_tools.ikfast.pr2
+   :members:
+   :undoc-members:
+   :show-inheritance:

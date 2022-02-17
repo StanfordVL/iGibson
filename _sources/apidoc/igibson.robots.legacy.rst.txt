@@ -1,0 +1,37 @@
+igibson.robots.legacy package
+=============================
+
+Submodules
+----------
+
+igibson.robots.legacy.humanoid\_robot module
+--------------------------------------------
+
+.. automodule:: igibson.robots.legacy.humanoid_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.legacy.minitaur\_robot module
+--------------------------------------------
+
+.. automodule:: igibson.robots.legacy.minitaur_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.legacy.quadrotor\_robot module
+---------------------------------------------
+
+.. automodule:: igibson.robots.legacy.quadrotor_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.robots.legacy
+   :members:
+   :undoc-members:
+   :show-inheritance:

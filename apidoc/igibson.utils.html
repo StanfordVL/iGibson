@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>igibson.utils package &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Troubleshooting" href="../issues.html" />
+    <link rel="prev" title="igibson.termination_conditions package" href="igibson.termination_conditions.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.6
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">igibson</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="igibson.html">igibson package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.examples.html">igibson.examples package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.html">igibson.external package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.learn.html">igibson.learn package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.metrics.html">igibson.metrics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.object_states.html">igibson.object_states package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.objects.html">igibson.objects package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.physics.html">igibson.physics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.render.html">igibson.render package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.reward_functions.html">igibson.reward_functions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html">igibson.robots package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.scenes.html">igibson.scenes package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.sensors.html">igibson.sensors package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.tasks.html">igibson.tasks package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.termination_conditions.html">igibson.termination_conditions package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">igibson.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-module">igibson.simulator module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-vr-module">igibson.simulator_vr module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#module-igibson">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../issues.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">igibson</a> &raquo;</li>
+          <li><a href="igibson.html">igibson package</a> &raquo;</li>
+      <li>igibson.utils package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/apidoc/igibson.utils.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="igibson-utils-package">
+<h1>igibson.utils package<a class="headerlink" href="#igibson-utils-package" title="Permalink to this headline"></a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-assets-utils-module">
+<h2>igibson.utils.assets_utils module<a class="headerlink" href="#igibson-utils-assets-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.checkpoint_utils">
+<span id="igibson-utils-checkpoint-utils-module"></span><h2>igibson.utils.checkpoint_utils module<a class="headerlink" href="#module-igibson.utils.checkpoint_utils" title="Permalink to this headline"></a></h2>
+<p>This file contains utils for BEHAVIOR demo replay checkpoints.</p>
+<dl class="py function">
+<dt id="igibson.utils.checkpoint_utils.load_checkpoint">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.checkpoint_utils.</span></code><code class="sig-name descname"><span class="pre">load_checkpoint</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.checkpoint_utils.load_checkpoint" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.checkpoint_utils.save_checkpoint">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.checkpoint_utils.</span></code><code class="sig-name descname"><span class="pre">save_checkpoint</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">simulator</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">root_directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.checkpoint_utils.save_checkpoint" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-igibson.utils.constants">
+<span id="igibson-utils-constants-module"></span><h2>igibson.utils.constants module<a class="headerlink" href="#module-igibson.utils.constants" title="Permalink to this headline"></a></h2>
+<p>Constant Definitions</p>
+<dl class="py class">
+<dt id="igibson.utils.constants.CoordinateSystem">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">CoordinateSystem</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.CoordinateSystem" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.IntEnum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.CoordinateSystem.OPENCV">
+<code class="sig-name descname"><span class="pre">OPENCV</span></code><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#igibson.utils.constants.CoordinateSystem.OPENCV" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.CoordinateSystem.OPENGL">
+<code class="sig-name descname"><span class="pre">OPENGL</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#igibson.utils.constants.CoordinateSystem.OPENGL" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.CoordinateSystem.PYBULLET">
+<code class="sig-name descname"><span class="pre">PYBULLET</span></code><em class="property"> <span class="pre">=</span> <span class="pre">2</span></em><a class="headerlink" href="#igibson.utils.constants.CoordinateSystem.PYBULLET" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.CoordinateSystem.SUNRGBD">
+<code class="sig-name descname"><span class="pre">SUNRGBD</span></code><em class="property"> <span class="pre">=</span> <span class="pre">3</span></em><a class="headerlink" href="#igibson.utils.constants.CoordinateSystem.SUNRGBD" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.constants.OccupancyGridState">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">OccupancyGridState</span></code><a class="headerlink" href="#igibson.utils.constants.OccupancyGridState" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.OccupancyGridState.FREESPACE">
+<code class="sig-name descname"><span class="pre">FREESPACE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1.0</span></em><a class="headerlink" href="#igibson.utils.constants.OccupancyGridState.FREESPACE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.OccupancyGridState.OBSTACLES">
+<code class="sig-name descname"><span class="pre">OBSTACLES</span></code><em class="property"> <span class="pre">=</span> <span class="pre">0.0</span></em><a class="headerlink" href="#igibson.utils.constants.OccupancyGridState.OBSTACLES" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.OccupancyGridState.UNKNOWN">
+<code class="sig-name descname"><span class="pre">UNKNOWN</span></code><em class="property"> <span class="pre">=</span> <span class="pre">0.5</span></em><a class="headerlink" href="#igibson.utils.constants.OccupancyGridState.UNKNOWN" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.constants.PyBulletSleepState">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">PyBulletSleepState</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.PyBulletSleepState" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.IntEnum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.PyBulletSleepState.AWAKE">
+<code class="sig-name descname"><span class="pre">AWAKE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#igibson.utils.constants.PyBulletSleepState.AWAKE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.PyBulletSleepState.ISLAND_AWAKE">
+<code class="sig-name descname"><span class="pre">ISLAND_AWAKE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">3</span></em><a class="headerlink" href="#igibson.utils.constants.PyBulletSleepState.ISLAND_AWAKE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.constants.SemanticClass">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">SemanticClass</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.SemanticClass" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.IntEnum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.BACKGROUND">
+<code class="sig-name descname"><span class="pre">BACKGROUND</span></code><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.BACKGROUND" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.DIRT">
+<code class="sig-name descname"><span class="pre">DIRT</span></code><em class="property"> <span class="pre">=</span> <span class="pre">507</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.DIRT" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.HEAT_SOURCE_MARKER">
+<code class="sig-name descname"><span class="pre">HEAT_SOURCE_MARKER</span></code><em class="property"> <span class="pre">=</span> <span class="pre">510</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.HEAT_SOURCE_MARKER" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.ROBOTS">
+<code class="sig-name descname"><span class="pre">ROBOTS</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.ROBOTS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.SCENE_OBJS">
+<code class="sig-name descname"><span class="pre">SCENE_OBJS</span></code><em class="property"> <span class="pre">=</span> <span class="pre">3</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.SCENE_OBJS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.STAIN">
+<code class="sig-name descname"><span class="pre">STAIN</span></code><em class="property"> <span class="pre">=</span> <span class="pre">508</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.STAIN" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.TOGGLE_MARKER">
+<code class="sig-name descname"><span class="pre">TOGGLE_MARKER</span></code><em class="property"> <span class="pre">=</span> <span class="pre">511</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.TOGGLE_MARKER" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.USER_ADDED_OBJS">
+<code class="sig-name descname"><span class="pre">USER_ADDED_OBJS</span></code><em class="property"> <span class="pre">=</span> <span class="pre">2</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.USER_ADDED_OBJS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SemanticClass.WATER">
+<code class="sig-name descname"><span class="pre">WATER</span></code><em class="property"> <span class="pre">=</span> <span class="pre">509</span></em><a class="headerlink" href="#igibson.utils.constants.SemanticClass.WATER" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.constants.ShadowPass">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">ShadowPass</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.ShadowPass" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.IntEnum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.ShadowPass.HAS_SHADOW_RENDER_SCENE">
+<code class="sig-name descname"><span class="pre">HAS_SHADOW_RENDER_SCENE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">2</span></em><a class="headerlink" href="#igibson.utils.constants.ShadowPass.HAS_SHADOW_RENDER_SCENE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.ShadowPass.HAS_SHADOW_RENDER_SHADOW">
+<code class="sig-name descname"><span class="pre">HAS_SHADOW_RENDER_SHADOW</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#igibson.utils.constants.ShadowPass.HAS_SHADOW_RENDER_SHADOW" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.ShadowPass.NO_SHADOW">
+<code class="sig-name descname"><span class="pre">NO_SHADOW</span></code><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#igibson.utils.constants.ShadowPass.NO_SHADOW" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.constants.SimulatorMode">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">SimulatorMode</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.SimulatorMode" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.IntEnum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SimulatorMode.GUI_INTERACTIVE">
+<code class="sig-name descname"><span class="pre">GUI_INTERACTIVE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#igibson.utils.constants.SimulatorMode.GUI_INTERACTIVE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SimulatorMode.GUI_NON_INTERACTIVE">
+<code class="sig-name descname"><span class="pre">GUI_NON_INTERACTIVE</span></code><em class="property"> <span class="pre">=</span> <span class="pre">2</span></em><a class="headerlink" href="#igibson.utils.constants.SimulatorMode.GUI_NON_INTERACTIVE" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SimulatorMode.HEADLESS">
+<code class="sig-name descname"><span class="pre">HEADLESS</span></code><em class="property"> <span class="pre">=</span> <span class="pre">3</span></em><a class="headerlink" href="#igibson.utils.constants.SimulatorMode.HEADLESS" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SimulatorMode.HEADLESS_TENSOR">
+<code class="sig-name descname"><span class="pre">HEADLESS_TENSOR</span></code><em class="property"> <span class="pre">=</span> <span class="pre">4</span></em><a class="headerlink" href="#igibson.utils.constants.SimulatorMode.HEADLESS_TENSOR" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.SimulatorMode.VR">
+<code class="sig-name descname"><span class="pre">VR</span></code><em class="property"> <span class="pre">=</span> <span class="pre">5</span></em><a class="headerlink" href="#igibson.utils.constants.SimulatorMode.VR" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.constants.ViewerMode">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">ViewerMode</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.ViewerMode" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">enum.IntEnum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt id="igibson.utils.constants.ViewerMode.MANIPULATION">
+<code class="sig-name descname"><span class="pre">MANIPULATION</span></code><em class="property"> <span class="pre">=</span> <span class="pre">1</span></em><a class="headerlink" href="#igibson.utils.constants.ViewerMode.MANIPULATION" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.ViewerMode.NAVIGATION">
+<code class="sig-name descname"><span class="pre">NAVIGATION</span></code><em class="property"> <span class="pre">=</span> <span class="pre">0</span></em><a class="headerlink" href="#igibson.utils.constants.ViewerMode.NAVIGATION" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="igibson.utils.constants.ViewerMode.PLANNING">
+<code class="sig-name descname"><span class="pre">PLANNING</span></code><em class="property"> <span class="pre">=</span> <span class="pre">2</span></em><a class="headerlink" href="#igibson.utils.constants.ViewerMode.PLANNING" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.constants.get_collision_group_mask">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.constants.</span></code><code class="sig-name descname"><span class="pre">get_collision_group_mask</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">groups_to_exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.constants.get_collision_group_mask" title="Permalink to this definition"></a></dt>
+<dd><p>Get a collision group mask that has collisions enabled for every group except those in groups_to_exclude.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-igibson.utils.filters">
+<span id="igibson-utils-filters-module"></span><h2>igibson.utils.filters module<a class="headerlink" href="#module-igibson.utils.filters" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.utils.filters.ExponentialAverageFilter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.filters.</span></code><code class="sig-name descname"><span class="pre">ExponentialAverageFilter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.9</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.ExponentialAverageFilter" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#igibson.utils.filters.Filter" title="igibson.utils.filters.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">igibson.utils.filters.Filter</span></code></a></p>
+<p>This class uses an exponential average of the form y_n = alpha * x_n + (1 - alpha) * y_{n - 1}.
+This is an IIR filter.</p>
+<dl class="py method">
+<dt id="igibson.utils.filters.ExponentialAverageFilter.dump_state">
+<code class="sig-name descname"><span class="pre">dump_state</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.ExponentialAverageFilter.dump_state" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return Any</dt>
+<dd class="field-odd"><p>the state of the object other than what’s not included in pybullet state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.ExponentialAverageFilter.estimate">
+<code class="sig-name descname"><span class="pre">estimate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.ExponentialAverageFilter.estimate" title="Permalink to this definition"></a></dt>
+<dd><p>Do an online hold for state estimation given a recent observation.
+:param observation: New observation to hold internal estimate of state.
+:return: New estimate of state.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.ExponentialAverageFilter.load_state">
+<code class="sig-name descname"><span class="pre">load_state</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dump</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.ExponentialAverageFilter.load_state" title="Permalink to this definition"></a></dt>
+<dd><p>Load the state of the object other than what’s not included in pybullet state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dump</strong> – Any: the dumped state</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.filters.Filter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.filters.</span></code><code class="sig-name descname"><span class="pre">Filter</span></code><a class="headerlink" href="#igibson.utils.filters.Filter" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A base class for filtering a noisy data stream in an online fashion.</p>
+<dl class="py method">
+<dt id="igibson.utils.filters.Filter.dump_state">
+<code class="sig-name descname"><span class="pre">dump_state</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.Filter.dump_state" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return Any</dt>
+<dd class="field-odd"><p>the state of the object other than what’s not included in pybullet state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.Filter.estimate">
+<code class="sig-name descname"><span class="pre">estimate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.Filter.estimate" title="Permalink to this definition"></a></dt>
+<dd><p>Takes an observation and returns a de-noised estimate.
+:param observation: A current observation.
+:return: De-noised estimate.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.Filter.load_state">
+<code class="sig-name descname"><span class="pre">load_state</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dump</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.Filter.load_state" title="Permalink to this definition"></a></dt>
+<dd><p>Load the state of the object other than what’s not included in pybullet state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dump</strong> – Any: the dumped state</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.Filter.reset">
+<code class="sig-name descname"><span class="pre">reset</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.Filter.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Resets this filter. Default is no-op.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.filters.MovingAverageFilter">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.filters.</span></code><code class="sig-name descname"><span class="pre">MovingAverageFilter</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obs_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filter_width</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.MovingAverageFilter" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#igibson.utils.filters.Filter" title="igibson.utils.filters.Filter"><code class="xref py py-class docutils literal notranslate"><span class="pre">igibson.utils.filters.Filter</span></code></a></p>
+<p>This class uses a moving average to de-noise a noisy data stream in an online fashion.
+This is a FIR filter.</p>
+<dl class="py method">
+<dt id="igibson.utils.filters.MovingAverageFilter.dump_state">
+<code class="sig-name descname"><span class="pre">dump_state</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.MovingAverageFilter.dump_state" title="Permalink to this definition"></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Return Any</dt>
+<dd class="field-odd"><p>the state of the object other than what’s not included in pybullet state.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.MovingAverageFilter.estimate">
+<code class="sig-name descname"><span class="pre">estimate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.MovingAverageFilter.estimate" title="Permalink to this definition"></a></dt>
+<dd><p>Do an online hold for state estimation given a recent observation.
+:param observation: New observation to hold internal estimate of state.
+:return: New estimate of state.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.MovingAverageFilter.load_state">
+<code class="sig-name descname"><span class="pre">load_state</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dump</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.MovingAverageFilter.load_state" title="Permalink to this definition"></a></dt>
+<dd><p>Load the state of the object other than what’s not included in pybullet state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>dump</strong> – Any: the dumped state</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="igibson.utils.filters.MovingAverageFilter.reset">
+<code class="sig-name descname"><span class="pre">reset</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.MovingAverageFilter.reset" title="Permalink to this definition"></a></dt>
+<dd><p>Resets this filter. Default is no-op.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.filters.Subsampler">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.filters.</span></code><code class="sig-name descname"><span class="pre">Subsampler</span></code><a class="headerlink" href="#igibson.utils.filters.Subsampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>A base class for subsampling a data stream in an online fashion.</p>
+<dl class="py method">
+<dt id="igibson.utils.filters.Subsampler.subsample">
+<code class="sig-name descname"><span class="pre">subsample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.Subsampler.subsample" title="Permalink to this definition"></a></dt>
+<dd><p>Takes an observation and returns the observation, or None, which
+corresponds to deleting the observation.
+:param observation: A current observation.
+:return: The observation, or None.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="igibson.utils.filters.UniformSubsampler">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.filters.</span></code><code class="sig-name descname"><span class="pre">UniformSubsampler</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.UniformSubsampler" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#igibson.utils.filters.Subsampler" title="igibson.utils.filters.Subsampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">igibson.utils.filters.Subsampler</span></code></a></p>
+<p>A class for subsampling a data stream uniformly in time in an online fashion.</p>
+<dl class="py method">
+<dt id="igibson.utils.filters.UniformSubsampler.subsample">
+<code class="sig-name descname"><span class="pre">subsample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">observation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.filters.UniformSubsampler.subsample" title="Permalink to this definition"></a></dt>
+<dd><p>Returns an observation once every T observations, None otherwise.
+:param observation: A current observation.
+:return: The observation, or None.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-utils-generate-trav-map-module">
+<h2>igibson.utils.generate_trav_map module<a class="headerlink" href="#igibson-utils-generate-trav-map-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-git-utils-module">
+<h2>igibson.utils.git_utils module<a class="headerlink" href="#igibson-utils-git-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-ig-logging-module">
+<h2>igibson.utils.ig_logging module<a class="headerlink" href="#igibson-utils-ig-logging-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-map-utils-module">
+<h2>igibson.utils.map_utils module<a class="headerlink" href="#igibson-utils-map-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-mesh-geometric-conversion-module">
+<h2>igibson.utils.mesh_geometric_conversion module<a class="headerlink" href="#igibson-utils-mesh-geometric-conversion-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-mesh-util-module">
+<h2>igibson.utils.mesh_util module<a class="headerlink" href="#igibson-utils-mesh-util-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-monitor-module">
+<h2>igibson.utils.monitor module<a class="headerlink" href="#igibson-utils-monitor-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-motion-planning-wrapper-module">
+<h2>igibson.utils.motion_planning_wrapper module<a class="headerlink" href="#igibson-utils-motion-planning-wrapper-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-muvr-utils-module">
+<h2>igibson.utils.muvr_utils module<a class="headerlink" href="#igibson-utils-muvr-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.python_utils">
+<span id="igibson-utils-python-utils-module"></span><h2>igibson.utils.python_utils module<a class="headerlink" href="#module-igibson.utils.python_utils" title="Permalink to this headline"></a></h2>
+<p>A set of utility functions for general python usage</p>
+<dl class="py function">
+<dt id="igibson.utils.python_utils.assert_valid_key">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.python_utils.</span></code><code class="sig-name descname"><span class="pre">assert_valid_key</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">valid_keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.python_utils.assert_valid_key" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function that asserts that &#64;key is in dictionary &#64;valid_keys keys. If not, it will raise an error.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – Any, key to check for in dictionary &#64;dic’s keys</p></li>
+<li><p><strong>valid_keys</strong> – Iterable, contains keys should be checked with &#64;key</p></li>
+<li><p><strong>name</strong> – str or None, if specified, is the name associated with the key that will be printed out if the
+key is not found. If None, default is “value”</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.python_utils.extract_class_init_kwargs_from_dict">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.python_utils.</span></code><code class="sig-name descname"><span class="pre">extract_class_init_kwargs_from_dict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dic</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.python_utils.extract_class_init_kwargs_from_dict" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function to return a dictionary of key-values that specifically correspond to &#64;cls class’s __init__
+constructor method, from &#64;dic which may or may not contain additional, irrelevant kwargs.
+Note that &#64;dic may possibly be missing certain kwargs as specified by cls.__init__. No error will be raised.
+Args:</p>
+<blockquote>
+<div><p>cls (object): Class from which to grab __init__ kwargs that will be be used as filtering keys for &#64;dic
+dic (dict): Dictionary containing multiple key-values
+copy (bool): If True, will deepcopy all values corresponding to the specified &#64;keys</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>dict: Extracted subset dictionary possibly containing only the specified keys from cls.__init__ and their</dt><dd><p>corresponding values</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.python_utils.extract_subset_dict">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.python_utils.</span></code><code class="sig-name descname"><span class="pre">extract_subset_dict</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dic</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.python_utils.extract_subset_dict" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function to extract a subset of dictionary key-values from a current dictionary. Optionally (deep)copies
+the values extracted from the original &#64;dic if &#64;copy is True.
+Args:</p>
+<blockquote>
+<div><p>dic (dict): Dictionary containing multiple key-values
+keys (Iterable): Specific keys to extract from &#64;dic. If the key doesn’t exist in &#64;dic, then the key is skipped
+copy (bool): If True, will deepcopy all values corresponding to the specified &#64;keys</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: Extracted subset dictionary containing only the specified &#64;keys and their corresponding values</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.python_utils.get_class_init_kwargs">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.python_utils.</span></code><code class="sig-name descname"><span class="pre">get_class_init_kwargs</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cls</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.python_utils.get_class_init_kwargs" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function to return a list of all valid keyword arguments (excluding “self”) for the given &#64;cls class.
+Args:</p>
+<blockquote>
+<div><p>cls (object): Class from which to grab __init__ kwargs</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>list: All keyword arguments (excluding “self”) specified by &#64;cls __init__ constructor method</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.python_utils.merge_nested_dicts">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.python_utils.</span></code><code class="sig-name descname"><span class="pre">merge_nested_dicts</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extra_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.python_utils.merge_nested_dicts" title="Permalink to this definition"></a></dt>
+<dd><p>Iteratively updates &#64;base_dict with values from &#64;extra_dict. Note: This generates a new dictionary!
+Args:</p>
+<blockquote>
+<div><p>base_dict (dict): Nested base dictionary, which should be updated with all values from &#64;extra_dict
+extra_dict (dict): Nested extra dictionary, whose values will overwrite corresponding ones in &#64;base_dict
+verbose (bool): If True, will print when keys are mismatched</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>dict: Updated dictionary</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-utils-sampling-utils-module">
+<h2>igibson.utils.sampling_utils module<a class="headerlink" href="#igibson-utils-sampling-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.scene_geometric_conversion">
+<span id="igibson-utils-scene-geometric-conversion-module"></span><h2>igibson.utils.scene_geometric_conversion module<a class="headerlink" href="#module-igibson.utils.scene_geometric_conversion" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.semantics_utils">
+<span id="igibson-utils-semantics-utils-module"></span><h2>igibson.utils.semantics_utils module<a class="headerlink" href="#module-igibson.utils.semantics_utils" title="Permalink to this headline"></a></h2>
+<dl class="py function">
+<dt id="igibson.utils.semantics_utils.get_class_name_to_class_id">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.semantics_utils.</span></code><code class="sig-name descname"><span class="pre">get_class_name_to_class_id</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">starting_class_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">4</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.semantics_utils.get_class_name_to_class_id" title="Permalink to this definition"></a></dt>
+<dd><p>Get mapping from semantic class name to class id</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>starting_class_id</strong> – starting class id for scene objects</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.semantics_utils.get_room_name_to_room_id">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.semantics_utils.</span></code><code class="sig-name descname"><span class="pre">get_room_name_to_room_id</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">starting_room_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.semantics_utils.get_room_name_to_room_id" title="Permalink to this definition"></a></dt>
+<dd><p>Get mapping from room name to room id</p>
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-utils-tf-utils-module">
+<h2>igibson.utils.tf_utils module<a class="headerlink" href="#igibson-utils-tf-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.transform_utils">
+<span id="igibson-utils-transform-utils-module"></span><h2>igibson.utils.transform_utils module<a class="headerlink" href="#module-igibson.utils.transform_utils" title="Permalink to this headline"></a></h2>
+<p>Utility functions of matrix and vector transformations.</p>
+<p>NOTE: convention for quaternions is (x, y, z, w)</p>
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.axisangle2quat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">axisangle2quat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vec</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.axisangle2quat" title="Permalink to this definition"></a></dt>
+<dd><p>Converts scaled axis-angle to quat.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>vec (np.array): (ax,ay,az) axis-angle exponential coordinates</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) vec4 float angles</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.clip_rotation">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">clip_rotation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.clip_rotation" title="Permalink to this definition"></a></dt>
+<dd><p>Limits a (delta) rotation to a specified limit</p>
+<p>Converts rotation to axis-angle, clips, then re-converts back into quaternion</p>
+<dl>
+<dt>Args:</dt><dd><p>quat (np.array): (x,y,z,w) rotation being clipped
+limit (float): Value to limit rotation by – magnitude (scalar, in radians)</p>
+</dd>
+<dt>Returns:</dt><dd><p>2-tuple:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>(np.array) Clipped rotation quaternion (x, y, z, w)</p></li>
+<li><p>(bool) whether the value was clipped or not</p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.clip_translation">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">clip_translation</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dpos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.clip_translation" title="Permalink to this definition"></a></dt>
+<dd><p>Limits a translation (delta position) to a specified limit</p>
+<p>Scales down the norm of the dpos to ‘limit’ if norm(dpos) &gt; limit, else returns immediately</p>
+<dl>
+<dt>Args:</dt><dd><p>dpos (n-array): n-dim Translation being clipped (e,g.: (x, y, z)) – numpy array
+limit (float): Value to limit translation by – magnitude (scalar, in same units as input)</p>
+</dd>
+<dt>Returns:</dt><dd><p>2-tuple:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>(np.array) Clipped translation (same dimension as inputs)</p></li>
+<li><p>(bool) whether the value was clipped or not</p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.convert_quat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">convert_quat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">to</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'xyzw'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.convert_quat" title="Permalink to this definition"></a></dt>
+<dd><p>Converts quaternion from one convention to another.
+The convention to convert TO is specified as an optional argument.
+If to == ‘xyzw’, then the input is in ‘wxyz’ format, and vice-versa.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>q (np.array): a 4-dim array corresponding to a quaternion
+to (str): either ‘xyzw’ or ‘wxyz’, determining which convention to convert to.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.euler2mat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">euler2mat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">euler</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.euler2mat" title="Permalink to this definition"></a></dt>
+<dd><p>Converts euler angles into rotation matrix form</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>euler (np.array): (r,p,y) angles</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 3x3 rotation matrix</p>
+</dd>
+<dt>Raises:</dt><dd><p>AssertionError: [Invalid input shape]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.ewma_vectorized">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">ewma_vectorized</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'C'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.ewma_vectorized" title="Permalink to this definition"></a></dt>
+<dd><p>Calculates the exponential moving average over a vector.
+Will fail for large inputs.
+:param data: Input data
+:param alpha: scalar float in range (0,1)</p>
+<blockquote>
+<div><p>The alpha parameter for the moving average.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>offset</strong> – optional
+The offset for the moving average, scalar. Defaults to data[0].</p></li>
+<li><p><strong>dtype</strong> – optional
+Data type used for calculations. Defaults to float64 unless
+data.dtype is float32, then it will use float32.</p></li>
+<li><p><strong>order</strong> – {‘C’, ‘F’, ‘A’}, optional
+Order to use when flattening the data. Defaults to ‘C’.</p></li>
+<li><p><strong>out</strong> – ndarray, or None, optional
+A location into which the result is stored. If provided, it must have
+the same shape as the input. If not provided or <cite>None</cite>,
+a freshly-allocated array is returned.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.force_in_A_to_force_in_B">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">force_in_A_to_force_in_B</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">force_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">torque_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pose_A_in_B</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.force_in_A_to_force_in_B" title="Permalink to this definition"></a></dt>
+<dd><p>Converts linear and rotational force at a point in frame A to the equivalent in frame B.</p>
+<dl>
+<dt>Args:</dt><dd><p>force_A (np.array): (fx,fy,fz) linear force in A
+torque_A (np.array): (tx,ty,tz) rotational force (moment) in A
+pose_A_in_B (np.array): 4x4 matrix corresponding to the pose of A in frame B</p>
+</dd>
+<dt>Returns:</dt><dd><p>2-tuple:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>(np.array) (fx,fy,fz) linear forces in frame B</p></li>
+<li><p>(np.array) (tx,ty,tz) moments in frame B</p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.get_orientation_error">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">get_orientation_error</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_orn</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_orn</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.get_orientation_error" title="Permalink to this definition"></a></dt>
+<dd><p>Returns the difference between two quaternion orientations as a 3 DOF numpy array.
+For use in an impedance controller / task-space PD controller.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>target_orn (np.array): (x, y, z, w) desired quaternion orientation
+current_orn (np.array): (x, y, z, w) current quaternion orientation</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>orn_error (np.array): (ax,ay,az) current orientation error, corresponds to</dt><dd><p>(target_orn - current_orn)</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.get_pose_error">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">get_pose_error</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_pose</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_pose</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.get_pose_error" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the error corresponding to target pose - current pose as a 6-dim vector.
+The first 3 components correspond to translational error while the last 3 components
+correspond to the rotational error.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>target_pose (np.array): a 4x4 homogenous matrix for the target pose
+current_pose (np.array): a 4x4 homogenous matrix for the current pose</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 6-dim pose error.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.make_pose">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">make_pose</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">translation</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.make_pose" title="Permalink to this definition"></a></dt>
+<dd><p>Makes a homogeneous pose matrix from a translation vector and a rotation matrix.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>translation (np.array): (x,y,z) translation value
+rotation (np.array): a 3x3 matrix representing rotation</p>
+</dd>
+<dt>Returns:</dt><dd><p>pose (np.array): a 4x4 homogeneous matrix</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.mat2euler">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">mat2euler</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rmat</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'sxyz'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.mat2euler" title="Permalink to this definition"></a></dt>
+<dd><p>Converts given rotation matrix to euler angles in radian.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>rmat (np.array): 3x3 rotation matrix
+axes (str): One of 24 axis sequences as string or encoded tuple (see top of this module)</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (r,p,y) converted euler angles in radian vec3 float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.mat2pose">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">mat2pose</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">hmat</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.mat2pose" title="Permalink to this definition"></a></dt>
+<dd><p>Converts a homogeneous 4x4 matrix into pose.</p>
+<dl>
+<dt>Args:</dt><dd><p>hmat (np.array): a 4x4 homogeneous matrix</p>
+</dd>
+<dt>Returns:</dt><dd><p>2-tuple:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>(np.array) (x,y,z) position array in cartesian coordinates</p></li>
+<li><p>(np.array) (x,y,z,w) orientation array in quaternion form</p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.mat2quat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">mat2quat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rmat</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.mat2quat" title="Permalink to this definition"></a></dt>
+<dd><p>Converts given rotation matrix to quaternion.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>rmat (np.array): 3x3 rotation matrix</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) float quaternion angles</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.mat4">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">mat4</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.mat4" title="Permalink to this definition"></a></dt>
+<dd><p>Converts an array to 4x4 matrix.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>array (n-array): the array in form of vec, list, or tuple</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: a 4x4 numpy matrix</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.matrix_inverse">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">matrix_inverse</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.matrix_inverse" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function to have an efficient matrix inversion function.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>matrix (np.array): 2d-array representing a matrix</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 2d-array representing the matrix inverse</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.pose2mat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">pose2mat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pose</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.pose2mat" title="Permalink to this definition"></a></dt>
+<dd><p>Converts pose to homogeneous matrix.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>pose (2-tuple): a (pos, orn) tuple where pos is vec3 float cartesian, and</dt><dd><p>orn is vec4 float quaternion.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 4x4 homogeneous matrix</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.pose_in_A_to_pose_in_B">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">pose_in_A_to_pose_in_B</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pose_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pose_A_in_B</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.pose_in_A_to_pose_in_B" title="Permalink to this definition"></a></dt>
+<dd><p>Converts a homogenous matrix corresponding to a point C in frame A
+to a homogenous matrix corresponding to the same point C in frame B.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>pose_A (np.array): 4x4 matrix corresponding to the pose of C in frame A
+pose_A_in_B (np.array): 4x4 matrix corresponding to the pose of A in frame B</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 4x4 matrix corresponding to the pose of C in frame B</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.pose_inv">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">pose_inv</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pose</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.pose_inv" title="Permalink to this definition"></a></dt>
+<dd><p>Computes the inverse of a homogeneous matrix corresponding to the pose of some
+frame B in frame A. The inverse is the pose of frame A in frame B.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>pose (np.array): 4x4 matrix for the pose to inverse</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 4x4 matrix for the inverse pose</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat2axisangle">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat2axisangle</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quat</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat2axisangle" title="Permalink to this definition"></a></dt>
+<dd><p>Converts quaternion to axis-angle format.
+Returns a unit vector direction scaled by its angle in radians.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quat (np.array): (x,y,z,w) vec4 float angles</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (ax,ay,az) axis-angle exponential coordinates</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat2mat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat2mat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat2mat" title="Permalink to this definition"></a></dt>
+<dd><p>Converts given quaternion to matrix.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quaternion (np.array): (x,y,z,w) vec4 float angles</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 3x3 rotation matrix</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat_conjugate">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat_conjugate</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat_conjugate" title="Permalink to this definition"></a></dt>
+<dd><p>Return conjugate of quaternion.</p>
+<p>E.g.:
+&gt;&gt;&gt; q0 = random_quaternion()
+&gt;&gt;&gt; q1 = quat_conjugate(q0)
+&gt;&gt;&gt; q1[3] == q0[3] and all(q1[:3] == -q0[:3])
+True</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quaternion (np.array): (x,y,z,w) quaternion</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) quaternion conjugate</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat_distance">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat_distance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quaternion0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat_distance" title="Permalink to this definition"></a></dt>
+<dd><p>Returns distance between two quaternions, such that distance * quaternion0 = quaternion1</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quaternion1 (np.array): (x,y,z,w) quaternion
+quaternion0 (np.array): (x,y,z,w) quaternion</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) quaternion distance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat_inverse">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat_inverse</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat_inverse" title="Permalink to this definition"></a></dt>
+<dd><p>Return inverse of quaternion.</p>
+<p>E.g.:
+&gt;&gt;&gt; q0 = random_quaternion()
+&gt;&gt;&gt; q1 = quat_inverse(q0)
+&gt;&gt;&gt; np.allclose(quat_multiply(q0, q1), [0, 0, 0, 1])
+True</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quaternion (np.array): (x,y,z,w) quaternion</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) quaternion inverse</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat_multiply">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat_multiply</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quaternion1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quaternion0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat_multiply" title="Permalink to this definition"></a></dt>
+<dd><p>Return multiplication of two quaternions (q1 * q0).</p>
+<p>E.g.:
+&gt;&gt;&gt; q = quat_multiply([1, -2, 3, 4], [-5, 6, 7, 8])
+&gt;&gt;&gt; np.allclose(q, [-44, -14, 48, 28])
+True</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quaternion1 (np.array): (x,y,z,w) quaternion
+quaternion0 (np.array): (x,y,z,w) quaternion</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) multiplied quaternion</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.quat_slerp">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">quat_slerp</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">quat0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quat1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fraction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shortestpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.quat_slerp" title="Permalink to this definition"></a></dt>
+<dd><p>Return spherical linear interpolation between two quaternions.</p>
+<p>E.g.:
+&gt;&gt;&gt; q0 = random_quat()
+&gt;&gt;&gt; q1 = random_quat()
+&gt;&gt;&gt; q = quat_slerp(q0, q1, 0.0)
+&gt;&gt;&gt; np.allclose(q, q0)
+True</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">quat_slerp</span><span class="p">(</span><span class="n">q0</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">q1</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">q</span> <span class="o">=</span> <span class="n">quat_slerp</span><span class="p">(</span><span class="n">q0</span><span class="p">,</span> <span class="n">q1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">q0</span><span class="p">,</span> <span class="n">q</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">q0</span><span class="p">,</span> <span class="n">q1</span><span class="p">))</span> <span class="o">/</span> <span class="n">angle</span><span class="p">)</span> <span class="ow">or</span>         <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">math</span><span class="o">.</span><span class="n">acos</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">q0</span><span class="p">,</span> <span class="n">q1</span><span class="p">))</span> <span class="o">/</span> <span class="n">angle</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>Args:</dt><dd><p>quat0 (np.array): (x,y,z,w) quaternion startpoint
+quat1 (np.array): (x,y,z,w) quaternion endpoint
+fraction (float): fraction of interpolation to calculate
+shortestpath (bool): If True, will calculate the shortest path</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) quaternion distance</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.random_axis_angle">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">random_axis_angle</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle_limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_state</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.random_axis_angle" title="Permalink to this definition"></a></dt>
+<dd><p>Samples an axis-angle rotation by first sampling a random axis
+and then sampling an angle. If &#64;angle_limit is provided, the size
+of the rotation angle is constrained.</p>
+<p>If &#64;random_state is provided (instance of np.random.RandomState), it
+will be used to generate random numbers.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>angle_limit (None or float): If set, determines magnitude limit of angles to generate
+random_state (None or RandomState): RNG to use if specified</p>
+</dd>
+<dt>Raises:</dt><dd><p>AssertionError: [Invalid RNG]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.random_quat">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">random_quat</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rand</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.random_quat" title="Permalink to this definition"></a></dt>
+<dd><p>Return uniform random unit quaternion.</p>
+<p>E.g.:
+&gt;&gt;&gt; q = random_quat()
+&gt;&gt;&gt; np.allclose(1.0, vector_norm(q))
+True
+&gt;&gt;&gt; q = random_quat(np.random.random(3))
+&gt;&gt;&gt; q.shape
+(4,)</p>
+<dl class="simple">
+<dt>Args:</dt><dd><dl class="simple">
+<dt>rand (3-array or None): If specified, must be three independent random variables that are uniformly distributed</dt><dd><p>between 0 and 1.</p>
+</dd>
+</dl>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: (x,y,z,w) random quaternion</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.rotation_matrix">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">rotation_matrix</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">angle</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">direction</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.rotation_matrix" title="Permalink to this definition"></a></dt>
+<dd><p>Returns matrix to rotate about axis defined by point and direction.</p>
+<dl>
+<dt>E.g.:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">angle</span> <span class="o">=</span> <span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">direc</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">point</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">R0</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">direc</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">R1</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">angle</span><span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="n">direc</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">R0</span><span class="p">,</span> <span class="n">R1</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">R0</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">angle</span><span class="p">,</span> <span class="n">direc</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">R1</span> <span class="o">=</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="o">-</span><span class="n">angle</span><span class="p">,</span> <span class="o">-</span><span class="n">direc</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">is_same_transform</span><span class="p">(</span><span class="n">R0</span><span class="p">,</span> <span class="n">R1</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">I</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">identity</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">I</span><span class="p">,</span> <span class="n">rotation_matrix</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span class="n">direc</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="mf">2.</span><span class="p">,</span> <span class="n">numpy</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">rotation_matrix</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span>
+<span class="gp">... </span>                                               <span class="n">direc</span><span class="p">,</span> <span class="n">point</span><span class="p">)))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</dd>
+<dt>Args:</dt><dd><p>angle (float): Magnitude of rotation
+direction (np.array): (ax,ay,az) axis about which to rotate
+point (None or np.array): If specified, is the (x,y,z) point about which the rotation will occur</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: 4x4 homogeneous matrix that includes the desired rotation</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.unit_vector">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">unit_vector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.unit_vector" title="Permalink to this definition"></a></dt>
+<dd><p>Returns ndarray normalized by length, i.e. eucledian norm, along axis.</p>
+<dl>
+<dt>E.g.:</dt><dd><div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">v0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">v1</span> <span class="o">=</span> <span class="n">unit_vector</span><span class="p">(</span><span class="n">v0</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v0</span> <span class="o">/</span> <span class="n">numpy</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">v0</span><span class="p">))</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">v0</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">v1</span> <span class="o">=</span> <span class="n">unit_vector</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">v2</span> <span class="o">=</span> <span class="n">v0</span> <span class="o">/</span> <span class="n">numpy</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">v0</span><span class="o">*</span><span class="n">v0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)),</span> <span class="mi">2</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">v1</span> <span class="o">=</span> <span class="n">unit_vector</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">v2</span> <span class="o">=</span> <span class="n">v0</span> <span class="o">/</span> <span class="n">numpy</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">v0</span><span class="o">*</span><span class="n">v0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)),</span> <span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">v1</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="mi">5</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">numpy</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">unit_vector</span><span class="p">(</span><span class="n">v0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="n">v1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">numpy</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">)</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">unit_vector</span><span class="p">([]))</span>
+<span class="go">[]</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">list</span><span class="p">(</span><span class="n">unit_vector</span><span class="p">([</span><span class="mf">1.0</span><span class="p">]))</span>
+<span class="go">[1.0]</span>
+</pre></div>
+</div>
+</dd>
+<dt>Args:</dt><dd><p>data (np.array): data to normalize
+axis (None or int): If specified, determines specific axis along data to normalize
+out (None or np.array): If specified, will store computation in this variable</p>
+</dd>
+<dt>Returns:</dt><dd><p>None or np.array: If &#64;out is not specified, will return normalized vector. Otherwise, stores the output in &#64;out</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.vec">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">vec</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.vec" title="Permalink to this definition"></a></dt>
+<dd><p>Converts value tuple into a numpy vector.</p>
+<dl class="simple">
+<dt>Args:</dt><dd><p>values (n-array): a tuple of numbers</p>
+</dd>
+<dt>Returns:</dt><dd><p>np.array: vector of given values</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.transform_utils.vel_in_A_to_vel_in_B">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.transform_utils.</span></code><code class="sig-name descname"><span class="pre">vel_in_A_to_vel_in_B</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vel_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ang_vel_A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pose_A_in_B</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.transform_utils.vel_in_A_to_vel_in_B" title="Permalink to this definition"></a></dt>
+<dd><p>Converts linear and angular velocity of a point in frame A to the equivalent in frame B.</p>
+<dl>
+<dt>Args:</dt><dd><p>vel_A (np.array): (vx,vy,vz) linear velocity in A
+ang_vel_A (np.array): (wx,wy,wz) angular velocity in A
+pose_A_in_B (np.array): 4x4 matrix corresponding to the pose of A in frame B</p>
+</dd>
+<dt>Returns:</dt><dd><p>2-tuple:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>(np.array) (vx,vy,vz) linear velocities in frame B</p></li>
+<li><p>(np.array) (wx,wy,wz) angular velocities in frame B</p></li>
+</ul>
+</div></blockquote>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-utils-urdf-utils-module">
+<h2>igibson.utils.urdf_utils module<a class="headerlink" href="#igibson-utils-urdf-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-utils-utils-module">
+<h2>igibson.utils.utils module<a class="headerlink" href="#igibson-utils-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.vision_utils">
+<span id="igibson-utils-vision-utils-module"></span><h2>igibson.utils.vision_utils module<a class="headerlink" href="#module-igibson.utils.vision_utils" title="Permalink to this headline"></a></h2>
+<dl class="py class">
+<dt id="igibson.utils.vision_utils.RandomScale">
+<em class="property"><span class="pre">class</span> </em><code class="sig-prename descclassname"><span class="pre">igibson.utils.vision_utils.</span></code><code class="sig-name descname"><span class="pre">RandomScale</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">minsize</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxsize</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interpolation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.vision_utils.RandomScale" title="Permalink to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Rescale the input PIL.Image to the given size.
+Args:
+size (sequence or int): Desired output size. If size is a sequence like
+(w, h), output size will be matched to this. If size is an int,
+smaller edge of the image will be matched to this number.
+i.e, if height &gt; width, then image will be rescaled to
+(size * height / width, size)
+interpolation (int, optional): Desired interpolation. Default is
+<code class="docutils literal notranslate"><span class="pre">PIL.Image.BILINEAR</span></code></p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.vision_utils.randomize_colors">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.vision_utils.</span></code><code class="sig-name descname"><span class="pre">randomize_colors</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">N</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bright</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.vision_utils.randomize_colors" title="Permalink to this definition"></a></dt>
+<dd><p>Modified from <a class="reference external" href="https://github.com/matterport/Mask_RCNN/blob/master/mrcnn/visualize.py#L59">https://github.com/matterport/Mask_RCNN/blob/master/mrcnn/visualize.py#L59</a>
+Generate random colors.
+To get visually distinct colors, generate them in HSV space then
+convert to RGB.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.vision_utils.segmentation_to_rgb">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.vision_utils.</span></code><code class="sig-name descname"><span class="pre">segmentation_to_rgb</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seg_im</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">N</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.vision_utils.segmentation_to_rgb" title="Permalink to this definition"></a></dt>
+<dd><p>Helper function to visualize segmentations as RGB frames.
+NOTE: assumes that geom IDs go up to N at most - if not,
+multiple geoms might be assigned to the same color.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="igibson-utils-vr-log-converter-module">
+<h2>igibson.utils.vr_log_converter module<a class="headerlink" href="#igibson-utils-vr-log-converter-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils.vr_plot_profiling">
+<span id="igibson-utils-vr-plot-profiling-module"></span><h2>igibson.utils.vr_plot_profiling module<a class="headerlink" href="#module-igibson.utils.vr_plot_profiling" title="Permalink to this headline"></a></h2>
+<p>Code to plot realtime graph.</p>
+<p>To use, run the iGibson simulator loop with simulator.step(print_stats=True)
+and redirect stdout to a file:</p>
+<p>python my_gibson_test.py &gt; log.txt</p>
+<p>and provide log.txt to the profiling script via the –filename arg</p>
+<dl class="py function">
+<dt id="igibson.utils.vr_plot_profiling.main">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.vr_plot_profiling.</span></code><code class="sig-name descname"><span class="pre">main</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.vr_plot_profiling.main" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt id="igibson.utils.vr_plot_profiling.parse_args">
+<code class="sig-prename descclassname"><span class="pre">igibson.utils.vr_plot_profiling.</span></code><code class="sig-name descname"><span class="pre">parse_args</span></code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#igibson.utils.vr_plot_profiling.parse_args" title="Permalink to this definition"></a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="igibson-utils-vr-utils-module">
+<h2>igibson.utils.vr_utils module<a class="headerlink" href="#igibson-utils-vr-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-igibson.utils">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-igibson.utils" title="Permalink to this headline"></a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="igibson.termination_conditions.html" class="btn btn-neutral float-left" title="igibson.termination_conditions package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../issues.html" class="btn btn-neutral float-right" title="Troubleshooting" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

@@ -1,0 +1,125 @@
+igibson.robots package
+======================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   igibson.robots.legacy
+
+Submodules
+----------
+
+igibson.robots.active\_camera\_robot module
+-------------------------------------------
+
+.. automodule:: igibson.robots.active_camera_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.ant module
+-------------------------
+
+.. automodule:: igibson.robots.ant
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.behavior\_robot module
+-------------------------------------
+
+.. automodule:: igibson.robots.behavior_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.fetch module
+---------------------------
+
+.. automodule:: igibson.robots.fetch
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.freight module
+-----------------------------
+
+.. automodule:: igibson.robots.freight
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.husky module
+---------------------------
+
+.. automodule:: igibson.robots.husky
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.jr2 module
+-------------------------
+
+.. automodule:: igibson.robots.jr2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.locobot module
+-----------------------------
+
+.. automodule:: igibson.robots.locobot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.locomotion\_robot module
+---------------------------------------
+
+.. automodule:: igibson.robots.locomotion_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.manipulation\_robot module
+-----------------------------------------
+
+.. automodule:: igibson.robots.manipulation_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.robot\_base module
+---------------------------------
+
+.. automodule:: igibson.robots.robot_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.turtlebot module
+-------------------------------
+
+.. automodule:: igibson.robots.turtlebot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.two\_wheel\_robot module
+---------------------------------------
+
+.. automodule:: igibson.robots.two_wheel_robot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.robots
+   :members:
+   :undoc-members:
+   :show-inheritance:

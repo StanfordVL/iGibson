@@ -1,0 +1,93 @@
+igibson.tasks package
+=====================
+
+Submodules
+----------
+
+igibson.tasks.bddl\_backend module
+----------------------------------
+
+.. automodule:: igibson.tasks.bddl_backend
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.behavior\_task module
+-----------------------------------
+
+.. automodule:: igibson.tasks.behavior_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.dummy\_task module
+--------------------------------
+
+.. automodule:: igibson.tasks.dummy_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.dynamic\_nav\_random\_task module
+-----------------------------------------------
+
+.. automodule:: igibson.tasks.dynamic_nav_random_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.interactive\_nav\_random\_task module
+---------------------------------------------------
+
+.. automodule:: igibson.tasks.interactive_nav_random_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.point\_nav\_fixed\_task module
+--------------------------------------------
+
+.. automodule:: igibson.tasks.point_nav_fixed_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.point\_nav\_random\_task module
+---------------------------------------------
+
+.. automodule:: igibson.tasks.point_nav_random_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.reaching\_random\_task module
+-------------------------------------------
+
+.. automodule:: igibson.tasks.reaching_random_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.room\_rearrangement\_task module
+----------------------------------------------
+
+.. automodule:: igibson.tasks.room_rearrangement_task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.tasks.task\_base module
+-------------------------------
+
+.. automodule:: igibson.tasks.task_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.tasks
+   :members:
+   :undoc-members:
+   :show-inheritance:

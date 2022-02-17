@@ -1,0 +1,53 @@
+igibson.examples.environments package
+=====================================
+
+Submodules
+----------
+
+igibson.examples.environments.config\_selector module
+-----------------------------------------------------
+
+.. automodule:: igibson.examples.environments.config_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.environments.env\_int\_example module
+------------------------------------------------------
+
+.. automodule:: igibson.examples.environments.env_int_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.environments.env\_int\_selector module
+-------------------------------------------------------
+
+.. automodule:: igibson.examples.environments.env_int_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.environments.env\_nonint\_example module
+---------------------------------------------------------
+
+.. automodule:: igibson.examples.environments.env_nonint_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.environments.env\_nonint\_selector module
+----------------------------------------------------------
+
+.. automodule:: igibson.examples.environments.env_nonint_selector
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.environments
+   :members:
+   :undoc-members:
+   :show-inheritance:

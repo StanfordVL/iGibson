@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overview of Modules &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Overview of Modules &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,7 +49,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -63,9 +62,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -94,14 +97,14 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="overview-of-modules">
+  <div class="section" id="overview-of-modules">
 <h1>Overview of Modules<a class="headerlink" href="#overview-of-modules" title="Permalink to this headline"></a></h1>
 <p>Next, we will give an overview of iGibson and briefly explain the different modules in our system.
 <img alt="quickstart.png" src="_images/overview.png" /></p>
 <p>First of all, we have <strong>Datasets</strong> and <strong>Assets</strong>.
 <strong>Datasets</strong> include the 3D reconstructed real-world environments (iGibson Dataset), and 3D models of objects (BEHAVIOR Dataset of Objects).
 <strong>Assets</strong> contain models of robots and some additional 3D objects.
-The download guide for the assets can be found <a class="reference external" href="installation.html#downloading-the-assets">here</a>.
+The download guide for the assets can be found <span class="xref myst">here</span>.
 More info can be found in the sections <a class="reference internal" href="dataset.html"><span class="doc std std-doc">Datasets</span></a> and <a class="reference internal" href="assets.html"><span class="doc std std-doc">Assets</span></a>.</p>
 <p>Next, we have <strong>Renderer</strong> and <strong>PhysicsEngine</strong>.
 These are the two pillars that ensure the visual and physics fidelity of iGibson.
@@ -109,7 +112,7 @@ We developed our own renderer that supports customizable camera configuration, p
 We use the open-sourced <a class="reference external" href="http://www.pybullet.org/">PyBullet</a> as our underlying physics engine.
 It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner.
 Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time.
-Our code have already handled this for you. More info can be found here: <a class="reference internal" href="renderer.html"><span class="doc std std-doc">Renderer</span></a> and <a class="reference internal" href="physics_engine.html"><span class="doc std std-doc">PhysicsEngine</span></a>.</p>
+Our code have already handled this for you. More info can be found here: <a class="reference internal" href="renderer.html"><span class="doc std std-doc">Renderer</span></a>.</p>
 <p>Furthermore, we have <strong>Scene</strong>, <strong>Object</strong>, <strong>Robot</strong>, and <strong>Simulator</strong>.
 <strong>Scene</strong> loads 3D scene meshes from <code class="docutils literal notranslate"><span class="pre">igibson.g_dataset_path,</span> <span class="pre">igibson.ig_dataset_path</span></code> and loads/holds the list of objects associated with an interactive scene.
 <strong>Object</strong> loads interactable objects from <code class="docutils literal notranslate"><span class="pre">igibson.assets_path</span></code>.

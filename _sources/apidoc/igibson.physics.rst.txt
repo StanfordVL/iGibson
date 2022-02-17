@@ -1,0 +1,29 @@
+igibson.physics package
+=======================
+
+Submodules
+----------
+
+igibson.physics.motor module
+----------------------------
+
+.. automodule:: igibson.physics.motor
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.physics.settings module
+-------------------------------
+
+.. automodule:: igibson.physics.settings
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.physics
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,7 +1,7 @@
 # Quickstart
 
 ## iGibson in Action
-Assume you finished installation and assets downloading. Let's get our hands dirty and see iGibson in action.
+Let's assume you finished the installation and downloading some assets and datasets. Let's now get our hands dirty and see iGibson in action!
 
 ```bash
 python -m igibson.examples.environments.env_nonint_example
@@ -9,16 +9,20 @@ python -m igibson.examples.environments.env_nonint_example
 
 If the execution fails with segfault 11, you may need to reduce texture scaling in the config file (igibson/configs/turtlebot_static_nav.yaml) to avoid out-of-memory error.
 
-You should see something like this. If you are on Mac OS X, you will only see the two small windows. 
+You should see something like this, but as default, you will only see the two small windows, without the PyBullet viewer.
 ![quickstart.png](images/quickstart.png)
 
-The main window shows PyBullet visualization. The robot (TurtleBot) is moving around with random actions in a realistic house (called "Rs", the one you just downloaded!).
+The robot (TurtleBot) is moving around with random actions in a realistic house model called "Rs" that is automatically downloaded. The model is not interactive: objects won't move if the robot collides with them.
 
-On the right hand side, you can see two windows from our mesh renderer. The top one (RobotView) shows the robot's first person view. The bottom one (ExternalView) shows the view of a virtual camera floating in the air.
+On the right side, you can see two windows from our mesh renderer. The top one (RobotView) shows the robot's first person view. The bottom one (ExternalView) shows the view of a virtual camera floating in the air.
+
+The large window shows PyBullet visualization. This visualization is deactivated as default, you would need to explicitly activate it using the argument `use_pb_gui` of the **Environment**. 
 
 If you want to have a virtual tour around the house yourself, you can click on the ExternalView window, and then translate the virtual camera to a different location by pressing "WASD" on your keyboard and rotate it to a different angle by dragging your mouse.
 
-That's it!
+Enjoy!
+
+Explore other examples by executing `python -m igibson.examples.XXXX`. Please, consider that some of the examples require to download the iGibson 1.0 or iGibson 2.0 datasets of scenes and/or the BEHAVIOR dataset of objects. See how to download them [here](dataset.md).
 
 ## Using Docker and remote GUI access via VNC
 
@@ -49,13 +53,11 @@ If you do not need GUI,
 python benchmark.py
 ```
 
-## Benchmarks
+## Measuring the performance of the simulator
 
+Performance is a big designing focus for iGibson. We provide a few scripts to measure the performance of rendering and physics simulation in your target machine.
 
-Performance is a big designing focus for iGibson. We provide a few scripts to benchmark the rendering and physics
-simulation framerate in iGibson.
-
-### Benchmark static scene (Gibson scenes)
+### Measuring the performance in static scene (Gibson scenes)
 ```bash
 python -m igibson.test.benchmark.benchmark_static_scene
 ```
@@ -74,7 +76,7 @@ Rendering normal, resolution 512, render_to_tensor False: 265.70666134193806 fps
 
 ```
 
-### Benchmark physics simulation in interactive scenes (iGibson scene)
+### Measuring the performance of the physics simulation in interactive scenes (iGibson scene)
 
 ```bash
 python -m igibson.test.benchmark.benchmark_interactive_scene
@@ -85,7 +87,7 @@ It will generate a report like below:
 ![](images/scene_benchmark_Rs_int_o_True_r_True.png)
 
 
-### Benchmark rendering in interactive scenes
+### Measuring the performance of rendering in interactive scenes
 
 To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:
 

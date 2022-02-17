@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scenes &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Scenes &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,7 +49,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -79,9 +78,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -110,7 +113,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="scenes">
+  <div class="section" id="scenes">
 <h1>Scenes<a class="headerlink" href="#scenes" title="Permalink to this headline"></a></h1>
 <div class="section" id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Permalink to this headline"></a></h2>
@@ -160,26 +163,35 @@
 <span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Loads the Stadium scene</span>
 <span class="sd">    This scene is default in pybullet but is not really useful in iGibson</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
 
     <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">,</span>
+        <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+        <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+        <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">scene</span> <span class="o">=</span> <span class="n">StadiumScene</span><span class="p">()</span>
     <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
 
-    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="n">max_steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">1000</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">step</span> <span class="o">!=</span> <span class="n">max_steps</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
             <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
     <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -188,7 +200,7 @@
 </div>
 <div class="section" id="static-building-scenes">
 <h3>Static Building Scenes<a class="headerlink" href="#static-building-scenes" title="Permalink to this headline"></a></h3>
-<p>In this example, we import a static scene, and then randomly sample a pair of locations in the scene and compuete the shortest path between them. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/g_scene_selector.py">igibson/examples/scenes/g_scene_selector.py</a>.</p>
+<p>In this example, we import a static scene, and then randomly sample a pair of locations in the scene and compute the shortest path between them. The code can be found here: <a class="reference external" href="https://github.com/StanfordVL/iGibson/blob/master/igibson/examples/scenes/g_scene_selector.py">igibson/examples/scenes/g_scene_selector.py</a>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">sys</span> <span class="kn">import</span> <span class="n">platform</span>
 
@@ -197,26 +209,30 @@
 <span class="kn">from</span> <span class="nn">igibson.render.mesh_renderer.mesh_renderer_settings</span> <span class="kn">import</span> <span class="n">MeshRendererSettings</span>
 <span class="kn">from</span> <span class="nn">igibson.render.profiler</span> <span class="kn">import</span> <span class="n">Profiler</span>
 <span class="kn">from</span> <span class="nn">igibson.scenes.gibson_indoor_scene</span> <span class="kn">import</span> <span class="n">StaticIndoorScene</span>
-<span class="kn">from</span> <span class="nn">igibson.scenes.igibson_indoor_scene</span> <span class="kn">import</span> <span class="n">InteractiveIndoorScene</span>
 <span class="kn">from</span> <span class="nn">igibson.simulator</span> <span class="kn">import</span> <span class="n">Simulator</span>
 <span class="kn">from</span> <span class="nn">igibson.utils.assets_utils</span> <span class="kn">import</span> <span class="n">get_available_g_scenes</span>
 <span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">let_user_pick</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Prompts the user to select any available non-interactive scene and loads it.</span>
 <span class="sd">    Shows how to load directly scenes without the Environment interface</span>
 <span class="sd">    Shows how to sample points in the scene and how to compute geodesic distance and the shortest path</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
-    <span class="n">available_g_scenes</span> <span class="o">=</span> <span class="n">get_available_g_scenes</span><span class="p">()</span>
-    <span class="n">scene_id</span> <span class="o">=</span> <span class="n">available_g_scenes</span><span class="p">[</span><span class="n">let_user_pick</span><span class="p">(</span><span class="n">available_g_scenes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">available_g_scenes</span> <span class="o">=</span> <span class="n">get_first_options</span><span class="p">()</span>
+    <span class="n">scene_id</span> <span class="o">=</span> <span class="n">available_g_scenes</span><span class="p">[</span><span class="n">let_user_pick</span><span class="p">(</span><span class="n">available_g_scenes</span><span class="p">,</span> <span class="n">selection</span><span class="o">=</span><span class="n">selection</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
     <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="c1"># Reduce texture scale for Mac.</span>
     <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
         <span class="n">settings</span><span class="o">.</span><span class="n">texture_scale</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">,</span>
+        <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+        <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+        <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">scene</span> <span class="o">=</span> <span class="n">StaticIndoorScene</span><span class="p">(</span>
         <span class="n">scene_id</span><span class="p">,</span>
@@ -231,20 +247,30 @@
         <span class="n">p1</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">p2</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">shortest_path</span><span class="p">,</span> <span class="n">geodesic_distance</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_shortest_path</span><span class="p">(</span><span class="n">random_floor</span><span class="p">,</span> <span class="n">p1</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">p2</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">entire_path</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 1: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Geodesic distance between p1 and p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">))</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Shortest path from p1 to p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shortest_path</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Random point 1: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Random point 2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Geodesic distance between p1 and p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Shortest path from p1 to p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shortest_path</span><span class="p">))</span>
 
-    <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press enter&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span><span class="p">:</span>
+        <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press enter&quot;</span><span class="p">)</span>
 
-    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="n">max_steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">1000</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">step</span> <span class="o">!=</span> <span class="n">max_steps</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
             <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
+
     <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
+<span class="k">def</span> <span class="nf">get_first_options</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">get_available_g_scenes</span><span class="p">()</span>
+
+
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -267,23 +293,28 @@
 <span class="kn">from</span> <span class="nn">igibson.utils.utils</span> <span class="kn">import</span> <span class="n">let_user_pick</span>
 
 
-<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">selection</span><span class="o">=</span><span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="n">headless</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">short_exec</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Prompts the user to select any available interactive scene and loads it.</span>
 <span class="sd">    Shows how to load directly scenes without the Environment interface</span>
 <span class="sd">    Shows how to sample points in the scene by room type and how to compute geodesic distance and the shortest path</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
-    <span class="n">available_ig_scenes</span> <span class="o">=</span> <span class="n">get_available_ig_scenes</span><span class="p">()</span>
-    <span class="n">scene_id</span> <span class="o">=</span> <span class="n">available_ig_scenes</span><span class="p">[</span><span class="n">let_user_pick</span><span class="p">(</span><span class="n">available_ig_scenes</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Description:&quot;</span> <span class="o">+</span> <span class="n">main</span><span class="o">.</span><span class="vm">__doc__</span> <span class="o">+</span> <span class="s2">&quot;*&quot;</span> <span class="o">*</span> <span class="mi">80</span><span class="p">)</span>
+    <span class="n">available_ig_scenes</span> <span class="o">=</span> <span class="n">get_first_options</span><span class="p">()</span>
+    <span class="n">scene_id</span> <span class="o">=</span> <span class="n">available_ig_scenes</span><span class="p">[</span><span class="n">let_user_pick</span><span class="p">(</span><span class="n">available_ig_scenes</span><span class="p">,</span> <span class="n">selection</span><span class="o">=</span><span class="n">selection</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
     <span class="n">settings</span> <span class="o">=</span> <span class="n">MeshRendererSettings</span><span class="p">(</span><span class="n">enable_shadow</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">msaa</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">platform</span> <span class="o">==</span> <span class="s2">&quot;darwin&quot;</span><span class="p">:</span>
         <span class="n">settings</span><span class="o">.</span><span class="n">texture_scale</span> <span class="o">=</span> <span class="mf">0.5</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span><span class="p">,</span> <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span> <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">)</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">Simulator</span><span class="p">(</span>
+        <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;gui_interactive&quot;</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span> <span class="k">else</span> <span class="s2">&quot;headless&quot;</span><span class="p">,</span>
+        <span class="n">image_width</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+        <span class="n">image_height</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+        <span class="n">rendering_settings</span><span class="o">=</span><span class="n">settings</span><span class="p">,</span>
+    <span class="p">)</span>
 
     <span class="n">scene</span> <span class="o">=</span> <span class="n">InteractiveIndoorScene</span><span class="p">(</span>
         <span class="n">scene_id</span><span class="p">,</span>
-        <span class="n">load_object_categories</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># To load only the building. Fast</span>
+        <span class="c1"># load_object_categories=[],  # To load only the building. Fast</span>
         <span class="n">build_graph</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">s</span><span class="o">.</span><span class="n">import_scene</span><span class="p">(</span><span class="n">scene</span><span class="p">)</span>
@@ -292,27 +323,37 @@
     <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
         <span class="n">pt</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point_by_room_type</span><span class="p">(</span><span class="s2">&quot;living_room&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point in living_room: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pt</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Random point in living_room: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pt</span><span class="p">))</span>
 
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">):</span>
         <span class="n">random_floor</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_floor</span><span class="p">()</span>
         <span class="n">p1</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">p2</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_random_point</span><span class="p">(</span><span class="n">random_floor</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">shortest_path</span><span class="p">,</span> <span class="n">geodesic_distance</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">get_shortest_path</span><span class="p">(</span><span class="n">random_floor</span><span class="p">,</span> <span class="n">p1</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">p2</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">entire_path</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 1: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Random point 2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Geodesic distance between p1 and p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">))</span>
-        <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Shortest path from p1 to p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shortest_path</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Random point 1: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p1</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Random point 2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p2</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Geodesic distance between p1 and p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">geodesic_distance</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Shortest path from p1 to p2: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">shortest_path</span><span class="p">))</span>
 
-    <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press enter&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">headless</span><span class="p">:</span>
+        <span class="nb">input</span><span class="p">(</span><span class="s2">&quot;Press enter&quot;</span><span class="p">)</span>
 
-    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="n">max_steps</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">short_exec</span> <span class="k">else</span> <span class="mi">1000</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">step</span> <span class="o">!=</span> <span class="n">max_steps</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">Profiler</span><span class="p">(</span><span class="s2">&quot;Simulator step&quot;</span><span class="p">):</span>
             <span class="n">s</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+            <span class="n">step</span> <span class="o">+=</span> <span class="mi">1</span>
+
     <span class="n">s</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
 
 
+<span class="k">def</span> <span class="nf">get_first_options</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">get_available_ig_scenes</span><span class="p">()</span>
+
+
 <span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>

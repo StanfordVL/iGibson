@@ -1,0 +1,61 @@
+igibson.metrics package
+=======================
+
+Submodules
+----------
+
+igibson.metrics.agent module
+----------------------------
+
+.. automodule:: igibson.metrics.agent
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.metrics.dataset module
+------------------------------
+
+.. automodule:: igibson.metrics.dataset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.metrics.disarrangement module
+-------------------------------------
+
+.. automodule:: igibson.metrics.disarrangement
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.metrics.gaze module
+---------------------------
+
+.. automodule:: igibson.metrics.gaze
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.metrics.metric\_base module
+-----------------------------------
+
+.. automodule:: igibson.metrics.metric_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.metrics.task module
+---------------------------
+
+.. automodule:: igibson.metrics.task
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.metrics
+   :members:
+   :undoc-members:
+   :show-inheritance:

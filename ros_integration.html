@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ROS Integration &mdash; iGibson 2.0.5 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>ROS Integration &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.5
+                2.0.6
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -49,7 +49,6 @@
 <li class="toctree-l1"><a class="reference internal" href="dataset.html">Datasets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulators.html">Simulator</a></li>
-<li class="toctree-l1"><a class="reference internal" href="physics_engine.html">Physics Engine</a></li>
 <li class="toctree-l1"><a class="reference internal" href="extended_states.html">Extended States and Logic States</a></li>
 <li class="toctree-l1"><a class="reference internal" href="renderer.html">Renderer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
@@ -74,9 +73,13 @@
 <li class="toctree-l1"><a class="reference internal" href="tests.html">Tests and Examples</a></li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Code Examples</a></li>
 </ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="apidoc/modules.html">igibson</a></li>
+</ul>
 <p class="caption"><span class="caption-text">Miscellaneous</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="issues.html">Trouble Shooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="issues.html">Troubleshooting</a></li>
 <li class="toctree-l1"><a class="reference internal" href="projects.html">Projects using Gibson/iGibson</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acknowledgements.html">Acknowledgments</a></li>
 </ul>
@@ -105,7 +108,7 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="tex2jax_ignore mathjax_ignore section" id="ros-integration">
+  <div class="section" id="ros-integration">
 <h1>ROS Integration<a class="headerlink" href="#ros-integration" title="Permalink to this headline"></a></h1>
 <div class="section" id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline"></a></h2>
@@ -137,7 +140,7 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <span class="nb">source</span> deactivate <span class="c1"># This step is important because we will NOT use &lt;anaconda installation root&gt;/envs/py2-igibson/bin/python</span>
 </pre></div>
 </div>
-<ol class="arabic">
+<ol class="arabic" start="3">
 <li><p>If you use anaconda for setting up python environment, some tweaks of <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> variable are required to avoid conflict. In particular:</p>
 <ol class="arabic simple">
 <li><p>For <code class="docutils literal notranslate"><span class="pre">PATH</span></code>: conda related needs to be removed from <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
@@ -145,7 +148,7 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="nv">$PATH</span> <span class="p">|</span> grep -oP <span class="s2">&quot;[^:;]+&quot;</span> <span class="p">|</span> grep conda	<span class="c1">## Remove these paths from $PATH</span>
 </pre></div>
 </div>
-<ol class="arabic simple">
+<ol class="arabic simple" start="2">
 <li><p>For <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code>: <code class="docutils literal notranslate"><span class="pre">/usr/lib/python2.7/dist-packages/</span></code>, <code class="docutils literal notranslate"><span class="pre">/opt/ros/kinetic/lib/python2.7/dist-packages</span></code>(ROS python libraries), <code class="docutils literal notranslate"><span class="pre">&lt;anaconda</span> <span class="pre">installation</span> <span class="pre">root&gt;/envs/py2-igibson/lib/python2.7/site-packages</span></code>(iGibson dependencies) and <code class="docutils literal notranslate"><span class="pre">&lt;iGibson</span> <span class="pre">root&gt;</span></code> need to be in <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> <strong>in this exact order</strong>.</p></li>
 </ol>
 </li>
@@ -154,7 +157,7 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir -p ~/catkin_ws
 </pre></div>
 </div>
-<ol class="arabic simple">
+<ol class="arabic simple" start="5">
 <li><p>Soft-link <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> folder to your <code class="docutils literal notranslate"><span class="pre">catkin_ws/src</span></code> and run <code class="docutils literal notranslate"><span class="pre">catkin_make</span></code> to index <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> package.</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;iGibson root&gt;/igibson
@@ -162,7 +165,7 @@ ln -s <span class="nv">$PWD</span>/examples/ros/igibson-ros/ ~/catkin_ws/src/
 <span class="nb">cd</span> ~/catkin_ws <span class="o">&amp;&amp;</span> catkin_make
 </pre></div>
 </div>
-<ol class="arabic simple">
+<ol class="arabic simple" start="5">
 <li><p>Install <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> dependencies:</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~/catkin_ws
@@ -187,7 +190,7 @@ python -c <span class="s1">&#39;import igibson, rospy, rospkg&#39;</span> <span 
 <span class="nb">source</span> ~/catkin_ws/devel/setup.bash
 </pre></div>
 </div>
-<ol class="arabic simple">
+<ol class="arabic simple" start="2">
 <li><p>Repeat Step 3 from Preparation: sanitize <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code></p></li>
 <li><p>Here are some of the examples that you can run, including gmapping, hector mapping and navigation.</p></li>
 </ol>

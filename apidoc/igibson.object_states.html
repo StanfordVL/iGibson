@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>igibson.object_states package &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="igibson.objects package" href="igibson.objects.html" />
+    <link rel="prev" title="igibson.metrics package" href="igibson.metrics.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="../index.html" class="icon icon-home"> iGibson
+          </a>
+              <div class="version">
+                2.0.6
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption"><span class="caption-text">Introduction</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../intro.html">iGibson: the Interactive Gibson Environment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview of Modules</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Modules</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../dataset.html">Datasets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../assets.html">Assets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulators.html">Simulator</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../extended_states.html">Extended States and Logic States</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../renderer.html">Renderer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../viewer.html">Viewer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../environments.html">Environments</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../scenes.html">Scenes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../objects.html">Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../robots.html">Robots</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../sampling.html">Sampling Scene Instances</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../learning_framework.html">Learning Frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ros_integration.html">ROS Integration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tests.html">Tests and Examples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../examples.html">Code Examples</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">igibson</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="igibson.html">igibson package</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.examples.html">igibson.examples package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.external.html">igibson.external package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.learn.html">igibson.learn package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.metrics.html">igibson.metrics package</a></li>
+<li class="toctree-l4 current"><a class="current reference internal" href="#">igibson.object_states package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.objects.html">igibson.objects package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.physics.html">igibson.physics package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.render.html">igibson.render package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.reward_functions.html">igibson.reward_functions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html">igibson.robots package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.scenes.html">igibson.scenes package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.sensors.html">igibson.sensors package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.tasks.html">igibson.tasks package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.termination_conditions.html">igibson.termination_conditions package</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html">igibson.utils package</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-module">igibson.simulator module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#igibson-simulator-vr-module">igibson.simulator_vr module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="igibson.html#module-igibson">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Miscellaneous</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../issues.html">Troubleshooting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../projects.html">Projects using Gibson/iGibson</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../acknowledgements.html">Acknowledgments</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">iGibson</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+          <li><a href="modules.html">igibson</a> &raquo;</li>
+          <li><a href="igibson.html">igibson package</a> &raquo;</li>
+      <li>igibson.object_states package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/apidoc/igibson.object_states.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <div class="section" id="igibson-object-states-package">
+<h1>igibson.object_states package<a class="headerlink" href="#igibson-object-states-package" title="Permalink to this headline"></a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-aabb-module">
+<h2>igibson.object_states.aabb module<a class="headerlink" href="#igibson-object-states-aabb-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-adjacency-module">
+<h2>igibson.object_states.adjacency module<a class="headerlink" href="#igibson-object-states-adjacency-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-burnt-module">
+<h2>igibson.object_states.burnt module<a class="headerlink" href="#igibson-object-states-burnt-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-cleaning-tool-module">
+<h2>igibson.object_states.cleaning_tool module<a class="headerlink" href="#igibson-object-states-cleaning-tool-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-contact-bodies-module">
+<h2>igibson.object_states.contact_bodies module<a class="headerlink" href="#igibson-object-states-contact-bodies-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-cooked-module">
+<h2>igibson.object_states.cooked module<a class="headerlink" href="#igibson-object-states-cooked-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-dirty-module">
+<h2>igibson.object_states.dirty module<a class="headerlink" href="#igibson-object-states-dirty-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-factory-module">
+<h2>igibson.object_states.factory module<a class="headerlink" href="#igibson-object-states-factory-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-frozen-module">
+<h2>igibson.object_states.frozen module<a class="headerlink" href="#igibson-object-states-frozen-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-heat-source-or-sink-module">
+<h2>igibson.object_states.heat_source_or_sink module<a class="headerlink" href="#igibson-object-states-heat-source-or-sink-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-inside-module">
+<h2>igibson.object_states.inside module<a class="headerlink" href="#igibson-object-states-inside-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-kinematics-module">
+<h2>igibson.object_states.kinematics module<a class="headerlink" href="#igibson-object-states-kinematics-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-link-based-state-mixin-module">
+<h2>igibson.object_states.link_based_state_mixin module<a class="headerlink" href="#igibson-object-states-link-based-state-mixin-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-max-temperature-module">
+<h2>igibson.object_states.max_temperature module<a class="headerlink" href="#igibson-object-states-max-temperature-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-memoization-module">
+<h2>igibson.object_states.memoization module<a class="headerlink" href="#igibson-object-states-memoization-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-next-to-module">
+<h2>igibson.object_states.next_to module<a class="headerlink" href="#igibson-object-states-next-to-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-object-state-base-module">
+<h2>igibson.object_states.object_state_base module<a class="headerlink" href="#igibson-object-states-object-state-base-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-on-floor-module">
+<h2>igibson.object_states.on_floor module<a class="headerlink" href="#igibson-object-states-on-floor-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-on-top-module">
+<h2>igibson.object_states.on_top module<a class="headerlink" href="#igibson-object-states-on-top-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-open-module">
+<h2>igibson.object_states.open module<a class="headerlink" href="#igibson-object-states-open-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-pose-module">
+<h2>igibson.object_states.pose module<a class="headerlink" href="#igibson-object-states-pose-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-robot-related-states-module">
+<h2>igibson.object_states.robot_related_states module<a class="headerlink" href="#igibson-object-states-robot-related-states-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-room-states-module">
+<h2>igibson.object_states.room_states module<a class="headerlink" href="#igibson-object-states-room-states-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-sliced-module">
+<h2>igibson.object_states.sliced module<a class="headerlink" href="#igibson-object-states-sliced-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-slicer-module">
+<h2>igibson.object_states.slicer module<a class="headerlink" href="#igibson-object-states-slicer-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-soaked-module">
+<h2>igibson.object_states.soaked module<a class="headerlink" href="#igibson-object-states-soaked-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-temperature-module">
+<h2>igibson.object_states.temperature module<a class="headerlink" href="#igibson-object-states-temperature-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-texture-change-state-mixin-module">
+<h2>igibson.object_states.texture_change_state_mixin module<a class="headerlink" href="#igibson-object-states-texture-change-state-mixin-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-toggle-module">
+<h2>igibson.object_states.toggle module<a class="headerlink" href="#igibson-object-states-toggle-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-touching-module">
+<h2>igibson.object_states.touching module<a class="headerlink" href="#igibson-object-states-touching-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-under-module">
+<h2>igibson.object_states.under module<a class="headerlink" href="#igibson-object-states-under-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-utils-module">
+<h2>igibson.object_states.utils module<a class="headerlink" href="#igibson-object-states-utils-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="igibson-object-states-water-source-module">
+<h2>igibson.object_states.water_source module<a class="headerlink" href="#igibson-object-states-water-source-module" title="Permalink to this headline"></a></h2>
+</div>
+<div class="section" id="module-contents">
+<h2>Module contents<a class="headerlink" href="#module-contents" title="Permalink to this headline"></a></h2>
+</div>
+</div>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="igibson.metrics.html" class="btn btn-neutral float-left" title="igibson.metrics package" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="igibson.objects.html" class="btn btn-neutral float-right" title="igibson.objects package" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Stanford University 2018-2021.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
