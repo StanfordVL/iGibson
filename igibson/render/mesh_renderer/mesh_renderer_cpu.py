@@ -1679,7 +1679,7 @@ class MeshRenderer(object):
         """
 
         if not self.optimization_process_executed:
-            log.warning("Trying to set hidden state before vertices are merged, converted to no-op")
+            log.debug("Trying to set hidden state before vertices are merged, converted to no-op")
             return
         for instance in instances:
             buf_idxs = instance.or_buffer_indices
