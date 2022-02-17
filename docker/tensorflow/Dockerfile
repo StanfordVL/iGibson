@@ -25,24 +25,29 @@ RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
 RUN bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b
 RUN rm Miniconda-latest-Linux-x86_64.sh
 ENV PATH=/miniconda/bin:${PATH}
+
 RUN conda update -y conda
-RUN conda create -y -n py3-igibson python=3.6.8
-# Python packages from conda
+RUN conda create -y -n igibson python=3.7
 
-ENV PATH /miniconda/envs/py3-igibson/bin:$PATH
+ENV PATH /miniconda/envs/igibson/bin:$PATH
 
-RUN pip install pytest
+# NOTE: This needs to be updated in-step with the base cudagl image so the tensor renderer works
 RUN pip install tensorflow-gpu==1.15.0
 
-RUN git clone --branch master https://github.com/StanfordVL/iGibson /opt/igibson --recursive
-WORKDIR /opt/igibson
-RUN pip install -e .
+RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive && \
+        rm -rf /opt/iGibson/igibson/render/openvr/samples
+
+WORKDIR /opt/iGibson
+RUN pip install --no-cache-dir -e .
 
 RUN git clone https://github.com/StanfordVL/agents/ /opt/agents
+
 WORKDIR /opt/agents
 RUN pip install -e .
 
-RUN python -m igibson.utils.assets_utils --download_assets
-RUN python -m igibson.utils.assets_utils --download_demo_data
+RUN pip install --no-cache-dir pytest
+
+RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
+RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
 
 WORKDIR /opt/igibson/igibson/examples/demo
