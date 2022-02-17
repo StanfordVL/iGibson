@@ -129,7 +129,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.6.dev0",
+    version="2.0.6",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -161,7 +161,7 @@ setup(
         "six",
         "pandas",
         "packaging",
-        "bddl>=0.0.3",
+        "bddl==1.0.0",
         "urllib3>=1.20",
         "progressbar>=2.5",
         "semver>=2.13.0",
