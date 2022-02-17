@@ -13,13 +13,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	cuda-command-line-tools-11-3 && \
     rm -rf /var/lib/apt/lists/*
 
+# Install miniconda to /miniconda
 RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
 RUN bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b
 RUN rm Miniconda-latest-Linux-x86_64.sh
 ENV PATH=/miniconda/bin:${PATH}
 
 RUN conda update -y conda
-RUN conda create -y -n igibson python=3.8.0
+RUN conda create -y -n igibson python=3.8
 
 ENV PATH /miniconda/envs/igibson/bin:$PATH
 
@@ -29,13 +30,13 @@ RUN pip install torch==1.10.0+cu113 torchvision==0.11.1+cu113 torchaudio==0.10.0
 RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive && \
         rm -rf /opt/iGibson/igibson/render/openvr/samples
 
+WORKDIR /opt/iGibson
 RUN pip install --no-cache-dir -e .
 
 RUN pip install --no-cache-dir pytest ray[default,rllib] stable-baselines3 && rm -rf /root/.cache
 
-WORKDIR /opt/iGibson
 
 RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
 RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
 
-WORKDIR /opt/igibson/igibson/examples/demo
+WORKDIR /opt/iGibson/igibson/examples/demo

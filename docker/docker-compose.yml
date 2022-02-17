@@ -2,24 +2,13 @@ version: "3.7"
 
 services:
   igibson:
-    image: ${REGISTRY}/${REPO}:${VERSION}
+    image: docker.io/igibson/igibson:${VERSION}
     build:
       context: ./igibson
       dockerfile: Dockerfile
 
   igibson-tensorflow:
-    image: ${REGISTRY}/${REPO}:${VERSION}-tensorflow
+    image: docker.io/igibson/igibson:${VERSION}-tensorflow
     build:
       context: ./tensorflow
       dockerfile: Dockerfile
-
-  behavior:
-    image: ${REGISTRY}/${REPO}:${VERSION}-behavior
-    build:
-      context: ./behavior
-      dockerfile: Dockerfile
-      args:
-        - VERSION=${VERSION}
-        - REGISTRY=${REGISTRY}
-        - REPO=${REPO}
-
