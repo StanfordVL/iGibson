@@ -50,4 +50,4 @@ RUN pip install --no-cache-dir pytest
 RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
 RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
 
-WORKDIR /opt/igibson/igibson/examples/demo
+WORKDIR /opt/iGibson/igibson/examples
