@@ -2,13 +2,19 @@ version: "3.7"
 
 services:
   igibson:
-    image: ${REGISTRY}/${REPO}:${VERSION}
+    image: docker.io/igibson/igibson:${VERSION}
+    build:
+      context: ./igibson
+      dockerfile: Dockerfile
+
+  igibson-vnc:
+    image: docker.io/igibson/igibson-vnc:${VERSION}
     build:
       context: ./igibson
       dockerfile: Dockerfile
 
   igibson-tensorflow:
-    image: ${REGISTRY}/${REPO}:${VERSION}-tensorflow
+    image: docker.io/igibson/igibson-tensorflow:${VERSION}
     build:
       context: ./tensorflow
       dockerfile: Dockerfile
