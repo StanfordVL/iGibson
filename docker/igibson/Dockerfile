@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	cuda-command-line-tools-11-3 && \
     rm -rf /var/lib/apt/lists/*
 
+# Needed for QT window for cv2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	libsm6 && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install miniconda to /miniconda
 RUN curl -LO http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
 RUN bash Miniconda-latest-Linux-x86_64.sh -p /miniconda -b
@@ -39,4 +44,4 @@ RUN pip install --no-cache-dir pytest ray[default,rllib] stable-baselines3 && rm
 RUN python3 -m igibson.utils.assets_utils --download_assets && rm -rf /tmp/*
 RUN python3 -m igibson.utils.assets_utils --download_demo_data && rm -rf /tmp/*
 
-WORKDIR /opt/igibson/igibson/examples/demo
+WORKDIR /opt/iGibson/igibson/examples
