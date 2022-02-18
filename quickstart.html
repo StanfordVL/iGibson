@@ -43,7 +43,7 @@
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Quickstart</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#igibson-in-action">iGibson in Action</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#using-docker-and-remote-gui-access-via-vnc">Using Docker and remote GUI access via VNC</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#running-igibson-via-docker">Running iGibson via Docker</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#measuring-the-performance-of-the-simulator">Measuring the performance of the simulator</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#measuring-the-performance-in-static-scene-gibson-scenes">Measuring the performance in static scene (Gibson scenes)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene">Measuring the performance of the physics simulation in interactive scenes (iGibson scene)</a></li>
@@ -125,35 +125,36 @@
 <p>Enjoy!</p>
 <p>Explore other examples by executing <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">igibson.examples.XXXX</span></code>. Please, consider that some of the examples require to download the iGibson 1.0 or iGibson 2.0 datasets of scenes and/or the BEHAVIOR dataset of objects. See how to download them <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a>.</p>
 </div>
-<div class="section" id="using-docker-and-remote-gui-access-via-vnc">
-<h2>Using Docker and remote GUI access via VNC<a class="headerlink" href="#using-docker-and-remote-gui-access-via-vnc" title="Permalink to this headline"></a></h2>
-<p>If you go the docker route, please first pull our pre-built images (see the installation guide). After downloading, run <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">images</span></code>, and you should see <code class="docutils literal notranslate"><span class="pre">igibson/igibson:latest</span></code> and <code class="docutils literal notranslate"><span class="pre">igibson/igibson-gui:latest</span></code>.</p>
-<p>On a headless server (such as a Google Cloud or AWS instance), run</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">iGibson</span>
-<span class="o">./</span><span class="n">docker</span><span class="o">/</span><span class="n">headless</span><span class="o">-</span><span class="n">gui</span><span class="o">/</span><span class="n">run</span><span class="o">.</span><span class="n">sh</span>
+<div class="section" id="running-igibson-via-docker">
+<h2>Running iGibson via Docker<a class="headerlink" href="#running-igibson-via-docker" title="Permalink to this headline"></a></h2>
+<p>We provide pre-built Docker images via Docker Hub.</p>
+<p>If you don’t need to access the iGibson GUI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">-</span><span class="n">ti</span> <span class="o">--</span><span class="n">rm</span> <span class="n">igibson</span><span class="o">/</span><span class="n">igibson</span><span class="p">:</span><span class="n">latest</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+<span class="c1"># run a non-GUI example after the container command line prompt shows:</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">tests</span><span class="o">.</span><span class="n">benchmark</span><span class="o">.</span><span class="n">benchmark_static_scene</span>
+</pre></div>
+</div>
+<p>If you need to access the iGibson GUI and you are on a workstation running X11 server (e.g. most Linux desktops):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">env</span><span class="o">=</span><span class="s2">&quot;DISPLAY&quot;</span> <span class="o">--</span><span class="n">volume</span><span class="o">=</span><span class="s2">&quot;/tmp/.X11-unix:/tmp/.X11-unix:rw&quot;</span> <span class="o">--</span><span class="n">env</span><span class="o">=</span><span class="s2">&quot;QT_X11_NO_MITSHM=1&quot;</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">-</span><span class="n">ti</span> <span class="o">--</span><span class="n">rm</span> <span class="n">igibson</span><span class="o">/</span><span class="n">igibson</span>
 <span class="c1"># run a GUI example after the container command line prompt shows:</span>
-<span class="n">python</span> <span class="n">simulator_example</span><span class="o">.</span><span class="n">py</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">igibson</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">environments</span><span class="o">.</span><span class="n">env_nonint_example</span>
+</pre></div>
+</div>
+<p>If you need to access the iGibson GUI and you are on a headless node (e.g. a cloud server):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">docker</span> <span class="n">run</span> <span class="o">--</span><span class="n">gpus</span> <span class="nb">all</span> <span class="o">-</span><span class="n">ti</span> <span class="o">--</span><span class="n">rm</span> <span class="n">igibson</span><span class="o">/</span><span class="n">igibson</span><span class="o">-</span><span class="n">vnc</span><span class="p">:</span><span class="n">latest</span> <span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">bash</span>
+<span class="c1"># run a GUI example after the container command line prompt shows:</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">igibson</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">environments</span><span class="o">.</span><span class="n">env_nonint_example</span>
 </pre></div>
 </div>
 <p>On your local machine, you can use any VNC client to visit the remote GUI at <code class="docutils literal notranslate"><span class="pre">&lt;remote-ip&gt;:5900</span></code> with the default password <code class="docutils literal notranslate"><span class="pre">112358</span></code>.</p>
 <p>For example, Mac OS X provides a native app called <a class="reference external" href="https://support.apple.com/guide/mac-help/share-the-screen-of-another-mac-mh14066/mac">Screen Sharing</a> that implements the VNC protocol.</p>
-<p>To change the default port and password (must be 6 digits):</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">docker</span><span class="o">/</span><span class="n">headless</span><span class="o">-</span><span class="n">gui</span><span class="o">/</span><span class="n">run</span><span class="o">.</span><span class="n">sh</span> <span class="o">--</span><span class="n">vnc</span><span class="o">-</span><span class="n">port</span> <span class="mi">5903</span> <span class="o">--</span><span class="n">vnc</span><span class="o">-</span><span class="n">password</span> <span class="mi">654321</span> 
-</pre></div>
-</div>
-<p>If you do not need GUI,</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">docker</span><span class="o">/</span><span class="n">base</span><span class="o">/</span><span class="n">run</span><span class="o">.</span><span class="n">sh</span>
-<span class="c1"># run a script after the container command line prompt shows:</span>
-<span class="n">python</span> <span class="n">benchmark</span><span class="o">.</span><span class="n">py</span>
-</pre></div>
-</div>
 </div>
 <div class="section" id="measuring-the-performance-of-the-simulator">
 <h2>Measuring the performance of the simulator<a class="headerlink" href="#measuring-the-performance-of-the-simulator" title="Permalink to this headline"></a></h2>
 <p>Performance is a big designing focus for iGibson. We provide a few scripts to measure the performance of rendering and physics simulation in your target machine.</p>
 <div class="section" id="measuring-the-performance-in-static-scene-gibson-scenes">
 <h3>Measuring the performance in static scene (Gibson scenes)<a class="headerlink" href="#measuring-the-performance-in-static-scene-gibson-scenes" title="Permalink to this headline"></a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.test.benchmark.benchmark_static_scene
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m tests.benchmark.benchmark_static_scene
 </pre></div>
 </div>
 <p>You will see output similar to:</p>
@@ -172,7 +173,7 @@
 </div>
 <div class="section" id="measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene">
 <h3>Measuring the performance of the physics simulation in interactive scenes (iGibson scene)<a class="headerlink" href="#measuring-the-performance-of-the-physics-simulation-in-interactive-scenes-igibson-scene" title="Permalink to this headline"></a></h3>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.test.benchmark.benchmark_interactive_scene
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m tests.benchmark.benchmark_interactive_scene
 </pre></div>
 </div>
 <p>It will generate a report like below:</p>
@@ -181,7 +182,7 @@
 <div class="section" id="measuring-the-performance-of-rendering-in-interactive-scenes">
 <h3>Measuring the performance of rendering in interactive scenes<a class="headerlink" href="#measuring-the-performance-of-rendering-in-interactive-scenes" title="Permalink to this headline"></a></h3>
 <p>To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.test.benchmark.benchmark_interactive_scene_rendering
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m tests.benchmark.benchmark_interactive_scene_rendering
 </pre></div>
 </div>
 <p>It benchmarks two use cases, one for training visual RL agents (low resolution, shadow mapping off), another one for

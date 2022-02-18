@@ -24,34 +24,34 @@ Enjoy!
 
 Explore other examples by executing `python -m igibson.examples.XXXX`. Please, consider that some of the examples require to download the iGibson 1.0 or iGibson 2.0 datasets of scenes and/or the BEHAVIOR dataset of objects. See how to download them [here](dataset.md).
 
-## Using Docker and remote GUI access via VNC
+## Running iGibson via Docker
+We provide pre-built Docker images via Docker Hub.
 
-If you go the docker route, please first pull our pre-built images (see the installation guide). After downloading, run `docker images`, and you should see `igibson/igibson:latest` and `igibson/igibson-gui:latest`.
-
-On a headless server (such as a Google Cloud or AWS instance), run 
+If you don't need to access the iGibson GUI:
 ```
-cd iGibson
-./docker/headless-gui/run.sh
+docker run --gpus all -ti --rm igibson/igibson:latest /bin/bash
+# run a non-GUI example after the container command line prompt shows:
+python -m tests.benchmark.benchmark_static_scene
+```
+
+If you need to access the iGibson GUI and you are on a workstation running X11 server (e.g. most Linux desktops):
+```
+docker run --env="DISPLAY" --volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" --env="QT_X11_NO_MITSHM=1" --gpus all -ti --rm igibson/igibson
 # run a GUI example after the container command line prompt shows:
-python simulator_example.py
+python -m igibson.examples.environments.env_nonint_example
+```
+
+If you need to access the iGibson GUI and you are on a headless node (e.g. a cloud server):
+```
+docker run --gpus all -ti --rm igibson/igibson-vnc:latest /bin/bash
+# run a GUI example after the container command line prompt shows:
+python -m igibson.examples.environments.env_nonint_example
 ``` 
 
 On your local machine, you can use any VNC client to visit the remote GUI at `<remote-ip>:5900` with the default password `112358`. 
 
 For example, Mac OS X provides a native app called [Screen Sharing](https://support.apple.com/guide/mac-help/share-the-screen-of-another-mac-mh14066/mac) that implements the VNC protocol.
 
-To change the default port and password (must be 6 digits): 
-
-```
-./docker/headless-gui/run.sh --vnc-port 5903 --vnc-password 654321 
-```
-
-If you do not need GUI, 
-```
-./docker/base/run.sh
-# run a script after the container command line prompt shows:
-python benchmark.py
-```
 
 ## Measuring the performance of the simulator
 
@@ -59,7 +59,7 @@ Performance is a big designing focus for iGibson. We provide a few scripts to me
 
 ### Measuring the performance in static scene (Gibson scenes)
 ```bash
-python -m igibson.test.benchmark.benchmark_static_scene
+python -m tests.benchmark.benchmark_static_scene
 ```
 
 You will see output similar to:
@@ -79,7 +79,7 @@ Rendering normal, resolution 512, render_to_tensor False: 265.70666134193806 fps
 ### Measuring the performance of the physics simulation in interactive scenes (iGibson scene)
 
 ```bash
-python -m igibson.test.benchmark.benchmark_interactive_scene
+python -m tests.benchmark.benchmark_interactive_scene
 ```
 
 It will generate a report like below:
@@ -92,7 +92,7 @@ It will generate a report like below:
 To run a comprehensive benchmark for all rendering in all iGibson scenes, you can excute the following command:
 
 ```bash
-python -m igibson.test.benchmark.benchmark_interactive_scene_rendering
+python -m tests.benchmark.benchmark_interactive_scene_rendering
 ```
 
 It benchmarks two use cases, one for training visual RL agents (low resolution, shadow mapping off), another one for

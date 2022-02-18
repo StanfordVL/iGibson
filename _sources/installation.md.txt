@@ -176,25 +176,18 @@ Docker provides an easy way to reproduce the development environment across plat
 
 First, install Docker from the [official website](https://www.docker.com/). Please make sure that the docker version is at least v19.0 to enable native GPU support.
 
-Next, download our pre-built images with the script in the `iGibson` repo:
-
-```
-cd iGibson
-./docker/pull-images.sh
-```
-
-Two images will be downloaded:
-* `igibson/igibson:latest`: smaller image, but does not support GUI. 
-* `igibson/igibson-gui:latest`: supports GUI and remote desktop access via VNC.
+We provide two images:
+* `igibson/igibson:latest`: smaller image, but does not support GUI.
+* `igibson/igibson-vnc:latest`: supports GUI and remote desktop access via VNC.
 
 We also provide scripts to build the images from scratch:
 ```
 # image without GUI:
-cd iGibson/docker/base
+cd iGibson/docker/igibson
 ./build.sh
 
 # image with GUI and VNC:
-cd iGibson/docker/headless-gui
+cd iGibson/docker/igibson-vnc
 ./build.sh
 ```
 

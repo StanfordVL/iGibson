@@ -284,23 +284,18 @@ pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 <h4>3. Docker image<a class="headerlink" href="#docker-image" title="Permalink to this headline"></a></h4>
 <p>Docker provides an easy way to reproduce the development environment across platforms without manually installing the software dependencies. We have prepared docker images that contain everything you need to get started with iGibson.</p>
 <p>First, install Docker from the <a class="reference external" href="https://www.docker.com/">official website</a>. Please make sure that the docker version is at least v19.0 to enable native GPU support.</p>
-<p>Next, download our pre-built images with the script in the <code class="docutils literal notranslate"><span class="pre">iGibson</span></code> repo:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">iGibson</span>
-<span class="o">./</span><span class="n">docker</span><span class="o">/</span><span class="n">pull</span><span class="o">-</span><span class="n">images</span><span class="o">.</span><span class="n">sh</span>
-</pre></div>
-</div>
-<p>Two images will be downloaded:</p>
+<p>We provide two images:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">igibson/igibson:latest</span></code>: smaller image, but does not support GUI.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">igibson/igibson-gui:latest</span></code>: supports GUI and remote desktop access via VNC.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">igibson/igibson-vnc:latest</span></code>: supports GUI and remote desktop access via VNC.</p></li>
 </ul>
 <p>We also provide scripts to build the images from scratch:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># image without GUI:</span>
-<span class="n">cd</span> <span class="n">iGibson</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">base</span>
+<span class="n">cd</span> <span class="n">iGibson</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">igibson</span>
 <span class="o">./</span><span class="n">build</span><span class="o">.</span><span class="n">sh</span>
 
 <span class="c1"># image with GUI and VNC:</span>
-<span class="n">cd</span> <span class="n">iGibson</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">headless</span><span class="o">-</span><span class="n">gui</span>
+<span class="n">cd</span> <span class="n">iGibson</span><span class="o">/</span><span class="n">docker</span><span class="o">/</span><span class="n">igibson</span><span class="o">-</span><span class="n">vnc</span>
 <span class="o">./</span><span class="n">build</span><span class="o">.</span><span class="n">sh</span>
 </pre></div>
 </div>
