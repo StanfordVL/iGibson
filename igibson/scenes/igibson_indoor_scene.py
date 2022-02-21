@@ -251,7 +251,35 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if in_rooms is not None:
                     in_rooms = in_rooms.split(",")
 
-                if category in ["walls", "floors", "ceilings"]:
+                if category == "walls":
+                    model_path = self.scene_dir
+                    for filename in os.listdir(os.path.join(model_path, "urdf")):
+                        if not filename.startswith(model + "_" + category + "_room_"):
+                            continue
+                        filepath = os.path.join(model_path, "urdf", filename)
+                        wall_part = filename[filename.find('walls_'):-5]
+                        obj = URDFObject(
+                            filepath,
+                            name=wall_part,
+                            category=wall_part,
+                            model_path=model_path,
+                            bounding_box=None,
+                            scale=np.array([1.0, 1.0, 1.0]),
+                            fixed_base=True,
+                            avg_obj_dims=self.avg_obj_dims.get(category),
+                            in_rooms=in_rooms,
+                            texture_randomization=texture_randomization,
+                            overwrite_inertial=True,
+                            scene_instance_folder=self.scene_instance_folder,
+                            bddl_object_scope=None,
+                            merge_fixed_links=self.merge_fixed_links,
+                            rendering_params=rendering_params,
+                        )
+                        self.add_object(obj, simulator=None)
+                    # Prevent from adding walls again.
+                    continue
+
+                if category in ["floors", "ceilings"]:
                     model_path = self.scene_dir
                     filename = os.path.join(model_path, "urdf", model + "_" + category + ".urdf")
                 else:
@@ -433,9 +461,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param seg_map_resolution: room segmentation map resolution
         """
         layout_dir = os.path.join(self.scene_dir, "layout")
-        room_seg_imgs = os.path.join(layout_dir, "floor_insseg_0.png")
+        room_seg_imgs = os.path.join(layout_dir, "floor_insseg_expand_0.png")
         img_ins = Image.open(room_seg_imgs)
-        room_seg_imgs = os.path.join(layout_dir, "floor_semseg_0.png")
+        room_seg_imgs = os.path.join(layout_dir, "floor_semseg_expand_0.png")
         img_sem = Image.open(room_seg_imgs)
         height, width = img_ins.size
         assert height == width, "room seg map is not a square"
@@ -1068,7 +1096,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param xy: 2D location in world reference frame (metric)
         :return: room instance that this point is in or None, if this point is not on the room segmentation map
         """
-
+        
         x, y = self.world_to_seg_map(xy)
         if x < 0 or x >= self.room_ins_map.shape[0] or y < 0 or y >= self.room_ins_map.shape[1]:
             return None
