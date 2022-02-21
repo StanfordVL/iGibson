@@ -262,7 +262,7 @@ class AVNavRLEnv(iGibsonEnv):
             self.simulator.import_scene(scene)
             
         
-        robot_config = self.config["robot"]
+        robot_config = self.config["robot"].copy()
         robot_name = robot_config.pop("name")
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
