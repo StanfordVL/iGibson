@@ -293,8 +293,8 @@ class AVNavRLEnv(iGibsonEnv):
 #             stft = block_reduce(stft, block_size=(4, 4), func=np.mean)
             return stft
         
-        self.audio_channel1 = np.append(self.audio_channel1[self.audio_len:], audio_data[::2])
-        self.audio_channel2 = np.append(self.audio_channel2[self.audio_len:], audio_data[1::2])
+        self.audio_channel1 = np.append(self.audio_channel1[-self.audio_len:], audio_data[::2])
+        self.audio_channel2 = np.append(self.audio_channel2[-self.audio_len:], audio_data[1::2])
         channel1_magnitude = np.log1p(compute_stft(self.audio_channel1))
         channel2_magnitude = np.log1p(compute_stft(self.audio_channel2))
 #         channel1_magnitude = np.log1p(compute_stft(audio_data[::2]))
