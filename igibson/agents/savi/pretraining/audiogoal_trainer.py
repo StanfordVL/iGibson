@@ -21,13 +21,12 @@ from igibson.utils.utils import parse_config
 
 
 class AudioGoalPredictorTrainer:
-    def __init__(self, config, model_dir, predict_label, predict_location):
-        self.config = config
+    def __init__(self, model_dir, predict_label, predict_location):
         self.model_dir = model_dir
         self.device = (torch.device("cuda", 0))
 
-        self.batch_size = 90
-        self.num_worker = 4
+        self.batch_size = 80 # 1024
+        self.num_worker = 4 #8 related to mem
         self.lr = 1e-3
         self.weight_decay = None
         self.num_epoch = 50
@@ -35,9 +34,10 @@ class AudioGoalPredictorTrainer:
                                                       predict_location=predict_location).to(device=self.device)
         self.predict_label = predict_label
         self.predict_location = predict_location
-        summary(self.audiogoal_predictor.predictor, (2, 65, 69), device='cuda')
+        summary(self.audiogoal_predictor.predictor, (2, 65, 69), device='cuda') # input size [65 26]
 
     def run(self, splits, writer=None):
+        # splits: ['train', 'val']
         datasets = dict()
         dataloaders = dict()
         dataset_sizes = dict()
@@ -46,15 +46,13 @@ class AudioGoalPredictorTrainer:
             datasets[split] = AudioGoalDataset(
                 scenes=scenes,
                 split=split,
-                use_polar_coordinates=False,
-                use_cache=True
             )
             dataloaders[split] = DataLoader(dataset=datasets[split],
                                             batch_size=self.batch_size,
                                             shuffle=False,
                                             pin_memory=True,
                                             num_workers=self.num_worker,
-                                            sampler=None,)
+                                            sampler=None)
 
             dataset_sizes[split] = len(datasets[split])
             print('{} has {} samples'.format(split.upper(), dataset_sizes[split]))
@@ -77,7 +75,6 @@ class AudioGoalPredictorTrainer:
 
             # Each epoch has a training and validation phase
             for split in splits:
-                print("split:", split)
                 if split == 'train':
                     self.audiogoal_predictor.train()  # Set model to training mode
                 else:
@@ -89,14 +86,13 @@ class AudioGoalPredictorTrainer:
                 running_regressor_corrects = 0
                 running_classifier_corrects = 0
                 # Iterating over data once is one epoch
-                for i, data in enumerate(tqdm(dataloaders[split])):
+                for i, data in enumerate(tqdm(dataloaders[split])):                    
                     # get the inputs
                     inputs, gts = data
                     inputs = [x.to(device=self.device, dtype=torch.float) for x in inputs]
                     gts = gts.to(device=self.device, dtype=torch.float)
-                    # zero the parameter gradients
+                    
                     optimizer.zero_grad()
-                    # forward
                     predicts = model({input_type: x for input_type, x in zip(['spectrogram'], inputs)})
                     if self.predict_label and self.predict_location:
                         classifier_loss = classifier_criterion(predicts[:, :-2], gts[:, 0].long())
@@ -108,10 +104,12 @@ class AudioGoalPredictorTrainer:
                         classifier_loss = torch.tensor([0], device=self.device)
                     else:
                         raise ValueError('Must predict one item.')
-                    loss = classifier_loss #+ regressor_loss
+                    loss = classifier_loss
+
                     if split == 'train':
                         loss.backward()
                         optimizer.step()
+                        
                     running_total_loss += loss.item() * gts.size(0)
                     running_classifier_loss += classifier_loss.item() * gts.size(0)
 
@@ -129,12 +127,14 @@ class AudioGoalPredictorTrainer:
                     elif self.predict_label:
                         running_classifier_corrects += torch.sum(
                             torch.argmax(torch.abs(predicts), dim=1) == gts[:, 0]).item()
+                        running_regressor_corrects = 0
                     elif self.predict_location:
                         running_regressor_corrects += np.sum(np.bitwise_and(
                             pred_x[:, 0] == gt_x[:, -2], pred_y[:, 1] == gt_y[:, -1]))
                         running_classifier_corrects = 0
 
                 epoch_total_loss = running_total_loss / dataset_sizes[split]
+
                 epoch_classifier_loss = running_classifier_loss / dataset_sizes[split]
                 epoch_classifier_acc = running_classifier_corrects / dataset_sizes[split]
                 if writer is not None:
@@ -199,30 +199,19 @@ def main():
         action='store_true',
         help="Modify config options from command line"
     )
-    parser.add_argument(
-        "--predict-location",
-        default=False,
-        action='store_true',
-        help="Modify config options from command line"
-    )
-    parser.add_argument(
-        "--predict-label",
-        default=False,
-        action='store_true',
-        help="Modify config options from command line"
-    )
+
     args = parser.parse_args()
-    config = parse_config('pretraining/config/savi.yaml')
+#     config = parse_config('config/pretraining.yaml')
     
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s, %(levelname)s: %(message)s',
-                        datefmt="%Y-%m-%d %H:%M:%S")
+#     logging.basicConfig(level=logging.INFO, format='%(asctime)s, %(levelname)s: %(message)s',
+#                         datefmt="%Y-%m-%d %H:%M:%S")
 
     log_dir = os.path.join(args.model_dir, 'tb')
     if args.run_type == 'train' and os.path.exists(log_dir):
         shutil.rmtree(log_dir)
 
-    audiogoal_predictor_trainer = AudioGoalPredictorTrainer(config, args.model_dir, predict_location=args.predict_location,
-                                                            predict_label=args.predict_label)
+    audiogoal_predictor_trainer = AudioGoalPredictorTrainer(args.model_dir, predict_location=False,
+                                                            predict_label=True)
 
     if args.run_type == 'train':
         writer = SummaryWriter(log_dir=log_dir)
@@ -235,4 +224,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

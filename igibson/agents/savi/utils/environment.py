@@ -152,7 +152,10 @@ class AVNavRLEnv(iGibsonEnv):
         self.SR = 44100
         self.audio_system = None
         self.audio_len = 4410
-        self.time_len = 10
+        self.time_len_cat = 10
+        self.audio_channel1_cat = np.zeros(self.audio_len*self.time_len_cat)
+        self.audio_channel2_cat = np.zeros(self.audio_len*self.time_len_cat)
+        self.time_len = 3
         self.audio_channel1 = np.zeros(self.audio_len*self.time_len)
         self.audio_channel2 = np.zeros(self.audio_len*self.time_len)
         
@@ -372,13 +375,15 @@ class AVNavRLEnv(iGibsonEnv):
             stft = block_reduce(stft, block_size=(4, 4), func=np.mean)
             return stft
         
-        self.audio_channel1 = np.append(self.audio_channel1[self.audio_len:], audio_data[::2])
-        self.audio_channel2 = np.append(self.audio_channel2[self.audio_len:], audio_data[1::2])
-        channel1_magnitude_cat = np.log1p(compute_stft_cat(self.audio_channel1))
-        channel2_magnitude_cat = np.log1p(compute_stft_cat(self.audio_channel2))
+        self.audio_channel1_cat = np.append(self.audio_channel1[-self.audio_len*(self.time_len_cat-1):], audio_data[::2])
+        self.audio_channel2_cat = np.append(self.audio_channel2[-self.audio_len*(self.time_len_cat-1):], audio_data[1::2])
+        channel1_magnitude_cat = np.log1p(compute_stft_cat(self.audio_channel1_cat))
+        channel2_magnitude_cat = np.log1p(compute_stft_cat(self.audio_channel2_cat))
         
-        channel1_magnitude = np.log1p(compute_stft(audio_data[::2]))
-        channel2_magnitude = np.log1p(compute_stft(audio_data[1::2]))
+        self.audio_channel1 = np.append(self.audio_channel1[-self.audio_len*(self.time_len-1):], audio_data[::2])
+        self.audio_channel2 = np.append(self.audio_channel2[-self.audio_len*(self.time_len-1):], audio_data[1::2])
+        channel1_magnitude = np.log1p(compute_stft(self.audio_channel1))
+        channel2_magnitude = np.log1p(compute_stft(self.audio_channel2))
         
         spectrogram = np.stack([channel1_magnitude, channel2_magnitude], axis=-1)
         spectrogram_cat = np.stack([channel1_magnitude_cat, channel2_magnitude_cat], axis=-1)
@@ -503,6 +508,8 @@ class AVNavRLEnv(iGibsonEnv):
             self.simulator.attachAudioSystem(self.audio_system)
             self.audio_channel1 = np.zeros(self.audio_len*self.time_len)
             self.audio_channel2 = np.zeros(self.audio_len*self.time_len)
+            self.audio_channel1_cat = np.zeros(self.audio_len*self.time_len_cat)
+            self.audio_channel2_cat = np.zeros(self.audio_len*self.time_len_cat)
 
             self.audio_system.step()
         self.simulator.sync(force_sync=True)

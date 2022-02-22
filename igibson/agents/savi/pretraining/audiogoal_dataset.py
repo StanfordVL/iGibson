@@ -13,31 +13,24 @@ from tqdm import tqdm
 from scipy.io import wavfile
 from scipy.signal import fftconvolve
 from skimage.measure import block_reduce
-from igibson import object_states
+
 from igibson.agents.av_nav.utils.utils import to_tensor
 from igibson.simulator import Simulator
-from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.robots.turtlebot import Turtlebot
-from igibson.robots.robot_base import BaseRobot
-from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
-from igibson.audio.audio_system import AudioSystem
-from igibson.objects import cube
 from igibson.utils.utils import (parse_config, l2_distance, quatToXYZW)
 import pybullet as p
 from igibson.external.pybullet_tools.utils import stable_z_on_aabb
 from transforms3d.euler import euler2quat
 
 from igibson.agents.savi.utils.dataset import CATEGORY_MAP
+from env_pretrain import AVNavRLEnv
 # from soundspaces.mp3d_utils import CATEGORY_INDEX_MAPPING
-from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
-from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
-import igibson.audio.default_config as default_audio_config
+
 
 class AudioGoalDataset(Dataset):
-    def __init__(self, scenes, split, use_polar_coordinates=False, use_cache=False, filter_rule='',
-                target_dist_min = 1.0, target_dist_max = 6.0):
+    def __init__(self, scenes, split):
+        # scenes = SCENE_SPLITS[split]
+        # split = "train" or "eval"
         self.split = split
-        self.use_cache = use_cache
         self.files = list()
         self.goals = list()
         self.source_sound_dir = f'/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits/{split}'
@@ -45,171 +38,52 @@ class AudioGoalDataset(Dataset):
         self.sampling_rate = 44100 # 16000
         sound_files = os.listdir(self.source_sound_dir)
         
-        self.floor_num = 0
-        self.target_dist_min = target_dist_min
-        self.target_dist_max = target_dist_max       
-
-        for scene in tqdm(scenes): # 9 scenes
+        self.floor_num = 0   
+        for scene_name in tqdm(scenes): # 9 scenes
+            self.env = AVNavRLEnv(config_file='pretraining/config/pretraining.yaml', 
+                                  mode='headless', scene_id=scene_name) # write_to_file = True
             goals = []
-            for _ in range(400):
+            for _ in range(2):
                 sound_file = random.choice(sound_files) # eg: sound_file = chair.wav
                 index = CATEGORY_MAP[sound_file[:-4]] # remove .wav
-                audiogoal = self.compute_audiogoal_from_scene(scene, sound_file, 
-                                                              optimized=True, import_robot=True, num_sources=1)
-
-                spectro = self.compute_spectrogram(audiogoal)
-                self.files.append((scene, sound_file, spectro))
-
+                
+                binaural_audio = self.compute_audio(sound_file) # change audio system in reset
+                spectro = self.compute_spectrogram(binaural_audio)
+                spectro = to_tensor(spectro)
+                self.files.append(spectro)
+               
                 goal = to_tensor(np.zeros(1))
-                goal[0] = index               
+                goal[0] = index              
                 goals.append(goal)
+
             self.goals += goals
-
-        self.data = [None] * len(self.goals)
-        self.load_source_sounds()
-
-    def audio_length(self, sound):
-        return self.source_sound_dict[sound].shape[0] // self.sampling_rate
-
-    def load_source_sounds(self):
-        sound_files = os.listdir(self.source_sound_dir)
-        for sound_file in sound_files:
-            audio_data, sr = librosa.load(os.path.join(self.source_sound_dir, sound_file),
-                                          sr=self.sampling_rate)
-            self.source_sound_dict[sound_file] = audio_data
-
+            
+            print(len(self.files), len(self.goals))
+            self.env.close()
 
     def __len__(self):
-        return len(self.files)
+        return len(self.goals)
 
     def __getitem__(self, item):
-        if (self.use_cache and self.data[item] is None) or not self.use_cache:
-            scene, sound_file, spectrogram = self.files[item]     
-            spectrogram = to_tensor(spectrogram)
-            inputs_outputs = ([spectrogram], self.goals[item])
-
-            if self.use_cache:
-                self.data[item] = inputs_outputs
-        else:
-            inputs_outputs = self.data[item]
-
-        return inputs_outputs
+        inputs_outpus = (self.files[item], self.goals[item])
+        return inputs_outputs 
     
     
-    def compute_audiogoal_from_scene(self, scene_name, sound_file, optimized, import_robot, num_sources):      
-        config = parse_config('pretraining/config/pretraining_robot.yaml')
-        scene = InteractiveIndoorScene(
-            scene_name, texture_randomization=False, object_randomization=False)
-        settings = MeshRendererSettings(
-            msaa=False, enable_shadow=False)
-        s = Simulator(mode='headless',
-                      render_timestep=1 / 10.0,
-                      physics_timestep=1 / 240.0,
-                      image_width=128,
-                      image_height=128,
-                      device_idx=0,
-                      rendering_settings=settings)
-        s.import_scene(scene)
-
-        if import_robot:
-            initial_pos, initial_orn, target_pos = self.sample_initial_pose_and_target_pos(scene)
-            robot_config = config["robot"]
-            turtlebot = Turtlebot(**robot_config)
-            s.import_robot(turtlebot)
-            
-            self.set_pos_orn_with_z_offset(turtlebot, initial_pos, initial_orn)
-            turtlebot.reset()
-            turtlebot.keep_still()
-            land_success = False
-            # land for maximum 1 second, should fall down ~5 meters
-#             max_simulator_step = int(1.0 / self.action_timestep)
-            max_simulator_step = int(1.0 / (1/10.0))
-            for _ in range(max_simulator_step):
-                s.step(audio=False)
-                if any(len(p.getContactPoints(bodyA=body_id)) > 0 for body_id in turtlebot.get_body_ids()):
-                    land_success = True
-                    break
-            if not land_success:
-                print("WARNING: Failed to land")
-            turtlebot.reset()
-            turtlebot.keep_still()
-            
-            if num_sources > 0:
-                acousticMesh = getIgAcousticMesh(s)
-                occl_multiplier = config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER)
-                audioSystem = AudioSystem(s, turtlebot, acousticMesh, 
-                                          is_Viewer=False, writeToFile=True, SR = 44100, 
-                                          occl_multiplier = occl_multiplier)
-                for i in range(num_sources):
-                    obj = cube.Cube(pos=target_pos, 
-                                    dim=[0.05, 0.05, 0.05], 
-                                    visual_only=False, mass=0.5, color=[255, 0, 0, 1])
-                    s.import_object(obj)
-                    obj_id = obj.get_body_ids()[0]
-                    
-                    audioSystem.registerSource(obj_id, 
-                                               "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits/"
-                                               +self.split+"/"+sound_file, 
-                                               enabled=True)
-#                     audioSystem.setSourceRepeat(obj_id)
-                s.attachAudioSystem(audioSystem)
-
-        s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
-
-        for i in range(10): # sample 1s audio
-            s.step()
-        binaural_audio = s.audio_system.complete_output #
-        s.disconnect()
+    def compute_audio(self, sound_file):
+        self.env.reset(self.split, sound_file)
+        action = self.env.action_space.sample()
+        for i in range(10):
+            self.env.step(action)
+        binaural_audio = self.env.complete_audio_output
         binaural_audio = np.array(binaural_audio)
-        return binaural_audio
-
+        self.env.complete_audio_output = []
         
-    def sample_initial_pose_and_target_pos(self, scene):
-        """
-        Sample robot initial pose and target position
-
-        :param env: environment instance
-        :return: initial pose and target position
-        """
-        _, initial_pos = scene.get_random_point(floor=self.floor_num)
-        max_trials = 100
-        dist = 0.0
-        for _ in range(max_trials):
-            _, target_pos = scene.get_random_point(floor=self.floor_num)
-            if scene.build_graph:
-                _, dist = scene.get_shortest_path(
-                    self.floor_num,
-                    initial_pos[:2],
-                    target_pos[:2], entire_path=False)
-            else:
-                dist = l2_distance(initial_pos, target_pos)
-            if self.target_dist_min < dist < self.target_dist_max:
-                break
-        if not (self.target_dist_min < dist < self.target_dist_max):
-            print("WARNING: Failed to sample initial and target positions")
-        initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
-        return initial_pos, initial_orn, target_pos
-
+        if self.env.audio_system is not None:
+            self.env.audio_system.disconnect()
+            del self.env.audio_system
+            self.env.audio_system = None
+        return binaural_audio
     
-    
-    def set_pos_orn_with_z_offset(self, obj, pos, orn=None, offset=None):
-        if orn is None:
-            orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
-
-        if offset is None:
-            offset = 0.1
-
-        # first set the correct orientation
-        obj.set_position_orientation(pos, quatToXYZW(euler2quat(*orn), "wxyz"))
-        # get the AABB in this orientation
-        lower, _ = obj.states[object_states.AABB].get_value()
-        # Get the stable Z
-        stable_z = pos[2] + (pos[2] - lower[2])
-        # change the z-value of position with stable_z + additional offset
-        # in case the surface is not perfect smooth (has bumps)
-        obj.set_position([pos[0], pos[1], stable_z + offset])
-
-
     @staticmethod
     def compute_spectrogram(audiogoal):
         def compute_stft(signal):
