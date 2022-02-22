@@ -30,11 +30,6 @@ SCENE_SPLITS = {
 # "Benevolence_0_int" in train
 
 
-# SCENE_SPLITS = {
-#     "train": ["Pomaria_1_int", "Benevolence_2_int"],
-#     "val": ["Beechwood_0_int"]
-# }
-
 
 # for igibson
 CATEGORIES = ['chair', 'table', 'picture', 'bottom_cabinet', 'cushion', 'sofa', 'bed', 'plant', 'sink', 'toilet', 'stool', 'standing_tv', 'shower', 'bathtub', 'counter']
