@@ -1,7 +1,7 @@
 """ VR demo to test that eye tracking is working by visualizing a gaze marker where
 the user is looking.
 """
-
+import logging
 import os
 
 import numpy as np
@@ -25,7 +25,7 @@ light_modulation_map_filename = os.path.join(
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(
         optimized=True,
@@ -85,7 +85,6 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     bvr_robot = BehaviorRobot()
     s.import_object(bvr_robot)
-    s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
     # Represents gaze
@@ -115,4 +114,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

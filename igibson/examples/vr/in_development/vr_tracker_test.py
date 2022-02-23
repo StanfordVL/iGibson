@@ -3,6 +3,8 @@ Demo for testing VR trackers.
 The serial number for a tracker can be found in 
 SteamVR settings -> controllers -> manage vive trackers
 """
+import logging
+
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
@@ -28,4 +30,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -13,7 +13,7 @@ from igibson.utils.assets_utils import get_ig_model_path
 from igibson.utils.utils import restoreState
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Demo of a slicing task that resets after everything
     To save/load state it combines pybullet save/load functionality and additional iG functions for the extended states
@@ -22,7 +22,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     multiplexed object (two URDF models for the same object) with a model for the full object and a model
     of the grouped slices
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
 
     if not headless:
@@ -85,17 +85,17 @@ def main(random_selection=False, headless=False, short_exec=False):
     # Save the initial state.
     initial_state_pb = p.saveState()
     initial_state_multiplexed_obj = multiplexed_obj.dump_state()
-    logging.info(multiplexed_obj)
+    print(multiplexed_obj)
 
     try:
         max_iterations = -1 if not short_exec else 1
         iteration = 0
         while iteration != max_iterations:
-            logging.info("Stepping the simulator")
+            print("Stepping the simulator")
             for _ in range(100):
                 s.step()
 
-            logging.info("Slicing the apple and moving the parts")
+            print("Slicing the apple and moving the parts")
             # Slice the apple and set the object parts away
             multiplexed_obj.states[object_states.Sliced].set_value(True)
 
@@ -106,11 +106,11 @@ def main(random_selection=False, headless=False, short_exec=False):
             for part_obj in multiplexed_obj.objects:
                 part_obj.set_position([0, 0, 1])
 
-            logging.info("Stepping the simulator")
+            print("Stepping the simulator")
             for _ in range(100):
                 s.step()
 
-            logging.info("Restoring the state")
+            print("Restoring the state")
             # Restore the state
             restoreState(initial_state_pb)
 
@@ -127,4 +127,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -9,6 +9,8 @@ from igibson.scenes.scene_base import Scene
 from igibson.utils.constants import SemanticClass
 from igibson.utils.utils import l2_distance
 
+log = logging.getLogger(__name__)
+
 
 class StadiumScene(Scene):
     """
@@ -55,7 +57,7 @@ class StadiumScene(Scene):
         """
         Get a trivial shortest path because the scene is empty
         """
-        logging.warning("WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)")
+        log.debug("WARNING: trying to compute the shortest path in StadiumScene (assuming empty space)")
         shortest_path = np.stack((source_world, target_world))
         geodesic_distance = l2_distance(source_world, target_world)
         return shortest_path, geodesic_distance

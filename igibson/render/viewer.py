@@ -12,6 +12,8 @@ from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.constants import ViewerMode
 from igibson.utils.utils import rotate_vector_2d
 
+log = logging.getLogger(__name__)
+
 
 class ViewerVR:
     def __init__(self, use_companion_window, frame_save_path=None, renderer=None):
@@ -753,12 +755,12 @@ class Viewer:
         # quit (Esc)
         elif self.last_key == 27:
             if self.video_folder != "":
-                logging.info(
+                log.info(
                     "You recorded a video. To compile the frames into a mp4 go to the corresponding subfolder"
                     + " in /tmp and execute: "
                 )
-                logging.info("ffmpeg -i %5d.png -y -c:a copy -c:v libx264 -crf 18 -preset veryslow -r 30 video.mp4")
-                logging.info("The last folder you collected images for a video was: " + self.video_folder)
+                log.info("ffmpeg -i %5d.png -y -c:a copy -c:v libx264 -crf 18 -preset veryslow -r 30 video.mp4")
+                log.info("The last folder you collected images for a video was: " + self.video_folder)
             sys.exit()
 
         # Start/Stop recording. Stopping saves frames to files
@@ -767,7 +769,7 @@ class Viewer:
                 self.recording = False
                 self.pause_recording = False
             else:
-                logging.info("Start recording*****************************")
+                log.info("Start recording*****************************")
                 # Current time string to use to save the temporal urdfs
                 timestr = time.strftime("%Y%m%d-%H%M%S")
                 # Create the subfolder
@@ -854,6 +856,7 @@ class Viewer:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     viewer = Viewer()
     while True:
         viewer.update()

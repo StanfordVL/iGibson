@@ -1,3 +1,4 @@
+import copy
 import datetime
 import logging
 from collections import OrderedDict
@@ -37,9 +38,12 @@ from igibson.utils.constants import (
     MAX_TASK_RELEVANT_OBJS,
     NON_SAMPLEABLE_OBJECTS,
     TASK_RELEVANT_OBJS_OBS_DIM,
+    SimulatorMode,
 )
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import restoreState
+
+log = logging.getLogger(__name__)
 
 KINEMATICS_STATES = frozenset({"inside", "ontop", "under", "onfloor"})
 
@@ -81,6 +85,22 @@ class BehaviorTask(BaseTask):
             os.makedirs(self.episode_save_dir, exist_ok=True)
         self.log_writer = None
 
+        if env.simulator.mode == SimulatorMode.VR:
+            self.vr_overlay_prev_obj_list = []
+            self.vr_overlay_start_text = "Welcome!\nPlease press toggle\nto see the next goal condition!"
+
+            self.vr_overlay_is_showing = True
+
+            # Text displaying next conditions
+            self.condition_text = env.simulator.add_vr_overlay_text(
+                text_data=self.vr_overlay_start_text,
+                font_size=40,
+                font_style="Bold",
+                color=[0, 0, 0],
+                pos=[0, 75],
+                size=[90, 50],
+            )
+
     def highlight_task_relevant_objs(self, env):
         for obj_name, obj in self.object_scope.items():
             if isinstance(obj, BaseRobot) or isinstance(obj, RoomFloor):
@@ -114,6 +134,7 @@ class BehaviorTask(BaseTask):
         self.currently_viewed_instruction = self.instruction_order[self.currently_viewed_index]
         self.current_success = False
         self.current_goal_status = {"satisfied": [], "unsatisfied": []}
+        self.previous_goal_status = copy.deepcopy(self.current_goal_status)
         self.natural_language_goal_conditions = get_natural_goal_conditions(self.conds)
 
     def get_potential(self, env):
@@ -173,6 +194,53 @@ class BehaviorTask(BaseTask):
     def step(self, env):
         if self.log_writer is not None:
             self.log_writer.process_frame()
+
+        # Update the overlay.
+        if env.simulator.mode == SimulatorMode.VR:
+            if self.current_goal_status != self.previous_goal_status:
+                self.refresh_overlay(switch=False)
+
+            if env.simulator.query_vr_event("right_controller", "overlay_toggle"):
+                self.refresh_overlay()
+
+            if env.simulator.query_vr_event("left_controller", "overlay_toggle"):
+                self.toggle_overlay(env.simulator)
+
+        # Record the current goal status as the next state's previous.
+        self.previous_goal_status = self.current_goal_status
+
+    def refresh_overlay(self, switch=True):
+        """
+        Switches to the next condition. This involves displaying the text for
+        the new condition, as well as highlighting/un-highlighting the appropriate objects.
+        """
+        # 1) Query bddl for next state - get (text, color, obj_list) tuple
+        if switch:
+            self.iterate_instruction()
+        new_text, new_color, new_obj_list = self.show_instruction()
+        # 2) Render new text
+        self.condition_text.set_text(new_text)
+        self.condition_text.set_attribs(color=new_color)
+        # 3) Un-highlight previous objects, then highlight new objects
+        for prev_obj in self.vr_overlay_prev_obj_list:
+            prev_obj.unhighlight()
+        if self.vr_overlay_is_showing:
+            for new_obj in new_obj_list:
+                new_obj.highlight()
+        self.vr_overlay_prev_obj_list = new_obj_list
+
+    def toggle_overlay(self, simulator):
+        """
+        Toggles show state of switcher (which is on by default)
+        """
+        simulator.set_hud_show_state(not simulator.get_hud_show_state())
+        self.vr_overlay_is_showing = not self.vr_overlay_is_showing
+        if self.vr_overlay_is_showing:
+            for obj in self.vr_overlay_prev_obj_list:
+                obj.highlight()
+        else:
+            for obj in self.vr_overlay_prev_obj_list:
+                obj.unhighlight()
 
     def initialize(self, env):
         accept_scene = True
@@ -443,22 +511,22 @@ class BehaviorTask(BaseTask):
     def check_scene(self, env):
         error_msg = self.parse_non_sampleable_object_room_assignment()
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         error_msg = self.build_sampling_order()
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         error_msg = self.build_non_sampleable_object_scope()
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         error_msg = self.import_sampleable_objects(env)
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         self.object_scope["agent.n.01_1"] = self.get_agent(env)
@@ -498,7 +566,7 @@ class BehaviorTask(BaseTask):
 
     def process_single_condition(self, condition):
         if not isinstance(condition.children[0], Negation) and not isinstance(condition.children[0], AtomicFormula):
-            logging.warning(("Skipping over sampling of predicate that is not a negation or an atomic formula"))
+            log.warning(("Skipping over sampling of predicate that is not a negation or an atomic formula"))
             return None, None
 
         if isinstance(condition.children[0], Negation):
@@ -575,7 +643,7 @@ class BehaviorTask(BaseTask):
                                         str(success),
                                     ]
                                 )
-                                logging.warning(log_msg)
+                                log.warning(log_msg)
 
                                 # If any condition fails for this candidate object, skip
                                 if not success:
@@ -639,23 +707,23 @@ class BehaviorTask(BaseTask):
                     obj_inst_to_obj_per_room_inst[obj_inst] = filtered_object_scope[room_type][obj_inst][room_inst]
                 top_nodes = []
                 log_msg = "MBM for room instance [{}]".format(room_inst)
-                logging.warning((log_msg))
+                log.warning((log_msg))
                 for obj_inst in obj_inst_to_obj_per_room_inst:
                     for obj in obj_inst_to_obj_per_room_inst[obj_inst]:
                         # Create an edge between obj instance and each of the simulator obj that supports sampling
                         graph.add_edge(obj_inst, obj)
                         log_msg = "Adding edge: {} <-> {}".format(obj_inst, obj.name)
-                        logging.warning((log_msg))
+                        log.warning((log_msg))
                         top_nodes.append(obj_inst)
                 # Need to provide top_nodes that contain all nodes in one bipartite node set
                 # The matches will have two items for each match (e.g. A -> B, B -> A)
                 matches = nx.bipartite.maximum_matching(graph, top_nodes=top_nodes)
                 if len(matches) == 2 * len(obj_inst_to_obj_per_room_inst):
-                    logging.warning(("Object scope finalized:"))
+                    log.warning(("Object scope finalized:"))
                     for obj_inst, obj in matches.items():
                         if obj_inst in obj_inst_to_obj_per_room_inst:
                             self.object_scope[obj_inst] = obj
-                            logging.warning((obj_inst, obj.name))
+                            log.warning((obj_inst, obj.name))
                     success = True
                     break
             if not success:
@@ -678,7 +746,7 @@ class BehaviorTask(BaseTask):
 
     def sample_goal_conditions(self):
         np.random.shuffle(self.ground_goal_state_options)
-        logging.warning(("number of ground_goal_state_options", len(self.ground_goal_state_options)))
+        log.warning(("number of ground_goal_state_options", len(self.ground_goal_state_options)))
         num_goal_condition_set_to_test = 10
 
         goal_condition_success = False
@@ -756,23 +824,23 @@ class BehaviorTask(BaseTask):
         env.robots[0].set_position_orientation([300, 300, 300], [0, 0, 0, 1])
         error_msg = self.group_initial_conditions()
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         error_msg = self.sample_initial_conditions()
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         if validate_goal:
             error_msg = self.sample_goal_conditions()
             if error_msg:
-                logging.warning(error_msg)
+                log.warning(error_msg)
                 return False, error_msg
 
         error_msg = self.sample_initial_conditions_final()
         if error_msg:
-            logging.warning(error_msg)
+            log.warning(error_msg)
             return False, error_msg
 
         return True, None
@@ -882,7 +950,7 @@ class BehaviorTask(BaseTask):
                 state["obj_{}_valid".format(i)] = 1.0
                 state["obj_{}_pos".format(i)] = np.array(v.get_position())
                 state["obj_{}_orn".format(i)] = np.array(p.getEulerFromQuaternion(v.get_orientation()))
-                grasping_objects = env.robots[0].is_grasping(v.get_body_ids())
+                grasping_objects = env.robots[0].is_grasping_all_arms(candidate_obj=v.get_body_ids())
                 for grasp_idx, grasping in enumerate(grasping_objects):
                     state["obj_{}_pos_in_gripper_{}".format(i, grasp_idx)] = float(grasping)
                 i += 1

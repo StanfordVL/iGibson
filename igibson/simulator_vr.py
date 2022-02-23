@@ -12,8 +12,11 @@ from igibson.render.mesh_renderer.mesh_renderer_vr import MeshRendererVR, VrSett
 from igibson.render.viewer import ViewerVR
 from igibson.robots.behavior_robot import BODY_ANGULAR_VELOCITY, BODY_LINEAR_VELOCITY, HAND_BASE_ROTS
 from igibson.robots.manipulation_robot import IsGraspingState
+from igibson.robots.robot_base import BaseRobot
 from igibson.simulator import Simulator
 from igibson.utils.vr_utils import VR_CONTROLLERS, VR_DEVICES, VrData, calc_offset, calc_z_rot_from_right
+
+log = logging.getLogger(__name__)
 
 ATTACHMENT_BUTTON_TIME_THRESHOLD = 1  # second
 
@@ -65,10 +68,12 @@ class SimulatorVR(Simulator):
 
         # Whether the VR system is actively hooked up to the VR agent.
         self.vr_attached = False
-        self._vr_attachment_button_previously_pressed = False
+        self._vr_attachment_button_press_timestamp = None
+        self.main_vr_robot = None
 
         # Starting position for the VR (default set to None if no starting position is specified by the user)
         self.vr_settings = vr_settings
+        self.vr_data_available = False
         self.vr_overlay_initialized = False
         self.vr_start_pos = None
         self.max_haptic_duration = 4000
@@ -106,8 +111,6 @@ class SimulatorVR(Simulator):
         self.non_block_frame_time = (self.vsync_frame_num - 1) * self.vsync_frame_dur + (
             5e-3 if self.vr_settings.curr_device == "OCULUS" else 10e-3
         )
-
-        self._most_recent_trigger_fraction = {}
 
     def initialize_renderer(self):
         self.visual_objects = {}
@@ -180,12 +183,16 @@ class SimulatorVR(Simulator):
         Shows/hides the main VR HUD.
         :param show_state: whether to show HUD or not
         """
+        if not self.vr_overlay_initialized:
+            return
         self.renderer.vr_hud.set_overlay_show_state(show_state)
 
     def get_hud_show_state(self):
         """
         Returns the show state of the main VR HUD.
         """
+        if not self.vr_overlay_initialized:
+            return False
         return self.renderer.vr_hud.get_overlay_show_state()
 
     def step_vr_system(self):
@@ -334,11 +341,23 @@ class SimulatorVR(Simulator):
                         # Only use 30% strength for normal collisions, to help add realism to the experience
                         self.trigger_haptic_pulse(hand_device, 0.3)
 
-    def register_main_vr_robot(self, vr_robot):
+        self.vr_data_available = True
+
+    def import_object(self, obj):
+        result = super(SimulatorVR, self).import_object(obj)
+
+        if self.main_vr_robot is None and isinstance(obj, BaseRobot):
+            self.main_vr_robot = obj
+
+        return result
+
+    def switch_main_vr_robot(self, robot):
         """
-        Register the robot representing the VR user.
+        Change the robot representing the VR user. By default, this will be the first robot added to the scene.
         """
-        self.main_vr_robot = vr_robot
+        if robot not in self.scene.robots:
+            raise ValueError("Robot should already be added to the scene.")
+        self.main_vr_robot = robot
 
     def gen_vr_data(self):
         """
@@ -397,6 +416,9 @@ class SimulatorVR(Simulator):
         # Actions are stored as 1D numpy array
         action = np.zeros((28,))
 
+        if not self.vr_data_available:
+            return action
+
         # Get VrData for the current frame
         v = self.gen_vr_data()
 
@@ -408,7 +430,6 @@ class SimulatorVR(Simulator):
         if attach_or_detach:
             # If the button just recently started being pressed, record the time.
             if self._vr_attachment_button_press_timestamp is None:
-                logging.info("Double button press detected.")
                 self._vr_attachment_button_press_timestamp = time.time()
 
             # If the button has been pressed for ATTACHMENT_BUTTON_TIME_THRESHOLD seconds, attach/detach.
@@ -418,7 +439,12 @@ class SimulatorVR(Simulator):
 
                 # Flip the attachment state.
                 self.vr_attached = not self.vr_attached
-                logging.info("VR kit {} BehaviorRobot.".format("attached to" if self.vr_attached else "detached from"))
+                log.info("VR kit {} BehaviorRobot.".format("attached to" if self.vr_attached else "detached from"))
+
+                # Move the VR offset to the right spot.
+                if self.vr_attached:
+                    body_x, body_y, _ = self.main_vr_robot.get_position()
+                    self.set_vr_pos([body_x, body_y, 0], keep_height=True)
 
                 # We don't want to fill in an action in this case.
                 return action
@@ -512,21 +538,23 @@ class SimulatorVR(Simulator):
 
             # Process trigger fraction and reset for controllers
             if part_name in ["right_hand", "left_hand"]:
+                fingers = self.main_vr_robot.gripper_control_idx[part_name]
+
+                # The normalized joint positions are inverted and scaled to the (0, 1) range to match VR controller.
+                # Note that we take the minimum (e.g. the most-grasped) finger - this means if the user releases the
+                # trigger, *all* of the fingers are guaranteed to move to the released position.
+                current_trig_frac = 1 - (np.min(self.main_vr_robot.joint_positions_normalized[fingers]) + 1) / 2
+
                 if valid:
                     button_name = "{}_controller_button".format(part_name.replace("_hand", ""))
                     trig_frac = v.query(button_name)[0]
-                    self._most_recent_trigger_fraction[part_name] = trig_frac
+                    delta_trig_frac = trig_frac - current_trig_frac
                 else:
                     # Use the last trigger fraction if no valid input was received from controller.
-                    trig_frac = (
-                        self._most_recent_trigger_fraction[part_name]
-                        if part_name in self._most_recent_trigger_fraction
-                        else 0.0
-                    )
+                    delta_trig_frac = 0
 
                 grip_controller_name = "gripper_" + part_name
-                scaled_trig_frac = -2 * trig_frac + 1  # Map from (0, 1) to (-1, 1) range, inverted.
-                action[self.main_vr_robot.controller_action_idx[grip_controller_name]] = scaled_trig_frac
+                action[self.main_vr_robot.controller_action_idx[grip_controller_name]] = delta_trig_frac
 
                 # If we reset, action is 1, otherwise 0
                 reset_action = v.query("reset_actions")[0] if part_name == "left" else v.query("reset_actions")[1]

@@ -4,6 +4,7 @@ You can use the left and right controllers to start/stop/reset the timer,
 as well as show/hide its display. The "overlay toggle" action and its
 corresponding button index mapping can be found in the vr_config.yaml file in the igibson folder.
 """
+import logging
 import os
 
 import pybullet as p
@@ -336,4 +337,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -15,7 +15,7 @@ We developed our own renderer that supports customizable camera configuration, p
 We use the open-sourced [PyBullet](http://www.pybullet.org/) as our underlying physics engine. 
 It can simulate rigid body collision and joint actuation for robots and articulated objects in an accurate and efficient manner. 
 Since we are using MeshRenderer for rendering and PyBullet for physics simulation, we need to keep them synchronized at all time. 
-Our code have already handled this for you. More info can be found here: [Renderer](renderer.md) and [PhysicsEngine](physics_engine.md).
+Our code have already handled this for you. More info can be found here: [Renderer](renderer.md).
 
 Furthermore, we have **Scene**, **Object**, **Robot**, and **Simulator**. 
 **Scene** loads 3D scene meshes from `igibson.g_dataset_path, igibson.ig_dataset_path` and loads/holds the list of objects associated with an interactive scene.

@@ -6,12 +6,12 @@ from igibson.scenes.stadium_scene import StadiumScene
 from igibson.simulator import Simulator
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Loads the Stadium scene
     This scene is default in pybullet but is not really useful in iGibson
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     settings = MeshRendererSettings(enable_shadow=False, msaa=False)
     s = Simulator(
@@ -34,4 +34,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -4,6 +4,7 @@ Usage: python muvr_demo.py --mode=[server or client] --host=[localhost or ip add
 """
 
 import argparse
+import logging
 import time
 
 from igibson.utils.muvr_utils import IGVRTestClient, IGVRTestServer
@@ -54,6 +55,7 @@ def run_lag_test(mode="server", host="localhost", port="7500"):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="Multi-user VR demo that can be run in server and client mode.")
     parser.add_argument("--mode", default="server", help="Mode to run in: either server or client")
     parser.add_argument("--host", default="localhost", help="Host to connect to - eg. localhost or an IP address")

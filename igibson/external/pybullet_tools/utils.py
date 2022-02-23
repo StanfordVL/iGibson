@@ -31,6 +31,8 @@ from igibson.utils.constants import OccupancyGridState
 import cv2
 import logging
 
+log = logging.getLogger(__name__)
+
 # from future_builtins import map, filter
 # from builtins import input # TODO - use future
 try:
@@ -861,12 +863,12 @@ def save_image(filename, rgba):
 def get_projection_matrix(width, height, vertical_fov, near, far):
     """
     OpenGL projection matrix
-    :param width: 
-    :param height: 
+    :param width:
+    :param height:
     :param vertical_fov: vertical field of view in radians
-    :param near: 
-    :param far: 
-    :return: 
+    :param near:
+    :param far:
+    :return:
     """
     # http://www.songho.ca/opengl/gl_projectionmatrix.html
     # http://www.songho.ca/opengl/gl_transform.html#matrix
@@ -1162,29 +1164,6 @@ def all_between(lower_limits, values, upper_limits):
     return np.less_equal(lower_limits, values).all() and \
         np.less_equal(values, upper_limits).all()
 
-def get_child_frame_pose(parent_bid, parent_link, child_bid, child_link):
-    # TODO(mjlbach):Mostly shared with BRRobot, can be made a util
-    # TOOD(MP): Isn't this in the wrong direction???
-
-    # Different pos/orn calculations for base/links
-    if parent_link == -1:
-        parent_pos, parent_orn = p.getBasePositionAndOrientation(parent_bid)
-    else:
-        parent_pos, parent_orn = p.getLinkState(parent_bid, parent_link)[:2]
-
-    # Different pos/orn calculations for base/links
-    if child_link == -1:
-        body_pos, body_orn = p.getBasePositionAndOrientation(child_bid)
-    else:
-        body_pos, body_orn = p.getLinkState(child_bid, child_link)[:2]
-
-    # Get inverse world transform of body frame
-    inv_body_pos, inv_body_orn = p.invertTransform(body_pos, body_orn)
-
-    # B * T = P -> T = (B-1)P, where B is body transform, T is target transform and P is palm transform
-    child_frame_pos, child_frame_orn = p.multiplyTransforms(inv_body_pos, inv_body_orn, parent_pos, parent_orn)
-
-    return child_frame_pos, child_frame_orn
 #####################################
 
 # Bodies
@@ -2659,7 +2638,7 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
 
 def body_collision(body1, body2, max_distance=MAX_DISTANCE):  # 10000
     # TODO: confirm that this doesn't just check the base link
-    
+
     #for i in range(p.getNumJoints(body1)):
     #    for j in range(p.getNumJoints(body2)):
     #        #if len(p.getContactPoints(body1, body2, i, j)) > 0:
@@ -3259,7 +3238,6 @@ def plan_base_motion_2d(body,
                         metric2map=None,
                         flip_vertically=False,
                         use_pb_for_collisions=False,
-                        debugging_prints = False,
                         upsampling_factor = 4,
                         **kwargs):
     """
@@ -3288,7 +3266,6 @@ def plan_base_motion_2d(body,
     :param flip_vertically: If the image needs to be flipped (for global maps)
     :param use_pb_for_collisions:  If pybullet is used to check for collisions. If not, we use the local or global 2D
            traversable map
-    :param debugging_prints: Boolean to activate debugging prints
     :param upsampling_factor: Upscaling factor to enlarge the maps
     :param kwargs:
     :return: Path (if found)
@@ -3343,7 +3320,7 @@ def plan_base_motion_2d(body,
     # Do not plan for goals that are very close by
     # This makes it impossible to "plan" for pure rotations. Use a negative min_goal_dist to allow pure rotations
     if np.abs(start_conf[0] - end_conf[0]) < min_goal_dist and np.abs(start_conf[1] - end_conf[1]) < min_goal_dist:
-        print("Warning: goal is too close to the initial position. Returning")
+        log.debug("goal is too close to the initial position. Returning")
         return None
 
     def transform_point_to_occupancy_map(q):
@@ -3368,8 +3345,7 @@ def plan_base_motion_2d(body,
         else:
             pts = metric2map(np.array(q[0:2]))
 
-        if debugging_prints:
-            print("original point {} and in image: {}".format(q, pts))
+        log.debug("original point {} and in image: {}".format(q, pts))
         return pts
 
     # Draw the initial situation of the planning problem: src, dst and occupancy map
@@ -3459,8 +3435,8 @@ def plan_base_motion_2d(body,
             draw_point(pts, 1, radius=robot_footprint_radius_in_map)
             cv2.waitKey(10) #Extra wait to visualize better the process
 
-        if debugging_prints:
-            print("In collision? {}".format(in_collision))
+        log.debug("In collision? {}".format(in_collision))
+
         if visualize_planning:
             planning_map_2d[pts[0] - robot_footprint_radius_in_map: pts[0] + robot_footprint_radius_in_map + 1, pts[1] - robot_footprint_radius_in_map: pts[1] + robot_footprint_radius_in_map + 1] = planning_map_2d_cpy
             planning_map_2d_upsampled = cv2.resize(planning_map_2d, None, None, upsampling_factor, upsampling_factor, cv2.INTER_NEAREST)
@@ -3474,15 +3450,14 @@ def plan_base_motion_2d(body,
 
     # Do not plan if the initial pose is in collision
     if collision_fn(start_conf):
-        if debugging_prints:
-            print("Warning: initial configuration is in collision")
+        log.debug("Warning: initial configuration is in collision")
         return None
+
     # Do not plan if the final pose is in collision
     if collision_fn(end_conf):
-        if debugging_prints:
-            print("Warning: end configuration is in collision")
+        log.debug("Warning: end configuration is in collision")
         return None
-    
+
     if algorithm == 'direct':
         path = direct_path(start_conf, end_conf, extend_fn, collision_fn)
     elif algorithm == 'birrt':
@@ -3497,7 +3472,7 @@ def plan_base_motion_2d(body,
         path = None
 
     if optimize_iter > 0 and path is not None:
-        logging.info("Optimizing the path found")
+        log.info("Optimizing the path found")
         path = optimize_path(path, extend_fn, collision_fn, iterations=optimize_iter)
 
     if visualize_result and path is not None:
