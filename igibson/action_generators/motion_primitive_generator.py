@@ -99,7 +99,7 @@ class MotionPrimitiveActionGenerator(BaseActionGenerator):
             ]
         else:
             self.addressable_objects = list(
-                set(self.task.simulator.scene.objects_by_name.values()) | set(self.task.object_scope.values())
+                set(self.scene.objects_by_name.values()) | set(self.task.object_scope.values())
             )
 
         # Filter out the robots.

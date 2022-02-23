@@ -77,7 +77,7 @@ def main():
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
 
     config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_mp_behavior_task.yaml"))
-    robot = BehaviorRobot(*config["robot"])
+    robot = BehaviorRobot(**config["robot"])
     s.import_robot(robot)
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
     robot.apply_action(
