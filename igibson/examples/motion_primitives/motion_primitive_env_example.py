@@ -6,7 +6,7 @@ from igibson.envs.action_generator_env import ActionGeneratorEnv
 
 
 def main():
-    config_filename = os.path.join(igibson.example_config_path, "behavior_full_observability.yaml")
+    config_filename = os.path.join(igibson.configs_path, "behavior_robot_mp_behavior_task.yaml")
     env = ActionGeneratorEnv(
         MotionPrimitiveActionGenerator, config_file=config_filename, mode="gui_non_interactive", use_pb_gui=True
     )
