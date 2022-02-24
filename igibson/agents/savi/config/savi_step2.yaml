@@ -93,6 +93,7 @@ use_softplus: False
 action_activation: tanh
 
 # task
+task: SAVi
 target_dist_min: 1.0
 target_dist_max: 10.0
 task_obs_dim: 4

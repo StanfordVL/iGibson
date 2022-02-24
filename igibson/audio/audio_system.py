@@ -5,7 +5,9 @@ from igibson.objects import cube
 
 import igibson.audio.default_config as config
 from igibson.audio import audio
+import librosa
 
+from skimage.measure import block_reduce
 import wave
 import numpy as np
 import pybullet as p
@@ -39,7 +41,8 @@ class AudioSystem(object):
                  occl_multiplier=config.OCCLUSION_MULTIPLIER,
                  renderAmbisonics=False,
                  renderReverbReflections=True,
-                 stream_audio=False
+                 stream_audio=False,
+                 spectrogram_window_len=0.3,
                  ):
         """
         :param scene: iGibson scene
@@ -81,7 +84,10 @@ class AudioSystem(object):
         #TODO: Here we assume an integer number of audio frames per simulator time step. 
         #Usually true, but if not, is this even a problem?
 
-        self.framesPerBuf =  int(SR / (1 / self.s.render_timestep)) 
+        self.framesPerBuf =  int(SR / (1 / self.s.render_timestep))
+        # spectrogram taken over longer time windows
+        self.spec_channel1 = np.zeros(int(SR * spectrogram_window_len))
+        self.spec_channel2 = np.zeros(int(SR * spectrogram_window_len))
         audio.InitializeSystem(self.framesPerBuf, SR)
 
         #Get reverb and reflection properties at equally spaced point in grid along traversible map
@@ -253,7 +259,47 @@ class AudioSystem(object):
         if self.writeToFile != "":
             self.complete_output.extend(self.current_output)
     
-    def disconnect(self):
+    def reset(self):
         if self.writeToFile != "":
             deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
             write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
+        
+        for source, _ in self.sourceToBuffer.items():
+            audio.DestroySource(self.sourceToResonanceID[source])
+
+        self.sourceToEnabled, self.sourceToBuffer, self.sourceToRepeat,  self.sourceToResonanceID = {}, {}, {}, {}
+        self.current_output, self.complete_output = [], []
+
+    def get_spectrogram(self):
+        def compute_stft(signal):
+            n_fft = 512
+            hop_length = 160
+            win_length = 400
+            stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
+            return stft
+        
+        def compute_stft_cat(signal):
+            n_fft = 512
+            hop_length = 160
+            win_length = 400
+            stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
+            return stft
+
+        if not self.current_output:
+            current_output = np.zeros(self.framesPerBuf * 2)
+        else:
+            current_output = np.array(self.current_output, dtype=np.float32, order='C') / 32768.0
+        
+        
+        self.spec_channel1 = np.append(self.spec_channel1[self.framesPerBuf+1:], current_output[::2])
+        self.spec_channel2 = np.append(self.spec_channel2[self.framesPerBuf+1:], current_output[1::2])
+        channel1_magnitude_cat = np.log1p(compute_stft_cat(self.spec_channel1))
+        channel2_magnitude_cat = np.log1p(compute_stft_cat(self.spec_channel2))
+        
+        channel1_magnitude = np.log1p(compute_stft(current_output[::2]))
+        channel2_magnitude = np.log1p(compute_stft(current_output[1::2]))
+        
+        spectrogram = np.stack([channel1_magnitude, channel2_magnitude], axis=-1)
+        spectrogram_cat = np.stack([channel1_magnitude_cat, channel2_magnitude_cat], axis=-1)
+
+        return spectrogram, spectrogram_cat

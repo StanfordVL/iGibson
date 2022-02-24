@@ -21,6 +21,8 @@ from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
+from igibson.tasks.point_nav_avnav_task import PointNavAVNavTask
+from igibson.tasks.savi_task import SAViTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
@@ -106,6 +108,10 @@ class iGibsonEnv(BaseEnv):
             self.task = ReachingRandomTask(self)
         elif self.config["task"] == "room_rearrangement":
             self.task = RoomRearrangementTask(self)
+        elif self.config['task'] == 'point_nav_AVNav':
+            self.task = PointNavAVNavTask(self)
+        elif self.config['task'] == 'SAVi':
+            self.task = SAViTask(self)
         else:
             try:
                 import bddl
@@ -218,6 +224,12 @@ class iGibsonEnv(BaseEnv):
             observation_space["proprioception"] = self.build_obs_space(
                 shape=(self.robots[0].proprioception_dim,), low=-np.inf, high=np.inf
             )
+        if 'audio' in self.output:
+            spectrogram, spectrogram_cat = self.audio_system.get_spectrogram()
+            observation_space['audio'] = self.build_obs_space(
+                shape=spectrogram.shape, low=-np.inf, high=np.inf)
+            observation_space['audio_concat'] = self.build_obs_space(
+                shape=spectrogram_cat.shape, low=-np.inf, high=np.inf)
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -274,6 +286,9 @@ class iGibsonEnv(BaseEnv):
             state["bump"] = self.sensors["bump"].get_obs(self)
         if "proprioception" in self.output:
             state["proprioception"] = np.array(self.robots[0].get_proprioception())
+
+        if 'audio' in self.output:
+            state['audio'], state['audio_concat'] = self.audio_system.get_spectrogram()
 
         return state
 
@@ -476,6 +491,8 @@ class iGibsonEnv(BaseEnv):
         # Move robot away from the scene.
         self.robots[0].set_position([100.0, 100.0, 100.0])
         self.task.reset(self)
+        if self.audio_system is not None:
+            self.audio_system.reset()
         self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()

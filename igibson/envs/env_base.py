@@ -1,5 +1,9 @@
 import gym
 
+from igibson.audio.audio_system import AudioSystem
+import igibson.audio.default_config as default_audio_config
+from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
+from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import REGISTERED_ROBOTS
@@ -201,6 +205,17 @@ class BaseEnv(gym.Env):
 
         self.scene = scene
         self.robots = scene.robots
+
+        if self.config['scene'] == 'gibson':
+            acousticMesh = getMatterportAcousticMesh(self.simulator, 
+                            "/cvgl/group/Gibson/matterport3d-downsized/v2/"+self.config['scene_id']+"/sem_map.png")
+        elif self.config['scene'] == 'igibson':
+            acousticMesh = getIgAcousticMesh(self.simulator)
+        else:
+            raise ValueError("Audio-enabled Envs only compatible with Gibson and iGibson scenes")
+        self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
+                                        is_Viewer=False, writeToFile=self.config.get('audio_write', ""), SR = 44100,
+                                        occl_multiplier=self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER))
 
     def clean(self):
         """
