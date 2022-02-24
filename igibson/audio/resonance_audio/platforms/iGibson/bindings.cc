@@ -340,6 +340,10 @@ namespace igibson {
         return ProcessListenerBind(num_frames);
     }
 
+    void DeleteSource(int source_id) {
+        resonance_audio->api->DestroySource(source_id);
+    }
+
     PYBIND11_MODULE(audio, m) {
         //m.def<decltype(&InitializeFromMeshAndTest)>("InitializeFromMeshAndTest", &InitializeFromMeshAndTest);
         m.def("InitializeFromMeshAndTest", &InitializeFromMeshAndTest, py::return_value_policy::automatic, py::call_guard<py::scoped_ostream_redirect,
@@ -388,6 +392,8 @@ namespace igibson {
                 py::scoped_estream_redirect>());
         
         m.def("SetSourceListenerDirectivity", &SetSourceListenerDirectivity, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+        m.def("DestroySource", &DestroySource, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
     }
 }

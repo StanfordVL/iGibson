@@ -48,6 +48,7 @@ trav_map_erosion: 2
 should_open_all_doors: true
 
 # task
+task: point_nav_AVNav
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
