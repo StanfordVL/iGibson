@@ -13,7 +13,7 @@ Image.MAX_IMAGE_PIXELS = 1000000000
 MatterportToResonanceMaterialMap = {
     "couch" : "CurtainHeavy",
     "armchair" : 'PlywoodPanel',
-    "ceiling" : "ConcreteBlockPainted",
+    "ceiling" : "AcousticCeilingTiles",
     "wall" : "ConcreteBlockPainted",
     "floor" : "WoodPanel",
     "shower floor" : 'PolishedConcreteOrTile',
@@ -27,7 +27,12 @@ MatterportToResonanceMaterialMap = {
     "door" : "WoodPanel",
     "partition" : "ConcreteBlockPainted",
     "door frame" : "PlywoodPanel",
-    "window" : "GlassThick"
+    "window" : "GlassThin",
+    "fireplace": "BrickBare",
+    "bed": "CurtainHeavy",
+	"blinds": "GlassThin",
+	"mirror": "GlassThin",
+	"lighting": "GlassThin",
 }
 
 def buildMatterportCategories():

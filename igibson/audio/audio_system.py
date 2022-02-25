@@ -285,14 +285,13 @@ class AudioSystem(object):
             stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
             return stft
 
-        if not self.current_output:
+        if len(self.current_output) == 0:
             current_output = np.zeros(self.framesPerBuf * 2)
         else:
             current_output = np.array(self.current_output, dtype=np.float32, order='C') / 32768.0
         
-        
-        self.spec_channel1 = np.append(self.spec_channel1[self.framesPerBuf+1:], current_output[::2])
-        self.spec_channel2 = np.append(self.spec_channel2[self.framesPerBuf+1:], current_output[1::2])
+        self.spec_channel1 = np.append(self.spec_channel1[self.framesPerBuf:], current_output[::2])
+        self.spec_channel2 = np.append(self.spec_channel2[self.framesPerBuf:], current_output[1::2])
         channel1_magnitude_cat = np.log1p(compute_stft_cat(self.spec_channel1))
         channel2_magnitude_cat = np.log1p(compute_stft_cat(self.spec_channel2))
         
