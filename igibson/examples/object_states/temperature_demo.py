@@ -6,19 +6,26 @@ import numpy as np
 import igibson
 from igibson import object_states
 from igibson.objects.articulated_object import URDFObject
+from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.empty_scene import EmptyScene
 from igibson.simulator import Simulator
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Demo of temperature change
     Loads a stove, a microwave and an oven, all toggled on, and five frozen apples
     The user can move the apples to see them change from frozen, to normal temperature, to cooked and burnt
     This demo also shows how to load objects ToggledOn and how to set the initial temperature of an object
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    s = Simulator(mode="gui_interactive" if not headless else "headless", image_width=1280, image_height=720)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    settings = MeshRendererSettings(optimized=True)
+    s = Simulator(
+        mode="gui_interactive" if not headless else "headless",
+        image_width=1280,
+        image_height=720,
+        rendering_settings=settings,
+    )
 
     if not headless:
         # Set a better viewing direction
@@ -100,7 +107,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         while steps != max_steps:
             s.step()
             for idx, apple in enumerate(apples):
-                logging.info(
+                print(
                     "Apple %d Temperature: %.2f. Frozen: %r. Cooked: %r. Burnt: %r."
                     % (
                         idx + 1,
@@ -117,4 +124,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

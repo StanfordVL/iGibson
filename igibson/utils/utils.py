@@ -1,5 +1,6 @@
 import collections
 import json
+import logging
 import os
 import random
 
@@ -266,19 +267,32 @@ def restoreState(*args, **kwargs):
     return p.restoreState(*args, **kwargs)
 
 
-def let_user_pick(options, print_intro=True, random_selection=False):
-    if print_intro and not random_selection:
+def let_user_pick(options, print_intro=True, selection="user"):
+    """
+    Tool to make a selection among a set of possibilities
+    :param options: list with the options, strings
+    :param print_intro: if the function prints an intro text or that was done before the call
+    :param selection: type of selection. Three options: "user" (wait user input), "random" (selects a random number),
+                      or an integer indicating the index of the selection (starting at 1)
+    :return: index of the selection option, STARTING AT 1, to len(options)
+    """
+    if print_intro and selection == "user":
         print("Please choose:")
     for idx, element in enumerate(options):
         print("{}) {}".format(idx + 1, element))
-    if not random_selection:
+    if selection == "user":
         i = input("Enter number: ")
         if i.isdigit():
             i = int(i)
         else:
             raise (ValueError("Input not a valid number"))
-    else:
+    elif selection == "random":
         i = random.choice(range(len(options))) + 1
+    elif isinstance(selection, int):
+        i = selection
+    else:
+        raise ValueError("The variable selection does not contain a valid value")
+
     if 0 < i <= len(options):
         return i
     else:

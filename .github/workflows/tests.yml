@@ -27,17 +27,26 @@ jobs:
           python-version: "3.8"
           architecture: x64
 
+      - name: Create virtual env
+        run: python -m venv env
+
       - name: Install dev requirements
         working-directory: igibson
-        run: pip install -r requirements-dev.txt
+        run: |
+          source ../env/bin/activate
+          pip install -r requirements-dev.txt
 
       - name: Install
         working-directory: igibson
-        run: pip install -e .
+        run: |
+          source ../env/bin/activate
+          pip install -e .
 
       - name: Uninstall pip bddl
         working-directory: igibson
-        run: pip uninstall -y bddl
+        run: |
+          source ../env/bin/activate
+          pip uninstall -y bddl
 
       - name: Checkout BDDL
         uses: actions/checkout@v2
@@ -51,7 +60,9 @@ jobs:
 
       - name: Install BDDL
         working-directory: bddl
-        run: pip install -e .
+        run: |
+          source ../env/bin/activate
+          pip install -e .
 
       - name: Link Dataset
         working-directory: igibson
@@ -81,9 +92,15 @@ jobs:
 
       - name: Run tests
         working-directory: igibson
-        run: pytest
+        run: |
+          source ../env/bin/activate
+          pytest
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2.1.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Cleanup virtual env
+        if: always()
+        run: rm -rf env/

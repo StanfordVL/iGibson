@@ -7,6 +7,8 @@ import trimesh
 
 from igibson.utils.utils import get_rpy_from_transform, get_transform_from_xyz_rpy
 
+log = logging.getLogger(__name__)
+
 
 def get_aabb_urdf(tree):
     all_vertices = []
@@ -71,10 +73,10 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
     """
     new_single_child_link = []
     for (joint_name, joint_tuple) in joint_map.items():
-        logging.debug("Joint: ", joint_name)
+        log.debug("Joint: ", joint_name)
         if joint_tuple[2] == "floating":
 
-            logging.debug("Splitting floating joint")
+            log.debug("Splitting floating joint")
             # separate into the two parts and call recursively splitter with each part
             parent_of_floating = joint_tuple[0]
             child_of_floating = joint_tuple[1]
@@ -91,8 +93,8 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
             joint_map2 = {}
 
             # Find all links "down" the floating joint
-            logging.debug("Finding children")
-            logging.info("Child of floating: " + child_of_floating)
+            log.debug("Finding children")
+            log.debug("Child of floating: " + child_of_floating)
             all_children = [child_of_floating]
             children_rec = [child_of_floating]
             while len(children_rec) != 0:
@@ -104,11 +106,11 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
                 all_children += [new_child[0] for new_child in new_children_rec]
                 children_rec = [new_child[0] for new_child in new_children_rec]
 
-            logging.info("All children of the floating joint: " + " ".join(all_children))
+            log.debug("All children of the floating joint: " + " ".join(all_children))
 
             # Separate joints in map1 and map2
             # The ones in map2 are the ones with the child pointing to one of the links "down" the floating joint
-            logging.debug("Splitting joints")
+            log.debug("Splitting joints")
             for (joint_name2, joint_tuple2) in joint_map.items():
                 if joint_name2 != joint_name:
                     if joint_tuple2[1] in all_children:
@@ -118,7 +120,7 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
 
             # Separate children into map1 and map2
             # Careful with the child_map because every key of the dict (name of parent) points to a list of children
-            logging.debug("Splitting children")
+            log.debug("Splitting children")
             for parent in child_map:  # iterate all links that are parent of 1 or more joints
                 # for each parent, get the list of children
                 child_list = child_map[parent]
@@ -198,9 +200,9 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
         extended_splitted_dict[count] = (split[0], split[1], split[2], all_links, np.eye(4))
 
     for (joint_name, joint_tuple) in joint_map.items():
-        logging.debug("Joint: " + joint_name)
+        log.debug("Joint: " + joint_name)
         if joint_tuple[2] == "floating":
-            logging.debug("floating")
+            log.debug("floating")
             parent_name = joint_tuple[0]
             transformation = joint_tuple[3]
 
@@ -223,15 +225,15 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
                         extended_splitted_dict[esd][3],
                         transformation,
                     )
-    logging.info("Number of splits: " + str(len(extended_splitted_dict)))
-    logging.info("Instantiating scene into the following urdfs:")
+    log.debug("Number of splits: " + str(len(extended_splitted_dict)))
+    log.debug("Instantiating scene into the following urdfs:")
 
     main_link_name = get_base_link_name(tree)
 
     urdfs_no_floating = {}
     for esd_key in extended_splitted_dict:
         xml_tree_parent = ET.ElementTree(ET.fromstring('<robot name="split_' + str(esd_key) + '"></robot>'))
-        logging.debug("links " + " ".join(extended_splitted_dict[esd_key][3]))
+        log.debug("links " + " ".join(extended_splitted_dict[esd_key][3]))
 
         for link_name in extended_splitted_dict[esd_key][3]:
             link_to_add = [link for link in tree.findall("link") if link.attrib["name"] == link_name][0]
@@ -253,7 +255,7 @@ def save_urdfs_without_floating_joints(tree, file_prefix):
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (urdf_file_name, transformation, is_main_body)
         xml_tree_parent.write(urdf_file_name, xml_declaration=True)
-        logging.info(urdf_file_name)
+        log.debug(urdf_file_name)
 
     # There should be exactly one main body
     assert np.sum([val[2] for val in urdfs_no_floating.values()]) == 1

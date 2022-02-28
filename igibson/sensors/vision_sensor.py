@@ -56,7 +56,7 @@ class VisionSensor(BaseSensor):
         raw_modalities = []
         if "rgb" in modalities or "rgb_filled" in modalities or "highlight" in modalities:
             raw_modalities.append("rgb")
-        if "depth" in modalities or "3d" in modalities:
+        if "depth" in modalities or "pc" in modalities:
             raw_modalities.append("3d")
         if "seg" in modalities:
             raw_modalities.append("seg")

@@ -13,6 +13,8 @@ from PIL import Image
 from igibson.scenes.scene_base import Scene
 from igibson.utils.utils import l2_distance
 
+log = logging.getLogger(__name__)
+
 
 class IndoorScene(with_metaclass(ABCMeta, Scene)):
     """
@@ -42,7 +44,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param waypoint_resolution: resolution of adjacent way points
         """
         super(IndoorScene, self).__init__()
-        logging.info("IndoorScene model: {}".format(scene_id))
+        log.debug("IndoorScene model: {}".format(scene_id))
         self.scene_id = scene_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
@@ -63,7 +65,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param maps_path: String with the path to the folder containing the traversability maps
         """
         if not os.path.exists(maps_path):
-            logging.warning("trav map does not exist: {}".format(maps_path))
+            log.warning("trav map does not exist: {}".format(maps_path))
             return
 
         self.floor_map = []
@@ -121,11 +123,11 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
             maps_path, "floor_trav_{}_py{}{}.p".format(floor, sys.version_info.major, sys.version_info.minor)
         )
         if os.path.isfile(graph_file):
-            logging.info("Loading traversable graph")
+            log.debug("Loading traversable graph")
             with open(graph_file, "rb") as pfile:
                 g = pickle.load(pfile)
         else:
-            logging.info("Building traversable graph")
+            log.debug("Building traversable graph")
             g = nx.Graph()
             for i in range(self.trav_map_size):
                 for j in range(self.trav_map_size):

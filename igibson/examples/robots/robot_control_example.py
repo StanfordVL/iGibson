@@ -47,7 +47,7 @@ ARROWS = {
 gui = "ig"
 
 
-def choose_from_options(options, name, random_selection=False):
+def choose_from_options(options, name, selection="user"):
     """
     Prints out options from a list, and returns the requested option.
 
@@ -66,7 +66,7 @@ def choose_from_options(options, name, random_selection=False):
         print("[{}] {}{}".format(k + 1, option, docstring))
     print()
 
-    if not random_selection:
+    if not selection != "user":
         try:
             s = input("Choose a {} (enter a number from 1 to {}): ".format(name, len(options)))
             # parse input into a number within range
@@ -81,7 +81,7 @@ def choose_from_options(options, name, random_selection=False):
     return list(options)[k]
 
 
-def choose_controllers(robot, random_selection=False):
+def choose_controllers(robot, selection="user"):
     """
     For a given robot, iterates over all components of the robot, and returns the requested controller type for each
     component.
@@ -101,9 +101,7 @@ def choose_controllers(robot, random_selection=False):
     for component, controller_options in default_config.items():
         # Select controller
         options = list(sorted(controller_options.keys()))
-        choice = choose_from_options(
-            options=options, name="{} controller".format(component), random_selection=random_selection
-        )
+        choice = choose_from_options(options=options, name="{} controller".format(component), selection=selection)
 
         # Add to user responses
         controller_choices[component] = choice
@@ -242,9 +240,9 @@ class KeyboardController:
                     if idx is not None:
                         action[idx] = val
 
-        sys.stdout.write("\033[K")
-        print("Pressed {}. Action: {}".format(keypress, action))
-        sys.stdout.write("\033[F")
+            sys.stdout.write("\033[K")
+            print("Pressed {}. Action: {}".format(keypress, action))
+            sys.stdout.write("\033[F")
 
         # Update last keypress
         self.last_keypress = keypress
@@ -328,12 +326,12 @@ class KeyboardController:
         print()
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Robot control demo with selection
     Queries the user to select a robot, the controllers, a scene and a type of input (random actions or teleop)
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Create an initial headless dummy scene so we can load the requested robot and extract useful info
     s = Simulator(mode="headless", use_pb_gui=False)
@@ -341,37 +339,41 @@ def main(random_selection=False, headless=False, short_exec=False):
     s.import_scene(scene)
 
     # Get robot to create
-    robot_name = choose_from_options(
-        options=list(sorted(REGISTERED_ROBOTS.keys())), name="robot", random_selection=random_selection
-    )
+    robot_name = choose_from_options(options=get_first_options(), name="robot", selection=selection)
     robot = REGISTERED_ROBOTS[robot_name](action_type="continuous")
     s.import_object(robot)
 
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+
     # Get controller choice
-    controller_choices = choose_controllers(robot=robot, random_selection=random_selection)
+    controller_choices = choose_controllers(robot=robot, selection=selection)
 
     # Choose control mode
-    if random_selection:
+    if selection != "user":
         control_mode = "random"
     else:
         control_mode = choose_from_options(options=CONTROL_MODES, name="control mode")
 
     # Choose scene to load
-    scene_id = choose_from_options(options=SCENES, name="scene", random_selection=random_selection)
+    scene_id = choose_from_options(options=SCENES, name="scene", selection=selection)
 
     # Choose GUI
     global gui
-    gui = choose_from_options(options=GUIS, name="gui", random_selection=random_selection)
+    gui = choose_from_options(options=GUIS, name="gui", selection=selection)
 
     if (
         gui == "ig"
         and platform.system() != "Darwin"
         and control_mode == "teleop"
         and isinstance(robot, ManipulationRobot)
-        and controller_choices["arm"] == "InverseKinematicsController"
+        and "InverseKinematicsController" in controller_choices.values()
     ):
-        message = "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
-        logging.warning(message)
+        logging.warning(
+            "Warning: iG GUI does not support arrow keys for your OS (needed to control the arm with an IK Controller). Falling back to PyBullet (pb) GUI."
+        )
         gui = "pb"
 
     # Infer what GUI(s) to use
@@ -442,5 +444,10 @@ def main(random_selection=False, headless=False, short_exec=False):
     s.disconnect()
 
 
+def get_first_options():
+    return list(sorted(REGISTERED_ROBOTS.keys()))
+
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

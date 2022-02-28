@@ -7,21 +7,22 @@ In this page you will find information about:
 - [How to download Gibson and Stanford 2D-3D-Semantics scenes](#download-gibson-and-stanford-2d-3d-semantics-scenes)
 - [How to download Matterport3D scenes](#download-matterport3d-scenes)
 
-## Download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects
+## Downloading the iGibson 2.0 Dataset of Scenes and the BEHAVIOR Dataset of Objects
 
 What will you download?
-- **iGibson 2.0 Dataset of Scenes**: New versions of the fully interactive scenes, more densely populated with objects.
-- **BEHAVIOR Object Dataset**: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and allowed only to be used with iGibson 2.0). You can download a bundle of the iGibson 2.0 dataset of scenes and the BEHAVIOR dataset of objects here.
+- **iGibson 2.0 Dataset of Scenes**: New versions of the fifteen fully interactive scenes, more densely populated with objects.
+- **BEHAVIOR Object Dataset**: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and can only to be used within iGibson 2.0). 
 
-To download both in a bundle, you need to follow the following steps:
+To download the Scene and Objects datasets in a bundle, please, follow these steps:
 - Fill out the license agreement in this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
-- You will receive a key (igibson.key). Move it into the subfolder of the iGibson repository that contains the dataset, for example, iGibson/igibson/data
-- Download the behavior data bundle (ig_dataset) from [here](https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip)
-- Unzip ig_dataset into the folder: `unzip behavior_data_bundle.zip -d iGibson/igibson/data`
+- After submitting the form, you will receive a key (igibson.key). Copy it into the folder that will contain the dataset, as default: `your_installation_path/igibson/data`
+- Download the behavior data bundle (ig_dataset) from [here](https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip) (size ~20GB).
+- Unzip the zip file into the desired folder: `unzip behavior_data_bundle.zip -d your_installation_path/igibson/data`
+- (Optional) You may need to update the config file (`your_installation_path/igibson/global_config.yaml`) to reflect the location of the `ig_dataset` by changing the entry `ig_dataset_path`.
 
 After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the [BEHAVIOR benchmark](https://behavior.stanford.edu/).
 
-## Download iGibson 1.0 Scenes
+## Downloading the iGibson 1.0 Dataset of Scenes and Objects
 
 What will you download?
 - **iGibson 1.0 Dataset of Scenes**: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
@@ -42,11 +43,11 @@ A description of the file structure and format of the files in the dataset can b
 
 **Cubicasa / 3D Front Dataset Support:** We provide support for Cubicasa and 3D Front Dataset providing more than 10000 additional scenes (with less furniture than our fifteen scenes). To import them into iGibson, follow the instructions [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene). 
 
-## Download Gibson and Stanford 2D-3D-Semantics scenes
+## Downloading the Gibson and Stanford 2D-3D-Semantics Datasets of Scenes
 
 What will you download?
 - **Gibson static scenes**: more than 500 reconstructions of homes and offices with a Matterport device. These models keep the texture observed with the sensor, but contain some irregularities, specially with reflective surfaces and thin elements like chairs' legs.
-- **Stanford 2D-3D-Semantics scenes**: 7 reconstructions of Stanford offices.
+- **Stanford 2D-3D-Semantics scenes**: 7 reconstructions of Stanford offices annotated with semantic information.
 
 Files included in the dataset:
 
@@ -99,12 +100,13 @@ floor_trav_{}.png         # top down views of traversable areas for each floor
 For the maps, each pixel represents 0.01m, and the center of the image correspond to `(0,0)` in the mesh, as well as in the pybullet coordinate system. 
 
 
-## Download Matterport3D Scenes
+## Download the Matterport3D Dataset of Scenes
+
 What will you download?
-- Matterport3D Dataset: 90 scenes (3.2GB)
+- **Matterport3D Dataset**: 90 scenes (3.2GB)
 
 Please fill in this [form](http://dovahkiin.stanford.edu/matterport/public/MP_TOS.pdf) and send it to [matterport3d@googlegroups.com](mailto:matterport3d@googlegroups.com). Please put "use with iGibson simulator" in your email.
 
-You'll then recieve a python script via email in response. Run `python download_mp.py --task_data igibson -o .` with the received script to download the data (3.2GB). Afterwards, move each of the scenes to the path set in `your_installation_path/igibson/global_config.yaml` (default and recommended: `g_dataset: your_installation_path/igibson/data/g_dataset`).
+You'll then receive a python script via email in response. Run `python download_mp.py --task_data igibson -o .` with the received script to download the data (3.2GB). Afterwards, move all the scenes to the path set in `your_installation_path/igibson/global_config.yaml` (default and recommended: `g_dataset: your_installation_path/igibson/data/g_dataset`).
 
 Reference: [Matterport3D webpage](https://niessner.github.io/Matterport/).

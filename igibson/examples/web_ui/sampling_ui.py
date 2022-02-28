@@ -1,5 +1,6 @@
 import atexit
 import json
+import logging
 import multiprocessing
 import os
 import sys
@@ -200,7 +201,7 @@ class ProcessPyEnvironment(object):
 
 class ToyEnv(object):
     def __init__(self):
-        config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_demo.yaml"))
+        config = parse_config(os.path.join(igibson.configs_path, "turtlebot_demo.yaml"))
         hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
         hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
         light_modulation_map_filename = os.path.join(
@@ -225,7 +226,7 @@ class ToyEnv(object):
 
 class ToyEnvInt(object):
     def __init__(self, scene="Rs_int"):
-        config_file = os.path.join(igibson.example_config_path, "behavior_vr.yaml")
+        config_file = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
         env_config = parse_config(config_file)
         env_config["scene_id"] = scene
         env_config["task"] = "trivial"
@@ -439,6 +440,7 @@ scheduler.add_job(id=PERIODIC_CLEANUP_TASK_ID, func=periodic_cleanup, seconds=5,
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     port = int(sys.argv[1])
     # app.run(host="0.0.0.0", port=port, debug=True)
     app.run(host="0.0.0.0", port=port)

@@ -5,7 +5,9 @@ import os
 import subprocess
 import tempfile
 from collections import defaultdict
+from urllib.request import urlretrieve
 
+import progressbar
 import yaml
 
 import igibson
@@ -13,6 +15,24 @@ import igibson
 if os.name == "nt":
     import win32api
     import win32con
+
+log = logging.getLogger(__name__)
+
+pbar = None
+
+
+def show_progress(block_num, block_size, total_size):
+    global pbar
+    if pbar is None:
+        pbar = progressbar.ProgressBar(maxval=total_size)
+        pbar.start()
+
+    downloaded = block_num * block_size
+    if downloaded < total_size:
+        pbar.update(downloaded)
+    else:
+        pbar.finish()
+        pbar = None
 
 
 def folder_is_hidden(p):
@@ -33,8 +53,15 @@ def get_ig_avg_category_specs():
     Load average object specs (dimension and mass) for objects
     """
     avg_obj_dim_file = os.path.join(igibson.ig_dataset_path, "metadata", "avg_category_specs.json")
-    with open(avg_obj_dim_file) as f:
-        return json.load(f)
+    if os.path.exists(avg_obj_dim_file):
+        with open(avg_obj_dim_file) as f:
+            return json.load(f)
+    else:
+        log.warning(
+            "Requested average specs of the object categories in the iGibson Dataset of objects, but the "
+            "file cannot be found. Did you download the dataset? Returning an empty dictionary"
+        )
+        return dict()
 
 
 def get_ig_category_ids():
@@ -75,7 +102,6 @@ def get_ig_scene_path(scene_name):
     """
     ig_dataset_path = igibson.ig_dataset_path
     ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
-    logging.info("Scene name: {}".format(scene_name))
     assert scene_name in os.listdir(ig_scenes_path), "Scene {} does not exist".format(scene_name)
     return os.path.join(ig_scenes_path, scene_name)
 
@@ -193,7 +219,7 @@ def get_all_object_models():
     return models
 
 
-def get_ig_assets_version():
+def get_ig_assets_hash():
     """
     Get iGibson asset version
 
@@ -261,18 +287,12 @@ def download_assets():
 
     tmp_file = os.path.join(tempfile.gettempdir(), "assets_igibson.tar.gz")
 
-    os.makedirs(os.path.dirname(igibson.assets_path), exist_ok=True)
-
     if not os.path.exists(igibson.assets_path):
-        logging.info(
-            "Downloading and decompressing assets from {}".format(
-                "https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz"
-            )
-        )
-        os.system(
-            "wget -c --retry-connrefused --tries=5 --timeout=5 "
-            "https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz -O {}".format(tmp_file)
-        )
+        os.makedirs(os.path.dirname(igibson.assets_path), exist_ok=True)
+        assets_url = "https://storage.googleapis.com/gibson_scenes/assets_igibson.tar.gz"
+        log.info("Downloading and decompressing assets from {} (this may take some time)".format(assets_url))
+        urlretrieve(assets_url, tmp_file, show_progress)
+        log.info("Decompressing assets into {}".format(igibson.assets_path))
         os.system("tar -zxf {} --directory {}".format(tmp_file, os.path.dirname(igibson.assets_path)))
 
 
@@ -283,18 +303,12 @@ def download_demo_data():
 
     tmp_file = os.path.join(tempfile.gettempdir(), "Rs.tar.gz")
 
-    os.makedirs(igibson.g_dataset_path, exist_ok=True)
-
     if not os.path.exists(os.path.join(igibson.g_dataset_path, "Rs")):
-        logging.info(
-            "Downloading and decompressing Rs Gibson meshfile from {}".format(
-                "https://storage.googleapis.com/gibson_scenes/Rs.tar.gz"
-            )
-        )
-        os.system(
-            "wget -c --retry-connrefused --tries=5 --timeout=5  "
-            "https://storage.googleapis.com/gibson_scenes/Rs.tar.gz -O {}".format(tmp_file)
-        )
+        os.makedirs(igibson.g_dataset_path, exist_ok=True)
+        demo_data_url = "https://storage.googleapis.com/gibson_scenes/Rs.tar.gz"
+        log.info("Downloading Rs scene Gibson static meshfile (demo) from {}".format(demo_data_url))
+        urlretrieve(demo_data_url, tmp_file, show_progress)
+        log.info("Decompressing demo data into {}".format(igibson.g_dataset_path))
         os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.g_dataset_path))
 
 
@@ -303,63 +317,64 @@ def download_dataset(url):
     Download Gibson dataset
     """
 
-    if not os.path.exists(igibson.g_dataset_path):
-        logging.info("Creating Gibson dataset folder at {}".format(igibson.g_dataset_path))
-        os.makedirs(igibson.g_dataset_path)
+    os.makedirs(igibson.g_dataset_path, exist_ok=True)
 
     file_name = url.split("/")[-1]
 
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
-    logging.info("Downloading and decompressing the full Gibson dataset from {}".format(url))
-    os.system("wget -c --retry-connrefused --tries=5 --timeout=5 {} -O {}".format(url, tmp_file))
+    log.info("Downloading the full Gibson dataset from {}".format(url))
+    urlretrieve(url, tmp_file, show_progress)
+    log.info("Decompressing the full Gibson dataset into {}".format(igibson.g_dataset_path))
     os.system("tar -zxf {} --strip-components=1 --directory {}".format(tmp_file, igibson.g_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 
 
 def download_ext_scene_assets():
-    logging.info("Downloading and decompressing 3DFront and Cubicasa")
+    log.info("Downloading and decompressing 3DFront and Cubicasa")
     os.makedirs(igibson.threedfront_dataset_path, exist_ok=True)
     os.makedirs(igibson.cubicasa_dataset_path, exist_ok=True)
     url = "https://storage.googleapis.com/gibson_scenes/default_materials.tar.gz"
 
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
-
-    os.system("wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}".format(url, file_name))
+    log.info("Downloading Cubicasa from {}".format(url))
+    urlretrieve(url, tmp_file, show_progress)
+    log.info("Decompressing Cubicasa into {}".format(igibson.cubicasa_dataset_path))
     os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.cubicasa_dataset_path))
-    os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.threedfront_dataset_path))
 
     url = "https://storage.googleapis.com/gibson_scenes/threedfront_urdfs.tar.gz"
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
-
-    os.system("wget -c --retry-connrefused --tries=5 --timeout=5 {} -O /tmp/{}".format(url, file_name))
+    log.info("Downloading the ThreeDFront from {}".format(url))
+    urlretrieve(url, tmp_file, show_progress)
+    log.info("Decompressing ThreeDFront into {}".format(igibson.threedfront_dataset_path))
     os.system("tar -zxf {} --directory {}".format(tmp_file, igibson.threedfront_dataset_path))
 
 
 def download_ig_dataset():
     """
-    Download iGibson dataset
+    Download iGibson 1.0 dataset of scenes and objects
     """
     while (
         input(
-            "Do you agree to the terms for using iGibson dataset (http://svl.stanford.edu/igibson/assets/GDS_agreement.pdf)? [y/n]"
+            "Do you agree to the terms for using iGibson 1.0 dataset (http://svl.stanford.edu/igibson/assets/GDS_agreement.pdf)? [y/n]"
         )
         != "y"
     ):
-        print("You need to agree to the terms for using iGibson dataset.")
+        print("You need to agree to the terms for using iGibson 1.0 dataset.")
 
     if not os.path.exists(igibson.ig_dataset_path):
-        logging.info("Creating iGibson dataset folder at {}".format(igibson.g_dataset_path))
+        log.info("Creating iGibson dataset folder at {}".format(igibson.ig_dataset_path))
         os.makedirs(igibson.ig_dataset_path)
 
     url = "https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz"
     file_name = url.split("/")[-1]
     tmp_file = os.path.join(tempfile.gettempdir(), file_name)
 
-    logging.info("Downloading and decompressing the full iGibson dataset of scenes from {}".format(url))
-    os.system("wget -c --retry-connrefused --tries=5 --timeout=5 {} -O {}".format(url, tmp_file))
+    log.info("Downloading the full iGibson 1.0 Dataset of Objects and Interactive Scenes from {}".format(url))
+    urlretrieve(url, tmp_file, show_progress)
+    log.info("Decompressing the full iGibson 1.0 Dataset into {}".format(igibson.ig_dataset_path))
     os.system("tar -zxf {} --strip-components=1 --directory {}".format(tmp_file, igibson.ig_dataset_path))
     # These datasets come as folders; in these folder there are scenes, so --strip-components are needed.
 

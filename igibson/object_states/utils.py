@@ -44,11 +44,11 @@ def clear_cached_states(obj):
             obj_state.clear_cached_value()
 
 
-def detect_closeness(bodyA, distance=0.01):
+def detect_closeness(bodyA, exclude_bodyB=[], distance=0.01):
     too_close = False
     for body_id in range(p.getNumBodies()):
         # Ignore self-closeness
-        if body_id == bodyA:
+        if body_id == bodyA or body_id in exclude_bodyB:
             continue
         closest_points = p.getClosestPoints(bodyA, body_id, distance=distance)
         if len(closest_points) > 0:

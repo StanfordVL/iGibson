@@ -32,6 +32,8 @@ from igibson.utils import utils
 from igibson.utils.urdf_utils import add_fixed_link, get_base_link_name, round_up, save_urdfs_without_floating_joints
 from igibson.utils.utils import mat_to_quat_pos, rotate_vector_3d
 
+log = logging.getLogger(__name__)
+
 
 class ArticulatedObject(StatefulObject):
     """
@@ -155,7 +157,7 @@ class URDFObject(StatefulObject):
 
         self.main_body = -1
 
-        logging.info("Category " + self.category)
+        log.debug("Category " + self.category)
         self.filename = filename
         dirname = os.path.dirname(filename)
         urdf = os.path.basename(filename)
@@ -164,7 +166,7 @@ class URDFObject(StatefulObject):
         if os.path.exists(simplified_urdf):
             self.filename = simplified_urdf
             filename = simplified_urdf
-        logging.info("Loading the following URDF template " + filename)
+        log.debug("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
         if not visualize_primitives:
@@ -243,7 +245,7 @@ class URDFObject(StatefulObject):
         if self.bounding_box is None:
             self.overwrite_inertial = False
 
-        logging.info("Scale: " + np.array2string(scale))
+        log.debug("Scale: " + np.array2string(scale))
 
         # We need to know where the base_link origin is wrt. the bounding box
         # center. That allows us to place the model correctly since the joint
@@ -663,7 +665,7 @@ class URDFObject(StatefulObject):
                 break
 
         if self.texture_randomization and self.texture_procedural_generation:
-            logging.warn("Cannot support both randomized and procedural texture. Dropping texture randomization.")
+            log.warning("Cannot support both randomized and procedural texture. Dropping texture randomization.")
             self.texture_randomization = False
 
         if self.texture_randomization:
@@ -833,7 +835,7 @@ class URDFObject(StatefulObject):
             flags |= p.URDF_IGNORE_VISUAL_SHAPES
 
         for idx in range(len(self.urdf_paths)):
-            logging.info("Loading " + self.urdf_paths[idx])
+            log.debug("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]
             body_id = p.loadURDF(self.urdf_paths[idx], flags=flags, useFixedBase=is_fixed)
             p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
@@ -858,13 +860,21 @@ class URDFObject(StatefulObject):
 
             body_ids.append(body_id)
 
-        self.load_supporting_surfaces()
+        return body_ids
 
+    def load(self, simulator):
+        body_ids = super(URDFObject, self).load(simulator)
+        self.load_supporting_surfaces()
         return body_ids
 
     def set_bbox_center_position_orientation(self, pos, orn):
         rotated_offset = p.multiplyTransforms([0, 0, 0], orn, self.scaled_bbxc_in_blf, [0, 0, 0, 1])[0]
         self.set_base_link_position_orientation(pos + rotated_offset, orn)
+
+    def get_position_orientation(self):
+        # TODO: replace this with super() call once URDFObject no longer works with multiple body ids
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[self.main_body])
+        return np.array(pos), np.array(orn)
 
     def set_position_orientation(self, pos, orn):
         # TODO: replace this with super() call once URDFObject no longer works with multiple body ids
@@ -899,6 +909,15 @@ class URDFObject(StatefulObject):
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
+
+    def get_base_link_position_orientation(self):
+        """Get object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        dynamics_info = p.getDynamicsInfo(self.get_body_ids()[self.main_body], -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[self.main_body])
+        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        return np.array(base_link_position), np.array(base_link_orientation)
 
     def add_meta_links(self, meta_links):
         """
@@ -959,7 +978,7 @@ class URDFObject(StatefulObject):
                 # If a visual bounding box does not exist in the dictionary, try switching to collision.
                 # We expect that every link has its collision bb annotated (or set to None if none exists).
                 if bbox_type == "visual" and "visual" not in self.unscaled_link_bounding_boxes[link_name]:
-                    logging.debug(
+                    log.debug(
                         "Falling back to collision bbox for object %s link %s since no visual bbox exists.",
                         self.name,
                         link_name,

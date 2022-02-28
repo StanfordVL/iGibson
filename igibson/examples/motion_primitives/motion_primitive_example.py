@@ -2,13 +2,16 @@ import os
 
 import numpy as np
 import pybullet as p
+import yaml
 
+import igibson
 from igibson.action_generators.motion_primitive_generator import MotionPrimitiveActionGenerator
 from igibson.objects.articulated_object import URDFObject
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 from igibson.utils.assets_utils import get_ig_avg_category_specs, get_ig_model_path
+from igibson.utils.utils import parse_config
 
 
 def execute_controller(ctrl_gen, robot, s):
@@ -73,7 +76,8 @@ def main():
     s.import_object(tray)
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
 
-    robot = BehaviorRobot(s)
+    config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_mp_behavior_task.yaml"))
+    robot = BehaviorRobot(**config["robot"])
     s.import_robot(robot)
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
     robot.apply_action(

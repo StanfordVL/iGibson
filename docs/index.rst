@@ -22,7 +22,6 @@ Welcome to iGibson's documentation!
    dataset.md
    assets.md
    simulators.md
-   physics_engine.md
    extended_states.md
    renderer.md
    viewer.md

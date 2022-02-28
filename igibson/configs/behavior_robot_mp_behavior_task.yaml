@@ -1,6 +1,6 @@
 # scene
 scene: igibson
-scene_id: Beechwood_1_int
+scene_id: Rs_int
 clutter: false
 build_graph: true
 load_texture: true
@@ -15,20 +15,31 @@ object_randomization_freq: null
 robot:
   name: BehaviorRobot
 
+  show_visual_head: False
+  higher_limits: True  # This should probably be false.
+  controller_config:
+    gripper_right_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+    gripper_left_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+
 # task
-task: cleaning_cupboards
+task: cleaning_kitchen_cupboard
 task_id: 0
 instance_id: 0
 online_sampling: false
+should_highlight_task_relevant_objs: false
 
 # discount factor
 discount_factor: 0.99
 
-# termination condition
-max_step: 500
+# termination condition (VR demo collection should last forever)
+max_step: 10000000000
 
 # sensor spec
-output: [proprioception, rgb, highlight, depth, seg, ins_seg, task_obs]
+output: [proprioception]
 # image
 fisheye: false
 image_width: 128

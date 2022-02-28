@@ -46,8 +46,8 @@ class NextTo(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
         other_body_ids = other.get_body_ids()
         in_any_horizontal_adjacency_of_this = any(
             (
-                not other_body_ids.isdisjoint(adjacency_list.positive_neighbors)
-                or not other_body_ids.isdisjoint(adjacency_list.negative_neighbors)
+                not set(other_body_ids).isdisjoint(set(adjacency_list.positive_neighbors))
+                or not set(other_body_ids).isdisjoint(set(adjacency_list.negative_neighbors))
             )
             for adjacency_list in flatten_planes(adjacency_this)
         )
@@ -59,8 +59,8 @@ class NextTo(PositionalValidationMemoizedObjectStateMixin, KinematicsMixin, Rela
         this_body_ids = self.obj.get_body_ids()
         in_any_horizontal_adjacency_of_other = any(
             (
-                not this_body_ids.isdisjoint(adjacency_list.positive_neighbors)
-                or not this_body_ids.isdisjoint(adjacency_list.negative_neighbors)
+                not set(this_body_ids).isdisjoint(set(adjacency_list.positive_neighbors))
+                or not set(this_body_ids).isdisjoint(set(adjacency_list.negative_neighbors))
             )
             for adjacency_list in flatten_planes(adjacency_other)
         )

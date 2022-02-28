@@ -148,15 +148,15 @@ class iGibsonRLLibEnv(iGibsonEnv):
         )
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of how to train a robot with parallelization provided by Ray using RLLib
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
-    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
-    if not (random_selection and headless and short_exec):
+    if not (selection != "user" and headless and short_exec):
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--config",
@@ -217,7 +217,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     #
     # train_batch size should be divisble by sgd_minibatch_size **and** (rollout fragment length * num_workers)
     # Good config: train_batch_size = 1000, rollout_fragment_length = 200, num_workers = 5, sgd_minibatch_size = largest your GPU can support that train_batch_size is divisble by (500 for Titan X)
-    config_filename = os.path.join(igibson.example_config_path, config)
+    config_filename = os.path.join(igibson.configs_path, config)
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
 
     config_data["image_width"] = 160
@@ -290,4 +290,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
