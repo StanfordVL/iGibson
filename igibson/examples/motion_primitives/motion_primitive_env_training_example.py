@@ -219,7 +219,7 @@ class MpsEnv(gym.Env):
         if self.did_reset:
             self.sim.disconnect()
         self.did_reset = True
-        self.sim = Simulator(mode="headless", image_width=512, image_height=512, device_idx=0, use_pb_gui=True)
+        self.sim = Simulator(mode="headless", image_width=512, image_height=512, device_idx=0, use_pb_gui=False)
         self.scene = InteractiveIndoorScene(
             "Rs_int",
             urdf_file="/home/ziang/Workspace/Github/ig_dataset/scenes/Rs_int/urdf/Rs_int_task_re-shelving_library_books_simple_0_0_fixed_furniture",
@@ -272,12 +272,12 @@ class MpsEnv(gym.Env):
 def main():
     env = MpsEnv()
     # Instantiate the agent
-    model = PPO('MlpPolicy', env, verbose=1)
+    model = PPO('MlpPolicy', env, verbose=1, tensorboard_log="./tb")
 
     # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, deterministic=True)
     # print(mean_reward, std_reward)
     # Train the agent
-    model.learn(total_timesteps=1)
+    model.learn(total_timesteps=int(1e6))
     # Save the agent
     model.save("ppo_mps")
 
