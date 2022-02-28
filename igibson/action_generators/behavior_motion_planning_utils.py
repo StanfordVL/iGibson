@@ -21,6 +21,7 @@ SEARCHED = []
 BODY_MAX_DISTANCE = 0.05
 HAND_MAX_DISTANCE = 0
 
+VERBOSE = False
 
 def plan_base_motion_br(
     robot: BehaviorRobot,
@@ -146,7 +147,8 @@ def plan_base_motion_br(
     #     indented_print("Warning: initial configuration is in collision")
     #     return None
     if collision_fn(end_conf):
-        indented_print("Warning: end configuration is in collision")
+        if VERBOSE:
+            indented_print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
@@ -217,7 +219,8 @@ def plan_hand_motion_br(
     #     indented_print("Warning: initial configuration is in collision")
     #     return None
     if collision_fn(end_conf):
-        indented_print("Warning: end configuration is in collision")
+        if VERBOSE:
+            indented_print("Warning: end configuration is in collision")
         return None
     if direct:
         return direct_path(start_conf, end_conf, extend_fn, collision_fn)
@@ -268,7 +271,8 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
         ]
         colliding_bids = [obs for obs, col in collisions if col]
         if colliding_bids:
-            indented_print("Hand collision with objects: ", colliding_bids)
+            if VERBOSE:
+                indented_print("Hand collision with objects: ", colliding_bids)
         collision = bool(colliding_bids)
 
         if obj_in_hand is not None:
@@ -281,7 +285,8 @@ def get_pose3d_hand_collision_fn(robot, obj_in_hand, obstacles, max_distance=HAN
             ]
             obj_colliding_bids = [obs for obs, col in obj_collisions if col]
             if obj_colliding_bids:
-                indented_print("Held object collision with objects: ", obj_colliding_bids)
+                if VERBOSE:
+                    indented_print("Held object collision with objects: ", obj_colliding_bids)
             collision = collision or bool(obj_colliding_bids)
 
         return collision

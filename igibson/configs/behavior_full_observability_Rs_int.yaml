@@ -1,12 +1,13 @@
 # scene
 scene: igibson
 scene_id: Rs_int
+urdf_file: /home/ziang/Workspace/Github/ig_dataset/scenes/Rs_int/urdf/Rs_int_task_re-shelving_library_books_simple_0_0_fixed_furniture
 clutter: false
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
 should_open_all_doors: false
-load_object_categories: ["walls", "floors", "bottom_cabinet", "door", "sink", "coffee_table", "fridge", "swivel_chair"]
+load_object_categories: ["walls", "floors", "ceilings", "breakfast_table", "shelf", "hardback"]
 
 # domain randomization
 texture_randomization_freq: null
@@ -16,20 +17,31 @@ object_randomization_freq: null
 robot:
   name: BehaviorRobot
 
+  show_visual_head: False
+  higher_limits: True  # This should probably be false.
+  controller_config:
+    gripper_right_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+    gripper_left_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+
 # task
-task: simple
+task: re-shelving_library_books_simple
 task_id: 0
 instance_id: 0
 online_sampling: false
+should_highlight_task_relevant_objs: true
 
 # discount factor
 discount_factor: 0.99
 
 # termination condition
-max_step: 500
+max_step: 10
 
 # sensor spec
-output: [proprioception, rgb, highlight, depth, seg, ins_seg, task_obs]
+output: [rgb]
 # image
 fisheye: false
 image_width: 128

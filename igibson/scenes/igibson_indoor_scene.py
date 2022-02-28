@@ -1145,6 +1145,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             return
 
         name = obj.name
+        print("SAVING", name)
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
@@ -1302,7 +1303,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
             if category in ["grouper", "multiplexer", "agent_pose"]:
                 continue
-
+            if object_name not in self.objects_by_name:
+                continue
+            # print("WHAT================\n" + object_name, link.attrib)
+            # print(self.objects_by_name)
+            # print(object_states[object_name])
+            # if object_name not in self.objects_by_name
             object_states[object_name]["bbox_center_pose"] = None
             object_states[object_name]["base_poses"] = json.loads(link.attrib["base_poses"])
             object_states[object_name]["base_velocities"] = json.loads(link.attrib["base_velocities"])
