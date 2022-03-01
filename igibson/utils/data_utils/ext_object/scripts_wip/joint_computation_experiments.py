@@ -117,6 +117,10 @@ def main():
     parent_to_children = build_object_hierarchy()
     obj_model_names = {}
 
+    scene_dir = os.path.join(scene_processed_folder, scene_name)
+    scene_urdf_dir = os.path.join(scene_dir, "urdf")
+    os.makedirs(scene_urdf_dir, exist_ok=True)
+
     scene_urdf_tree = ET.parse("template.urdf")
     scene_tree_root = scene_urdf_tree.getroot()
     scene_tree_root.attrib = {"name": "igibson_scene"}
@@ -139,10 +143,21 @@ def main():
         obj_model_name = obj_model_names[(obj_cat, obj_model)]
 
         obj_link_name = "-".join([obj_cat, obj_model, obj_inst_id])
-        # TODO: get rid of test_
-        category = "test_" + obj_cat
 
-        processed_obj_inst_folder = os.path.join(processed_folder, category, obj_model_name)
+        is_building_structure = obj_cat in ["floors", "ceilings", "walls"]
+        # TODO: get rid of test_
+        if not is_building_structure:
+            category = "test_" + obj_cat
+            continue
+        else:
+            category = obj_cat
+            obj_model_name = scene_name
+
+        if not is_building_structure:
+            processed_obj_inst_folder = os.path.join(processed_folder, category, obj_model_name)
+        else:
+            processed_obj_inst_folder = scene_dir
+
         os.makedirs(processed_obj_inst_folder, exist_ok=True)
 
         obj_parent_to_children = parent_to_children[obj_inst]
@@ -371,7 +386,11 @@ def main():
             parent_sets = next_parent_sets
 
         if should_save_model:
-            urdf_path = os.path.join(processed_obj_inst_folder, "{}.urdf".format(obj_model_name))
+            if not is_building_structure:
+                urdf_path = os.path.join(processed_obj_inst_folder, "{}.urdf".format(obj_model_name))
+            else:
+                urdf_path = os.path.join(processed_obj_inst_folder, "urdf", "{}_{}.urdf".format(scene_name, category))
+
             xmlstr = minidom.parseString(ET.tostring(tree_root)).toprettyxml(indent="   ")
             with open(urdf_path, "w") as f:
                 f.write(xmlstr)
@@ -384,15 +403,16 @@ def main():
             lower, upper = p.getAABB(body_id)
             base_link_offset = ((np.array(lower) + np.array(upper)) / 2.0).tolist()
             bbox_size = (np.array(upper) - np.array(lower)).tolist()
-            metadata = {
-                "base_link_offset": base_link_offset,
-                "bbox_size": bbox_size,
-            }
-            obj_misc_folder = os.path.join(processed_obj_inst_folder, "misc")
-            os.makedirs(obj_misc_folder, exist_ok=True)
-            metadata_file = os.path.join(obj_misc_folder, "metadata.json")
-            with open(metadata_file, "w") as f:
-                json.dump(metadata, f)
+            if not is_building_structure:
+                metadata = {
+                    "base_link_offset": base_link_offset,
+                    "bbox_size": bbox_size,
+                }
+                obj_misc_folder = os.path.join(processed_obj_inst_folder, "misc")
+                os.makedirs(obj_misc_folder, exist_ok=True)
+                metadata_file = os.path.join(obj_misc_folder, "metadata.json")
+                with open(metadata_file, "w") as f:
+                    json.dump(metadata, f)
         else:
             obj_misc_folder = os.path.join(processed_obj_inst_folder, "misc")
             metadata_file = os.path.join(obj_misc_folder, "metadata.json")
@@ -410,11 +430,12 @@ def main():
         # Save pose to scene URDF
         scene_link = ET.SubElement(scene_tree_root, "link")
         scene_link.attrib = {
-            "bounding_box": " ".join([str(item) for item in bbox_size]),
             "category": category,
             "model": obj_model_name,
             "name": obj_link_name,
         }
+        if not is_building_structure:
+            scene_link.attrib["bounding_box"] = " ".join([str(item) for item in bbox_size])
         joint = ET.SubElement(scene_tree_root, "joint")
         joint.attrib = {
             "name": "j_{}".format(obj_link_name),
@@ -432,8 +453,6 @@ def main():
         joint_child = ET.SubElement(joint, "child")
         joint_child.attrib = {"link": obj_link_name}
 
-    scene_urdf_dir = os.path.join(scene_processed_folder, scene_name, "urdf")
-    os.makedirs(scene_urdf_dir, exist_ok=True)
     scene_urdf_file = os.path.join(scene_urdf_dir, "{}_best.urdf".format(scene_name))
     xmlstr = minidom.parseString(ET.tostring(scene_tree_root)).toprettyxml(indent="   ")
     with open(scene_urdf_file, "w") as f:
