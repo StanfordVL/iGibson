@@ -2,44 +2,30 @@
 
 In this page you will find information about:
 
-- [How to download iGibson 2.0 scenes and the BEHAVIOR Dataset of Objects](#download-igibson-2-0-scenes-and-the-behavior-dataset-of-objects)
-- [How to download iGibson 1.0 scenes](#download-igibson-1-0-scenes)
-- [How to download Gibson and Stanford 2D-3D-Semantics scenes](#download-gibson-and-stanford-2d-3d-semantics-scenes)
-- [How to download Matterport3D scenes](#download-matterport3d-scenes)
+- [Downloading the iGibson Dataset of Scenes and the BEHAVIOR Dataset of Objects](#downloading-the-igibson-dataset-of-scenes-and-the-behavior-dataset-of-objects)
+- [Downloading the Gibson and Stanford 2D-3D-Semantics Datasets of Scenes](#downloading-the-gibson-and-stanford-2d-3d-semantics-datasets-of-scenes)
+- [Downloading the Matterport3D Dataset of Scenes](#downloading-the-matterport3d-dataset-of-scenes)
 
-## Downloading the iGibson 2.0 Dataset of Scenes and the BEHAVIOR Dataset of Objects
+## Downloading the iGibson Dataset of Scenes and the BEHAVIOR Dataset of Objects
 
 What will you download?
+- **iGibson 1.0 Dataset of Scenes**: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties.
 - **iGibson 2.0 Dataset of Scenes**: New versions of the fifteen fully interactive scenes, more densely populated with objects.
-- **BEHAVIOR Object Dataset**: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and can only to be used within iGibson 2.0). 
+- **BEHAVIOR Dataset of Objects**: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists' copyright, models are encrypted and can only to be used within iGibson 2.0). 
 
-To download the Scene and Objects datasets in a bundle, please, follow these steps:
+The following image shows the fifteen fully interactive scenes in the iGibson Dataset:
+![placeholder.jpg](images/ig_scene.png)
+
+To download the datasets, follow these steps:
 - Fill out the license agreement in this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
 - After submitting the form, you will receive a key (igibson.key). Copy it into the folder that will contain the dataset, as default: `your_installation_path/igibson/data`
-- Download the behavior data bundle (ig_dataset) from [here](https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip) (size ~20GB).
-- Unzip the zip file into the desired folder: `unzip behavior_data_bundle.zip -d your_installation_path/igibson/data`
-- (Optional) You may need to update the config file (`your_installation_path/igibson/global_config.yaml`) to reflect the location of the `ig_dataset` by changing the entry `ig_dataset_path`.
+- Download the datasets from [here](https://storage.googleapis.com/gibson_scenes/ig_dataset.zip) (size ~20GB).
+- Unzip the zip file into the desired folder: `unzip ig_dataset.zip -d your_installation_path/igibson/data`
+- (Optional) You may need to update the config file (`your_installation_path/igibson/global_config.yaml`) to reflect the location of the `ig_dataset` by changing the entry `ig_dataset_path` if you unzip the zip file.
 
 After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the [BEHAVIOR benchmark](https://behavior.stanford.edu/).
 
-## Downloading the iGibson 1.0 Dataset of Scenes and Objects
-
-What will you download?
-- **iGibson 1.0 Dataset of Scenes**: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets ([ShapeNet Dataset](https://www.shapenet.org/), [Motion Dataset](http://motiondataset.zbuaa.com/), [SAPIEN Dataset](https://sapien.ucsd.edu/)) enriched with annotations of material and dynamic properties. 
-
-The following image shows the fifteen fully interactive scenes: 
-
-![placeholder.jpg](images/ig_scene.png)
-
-To download the dataset, you need to first configure where the dataset is to be stored. You can change it in `your_installation_path/igibson/global_config.yaml` (default and recommended: `ig_dataset: your_installation_path/igibson/data/ig_dataset`). iGibson scenes can be downloaded with one single line:
-
-```bash
-python -m igibson.utils.assets_utils --download_ig_dataset
-```
-
-If the script fails to work, you can download from this [direct link](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) and extract to `your_installation_path/igibson/data/ig_dataset`.
-
-A description of the file structure and format of the files in the dataset can be found [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils). 
+A description of the file structure and format of the files in the dataset can be found [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils).
 
 **Cubicasa / 3D Front Dataset Support:** We provide support for Cubicasa and 3D Front Dataset providing more than 10000 additional scenes (with less furniture than our fifteen scenes). To import them into iGibson, follow the instructions [here](https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene). 
 
@@ -100,7 +86,7 @@ floor_trav_{}.png         # top down views of traversable areas for each floor
 For the maps, each pixel represents 0.01m, and the center of the image correspond to `(0,0)` in the mesh, as well as in the pybullet coordinate system. 
 
 
-## Download the Matterport3D Dataset of Scenes
+## Downloading the Matterport3D Dataset of Scenes
 
 What will you download?
 - **Matterport3D Dataset**: 90 scenes (3.2GB)
