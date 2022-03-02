@@ -165,7 +165,7 @@ conda activate igibson
 pip install -e . # This step takes about 4 minutes
 ```
 
-We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
+We recommend the second method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.
 
 Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).
 
@@ -233,7 +233,7 @@ python -m igibson.utils.assets_utils --download_assets
 ```
 
 Third, we need to download datasets of scenes (Gibson or iGibson), and, possibly, the BEHAVIOR Datasets of Object Models. 
-For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects, or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
+For interactive tasks, you need to download iGibson Scenes and the BEHAVIOR Dataset of Objects. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
 For navigation tasks, you could use the interactive scenes, but we also provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset, and Matterport3D Dataset that include non-interactive scene models.
 Follow the detailed instructions [here](dataset.md) to download the aforementioned datasets.
 
