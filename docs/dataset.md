@@ -19,8 +19,8 @@ The following image shows the fifteen fully interactive scenes in the iGibson Da
 To download the datasets, follow these steps:
 - Fill out the license agreement in this [form](https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform)
 - After submitting the form, you will receive a key (igibson.key). Copy it into the folder that will contain the dataset, as default: `your_installation_path/igibson/data`
-- Download the datasets from [here](https://storage.googleapis.com/gibson_scenes/ig_dataset.zip) (size ~20GB).
-- Unzip the zip file into the desired folder: `unzip ig_dataset.zip -d your_installation_path/igibson/data`
+- Download the datasets from [here](https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz) (size ~20GB).
+- Unzip the zip file into the desired folder
 - (Optional) You may need to update the config file (`your_installation_path/igibson/global_config.yaml`) to reflect the location of the `ig_dataset` by changing the entry `ig_dataset_path` if you unzip the zip file.
 
 After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the [BEHAVIOR benchmark](https://behavior.stanford.edu/).
