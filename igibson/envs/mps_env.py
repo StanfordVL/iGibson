@@ -15,7 +15,6 @@ INVALID_ACTION_PENALTY = -0.05
 GRASP_SUCCESS_REWARD = 0.5
 NAVIGATE_SUCCESS_REWARD = 0.1
 PLACE_SUCCESS_REWARD = 1.0
-EPISODE_MAX_STEPS = 10
 
 class MpsEnv(ActionGeneratorEnv):
     def __init__(self, action_generator_class, reward_accumulation="sum", **kwargs):
@@ -42,7 +41,6 @@ class MpsEnv(ActionGeneratorEnv):
         self.nav_times = 0
         self.grasp_times = 0
 
-        self.episoe_max_steps = 10
 
 
         # self.init_bddl()
@@ -87,8 +85,8 @@ class MpsEnv(ActionGeneratorEnv):
         try:
             for action in self.action_generator.generate(action):
                 state, reward, done, info = self.env.step(action)
-                # reward = self.get_task_reward()
-                # done = self.get_done()
+                # state, reward, done, info = None, 1.0, True, None
+
                 done = len(info["goal_status"]["unsatisfied"]) == 0
 
 
@@ -111,7 +109,7 @@ class MpsEnv(ActionGeneratorEnv):
         # if task complete
         if done:
             accumulated_reward += 10.0
-        if self.episode_steps > EPISODE_MAX_STEPS:
+        if self.episode_steps > self._max_episode_steps:
             done = True
         if action_failed or info is None:
             done = True

@@ -38,7 +38,7 @@ should_highlight_task_relevant_objs: true
 discount_factor: 0.99
 
 # termination condition
-max_step: 10
+max_step: 100
 
 # sensor spec
 output: [rgb]

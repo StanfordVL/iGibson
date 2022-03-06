@@ -135,7 +135,7 @@ class MpsEnv(gym.Env):
         print(self.scene.objects_by_name.keys())
         self.object_names = sorted([x for x in self.scene.objects_by_name.keys() if isinstance(x, str)])
 
-        self.action_space = spaces.MultiDiscrete([len(self.object_names) + 1, len(self.object_names) + 1]) # grasp, place_on_top, (0 is noop)
+        self.action_space = spaces.MultiDiscrete([len(self.object_names), len(self.object_names)]) # grasp, place_on_top, (0 is noop)
         self.observation_space = spaces.Discrete(3) # 0 is nothing, 1 is grabbing wrong object, 2 is grabbing correct object
 
     def step(self, action):
@@ -155,7 +155,7 @@ class MpsEnv(gym.Env):
                 else:
                     # perform grasp action
                     print(self.object_names)
-                    obj = self.scene.objects_by_name[self.object_names[action[0] - 1]]
+                    obj = self.scene.objects_by_name[self.object_names[action[0]]]
                     print("DEBUG Trying to grasp object: ", obj.name)
                     # can't grasp fixed based object
                     if obj.fixed_base:
@@ -175,7 +175,7 @@ class MpsEnv(gym.Env):
                 else:
 
                     # perform place action
-                    obj = self.scene.objects_by_name[self.object_names[action[1] - 1]]
+                    obj = self.scene.objects_by_name[self.object_names[action[1]]]
                     print("DEBUG Trying to place object on top of: ", obj.name)
                     if obj != self.scene.objects_by_category["shelf"][0]:
                         reward -= 1.0
@@ -227,7 +227,7 @@ class MpsEnv(gym.Env):
         )
         self.sim.import_scene(self.scene)
 
-        self.robot = BehaviorRobot(self.sim)
+        self.robot = BehaviorRobot()
         self.sim.import_robot(self.robot)
         self.robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])
         self.robot.apply_action(
@@ -270,16 +270,29 @@ class MpsEnv(gym.Env):
 
 
 def main():
+    import cProfile as profile
+
+    # In outer section of code
+    pr = profile.Profile()
+    pr.disable()
+    # In section you want to profile
+    pr.enable()
+
     env = MpsEnv()
     # Instantiate the agent
-    model = PPO('MlpPolicy', env, verbose=1, tensorboard_log="./tb")
+    model = PPO('MlpPolicy', env, device="cpu", verbose=1, tensorboard_log="./tb")
 
     # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10, deterministic=True)
     # print(mean_reward, std_reward)
     # Train the agent
-    model.learn(total_timesteps=int(1e6))
+    model.learn(total_timesteps=int(1))
     # Save the agent
     model.save("ppo_mps")
+
+    pr.disable()
+
+    # Back in outer section of code
+    pr.dump_stats('profile_old.pstat')
 
 
 if __name__ == "__main__":

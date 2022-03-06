@@ -355,6 +355,7 @@ class iGibsonEnv(BaseEnv):
 
         return state, reward, done, info
 
+
     def check_collision(self, body_id):
         """
         Check whether the given body_id has collision after one simulator step

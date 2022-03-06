@@ -81,7 +81,7 @@ class MotionPrimitive(IntEnum):
 
 
 class MotionPrimitiveActionGenerator(BaseActionGenerator):
-    def __init__(self, task, scene, robot):
+    def __init__(self, task, scene, robot, use_physical=True):
         super().__init__(task, scene, robot)
         self.controller_functions = {
             MotionPrimitive.GRASP: self.grasp,
@@ -92,6 +92,7 @@ class MotionPrimitiveActionGenerator(BaseActionGenerator):
             # MotionPrimitive.NAVIGATE_TO: self._navigate_to_obj,
         }
         self.arm = "right_hand"
+        self.use_physical=use_physical
 
     def get_action_space(self):
         if ACTIVITY_RELEVANT_OBJECTS_ONLY:
