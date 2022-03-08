@@ -161,7 +161,7 @@ setup(
         "six",
         "pandas",
         "packaging",
-        "bddl==1.0.0",
+        "bddl~=1.0.1",
         "urllib3>=1.20",
         "progressbar>=2.5",
         "semver>=2.13.0",
