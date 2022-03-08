@@ -37,7 +37,7 @@ def main():
     log.info("TASK: {}".format(task))
     log.info("TASK ID: {}".format(task_id))
 
-    scene_json = os.path.join(os.path.dirname(bddl.__file__), "../utils", "activity_to_preselected_scenes.json")
+    scene_json = os.path.join(os.path.dirname(bddl.__file__), "activity_to_preselected_scenes.json")
 
     with open(scene_json) as f:
         activity_to_scenes = json.load(f)
