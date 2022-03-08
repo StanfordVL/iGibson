@@ -91,7 +91,14 @@ endif()
 
 if(USE_VR)
   # Find OpenVR
-  set(OPENVR_DIR openvr)
+  include(FetchContent)
+  FetchContent_Declare(openvr
+    GIT_REPOSITORY https://github.com/ValveSoftware/openvr.git
+    GIT_TAG v1.14.15
+  )
+  FetchContent_MakeAvailable(openvr)
+
+  set(OPENVR_DIR "${FETCHCONTENT_BASE_DIR}/openvr-src")
   set(OPENVR_INCLUDE_DIR "${OPENVR_DIR}/headers")
   include_directories("${OPENVR_INCLUDE_DIR}")
 
