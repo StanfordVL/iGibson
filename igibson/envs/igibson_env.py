@@ -491,8 +491,6 @@ class iGibsonEnv(BaseEnv):
         # Move robot away from the scene.
         self.robots[0].set_position([100.0, 100.0, 100.0])
         self.task.reset(self)
-        if self.audio_system is not None:
-            self.audio_system.reset()
         self.simulator.sync(force_sync=True)
         state = self.get_state()
         self.reset_variables()

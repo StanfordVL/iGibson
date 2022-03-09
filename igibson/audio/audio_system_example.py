@@ -27,7 +27,7 @@ def ig_example():
     scene = InteractiveIndoorScene('Rs_int', texture_randomization=False, object_randomization=False)
     s.import_scene(scene)
 
-    obj_id = (scene.objects_by_category["loudspeaker"][0]).body_ids[0]
+    obj_id = (scene.objects_by_category["loudspeaker"][0]).get_body_ids()[0]
 
     acousticMesh = getIgAcousticMesh(s)
 
@@ -55,7 +55,7 @@ def ig_example():
     stream = pyaud.open(rate=audioSystem.SR, frames_per_buffer=audioSystem.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudCallback)
 
     # Runs for 30 seconds, then saves output audio to file. 
-    for i in range(4000):
+    for i in range(1000):
         s.step()
     audioSystem.disconnect()
     s.disconnect()
