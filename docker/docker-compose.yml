@@ -16,13 +16,13 @@ services:
   igibson-vnc:
     image: docker.io/igibson/igibson-vnc:${VERSION}
     build:
-      context: ./igibson
+      context: ./igibson-vnc
       dockerfile: Dockerfile
 
   igibson-vnc-latest:
     image: docker.io/igibson/igibson-vnc:latest
     build:
-      context: ./igibson
+      context: ./igibson-vnc
       dockerfile: Dockerfile
 
   igibson-tensorflow:
