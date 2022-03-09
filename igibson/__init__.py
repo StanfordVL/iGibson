@@ -4,7 +4,7 @@ import os
 import semver
 import yaml
 
-__version__ = "2.0.6"
+__version__ = "2.1.0"
 
 __logo__ = r"""
  _   _____  _  _
@@ -95,33 +95,31 @@ def get_version(dataset_path):
         raise ValueError("Could not read version file at %s - please update your assets and ig_dataset.", dataset_path)
 
 
-# Assert that the assets and dataset versions are both sub-versions of the iGibson version.
-_parsed_version = semver.VersionInfo.parse(__version__)
+_PARSED_VERSION = semver.VersionInfo.parse(__version__)
 
+MIN_ASSETS_VERSION_INCL = "2.0.6"  # Backwards compatible up to this version.
+MAX_ASSETS_VERSION_EXCL = _PARSED_VERSION.bump_patch()  # Compatible with releases for same major/minor/patch.
 if os.path.exists(assets_path):
     _assets_version = get_version(assets_path)
     assert (
-        # The version numbers should be same at the major/minor/patch level but can differ at the 4th level.
-        _parsed_version
-        <= _assets_version
-        < _parsed_version.bump_patch()
-    ), "ig_assets version %s does not match iGibson version %s (need %s.*)" % (
+        MIN_ASSETS_VERSION_INCL <= _assets_version < MAX_ASSETS_VERSION_EXCL
+    ), "ig_assets version %s incompatible. Needs to be in range [%s, %s)" % (
         str(_assets_version),
-        str(_parsed_version),
-        str(_assets_version),
+        str(MIN_ASSETS_VERSION_INCL),
+        str(MAX_ASSETS_VERSION_EXCL),
     )
 
+
+MIN_DATASET_VERSION_INCL = "2.0.6"  # Backwards compatible up to this version.
+MAX_DATASET_VERSION_EXCL = _PARSED_VERSION.bump_patch()  # Compatible with releases for same major/minor/patch.
 if os.path.exists(ig_dataset_path):
     _ig_dataset_version = get_version(ig_dataset_path)
     assert (
-        # The version numbers should be same at the major/minor/patch level but can differ at the 4th level.
-        _parsed_version
-        <= _ig_dataset_version
-        < _parsed_version.bump_patch()
-    ), "ig_dataset version %s does not match iGibson version %s (need %s.*)" % (
+        MIN_DATASET_VERSION_INCL <= _ig_dataset_version < MAX_DATASET_VERSION_EXCL
+    ), "ig_dataset version %s incompatible. Needs to be in range [%s, %s)" % (
         str(_ig_dataset_version),
-        str(_parsed_version),
-        str(_ig_dataset_version),
+        str(MIN_DATASET_VERSION_INCL),
+        str(MAX_DATASET_VERSION_EXCL),
     )
 
 examples_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "examples")
