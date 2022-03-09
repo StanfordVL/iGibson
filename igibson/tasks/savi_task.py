@@ -86,6 +86,7 @@ class SAViTask(PointNavRandomTask):
 
     def reset_scene(self, env):
         super().reset_scene(env)
+        env.audio_system.reset()
         source_location = self.target_pos
         self.audio_obj = cube.Cube(pos=source_location, dim=[0.05, 0.05, 0.05], 
                                     visual_only=False, 
