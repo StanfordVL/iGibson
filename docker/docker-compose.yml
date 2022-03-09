@@ -7,14 +7,32 @@ services:
       context: ./igibson
       dockerfile: Dockerfile
 
+  igibson-latest:
+    image: docker.io/igibson/igibson:latest
+    build:
+      context: ./igibson
+      dockerfile: Dockerfile
+
   igibson-vnc:
     image: docker.io/igibson/igibson-vnc:${VERSION}
     build:
       context: ./igibson
       dockerfile: Dockerfile
 
+  igibson-vnc-latest:
+    image: docker.io/igibson/igibson-vnc:latest
+    build:
+      context: ./igibson
+      dockerfile: Dockerfile
+
   igibson-tensorflow:
     image: docker.io/igibson/igibson-tensorflow:${VERSION}
+    build:
+      context: ./tensorflow
+      dockerfile: Dockerfile
+
+  igibson-tensorflow-latest:
+    image: docker.io/igibson/igibson-tensorflow:latest
     build:
       context: ./tensorflow
       dockerfile: Dockerfile
