@@ -1,6 +1,7 @@
 import pybullet as p
 
 from igibson.objects.object_base import BaseObject
+from igibson.utils.constants import NO_COLLISION_GROUPS_MASK
 
 
 class VisualMarker(BaseObject):
@@ -83,6 +84,16 @@ class VisualMarker(BaseObject):
         simulator.load_object_in_renderer(self, body_id, self.class_id, **self._rendering_params)
 
         return [body_id]
+
+    def load(self, simulator):
+        bids = super(VisualMarker, self).load(simulator)
+
+        # By default, disable collisions for markers.
+        for body_id in self.get_body_ids():
+            for link_id in [-1] + list(range(p.getNumJoints(body_id))):
+                p.setCollisionFilterGroupMask(body_id, link_id, self.collision_group, NO_COLLISION_GROUPS_MASK)
+
+        return bids
 
     def set_color(self, color):
         """
