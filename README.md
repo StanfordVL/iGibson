@@ -79,5 +79,4 @@ iGibson uses code from a few open source repositories. Without the efforts of th
 - Caelan Garrett: [ss-pybullet](https://github.com/caelan/ss-pybullet)
 - Sean Barrett: [stb](https://github.com/nothings/stb)
 - Michał Siejak: [PBR](https://github.com/Nadrin/PBR)
-- Valve Software: [OpenVR](https://github.com/ValveSoftware/openvr)
 - [CryptoPP](https://www.cryptopp.com/)
