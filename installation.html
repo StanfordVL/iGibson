@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Installation &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Installation &mdash; iGibson 2.1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.6
+                2.1.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -277,7 +277,7 @@ conda activate igibson
 pip install -e . <span class="c1"># This step takes about 4 minutes</span>
 </pre></div>
 </div>
-<p>We recommend the third method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.</p>
+<p>We recommend the second method if you plan to modify iGibson in your project. If you plan to use it as it is to train navigation and manipulation agents, the pip installation or docker image should meet your requirements.</p>
 <p>Note: If you are not using conda, you will need the system packages python3-dev (header files to build Python extensions) and python3-opencv (provides opencv and its dependencies).</p>
 </div>
 <div class="section" id="docker-image">
@@ -336,7 +336,7 @@ cubicasa_dataset_path: your_installation_path/igibson/data/assetscubicasa_datase
 </pre></div>
 </div>
 <p>Third, we need to download datasets of scenes (Gibson or iGibson), and, possibly, the BEHAVIOR Datasets of Object Models.
-For interactive tasks, you need to download iGibson 2.0 Scenes and the BEHAVIOR Dataset of Objects, or iGibson 1.0 Scenes. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
+For interactive tasks, you need to download iGibson Scenes and the BEHAVIOR Dataset of Objects. They include several fully interactive scenes and hundreds of 3D objects to use with our simulator.
 For navigation tasks, you could use the interactive scenes, but we also provide back-compatibility to the Gibson Dataset, Stanford 2D-3D-Semantics Dataset, and Matterport3D Dataset that include non-interactive scene models.
 Follow the detailed instructions <a class="reference internal" href="dataset.html"><span class="doc std std-doc">here</span></a> to download the aforementioned datasets.</p>
 <p>Alternatively, to avoid downloading an entire dataset before you can test iGibson’s functionalities, we provide a single <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/Rs.tar.gz">high quality small non-interactive scene (R’s)</a> for demo and testing purposes.

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Datasets &mdash; iGibson 2.0.6 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>Datasets &mdash; iGibson 2.1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.0.6
+                2.1.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -47,10 +47,9 @@
 <p class="caption"><span class="caption-text">Modules</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Datasets</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#downloading-the-igibson-2-0-dataset-of-scenes-and-the-behavior-dataset-of-objects">Downloading the iGibson 2.0 Dataset of Scenes and the BEHAVIOR Dataset of Objects</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#downloading-the-igibson-1-0-dataset-of-scenes-and-objects">Downloading the iGibson 1.0 Dataset of Scenes and Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-the-igibson-dataset-of-scenes-and-the-behavior-dataset-of-objects">Downloading the iGibson Dataset of Scenes and the BEHAVIOR Dataset of Objects</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#downloading-the-gibson-and-stanford-2d-3d-semantics-datasets-of-scenes">Downloading the Gibson and Stanford 2D-3D-Semantics Datasets of Scenes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#download-the-matterport3d-dataset-of-scenes">Download the Matterport3D Dataset of Scenes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-the-matterport3d-dataset-of-scenes">Downloading the Matterport3D Dataset of Scenes</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="assets.html">Assets</a></li>
@@ -107,41 +106,29 @@
 <h1>Datasets<a class="headerlink" href="#datasets" title="Permalink to this headline"></a></h1>
 <p>In this page you will find information about:</p>
 <ul class="simple">
-<li><p><span class="xref myst">How to download iGibson 2.0 scenes and the BEHAVIOR Dataset of Objects</span></p></li>
-<li><p><span class="xref myst">How to download iGibson 1.0 scenes</span></p></li>
-<li><p><span class="xref myst">How to download Gibson and Stanford 2D-3D-Semantics scenes</span></p></li>
-<li><p><span class="xref myst">How to download Matterport3D scenes</span></p></li>
+<li><p><span class="xref myst">Downloading the iGibson Dataset of Scenes and the BEHAVIOR Dataset of Objects</span></p></li>
+<li><p><span class="xref myst">Downloading the Gibson and Stanford 2D-3D-Semantics Datasets of Scenes</span></p></li>
+<li><p><span class="xref myst">Downloading the Matterport3D Dataset of Scenes</span></p></li>
 </ul>
-<div class="section" id="downloading-the-igibson-2-0-dataset-of-scenes-and-the-behavior-dataset-of-objects">
-<h2>Downloading the iGibson 2.0 Dataset of Scenes and the BEHAVIOR Dataset of Objects<a class="headerlink" href="#downloading-the-igibson-2-0-dataset-of-scenes-and-the-behavior-dataset-of-objects" title="Permalink to this headline"></a></h2>
-<p>What will you download?</p>
-<ul class="simple">
-<li><p><strong>iGibson 2.0 Dataset of Scenes</strong>: New versions of the fifteen fully interactive scenes, more densely populated with objects.</p></li>
-<li><p><strong>BEHAVIOR Object Dataset</strong>: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists’ copyright, models are encrypted and can only to be used within iGibson 2.0).</p></li>
-</ul>
-<p>To download the Scene and Objects datasets in a bundle, please, follow these steps:</p>
-<ul class="simple">
-<li><p>Fill out the license agreement in this <a class="reference external" href="https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform">form</a></p></li>
-<li><p>After submitting the form, you will receive a key (igibson.key). Copy it into the folder that will contain the dataset, as default: <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data</span></code></p></li>
-<li><p>Download the behavior data bundle (ig_dataset) from <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/behavior_data_bundle.zip">here</a> (size ~20GB).</p></li>
-<li><p>Unzip the zip file into the desired folder: <code class="docutils literal notranslate"><span class="pre">unzip</span> <span class="pre">behavior_data_bundle.zip</span> <span class="pre">-d</span> <span class="pre">your_installation_path/igibson/data</span></code></p></li>
-<li><p>(Optional) You may need to update the config file (<code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code>) to reflect the location of the <code class="docutils literal notranslate"><span class="pre">ig_dataset</span></code> by changing the entry <code class="docutils literal notranslate"><span class="pre">ig_dataset_path</span></code>.</p></li>
-</ul>
-<p>After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the <a class="reference external" href="https://behavior.stanford.edu/">BEHAVIOR benchmark</a>.</p>
-</div>
-<div class="section" id="downloading-the-igibson-1-0-dataset-of-scenes-and-objects">
-<h2>Downloading the iGibson 1.0 Dataset of Scenes and Objects<a class="headerlink" href="#downloading-the-igibson-1-0-dataset-of-scenes-and-objects" title="Permalink to this headline"></a></h2>
+<div class="section" id="downloading-the-igibson-dataset-of-scenes-and-the-behavior-dataset-of-objects">
+<h2>Downloading the iGibson Dataset of Scenes and the BEHAVIOR Dataset of Objects<a class="headerlink" href="#downloading-the-igibson-dataset-of-scenes-and-the-behavior-dataset-of-objects" title="Permalink to this headline"></a></h2>
 <p>What will you download?</p>
 <ul class="simple">
 <li><p><strong>iGibson 1.0 Dataset of Scenes</strong>: We annotated fifteen 3D reconstructions of real-world scans and converted them into fully interactive scene models. In this process, we respect the original object-instance layout and object-category distribution. The object models are extended from open-source datasets (<a class="reference external" href="https://www.shapenet.org/">ShapeNet Dataset</a>, <a class="reference external" href="http://motiondataset.zbuaa.com/">Motion Dataset</a>, <a class="reference external" href="https://sapien.ucsd.edu/">SAPIEN Dataset</a>) enriched with annotations of material and dynamic properties.</p></li>
+<li><p><strong>iGibson 2.0 Dataset of Scenes</strong>: New versions of the fifteen fully interactive scenes, more densely populated with objects.</p></li>
+<li><p><strong>BEHAVIOR Dataset of Objects</strong>: Dataset of object models annotated with physical and semantic properties. The 3D models are free to use within iGibson 2.0 for BEHAVIOR (due to artists’ copyright, models are encrypted and can only to be used within iGibson 2.0).</p></li>
 </ul>
-<p>The following image shows the fifteen fully interactive scenes:</p>
-<p><img alt="placeholder.jpg" src="_images/ig_scene.png" /></p>
-<p>To download the dataset, you need to first configure where the dataset is to be stored. You can change it in <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code> (default and recommended: <code class="docutils literal notranslate"><span class="pre">ig_dataset:</span> <span class="pre">your_installation_path/igibson/data/ig_dataset</span></code>). iGibson scenes can be downloaded with one single line:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python -m igibson.utils.assets_utils --download_ig_dataset
-</pre></div>
-</div>
-<p>If the script fails to work, you can download from this <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz">direct link</a> and extract to <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data/ig_dataset</span></code>.</p>
+<p>The following image shows the fifteen fully interactive scenes in the iGibson Dataset:
+<img alt="placeholder.jpg" src="_images/ig_scene.png" /></p>
+<p>To download the datasets, follow these steps:</p>
+<ul class="simple">
+<li><p>Fill out the license agreement in this <a class="reference external" href="https://docs.google.com/forms/d/e/1FAIpQLScPwhlUcHu_mwBqq5kQzT2VRIRwg_rJvF0IWYBk_LxEZiJIFg/viewform">form</a>.</p></li>
+<li><p>After submitting the form, you will receive a key (igibson.key). Copy it into the folder that will contain the dataset, as default: <code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/data</span></code>.</p></li>
+<li><p>Download the datasets from <a class="reference external" href="https://storage.googleapis.com/gibson_scenes/ig_dataset.tar.gz">here</a> (size ~20GB).</p></li>
+<li><p>Decompress the file into the desired folder: <code class="docutils literal notranslate"><span class="pre">tar</span> <span class="pre">-xvf</span> <span class="pre">ig_dataset.tar.gz</span> <span class="pre">-C</span> <span class="pre">your_installation_path/igibson/data</span></code>.</p></li>
+<li><p>(Optional) You may need to update the config file (<code class="docutils literal notranslate"><span class="pre">your_installation_path/igibson/global_config.yaml</span></code>) to reflect the location of the <code class="docutils literal notranslate"><span class="pre">ig_dataset</span></code> by changing the entry <code class="docutils literal notranslate"><span class="pre">ig_dataset_path</span></code> if you unzip the zip file.</p></li>
+</ul>
+<p>After this process, you will be able to sample and use the scenes and objects in iGibson, for example, to evaluate your embodied AI solutions in the <a class="reference external" href="https://behavior.stanford.edu/">BEHAVIOR benchmark</a>.</p>
 <p>A description of the file structure and format of the files in the dataset can be found <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils">here</a>.</p>
 <p><strong>Cubicasa / 3D Front Dataset Support:</strong> We provide support for Cubicasa and 3D Front Dataset providing more than 10000 additional scenes (with less furniture than our fifteen scenes). To import them into iGibson, follow the instructions <a class="reference external" href="https://github.com/StanfordVL/iGibson/tree/master/igibson/utils/data_utils/ext_scene">here</a>.</p>
 </div>
@@ -198,8 +185,8 @@ The following image shows some of the environments:</p>
 </div>
 <p>For the maps, each pixel represents 0.01m, and the center of the image correspond to <code class="docutils literal notranslate"><span class="pre">(0,0)</span></code> in the mesh, as well as in the pybullet coordinate system.</p>
 </div>
-<div class="section" id="download-the-matterport3d-dataset-of-scenes">
-<h2>Download the Matterport3D Dataset of Scenes<a class="headerlink" href="#download-the-matterport3d-dataset-of-scenes" title="Permalink to this headline"></a></h2>
+<div class="section" id="downloading-the-matterport3d-dataset-of-scenes">
+<h2>Downloading the Matterport3D Dataset of Scenes<a class="headerlink" href="#downloading-the-matterport3d-dataset-of-scenes" title="Permalink to this headline"></a></h2>
 <p>What will you download?</p>
 <ul class="simple">
 <li><p><strong>Matterport3D Dataset</strong>: 90 scenes (3.2GB)</p></li>
