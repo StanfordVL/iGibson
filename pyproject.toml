@@ -1,7 +1,7 @@
 [tool.black]
 line-length = 120
 target-version = ['py27', 'py36', 'py37']
-force-exclude = 'igibson/(data|external|render/(cpp|cryptopp|glad|glfw|glm|openvr|pybind11|sranipal))'
+force-exclude = 'igibson/(data|external|render/(cpp|cryptopp|glad|glfw|glm|pybind11|sranipal))'
 
 [tool.isort]
 profile = "black"
@@ -16,7 +16,6 @@ extend_skip_glob = [
     'igibson/render/glad/*',
     'igibson/render/glfw/*',
     'igibson/render/glm/*',
-    'igibson/render/openvr/*',
     'igibson/render/pybind11/*',
     'igibson/render/sranipal/*',
 ]
@@ -28,7 +27,6 @@ exclude = [
   'igibson/docker',
   'igibson/render/cryptopp',
   'igibson/render/cpp',
-  'igibson/render/openvr',
   'igibson/render/glfw',
   'igibson/render/glad',
   'igibson/render/glm',
