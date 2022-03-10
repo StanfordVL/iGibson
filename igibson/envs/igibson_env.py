@@ -298,7 +298,7 @@ class iGibsonEnv(BaseEnv):
 
         :return: a list of collisions from the last physics timestep
         """
-        self.simulator_step()
+        self.simulator_step(audio=True)
         collision_links = [
             collision for bid in self.robots[0].get_body_ids() for collision in p.getContactPoints(bodyA=bid)
         ]

@@ -230,13 +230,13 @@ class BaseEnv(gym.Env):
         """
         self.clean()
 
-    def simulator_step(self):
+    def simulator_step(self, audio=False):
         """
         Step the simulation.
         This is different from environment step that returns the next
         observation, reward, done, info.
         """
-        self.simulator.step()
+        self.simulator.step(audio)
 
     def step(self, action):
         """
