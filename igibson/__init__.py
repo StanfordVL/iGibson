@@ -1,7 +1,7 @@
 import logging
 import os
 
-import semver
+import packaging.version
 import yaml
 
 __version__ = "2.1.0"
@@ -90,32 +90,39 @@ def get_version(dataset_path):
     try:
         version_filename = os.path.join(dataset_path, "VERSION")
         with open(version_filename, "r") as version_file:
-            return semver.VersionInfo.parse(version_file.read())
-    except (IOError, ValueError):
+            return packaging.version.Version(version_file.read())
+    except (IOError, packaging.version.InvalidVersion):
         raise ValueError("Could not read version file at %s - please update your assets and ig_dataset.", dataset_path)
 
 
-_PARSED_VERSION = semver.VersionInfo.parse(__version__)
+_PARSED_VERSION = packaging.version.Version(__version__)
 
-MIN_ASSETS_VERSION_INCL = "2.0.6"  # Backwards compatible up to this version.
-MAX_ASSETS_VERSION_EXCL = _PARSED_VERSION.bump_patch()  # Compatible with releases for same major/minor/patch.
+# Backwards compatible up to this version:
+MIN_ASSETS_VERSION_INCL = "2.0.6"
+# Compatible with releases for same major/minor/patch:
+MAX_ASSETS_VERSION_EXCL = "%d.%d.%d" % (_PARSED_VERSION.major, _PARSED_VERSION.minor, _PARSED_VERSION.micro + 1)
 if os.path.exists(assets_path):
     _assets_version = get_version(assets_path)
     assert (
-        MIN_ASSETS_VERSION_INCL <= _assets_version < MAX_ASSETS_VERSION_EXCL
+        packaging.version.Version(MIN_ASSETS_VERSION_INCL)
+        <= _assets_version
+        < packaging.version.Version(MAX_ASSETS_VERSION_EXCL)
     ), "ig_assets version %s incompatible. Needs to be in range [%s, %s)" % (
         str(_assets_version),
         str(MIN_ASSETS_VERSION_INCL),
         str(MAX_ASSETS_VERSION_EXCL),
     )
 
-
-MIN_DATASET_VERSION_INCL = "2.0.6"  # Backwards compatible up to this version.
-MAX_DATASET_VERSION_EXCL = _PARSED_VERSION.bump_patch()  # Compatible with releases for same major/minor/patch.
+# Backwards compatible up to this version:
+MIN_DATASET_VERSION_INCL = "2.0.6"
+# Compatible with releases for same major/minor/patch:
+MAX_DATASET_VERSION_EXCL = "%d.%d.%d" % (_PARSED_VERSION.major, _PARSED_VERSION.minor, _PARSED_VERSION.micro + 1)
 if os.path.exists(ig_dataset_path):
     _ig_dataset_version = get_version(ig_dataset_path)
     assert (
-        MIN_DATASET_VERSION_INCL <= _ig_dataset_version < MAX_DATASET_VERSION_EXCL
+        packaging.version.Version(MIN_DATASET_VERSION_INCL)
+        <= _ig_dataset_version
+        < packaging.version.Version(MAX_DATASET_VERSION_EXCL)
     ), "ig_dataset version %s incompatible. Needs to be in range [%s, %s)" % (
         str(_ig_dataset_version),
         str(MIN_DATASET_VERSION_INCL),
