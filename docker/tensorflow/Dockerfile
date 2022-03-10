@@ -34,8 +34,7 @@ ENV PATH /miniconda/envs/igibson/bin:$PATH
 # NOTE: This needs to be updated in-step with the base cudagl image so the tensor renderer works
 RUN pip install tensorflow-gpu==1.15.0
 
-RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive && \
-        rm -rf /opt/iGibson/igibson/render/openvr/samples
+RUN git clone --depth 1 https://github.com/StanfordVL/iGibson /opt/iGibson --recursive
 
 WORKDIR /opt/iGibson
 RUN pip install --no-cache-dir -e .
