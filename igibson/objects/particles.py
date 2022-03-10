@@ -9,7 +9,7 @@ from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
 from igibson.objects.object_base import BaseObject
 from igibson.utils import sampling_utils
-from igibson.utils.constants import PyBulletSleepState
+from igibson.utils.constants import NO_COLLISION_GROUPS_MASK, PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -102,6 +102,17 @@ class Particle(BaseObject):
         self.force_sleep(body_id)
 
         return [body_id]
+
+    def load(self, simulator):
+        bids = super(Particle, self).load(simulator)
+
+        # By default, disable collisions for visual-only objects.
+        if self.visual_only:
+            for body_id in self.get_body_ids():
+                for link_id in [-1] + list(range(p.getNumJoints(body_id))):
+                    p.setCollisionFilterGroupMask(body_id, link_id, self.collision_group, NO_COLLISION_GROUPS_MASK)
+
+        return bids
 
     def force_sleep(self, body_id=None):
         if body_id is None:
