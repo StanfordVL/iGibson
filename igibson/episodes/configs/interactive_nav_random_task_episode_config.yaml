@@ -1,0 +1,3 @@
+env_config: '../examples/configs/locobot_interactive_nav.yaml'
+num_episodes: 100
+numpy_seed: 0
