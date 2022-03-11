@@ -161,10 +161,6 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             else:
                 pos, _ = p.getBasePositionAndOrientation(body_id)
             obj_pos.append(pos)
-        for obj in self.interactive_objects:
-            body_id = obj.get_body_ids()[obj.main_body]
-            pos, _ = p.getBasePositionAndOrientation(body_id)
-            obj_pos.append(pos)
         obj_pos = np.array(obj_pos)
         return obj_pos
 
@@ -181,10 +177,6 @@ class InteractiveNavRandomTask(PointNavRandomTask):
                 link_id = -1
             mass = p.getDynamicsInfo(body_id, link_id)[0]
             obj_mass.append(mass)
-        for obj in self.interactive_objects:
-            body_id = obj.get_body_ids()[obj.main_body]
-            mass = p.getDynamicsInfo(body_id, -1)[0]
-            obj_mass.append(mass)
         obj_mass = np.array(obj_mass)
         return obj_mass
 
@@ -194,9 +186,6 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         for _, obj in env.scene.objects_by_name.items():
             if obj.category in ["walls", "floors", "ceilings", "agent"]:
                 continue
-            body_id = obj.get_body_ids()[obj.main_body]
-            body_ids.append(body_id)
-        for obj in self.interactive_objects:
             body_id = obj.get_body_ids()[obj.main_body]
             body_ids.append(body_id)
         return body_ids
