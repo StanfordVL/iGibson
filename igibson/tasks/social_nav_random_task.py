@@ -121,23 +121,23 @@ class SocialNavRandomTask(PointNavRandomTask):
         # Sanity check when loading our pre-sampled episodes
         # Make sure the task simulation configuration does not conflict
         # with the configuration used to sample our episode
-        # if self.offline_eval:
-        #    path = scene_episode_config_path
-        #    self.episode_config = \
-        #        SocialNavEpisodesConfig.load_scene_episode_config(path)
-        #    if self.num_pedestrians != self.episode_config.num_pedestrians:
-        #        raise ValueError("The episode samples did not record records for more than {} pedestrians".format(
-        #            self.num_pedestrians))
-        #    if env.scene.scene_id != self.episode_config.scene_id:
-        #        raise ValueError("The scene to run the simulation in is '{}' from the " " \
-        #                        scene used to collect the episode samples".format(
-        #            env.scene.scene_id))
-        #    if self.orca_radius != self.episode_config.orca_radius:
-        #        print("value of orca_radius: {}".format(
-        #              self.episode_config.orca_radius))
-        #        raise ValueError("The orca radius set for the simulation is {}, which is different from "
-        #                         "the orca radius used to collect the pedestrians' initial position "
-        #                         " for our samples.".format(self.orca_radius))
+        if self.offline_eval:
+            path = scene_episode_config_path
+            self.episode_config = \
+                SocialNavEpisodesConfig.load_scene_episode_config(path)
+            if self.num_pedestrians != self.episode_config.num_pedestrians:
+                raise ValueError("The episode samples did not record records for more than {} pedestrians".format(
+                    self.num_pedestrians))
+            if env.scene.scene_id != self.episode_config.scene_id:
+                raise ValueError("The scene to run the simulation in is '{}' from the " " \
+                                scene used to collect the episode samples".format(
+                    env.scene.scene_id))
+            if self.orca_radius != self.episode_config.orca_radius:
+                print("value of orca_radius: {}".format(
+                      self.episode_config.orca_radius))
+                raise ValueError("The orca radius set for the simulation is {}, which is different from "
+                                 "the orca radius used to collect the pedestrians' initial position "
+                                 " for our samples.".format(self.orca_radius))
 
     def load_pedestrians(self, env):
         """
