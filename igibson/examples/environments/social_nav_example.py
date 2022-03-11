@@ -47,4 +47,4 @@ def main(selection="user", headless=False, short_exec=False):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main(headless=True, short_exec=True)
+    main(headless=True, short_exec=False)

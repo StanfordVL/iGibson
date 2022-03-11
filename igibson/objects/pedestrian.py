@@ -44,8 +44,8 @@ class Pedestrian(StatefulObject):
 
     def set_yaw(self, yaw):
         euler_angle = [self.default_orn_euler[0], self.default_orn_euler[1], self.default_orn_euler[2] + yaw]
-        pos, _ = p.getBasePositionAndOrientation(self.body_id)
-        p.resetBasePositionAndOrientation(self.body_id, pos, p.getQuaternionFromEuler(euler_angle))
+        pos, _ = p.getBasePositionAndOrientation(self.get_body_ids()[0])
+        p.resetBasePositionAndOrientation(self.get_body_ids()[0], pos, p.getQuaternionFromEuler(euler_angle))
 
     def get_yaw(self):
         quat_orientation = super().get_orientation()

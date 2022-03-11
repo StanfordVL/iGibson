@@ -406,7 +406,7 @@ class SocialNavRandomTask(PointNavRandomTask):
             if next_peds_stop_flag[i] is True:
                 # revert back ORCA sim pedestrian to the previous time step
                 self.num_steps_stop[i] += 1
-                self.orca_sim.setAgentPosition(orca_pred, pos_xyz[:2])
+                self.orca_sim.setAgentPosition(orca_pred, tuple(pos_xyz[:2]))
             else:
                 # advance pybullet pedstrian to the current time step
                 self.num_steps_stop[i] = 0
