@@ -1,9 +1,12 @@
-from igibson.tasks.point_nav_random_task import PointNavRandomTask
-import pybullet as p
-from igibson.objects.articulated_object import ArticulatedObject
-import numpy as np
 import os
+
+import numpy as np
+import pybullet as p
+
 import igibson
+from igibson.objects.articulated_object import ArticulatedObject
+from igibson.tasks.point_nav_random_task import PointNavRandomTask
+
 # from igibson.episodes.episode_sample import InteractiveNavEpisodesConfig
 
 
@@ -15,23 +18,20 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
     def __init__(self, env):
         super(InteractiveNavRandomTask, self).__init__(env)
-        self.use_test_objs = self.config.get(
-            'use_test_objs', False)
+        self.use_test_objs = self.config.get("use_test_objs", False)
         # Load all 20 training interactive objects
         self.all_interactive_objects = self.load_all_interactive_objects(env)
         # For each episode, populate self.interactive_objects based on path length
         self.interactive_objects = []
-        self.robot_mass = p.getDynamicsInfo(env.robots[0].robot_ids[0], 0)[0]
+        self.robot_mass = p.getDynamicsInfo(env.robots[0].base_link.body_id, 0)[0]
 
-        self.offline_eval = self.config.get(
-            'load_scene_episode_config', False)
-        scene_episode_config_path = self.config.get(
-            'scene_episode_config_name', None)
+        self.offline_eval = self.config.get("load_scene_episode_config", False)
+        scene_episode_config_path = self.config.get("scene_episode_config_name", None)
 
         # Sanity check when loading our pre-sampled episodes
         # Make sure the task simulation configuration does not conflict
         # with the configuration used to sample our episode
-        #if self.offline_eval:
+        # if self.offline_eval:
         #    path = scene_episode_config_path
         #    self.episode_config = \
         #        InteractiveNavEpisodesConfig.load_scene_episode_config(path)
@@ -48,23 +48,20 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         :return: a list of interactive objects
         """
         if not self.use_test_objs:
-            clutter_obj_dir = os.path.join(
-                igibson.assets_path, 'models', 'clutter_objects')
+            clutter_obj_dir = os.path.join(igibson.assets_path, "models", "clutter_objects")
             obj_dirs = sorted(os.listdir(clutter_obj_dir))
-            assert len(obj_dirs) == 20, 'clutter objects should have 20 objects'
+            assert len(obj_dirs) == 20, "clutter objects should have 20 objects"
         else:
-            clutter_obj_dir = os.path.join(
-                igibson.assets_path, 'models', 'clutter_objects_test')
+            clutter_obj_dir = os.path.join(igibson.assets_path, "models", "clutter_objects_test")
             obj_dirs = sorted(os.listdir(clutter_obj_dir))
-            assert len(
-                obj_dirs) == 10, 'clutter objects test should have 10 objects'
+            assert len(obj_dirs) == 10, "clutter objects test should have 10 objects"
             # duplicate these 10 objects
             obj_dirs = obj_dirs + obj_dirs
 
         interactive_objects = []
         for obj_inst_name in obj_dirs:
             obj_dir = os.path.join(clutter_obj_dir, obj_inst_name)
-            obj_path = os.path.join(obj_dir, '{}.urdf'.format(obj_inst_name))
+            obj_path = os.path.join(obj_dir, "{}.urdf".format(obj_inst_name))
             obj = ArticulatedObject(obj_path)
             env.simulator.import_object(obj)
             interactive_objects.append(obj)
@@ -76,8 +73,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
 
         :param env: environment instance
         """
-        shortest_path, geodesic_dist = self.get_shortest_path(
-            env, entire_path=True)
+        shortest_path, geodesic_dist = self.get_shortest_path(env, entire_path=True)
         # Increase one interactive object for every 0.5 meter geodesic distance
         # The larger the geodesic distance is, the more interactive objects
         # we will spawn along the path (with some noise) to the goal.
@@ -87,18 +83,17 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         if self.offline_eval:
             episode_index = self.episode_config.episode_index
             self.interactive_objects_idx = np.array(
-                self.episode_config.episodes[episode_index]['interactive_objects_idx'])
+                self.episode_config.episodes[episode_index]["interactive_objects_idx"]
+            )
         else:
             self.interactive_objects_idx = np.random.choice(
-                np.arange(len(self.all_interactive_objects)),
-                num_interactive_objects, replace=False)
+                np.arange(len(self.all_interactive_objects)), num_interactive_objects, replace=False
+            )
 
         # Populate self.interactive_objects with objects that are "active"
         # in this episode. Other "inactive" objects have already been set to
         # position [100.0 + i, 100.0, 100.0]
-        self.interactive_objects = [
-            self.all_interactive_objects[idx]
-            for idx in self.interactive_objects_idx]
+        self.interactive_objects = [self.all_interactive_objects[idx] for idx in self.interactive_objects_idx]
         self.obj_mass = self.get_obj_mass(env)
         self.obj_body_ids = self.get_obj_body_ids(env)
 
@@ -106,9 +101,11 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         for i, obj in enumerate(self.interactive_objects):
             if self.offline_eval:
                 initial_pos = np.array(
-                    self.episode_config.episodes[episode_index]['interactive_objects'][i]['initial_pos'])
+                    self.episode_config.episodes[episode_index]["interactive_objects"][i]["initial_pos"]
+                )
                 initial_orn = np.array(
-                    self.episode_config.episodes[episode_index]['interactive_objects'][i]['initial_orn'])
+                    self.episode_config.episodes[episode_index]["interactive_objects"][i]["initial_orn"]
+                )
                 obj.set_position_orientation(initial_pos, initial_orn)
                 continue
 
@@ -122,8 +119,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
                 body_id = obj.body_id
                 dynamics_info = p.getDynamicsInfo(body_id, -1)
                 inertial_pos = dynamics_info[3]
-                pos, _ = p.multiplyTransforms(
-                    pos, [0, 0, 0, 1], inertial_pos, [0, 0, 0, 1])
+                pos, _ = p.multiplyTransforms(pos, [0, 0, 0, 1], inertial_pos, [0, 0, 0, 1])
                 orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
 
                 reset_success = env.test_valid_position(obj, pos, orn)
@@ -156,10 +152,10 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Get object position for all scene objs and active interactive objs
         obj_pos = []
         for _, obj in env.scene.objects_by_name.items():
-            if obj.category in ['walls', 'floors', 'ceilings']:
+            if obj.category in ["walls", "floors", "ceilings"]:
                 continue
             body_id = obj.body_ids[0]
-            if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            if p.getBodyInfo(body_id)[0].decode("utf-8") == "world":
                 pos, _ = p.getLinkState(body_id, 0)[0:2]
             else:
                 pos, _ = p.getBasePositionAndOrientation(body_id)
@@ -174,10 +170,10 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Get object mass for all scene objs and active interactive objs
         obj_mass = []
         for _, obj in env.scene.objects_by_name.items():
-            if obj.category in ['walls', 'floors', 'ceilings']:
+            if obj.category in ["walls", "floors", "ceilings"]:
                 continue
             body_id = obj.body_ids[0]
-            if p.getBodyInfo(body_id)[0].decode('utf-8') == 'world':
+            if p.getBodyInfo(body_id)[0].decode("utf-8") == "world":
                 link_id = 0
             else:
                 link_id = -1
@@ -193,7 +189,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Get object body id for all scene objs and active interactive objs
         body_ids = []
         for _, obj in env.scene.objects_by_name.items():
-            if obj.category in ['walls', 'floors', 'ceilings']:
+            if obj.category in ["walls", "floors", "ceilings"]:
                 continue
             body_ids.append(obj.body_ids[0])
         for obj in self.interactive_objects:
@@ -211,12 +207,9 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         if self.offline_eval:
             self.episode_config.reset_episode()
             episode_index = self.episode_config.episode_index
-            initial_pos = np.array(
-                self.episode_config.episodes[episode_index]['initial_pos'])
-            initial_orn = np.array(
-                self.episode_config.episodes[episode_index]['initial_orn'])
-            target_pos = np.array(
-                self.episode_config.episodes[episode_index]['target_pos'])
+            initial_pos = np.array(self.episode_config.episodes[episode_index]["initial_pos"])
+            initial_orn = np.array(self.episode_config.episodes[episode_index]["initial_orn"])
+            target_pos = np.array(self.episode_config.episodes[episode_index]["target_pos"])
             self.initial_pos = initial_pos
             self.target_pos = target_pos
             env.robots[0].set_position_orientation(initial_pos, initial_orn)
@@ -253,26 +246,21 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         """
         Aggreate termination conditions and fill info
         """
-        done, info = super(InteractiveNavRandomTask, self).get_termination(
-            env, collision_links, action, info)
+        done, info = super(InteractiveNavRandomTask, self).get_termination(env, collision_links, action, info)
         if done:
             self.robot_disp_mass = self.path_length * self.robot_mass
-            info['kinematic_disturbance'] = self.robot_disp_mass / \
-                (self.robot_disp_mass + self.obj_disp_mass)
+            info["kinematic_disturbance"] = self.robot_disp_mass / (self.robot_disp_mass + self.obj_disp_mass)
             self.robot_gravity = env.current_step * self.robot_mass * 9.8
-            info['dynamic_disturbance'] = self.robot_gravity / \
-                (self.robot_gravity + self.ext_force_norm)
-            info['effort_efficiency'] = (info['kinematic_disturbance'] +
-                                         info['dynamic_disturbance']) / 2.0
-            info['path_efficiency'] = info['spl']
+            info["dynamic_disturbance"] = self.robot_gravity / (self.robot_gravity + self.ext_force_norm)
+            info["effort_efficiency"] = (info["kinematic_disturbance"] + info["dynamic_disturbance"]) / 2.0
+            info["path_efficiency"] = info["spl"]
             alpha = 0.5
-            info['ins'] = alpha * info['path_efficiency'] + \
-                (1.0 - alpha) * info['effort_efficiency']
+            info["ins"] = alpha * info["path_efficiency"] + (1.0 - alpha) * info["effort_efficiency"]
         else:
-            info['kinematic_disturbance'] = 0.0
-            info['dynamic_disturbance'] = 0.0
-            info['effort_efficiency'] = 0.0
-            info['path_efficiency'] = 0.0
-            info['ins'] = 0.0
+            info["kinematic_disturbance"] = 0.0
+            info["dynamic_disturbance"] = 0.0
+            info["effort_efficiency"] = 0.0
+            info["path_efficiency"] = 0.0
+            info["ins"] = 0.0
 
         return done, info
