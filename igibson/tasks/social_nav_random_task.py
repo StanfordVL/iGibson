@@ -177,7 +177,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         # Add scenes objects to ORCA simulator as obstacles
         for obj_name in env.scene.objects_by_name:
             obj = env.scene.objects_by_name[obj_name]
-            if obj.category in ["walls", "floors", "ceilings", "agent"]:
+            if obj.category in ["walls", "floors", "ceilings", "agent", "pedestrian"]:
                 continue
             x_extent, y_extent = obj.bounding_box[:2]
             initial_bbox = np.array(
