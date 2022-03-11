@@ -195,7 +195,18 @@ class SocialNavRandomTask(PointNavRandomTask):
                     [x_extent / 2.0, -y_extent / 2.0],
                 ]
             )
-            yaw = obj.bbox_orientation_rpy[2]
+
+            pos, orn = obj.get_position_orientation()
+            bbox_orientation_rpy = p.getEulerFromQuaternion(orn)
+            # Get pose of the main body base link frame.
+            dynamics_info = p.getDynamicsInfo(obj.get_body_ids()[obj.main_body], -1)
+            inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+            inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+            link_frame_pos, link_frame_orn = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+            rotated_offset = p.multiplyTransforms([0, 0, 0], orn, obj.scaled_bbxc_in_blf, [0, 0, 0, 1])[0]
+            bbox_pos = np.array(link_frame_pos) - np.array(rotated_offset)
+
+            yaw = bbox_orientation_rpy[2]
             rot_mat = np.array(
                 [
                     [np.cos(-yaw), -np.sin(-yaw)],
@@ -203,7 +214,7 @@ class SocialNavRandomTask(PointNavRandomTask):
                 ]
             )
             initial_bbox = initial_bbox.dot(rot_mat)
-            initial_bbox = initial_bbox + obj.bbox_pos[:2]
+            initial_bbox = initial_bbox + bbox_pos[:2]
             self.orca_sim.addObstacle(
                 [
                     tuple(initial_bbox[0]),
