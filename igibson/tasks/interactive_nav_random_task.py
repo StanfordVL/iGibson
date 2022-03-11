@@ -4,7 +4,7 @@ from igibson.objects.articulated_object import ArticulatedObject
 import numpy as np
 import os
 import igibson
-from igibson.episodes.episode_sample import InteractiveNavEpisodesConfig
+# from igibson.episodes.episode_sample import InteractiveNavEpisodesConfig
 
 
 class InteractiveNavRandomTask(PointNavRandomTask):
@@ -31,14 +31,14 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Sanity check when loading our pre-sampled episodes
         # Make sure the task simulation configuration does not conflict
         # with the configuration used to sample our episode
-        if self.offline_eval:
-            path = scene_episode_config_path
-            self.episode_config = \
-                InteractiveNavEpisodesConfig.load_scene_episode_config(path)
-            if env.scene.scene_id != self.episode_config.scene_id:
-                raise ValueError("The scene to run the simulation in is '{}' from the " " \
-                                scene used to collect the episode samples".format(
-                    env.scene.scene_id))
+        #if self.offline_eval:
+        #    path = scene_episode_config_path
+        #    self.episode_config = \
+        #        InteractiveNavEpisodesConfig.load_scene_episode_config(path)
+        #    if env.scene.scene_id != self.episode_config.scene_id:
+        #        raise ValueError("The scene to run the simulation in is '{}' from the " " \
+        #                        scene used to collect the episode samples".format(
+        #            env.scene.scene_id))
 
     def load_all_interactive_objects(self, env):
         """

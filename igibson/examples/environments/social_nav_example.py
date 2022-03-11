@@ -19,7 +19,7 @@ def main(selection="user", headless=False, short_exec=False):
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # If they have not been downloaded before, download assets
     download_assets()
-    config_filename = os.path.join(igibson.configs_path, "locobot_nav.yaml")
+    config_filename = os.path.join(igibson.configs_path, "locobot_social_nav.yaml")
     config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":
@@ -47,4 +47,4 @@ def main(selection="user", headless=False, short_exec=False):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    main()
+    main(headless=True, short_exec=True)
