@@ -165,6 +165,10 @@ setup(
         "urllib3>=1.20",
         "progressbar>=2.5",
         "packaging",
+        #'Cython==0.21.1',
+        # TODO: cython 0.21.1 cannot be installed with this python
+        # 'pyrvo2 @ https://github.com/sybrenstuvel/Python-RVO2/archive/master.zip'
+        # TODO: figure out pyrvo2 setup.py installation
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),
