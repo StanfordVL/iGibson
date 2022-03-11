@@ -4,7 +4,7 @@ import numpy as np
 import pybullet as p
 
 import igibson
-from igibson.objects.articulated_object import ArticulatedObject
+from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 
 # from igibson.episodes.episode_sample import InteractiveNavEpisodesConfig
@@ -62,7 +62,8 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         for obj_inst_name in obj_dirs:
             obj_dir = os.path.join(clutter_obj_dir, obj_inst_name)
             obj_path = os.path.join(obj_dir, "{}.urdf".format(obj_inst_name))
-            obj = ArticulatedObject(obj_path)
+            # obj = ArticulatedObject(obj_path)
+            obj = URDFObject(obj_path)
             env.simulator.import_object(obj)
             interactive_objects.append(obj)
         return interactive_objects
@@ -116,7 +117,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
                 pos += np.random.uniform(-0.5, 0.5, 2)
                 floor_height = env.scene.get_floor_height(self.floor_num)
                 pos = np.array([pos[0], pos[1], floor_height])
-                body_id = obj.body_id
+                body_id = obj.get_body_ids()[obj.main_body]
                 dynamics_info = p.getDynamicsInfo(body_id, -1)
                 inertial_pos = dynamics_info[3]
                 pos, _ = p.multiplyTransforms(pos, [0, 0, 0, 1], inertial_pos, [0, 0, 0, 1])
@@ -152,16 +153,17 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Get object position for all scene objs and active interactive objs
         obj_pos = []
         for _, obj in env.scene.objects_by_name.items():
-            if obj.category in ["walls", "floors", "ceilings"]:
+            if obj.category in ["walls", "floors", "ceilings", "agent"]:
                 continue
-            body_id = obj.body_ids[0]
+            body_id = obj.get_body_ids()[obj.main_body]
             if p.getBodyInfo(body_id)[0].decode("utf-8") == "world":
                 pos, _ = p.getLinkState(body_id, 0)[0:2]
             else:
                 pos, _ = p.getBasePositionAndOrientation(body_id)
             obj_pos.append(pos)
         for obj in self.interactive_objects:
-            pos, _ = p.getBasePositionAndOrientation(obj.body_id)
+            body_id = obj.get_body_ids()[obj.main_body]
+            pos, _ = p.getBasePositionAndOrientation(body_id)
             obj_pos.append(pos)
         obj_pos = np.array(obj_pos)
         return obj_pos
@@ -170,9 +172,9 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Get object mass for all scene objs and active interactive objs
         obj_mass = []
         for _, obj in env.scene.objects_by_name.items():
-            if obj.category in ["walls", "floors", "ceilings"]:
+            if obj.category in ["walls", "floors", "ceilings", "agent"]:
                 continue
-            body_id = obj.body_ids[0]
+            body_id = obj.get_body_ids()[obj.main_body]
             if p.getBodyInfo(body_id)[0].decode("utf-8") == "world":
                 link_id = 0
             else:
@@ -180,7 +182,8 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             mass = p.getDynamicsInfo(body_id, link_id)[0]
             obj_mass.append(mass)
         for obj in self.interactive_objects:
-            mass = p.getDynamicsInfo(obj.body_id, -1)[0]
+            body_id = obj.get_body_ids()[obj.main_body]
+            mass = p.getDynamicsInfo(body_id, -1)[0]
             obj_mass.append(mass)
         obj_mass = np.array(obj_mass)
         return obj_mass
@@ -189,11 +192,13 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # Get object body id for all scene objs and active interactive objs
         body_ids = []
         for _, obj in env.scene.objects_by_name.items():
-            if obj.category in ["walls", "floors", "ceilings"]:
+            if obj.category in ["walls", "floors", "ceilings", "agent"]:
                 continue
-            body_ids.append(obj.body_ids[0])
+            body_id = obj.get_body_ids()[obj.main_body]
+            body_ids.append(body_id)
         for obj in self.interactive_objects:
-            body_ids.append(obj.body_id)
+            body_id = obj.get_body_ids()[obj.main_body]
+            body_ids.append(body_id)
         return body_ids
 
     def reset_agent(self, env):
