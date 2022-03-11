@@ -4,10 +4,9 @@ import numpy as np
 import pybullet as p
 
 import igibson
+from igibson.episodes.episode_sample import InteractiveNavEpisodesConfig
 from igibson.objects.articulated_object import ArticulatedObject, URDFObject
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
-
-# from igibson.episodes.episode_sample import InteractiveNavEpisodesConfig
 
 
 class InteractiveNavRandomTask(PointNavRandomTask):
@@ -33,12 +32,15 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         # with the configuration used to sample our episode
         if self.offline_eval:
             path = scene_episode_config_path
-            self.episode_config = \
-                InteractiveNavEpisodesConfig.load_scene_episode_config(path)
+            self.episode_config = InteractiveNavEpisodesConfig.load_scene_episode_config(path)
             if env.scene.scene_id != self.episode_config.scene_id:
-                raise ValueError("The scene to run the simulation in is '{}' from the " " \
+                raise ValueError(
+                    "The scene to run the simulation in is '{}' from the "
+                    " \
                                 scene used to collect the episode samples".format(
-                    env.scene.scene_id))
+                        env.scene.scene_id
+                    )
+                )
 
     def load_all_interactive_objects(self, env):
         """
@@ -155,12 +157,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
         for _, obj in env.scene.objects_by_name.items():
             if obj.category in ["walls", "floors", "ceilings", "agent"]:
                 continue
-            body_id = obj.get_body_ids()[obj.main_body]
-            if p.getBodyInfo(body_id)[0].decode("utf-8") == "world":
-                pos, _ = p.getLinkState(body_id, 0)[0:2]
-            else:
-                pos, _ = p.getBasePositionAndOrientation(body_id)
-            obj_pos.append(pos)
+            obj_pos.append(obj.get_position())
         obj_pos = np.array(obj_pos)
         return obj_pos
 
@@ -171,11 +168,7 @@ class InteractiveNavRandomTask(PointNavRandomTask):
             if obj.category in ["walls", "floors", "ceilings", "agent"]:
                 continue
             body_id = obj.get_body_ids()[obj.main_body]
-            if p.getBodyInfo(body_id)[0].decode("utf-8") == "world":
-                link_id = 0
-            else:
-                link_id = -1
-            mass = p.getDynamicsInfo(body_id, link_id)[0]
+            mass = p.getDynamicsInfo(body_id, -1)[0]
             obj_mass.append(mass)
         obj_mass = np.array(obj_mass)
         return obj_mass

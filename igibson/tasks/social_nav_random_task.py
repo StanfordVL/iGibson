@@ -1,8 +1,8 @@
-# from igibson.episodes.episode_sample import SocialNavEpisodesConfig
 import numpy as np
 import pybullet as p
 import rvo2
 
+from igibson.episodes.episode_sample import SocialNavEpisodesConfig
 from igibson.objects.pedestrian import Pedestrian
 from igibson.objects.visual_marker import VisualMarker
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
@@ -123,21 +123,28 @@ class SocialNavRandomTask(PointNavRandomTask):
         # with the configuration used to sample our episode
         if self.offline_eval:
             path = scene_episode_config_path
-            self.episode_config = \
-                SocialNavEpisodesConfig.load_scene_episode_config(path)
+            self.episode_config = SocialNavEpisodesConfig.load_scene_episode_config(path)
             if self.num_pedestrians != self.episode_config.num_pedestrians:
-                raise ValueError("The episode samples did not record records for more than {} pedestrians".format(
-                    self.num_pedestrians))
+                raise ValueError(
+                    "The episode samples did not record records for more than {} pedestrians".format(
+                        self.num_pedestrians
+                    )
+                )
             if env.scene.scene_id != self.episode_config.scene_id:
-                raise ValueError("The scene to run the simulation in is '{}' from the " " \
+                raise ValueError(
+                    "The scene to run the simulation in is '{}' from the "
+                    " \
                                 scene used to collect the episode samples".format(
-                    env.scene.scene_id))
+                        env.scene.scene_id
+                    )
+                )
             if self.orca_radius != self.episode_config.orca_radius:
-                print("value of orca_radius: {}".format(
-                      self.episode_config.orca_radius))
-                raise ValueError("The orca radius set for the simulation is {}, which is different from "
-                                 "the orca radius used to collect the pedestrians' initial position "
-                                 " for our samples.".format(self.orca_radius))
+                print("value of orca_radius: {}".format(self.episode_config.orca_radius))
+                raise ValueError(
+                    "The orca radius set for the simulation is {}, which is different from "
+                    "the orca radius used to collect the pedestrians' initial position "
+                    " for our samples.".format(self.orca_radius)
+                )
 
     def load_pedestrians(self, env):
         """
@@ -161,7 +168,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         # Visualize pedestrians' next goals for debugging purposes
         pedestrian_goals = []
         colors = [[1, 0, 0, 1], [0, 1, 0, 1], [0, 0, 1, 1]]
-        for i, ped in enumerate(self.pedestrians):
+        for i, _ in enumerate(self.pedestrians):
             ped_goal = VisualMarker(
                 visual_shape=p.GEOM_CYLINDER,
                 rgba_color=colors[i % 3][:3] + [0.5],
@@ -438,9 +445,7 @@ class SocialNavRandomTask(PointNavRandomTask):
         next_peds_pos_xyz = {i: ped.get_position() for i, ped in enumerate(self.pedestrians)}
         next_peds_stop_flag = [False for i in range(len(self.pedestrians))]
 
-        for i, (ped, orca_ped, waypoints) in enumerate(
-            zip(self.pedestrians, self.orca_pedestrians, self.pedestrian_waypoints)
-        ):
+        for i, (ped, orca_ped) in enumerate(zip(self.pedestrians, self.orca_pedestrians)):
             pos_xy = self.orca_sim.getAgentPosition(orca_ped)
             prev_pos_xyz = ped.get_position()
             next_pos_xyz = np.array([pos_xy[0], pos_xy[1], prev_pos_xyz[2]])
