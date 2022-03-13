@@ -111,7 +111,7 @@ class iGibsonEnv(BaseEnv):
         else:
             try:
                 import bddl
-
+                print(os.path.dirname(bddl.__file__))
                 with open(os.path.join(os.path.dirname(bddl.__file__), "activity_manifest.txt")) as f:
                     all_activities = [line.strip() for line in f.readlines()]
 
