@@ -60,6 +60,7 @@ class MpsEnv(ActionGeneratorEnv):
             print("STOP")
         else:
             print(MotionPrimitive(int(action) // self.action_generator.num_objects), self.action_generator.addressable_objects[int(action) % self.action_generator.num_objects].name)
+        obj = self.action_generator.addressable_objects[int(action) % self.action_generator.num_objects]
 
         # deal with stop action
         if action == self.action_space.n - 1:
@@ -69,7 +70,7 @@ class MpsEnv(ActionGeneratorEnv):
         action_name = MotionPrimitive(int(action) // self.action_generator.num_objects)
         # preprocess action to avoid useless low level planning
         if action_name in [MotionPrimitive.PLACE_INSIDE]:
-            if self.action_generator._get_obj_in_hand() is None:
+            if self.action_generator._get_obj_in_hand() is None or "shelf" not in obj.name:
                 accumulated_reward += INVALID_ACTION_PENALTY
                 return self.env.get_state(), accumulated_reward, False, {}
         if action_name in [MotionPrimitive.GRASP]:
@@ -77,7 +78,7 @@ class MpsEnv(ActionGeneratorEnv):
             obj_list_id = int(action) % self.action_generator.num_objects
             target_obj = self.action_generator.addressable_objects[obj_list_id]
             # check if holding object
-            if self.action_generator._get_obj_in_hand() is not None or target_obj.fixed_base:
+            if self.action_generator._get_obj_in_hand() is not None or target_obj.fixed_base or "hardback" not in obj.name:
                 accumulated_reward += INVALID_ACTION_PENALTY
                 return self.env.get_state(), accumulated_reward, False, {}
 

@@ -38,14 +38,15 @@ class TqdmCallback(BaseCallback):
 
 def main():
     # In outer section of code
-    pr = profile.Profile()
-    pr.disable()
-    # In section you want to profile
-    pr.enable()
+    # pr = profile.Profile()
+    # pr.disable()
+    # # In section you want to profile
+    # pr.enable()
 
     config_filename = os.path.join(igibson.configs_path, "behavior_full_observability_Rs_int.yaml")
     env = MpsEnv(
-        MotionPrimitiveActionGenerator, config_file=config_filename, mode="headless", use_pb_gui=False
+        MotionPrimitiveActionGenerator, config_file=config_filename, mode="headless", use_pb_gui=False,
+        action_timestep=1.0/30.0, physics_timestep=1.0/120.0
     )
     env._max_episode_steps = 100
     # eval_env = MpsEnv(
@@ -88,10 +89,10 @@ def main():
     # # Save the agent
 
     model.save("ppo_mps")
-    pr.disable()
-
-    # Back in outer section of code
-    pr.dump_stats('profile_1.pstat')
+    # pr.disable()
+    #
+    # # Back in outer section of code
+    # pr.dump_stats('profile_1.pstat')
     # model.load("ppo_mps")
     # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1, deterministic=True, render=True)
     # print(mean_reward, std_reward)
