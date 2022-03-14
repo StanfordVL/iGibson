@@ -63,14 +63,14 @@ def main():
     # pr.disable()
     # # In section you want to profile
     # pr.enable()
-    num_cpu = 1
+    num_cpu = 2
 
     # config_filename = os.path.join(igibson.configs_path, "behavior_full_observability_Rs_int.yaml")
-    env = MpsEnv(
-        MotionPrimitiveActionGenerator, config_file=config_filename, mode="headless", use_pb_gui=False,
-        action_timestep=1.0/30.0, physics_timestep=1.0/120.0
-    )
-    # env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
+    # env = MpsEnv(
+    #     MotionPrimitiveActionGenerator, config_file=config_filename, mode="headless", use_pb_gui=False,
+    #     action_timestep=1.0/30.0, physics_timestep=1.0/120.0
+    # )
+    env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     env._max_episode_steps = 10
     # eval_env = MpsEnv(
@@ -103,7 +103,7 @@ def main():
     
     model = PPO('MultiInputPolicy', env, device="cpu", verbose=0, tensorboard_log="./tb",
                 learning_rate=0.0003,
-                n_steps=128,
+                n_steps=64,
                 batch_size=128,
                 clip_range=0.2,
                 clip_range_vf=None,
