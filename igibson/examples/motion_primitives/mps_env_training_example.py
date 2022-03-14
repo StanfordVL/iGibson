@@ -63,14 +63,14 @@ def main():
     # pr.disable()
     # # In section you want to profile
     # pr.enable()
-    num_cpu = 2
+    num_cpu = 1
 
     # config_filename = os.path.join(igibson.configs_path, "behavior_full_observability_Rs_int.yaml")
-    # env = MpsEnv(
-    #     MotionPrimitiveActionGenerator, config_file=config_filename, mode="headless", use_pb_gui=False,
-    #     action_timestep=1.0/30.0, physics_timestep=1.0/120.0
-    # )
-    env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
+    env = MpsEnv(
+        MotionPrimitiveActionGenerator, config_file=config_filename, mode="headless", use_pb_gui=False,
+        action_timestep=1.0/30.0, physics_timestep=1.0/120.0
+    )
+    # env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     env._max_episode_steps = 10
     # eval_env = MpsEnv(
@@ -102,8 +102,8 @@ def main():
     # # Instantiate the agent
     
     model = PPO('MultiInputPolicy', env, device="cpu", verbose=0, tensorboard_log="./tb",
-                learning_rate=0.0003,
-                n_steps=64,
+                learning_rate=0.0001,
+                n_steps=32,
                 batch_size=128,
                 clip_range=0.2,
                 clip_range_vf=None,
@@ -118,7 +118,7 @@ def main():
     # print(mean_reward, std_reward)
     # exit(0)
 
-    ckpt_callback = CheckpointCallback(save_freq=1000, save_path="./save", name_prefix="ppo_mps_toy")
+    ckpt_callback = CheckpointCallback(save_freq=1000, save_path="./save", name_prefix="ppo_mps")
     # Train the agent
     model.learn(total_timesteps=int(1e5), callback=ckpt_callback)
     # # Save the agent
@@ -127,7 +127,7 @@ def main():
     # pr.disable()
 
     # del model
-    # model = DQN.load("save/best_model", env=env)
+    # model = PPO.load("save/ppo_mps_toy_71000_steps", env=env)
 
     # # Back in outer section of code
     # pr.dump_stats('profile_1.pstat')
@@ -137,14 +137,34 @@ def main():
     # obs = env.reset()
     # # obs, reward, done, info = env.step(1)
     # for i in range(10):
-    #     action, _state = model.predict(obs, deterministic=False)
+    #     action, _state = model.predict(obs, deterministic=True)
     #     # print(obs, action)
+    #
     #     obs, reward, done, info = env.step(action)
     #     # env.render()
     #     if done:
     #       obs = env.reset()
     #       break
 
+
+    # try 100 episodes
+    # N_EP = 100
+    # n_success = 0
+    # n_mp_fail = 0
+    #
+    # for ep in range(100):
+    #     obs = env.reset()
+    #     while True:
+    #         action, _state = model.predict(obs, deterministic=False)
+    #         obs, reward, done, info = env.step(action)
+    #         if done:
+    #             obs = env.reset()
+    #             if len(info["goal_status"]) == 0 or len(info["goal_status"]["unsatisfied"]) == 0:
+    #                 n_success += 1
+    #             else:
+    #                 n_mp_fail += 1
+    #             break
+    # print("Total episodes:", N_EP, "success: ", n_success, "mp fail: ", n_mp_fail)
 
 if __name__ == "__main__":
     main()

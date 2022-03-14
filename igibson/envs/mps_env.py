@@ -15,7 +15,7 @@ from bddl.activity import *
 
 ACTION_PENALTY = -0.5
 INVALID_ACTION_PENALTY = -0.5
-GRASP_SUCCESS_REWARD = 0.5
+GRASP_SUCCESS_REWARD = 1.0
 NAVIGATE_SUCCESS_REWARD = 0.1
 PLACE_SUCCESS_REWARD = 1.0
 
@@ -30,13 +30,16 @@ class MpsEnv(ActionGeneratorEnv):
         self.action_generator: BaseActionGenerator = action_generator_class(
             self.env.task, self.env.scene, self.env.robots[0]
         )
-
+        # original act and obs space from iGibsonEnv
         self.action_space = self.action_generator.get_action_space()
-        # self.observation_space = self.env.observation_space
-        self.observation_space = spaces.dict.Dict()
-        self.observation_space["state"] = spaces.Discrete(3)
+        self.observation_space = self.env.observation_space
+
+        # self.observation_space = spaces.dict.Dict()
+        # obs space for explicit state encoding based on objects and goal
+        # self.observation_space["state"] = spaces.Discrete(3)
+        # self.observation_space["state"] = spaces.MultiDiscrete([3, 3, 3, 3])
+        # test fake RGB obs space
         # self.observation_space["rgb"] = spaces.Box(low=0.0, high=1.0, shape=(128, 128, 3), dtype=np.float32)
-        # FIXME: using simple obs space
         # self.action_space = spaces.Discrete(2)
         # self.observation_space = spaces.Discrete(2)
         self.reward_range = self.env.reward_range
@@ -50,9 +53,13 @@ class MpsEnv(ActionGeneratorEnv):
         self.nav_times = 0
         self.grasp_times = 0
 
-        self.state = 0 # 0: init, 1: grasped, 2: placed
+        self.state = np.array([0, 0, 0, 0]) # 0: init, 1: grasped, 2: placed
+
+        self.in_hand = -1
 
         self.total_reward = 0.0
+
+        self.prev_sat = 0
 
         # self.init_bddl()
         # self.prev_potential = self.get_task_potential()
@@ -67,25 +74,39 @@ class MpsEnv(ActionGeneratorEnv):
         #     action_name = "PLACE"
         reward = -0.1
         done = False
-        print(action_name, obj.name, self.state)
+        scope_id = -1
+        if "book" in obj.bddl_object_scope:
+            scope_id = int(obj.bddl_object_scope.split("_")[1]) - 1
+        print(action_name, obj.name, obj.bddl_object_scope, scope_id, self.state, self.in_hand)
+
         if action_name in [MotionPrimitive.GRASP]:
-            if self.state == 0 and obj.name == "hardback_3":
-                self.state = 1
-                if self.episode_steps==0:
-                    reward += 1.0
+            if self.in_hand == -1 and "book" in obj.bddl_object_scope and scope_id <= 3:
+                # first time picking up
+                # if self.state[scope_id] == 0:
+                #     reward += 1.0
+                self.state[scope_id] = 1
+                self.in_hand = scope_id
             else:
-                reward -= 1.0
+                reward -= 0.5
         if action_name in [MotionPrimitive.PLACE_INSIDE]:
-            if self.state == 1 and obj.name == "shelf_20":
-                # success
-                if self.episode_steps == 1:
-                    reward += 2.0
-                done = True
-                self.state = 2
+            if self.in_hand != -1 and "shelf" in obj.bddl_object_scope:
+                # # success
+                # if self.episode_steps == 1:
+                #     reward += 2.0
+                # done = True
+                # reward += 1.0
+                self.state[self.in_hand] = 2
+                self.in_hand = -1
             else:
-                reward -= 2.0
+                reward -= 0.5
+        reward += (self.state == 2).sum() - self.prev_sat
+        self.prev_sat = (self.state == 2).sum()
         self.total_reward += reward
         self.episode_steps += 1
+
+        if (self.state == 2).sum() == 4:
+            done = True
+            reward += 5.0
         return self.get_obs(), reward, done, {}
     
     def step(self, action: int):
@@ -132,13 +153,7 @@ class MpsEnv(ActionGeneratorEnv):
 
                 done = len(info["goal_status"]["unsatisfied"]) == 0
 
-
-                if self.reward_accumulation == "sum":
-                    accumulated_reward += reward
-                elif self.reward_accumulation == "max":
-                    accumulated_reward = max(reward, accumulated_reward)
-                else:
-                    raise ValueError("Reward accumulation should be one of 'sum' and 'max'.")
+                accumulated_reward += reward
 
                 # If the episode is done, stop sending more commands.
                 # if done:
@@ -147,7 +162,6 @@ class MpsEnv(ActionGeneratorEnv):
             print(e)
             action_failed = True
             # accumulated_reward += INVALID_ACTION_PENALTY
-
 
         # if task complete
         if done:
@@ -187,12 +201,15 @@ class MpsEnv(ActionGeneratorEnv):
             return np.array([1])
         return np.array([0])
 
-    def get_obs(self):
+    def get_obs_2(self):
         # obs = self.env.get_state()
-        obs = spaces.dict.Dict()
-        obs["state"] = np.array([self.state])
+        obs = spaces.dict.OrderedDict()
+        obs["state"] = self.state
         # obs["rgb"] = np.ones((128, 128, 3))
         return obs
+
+    def get_obs(self):
+        return self.env.get_state()
         
     # def get_task_potential(self):
     #     eval_res = evaluate_goal_conditions(self.ground[0])
@@ -249,9 +266,11 @@ class MpsEnv(ActionGeneratorEnv):
 
     def reset_1(self):
         print("+"*40, "Performing Env reset after", self.episode_steps, "steps. ", "+"*40)
-        self.state = 0
+        self.state = np.array([0, 0, 0, 0])
         self.episode_steps = 0
         self.total_reward = 0.0
+        self.in_hand = -1
+        self.prev_sat = 0
         return self.get_obs()
 
     @property
