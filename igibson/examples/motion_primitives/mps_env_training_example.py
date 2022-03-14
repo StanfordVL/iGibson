@@ -1,6 +1,6 @@
 import os
 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, A2C, DQN
 
 import igibson
 from igibson.action_generators.motion_primitive_generator import MotionPrimitive, MotionPrimitiveActionGenerator
@@ -101,40 +101,49 @@ def main():
     # exit(0)
     # # Instantiate the agent
     
-    # model = PPO('MlpPolicy', env, device="cpu", verbose=1, tensorboard_log="./tb")
+    model = PPO('MultiInputPolicy', env, device="cpu", verbose=0, tensorboard_log="./tb",
+                learning_rate=0.0003,
+                n_steps=128,
+                batch_size=128,
+                clip_range=0.2,
+                clip_range_vf=None,
+                max_grad_norm=0.5)
     # model.load("save/ppo_mps")
 
     # del model
 
-    model = PPO.load("save/ppo_mps_1", env=env)
+
 
     # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1000, deterministic=True)
     # print(mean_reward, std_reward)
     # exit(0)
 
-    # ckpt_callback = CheckpointCallback(save_freq=200, save_path="./save", name_prefix="ppo_mps_toy")
-    # # Train the agent
-    # model.learn(total_timesteps=int(1e4), callback=ckpt_callback)
-    # # # Save the agent
+    ckpt_callback = CheckpointCallback(save_freq=1000, save_path="./save", name_prefix="ppo_mps_toy")
+    # Train the agent
+    model.learn(total_timesteps=int(1e5), callback=ckpt_callback)
+    # # Save the agent
 
-    # model.save("save/ppo_mps_1")
+    model.save("save/best_model")
     # pr.disable()
+
+    # del model
+    # model = DQN.load("save/best_model", env=env)
 
     # # Back in outer section of code
     # pr.dump_stats('profile_1.pstat')
     # model.load("ppo_mps")
-    # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1, deterministic=True, render=True)
+    # mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=1, deterministic=True)
     # print(mean_reward, std_reward)
-    obs = env.reset()
-    # obs, reward, done, info = env.step(1)
-    for i in range(10):
-        action, _state = model.predict(obs, deterministic=True)
-        print(obs, action)
-        obs, reward, done, info = env.step(action)
-        # env.render()
-        if done:
-          obs = env.reset()
-          break
+    # obs = env.reset()
+    # # obs, reward, done, info = env.step(1)
+    # for i in range(10):
+    #     action, _state = model.predict(obs, deterministic=False)
+    #     # print(obs, action)
+    #     obs, reward, done, info = env.step(action)
+    #     # env.render()
+    #     if done:
+    #       obs = env.reset()
+    #       break
 
 
 if __name__ == "__main__":

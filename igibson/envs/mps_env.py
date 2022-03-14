@@ -13,8 +13,8 @@ from igibson.action_generators.motion_primitive_generator import MotionPrimitive
 import bddl
 from bddl.activity import *
 
-ACTION_PENALTY = -0.01
-INVALID_ACTION_PENALTY = -0.2
+ACTION_PENALTY = -0.5
+INVALID_ACTION_PENALTY = -0.5
 GRASP_SUCCESS_REWARD = 0.5
 NAVIGATE_SUCCESS_REWARD = 0.1
 PLACE_SUCCESS_REWARD = 1.0
@@ -33,9 +33,12 @@ class MpsEnv(ActionGeneratorEnv):
 
         self.action_space = self.action_generator.get_action_space()
         # self.observation_space = self.env.observation_space
+        self.observation_space = spaces.dict.Dict()
+        self.observation_space["state"] = spaces.Discrete(3)
+        # self.observation_space["rgb"] = spaces.Box(low=0.0, high=1.0, shape=(128, 128, 3), dtype=np.float32)
         # FIXME: using simple obs space
         # self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Discrete(2)
+        # self.observation_space = spaces.Discrete(2)
         self.reward_range = self.env.reward_range
         self.reward_accumulation = reward_accumulation
 
@@ -47,36 +50,45 @@ class MpsEnv(ActionGeneratorEnv):
         self.nav_times = 0
         self.grasp_times = 0
 
-        self.object = 0
+        self.state = 0 # 0: init, 1: grasped, 2: placed
+
+        self.total_reward = 0.0
 
         # self.init_bddl()
         # self.prev_potential = self.get_task_potential()
 
         # self.prev_potential = self.get_task_potential()
-    def step(self, action: int):
+    def step_1(self, action: int):
         # obj = self.action_generator.addressable_objects[int(action) % self.action_generator.num_objects]
         # action_name = "GRASP"
         action_name = MotionPrimitive(int(action) // self.action_generator.num_objects)
+        obj = self.action_generator.addressable_objects[int(action) % self.action_generator.num_objects]
         # if action == 1:
         #     action_name = "PLACE"
         reward = -0.1
         done = False
-        print(action_name, self.object)
+        print(action_name, obj.name, self.state)
         if action_name in [MotionPrimitive.GRASP]:
-            if self.object == 0:
-                self.object = 1
+            if self.state == 0 and obj.name == "hardback_3":
+                self.state = 1
+                if self.episode_steps==0:
+                    reward += 1.0
             else:
-                reward -= 0.5
+                reward -= 1.0
         if action_name in [MotionPrimitive.PLACE_INSIDE]:
-            if self.object == 1:
+            if self.state == 1 and obj.name == "shelf_20":
                 # success
-                reward += 10.0
+                if self.episode_steps == 1:
+                    reward += 2.0
                 done = True
+                self.state = 2
             else:
-                reward -= 0.5
+                reward -= 2.0
+        self.total_reward += reward
+        self.episode_steps += 1
         return self.get_obs(), reward, done, {}
     
-    def step_1(self, action: int):
+    def step(self, action: int):
         self.episode_steps += 1
         # Run the goal generator and feed the goals into the motion planning env.
         accumulated_reward = ACTION_PENALTY
@@ -98,16 +110,18 @@ class MpsEnv(ActionGeneratorEnv):
         action_name = MotionPrimitive(int(action) // self.action_generator.num_objects)
         # preprocess action to avoid useless low level planning
         if action_name in [MotionPrimitive.PLACE_INSIDE]:
-            if self.action_generator._get_obj_in_hand() is None or "shelf" not in obj.name:
+            if self.action_generator._get_obj_in_hand() is None or "shelf_20" not in obj.name:
                 accumulated_reward += INVALID_ACTION_PENALTY
+                self.total_reward += accumulated_reward
                 return self.get_obs(), accumulated_reward, False, {}
         if action_name in [MotionPrimitive.GRASP]:
             # filter out fixed objects
             obj_list_id = int(action) % self.action_generator.num_objects
             target_obj = self.action_generator.addressable_objects[obj_list_id]
             # check if holding object
-            if self.action_generator._get_obj_in_hand() is not None or target_obj.fixed_base or "hardback" not in obj.name:
+            if self.action_generator._get_obj_in_hand() is not None or target_obj.fixed_base or "hardback_3" not in obj.name:
                 accumulated_reward += INVALID_ACTION_PENALTY
+                self.total_reward += accumulated_reward
                 return self.get_obs(), accumulated_reward, False, {}
 
         # TODO: penalize actions after task completed
@@ -137,7 +151,7 @@ class MpsEnv(ActionGeneratorEnv):
 
         # if task complete
         if done:
-            accumulated_reward += 10.0
+            accumulated_reward += 5.0
         # if self.episode_steps > self._max_episode_steps:
         #     done = True
         if action_failed or info is None:
@@ -148,6 +162,7 @@ class MpsEnv(ActionGeneratorEnv):
                 self.grasp_times += 1
                 if self.grasp_times < 2:
                     accumulated_reward += GRASP_SUCCESS_REWARD
+                self.state = 1
 
             # if action_name in [MotionPrimitive.NAVIGATE_TO]:
             #     self.nav_times += 1
@@ -155,14 +170,15 @@ class MpsEnv(ActionGeneratorEnv):
             #         accumulated_reward += NAVIGATE_SUCCESS_REWARD
             if action_name in [MotionPrimitive.PLACE_INSIDE]:
                 accumulated_reward += PLACE_SUCCESS_REWARD
+                self.state = 2
 
-
+        self.total_reward += accumulated_reward
 
         # assert info is not None, "Action generator did not produce any actions."
         if info is None:
             info = {"goal_status": []}
         if done:
-            print(accumulated_reward, done, info["goal_status"])
+            print(self.total_reward, done, info["goal_status"])
 
         return self.get_obs(), accumulated_reward, done, info
 
@@ -172,9 +188,11 @@ class MpsEnv(ActionGeneratorEnv):
         return np.array([0])
 
     def get_obs(self):
-        if self.object == 1:
-            return np.array([1])
-        return np.array([0])
+        # obs = self.env.get_state()
+        obs = spaces.dict.Dict()
+        obs["state"] = np.array([self.state])
+        # obs["rgb"] = np.ones((128, 128, 3))
+        return obs
         
     # def get_task_potential(self):
     #     eval_res = evaluate_goal_conditions(self.ground[0])
@@ -219,16 +237,21 @@ class MpsEnv(ActionGeneratorEnv):
     # def get_done(self):
     #     return evaluate_goal_conditions(self.ground[0])[0]
 
-    def reset_1(self):
+    def reset(self):
         print("+"*40, "Performing Env reset after", self.episode_steps, "steps. ", "+"*40)
         self.episode_steps = 0
         self.grasp_times = 0
         self.nav_times = 0
         self.env.reset()
+        self.total_reward = 0.0
+        self.state = 0
         return self.get_obs()
 
-    def reset(self):
-        self.object = 0
+    def reset_1(self):
+        print("+"*40, "Performing Env reset after", self.episode_steps, "steps. ", "+"*40)
+        self.state = 0
+        self.episode_steps = 0
+        self.total_reward = 0.0
         return self.get_obs()
 
     @property
