@@ -399,6 +399,7 @@ def change_data_path():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--download_assets", action="store_true", help="download assets file")
     parser.add_argument("--download_demo_data", action="store_true", help="download demo data Rs")
