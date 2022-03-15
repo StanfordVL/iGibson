@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import logging
+
 import numpy as np
 import rospy
 from geometry_msgs.msg import Twist
@@ -34,5 +36,6 @@ class NoiseInjectionNode:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     node = NoiseInjectionNode()
     node.run()

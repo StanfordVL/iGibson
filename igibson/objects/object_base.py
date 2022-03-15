@@ -4,7 +4,12 @@ import numpy as np
 import pybullet as p
 from future.utils import with_metaclass
 
-from igibson.utils.constants import SemanticClass
+from igibson.utils.constants import (
+    ALL_COLLISION_GROUPS_MASK,
+    DEFAULT_COLLISION_GROUP,
+    SPECIAL_COLLISION_GROUPS,
+    SemanticClass,
+)
 from igibson.utils.semantics_utils import CLASS_NAME_TO_CLASS_ID
 
 
@@ -35,6 +40,14 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         self.name = name
         self.category = category
 
+        # This sets the collision group of the object. In igibson, objects are only permitted to be part of a single
+        # collision group, e.g. the collision group bitvector should only have one bit set to 1.
+        self.collision_group = 1 << (
+            SPECIAL_COLLISION_GROUPS[self.category]
+            if self.category in SPECIAL_COLLISION_GROUPS
+            else DEFAULT_COLLISION_GROUP
+        )
+
         category_based_rendering_params = {}
         if category in ["walls", "floors", "ceilings"]:
             category_based_rendering_params["use_pbr"] = False
@@ -62,6 +75,12 @@ class BaseObject(with_metaclass(ABCMeta, object)):
             raise ValueError("Cannot load a single object multiple times.")
         self._loaded = True
         self._body_ids = self._load(simulator)
+
+        # Set the collision groups.
+        for body_id in self._body_ids:
+            for link_id in [-1] + list(range(p.getNumJoints(body_id))):
+                p.setCollisionFilterGroupMask(body_id, link_id, self.collision_group, ALL_COLLISION_GROUPS_MASK)
+
         return self._body_ids
 
     @property
@@ -107,12 +126,38 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         assert len(self.get_body_ids()) == 1, "Base implementation only works with single-body objects."
         p.resetBasePositionAndOrientation(self.get_body_ids()[0], pos, orn)
 
+    def get_base_link_position_orientation(self):
+        """Get object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
+        assert len(self.get_body_ids()) == 1, "Base implementation only works with single-body objects."
+        dynamics_info = p.getDynamicsInfo(self.get_body_ids()[0], -1)
+        inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
+        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
+        pos, orn = p.getBasePositionAndOrientation(self.get_body_ids()[0])
+        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        return np.array(base_link_position), np.array(base_link_orientation)
+
     def set_base_link_position_orientation(self, pos, orn):
         """Set object base link position and orientation in the format of Tuple[Array[x, y, z], Array[x, y, z, w]]"""
         dynamics_info = p.getDynamicsInfo(self.get_body_ids()[0], -1)
         inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
+
+    def get_poses(self):
+        """Get object bodies' poses in the format of List[Tuple[List[x, y, z], List[x, y, z, w]]]."""
+        poses = []
+        for body_id in self.get_body_ids():
+            pos, orn = p.getBasePositionAndOrientation(body_id)
+            poses.append((np.array(pos), np.array(orn)))
+
+        return poses
+
+    def set_poses(self, poses):
+        """Set object base poses in the format of List[Tuple[Array[x, y, z], Array[x, y, z, w]]]"""
+        assert len(poses) == len(self.get_body_ids()), "Number of poses should match number of bodies."
+
+        for bid, (pos, orn) in zip(self.get_body_ids(), poses):
+            p.resetBasePositionAndOrientation(bid, pos, orn)
 
     def get_velocities(self):
         """Get object bodies' velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""

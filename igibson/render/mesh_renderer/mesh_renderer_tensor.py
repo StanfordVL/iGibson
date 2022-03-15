@@ -5,6 +5,9 @@ from igibson.render.mesh_renderer.get_available_devices import get_cuda_device
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer, MeshRendererSettings
 from igibson.utils.constants import AVAILABLE_MODALITIES
 
+log = logging.getLogger(__name__)
+
+
 try:
     import torch
 
@@ -29,7 +32,7 @@ try:
                 width, height, vertical_fov, device_idx, rendering_settings, simulator
             )
             self.cuda_idx = get_cuda_device(self.device_minor)
-            logging.info("Using cuda device {} for pytorch".format(self.cuda_idx))
+            log.debug("Using cuda device {} for pytorch".format(self.cuda_idx))
             with torch.cuda.device(self.cuda_idx):
                 self.image_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
                 self.normal_tensor = torch.cuda.ByteTensor(height, width, 4).cuda()
@@ -111,5 +114,5 @@ try:
             return self.readbuffer_to_tensor(modes)
 
 except ImportError:
-    logging.warning("torch is not available, falling back to rendering to memory (instead of tensor)")
+    log.warning("torch is not available, falling back to rendering to memory (instead of tensor)")
     MeshRendererG2G = MeshRenderer

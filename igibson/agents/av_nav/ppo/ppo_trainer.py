@@ -144,7 +144,7 @@ class PPOTrainer(BaseRLTrainer):
         pth_time += time.time() - t_sample_action
 
         t_step_env = time.time()
-        outputs = self.envs.step([a[0].item() for a in actions], train=True, scene_splits=self.scene_splits)
+        outputs = self.envs.step([a[0].item() for a in actions])
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
         logging.debug('Reward: {}'.format(rewards[0]))
 
@@ -464,7 +464,7 @@ class PPOTrainer(BaseRLTrainer):
 
                 prev_actions.copy_(actions)
 
-            outputs = self.envs.step([a[0].item() for a in actions], train=False)
+            outputs = self.envs.step([a[0].item() for a in actions])
 
             observations, rewards, dones, infos = [
                 list(x) for x in zip(*outputs)

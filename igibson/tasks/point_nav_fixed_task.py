@@ -85,7 +85,7 @@ class PointNavFixedTask(BaseTask):
             instance.hidden = not self.visible_target
 
         if env.scene.build_graph:
-            self.num_waypoints_vis = 250
+            self.num_waypoints_vis = 10
             self.waypoints_vis = [
                 VisualMarker(
                     visual_shape=p.GEOM_CYLINDER,

@@ -103,7 +103,7 @@ def generate_data_lidar(nav_env, num_samples=3):
     return lidar_all, direction, rgb_all, label_all
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of rendering and visualizing a single lidar-like pointcloud
     Loads Rs (non interactive) and a robot and renders a dense panorama depth map from the robot's camera
@@ -111,12 +111,12 @@ def main(random_selection=False, headless=False, short_exec=False):
     It plots the point cloud with matplotlib, colored with the RGB values
     It also generates segmentation and "direction"
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Create environment
     mode = "headless"
     scene_id = "Rs_int"
-    config = os.path.join(igibson.example_config_path, "fetch_rearrangement.yaml")
+    config = os.path.join(igibson.configs_path, "fetch_rearrangement.yaml")
     config_data = yaml.load(open(config, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":
@@ -137,4 +137,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

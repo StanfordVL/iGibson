@@ -1,8 +1,11 @@
 import importlib
+import logging
 import pkgutil
 import signal
+import sys
 from multiprocessing import Process
 
+import igibson
 import igibson.examples as examples
 from igibson.utils.utils import let_user_pick
 
@@ -28,9 +31,8 @@ def timed_input(example_name):
 
 def main():
     """
-    Creates an iGibson environment from a config file with a turtlebot in Rs_int (interactive).
-    It steps the environment 100 times with random actions sampled from the action space,
-    using the Gym interface, resetting it 10 times.
+    Selector tool to see all available examples and pick one to run (in interactive or test mode), get more information,
+    or run all examples one after the other
     """
     examples_list = ["help", "all", "quit", "switch to test mode"]
     for kk in pkgutil.walk_packages(examples.__path__, examples.__name__ + "."):
@@ -39,16 +41,10 @@ def main():
             examples_list += [kk.name[17:]]
 
     selected_demo = 0
-    logo = (
-        " _   _____  _  _" + "\n" + "(_) / ____|(_)| |" + "\n"
-        " _ | |  __  _ | |__   ___   ___   _ __" + "\n"
-        "| || | |_ || || '_ \ / __| / _ \ | '_ \\" + "\n"
-        "| || |__| || || |_) |\__ \| (_) || | | |" + "\n"
-        "|_| \_____||_||_.__/ |___/ \___/ |_| |_|" + "\n"
-    )
-    test_mode = False
+    excluded_examples = ["_ui", "vr_"]
+    test_mode = "user"
     while selected_demo == 0 or selected_demo == 3:
-        print(logo)
+        print(igibson.__logo__)
         print(
             "Select a demo/example, 'help' for information about a specific demo, 'all' to run all demos, or 'test' "
             "to toggle on the test-only mode:"
@@ -72,24 +68,13 @@ def main():
                 module_help = importlib.import_module("igibson.examples." + examples_list[help_demo])
                 print(module_help.main.__doc__)
             input("Press enter")
-        elif "web_ui" in examples_list[selected_demo]:
-            print(
-                "You have selected an example of the web UI to create new activity definitions. This demos require "
-                "some additional terminal commands. Please, follow the instructions in the README file within that "
-                "folder."
-            )
-            sys.exit(0)
-        elif selected_demo == 3:
-            test_mode = not test_mode
-            print("Test mode now " + ["OFF", "ON"][test_mode])
-            examples_list[3] = ["switch to test mode", "switch to interactive mode"][test_mode]
         elif selected_demo == 1:
-            print("Executing all demos " + ["in interactive mode", "in test mode"][test_mode])
+            print("Executing all demos " + ["in interactive mode", "in test mode"][test_mode == "random"])
             for idx in range(4, len(examples_list)):
-                if "web_ui" not in examples_list[selected_demo]:
+                if not any(excluded_example in examples_list[selected_demo] for excluded_example in excluded_examples):
                     print("*" * 80)
                     print("*" * 80)
-                    print(logo)
+                    print(igibson.__logo__)
                     print("*" * 80)
                     print("*" * 80)
                     signal.alarm(TIMEOUT)
@@ -101,11 +86,11 @@ def main():
                     print("Executing " + examples_list[idx])
 
                     i = importlib.import_module("igibson.examples." + examples_list[idx])
-                    if test_mode:
+                    if test_mode == "random":
                         p = Process(
                             target=i.main,
                             args=(
-                                "random_selection=True",
+                                'selection="random"',
                                 "headless=True",
                                 "short_exec=True",
                             ),
@@ -114,7 +99,7 @@ def main():
                         p = Process(
                             target=i.main,
                             args=(
-                                "random_selection=False",
+                                'selection="user"',
                                 "headless=False",
                                 "short_exec=False",
                             ),
@@ -128,17 +113,30 @@ def main():
                         "The web UI demos to create new activity definitions require additional terminal commands. "
                         "Skipping them."
                     )
-
         elif selected_demo == 2:
             print("Exit")
             return
-        else:
+        elif selected_demo == 3:
+            test_mode = ["user", "random"][test_mode == "user"]
+            print("Test mode now " + ["OFF", "ON"][test_mode == "random"])
+            examples_list[3] = ["switch to test mode", "switch to interactive mode"][test_mode == "random"]
+        else:  # running a selected example
+            if any(excluded_example in examples_list[selected_demo] for excluded_example in excluded_examples):
+                print(
+                    "You have selected an example that requires additional terminal commands or packages "
+                    "(e.g. VR, web UI). Please, follow the instructions in the README of that example."
+                )
+                sys.exit(0)
             print(
-                "Executing " + examples_list[selected_demo] + " " + ["in interactive mode", "in test mode"][test_mode]
+                "Executing "
+                + examples_list[selected_demo]
+                + " "
+                + ["in interactive mode", "in test mode"][test_mode == "random"]
             )
             i = importlib.import_module("igibson.examples." + examples_list[selected_demo])
-            i.main(random_selection=test_mode, headless=test_mode, short_exec=test_mode)
+            i.main(selection=test_mode, headless=test_mode, short_exec=test_mode)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

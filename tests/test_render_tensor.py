@@ -9,10 +9,12 @@ import igibson
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 
+log = logging.getLogger(__name__)
+
 
 def test_tensor_render_rendering():
     if platform.system() != "Linux":
-        logging.warning("Skip test_tensor_render_rendering on non-Linux platforms.")
+        log.warning("Skip test_tensor_render_rendering on non-Linux platforms.")
         return
     w = 800
     h = 600

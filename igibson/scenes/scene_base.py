@@ -1,3 +1,4 @@
+import logging
 from abc import ABCMeta, abstractmethod
 
 from future.utils import with_metaclass
@@ -5,6 +6,8 @@ from future.utils import with_metaclass
 from igibson.objects.particles import Particle
 from igibson.objects.visual_marker import VisualMarker
 from igibson.robots.robot_base import BaseRobot
+
+log = logging.getLogger(__name__)
 
 
 class Scene(with_metaclass(ABCMeta)):
@@ -42,8 +45,11 @@ class Scene(with_metaclass(ABCMeta)):
         if self.loaded:
             raise ValueError("This scene is already loaded.")
 
+        log.info("Loading scene...")
         self.loaded = True
-        return self._load(simulator)
+        ret_val = self._load(simulator)
+        log.info("Scene loaded!")
+        return ret_val
 
     @abstractmethod
     def get_objects(self):
@@ -148,3 +154,11 @@ class Scene(with_metaclass(ABCMeta)):
         :return: height of the given floor
         """
         return 0.0
+
+    def get_body_ids(self):
+        """Returns list of PyBullet body ids for all objects in the scene"""
+        body_ids = []
+        for obj in self.get_objects():
+            if obj.get_body_ids() is not None:
+                body_ids.extend(obj.get_body_ids())
+        return body_ids

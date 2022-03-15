@@ -11,12 +11,12 @@ from igibson.simulator import Simulator
 from igibson.utils.utils import parse_config
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Robot demo
     Loads all robots in an empty scene, generate random actions
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     # Create empty scene
     settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
     s = Simulator(
@@ -31,8 +31,8 @@ def main(random_selection=False, headless=False, short_exec=False):
     # Create one instance of each robot aligned along the y axis
     position = [0, 0, 0]
     robots = {}
-    for robot_config_file in os.listdir(os.path.join(igibson.example_config_path, "robots")):
-        config = parse_config(os.path.join(igibson.example_config_path, "robots", robot_config_file))
+    for robot_config_file in os.listdir(os.path.join(igibson.configs_path, "robots")):
+        config = parse_config(os.path.join(igibson.configs_path, "robots", robot_config_file))
         robot_config = config["robot"]
         robot_name = robot_config.pop("name")
         robot = REGISTERED_ROBOTS[robot_name](**robot_config)
@@ -41,8 +41,8 @@ def main(random_selection=False, headless=False, short_exec=False):
         robot.reset()
         robot.keep_still()
         robots[robot_name] = (robot, position[1])
-        logging.info("Loaded " + robot_name)
-        logging.info("Moving " + robot_name)
+        print("Loaded " + robot_name)
+        print("Moving " + robot_name)
 
         if not headless:
             # Set viewer in front
@@ -68,4 +68,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

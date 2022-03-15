@@ -6,12 +6,12 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of partial loading of a scene
     Loads only some objects (by category) and in some room types
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
     if platform == "darwin":
         settings.texture_scale = 0.5
@@ -38,4 +38,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

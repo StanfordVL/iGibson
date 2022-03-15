@@ -2,6 +2,7 @@
 Demo to show a sample VR HUD (heads-up-display), constructed using
 VR overlay classes (found in render/mesh_renderer/mesh_renderer_vr.py) and Text (found in render/mesh_renderer/text.py)
 """
+import logging
 import os
 import time
 
@@ -206,4 +207,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
