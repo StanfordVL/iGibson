@@ -111,7 +111,6 @@ class AudioSystem(object):
                     self.probe_key_to_pos_by_floor[floor][key] = sample_position[:2]
 
             self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
-            print("Updating Reverb/Reflection properties to probe " + self.current_probe_key)
             audio.SetRoomPropertiesFromProbe(self.current_probe_key)
         else:
             audio.DisableRoomEffects()
@@ -247,7 +246,6 @@ class AudioSystem(object):
         if self.reverb:
             closest_probe_key = self.getClosestReverbProbe(listener_pos)
             if closest_probe_key != self.current_probe_key:
-                print("Updating Reverb/Reflection properties to probe " + closest_probe_key)
                 audio.SetRoomPropertiesFromProbe(closest_probe_key)
                 self.current_probe_key = closest_probe_key
 
