@@ -30,7 +30,7 @@ from ppo.ppo import PPO
 from utils.environment import AVNavRLEnv
 from utils.dataset import dataset
 from igibson.envs.igibson_env import iGibsonEnv
-from utils.parallel_env import ParallelNavEnv
+from igibson.envs.parallel_env import ParallelNavEnv
 
 from utils.utils import observations_to_image, images_to_video, generate_video
 

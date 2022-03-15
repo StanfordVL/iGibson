@@ -32,29 +32,7 @@ from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
 
 
-class AVNavTurtlebot(Turtlebot):
-    """
-    Redefine the robot
-    """
-    def set_up_discrete_action_space(self):
-        """
-        Set up discrete action space
-        """
-        self.action_list = [[self.velocity, self.velocity], #[-self.velocity, -self.velocity],
-                            [self.velocity * 0.5, -self.velocity * 0.5],
-                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
-        self.action_space = gym.spaces.Discrete(len(self.action_list))
-        self.setup_keys_to_action()
-        
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,  # forward
-            (ord('d'),): 1,  # turn right
-            (ord('a'),): 2,  # turn left
-            (): 3  # stay still
-        }
-
-    
+ 
 
 class AVNavRLEnv(iGibsonEnv):
     """

@@ -59,7 +59,7 @@ task_obs_dim: 4
 
 # robot
 robot:
-    name: AVNavTurtlebot
+    name: Turtlebot
     action_type: discrete
     action_normalize: true
     base_name: null
