@@ -116,9 +116,5 @@ class AVNavRLEnv(iGibsonEnv):
             state["location_belief"] = np.zeros(2)
 
         return state
-
-    def step(self, action, i_env, train):
-        return super().step(action)
-
     
 

@@ -1,7 +1,7 @@
 """ VR demo to test that eye tracking is working by visualizing a gaze marker where
 the user is looking.
 """
-
+import logging
 import os
 
 import numpy as np
@@ -14,7 +14,7 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.simulator import Simulator
+from igibson.simulator_vr import SimulatorVR
 
 # HDR files for PBR rendering
 hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
@@ -25,7 +25,7 @@ light_modulation_map_filename = os.path.join(
 background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     # VR rendering settings
     vr_rendering_settings = MeshRendererSettings(
         optimized=True,
@@ -39,7 +39,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = Simulator(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
 
     scene = InteractiveIndoorScene(
         "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
@@ -85,7 +85,6 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     bvr_robot = BehaviorRobot()
     s.import_object(bvr_robot)
-    s.register_main_vr_robot(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
     # Represents gaze
@@ -115,4 +114,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -10,6 +10,8 @@ import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.utils.utils import parse_config
 
+log = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -32,10 +34,10 @@ def main():
     task_id = args.task_id
     scenes = args.scenes
     start_initialization = args.start_initialization
-    logging.warning("TASK: {}".format(task))
-    logging.warning("TASK ID: {}".format(task_id))
+    log.info("TASK: {}".format(task))
+    log.info("TASK ID: {}".format(task_id))
 
-    scene_json = os.path.join(os.path.dirname(bddl.__file__), "../utils", "activity_to_preselected_scenes.json")
+    scene_json = os.path.join(os.path.dirname(bddl.__file__), "activity_to_preselected_scenes.json")
 
     with open(scene_json) as f:
         activity_to_scenes = json.load(f)
@@ -47,11 +49,11 @@ def main():
     else:
         scene_choices = [item for item in get_available_ig_scenes() if item.endswith("_int")]
 
-    logging.warning(("SCENE CHOICES", scene_choices))
+    log.info(("SCENE CHOICES", scene_choices))
     num_initializations = args.num_initializations
     num_trials = args.max_trials
 
-    config_file = os.path.join(igibson.example_config_path, "behavior_vr.yaml")
+    config_file = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
     env_config = parse_config(config_file)
     env_config["task"] = task
     env_config["task_id"] = task_id
@@ -59,13 +61,13 @@ def main():
     env_config["load_clutter"] = True
 
     for scene_id in scene_choices:
-        logging.warning(("TRY SCENE:", scene_id))
+        log.info(("TRY SCENE:", scene_id))
         env_config["scene_id"] = scene_id
         for init_id in range(start_initialization, start_initialization + num_initializations):
             urdf_path = "{}_task_{}_{}_{}".format(scene_id, task, task_id, init_id)
             full_path = os.path.join(igibson.ig_dataset_path, "scenes", scene_id, "urdf", urdf_path + ".urdf")
             if os.path.isfile(full_path):
-                logging.warning("Already cached: {}".format(full_path))
+                log.debug("Already cached: {}".format(full_path))
                 continue
 
             for _ in range(num_trials):
@@ -83,8 +85,8 @@ def main():
                 sim_obj_to_bddl_obj = {
                     value.name: {"object_scope": key} for key, value in env.task.object_scope.items()
                 }
-                env.scene.save(urdf_path, additional_attribs_by_name=sim_obj_to_bddl_obj)
-                logging.warning(("Saved:", urdf_path))
+                env.scene.save(urdf_path, save_agent_pose_only=True, additional_attribs_by_name=sim_obj_to_bddl_obj)
+                log.warning(("Saved:", urdf_path))
                 env.close()
                 embed()
 

@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import logging
 import os
 
 import numpy as np
@@ -183,5 +184,6 @@ class SimNode:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     node = SimNode()
     node.run()

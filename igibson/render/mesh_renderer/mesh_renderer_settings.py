@@ -4,6 +4,8 @@ import platform
 
 import igibson
 
+log = logging.getLogger(__name__)
+
 
 class MeshRendererSettings(object):
     def __init__(
@@ -22,7 +24,7 @@ class MeshRendererSettings(object):
         fullscreen=False,
         glfw_gl_version=None,
         texture_scale=1.0,
-        hide_robot=True,
+        hide_robot=False,
         show_glfw_window=False,
         blend_highlight=False,
         is_robosuite=False,
@@ -57,16 +59,14 @@ class MeshRendererSettings(object):
         self.env_texture_filename2 = env_texture_filename2
         self.env_texture_filename3 = env_texture_filename3
 
+        self.enable_shadow = enable_shadow
+
         if platform.system() == "Darwin":
             if optimized:
-                logging.warning("Darwin does not support optimized renderer, automatically disabling")
-            if enable_shadow:
-                logging.warning("Darwin does not support shadow, automatically disabling")
+                log.warning("WARN: Darwin does not support optimized renderer, automatically disabling")
             self.optimized = False
-            self.enable_shadow = False
         else:
             self.optimized = optimized
-            self.enable_shadow = enable_shadow
 
         self.skybox_size = skybox_size
         self.light_modulation_map_filename = light_modulation_map_filename

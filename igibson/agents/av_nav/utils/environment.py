@@ -56,6 +56,3 @@ class AVNavRLEnv(iGibsonEnv):
                     for i in range(len(carpet.get_body_ids())):
                         p.setCollisionFilterPair(carpet.get_body_ids()[i], 
                                                  self.robots[0].get_body_ids()[0], -1, robot_link_id, 0)
-
-    def step(self, action, i_env, train, scene_splits=None):
-        return super().step(action)

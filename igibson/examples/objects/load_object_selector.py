@@ -22,7 +22,7 @@ from igibson.utils.assets_utils import (
 from igibson.utils.utils import let_user_pick, parse_config
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     This demo shows how to load any scaled objects from the iG object model dataset and
     additional objects from the YCB dataset in predefined locations
@@ -31,12 +31,12 @@ def main(random_selection=False, headless=False, short_exec=False):
     The example also shows how to use the Environment API or directly the Simulator API, loading objects and robots
     and executing actions
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    scene_options = ["Empty scene", "Interactive scene (iG)", "Static scene (Gibson)"]
-    type_of_scene = let_user_pick(scene_options, random_selection=random_selection) - 1
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    scene_options = get_first_options()
+    type_of_scene = let_user_pick(scene_options, selection=selection) - 1
 
     if type_of_scene == 0:  # Empty
-        config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
+        config = parse_config(os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml"))
         settings = MeshRendererSettings(enable_shadow=False, msaa=False, texture_scale=0.5)
         s = Simulator(
             mode="gui_interactive" if not headless else "headless",
@@ -53,7 +53,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         s.import_object(turtlebot)
 
     elif type_of_scene == 1:  # iG
-        config_filename = os.path.join(igibson.example_config_path, "turtlebot_nav.yaml")
+        config_filename = os.path.join(igibson.configs_path, "turtlebot_nav.yaml")
         config_data = yaml.load(open(config_filename, "r"), Loader=yaml.FullLoader)
         config_data["load_object_categories"] = []  # Uncomment this line to accelerate loading with only the building
         config_data["visible_target"] = False
@@ -65,7 +65,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         s = env.simulator
 
     elif type_of_scene == 2:  # Gibson
-        config = parse_config(os.path.join(igibson.example_config_path, "turtlebot_static_nav.yaml"))
+        config = parse_config(os.path.join(igibson.configs_path, "turtlebot_static_nav.yaml"))
         settings = MeshRendererSettings(enable_shadow=False, msaa=False)
         # Reduce texture scale for Mac.
         if platform == "darwin":
@@ -92,13 +92,19 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     # Select a category to load
     available_obj_categories = get_all_object_categories()
-    obj_category = available_obj_categories[
-        let_user_pick(available_obj_categories, random_selection=random_selection) - 1
-    ]
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+    obj_category = available_obj_categories[let_user_pick(available_obj_categories, selection=selection) - 1]
 
     # Select a model to load
     available_obj_models = get_object_models_of_category(obj_category)
-    obj_model = available_obj_models[let_user_pick(available_obj_models, random_selection=random_selection) - 1]
+    # For the second and further selections, we either as the user or randomize
+    # If the we are exhaustively testing the first selection, we randomize the rest
+    if selection not in ["user", "random"]:
+        selection = "random"
+    obj_model = available_obj_models[let_user_pick(available_obj_models, selection=selection) - 1]
 
     # Load the specs of the object categories, e.g., common scaling factor
     avg_category_spec = get_ig_avg_category_specs()
@@ -128,14 +134,14 @@ def main(random_selection=False, headless=False, short_exec=False):
         if type_of_scene == 1:
             max_iterations = 1 if short_exec else 10
             for j in range(max_iterations):
-                logging.info("Resetting environment")
+                print("Resetting environment")
                 env.reset()
                 for i in range(100):
                     with Profiler("Environment action step"):
                         # action = env.action_space.sample()
                         state, reward, done, info = env.step([0.1, 0.1])
                         if done:
-                            logging.info("Episode finished after {} timesteps".format(i + 1))
+                            print("Episode finished after {} timesteps".format(i + 1))
                             break
         else:
             max_steps = 100 if short_exec else 10000
@@ -152,5 +158,10 @@ def main(random_selection=False, headless=False, short_exec=False):
             s.disconnect()
 
 
+def get_first_options():
+    return ["Empty scene", "Interactive scene (iG)", "Static scene (Gibson)"]
+
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

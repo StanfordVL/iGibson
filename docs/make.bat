@@ -9,6 +9,9 @@ if "%SPHINXBUILD%" == "" (
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
+set SPHINXAPIDOC=sphinx-apidoc
+set MODULEDIR=../igibson
+set APIDOCDIR=apidoc
 
 if "%1" == "" goto help
 
@@ -25,6 +28,7 @@ if errorlevel 9009 (
 	exit /b 1
 )
 
+%SPHINXAPIDOC% %MODULEDIR% -o %APIDOCDIR%
 %SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 

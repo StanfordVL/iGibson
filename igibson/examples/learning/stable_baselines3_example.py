@@ -95,13 +95,13 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
         return th.cat(encoded_tensor_list, dim=1)
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example to set a training process with Stable Baselines 3
     Loads a scene and starts the training process for a navigation task with images using PPO
     Saves the checkpoint and loads it again
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     config_file = "turtlebot_nav.yaml"
     tensorboard_log_dir = "log_dir"
     num_environments = 8 if not short_exec else 1
@@ -110,7 +110,7 @@ def main(random_selection=False, headless=False, short_exec=False):
     def make_env(rank: int, seed: int = 0) -> Callable:
         def _init() -> iGibsonEnv:
             env = iGibsonEnv(
-                config_file=os.path.join(igibson.example_config_path, config_file),
+                config_file=os.path.join(igibson.configs_path, config_file),
                 mode="headless",
                 action_timestep=1 / 10.0,
                 physics_timestep=1 / 120.0,
@@ -127,7 +127,7 @@ def main(random_selection=False, headless=False, short_exec=False):
 
     # Create a new environment for evaluation
     eval_env = iGibsonEnv(
-        config_file=os.path.join(igibson.example_config_path, config_file),
+        config_file=os.path.join(igibson.configs_path, config_file),
         mode="headless",
         action_timestep=1 / 10.0,
         physics_timestep=1 / 120.0,
@@ -166,4 +166,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

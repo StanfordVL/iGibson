@@ -10,4 +10,3 @@ robot:
       command_input_limits: default
       command_output_limits: default
       use_delta_commands: false
-      use_compliant_mode: true

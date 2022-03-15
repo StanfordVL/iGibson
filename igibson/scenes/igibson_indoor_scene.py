@@ -16,7 +16,6 @@ from igibson.external.pybullet_tools.utils import euler_from_quat, get_joint_nam
 from igibson.objects.articulated_object import URDFObject
 from igibson.objects.multi_object_wrappers import ObjectGrouper, ObjectMultiplexer
 from igibson.robots import REGISTERED_ROBOTS
-from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.utils.assets_utils import (
@@ -28,9 +27,12 @@ from igibson.utils.assets_utils import (
     get_ig_model_path,
     get_ig_scene_path,
 )
+from igibson.utils.semantics_utils import ROOM_NAME_TO_ROOM_ID
 from igibson.utils.utils import NumpyEncoder, restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
+
+log = logging.getLogger(__name__)
 
 
 class InteractiveIndoorScene(StaticIndoorScene):
@@ -134,7 +136,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             self.fname = fname
             self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
 
-        logging.info("Loading scene URDF: {}".format(self.scene_file))
+        log.debug("Loading scene URDF: {}".format(self.scene_file))
 
         self.scene_source = scene_source
         self.scene_dir = scene_dir
@@ -176,7 +178,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         self.link_collision_tolerance = link_collision_tolerance
 
         # Agent placeholder
-        self.agent = {}
+        self.agent_poses = {}
 
         # ObjectMultiplexer
         self.object_multiplexers = defaultdict(dict)
@@ -186,7 +188,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Store the original states retrieved from the URDF
         # self.object_states[object_name]["bbox_center_pose"] = ([x, y, z], [x, y, z, w])
-        # self.object_states[object_name]["base_com_pose"] = ([x, y, z], [x, y, z, w])
+        # self.object_states[object_name]["base_poses"] = [([x, y, z], [x, y, z, w]), ...]
         # self.object_states[object_name]["base_velocities"] = (vx, vy, vz], [wx, wy, wz])
         # self.object_states[object_name]["joint_states"] = {joint_name: (q, q_dot)}
         # self.object_states[object_name]["non_kinematic_states"] = dict()
@@ -211,6 +213,18 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 self.object_multiplexers[link.attrib["multiplexer"]]["grouper"] = object_name
                 continue
 
+            if category == "agent_pose":
+                # Simply store the agent pose. The robot will be created outside and its initial pose will be set accordingly.
+                connecting_joint = [
+                    joint
+                    for joint in self.scene_tree.findall("joint")
+                    if joint.find("child").attrib["link"] == link.attrib["name"]
+                ][0]
+                pos = np.array([float(val) for val in connecting_joint.find("origin").attrib["xyz"].split(" ")])
+                euler = np.array([float(val) for val in connecting_joint.find("origin").attrib["rpy"].split(" ")])
+                self.agent_poses[link.attrib["name"]] = (pos, np.array(p.getQuaternionFromEuler(euler)))
+                continue
+
             if category == "agent" and not self.include_robots:
                 continue
 
@@ -220,7 +234,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if category == "agent":
                 robot_config = json.loads(link.attrib["robot_config"]) if "robot_config" in link.attrib else {}
                 assert model in REGISTERED_ROBOTS, "Got invalid robot to instantiate: {}".format(model)
-                obj = REGISTERED_ROBOTS[model](name=object_name, **robot_config)
+                assert (
+                    object_name == robot_config["name"]
+                ), "the robot name saved in link doesn't match the robot name stored in the robot config"
+                obj = REGISTERED_ROBOTS[model](**robot_config)
 
             # Non-robot object
             else:
@@ -314,7 +331,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 bbx_center_orn = np.array([0.0, 0.0, 0.0])
             bbx_center_orn = p.getQuaternionFromEuler(bbx_center_orn)
 
-            base_com_pose = json.loads(link.attrib["base_com_pose"]) if "base_com_pose" in link.attrib else None
+            base_poses = json.loads(link.attrib["base_poses"]) if "base_poses" in link.attrib else None
             base_velocities = json.loads(link.attrib["base_velocities"]) if "base_velocities" in link.attrib else None
             if "joint_states" in link.keys():
                 joint_states = json.loads(link.attrib["joint_states"])
@@ -332,7 +349,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 non_kinematic_states = None
 
             self.object_states[object_name]["bbox_center_pose"] = (bbox_center_pos, bbx_center_orn)
-            self.object_states[object_name]["base_com_pose"] = base_com_pose
+            self.object_states[object_name]["base_poses"] = base_poses
             self.object_states[object_name]["base_velocities"] = base_velocities
             self.object_states[object_name]["joint_states"] = joint_states
             self.object_states[object_name]["non_kinematic_states"] = non_kinematic_states
@@ -394,7 +411,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if room_instance in self.room_ins_name_to_ins_id:
                     load_room_instances_filtered.append(room_instance)
                 else:
-                    logging.warning("room_instance [{}] does not exist.".format(room_instance))
+                    log.warning("room_instance [{}] does not exist.".format(room_instance))
             self.load_room_instances = load_room_instances_filtered
         elif load_room_types is not None:
             if isinstance(load_room_types, str):
@@ -404,7 +421,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if room_type in self.room_sem_name_to_ins_name:
                     load_room_instances_filtered.extend(self.room_sem_name_to_ins_name[room_type])
                 else:
-                    logging.warning("room_type [{}] does not exist.".format(room_type))
+                    log.warning("room_type [{}] does not exist.".format(room_type))
             self.load_room_instances = load_room_instances_filtered
         else:
             self.load_room_instances = None
@@ -429,9 +446,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         img_ins = np.array(img_ins.resize((self.seg_map_size, self.seg_map_size), Image.NEAREST))
         img_sem = np.array(img_sem.resize((self.seg_map_size, self.seg_map_size), Image.NEAREST))
 
-        room_categories = os.path.join(igibson.ig_dataset_path, "metadata", "room_categories.txt")
-        with open(room_categories, "r") as fp:
-            room_cats = [line.rstrip() for line in fp.readlines()]
+        room_cats = list(ROOM_NAME_TO_ROOM_ID.keys())
 
         sem_id_to_ins_id = {}
         unique_ins_ids = np.unique(img_ins)
@@ -452,7 +467,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             sem_name = room_cats[sem_id - 1]
             room_sem_name_to_sem_id[sem_name] = sem_id
             for i, ins_id in enumerate(ins_ids):
-                # valid class start from 1
+                # valid room class starts from 1
                 ins_name = "{}_{}".format(sem_name, i)
                 room_ins_name_to_ins_id[ins_name] = ins_id
                 if sem_name not in room_sem_name_to_ins_name:
@@ -507,7 +522,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         # Give the object a name if it doesn't already have one.
         if obj.name in self.objects_by_name.keys():
-            logging.error("Object names need to be unique! Existing name " + obj.name)
+            log.error("Object names need to be unique! Existing name " + obj.name)
             exit(-1)
 
         # Add object to database
@@ -540,7 +555,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         Randomize texture/material for all objects in the scene
         """
         if not self.texture_randomization:
-            logging.warning("calling randomize_texture while texture_randomization is False during initialization.")
+            log.warning("calling randomize_texture while texture_randomization is False during initialization.")
             return
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
@@ -671,7 +686,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.body_collision_set = set()
         for body_a, body_b in body_body_collision:
-            logging.warning(
+            log.warning(
                 "scene quality check: {} and {} has collision.".format(
                     body_id_to_name[body_a],
                     body_id_to_name[body_b],
@@ -682,7 +697,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.link_collision_set = set()
         for body_id in body_link_collision:
-            logging.warning(
+            log.warning(
                 "scene quality check: {} has joint that cannot extend for >66%.".format(
                     body_id_to_name[body_id],
                 )
@@ -832,13 +847,12 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if not obj.loaded:
             return
 
-        # If the object state is empty (which happens if an object is added after the scene URDF is parsed), skip
+        # If the object state is empty (which happens if an object is manually added after the scene URDF is parsed), skip
         if not obj_kin_state:
             return
 
-        # TODO: For velocities, we are now storing each body's com. Should we somehow do the same for positions?
-        if obj_kin_state["base_com_pose"] is not None:
-            obj.set_position_orientation(*obj_kin_state["base_com_pose"])
+        if obj_kin_state["base_poses"] is not None:
+            obj.set_poses(obj_kin_state["base_poses"])
         else:
             if isinstance(obj, BaseRobot):
                 # Backward compatibility, existing scene cache saves robot's base link CoM frame as bbox_center_pose
@@ -949,7 +963,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :return: floor (always 0), a randomly sampled point in [x, y, z]
         """
         if room_type not in self.room_sem_name_to_sem_id:
-            logging.warning("room_type [{}] does not exist.".format(room_type))
+            log.warning("room_type [{}] does not exist.".format(room_type))
             return None, None
 
         sem_id = self.room_sem_name_to_sem_id[room_type]
@@ -970,7 +984,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :return: floor (always 0), a randomly sampled point in [x, y, z]
         """
         if room_instance not in self.room_ins_name_to_ins_id:
-            logging.warning("room_instance [{}] does not exist.".format(room_instance))
+            log.warning("room_instance [{}] does not exist.".format(room_instance))
             return None, None
 
         ins_id = self.room_ins_name_to_ins_id[room_instance]
@@ -990,7 +1004,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param room_instance: room instance (e.g. bathroom_1)
         """
         if room_instance not in self.room_ins_name_to_ins_id:
-            logging.warning("room_instance [{}] does not exist.".format(room_instance))
+            log.warning("room_instance [{}] does not exist.".format(room_instance))
             return None, None
 
         ins_id = self.room_ins_name_to_ins_id[room_instance]
@@ -1077,9 +1091,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 ids.extend(self.objects_by_name[obj_name].get_body_ids())
         return ids
 
-    def save_obj_or_multiplexer(self, obj, tree_root, additional_attribs_by_name):
+    def save_obj_or_multiplexer(self, obj, tree_root, save_agent_pose_only, additional_attribs_by_name):
         if not isinstance(obj, ObjectMultiplexer):
-            self.save_obj(obj, tree_root, additional_attribs_by_name)
+            self.save_obj(obj, tree_root, save_agent_pose_only, additional_attribs_by_name)
             return
 
         multiplexer_link = ET.SubElement(tree_root, "link")
@@ -1111,7 +1125,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                                 additional_attribs_by_name[group_sub_obj.name][key] = additional_attribs_by_name[
                                     obj.name
                                 ][key]
-                    self.save_obj(group_sub_obj, tree_root, additional_attribs_by_name)
+                    self.save_obj(group_sub_obj, tree_root, save_agent_pose_only, additional_attribs_by_name)
             else:
                 # Store reference to multiplexer
                 if sub_obj.name not in additional_attribs_by_name:
@@ -1122,25 +1136,20 @@ class InteractiveIndoorScene(StaticIndoorScene):
                     if obj.name in additional_attribs_by_name:
                         for key in additional_attribs_by_name[obj.name]:
                             additional_attribs_by_name[sub_obj.name][key] = additional_attribs_by_name[obj.name][key]
-                self.save_obj(sub_obj, tree_root, additional_attribs_by_name)
+                self.save_obj(sub_obj, tree_root, save_agent_pose_only, additional_attribs_by_name)
 
-    def save_obj(self, obj, tree_root, additional_attribs_by_name):
+    def save_obj(self, obj, tree_root, save_agent_pose_only, additional_attribs_by_name):
+        if save_agent_pose_only and obj.category == "agent":
+            # Save the agent pose and return
+            self.save_agent_pose(obj, tree_root)
+            return
+
         name = obj.name
         link = tree_root.find('link[@name="{}"]'.format(name))
 
         # Convert from center of mass to base link position
-        body_ids = obj.get_body_ids()
-        main_body_id = body_ids[0] if len(body_ids) == 1 else body_ids[obj.main_body]
-
-        dynamics_info = p.getDynamicsInfo(main_body_id, -1)
-        inertial_pos = dynamics_info[3]
-        inertial_orn = dynamics_info[4]
-
-        # TODO: replace this with obj.get_position_orientation() once URDFObject no longer works with multiple body ids
-        pos, orn = p.getBasePositionAndOrientation(main_body_id)
-        pos, orn = np.array(pos), np.array(orn)
-        inv_inertial_pos, inv_inertial_orn = p.invertTransform(inertial_pos, inertial_orn)
-        base_link_position, base_link_orientation = p.multiplyTransforms(pos, orn, inv_inertial_pos, inv_inertial_orn)
+        pos, orn = obj.get_position_orientation()
+        base_link_position, base_link_orientation = obj.get_base_link_position_orientation()
 
         # Convert to XYZ position for URDF
         euler = euler_from_quat(orn)
@@ -1205,7 +1214,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if room is not None:
                 link.attrib["room"] = room
 
-            if isinstance(obj, (BaseRobot, BehaviorRobot)):
+            if isinstance(obj, BaseRobot):
                 link.attrib["robot_config"] = json.dumps(obj.dump_config(), cls=NumpyEncoder)
 
             new_joint = ET.SubElement(tree_root, "joint")
@@ -1218,9 +1227,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             new_parent.attrib["link"] = "world"
 
         # Common logic for objects that are both in the scene & otherwise.
-        base_com_pose = (pos, orn)
         joint_states = obj.get_joint_states()
-        link.attrib["base_com_pose"] = json.dumps(base_com_pose, cls=NumpyEncoder)
+        link.attrib["base_poses"] = json.dumps(obj.get_poses(), cls=NumpyEncoder)
         link.attrib["base_velocities"] = json.dumps(obj.get_velocities(), cls=NumpyEncoder)
         link.attrib["joint_states"] = json.dumps(joint_states, cls=NumpyEncoder)
 
@@ -1232,6 +1240,31 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if name in additional_attribs_by_name:
             for key in additional_attribs_by_name[name]:
                 link.attrib[key] = additional_attribs_by_name[name][key]
+
+    def save_agent_pose(self, obj, tree_root):
+        pos, orn = obj.get_position_orientation()
+        euler = euler_from_quat(orn)
+
+        xyz = " ".join([str(p) for p in pos])
+        rpy = " ".join([str(e) for e in euler])
+
+        name = obj.model_name
+        category = obj.category
+
+        link = ET.SubElement(tree_root, "link")
+        link.attrib = {
+            "name": name,
+            "category": "agent_pose",
+        }
+
+        new_joint = ET.SubElement(tree_root, "joint")
+        new_joint.attrib = {"name": "j_{}".format(name), "type": "floating"}
+        new_origin = ET.SubElement(new_joint, "origin")
+        new_origin.attrib = {"rpy": rpy, "xyz": xyz}
+        new_child = ET.SubElement(new_joint, "child")
+        new_child.attrib["link"] = name
+        new_parent = ET.SubElement(new_joint, "parent")
+        new_parent.attrib["link"] = "world"
 
     def restore(self, urdf_name=None, urdf_path=None, scene_tree=None, pybullet_filename=None, pybullet_state_id=None):
         """
@@ -1267,11 +1300,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if category == "multiplexer":
                 self.objects_by_name[object_name].set_selection(int(link.attrib["current_index"]))
 
-            if category in ["grouper", "multiplexer"]:
+            if category in ["grouper", "multiplexer", "agent_pose"]:
                 continue
 
             object_states[object_name]["bbox_center_pose"] = None
-            object_states[object_name]["base_com_pose"] = json.loads(link.attrib["base_com_pose"])
+            object_states[object_name]["base_poses"] = json.loads(link.attrib["base_poses"])
             object_states[object_name]["base_velocities"] = json.loads(link.attrib["base_velocities"])
             object_states[object_name]["joint_states"] = json.loads(link.attrib["joint_states"])
             object_states[object_name]["non_kinematic_states"] = json.loads(link.attrib["states"])
@@ -1289,6 +1322,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         urdf_path=None,
         pybullet_filename=None,
         pybullet_save_state=False,
+        save_agent_pose_only=False,
         additional_attribs_by_name={},
     ):
         """
@@ -1298,6 +1332,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param urdf_path: full path of URDF file to save (with .urdf), assumes higher priority than urdf_name
         :param pybullet_filename: optional specification of which pybullet file to save to
         :param pybullet_save_state: whether to save to pybullet state
+        :param save_agent_pose_only: whether to only save the agent pose in the urdf, rather than the agent itself
         :param additional_attribs_by_name: additional attributes to be added to object link in the scene URDF
         """
         if urdf_path is None and urdf_name is not None:
@@ -1306,7 +1341,9 @@ class InteractiveIndoorScene(StaticIndoorScene):
         scene_tree = ET.parse(self.scene_file)
         tree_root = scene_tree.getroot()
         for name in self.objects_by_name:
-            self.save_obj_or_multiplexer(self.objects_by_name[name], tree_root, additional_attribs_by_name)
+            self.save_obj_or_multiplexer(
+                self.objects_by_name[name], tree_root, save_agent_pose_only, additional_attribs_by_name
+            )
 
         if urdf_path is not None:
             xmlstr = minidom.parseString(ET.tostring(tree_root).replace(b"\n", b"").replace(b"\t", b"")).toprettyxml()

@@ -10,6 +10,7 @@
 # Creation Date: 12/29/17
 
 import copy
+import logging
 
 import rospy
 import tf
@@ -241,6 +242,7 @@ class TrueMapOdomNode:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     rospy.init_node("publish_true_map_to_odom_tf", anonymous=True)
 
     try:
