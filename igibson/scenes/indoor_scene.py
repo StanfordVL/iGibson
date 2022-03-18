@@ -89,10 +89,6 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
                     self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution
                 )
 
-            # Here it looks like we do not "care" about the traversability map: wherever the obstacle map is 0, we set
-            # the traversability map also to 0
-            trav_map[obstacle_map == 0] = 0
-
             # We resize the traversability map to the new size computed before
             trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
 
