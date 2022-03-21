@@ -50,7 +50,6 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True, num_sources=
                 obj_id = obj.get_body_id()
                 audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
                 audioSystem.setSourceRepeat(obj_id)
-            s.attachAudioSystem(audioSystem)
 
     s.renderer.use_pbr(use_pbr=True, use_pbr_mapping=True)
     fps = []
@@ -63,6 +62,7 @@ def benchmark_scene(scene_name, optimized=False, import_robot=True, num_sources=
         #     scene.randomize_texture()
         start = time.time()
         s.step()
+        audioSystem.step()
         if import_robot:
             turtlebot.apply_action(turtlebot.action_space.sample())
             # apply random actions

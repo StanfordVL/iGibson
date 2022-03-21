@@ -91,7 +91,6 @@ def main():
     audioSystem.registerSource(obj_id, "10s_speech_sample", enabled=True)
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id)
-    s.attachAudioSystem(audioSystem)
 
     if not VR_MODE:
         camera_pose = np.array([0, -3, 1.2])
@@ -110,6 +109,7 @@ def main():
     # Main simulation loop
     while True:
         s.step(print_stats=PRINT_STATS)
+        audioSystem.step()
 
         if VR_MODE:
             # Update VR objects
@@ -177,8 +177,6 @@ def mp3d_example():
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id)
 
-    s.attachAudioSystem(audioSystem)
-
     # Visualize reverb probes!
     for i in range(len(scene.floor_heights)):
         for probe_pos in audioSystem.probe_key_to_pos_by_floor[i].values():
@@ -196,6 +194,7 @@ def mp3d_example():
     # Runs for 30 seconds, then saves output audio to file. 
     for i in range(4000):
         s.step()
+        audioSystem.step()
     audioSystem.disconnect()
     s.disconnect()
     

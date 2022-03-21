@@ -90,9 +90,6 @@ class Simulator:
         self.rendering_settings = rendering_settings
         self.use_pb_gui = use_pb_gui
 
-        # audio is disabled on initialization
-        self.audio_system = None
-
         plt = platform.system()
         if plt == "Darwin" and self.mode == SimulatorMode.GUI_INTERACTIVE and use_pb_gui:
             self.use_pb_gui = False  # for mac os disable pybullet rendering
@@ -433,12 +430,6 @@ class Simulator:
         if hasattr(obj, "renderer_instances"):
             obj.renderer_instances.append(self.renderer.instances[-1])
 
-    def attachAudioSystem(self, audioSystem):
-        """
-        Ensures audioSystem.step() is called in self.step()
-        """
-        self.audio_system = audioSystem
-
     def _non_physics_step(self):
         """
         Complete any non-physics steps such as state updates.
@@ -457,16 +448,12 @@ class Simulator:
             if hasattr(obj, "procedural_material") and obj.procedural_material is not None:
                 obj.procedural_material.update()
 
-    def step(self, audio=False):
+    def step(self):
         """
         Step the simulation at self.render_timestep and update positions in renderer.
         """
         for _ in range(self.physics_timestep_num):
             p.stepSimulation()
-
-        if self.audio_system is not None and audio:
-            self.audio_system.step()
-
         self.sync()
 
     def sync(self, force_sync=False):

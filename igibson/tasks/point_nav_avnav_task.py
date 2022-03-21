@@ -8,7 +8,7 @@ from igibson.reward_functions.reward_function_base import BaseRewardFunction
 from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
-from igibson.objects import cube
+from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.utils import l2_distance, restoreState
 
 
@@ -38,6 +38,7 @@ class PointNavAVNavTask(PointNavRandomTask):
     """
     def __init__(self, env):
         super().__init__(env)
+        self.target_obj  = None
         self.reward_functions = [
             PotentialReward(self.config), # geodesic distance, potential_reward_weight
             CollisionReward(self.config),
@@ -45,17 +46,34 @@ class PointNavAVNavTask(PointNavRandomTask):
             TimeReward(self.config), # time_reward_weight
         ]
 
-    def reset_scene(self, env):
-        super().reset_scene(env)
-        env.audio_system.reset()
-        source_location = self.target_pos
-        self.audio_obj = cube.Cube(pos=source_location, dim=[0.05, 0.05, 0.05], 
-                                    visual_only=False, 
-                                    mass=0.5, color=[255, 0, 0, 1]) # pos initialized with default
-        env.simulator.import_object(self.audio_obj)
-        self.audio_obj_id = self.audio_obj.get_body_ids()[0]
-        env.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'], enabled=True)
-        env.audio_system.setSourceRepeat(self.audio_obj_id)
-        env.simulator.attachAudioSystem(env.audio_system)
+        self.load_target(env)
 
-        env.audio_system.step()
+    def reset_agent(self, env):
+        super().reset_agent(env)
+        self.target_obj.set_position(self.target_pos)
+        audio_obj_id = self.target_obj.get_body_ids()[0]
+        env.audio_system.registerSource(audio_obj_id, self.config['audio_dir'], enabled=True)
+        env.audio_system.setSourceRepeat(audio_obj_id)
+
+    def load_target(self, env):
+        """
+        Load target marker
+        :param env: environment instance
+        """
+
+        cyl_length = 0.2
+
+        self.target_obj = VisualMarker(
+            visual_shape=p.GEOM_CYLINDER,
+            rgba_color=[0, 0, 1, 0.3],
+            radius=self.dist_tol,
+            length=cyl_length,
+            initial_offset=[0, 0, cyl_length / 2.0],
+        )
+
+        env.simulator.import_object(self.target_obj)
+
+        # The visual object indicating the target location may be visible
+        for instance in self.target_obj.renderer_instances:
+            instance.hidden = False
+

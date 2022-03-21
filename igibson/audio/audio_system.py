@@ -112,6 +112,8 @@ class AudioSystem(object):
 
             self.current_probe_key = self.getClosestReverbProbe(self.get_pos())
             audio.SetRoomPropertiesFromProbe(self.current_probe_key)
+            # Save some memory
+            audio.DeleteMesh()
         else:
             audio.DisableRoomEffects()
 
@@ -300,3 +302,10 @@ class AudioSystem(object):
         spectrogram_cat = np.stack([channel1_magnitude_cat, channel2_magnitude_cat], axis=-1)
 
         return spectrogram, spectrogram_cat
+
+    def disconnect(self):
+        if self.writeToFile != "":
+            deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
+            write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
+        
+        audio.ShutdownSystem()

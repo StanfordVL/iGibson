@@ -300,7 +300,7 @@ class iGibsonEnv(BaseEnv):
 
         :return: a list of collisions from the last physics timestep
         """
-        self.simulator_step(audio=True)
+        self.simulator_step()
         collision_links = [
             collision for bid in self.robots[0].get_body_ids() for collision in p.getContactPoints(bodyA=bid)
         ]
@@ -489,6 +489,8 @@ class iGibsonEnv(BaseEnv):
         """
         Reset episode.
         """
+        if self.audio_system is not None:
+            self.audio_system.reset()
         self.randomize_domain()
         # Move robot away from the scene.
         self.robots[0].set_position([100.0, 100.0, 100.0])

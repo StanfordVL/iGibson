@@ -64,6 +64,7 @@ class BaseEnv(gym.Env):
         self.object_randomization_freq = self.config.get("object_randomization_freq", None)
         self.object_randomization_idx = 0
         self.num_object_randomization_idx = 10
+        self.audio_system = None
 
         default_enable_shadows = False  # What to do if it is not specified in the config file
         enable_shadow = self.config.get("enable_shadow", default_enable_shadows)
@@ -238,12 +239,16 @@ class BaseEnv(gym.Env):
         self.robots = scene.robots
 
         if self.config['scene'] == 'gibson':
-            acousticMesh = getMatterportAcousticMesh(self.simulator, 
-                            "/cvgl/group/Gibson/matterport3d-downsized/v2/"+self.config['scene_id']+"/sem_map.png")
+            sem_map_path = self.config.get('scene_sem_map_dir', "")
+            if not sem_map_path:
+                raise ValueError("Config must specify a valid scene_sem_map_dir as a path that contains {scene_id}/sem_map.png")
+            acousticMesh = getMatterportAcousticMesh(self.simulator, sem_map_path + self.config['scene_id']+"/sem_map.png")
         elif self.config['scene'] == 'igibson':
             acousticMesh = getIgAcousticMesh(self.simulator)
         else:
             raise ValueError("Audio-enabled Envs only compatible with Gibson and iGibson scenes")
+        if self.audio_system is not None:
+            self.audio_system.disconnect()
         self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
                                         is_Viewer=False, writeToFile=self.config.get('audio_write', ""), SR = 44100,
                                         occl_multiplier=self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER))
@@ -255,19 +260,22 @@ class BaseEnv(gym.Env):
         if self.simulator is not None:
             self.simulator.disconnect()
 
+        if self.audio_system is not None:
+            self.audio_system.disconnect()
+
     def close(self):
         """
         Synonymous function with clean.
         """
         self.clean()
 
-    def simulator_step(self, audio=False):
+    def simulator_step(self):
         """
         Step the simulation.
         This is different from environment step that returns the next
         observation, reward, done, info.
         """
-        self.simulator.step(audio)
+        self.simulator.step()
 
     def step(self, action):
         """

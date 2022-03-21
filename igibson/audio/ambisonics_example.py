@@ -324,8 +324,6 @@ def mp3d_example():
     audioSystem.setSourceRepeat(obj_id)
     audioSystem.setSourceNearFieldEffectGain(obj_id, 1.1)
 
-    s.attachAudioSystem(audioSystem)
-
     # Runs for 30 seconds, then saves output audio to file. 
     numberOfSteps = 3
     audio_window = np.zeros((16, 1470 * numberOfSteps))
@@ -340,6 +338,7 @@ def mp3d_example():
             state = not state
             audioSystem.setSourceEnabled(obj_id, state)
         s.step()
+        audioSystem.step()
         audio_window[:,(i % numberOfSteps) * 1470:((i % numberOfSteps)+1) * 1470] = np.asarray(audioSystem.ambisonic_output)
         if i % numberOfSteps == 0:
             ambiSpherical = SphericalAmbisonicsVisualizer(audio_window.transpose(), DEFAULT_RATE, window=numberOfSteps/30,
