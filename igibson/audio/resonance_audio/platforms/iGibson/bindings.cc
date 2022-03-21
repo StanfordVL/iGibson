@@ -188,6 +188,15 @@ namespace igibson {
         resonance_audio->api->EnableRoomEffects(false);
     }
 
+    void ShutdownSystem() {
+        DeleteSceneManager();
+        Shutdown();
+    }
+
+    void DeleteMesh() {
+        DeleteSceneManager();
+    }
+
 
     void LoadMesh(int num_vertices, int num_triangles,
         py::array_t<float> vertices, py::array_t<int> triangles,
@@ -355,6 +364,12 @@ namespace igibson {
                 py::scoped_estream_redirect>());
 
         m.def("LoadMesh", &LoadMesh, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+
+        m.def("ShutdownSystem", &ShutdownSystem, py::call_guard<py::scoped_ostream_redirect,
+                py::scoped_estream_redirect>());
+
+        m.def("DeleteMesh", &DeleteMesh, py::call_guard<py::scoped_ostream_redirect,
                 py::scoped_estream_redirect>());
 
         m.def("RegisterReverbProbe", &RegisterReverbProbe, py::call_guard<py::scoped_ostream_redirect,

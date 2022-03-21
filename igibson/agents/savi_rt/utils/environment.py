@@ -592,7 +592,6 @@ class AVNavRLEnv(iGibsonEnv):
                                              +"/val/"+self.cat+".wav", enabled=True) 
 #             self.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'], enabled=True)
 #             self.audio_system.setSourceRepeat(self.audio_obj_id)
-            self.simulator.attachAudioSystem(self.audio_system)
             self.audio_channel1 = np.zeros(self.audio_len*self.time_len)
             self.audio_channel2 = np.zeros(self.audio_len*self.time_len)
             self.audio_system.step()
@@ -622,7 +621,7 @@ class AVNavRLEnv(iGibsonEnv):
 
         body_id = obj.robot_ids[0] if is_robot else obj.body_id
         
-        self.simulator.step(audio=False)
+        self.simulator.step()
         collisions = list(p.getContactPoints(bodyA=body_id))
 
         if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
@@ -657,7 +656,7 @@ class AVNavRLEnv(iGibsonEnv):
         # land for maximum 1 second, should fall down ~5 meters
         max_simulator_step = int(1.0 / self.action_timestep)
         for _ in range(max_simulator_step):
-            self.simulator.step(audio=False)
+            self.simulator.step()
             if len(p.getContactPoints(bodyA=body_id)) > 0:
                 land_success = True
                 break

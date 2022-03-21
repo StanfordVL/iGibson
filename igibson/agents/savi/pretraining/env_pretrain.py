@@ -84,7 +84,6 @@ class AVNavRLEnv(iGibsonEnv):
                                            +split+"/"+sound_file, 
                                          enabled=True)
 #         self.audio_system.setSourceRepeat(self.audio_obj_id)
-        self.simulator.attachAudioSystem(self.audio_system)
 
         self.audio_system.step()
         self.simulator.sync(force_sync=True)

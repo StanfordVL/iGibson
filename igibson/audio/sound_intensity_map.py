@@ -122,7 +122,6 @@ def main():
         
         fake_viewer = FakeViewer()
         audioSystem = AudioSystem(s, fake_viewer, acousticMesh, is_Viewer=True, renderReverbReflections=False, renderAmbisonics=True)
-        s.attachAudioSystem(audioSystem)
 
         #s.step()
         
@@ -135,6 +134,7 @@ def main():
         # Ensure source continuously repeats
         audioSystem.setSourceRepeat(obj_id)
         s.step()
+        audioSystem.step()
 
         renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 1, 0])
         # cache original P and recover for robot cameras
@@ -160,6 +160,7 @@ def main():
             fake_viewer.py = world_point[1]
             fake_viewer.pz = world_point[2]
             s.step()
+            audioSystem.step()
             stft = compute_stft(np.array(audioSystem.ambisonic_output[0]), audioSystem.SR)
             if idx == 0:
                 plot_spectrogram(stft)

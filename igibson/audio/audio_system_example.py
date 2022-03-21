@@ -35,10 +35,6 @@ def ig_example():
     audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_Viewer=True, writeToFile="example")
     # Attach wav file to imported cube obj
     audioSystem.registerSource(obj_id, "440Hz_44100Hz.wav", enabled=True)
-    # Ensure source continuously repeats
-    audioSystem.setSourceRepeat(obj_id)
-
-    s.attachAudioSystem(audioSystem)
 
     # Visualize reverb probes!
     for i in range(len(scene.floor_heights)):
@@ -57,6 +53,7 @@ def ig_example():
     # Runs for 30 seconds, then saves output audio to file. 
     for i in range(1000):
         s.step()
+        audioSystem.step()
     audioSystem.disconnect()
     s.disconnect()
     
@@ -77,8 +74,6 @@ def mp3d_example():
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id)
 
-    s.attachAudioSystem(audioSystem)
-
     # Visualize reverb probes!
     for i in range(len(scene.floor_heights)):
         for probe_pos in audioSystem.probe_key_to_pos_by_floor[i].values():
@@ -96,6 +91,8 @@ def mp3d_example():
     # Runs for 30 seconds, then saves output audio to file. 
     for i in range(4000):
         s.step()
+        audioSystem.step()
+
     audioSystem.disconnect()
     s.disconnect()
     

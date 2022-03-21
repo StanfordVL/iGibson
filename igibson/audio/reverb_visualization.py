@@ -75,9 +75,9 @@ def renderAndPlot(scene_id, pos, name, reverb_gain, mat_override=None):
     # Ensure source continuously repeats
     audioSystem.setSourceRepeat(obj_id, False)
 
-    s.attachAudioSystem(audioSystem)
     for i in range(int(10.5 / 0.03)):
         s.step()
+        audioSystem.step()
     rendered_audio = audioSystem.complete_output[::2]
     plotSpectrogram(rendered_audio, name)
     audioSystem.disconnect()

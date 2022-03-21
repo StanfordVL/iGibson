@@ -37,29 +37,13 @@ function show_help()
 *** Resonance Audio compilation script ***
 
 Please select a build target:
-
-  -t= | --target=[RESONANCE_AUDIO_API|         # Resonance Audio API C/C++ library
-                  RESONANCE_AUDIO_TESTS|       # Resonance Audio unit tests
-                  GEOMETRICAL_ACOUSTICS_TESTS| # Geometrical Acoustics unit tests
-                  UNITY_PLUGIN|                # Resonance Audio Unity plugin
-                  WWISE_AUTHORING_PLUGIN|      # Resonance Audio Wwise authoring plugin
-                  WWISE_SOUND_ENGINE_PLUGIN|   # Resonance Audio Wwise sound engine plugin
-                  FMOD_PLUGIN|                 # Resonance Audio FMOD plugin
-                  VST_MONITOR_PLUGIN]          # Resonance Audio VST monitor plugin
-
   -p= | --profile=[Debug|Release], default: Release
-
-  --verbose_make             # Enables verbose make/build output.
-  --android_toolchain        # Use Android NDK toolchain (may need adjustments to ANDROID_NDK,
-                             # ANDROID_NATIVE_API_LEVEL, ANDROID_ABI script variables).
-  --ios_os_toolchain         # Use iOS ARM toolchain.
-  --ios_simulator_toolchain  # Use iOS X86 simulator toolchain.
   --msvc_dynamic_runtime     # Enables dynamic runtime environment linking in MSVC builds.
 EOF
 exit
 }
 
-BUILD_TARGET=""
+BUILD_TARGET="IGIBSON_PLUGIN"
 
 for i in "$@"
 do
@@ -72,31 +56,6 @@ do
     -t=*|--target=*)
       BUILD_TARGET="${i#*=}"
       shift # past argument=value
-      ;;
-
-    --verbose_make)
-      CONFIG_FLAGS+=(-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON)
-      shift # past argument with no value
-      ;;
-
-    --android_toolchain)
-      CONFIG_FLAGS+=(-DCMAKE_TOOLCHAIN_FILE=./third_party/android-cmake/android.toolchain.cmake)
-      CONFIG_FLAGS+=(-DANDROID_NDK="${ANDROID_NDK}")
-      CONFIG_FLAGS+=(-DANDROID_NATIVE_API_LEVEL="${ANDROID_NATIVE_API_LEVEL}")
-      CONFIG_FLAGS+=(-DANDROID_ABI="${ANDROID_ABI}")
-      shift # past argument with no value
-      ;;
-
-    --ios_os_toolchain)
-      CONFIG_FLAGS+=(-DCMAKE_TOOLCHAIN_FILE=./third_party/ios-cmake/ios.toolchain.cmake)
-      CONFIG_FLAGS+=(-DIOS_PLATFORM=OS)
-      shift # past argument with no value
-      ;;
-
-    --ios_simulator_toolchain)
-      CONFIG_FLAGS+=(-DCMAKE_TOOLCHAIN_FILE=./third_party/ios-cmake/ios.toolchain.cmake)
-      CONFIG_FLAGS+=(-DIOS_PLATFORM=SIMULATOR64)
-      shift # past argument with no value
       ;;
 
     --msvc_dynamic_runtime)

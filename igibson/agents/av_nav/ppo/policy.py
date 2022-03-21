@@ -161,7 +161,6 @@ class AudioNavBaselineNet(Net):
             self._audiogoal = True
             audiogoal_sensor = "audio"
             self.audio_encoder = AudioCNN(observation_space, hidden_size, audiogoal_sensor)
-            
         self.visual_encoder = VisualCNN(observation_space, hidden_size, extra_rgb)
         
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
