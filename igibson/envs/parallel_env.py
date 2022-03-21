@@ -53,6 +53,27 @@ class ParallelNavEnv(iGibsonEnv):
     def batch_size(self):
         return self._num_envs
 
+    @property
+    def padded_gt_rt(self):
+        batch_gt_rt = list()
+        for env in self._envs:
+            maps_path = "/viscam/u/wangzz/iGibson/gibson2/data/ig_dataset/scenes/"  \
+                        + env.config['scene_id'] + "/layout/"
+            floor = 0
+            gt_rt = np.flip(np.array(Image.open(os.path.join(maps_path, "floor_semseg_{}.png".format(floor)))), axis=1)
+            gt_rt = cv2.resize(gt_rt, (100, 100))
+            padded_gt_rt = np.zeros((int(100*1.4), int(100*1.4)), dtype=float)
+            padded_gt_rt[int(int(100*1.4)/2-100/2):int(int(100*1.4)/2+100/2), 
+                       int(int(100*1.4)/2-100/2):int(int(100*1.4)/2+100/2)] = gt_rt
+            rotated_gt_rt = scipy.ndimage.rotate(padded_gt_rt, -90+env.initial_rpy[2]*180.0/3.141593, 
+                                 axes=(1, 0), reshape=False) # (64, 140, 140)
+            rotated_gt_rt = scipy.ndimage.shift(rotated_gt_rt, 
+                                                [-env.initial_pos[1]/(100/1000), 
+                                                 env.initial_pos[0]/(100/1000)]) # down, right
+            padded_gt_rt = cv2.resize(padded_gt_rt, (28, 28))
+            batch_gt_rt += [padded_gt_rt]
+        return batch_gt_rt
+    
     def reset(self):
         """Reset all environments and combine the resulting observation.
 

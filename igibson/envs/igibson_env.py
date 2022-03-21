@@ -27,6 +27,7 @@ from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
+from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP
 
 log = logging.getLogger(__name__)
 
@@ -73,6 +74,10 @@ class iGibsonEnv(BaseEnv):
             use_pb_gui=use_pb_gui,
         )
         self.automatic_reset = automatic_reset
+        self.cat = None # audio category
+        self.initial_pos = None
+        self.initial_rpy = None
+        self._episode_time = 0.0
 
     def load_task_setup(self):
         """
@@ -232,6 +237,19 @@ class iGibsonEnv(BaseEnv):
                 shape=spectrogram.shape, low=-np.inf, high=np.inf)
             observation_space['audio_concat'] = self.build_obs_space(
                 shape=spectrogram_cat.shape, low=-np.inf, high=np.inf)
+        if 'category_belief' in self.output:
+            observation_space['category_belief'] = self.build_obs_space(
+                shape=(len(CATEGORIES),), low=0.0, high=1.0)
+        if 'location_belief' in self.output:
+            observation_space['location_belief'] = self.build_obs_space(
+                shape=(2,), low=0.0, high=1.0)
+        if 'pose_sensor' in self.output:
+            observation_space['pose_sensor'] = self.build_obs_space(
+                shape=(7,), low=-np.inf, high=np.inf)
+        if 'category' in self.output:
+            observation_space['category'] = self.build_obs_space(
+                shape=(len(CATEGORIES),), low=0.0, high=1.0)
+            
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -291,6 +309,31 @@ class iGibsonEnv(BaseEnv):
 
         if 'audio' in self.output:
             state['audio'], state['audio_concat'] = self.audio_system.get_spectrogram()
+            
+        if 'pose_sensor' in self.output:
+            # TODO: pose sensor in the episode frame
+            pos = np.array(self.robots[0].get_position()) #[x,y,z]
+            rpy = np.array(self.robots[0].get_rpy()) #(3,)
+            
+            pos_eframe = rotate_vector_3d(pos - self.initial_pos, 0, 0, self.initial_rpy[2])
+            rpy_eframe = rpy - self.initial_rpy
+            
+            state['pose_sensor'] = np.array(
+                [*pos_eframe, *rpy_eframe, self._episode_time],
+                dtype=np.float32)
+            self._episode_time += 1.0
+        
+        if 'category' in self.output:
+            index = CATEGORY_MAP[self.cat]
+            onehot = np.zeros(len(CATEGORIES))
+            onehot[index] = 1
+            state['category'] = onehot
+        
+        # categoty_belief and location_belief are updated in _collect_rollout_step
+        if "category_belief" in self.output:
+            state["category_belief"] = np.zeros(len(CATEGORIES))
+        if "location_belief" in self.output:
+            state["location_belief"] = np.zeros(2)
 
         return state
 
@@ -497,6 +540,8 @@ class iGibsonEnv(BaseEnv):
         self.task.reset(self)
         self.simulator.sync(force_sync=True)
         state = self.get_state()
+        self.initial_rpy = np.array(self.robots[0].get_rpy())
+        self.initial_pos = np.array(self.robots[0].get_position())
         self.reset_variables()
 
         return state
