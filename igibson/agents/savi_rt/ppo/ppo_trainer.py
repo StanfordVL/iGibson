@@ -23,18 +23,19 @@ from tqdm import tqdm
 from numpy.linalg import norm
 
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.agents.savi_rt.utils.parallel_env import ParallelNavEnv
+from igibson.envs.parallel_env import ParallelNavEnv
 from igibson.agents.savi_rt.models.belief_predictor import BeliefPredictor, BeliefPredictorDDP
 from igibson.agents.savi_rt.ppo.base_trainer import BaseRLTrainer
 from igibson.agents.savi_rt.ppo.policy import AudioNavSMTPolicy #AudioNavBaselinePolicy
 from igibson.agents.savi_rt.ppo.ddppo import DDPPO # DDPPO
-from igibson.agents.savi_rt.utils import dataset
+from igibson.agents.savi_rt.utils.dataset import dataset
 from igibson.agents.savi_rt.utils.environment import AVNavRLEnv
 from igibson.agents.savi_rt.utils.rollout_storage import RolloutStorage
 from igibson.agents.savi_rt.utils.logs import logger
 from igibson.agents.savi_rt.utils.tensorboard_utils import TensorboardWriter
 from igibson.agents.savi_rt.utils.utils import (batch_obs, linear_decay, observations_to_image, 
                                                 images_to_video, generate_video)
+from igibson.agents.savi_rt.utils.utils import to_tensor
 from igibson.agents.savi_rt.ppo.ddp_utils import init_distrib_slurm
 from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy
 
@@ -93,8 +94,6 @@ class PPOTrainer(BaseRLTrainer):
                 use_label_belief=self.config['use_label_belief'],
                 use_location_belief=self.config['use_location_belief'],
                 normalize_category_distribution=self.config['normalize_category_distribution'],
-#                 use_occupancy_map = self.config['use_occupancy_map'],
-#                 use_roomtype_map = self.config['use_roomtype_map']
             )
             if self.config['smt_cfg_freeze_encoders']: # False, True
                 self._static_smt_encoder = True
@@ -107,7 +106,6 @@ class PPOTrainer(BaseRLTrainer):
                 self.belief_predictor = bp_class(self.config, self.device, smt._input_size, smt._pose_indices,
                                                  smt.hidden_state_size, self.envs.batch_size, has_distractor_sound
                                                  ).to(device=self.device)
-                # smt._input_size, smt._pose_indices, smt.hidden_state_size not used
                 if self.config['online_training']:
                     params = list(self.belief_predictor.predictor.parameters())
                     if self.config['train_encoder']: # False
@@ -117,7 +115,7 @@ class PPOTrainer(BaseRLTrainer):
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
                 self.belief_predictor.freeze_encoders()
             
-            #RT2022
+            #RT
             if self.config['use_rt_map']:
 #                 rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
                 rt_class = RTPredictor
@@ -239,7 +237,7 @@ class PPOTrainer(BaseRLTrainer):
         pth_time += time.time() - t_sample_action
 
         t_step_env = time.time()
-        outputs = self.envs.step([a[0].item() for a in actions], train=True)
+        outputs = self.envs.step([a[0].item() for a in actions])
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
         logging.debug('Reward: {}'.format(rewards[0]))
 
@@ -263,7 +261,6 @@ class PPOTrainer(BaseRLTrainer):
         episode_rewards += (1 - masks) * current_episode_reward
         episode_spls += (1 - masks) * spls
         episode_steps += (1 - masks) * current_episode_step
-#         running_episode_stats["path_length"] += (1 - masks) * path_lengths
         current_episode_reward *= masks
         current_episode_step *= masks
         
@@ -283,14 +280,13 @@ class PPOTrainer(BaseRLTrainer):
             self.belief_predictor.update(step_observation, dones)
             for sensor in ['location_belief', 'category_belief']:
                 rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
-        #RT2022
+        #RT
         if self.config['use_rt_map']:
             step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}
                         # step observation: pose sensor, vision_feature      
             global_map_pred = self.rt_predictor.update(step_observation, dones, visual_features, audio_features) # (9, 784, 23) 
-#             print("self.envs.padded_gt_rt", self.envs.padded_gt_rt.shape) #(9, 28, 28)
             global_map_gt = to_tensor(self.envs.padded_gt_rt).view(self.envs.batch_size, -1).to(self.device) #(9, 784)
-            rt_loss = self.rt_loss_fn(global_map_pred.view(-1, 23), self.envs.padded_gt_rt.view(-1)) / self.envs.batch_size
+            rt_loss = self.rt_loss_fn(global_map_pred.view(-1, self.rt_predictor.rooms), global_map_gt.view(-1)) / self.envs.batch_size
             self.rt_optimizer.zero_grad()
             rt_loss.backward()
             self.rt_optimizer.step() 
@@ -447,13 +443,16 @@ class PPOTrainer(BaseRLTrainer):
         else:
             self.device = torch.device("cpu")
         
-        dataset.initialize(self.config['NUM_PROCESSES'])
-        scene_splits = dataset.getValue()
+        
+        data = dataset(self.config['scene'])
+        self.scene_splits = data.split(self.config['NUM_PROCESSES'])
         
         scene_ids = []
         for i in range(self.config['NUM_PROCESSES']):
-            idx = np.random.randint(len(scene_splits[i]))
-            scene_ids.append(scene_splits[i][idx])
+            idx = np.random.randint(len(self.scene_splits[i]))
+            scene_ids.append(self.scene_splits[i][idx])
+        
+#         scene_ids = data.SCENE_SPLITS["train"]
         
         def load_env(scene_id):
             return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
@@ -504,7 +503,7 @@ class PPOTrainer(BaseRLTrainer):
 
         if self.config['use_belief_predictor']:
             self.belief_predictor.update(batch, None)
-        #RT2022
+        #RT
 #         if self.config['use_rt_map']:
 #             self.rt_predictor.update(batch, None)
         
@@ -699,100 +698,31 @@ class PPOTrainer(BaseRLTrainer):
             
         # Map location CPU is almost always better than mapping to a CUDA device.
         ckpt_dict = self.load_checkpoint(checkpoint_path, map_location="cpu")
-
-#         if self.config.EVAL.USE_CKPT_CONFIG:
-#             config = self._setup_eval_config(ckpt_dict["config"])
-#         else:
-#             config = self.config.clone()
-
-#         ppo_cfg = config.RL.PPO
-
-#         config.defrost()
-#         config.TASK_CONFIG.DATASET.SPLIT = config.EVAL.SPLIT
-#         if self.config.DISPLAY_RESOLUTION != config.TASK_CONFIG.SIMULATOR.DEPTH_SENSOR.WIDTH:
-#             model_resolution = config.TASK_CONFIG.SIMULATOR.DEPTH_SENSOR.WIDTH
-#             config.TASK_CONFIG.SIMULATOR.DEPTH_SENSOR.WIDTH = config.TASK_CONFIG.SIMULATOR.RGB_SENSOR.HEIGHT = \
-#                 config.TASK_CONFIG.SIMULATOR.RGB_SENSOR.WIDTH = config.TASK_CONFIG.SIMULATOR.DEPTH_SENSOR.HEIGHT = \
-#                 self.config.DISPLAY_RESOLUTION
-#         else:
-#             model_resolution = self.config.DISPLAY_RESOLUTION
-#         config.freeze()
-        
-        
-#         scene_splits = [[] for _ in range(self.config['EVAL_NUM_PROCESSES'])]
-#         for idx, scene in enumerate(SCENE_SPLITS['val']):
-#             scene_splits[idx % len(scene_splits)].append(scene)
-#         assert sum(map(len, scene_splits)) == len(SCENE_SPLITS['val'])
-        
-        val_data = dataset.getValValue()
+        data = dataset(self.config['scene'])
+        val_data = data.SCENE_SPLITS['val']
         idx = np.random.randint(len(val_data))
         scene_ids = [val_data[idx]]
-#         for i in range(self.config['EVAL_NUM_PROCESSES']):
-#             idx = np.random.randint(len(scene_splits[i]))
-#             scene_ids.append(scene_splits[i][idx])
         
         def load_env(scene_id):
             return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_ids])
-        
-#         self.envs = construct_envs(
-#             config, get_env_class(config.ENV_NAME)
-#         )
-
-#         if len(self.config.VIDEO_OPTION) > 0:
-#             config.defrost()
-#             config.TASK_CONFIG.TASK.MEASUREMENTS.append("TOP_DOWN_MAP")
-#             config.TASK_CONFIG.TASK.MEASUREMENTS.append("COLLISIONS")
-#             config.freeze()
-#         elif "top_down_map" in self.config.VISUALIZATION_OPTION:
-#             config.defrost()
-#             config.TASK_CONFIG.TASK.MEASUREMENTS.append("TOP_DOWN_MAP")
-#             config.freeze()
-
-        
-#         if self.config.DISPLAY_RESOLUTION != model_resolution:
-#             observation_space = self.envs.observation_spaces[0]
-#             observation_space.spaces['depth'].shape = (model_resolution, model_resolution, 1)
-#             observation_space.spaces['rgb'].shape = (model_resolution, model_resolution, 1)
-#         else:
-#             observation_space = self.envs.observation_spaces[0]
-            
+       
         observation_space = self.envs.observation_space
         self._setup_actor_critic_agent(observation_space)
 
         self.agent.load_state_dict(ckpt_dict["state_dict"])
         self.actor_critic = self.agent.actor_critic
 
-#         self.metric_uuids = []
-#         # get name of performance metric, e.g. "spl"
-#         for metric_name in self.config.TASK_CONFIG.TASK.MEASUREMENTS:
-#             metric_cfg = getattr(self.config.TASK_CONFIG.TASK, metric_name)
-#             measure_type = baseline_registry.get_measure(metric_cfg.TYPE)
-#             assert measure_type is not None, "invalid measurement type {}".format(
-#                 metric_cfg.TYPE
-#             )
-#             self.metric_uuids.append(measure_type(sim=None, task=None, config=None)._get_uuid())
-
         observations = self.envs.reset()
-#         if self.config.DISPLAY_RESOLUTION != model_resolution:
-#             resize_observation(observations, model_resolution)
+
         batch = batch_obs(observations, self.device)
 
-#         current_episode_reward = torch.zeros(
-#             self.envs.num_envs, 1, device=self.device
-#         )
         current_episode_reward = torch.zeros(
             self.envs.batch_size, 1, device=self.device
         )
 
-#         test_recurrent_hidden_states = torch.zeros(
-#             self.actor_critic.net.num_recurrent_layers,
-#             self.config.NUM_PROCESSES,
-#             ppo_cfg.hidden_size,
-#             device=self.device,
-#         )
         test_recurrent_hidden_states = torch.zeros(
             self.actor_critic.net.num_recurrent_layers,
             self.config['EVAL_NUM_PROCESS'],
@@ -809,7 +739,7 @@ class PPOTrainer(BaseRLTrainer):
 
         rgb_frames = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
-        ]  # type: List[List[np.ndarray]]
+        ]
         audios = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]
@@ -821,7 +751,6 @@ class PPOTrainer(BaseRLTrainer):
             len(stats_episodes) < self.config['TEST_EPISODE_COUNT']
             and self.envs.batch_size > 0
         ):
-
             with torch.no_grad():
                 _, actions, _, test_recurrent_hidden_states = self.actor_critic.act(
                     batch,
@@ -833,18 +762,13 @@ class PPOTrainer(BaseRLTrainer):
 
                 prev_actions.copy_(actions)
 
-            outputs = self.envs.step([a[0].item() for a in actions], train=False)
+            outputs = self.envs.step([a[0].item() for a in actions])
 
             observations, rewards, dones, infos = [
                 list(x) for x in zip(*outputs)
             ]
             for i in range(self.envs.batch_size):
                 if len(self.config['VIDEO_OPTION']) > 0:
-#                     if self.config['CONTINUOUS_VIEW_CHANGE'] and 'intermediate' in observations[i]:
-#                         for observation in observations[i]['intermediate']:
-#                             frame = observations_to_image(observation, infos[i])
-#                             rgb_frames[i].append(frame)
-#                         del observations[i]['intermediate']
 
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
@@ -868,20 +792,12 @@ class PPOTrainer(BaseRLTrainer):
                 rewards, dtype=torch.float, device=self.device
             ).unsqueeze(1)
             current_episode_reward += rewards
-
             for i in range(self.envs.batch_size):
-                # pause envs which runs out of episodes
-#                 if (
-#                     next_episodes[i].scene_id,
-#                     next_episodes[i].episode_id,
-#                 ) in stats_episodes:
-#                     envs_to_pause.append(i)
-
                 # episode ended
                 if not_done_masks[i].item() == 0:
                     episode_stats = dict()
 #                     for metric_uuid in self.metric_uuids:
-                    episode_stats['spl'] = infos[i]['spl'] ########################################################
+                    episode_stats['spl'] = infos[i]['spl']
                     episode_stats["reward"] = current_episode_reward[i].item()
 #                     episode_stats['geodesic_distance'] = current_episodes[i].info['geodesic_distance']
 #                     episode_stats['euclidean_distance'] = norm(np.array(current_episodes[i].goals[0].position) -
@@ -923,37 +839,10 @@ class PPOTrainer(BaseRLTrainer):
                         rgb_frames[i] = []
                         audios[i] = []
 
-#                     if "top_down_map" in self.config.VISUALIZATION_OPTION:
-#                         top_down_map = plot_top_down_map(infos[i],
-#                                                          dataset=self.config.TASK_CONFIG.SIMULATOR.SCENE_DATASET)
-#                         scene = current_episodes[i].scene_id.split('/')[3]
-#                         writer.add_image('{}_{}_{}/{}'.format(config.EVAL.SPLIT, scene, current_episodes[i].episode_id,
-#                                                               config.BASE_TASK_CONFIG_PATH.split('/')[-1][:-5]),
-#                                          top_down_map,
-#                                          dataformats='WHC')
    
                     
             count += 1
-                    
 
-#             (
-#                 self.envs,
-#                 test_recurrent_hidden_states,
-#                 not_done_masks,
-#                 current_episode_reward,
-#                 prev_actions,
-#                 batch,
-#                 rgb_frames,
-#             ) = self._pause_envs(
-#                 envs_to_pause,
-#                 self.envs,
-#                 test_recurrent_hidden_states,
-#                 not_done_masks,
-#                 current_episode_reward,
-#                 prev_actions,
-#                 batch,
-#                 rgb_frames,
-#             )
 
         aggregated_stats = dict()
         for stat_key in next(iter(stats_episodes.values())).keys():
@@ -970,23 +859,13 @@ class PPOTrainer(BaseRLTrainer):
         episode_reward_mean = aggregated_stats["reward"] / num_episodes
         episode_metrics_mean = {}
         episode_metrics_mean['spl'] = aggregated_stats['spl'] / num_episodes
-#         for metric_uuid in self.metric_uuids:
-#             episode_metrics_mean[metric_uuid] = aggregated_stats[metric_uuid] / num_episodes
 
         logger.info(f"Average episode reward: {episode_reward_mean:.6f}")
-#         for metric_uuid in self.metric_uuids:
-#             logger.info(
-#                 f"Average episode {metric_uuid}: {episode_metrics_mean[metric_uuid]:.6f}"
-#             )
+
         logger.info(
                 f"Average episode {'spl'}: {episode_metrics_mean['spl']:.6f}"
             )
 
-#         if not config.EVAL.SPLIT.startswith('test'):
-#             writer.add_scalar("{}/reward".format(config.EVAL.SPLIT), episode_reward_mean, checkpoint_index)
-#             for metric_uuid in self.metric_uuids:
-#                 writer.add_scalar(f"{config.EVAL.SPLIT}/{metric_uuid}", episode_metrics_mean[metric_uuid],
-#                                   checkpoint_index)
         writer.add_scalar("{}/reward".format('val'), episode_reward_mean, checkpoint_index)
         writer.add_scalar(f"{'val'}/{'spl'}", episode_metrics_mean['spl'],
                                   checkpoint_index)
@@ -997,7 +876,6 @@ class PPOTrainer(BaseRLTrainer):
             'episode_reward_mean': episode_reward_mean
         }
         result['episode_{}_mean'.format('spl')] = episode_metrics_mean['spl']
-#         for metric_uuid in self.metric_uuids:
-#             result['episode_{}_mean'.format(metric_uuid)] = episode_metrics_mean[metric_uuid]
 
         return result
+

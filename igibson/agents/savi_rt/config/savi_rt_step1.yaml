@@ -105,14 +105,25 @@ goal_format: "cartesian"
 task_obs_dim: 4
 
 # robot
-robot: AVNavTurtlebot
-is_discrete: true
-velocity: 2.0
+robot:
+    name: Turtlebot
+    action_type: discrete
+    action_normalize: true
+    base_name: null
+    scale: 1.0
+    self_collision: false
+    rendering_params: null
+    controller_config:
+        base:
+            name: JointController
+            motor_type: velocity
+            command_input_limits: default
+            command_output_limits: default
+            use_delta_commands: false
 
 # sensor spec
 output: [depth, rgb, audio, category_belief, location_belief, pose_sensor, task_obs, category]
 extra_rgb: false
-audio_write: ""
 
 # image
 fisheye: false

@@ -69,7 +69,7 @@ class Policy(nn.Module):
         return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, visual_features, audio_features
 
     def get_value(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        features, _, _ = self.net(
+        features, _, _, _, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         return self.critic(features)
@@ -77,7 +77,7 @@ class Policy(nn.Module):
     def evaluate_actions(
         self, observations, rnn_hidden_states, prev_actions, masks, action, ext_memory, ext_memory_masks
     ):
-        features, rnn_hidden_states, ext_memory_feats = self.net(
+        features, rnn_hidden_states, ext_memory_feats, _, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
