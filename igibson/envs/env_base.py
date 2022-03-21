@@ -276,6 +276,7 @@ class BaseEnv(gym.Env):
         observation, reward, done, info.
         """
         self.simulator.step()
+        self.audio_system.step()
 
     def step(self, action):
         """
