@@ -49,7 +49,7 @@ def parse_args(defaults=False):
     args_dict["in_demo_file"] = os.path.join(
         igibson.ig_dataset_path,
         "tests",
-        "cleaning_windows_0_Rs_int_2021-05-23_23-11-46.hdf5",
+        "cleaning_windows_example.hdf5",
     )
     args_dict["config_file"] = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
 
