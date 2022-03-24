@@ -73,10 +73,8 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         for floor in range(len(self.floor_heights)):
             if self.trav_map_type == "with_obj":
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_{}.png".format(floor))))
-                obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_{}.png".format(floor))))
             else:
                 trav_map = np.array(Image.open(os.path.join(maps_path, "floor_trav_no_obj_{}.png".format(floor))))
-                obstacle_map = np.array(Image.open(os.path.join(maps_path, "floor_no_obj_{}.png".format(floor))))
 
             # If we do not initialize the original size of the traversability map, we obtain it from the image
             # Then, we compute the final map size as the factor of scaling (default_resolution/resolution) times the
@@ -88,10 +86,6 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
                 self.trav_map_size = int(
                     self.trav_map_original_size * self.trav_map_default_resolution / self.trav_map_resolution
                 )
-
-            # Here it looks like we do not "care" about the traversability map: wherever the obstacle map is 0, we set
-            # the traversability map also to 0
-            trav_map[obstacle_map == 0] = 0
 
             # We resize the traversability map to the new size computed before
             trav_map = cv2.resize(trav_map, (self.trav_map_size, self.trav_map_size))
@@ -119,36 +113,22 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param floor: floor number
         :param trav_map: traversability map
         """
-        graph_file = os.path.join(
-            maps_path, "floor_trav_{}_py{}{}.p".format(floor, sys.version_info.major, sys.version_info.minor)
-        )
-        if os.path.isfile(graph_file):
-            log.debug("Loading traversable graph")
-            with open(graph_file, "rb") as pfile:
-                g = pickle.load(pfile)
-        else:
-            log.debug("Building traversable graph")
-            g = nx.Graph()
-            for i in range(self.trav_map_size):
-                for j in range(self.trav_map_size):
-                    if trav_map[i, j] == 0:
-                        continue
-                    g.add_node((i, j))
-                    # 8-connected graph
-                    neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
-                    for n in neighbors:
-                        if (
-                            0 <= n[0] < self.trav_map_size
-                            and 0 <= n[1] < self.trav_map_size
-                            and trav_map[n[0], n[1]] > 0
-                        ):
-                            g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
+        log.debug("Building traversable graph")
+        g = nx.Graph()
+        for i in range(self.trav_map_size):
+            for j in range(self.trav_map_size):
+                if trav_map[i, j] == 0:
+                    continue
+                g.add_node((i, j))
+                # 8-connected graph
+                neighbors = [(i - 1, j - 1), (i, j - 1), (i + 1, j - 1), (i - 1, j)]
+                for n in neighbors:
+                    if 0 <= n[0] < self.trav_map_size and 0 <= n[1] < self.trav_map_size and trav_map[n[0], n[1]] > 0:
+                        g.add_edge(n, (i, j), weight=l2_distance(n, (i, j)))
 
-            # only take the largest connected component
-            largest_cc = max(nx.connected_components(g), key=len)
-            g = g.subgraph(largest_cc).copy()
-            with open(graph_file, "wb") as pfile:
-                pickle.dump(g, pfile)
+        # only take the largest connected component
+        largest_cc = max(nx.connected_components(g), key=len)
+        g = g.subgraph(largest_cc).copy()
 
         self.floor_graph.append(g)
 
