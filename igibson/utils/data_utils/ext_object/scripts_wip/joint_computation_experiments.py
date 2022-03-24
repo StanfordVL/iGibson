@@ -16,12 +16,14 @@ import trimesh
 from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
-root_folder = "toilet_scene"
-processed_folder = "/cvgl2/u/chengshu/gibsonv2/igibson/data/ig_dataset/objects"
+import igibson
+
+root_folder = "pbr"
+processed_folder = os.path.join(igibson.ig_dataset_path, "objects")
 
 # TODO: change scene_name
-scene_name = "test_scene"
-scene_processed_folder = "/cvgl2/u/chengshu/gibsonv2/igibson/data/ig_dataset/scenes"
+scene_name = "test_" + root_folder
+scene_processed_folder = os.path.join(igibson.ig_dataset_path, "scenes")
 
 
 def build_object_hierarchy():
@@ -144,7 +146,8 @@ def main():
     fix_all_mtl_files()
 
     obj_model_names = {}
-
+    existing_obj_model_names = {}
+    broken_obj_folders = []
     scene_dir = os.path.join(scene_processed_folder, scene_name)
     scene_urdf_dir = os.path.join(scene_dir, "urdf")
     os.makedirs(scene_urdf_dir, exist_ok=True)
@@ -158,19 +161,21 @@ def main():
     for obj_inst in parent_to_children:
         obj_cat, obj_model, obj_inst_id, is_broken, is_loose = obj_inst
 
-        should_save_model = obj_inst_id == "0" and is_broken is None
+        should_save_model = obj_inst_id == "0"
 
         obj_parent_to_children = parent_to_children[obj_inst]
 
         if should_save_model:
-            obj_model_names[(obj_cat, obj_model)] = "".join(
+            obj_model_name = "".join(
                 random.choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(8)
             )
+            obj_model_names[(obj_cat, obj_model)] = obj_model_name
 
         assert (obj_cat, obj_model) in obj_model_names, "missing instance 0 for this model: {}_{}".format(
             obj_cat, obj_model
         )
         obj_model_name = obj_model_names[(obj_cat, obj_model)]
+
         obj_link_name = "-".join([obj_cat, obj_model, obj_inst_id])
         is_building_structure = obj_cat in ["floors", "ceilings", "walls"]
 
@@ -205,6 +210,8 @@ def main():
             tree_root = urdf_tree.getroot()
 
             os.makedirs(processed_obj_inst_folder, exist_ok=True)
+            if is_broken:
+                broken_obj_folders.append(processed_obj_inst_folder)
 
             parent_sets = ["root"]
             parent_centers = {}
@@ -259,10 +266,21 @@ def main():
                         dst_mtl_file = os.path.join(obj_link_visual_mesh_folder, "{}.mtl".format(obj_name))
                         shutil.copy(src_mtl_file, dst_mtl_file)
 
-                        # TODO: bake multi-channel PBR texture
-                        src_texture_file = os.path.join(obj_link_folder, "material_0.png")
-                        dst_texture_file = os.path.join(obj_link_material_folder, "{}.png".format(obj_name))
-                        shutil.copy(src_texture_file, dst_texture_file)
+                        if not is_broken:
+                            # Only non-broken models have texture baking
+                            original_material_folder = os.path.join(obj_dir, "material")
+                            for fname in os.listdir(original_material_folder):
+                                if "VRayRawDiffuseFilterMap" in fname:
+                                    dst_fname = "DIFFUSE"
+                                elif "VRayNormalsMap" in fname:
+                                    dst_fname = "NORMAL"
+                                elif "VRayMtlReflectGlossinessBake" in fname:
+                                    dst_fname = "ROUGHNESS"
+                                else:
+                                    raise ValueError("Unknown texture map: {}".format(fname))
+                                src_texture_file = os.path.join(original_material_folder, fname)
+                                dst_texture_file = os.path.join(obj_link_material_folder, "{}.png".format(dst_fname))
+                                shutil.copy(src_texture_file, dst_texture_file)
 
                         src_obj_file = obj_path
                         visual_shape_file = os.path.join(obj_link_visual_mesh_folder, obj_relative_path)
@@ -296,7 +314,10 @@ def main():
                             for line in f.readlines():
                                 # TODO: bake multi-channel PBR texture
                                 if "map_Kd material_0.png" in line:
-                                    line = "map_Kd ../../material/{}.png\n".format(obj_name)
+                                    line = ""
+                                    line += "map_Kd ../../material/DIFFUSE.png\n"
+                                    line += "map_Pr ../../material/ROUGHNESS.png\n"
+                                    line += "map_bump ../../material/NORMAL.png\n"
                                 new_lines.append(line)
 
                         with open(dst_mtl_file, "w") as f:
@@ -441,6 +462,29 @@ def main():
             base_link_offset = metadata["base_link_offset"]
             bbox_size = metadata["bbox_size"]
 
+        if is_broken:
+            # The original model in the scene is broken, needs to use an existing model as an alternative
+            if should_save_model:
+                existing_model_folder = os.path.join(processed_folder, obj_cat)
+                obj_model_name = random.choice(os.listdir(existing_model_folder))
+                existing_obj_model_names[(obj_cat, obj_model)] = obj_model_name
+
+            assert (obj_cat, obj_model) in obj_model_names, "missing instance 0 for this model: {}_{}".format(
+                obj_cat, obj_model
+            )
+            obj_model_name = existing_obj_model_names[(obj_cat, obj_model)]
+            category = obj_cat
+
+            obj_misc_folder = os.path.join(processed_folder, obj_cat, obj_model_name, "misc")
+            metadata_file = os.path.join(obj_misc_folder, "metadata.json")
+            with open(metadata_file, "r") as f:
+                metadata = json.load(f)
+            model_base_link_offset = metadata["base_link_offset"]
+            model_bbox_size = metadata["bbox_size"]
+
+            # Scale base_link_offset by the ratio of the two bounding boxes
+            base_link_offset = np.array(model_base_link_offset) * (np.array(bbox_size) / np.array(model_bbox_size))
+
         if not is_building_structure:
             # Save the object into scene URDF
             rotated_offset = p.multiplyTransforms(
@@ -484,6 +528,9 @@ def main():
     tree = ET.parse(scene_urdf_file)
     print(scene_urdf_file)
     tree.write(scene_urdf_file, xml_declaration=True)
+
+    for broken_obj_folder in broken_obj_folders:
+        shutil.rmtree(broken_obj_folder)
 
 
 if __name__ == "__main__":
