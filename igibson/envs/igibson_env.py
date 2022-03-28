@@ -232,11 +232,9 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.robots[0].proprioception_dim,), low=-np.inf, high=np.inf
             )
         if 'audio' in self.output:
-            spectrogram, spectrogram_cat = self.audio_system.get_spectrogram()
+            spectrogram = self.audio_system.get_spectrogram()
             observation_space['audio'] = self.build_obs_space(
                 shape=spectrogram.shape, low=-np.inf, high=np.inf)
-            observation_space['audio_concat'] = self.build_obs_space(
-                shape=spectrogram_cat.shape, low=-np.inf, high=np.inf)
         if 'category_belief' in self.output:
             observation_space['category_belief'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
@@ -308,7 +306,7 @@ class iGibsonEnv(BaseEnv):
             state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         if 'audio' in self.output:
-            state['audio'], state['audio_concat'] = self.audio_system.get_spectrogram()
+            state['audio'] = self.audio_system.get_spectrogram()
             
         if 'pose_sensor' in self.output:
             # TODO: pose sensor in the episode frame

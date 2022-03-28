@@ -39,10 +39,10 @@ class AudioSystem(object):
                  SR=config.SAMPLE_RATE,
                  num_probes=config.NUM_REVERB_PROBES,
                  occl_multiplier=config.OCCLUSION_MULTIPLIER,
+                 spectrogram_window_len=config.SPECTROGRAM_WINDOW_LEN,
                  renderAmbisonics=False,
                  renderReverbReflections=True,
                  stream_audio=False,
-                 spectrogram_window_len=0.3,
                  ):
         """
         :param scene: iGibson scene
@@ -277,13 +277,6 @@ class AudioSystem(object):
             win_length = 400
             stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
             return stft
-        
-        def compute_stft_cat(signal):
-            n_fft = 512
-            hop_length = 160
-            win_length = 400
-            stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
-            return stft
 
         if len(self.current_output) == 0:
             current_output = np.zeros(self.framesPerBuf * 2)
@@ -292,16 +285,11 @@ class AudioSystem(object):
         
         self.spec_channel1 = np.append(self.spec_channel1[self.framesPerBuf:], current_output[::2])
         self.spec_channel2 = np.append(self.spec_channel2[self.framesPerBuf:], current_output[1::2])
-        channel1_magnitude_cat = np.log1p(compute_stft_cat(self.spec_channel1))
-        channel2_magnitude_cat = np.log1p(compute_stft_cat(self.spec_channel2))
-        
-        channel1_magnitude = np.log1p(compute_stft(current_output[::2]))
-        channel2_magnitude = np.log1p(compute_stft(current_output[1::2]))
-        
+        channel1_magnitude = np.log1p(compute_stft(self.spec_channel1))
+        channel2_magnitude = np.log1p(compute_stft(self.spec_channel2))
         spectrogram = np.stack([channel1_magnitude, channel2_magnitude], axis=-1)
-        spectrogram_cat = np.stack([channel1_magnitude_cat, channel2_magnitude_cat], axis=-1)
 
-        return spectrogram, spectrogram_cat
+        return spectrogram
 
     def disconnect(self):
         if self.writeToFile != "":
