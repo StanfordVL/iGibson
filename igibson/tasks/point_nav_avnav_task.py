@@ -57,7 +57,7 @@ class PointNavAVNavTask(PointNavRandomTask):
 
     def load_target(self, env):
         """
-        Load target marker
+        Load target marker, hidden by default
         :param env: environment instance
         """
 
@@ -75,5 +75,5 @@ class PointNavAVNavTask(PointNavRandomTask):
 
         # The visual object indicating the target location may be visible
         for instance in self.target_obj.renderer_instances:
-            instance.hidden = False
+            instance.hidden = not self.visible_target
 

@@ -251,7 +251,8 @@ class BaseEnv(gym.Env):
             self.audio_system.disconnect()
         self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
                                         is_Viewer=False, writeToFile=self.config.get('audio_write', ""), SR = 44100,
-                                        occl_multiplier=self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER))
+                                        occl_multiplier=self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER),
+                                        spectrogram_window_len=self.config.get('spectrogram_window_len', default_audio_config.SPECTROGRAM_WINDOW_LEN))
 
     def clean(self):
         """

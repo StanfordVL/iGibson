@@ -3,6 +3,7 @@ SAMPLE_RATE = 44100
 # Determines number of reverb/reflections probes in the scene. Actual number is num_probes ^ 2
 NUM_REVERB_PROBES = 5
 OCCLUSION_MULTIPLIER = 2.0
+SPECTROGRAM_WINDOW_LEN = 1.0
 
 
 # Default Source Configuration - can be overwritten when calling RegisterSource!

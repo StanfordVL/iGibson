@@ -143,7 +143,6 @@ class BeliefPredictor(nn.Module):
         batch_size = observations["audio"].size(0)
         if self.predict_label or self.predict_location:
             spectrograms = observations["audio"].permute(0, 3, 1, 2)
-            spectrograms_cat = observations["audio_concat"].permute(0, 3, 1, 2)
 
         if self.predict_location:
             # predicted pointgoal: X is rightward, Y is backward, heading increases X to Y, agent faces -Y
@@ -185,7 +184,7 @@ class BeliefPredictor(nn.Module):
 
         if self.predict_label:
             with torch.no_grad():
-                labels = self.classifier(spectrograms_cat)[:, :len(CATEGORIES)].cpu().numpy()
+                labels = self.classifier(spectrograms)[:, :len(CATEGORIES)].cpu().numpy()
 
             for i in range(batch_size):
                 label = labels[i]
