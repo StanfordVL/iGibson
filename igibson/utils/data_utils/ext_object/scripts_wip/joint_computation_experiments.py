@@ -18,7 +18,7 @@ from scipy.spatial.transform import Rotation as R
 
 import igibson
 
-root_folder = "pbr"
+root_folder = "office_vendor_machine"
 processed_folder = os.path.join(igibson.ig_dataset_path, "objects")
 
 # TODO: change scene_name
@@ -37,12 +37,11 @@ def build_object_hierarchy():
         obj_folder = os.path.join(root_folder, obj)
         if not os.path.isdir(obj_folder):
             continue
-        pattern = (
-            "^(B-)?(L-)?([A-Za-z_]+)-([0-9]+)-([0-9]+)(?:-([A-Za-z0-9_]+))?(?:-([A-Za-z0-9_]+)-([RP])-(lower|upper))?$"
-        )
+        pattern = "^(B-)?(F-)?(L-)?([A-Za-z_]+)-([0-9]+)-([0-9]+)(?:-([A-Za-z0-9_]+))?(?:-([A-Za-z0-9_]+)-([RP])-(lower|upper))?$"
         groups = re.search(pattern, obj).groups()
         (
             is_broken,
+            is_randomization_fixed,
             is_loose,
             obj_cat,
             obj_model,
@@ -64,11 +63,11 @@ def build_object_hierarchy():
             parent_to_children[obj_inst] = dict()
 
         if parent_link_name is None:
-            parent_to_children[obj_inst]["root"] = set([(obj, link_name, None)])
+            parent_to_children[obj_inst]["root"] = [(obj, link_name, None)]
         else:
             if parent_link_name not in parent_to_children[obj_inst]:
-                parent_to_children[obj_inst][parent_link_name] = set()
-            parent_to_children[obj_inst][parent_link_name].add((obj, link_name, joint_type))
+                parent_to_children[obj_inst][parent_link_name] = []
+            parent_to_children[obj_inst][parent_link_name].append((obj, link_name, joint_type))
     return parent_to_children
 
 
@@ -270,7 +269,7 @@ def main():
                             # Only non-broken models have texture baking
                             original_material_folder = os.path.join(obj_dir, "material")
                             for fname in os.listdir(original_material_folder):
-                                if "VRayRawDiffuseFilterMap" in fname:
+                                if "VRayRawDiffuseFilterMap" in fname or "VRayDiffuseFilterMap" in fname:
                                     dst_fname = "DIFFUSE"
                                 elif "VRayNormalsMap" in fname:
                                     dst_fname = "NORMAL"
