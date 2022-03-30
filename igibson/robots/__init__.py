@@ -3,6 +3,7 @@ from igibson.robots.ant import Ant
 from igibson.robots.behavior_robot import BehaviorRobot
 from igibson.robots.fetch import Fetch
 from igibson.robots.freight import Freight
+from igibson.robots.tiago import Tiago
 from igibson.robots.husky import Husky
 from igibson.robots.jr2 import JR2
 from igibson.robots.locobot import Locobot

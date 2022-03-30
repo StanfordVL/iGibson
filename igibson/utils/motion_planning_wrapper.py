@@ -153,43 +153,93 @@ class MotionPlanningWrapper(object):
         """
         Set up arm motion planner
         """
+        # if self.robot_type == "Fetch":
+        #     self.arm_default_joint_positions = (
+        #         0.1,
+        #         -1.41,
+        #         1.517,
+        #         0.82,
+        #         2.2,
+        #         2.96,
+        #         -1.286,
+        #         0.0,
+        #     )
+        #     self.arm_joint_names = [
+        #         "torso_lift_joint",
+        #         "shoulder_pan_joint",
+        #         "shoulder_lift_joint",
+        #         "upperarm_roll_joint",
+        #         "elbow_flex_joint",
+        #         "forearm_roll_joint",
+        #         "wrist_flex_joint",
+        #         "wrist_roll_joint",
+        #     ]
+        #     self.robot_joint_names = [
+        #         "r_wheel_joint",
+        #         "l_wheel_joint",
+        #         "torso_lift_joint",
+        #         "head_pan_joint",
+        #         "head_tilt_joint",
+        #         "shoulder_pan_joint",
+        #         "shoulder_lift_joint",
+        #         "upperarm_roll_joint",
+        #         "elbow_flex_joint",
+        #         "forearm_roll_joint",
+        #         "wrist_flex_joint",
+        #         "wrist_roll_joint",
+        #         "r_gripper_finger_joint",
+        #         "l_gripper_finger_joint",
+        #     ]
+        #     self.arm_joint_ids = joints_from_names(
+        #         self.robot_id,
+        #         self.arm_joint_names,
+        #     )
+        #     self.robot_arm_indices = [
+        #         self.robot_joint_names.index(arm_joint_name) for arm_joint_name in self.arm_joint_names
+        #     ]
         if self.robot_type == "Fetch":
+        # if self.robot_type == "Tiago":
+            # self.arm_default_joint_positions = (
+            #     0, 
+            #     0, 
+            #     0.01, 
+            #     0.01, 
+            #     0, 
+            #     0, 
+            #     0, 
+            #     0, 
+            #     0, 
+            #     0, 
+            #     0, 
+            #     0.01, 
+            #     0.01
+            # )
             self.arm_default_joint_positions = (
-                0.1,
-                -1.41,
-                1.517,
-                0.82,
-                2.2,
-                2.96,
-                -1.286,
-                0.0,
+                0.22, 0.48, 1.52, 1.76, 0.04, -0.49, 0
             )
             self.arm_joint_names = [
-                "torso_lift_joint",
-                "shoulder_pan_joint",
-                "shoulder_lift_joint",
-                "upperarm_roll_joint",
-                "elbow_flex_joint",
-                "forearm_roll_joint",
-                "wrist_flex_joint",
-                "wrist_roll_joint",
+                'torso_lift_joint',
+                'arm_left_1_joint',
+                'arm_left_2_joint',
+                'arm_left_3_joint',
+                'arm_left_4_joint',
+                'arm_left_5_joint',
+                'arm_left_6_joint',
+                'arm_left_7_joint'
             ]
-            self.robot_joint_names = [
-                "r_wheel_joint",
-                "l_wheel_joint",
-                "torso_lift_joint",
-                "head_pan_joint",
-                "head_tilt_joint",
-                "shoulder_pan_joint",
-                "shoulder_lift_joint",
-                "upperarm_roll_joint",
-                "elbow_flex_joint",
-                "forearm_roll_joint",
-                "wrist_flex_joint",
-                "wrist_roll_joint",
-                "r_gripper_finger_joint",
-                "l_gripper_finger_joint",
-            ]
+            self.robot_joint_names = ['head_1_joint',
+                                               'head_2_joint',
+                                               'gripper_left_right_finger_joint',
+                                               'gripper_left_left_finger_joint',
+                                               'arm_right_1_joint',
+                                               'arm_right_2_joint',
+                                               'arm_right_3_joint',
+                                               'arm_right_4_joint',
+                                               'arm_right_5_joint',
+                                               'arm_right_6_joint',
+                                               'arm_right_7_joint',
+                                               'gripper_right_right_finger_joint',
+                                               'gripper_right_left_finger_joint'] + self.arm_joint_names
             self.arm_joint_ids = joints_from_names(
                 self.robot_id,
                 self.arm_joint_names,
@@ -431,6 +481,14 @@ class MotionPlanningWrapper(object):
         """
         logging.info("Planning path in joint space to {}".format(arm_joint_positions))
         disabled_collisions = {}
+        # if self.robot_type == "Fetch":
+        #     disabled_collisions = {
+        #         (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "torso_fixed_link")),
+        #         (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "shoulder_lift_link")),
+        #         (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "upperarm_roll_link")),
+        #         (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "forearm_roll_link")),
+        #         (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "elbow_flex_link")),
+        #     }
         if self.robot_type == "Fetch":
             disabled_collisions = {
                 (link_from_name(self.robot_id, "torso_lift_link"), link_from_name(self.robot_id, "torso_fixed_link")),
