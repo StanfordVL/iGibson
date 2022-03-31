@@ -74,10 +74,7 @@ class iGibsonEnv(BaseEnv):
             use_pb_gui=use_pb_gui,
         )
         self.automatic_reset = automatic_reset
-        self.cat = None # audio category
-        self.initial_pos = None
-        self.initial_rpy = None
-        self._episode_time = 0.0
+        
 
     def load_task_setup(self):
         """
@@ -313,16 +310,16 @@ class iGibsonEnv(BaseEnv):
             pos = np.array(self.robots[0].get_position()) #[x,y,z]
             rpy = np.array(self.robots[0].get_rpy()) #(3,)
             
-            pos_eframe = rotate_vector_3d(pos - self.initial_pos, 0, 0, self.initial_rpy[2])
-            rpy_eframe = rpy - self.initial_rpy
+            pos_eframe = rotate_vector_3d(pos - self.task.initial_pos, 0, 0, self.task.initial_rpy[2])
+            rpy_eframe = rpy - self.task.initial_rpy
             
             state['pose_sensor'] = np.array(
-                [*pos_eframe, *rpy_eframe, self._episode_time],
+                [*pos_eframe, *rpy_eframe, self.task._episode_time],
                 dtype=np.float32)
-            self._episode_time += 1.0
+            self.task._episode_time += 1.0
         
         if 'category' in self.output:
-            index = CATEGORY_MAP[self.cat]
+            index = CATEGORY_MAP[self.task.cat]
             onehot = np.zeros(len(CATEGORIES))
             onehot[index] = 1
             state['category'] = onehot
@@ -538,8 +535,6 @@ class iGibsonEnv(BaseEnv):
         self.task.reset(self)
         self.simulator.sync(force_sync=True)
         state = self.get_state()
-        self.initial_rpy = np.array(self.robots[0].get_rpy())
-        self.initial_pos = np.array(self.robots[0].get_position())
         self.reset_variables()
 
         return state

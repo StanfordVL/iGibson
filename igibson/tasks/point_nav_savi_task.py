@@ -48,6 +48,11 @@ class SAViTask(PointNavRandomTask):
             CollisionReward(self.config),
             TimeReward(self.config), # time_reward_weight
         ]
+        self.cat = None # audio category
+#         self.initial_pos = None
+        self.initial_rpy = None
+        self._episode_time = 0.0
+        
     
     def sample_initial_pose_and_target_pos(self, env):
         """
@@ -83,7 +88,7 @@ class SAViTask(PointNavRandomTask):
             else:
                 dist = l2_distance(initial_pos, target_pos)
             if self.target_dist_min < dist < self.target_dist_max:
-                env.cat = cat
+                self.cat = cat
                 break
         if not (self.target_dist_min < dist < self.target_dist_max):
             print("WARNING: Failed to sample initial and target positions")
@@ -123,4 +128,5 @@ class SAViTask(PointNavRandomTask):
         self.target_pos = target_pos
         self.initial_pos = initial_pos
         self.initial_orn = initial_orn
+        self.initial_rpy = np.array(env.robots[0].get_rpy())
         super(PointNavRandomTask, self).reset_agent(env)
