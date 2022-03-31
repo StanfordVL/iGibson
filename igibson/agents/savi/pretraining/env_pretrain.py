@@ -83,7 +83,7 @@ class AVNavRLEnv(iGibsonEnv):
                                          "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits/"
                                            +split+"/"+sound_file, 
                                          enabled=True)
-#         self.audio_system.setSourceRepeat(self.audio_obj_id)
+        self.audio_system.setSourceRepeat(self.audio_obj_id, repeat=False)
 
         self.audio_system.step()
         self.simulator.sync(force_sync=True)

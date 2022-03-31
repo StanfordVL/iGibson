@@ -43,23 +43,20 @@ class AudioGoalDataset(Dataset):
             self.env = AVNavRLEnv(config_file='pretraining/config/pretraining.yaml', 
                                   mode='headless', scene_id=scene_name) # write_to_file = True
             goals = []
-            for _ in range(2):
+            for _ in range(2000):
                 sound_file = random.choice(sound_files) # eg: sound_file = chair.wav
                 index = CATEGORY_MAP[sound_file[:-4]] # remove .wav
                 
-                binaural_audio = self.compute_audio(sound_file) # change audio system in reset
-                spectro = self.compute_spectrogram(binaural_audio)
-                spectro = to_tensor(spectro)
-                self.files.append(spectro)
+                self.compute_audio(sound_file) # change audio system in reset
                
-                goal = to_tensor(np.zeros(1))
-                goal[0] = index              
+                goal = to_tensor(np.zeros(self.env.config["num_steps"]))
+                goal[:] = index              
                 goals.append(goal)
 
             self.goals += goals
             
-            print(len(self.files), len(self.goals))
-            self.env.close()
+#             print(len(self.files), len(self.goals))
+            self.env.close() # destroy audio system
 
     def __len__(self):
         return len(self.goals)
@@ -67,34 +64,15 @@ class AudioGoalDataset(Dataset):
     def __getitem__(self, item):
         inputs_outpus = (self.files[item], self.goals[item])
         return inputs_outputs 
-    
-    
+       
     def compute_audio(self, sound_file):
         self.env.reset(self.split, sound_file)
-        action = self.env.action_space.sample()
-        for i in range(10):
-            self.env.step(action)
-        binaural_audio = self.env.complete_audio_output
-        binaural_audio = np.array(binaural_audio)
-        self.env.complete_audio_output = []
-        
+        for _ in range(self.env.config["num_steps"]):
+            action = self.env.action_space.sample()
+            state, _, _, _ = self.env.step(action)
+            spectro = to_tensor(state["audio"])
+            self.files.append(spectro)
+
         if self.env.audio_system is not None:
-            self.env.audio_system.disconnect()
-            del self.env.audio_system
-            self.env.audio_system = None
-        return binaural_audio
-    
-    @staticmethod
-    def compute_spectrogram(audiogoal):
-        def compute_stft(signal):
-            n_fft = 512
-            hop_length = 160
-            win_length = 400
-            stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
-            stft = block_reduce(stft, block_size=(4, 4), func=np.mean)
-            return stft
-        audiogoal = audiogoal.astype(np.float32, order='C') / 32768.0
-        channel1_magnitude = np.log1p(compute_stft(audiogoal[::2]))
-        channel2_magnitude = np.log1p(compute_stft(audiogoal[1::2]))
-        spectrogram = np.stack([channel1_magnitude, channel2_magnitude], axis=-1)
-        return spectrogram
+            self.env.audio_system.reset()
+            

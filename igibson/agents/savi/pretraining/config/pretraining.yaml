@@ -68,7 +68,8 @@ texture_randomization_freq: null
 object_randomization_freq: null
 
 
-
+# traning
+num_steps: 150
 
 
 
