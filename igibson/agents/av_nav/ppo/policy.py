@@ -151,12 +151,12 @@ class AudioNavBaselineNet(Net):
         super().__init__()
         self._hidden_size = hidden_size
         self._audiogoal = False
-        self._pointgoal = False
-        self._n_pointgoal = 0
+        self._task_obs = False
+        self._n_task_obs = 0
         
         if 'task_obs' in observation_space.spaces:
-            self._pointgoal = True
-            self._n_pointgoal = observation_space.spaces["task_obs"].shape[0]
+            self._task_obs = True
+            self._n_task_obs = observation_space.spaces["task_obs"].shape[0]
         if 'audio' in observation_space.spaces:
             self._audiogoal = True
             audiogoal_sensor = "audio"
@@ -164,7 +164,7 @@ class AudioNavBaselineNet(Net):
         self.visual_encoder = VisualCNN(observation_space, hidden_size, extra_rgb)
         
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
-                         (self._n_pointgoal if self._pointgoal else 0) + (self._hidden_size if self._audiogoal else 0)
+                         (self._n_task_obs if self._task_obs else 0) + (self._hidden_size if self._audiogoal else 0)
         self.state_encoder = RNNStateEncoder(rnn_input_size, self._hidden_size)
 
         if 'rgb' in observation_space.spaces and not extra_rgb:
@@ -194,7 +194,7 @@ class AudioNavBaselineNet(Net):
     def forward(self, observations, rnn_hidden_states, prev_actions, masks):
         x = []
 
-        if self._pointgoal:
+        if self._task_obs:
             x.append(observations["task_obs"])
         if self._audiogoal:
             x.append(self.audio_encoder(observations))

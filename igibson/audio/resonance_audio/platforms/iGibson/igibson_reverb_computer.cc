@@ -229,8 +229,8 @@ bool ComputeRt60sAndProxyRoom(int total_num_paths, int num_paths_per_batch,
        ++band_index) {
     output_rt60s[band_index] =
         EstimateRT60(energy_impulse_responses[band_index], sampling_rate);
-    LOG(INFO) << "Estimiated RT60 for band[" << band_index
-              << "]= " << output_rt60s[band_index];
+    //LOG(INFO) << "Estimiated RT60 for band[" << band_index
+    //          << "]= " << output_rt60s[band_index];
   }
 
   // Estimate a proxy room. Use a default room when failed.

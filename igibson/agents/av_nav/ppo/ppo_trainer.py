@@ -60,9 +60,9 @@ class PPOTrainer(BaseRLTrainer):
         logger.add_filehandler(self.config['LOG_FILE'])
 
         if self.config["robot"]["action_type"] == "discrete":
-            is_discrete = True
+            self.is_discrete = True
         elif self.config["robot"]["action_type"] == "continuous":
-            is_discrete=False
+            self.is_discrete=False
         else:
             raise ValueError("Robot action_type ('continuous' or 'discrete') must be defined in config")
 
@@ -72,7 +72,7 @@ class PPOTrainer(BaseRLTrainer):
             observation_space=observation_space,
             action_space=self.envs.action_space,
             hidden_size=self.config['hidden_size'],
-            is_discrete=is_discrete,
+            is_discrete=self.is_discrete,
             min_std=self.config['min_std'], max_std=self.config['max_std'],
             min_log_std=self.config['min_log_std'], max_log_std=self.config['max_log_std'], 
             use_log_std=self.config['use_log_std'], use_softplus=self.config['use_softplus'],
@@ -144,7 +144,10 @@ class PPOTrainer(BaseRLTrainer):
         pth_time += time.time() - t_sample_action
 
         t_step_env = time.time()
-        outputs = self.envs.step([a[0].item() for a in actions])
+        if self.is_discrete:
+            outputs = self.envs.step([a[0].item() for a in actions])
+        else:
+            outputs = self.envs.step([a.tolist() for a in actions])
         observations, rewards, dones, infos = [list(x) for x in zip(*outputs)]
         logging.debug('Reward: {}'.format(rewards[0]))
 
@@ -464,7 +467,10 @@ class PPOTrainer(BaseRLTrainer):
 
                 prev_actions.copy_(actions)
 
-            outputs = self.envs.step([a[0].item() for a in actions])
+            if self.is_discrete:
+                outputs = self.envs.step([a[0].item() for a in actions])
+            else:
+                outputs = self.envs.step([a.tolist() for a in actions])
 
             observations, rewards, dones, infos = [
                 list(x) for x in zip(*outputs)

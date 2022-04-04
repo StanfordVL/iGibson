@@ -139,8 +139,8 @@ float EstimateRT60(const std::vector<float>& energy_impulse_responses,
     LOG(WARNING) << "Linear least square fitting failed";
     return 0.0f;
   }
-  LOG(INFO) << "Fitted slope= " << slope << "; intercept= " << intercept
-            << "; R^2= " << r_square;
+  //LOG(INFO) << "Fitted slope= " << slope << "; intercept= " << intercept
+  //          << "; R^2= " << r_square;
 
   // RT60 is defined as how long it takes for the energy to decay 60 dB.
   // Note that |slope| should be negative.
