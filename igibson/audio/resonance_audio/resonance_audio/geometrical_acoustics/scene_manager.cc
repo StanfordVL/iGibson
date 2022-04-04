@@ -63,9 +63,7 @@ SceneManager::~SceneManager() {
   // Commenting this out because this destructor is getting called twice in the exit process.
   rtcDeleteScene(scene_);
   rtcDeleteScene(listener_scene_);
-  std::cout << "Deleting device" << std::endl;
   rtcDeleteDevice(device_);
-  std::cout << "Deleted device" << std::endl;
 }
 
 void SceneManager::BuildScene(const std::vector<Vertex>& vertex_buffer,

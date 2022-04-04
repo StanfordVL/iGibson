@@ -9,7 +9,7 @@ from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.objects.visual_marker import VisualMarker
-from igibson.utils.utils import l2_distance, restoreState
+from igibson.utils.utils import cartesian_to_polar, restoreState, l2_distance, rotate_vector_3d
 
 
 class TimeReward(BaseRewardFunction):
@@ -32,7 +32,7 @@ class TimeReward(BaseRewardFunction):
         """
         return self.time_reward_weight
 
-class PointNavAVNavTask(PointNavRandomTask):
+class AudioGoalNavTask(PointNavRandomTask):
     """
     Redefine the task (reward functions)
     """
@@ -77,3 +77,42 @@ class PointNavAVNavTask(PointNavRandomTask):
         for instance in self.target_obj.renderer_instances:
             instance.hidden = not self.visible_target
 
+    def get_task_obs(self, env):
+        """
+        Get current velocities
+
+        :param env: environment instance
+        :return: task-specific observation
+        """
+        # linear velocity along the x-axis
+        linear_velocity = rotate_vector_3d(env.robots[0].get_linear_velocity(), *env.robots[0].get_rpy())[0]
+        # angular velocity along the z-axis
+        angular_velocity = rotate_vector_3d(env.robots[0].get_angular_velocity(), *env.robots[0].get_rpy())[2]
+        task_obs = np.append(linear_velocity, angular_velocity)
+
+        return task_obs
+
+
+class AudioPointGoalNavTask(AudioGoalNavTask):
+    """ AudioGoal, but with target position information in observation space """
+    def __init__(self, env):
+        super().__init__(env)
+
+    def get_task_obs(self, env):
+        """
+        Get task-specific observation, including goal position, current velocities, etc.
+
+        :param env: environment instance
+        :return: task-specific observation
+        """
+        task_obs = self.global_to_local(env, self.target_pos)[:2]
+        if self.goal_format == "polar":
+            task_obs = np.array(cartesian_to_polar(task_obs[0], task_obs[1]))
+
+        # linear velocity along the x-axis
+        linear_velocity = rotate_vector_3d(env.robots[0].get_linear_velocity(), *env.robots[0].get_rpy())[0]
+        # angular velocity along the z-axis
+        angular_velocity = rotate_vector_3d(env.robots[0].get_angular_velocity(), *env.robots[0].get_rpy())[2]
+        task_obs = np.append(task_obs, [linear_velocity, angular_velocity])
+
+        return task_obs

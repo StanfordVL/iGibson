@@ -430,8 +430,8 @@ void ProxyRoomEstimator::EstimateSurfaceMaterials(
       }
     }
     material_names[wall] = min_distance_material_name;
-    LOG(INFO) << "Wall[" << wall << "] material= " << min_distance_material_name
-              << " distance= " << min_material_distance;
+    //LOG(INFO) << "Wall[" << wall << "] material= " << min_distance_material_name
+    //          << " distance= " << min_material_distance;
   }
 }
 

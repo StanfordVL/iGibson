@@ -62,6 +62,7 @@ class AudioSystem(object):
         self.reverb = renderReverbReflections
         self.occl_multiplier = occl_multiplier
         self.occl_intensity = -1
+        self.num_ambisonic_channels = 4
 
         def getViewerOrientation():
             #from numpy-quaternion github
@@ -86,8 +87,13 @@ class AudioSystem(object):
 
         self.framesPerBuf =  int(SR / (1 / self.s.render_timestep))
         # spectrogram taken over longer time windows
-        self.spec_channel1 = np.zeros(int(SR * spectrogram_window_len))
-        self.spec_channel2 = np.zeros(int(SR * spectrogram_window_len))
+        if self.renderAmbisonics:
+            self.curr_audio_by_channel = np.zeros((self.num_ambisonic_channels, self.framesPerBuf))
+            self.window_by_channel = np.zeros((self.num_ambisonic_channels, int(SR * spectrogram_window_len)))
+        else:
+            self.curr_audio_by_channel = np.zeros((2, self.framesPerBuf))
+            self.window_by_channel = np.zeros((2, int(SR * spectrogram_window_len)))
+
         audio.InitializeSystem(self.framesPerBuf, SR)
 
         #Get reverb and reflection properties at equally spaced point in grid along traversible map
@@ -255,6 +261,10 @@ class AudioSystem(object):
 
         if self.renderAmbisonics:
             self.ambisonic_output = audio.RenderAmbisonics(self.framesPerBuf)
+            self.curr_audio_by_channel = np.array(self.ambisonic_output[:self.num_ambisonic_channels])
+        else:
+            self.curr_audio_by_channel[0] = np.array(self.current_output[::2], dtype=np.float32, order='C') / 32768.0
+            self.curr_audio_by_channel[1] = np.array(self.current_output[1::2], dtype=np.float32, order='C') / 32768.0
 
         if self.writeToFile != "":
             self.complete_output.extend(self.current_output)
@@ -278,16 +288,12 @@ class AudioSystem(object):
             stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
             return stft
 
-        if len(self.current_output) == 0:
-            current_output = np.zeros(self.framesPerBuf * 2)
-        else:
-            current_output = np.array(self.current_output, dtype=np.float32, order='C') / 32768.0
-        
-        self.spec_channel1 = np.append(self.spec_channel1[self.framesPerBuf:], current_output[::2])
-        self.spec_channel2 = np.append(self.spec_channel2[self.framesPerBuf:], current_output[1::2])
-        channel1_magnitude = np.log1p(compute_stft(self.spec_channel1))
-        channel2_magnitude = np.log1p(compute_stft(self.spec_channel2))
-        spectrogram = np.stack([channel1_magnitude, channel2_magnitude], axis=-1)
+        spectrogram_per_channel = []
+        for mono_idx in range(self.curr_audio_by_channel.shape[0]):
+            self.window_by_channel[mono_idx] = np.append(self.window_by_channel[mono_idx,self.framesPerBuf:], self.curr_audio_by_channel[mono_idx])
+            spectrogram_per_channel.append(np.log1p(compute_stft(self.window_by_channel[mono_idx])))
+
+        spectrogram = np.stack(spectrogram_per_channel, axis=-1)
 
         return spectrogram
 

@@ -1,16 +1,18 @@
 ## SoundSpaces
-NUM_PROCESSES: 1
+NUM_PROCESSES: 9
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "data/data_igibson_1104/eval_video.log"
+LOG_FILE: "data/pointgoal/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/data_igibson_0930/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/data_igibson_0930/checkpoints/ckpt.367.pth"
-TENSORBOARD_DIR: "data/data_igibson_0930/tb"
-TEST_EPISODE_COUNT: 1
+CHECKPOINT_FOLDER: "data/pointgoal/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/pointgoal/checkpoints/ckpt.96.pth"
+# 96 98
+TENSORBOARD_DIR: "data/pointgoal/tb"
+TEST_EPISODE_COUNT: 500
 SEED: 0
 TORCH_GPU_ID: 0
+VIDEO_OPTION: []
 # RL PPO
 hidden_size: 512
 ppo_epoch: 4
@@ -37,22 +39,24 @@ use_softplus: False
 action_activation: tanh
 
 ## iGibson
-# scene
 scene: igibson
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
-trav_map_type: no_obj
+trav_map_type: with_obj
 trav_map_resolution: 0.1
-trav_map_erosion: 2
+trav_map_erosion: 3
 should_open_all_doors: true
 
+## Audio System
+occl_multiplier: 1
+spectrogram_window_len: 0.3
 # task
-task: audiogoal_nav
+task: point_nav_random
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
-task_obs_dim: 2
+task_obs_dim: 4
 
 # robot
 robot:
@@ -65,15 +69,23 @@ robot:
     rendering_params: null
     controller_config:
         base:
-            name: DifferentialDriveController
+            name: JointController
+            motor_type: velocity
+            command_input_limits: default
+            command_output_limits: default
+            use_delta_commands: false
 
 # sensor spec
-output: [depth, audio, rgb]
-extra_rgb: true
-audio_fname: "ig_vid"
+output: [task_obs, depth, audio, bump]
+#task_obs, 
+extra_rgb: false
 
 # image
+# ASUS Xtion PRO LIVE
+# https://www.asus.com/us/3D-Sensor/Xtion_PRO_LIVE
 fisheye: false
+# image_width: 160
+# image_height: 120
 image_width: 128
 image_height: 128
 vertical_fov: 45
@@ -85,18 +97,16 @@ depth_noise_rate: 0.0
 scan_noise_rate: 0.0
 
 # audio
-# audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/440Hz_44100Hz.wav"
-audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/telephone.wav"
+audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/telephone.wav"
 
 # visual objects # not needed
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+visible_target: False
 
 # reward only for point nav fixed task
 reward_type: geodesic
 success_reward: 10.0
 potential_reward_weight: 1.0
-collision_reward_weight: -0.1
+collision_reward_weight: -0.005
 time_reward_weight: -0.01
 
 # termination condition
@@ -113,22 +123,4 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
-
-# video recording
-# VIDEO_OPTION: []
-VIDEO_OPTION: ["disk"]
-VIDEO_DIR: "/viscam/u/wangzz/avGibson/igibson/audio/"
-CONTINUOUS_VIEW_CHANGE: True
-DISPLAY_RESOLUTION: 1024
-
-
-
-
-
-
-
-
-
-
-
 
