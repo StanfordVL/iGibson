@@ -33,14 +33,17 @@ def main():
 
     ctr = collections.Counter()
 
-    body_link_meshes = {body_id: process_body(s, body_id, urdf, ctr) for body_id, urdf in tqdm(s._urdfs.items())}
+    body_link_meshes = {
+        body_id: process_body(s, body_id, urdf, ctr, include_non_base_links=False)
+        for body_id, urdf in tqdm(s._urdfs.items())
+    }
     flat_meshes = [mesh for meshes in body_link_meshes.values() for mesh in meshes.values()]
 
     tm_scene = trimesh.scene.scene.Scene(flat_meshes)
     tm_scene.show()
 
 
-def process_body(s, body_id, urdf, ctr):
+def process_body(s, body_id, urdf, ctr, include_non_base_links=True):
     # Get the position of the base frame
     dynamics_info = p.getDynamicsInfo(body_id, -1)
     inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
@@ -71,6 +74,9 @@ def process_body(s, body_id, urdf, ctr):
         # Produce a single visual mesh for each link
         this_link_meshes = []
         link_id = utils.link_from_name(body_id, link.name)
+
+        if link_id != -1 and not include_non_base_links:
+            continue
 
         # Get the name for this link.
         if link_id == -1:
@@ -110,7 +116,10 @@ def process_body(s, body_id, urdf, ctr):
         # Now we can export the link.
         this_link_mesh = trimesh.util.concatenate(this_link_meshes)
         link_trimeshes[link_name] = this_link_mesh
-        out_path = os.path.join(OUT_PATH, f"{link_name}.obj")
+        out_dir = os.path.join(OUT_PATH, link_name)
+        if not os.path.exists(out_dir):
+            os.mkdir(out_dir)
+        out_path = os.path.join(out_dir, "model.obj")
         this_link_mesh.export(out_path)
 
     return link_trimeshes
