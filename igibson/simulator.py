@@ -4,6 +4,7 @@ import platform
 
 import numpy as np
 import pybullet as p
+import urdfpy
 
 import igibson
 from igibson.object_states.factory import get_states_by_dependency_order
@@ -113,6 +114,12 @@ class Simulator:
 
         self.assist_grasp_category_allow_list = self.gen_assisted_grasping_categories()
         self.assist_grasp_mass_thresh = 10.0
+
+        self._urdfs = {}
+
+    def register_urdf(self, bid, urdf_path):
+        assert bid not in self._urdfs
+        self._urdfs[bid] = urdfpy.URDF.load(urdf_path)
 
     def set_timestep(self, physics_timestep, render_timestep):
         """

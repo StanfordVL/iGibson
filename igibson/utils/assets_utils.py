@@ -45,7 +45,7 @@ def folder_is_hidden(p):
         attribute = win32api.GetFileAttributes(p)
         return attribute & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
     else:
-        return p.startswith(".")  # linux-osx
+        return os.path.basename(p).startswith(".")  # linux-osx
 
 
 def get_ig_avg_category_specs():
@@ -194,7 +194,9 @@ def get_all_object_categories():
     ig_dataset_path = igibson.ig_dataset_path
     ig_categories_path = os.path.join(ig_dataset_path, "objects")
 
-    categories = sorted([f for f in os.listdir(ig_categories_path) if not folder_is_hidden(f)])
+    categories = sorted(
+        [f for f in os.listdir(ig_categories_path) if not folder_is_hidden(os.path.join(ig_categories_path, f))]
+    )
     return categories
 
 

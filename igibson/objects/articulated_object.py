@@ -56,6 +56,7 @@ class ArticulatedObject(StatefulObject):
             flags |= p.URDF_MERGE_FIXED_LINKS
 
         body_id = p.loadURDF(self.filename, globalScaling=self.scale, flags=flags)
+        simulator.register_urdf(body_id, self.filename)
 
         self.mass = p.getDynamicsInfo(body_id, -1)[0]
 
@@ -433,6 +434,12 @@ class URDFObject(StatefulObject):
                         # assume the prismatic joint is roughly axis-aligned
                         limit.attrib["upper"] = str(float(limit.attrib["upper"]) * scale_in_parent_lf[major_axis])
                         limit.attrib["lower"] = str(float(limit.attrib["lower"]) * scale_in_parent_lf[major_axis])
+
+                    # Make the file urdfpy-friendly.
+                    limits = joint.findall("limit")
+                    for limit in limits:
+                        limit.attrib["effort"] = "0"
+                        limit.attrib["velocity"] = "0"
 
                     # Get the rotation of the joint frame and apply it to the scale
                     if "rpy" in joint.keys():
@@ -837,7 +844,9 @@ class URDFObject(StatefulObject):
         for idx in range(len(self.urdf_paths)):
             log.debug("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]
-            body_id = p.loadURDF(self.urdf_paths[idx], flags=flags, useFixedBase=is_fixed)
+            urdf_path = self.urdf_paths[idx]
+            body_id = p.loadURDF(urdf_path, flags=flags, useFixedBase=is_fixed)
+            simulator.register_urdf(body_id, urdf_path)
             p.changeDynamics(body_id, -1, activationState=p.ACTIVATION_STATE_ENABLE_SLEEPING)
 
             # Set joint friction
