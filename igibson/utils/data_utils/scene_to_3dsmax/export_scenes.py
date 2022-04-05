@@ -13,6 +13,7 @@ from igibson.external.pybullet_tools import utils
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator import Simulator
+from igibson.utils import assets_utils
 from igibson.utils.data_utils.scene_to_3dsmax import rename_object_models, translation_utils
 from igibson.utils.mesh_util import xyzw2wxyz
 
@@ -20,6 +21,11 @@ OUT_PATH = r"C:\Users\cgokmen\research\iGibson\igibson\data\cad"
 
 
 def main():
+    for scene in tqdm(assets_utils.get_available_ig_scenes()):
+        process_scene(scene)
+
+
+def process_scene(scene_name, visualize=False):
     settings = MeshRendererSettings(enable_shadow=True, msaa=False)
     s = Simulator(
         mode="headless",
@@ -28,22 +34,25 @@ def main():
         rendering_settings=settings,
     )
 
-    scene = InteractiveIndoorScene("Rs_int", merge_fixed_links=False, load_object_categories=["swivel_chair"])
+    scene = InteractiveIndoorScene(scene_name, merge_fixed_links=False)
     s.import_scene(scene)
 
     ctr = collections.Counter()
 
+    save_path = os.path.join(OUT_PATH, scene_name)
+    os.mkdir(save_path)
     body_link_meshes = {
-        body_id: process_body(s, body_id, urdf, ctr)  # , include_non_base_links=False)
+        body_id: process_body(s, body_id, urdf, ctr, save_path)  # , include_non_base_links=False)
         for body_id, urdf in tqdm(s._urdfs.items())
     }
-    flat_meshes = [mesh for meshes in body_link_meshes.values() for mesh in meshes.values()]
 
-    tm_scene = trimesh.scene.scene.Scene(flat_meshes)
-    tm_scene.show()
+    if visualize:
+        flat_meshes = [mesh for meshes in body_link_meshes.values() for mesh in meshes.values()]
+        tm_scene = trimesh.scene.scene.Scene(flat_meshes)
+        tm_scene.show()
 
 
-def process_body(s, body_id, urdf, ctr, include_non_base_links=True):
+def process_body(s, body_id, urdf, ctr, save_path, include_non_base_links=True):
     # Get the position of the base frame
     dynamics_info = p.getDynamicsInfo(body_id, -1)
     inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
@@ -138,7 +147,7 @@ def process_body(s, body_id, urdf, ctr, include_non_base_links=True):
             joint_end = "lower"
             object_name = f"{prefix_bad}{prefix_loose}{new_cat}-{new_model}-{instance_id}-link{link_id}-{parent_name}-{joint_type}-{joint_end}"
 
-        out_dir = os.path.join(OUT_PATH, object_name)
+        out_dir = os.path.join(save_path, object_name)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         out_path = os.path.join(out_dir, "model.obj")

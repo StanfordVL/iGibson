@@ -88,7 +88,11 @@ def get_available_ig_scenes():
     ig_dataset_path = igibson.ig_dataset_path
     ig_scenes_path = os.path.join(ig_dataset_path, "scenes")
     available_ig_scenes = sorted(
-        [f for f in os.listdir(ig_scenes_path) if (not folder_is_hidden(f) and f != "background")]
+        [
+            f
+            for f in os.listdir(ig_scenes_path)
+            if (not folder_is_hidden(os.path.join(ig_scenes_path, f)) and f != "background")
+        ]
     )
     return available_ig_scenes
 
@@ -241,7 +245,7 @@ def get_available_g_scenes():
     :return: list of available Gibson scenes
     """
     data_path = igibson.g_dataset_path
-    available_g_scenes = sorted([f for f in os.listdir(data_path) if not folder_is_hidden(f)])
+    available_g_scenes = sorted([f for f in os.listdir(data_path) if not folder_is_hidden(os.path.join(data_path, f))])
     return available_g_scenes
 
 
