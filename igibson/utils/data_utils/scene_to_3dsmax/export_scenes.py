@@ -28,13 +28,13 @@ def main():
         rendering_settings=settings,
     )
 
-    scene = InteractiveIndoorScene("Rs_int", merge_fixed_links=False)
+    scene = InteractiveIndoorScene("Rs_int", merge_fixed_links=False, load_object_categories=["swivel_chair"])
     s.import_scene(scene)
 
     ctr = collections.Counter()
 
     body_link_meshes = {
-        body_id: process_body(s, body_id, urdf, ctr, include_non_base_links=False)
+        body_id: process_body(s, body_id, urdf, ctr)  # , include_non_base_links=False)
         for body_id, urdf in tqdm(s._urdfs.items())
     }
     flat_meshes = [mesh for meshes in body_link_meshes.values() for mesh in meshes.values()]
@@ -53,20 +53,22 @@ def process_body(s, body_id, urdf, ctr, include_non_base_links=True):
 
     # Gather the object-level naming info.
     obj = s.scene.objects_by_id[body_id]
-    prefix_loose = "L-" if not obj.is_fixed else ""
+    prefix_loose = "L-" if not obj.is_fixed[obj.get_body_ids().index(body_id)] else ""
     old_filename = obj.filename
     if obj.category in ("walls", "floors", "ceilings"):
         new_cat = obj.category
         new_model = s.scene.scene_id
         assert ctr[(new_cat, new_model)] == 0, "Can't have multiple walls/floors/ceilings"
+        prefix_bad = ""
     else:
         new_cat, new_model = translation_utils.old_to_new(*translation_utils.model_to_pair(old_filename))
+        prefix_bad = "B-"
 
     instance_id = ctr[(new_cat, new_model)]
     ctr[(new_cat, new_model)] += 1
 
     # Get the meshes
-    link_trimeshes = {}
+    link_trimeshes = collections.defaultdict(list)
     for link in urdf.links:
         if not link.visuals:
             continue
@@ -77,21 +79,6 @@ def process_body(s, body_id, urdf, ctr, include_non_base_links=True):
 
         if link_id != -1 and not include_non_base_links:
             continue
-
-        # Get the name for this link.
-        if link_id == -1:
-            specify_base = "-base_link" if len(urdf.links) > 1 else ""
-            link_name = f"B-{prefix_loose}{new_cat}-{new_model}-{instance_id}{specify_base}"
-        else:
-            _joint_type_map = {p.JOINT_REVOLUTE: "R", p.JOINT_PRISMATIC: "P", p.JOINT_FIXED: "F"}
-            joint_type = _joint_type_map[utils.get_joint_type(body_id, link_id)]
-            parent_link = utils.get_link_parent(body_id, link_id)
-            if parent_link == -1:
-                parent_name = "base_link"
-            else:
-                parent_name = utils.get_link_name(body_id, parent_link)
-            joint_end = "lower"
-            link_name = f"B-{prefix_loose}{new_cat}-{new_model}-{instance_id}-{link.name}-{parent_name}-{joint_type}-{joint_end}"
 
         # Move everything to the right spot.
         link_pos, link_orn = (
@@ -114,15 +101,53 @@ def process_body(s, body_id, urdf, ctr, include_non_base_links=True):
                 this_link_meshes.append(mesh)
 
         # Now we can export the link.
-        this_link_mesh = trimesh.util.concatenate(this_link_meshes)
-        link_trimeshes[link_name] = this_link_mesh
-        out_dir = os.path.join(OUT_PATH, link_name)
+        link_trimeshes[link].extend(this_link_meshes)
+
+    # Merge all fixed joints. This needs to happen in topological order.
+    link_map = urdf.link_map
+    sorted_joints = sorted(urdf.joints, key=lambda j: -len(urdf._paths_to_base[link_map[j.child]]))
+    for joint in sorted_joints:
+        if joint.joint_type != "fixed":
+            continue
+
+        parent_link = link_map[joint.parent]
+        child_link = link_map[joint.child]
+
+        parent_meshes = link_trimeshes[parent_link]
+        child_meshes = link_trimeshes[child_link]
+
+        parent_meshes.extend(child_meshes)
+        del link_trimeshes[child_link]
+
+    # Now get ready to output
+    final_meshes = {}
+    for link, this_link_meshes in link_trimeshes.items():
+        # Get the name for this link.
+        link_id = utils.link_from_name(body_id, link.name)
+        if link_id == -1:
+            specify_base = "-base_link" if len(urdf.links) > 1 else ""
+            object_name = f"{prefix_bad}{prefix_loose}{new_cat}-{new_model}-{instance_id}{specify_base}"
+        else:
+            _joint_type_map = {p.JOINT_REVOLUTE: "R", p.JOINT_PRISMATIC: "P"}
+            joint_type = _joint_type_map[utils.get_joint_type(body_id, link_id)]
+            parent_link = utils.get_link_parent(body_id, link_id)
+            if parent_link == -1:
+                parent_name = "base_link"
+            else:
+                parent_name = f"link{parent_link}"
+            joint_end = "lower"
+            object_name = f"{prefix_bad}{prefix_loose}{new_cat}-{new_model}-{instance_id}-link{link_id}-{parent_name}-{joint_type}-{joint_end}"
+
+        out_dir = os.path.join(OUT_PATH, object_name)
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
         out_path = os.path.join(out_dir, "model.obj")
-        this_link_mesh.export(out_path)
 
-    return link_trimeshes
+        this_link_mesh = trimesh.util.concatenate(this_link_meshes)
+        this_link_mesh.export(out_path)
+        final_meshes[object_name] = this_link_mesh
+
+    return final_meshes
 
 
 # TODO: Figure out how to merge fixed links
