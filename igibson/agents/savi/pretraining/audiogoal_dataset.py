@@ -43,7 +43,7 @@ class AudioGoalDataset(Dataset):
             self.env = AVNavRLEnv(config_file='pretraining/config/pretraining.yaml', 
                                   mode='headless', scene_id=scene_name) # write_to_file = True
             goals = []
-            for _ in range(2000):
+            for _ in range(4000): # 20000
                 sound_file = random.choice(sound_files) # eg: sound_file = chair.wav
                 index = CATEGORY_MAP[sound_file[:-4]] # remove .wav
                 
@@ -62,7 +62,7 @@ class AudioGoalDataset(Dataset):
         return len(self.goals)
 
     def __getitem__(self, item):
-        inputs_outpus = (self.files[item], self.goals[item])
+        inputs_outputs = (self.files[item], self.goals[item])
         return inputs_outputs 
        
     def compute_audio(self, sound_file):

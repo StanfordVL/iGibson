@@ -25,7 +25,7 @@ class AudioGoalPredictorTrainer:
         self.model_dir = model_dir
         self.device = (torch.device("cuda", 0))
 
-        self.batch_size = 80 # 1024
+        self.batch_size = 160 #80 # 1024
         self.num_worker = 4 #8 related to mem
         self.lr = 1e-3
         self.weight_decay = None
@@ -89,11 +89,12 @@ class AudioGoalPredictorTrainer:
                 for i, data in enumerate(tqdm(dataloaders[split])):                    
                     # get the inputs
                     inputs, gts = data
-                    inputs = [x.to(device=self.device, dtype=torch.float) for x in inputs]
+#                     inputs = [x.to(device=self.device, dtype=torch.float) for x in inputs]
+                    inputs = inputs.to(device=self.device, dtype=torch.float)
                     gts = gts.to(device=self.device, dtype=torch.float)
                     
                     optimizer.zero_grad()
-                    predicts = model({input_type: x for input_type, x in zip(['spectrogram'], inputs)})
+                    predicts = model({input_type: x for input_type, x in zip(['spectrogram'], [inputs])})
                     if self.predict_label and self.predict_location:
                         classifier_loss = classifier_criterion(predicts[:, :-2], gts[:, 0].long())
                         regressor_loss = regressor_criterion(predicts[:, -2:], gts[:, -2:])
