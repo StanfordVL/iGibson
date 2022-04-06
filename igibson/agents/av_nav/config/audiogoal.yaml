@@ -3,12 +3,12 @@ NUM_PROCESSES: 9
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "data/igibson/train.log"
+LOG_FILE: "data/audiogoal/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/igibson/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/igibson/checkpoints/ckpt.0.pth"
+CHECKPOINT_FOLDER: "data/audiogoal/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/audiogoal/checkpoints/ckpt.0.pth"
 # 96 98
-TENSORBOARD_DIR: "data/igibson/tb"
+TENSORBOARD_DIR: "data/audiogoal/tb"
 TEST_EPISODE_COUNT: 500
 SEED: 0
 TORCH_GPU_ID: 0
@@ -95,11 +95,10 @@ scan_noise_rate: 0.0
 
 # audio
 #audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/440Hz_44100Hz.wav"
-audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/telephone.wav"
+audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/telephone.wav"
 
 # visual objects # not needed
-visual_object_at_initial_target_pos: true
-target_visual_object_visible_to_agent: false
+visible_target: False
 
 # reward only for point nav fixed task
 reward_type: geodesic

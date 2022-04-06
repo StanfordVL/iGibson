@@ -156,7 +156,7 @@ class AudioNavBaselineNet(Net):
         self._bump = False
         self._n_bump = 0
         
-         if 'task_obs' in observation_space.spaces:
+        if 'task_obs' in observation_space.spaces:
             self._task_obs = True
             self._n_task_obs = observation_space.spaces["task_obs"].shape[0]
         if 'bump' in observation_space.spaces:
