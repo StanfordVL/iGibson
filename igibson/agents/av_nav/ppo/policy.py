@@ -153,10 +153,15 @@ class AudioNavBaselineNet(Net):
         self._audiogoal = False
         self._task_obs = False
         self._n_task_obs = 0
+        self._bump = False
+        self._n_bump = 0
         
-        if 'task_obs' in observation_space.spaces:
+         if 'task_obs' in observation_space.spaces:
             self._task_obs = True
             self._n_task_obs = observation_space.spaces["task_obs"].shape[0]
+        if 'bump' in observation_space.spaces:
+            self._bump = True
+            self._n_bump = observation_space.spaces["bump"].shape[0]
         if 'audio' in observation_space.spaces:
             self._audiogoal = True
             audiogoal_sensor = "audio"
@@ -164,7 +169,8 @@ class AudioNavBaselineNet(Net):
         self.visual_encoder = VisualCNN(observation_space, hidden_size, extra_rgb)
         
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
-                         (self._n_task_obs if self._task_obs else 0) + (self._hidden_size if self._audiogoal else 0)
+                         (self._n_task_obs if self._task_obs else 0) + (self._hidden_size if self._audiogoal else 0) + \
+                         (self._n_bump if self._bump else 0)
         self.state_encoder = RNNStateEncoder(rnn_input_size, self._hidden_size)
 
         if 'rgb' in observation_space.spaces and not extra_rgb:
@@ -196,6 +202,11 @@ class AudioNavBaselineNet(Net):
 
         if self._task_obs:
             x.append(observations["task_obs"])
+        if self._bump:
+            if len(observations["bump"].size()) == 3:
+                x.append(torch.squeeze(observations["bump"], 2))
+            else:
+                x.append(observations["bump"]) 
         if self._audiogoal:
             x.append(self.audio_encoder(observations))
         if not self.is_blind:
