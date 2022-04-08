@@ -4,43 +4,13 @@ import numpy as np
 import pybullet as p
 
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
-from igibson.reward_functions.reward_function_base import BaseRewardFunction
-from igibson.reward_functions.potential_reward import PotentialReward
-from igibson.reward_functions.collision_reward import CollisionReward
-from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.objects import cube
 from igibson.utils.utils import l2_distance, restoreState
 
-class TimeReward(BaseRewardFunction):
-    """
-    Time reward
-    A negative reward per time step
-    """
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.time_reward_weight = self.config.get(
-            'time_reward_weight', -0.01)
-
-    def get_reward(self, task, env):
-        """
-        Reward is proportional to the number of steps
-        :param task: task instance
-        :param env: environment instance
-        :return: reward
-        """
-        return self.time_reward_weight
 
 class SAViTask(PointNavRandomTask):
-    # reward function
     def __init__(self, env):
-        super().__init__(env)
-        self.reward_funcions = [
-            PotentialReward(self.config), # geodesic distance, potential_reward_weight
-            PointGoalReward(self.config), # success_reward
-            CollisionReward(self.config),
-            TimeReward(self.config), # time_reward_weight
-        ]
+        super(SAViTask, self).__init__(env)
         
     def sample_initial_pose_and_target_pos(self, env):
         """
