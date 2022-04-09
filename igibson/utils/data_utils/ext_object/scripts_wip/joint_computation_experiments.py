@@ -18,7 +18,27 @@ from scipy.spatial.transform import Rotation as R
 
 import igibson
 
-root_folder = "office_vendor_machine"
+vray_mapping = {
+    "VRayRawDiffuseFilterMap": "albedo",
+    "VRayNormalsMap": "normal",
+    "VRayMtlReflectGlossinessBake": "roughness",
+    "VRayMetalnessMap": "metalness",
+    "VRayRawRefractionFilterMap": "opacity",
+    "VRaySelfIlluminationMap": "emission",
+    "VRayAOMap": "ao",
+}
+
+mtl_mapping = {
+    "map_Kd": "albedo",
+    "map_bump": "normal",
+    "map_Pr": "roughness",
+    "map_": "metalness",
+    "map_Tf": "opacity",
+    "map_Ke": "emission",
+    "map_Ks": "ao",
+}
+
+root_folder = "material_exp_low_roughness"
 processed_folder = os.path.join(igibson.ig_dataset_path, "objects")
 
 # TODO: change scene_name
@@ -93,6 +113,13 @@ def fix_mtl_file(obj_dir, mtl_file):
                 map_path = os.path.join(obj_dir, line.split(" ")[1].strip())
                 # For some reason, pybullet won't load the texture files unless we save it again with OpenCV
                 img = cv2.imread(map_path)
+                # These two maps need to be flipped
+                # glossiness -> roughness
+                # translucency -> opacity
+                if "VRayMtlReflectGlossinessBake" in map_path or "VRayRawRefractionFilterMap" in map_path:
+                    img = 255 - img
+
+                # TODO: maybe some of them also need to be squeezed into (H, W, 1) channels
                 cv2.imwrite(map_path, img)
 
             new_lines.append(line)
@@ -269,16 +296,17 @@ def main():
                             # Only non-broken models have texture baking
                             original_material_folder = os.path.join(obj_dir, "material")
                             for fname in os.listdir(original_material_folder):
-                                if "VRayRawDiffuseFilterMap" in fname or "VRayDiffuseFilterMap" in fname:
-                                    dst_fname = "DIFFUSE"
-                                elif "VRayNormalsMap" in fname:
-                                    dst_fname = "NORMAL"
-                                elif "VRayMtlReflectGlossinessBake" in fname:
-                                    dst_fname = "ROUGHNESS"
+                                # fname is in the same format as room_light-0-0_VRayAOMap.png
+                                vray_name = fname[fname.index("VRay") : -4]
+                                if vray_name in vray_mapping:
+                                    dst_fname = vray_mapping[vray_name]
                                 else:
                                     raise ValueError("Unknown texture map: {}".format(fname))
+
                                 src_texture_file = os.path.join(original_material_folder, fname)
-                                dst_texture_file = os.path.join(obj_link_material_folder, "{}.png".format(dst_fname))
+                                dst_texture_file = os.path.join(
+                                    obj_link_material_folder, "{}_{}_{}.png".format(obj_link_name, link_name, dst_fname)
+                                )
                                 shutil.copy(src_texture_file, dst_texture_file)
 
                         src_obj_file = obj_path
@@ -314,9 +342,10 @@ def main():
                                 # TODO: bake multi-channel PBR texture
                                 if "map_Kd material_0.png" in line:
                                     line = ""
-                                    line += "map_Kd ../../material/DIFFUSE.png\n"
-                                    line += "map_Pr ../../material/ROUGHNESS.png\n"
-                                    line += "map_bump ../../material/NORMAL.png\n"
+                                    for key in mtl_mapping:
+                                        line += "{} ../../material/{}_{}_{}.png\n".format(
+                                            key, obj_link_name, link_name, mtl_mapping[key]
+                                        )
                                 new_lines.append(line)
 
                         with open(dst_mtl_file, "w") as f:
@@ -363,6 +392,9 @@ def main():
                                     from_vertices - np.mean(from_vertices, axis=0),
                                 )[0]
                                 upper_limit = r.magnitude()
+                                assert upper_limit < np.deg2rad(
+                                    175
+                                ), "upper limit of revolute joint should be <175 degrees"
                                 joint_axis_xyz = r.as_rotvec() / r.magnitude()
 
                                 # Let X = from_vertices_mean, Y = to_vertices_mean, R is rotation, T is translation
