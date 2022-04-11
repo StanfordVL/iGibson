@@ -141,6 +141,7 @@ class KeyboardController:
         # i.e.: if using binary gripper control and when no keypress is active, the gripper action should still the last executed gripper action
         self.last_keypress = None  # Last detected keypress
         self.keypress_mapping = None
+        self.use_omnidirectional_base = robot.__class__.__name__ == "Tiago"
         self.populate_keypress_mapping()
         self.time_last_keyboard_input = time.time()
 
@@ -161,6 +162,13 @@ class KeyboardController:
 
         # Iterate over all controller info and populate mapping
         for component, info in self.controller_info.items():
+            if self.use_omnidirectional_base:
+                self.keypress_mapping["i"] = {"idx": 0, "val": 2}
+                self.keypress_mapping["k"] = {"idx": 0, "val": -2}
+                self.keypress_mapping["u"] = {"idx": 1, "val": 1}
+                self.keypress_mapping["o"] = {"idx": 1, "val": -1}
+                self.keypress_mapping["j"] = {"idx": 2, "val": 1}
+                self.keypress_mapping["l"] = {"idx": 2, "val": -1}
             if info["name"] == "JointController":
                 for i in range(info["command_dim"]):
                     ctrl_idx = info["start_idx"] + i
@@ -312,6 +320,11 @@ class KeyboardController:
         print("Differential Drive Control")
         print_command("i, k", "turn left, right")
         print_command("l, j", "move forward, backwards")
+        print()
+        print("Omnidirectional Drive Control")
+        print_command("j, l", "turn left, right")
+        print_command("i, k", "move forward, backwards")
+        print_command("u, o", "move left, right")
         print()
         print("Inverse Kinematics Control")
         print_command(u"\u2190, \u2192", "translate arm eef along x-axis")
