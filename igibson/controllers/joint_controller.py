@@ -26,6 +26,8 @@ class JointController(LocomotionController, ManipulationController):
         command_output_limits="default",
         use_delta_commands=False,
         compute_delta_in_quat_space=[],
+        fixed=False,
+        default_command=None
     ):
         """
         :param control_freq: int, controller loop frequency
@@ -60,6 +62,8 @@ class JointController(LocomotionController, ManipulationController):
         self.motor_type = motor_type.lower()
         self.use_delta_commands = use_delta_commands
         self.compute_delta_in_quat_space = compute_delta_in_quat_space
+        self.fixed = fixed
+        self.default_command = default_command
 
         # When in delta mode, it doesn't make sense to infer output range using the joint limits (since that's an
         # absolute range and our values are relative). So reject the default mode option in that case.
@@ -75,7 +79,9 @@ class JointController(LocomotionController, ManipulationController):
             command_input_limits=command_input_limits,
             command_output_limits=command_output_limits,
         )
-
+        if self.default_command is None:
+            self.default_command = np.zeros(len(self.joint_idx))
+    
     def reset(self):
         # Nothing to reset.
         pass
@@ -93,6 +99,8 @@ class JointController(LocomotionController, ManipulationController):
 
         :return: Array[float], outputted (non-clipped!) control signal to deploy
         """
+        if self.fixed:
+            return self.default_command
         # If we're using delta commands, add this value
         if self.use_delta_commands:
             # Compute the base value for the command.
@@ -131,4 +139,4 @@ class JointController(LocomotionController, ManipulationController):
 
     @property
     def command_dim(self):
-        return len(self.joint_idx)
+        return 0 if self.fixed else len(self.joint_idx)
