@@ -63,7 +63,12 @@ class JointController(LocomotionController, ManipulationController):
         self.use_delta_commands = use_delta_commands
         self.compute_delta_in_quat_space = compute_delta_in_quat_space
         self.fixed = fixed
-        self.default_command = default_command
+        if self.fixed:
+            command_input_limits = None
+        if default_command is None:
+            self.default_command = np.zeros(len(joint_idx))
+        else:
+            self.default_command = np.array(default_command)
 
         # When in delta mode, it doesn't make sense to infer output range using the joint limits (since that's an
         # absolute range and our values are relative). So reject the default mode option in that case.
@@ -79,8 +84,6 @@ class JointController(LocomotionController, ManipulationController):
             command_input_limits=command_input_limits,
             command_output_limits=command_output_limits,
         )
-        if self.default_command is None:
-            self.default_command = np.zeros(len(self.joint_idx))
     
     def reset(self):
         # Nothing to reset.
