@@ -1462,7 +1462,8 @@ class VirtualJoint(RobotJoint):
 
     @property
     def damping(self):
-        raise NotImplementedError("This feature is not available for virtual joints.")
+        return 0
+        # raise NotImplementedError("This feature is not available for virtual joints.")
 
     def get_state(self):
         return self._get_pos_callback()
@@ -1482,10 +1483,12 @@ class VirtualJoint(RobotJoint):
         self._set_pos_callback(pos)
 
     def set_vel(self, vel):
-        raise NotImplementedError("This feature is not implemented yet for virtual joints.")
+        pass
+        # raise NotImplementedError("This feature is not implemented yet for virtual joints.")
 
     def set_torque(self, torque):
-        raise NotImplementedError("This feature is not available for virtual joints.")
+        pass
+        # raise NotImplementedError("This feature is not available for virtual joints.")
 
     def reset_state(self, pos, vel):
         # VirtualJoint doesn't support resetting joint velocity yet

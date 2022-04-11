@@ -119,14 +119,17 @@ class BaseController:
 
         # Standardize command input / output limits to be (min_array, max_array)
         command_input_limits = (-1.0, 1.0) if command_input_limits == "default" else command_input_limits
-        command_output_limits = (
-            (
-                np.array(self.control_limits[self.control_type][0])[self.joint_idx],
-                np.array(self.control_limits[self.control_type][1])[self.joint_idx],
+        try:
+            command_output_limits = (
+                (
+                    np.array(self.control_limits[self.control_type][0])[self.joint_idx],
+                    np.array(self.control_limits[self.control_type][1])[self.joint_idx],
+                )
+                if command_output_limits == "default"
+                else command_output_limits
             )
-            if command_output_limits == "default"
-            else command_output_limits
-        )
+        except:
+            command_output_limits = None
         self.command_input_limits = (
             None
             if command_input_limits is None
@@ -198,10 +201,13 @@ class BaseController:
 
         :return Array[float]: Clipped control signal
         """
-        clipped_control = control.clip(
-            self.control_limits[self.control_type][0][self.joint_idx],
-            self.control_limits[self.control_type][1][self.joint_idx],
-        )
+        try:
+            clipped_control = control.clip(
+                self.control_limits[self.control_type][0][self.joint_idx],
+                self.control_limits[self.control_type][1][self.joint_idx],
+            )
+        except:
+            clipped_control = control
         idx = (
             self.joint_has_limits[self.joint_idx]
             if self.control_type == ControlType.POSITION
