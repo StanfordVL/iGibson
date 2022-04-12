@@ -17,6 +17,7 @@ from IPython import embed
 from scipy.spatial.transform import Rotation as R
 
 import igibson
+from igibson.utils.utils import NumpyEncoder
 
 vray_mapping = {
     "VRayRawDiffuseFilterMap": "albedo",
@@ -38,7 +39,7 @@ mtl_mapping = {
     "map_Ks": "ao",
 }
 
-root_folder = "material_exp_low_roughness"
+root_folder = "lights"
 processed_folder = os.path.join(igibson.ig_dataset_path, "objects")
 
 # TODO: change scene_name
@@ -152,6 +153,28 @@ def scale_rotate_mesh(mesh, translation, rotation):
     mesh.apply_transform(trimesh.transformations.translation_matrix(translation))
 
 
+def scale_rotate_meta_links(meta_links, link_name, translation, rotation):
+    rotation_inv = R.from_quat(rotation).inv()
+    for meta_link_type in meta_links:
+        if link_name in meta_links[meta_link_type]:
+            for meta_link in meta_links[meta_link_type][link_name]:
+                meta_link["position"] = np.array(meta_link["position"])
+                meta_link["position"] *= 0.001
+                meta_link["position"] -= translation
+                meta_link["position"] = np.dot(rotation_inv.as_matrix(), meta_link["position"])
+                meta_link["position"] += translation
+                meta_link["orientation"] = (rotation_inv * R.from_quat(meta_link["orientation"])).as_quat()
+                meta_link["length"] *= 0.001
+                meta_link["width"] *= 0.001
+
+
+def normalize_meta_links(meta_links, link_name, offset):
+    for meta_link_type in meta_links:
+        if link_name in meta_links[meta_link_type]:
+            for meta_link in meta_links[meta_link_type][link_name]:
+                meta_link["position"] += offset
+
+
 def get_base_link_center(mesh):
     mesh_copy = mesh.copy()
     coordinate_matrix, scale_matrix = get_pybullet_transformations()
@@ -223,6 +246,7 @@ def main():
             with open(json_file, "r") as f:
                 metadata = json.load(f)
             canonical_orientation = np.array(metadata["orientation"])
+            meta_links = metadata["meta_links"]
 
             obj_file = os.path.join(obj_dir, "{}.obj".format(obj_name))
             mesh = trimesh.load(obj_file, process=False)
@@ -256,6 +280,7 @@ def main():
                         mesh = trimesh.load(obj_file, process=False)
 
                         scale_rotate_mesh(mesh, base_link_center, canonical_orientation)
+                        scale_rotate_meta_links(meta_links, link_name, base_link_center, canonical_orientation)
 
                         center = get_mesh_center(mesh)
 
@@ -267,6 +292,7 @@ def main():
                         # Make the mesh centered at its CoM
                         if not is_building_structure:
                             mesh.apply_translation(-center)
+                            normalize_meta_links(meta_links, link_name, -center)
 
                         # Somehow we need to manually write the vertex normals to cache
                         mesh._cache.cache["vertex_normals"] = mesh.vertex_normals
@@ -425,6 +451,8 @@ def main():
                                 visual_origin.attrib = {"xyz": " ".join([str(item) for item in mesh_offset])}
                                 collision_origin.attrib = {"xyz": " ".join([str(item) for item in mesh_offset])}
 
+                                normalize_meta_links(meta_links, mesh_offset)
+
                                 # Assign the joint origin relative to the parent CoM
                                 joint_origin_xyz = joint_origin_xyz - parent_center
                             else:
@@ -478,12 +506,13 @@ def main():
                 metadata = {
                     "base_link_offset": base_link_offset,
                     "bbox_size": bbox_size,
+                    "meta_links": meta_links,
                 }
                 obj_misc_folder = os.path.join(processed_obj_inst_folder, "misc")
                 os.makedirs(obj_misc_folder, exist_ok=True)
                 metadata_file = os.path.join(obj_misc_folder, "metadata.json")
                 with open(metadata_file, "w") as f:
-                    json.dump(metadata, f)
+                    json.dump(metadata, f, cls=NumpyEncoder)
         else:
             # If re-using a previously saved model, just load its metadata
             obj_misc_folder = os.path.join(processed_obj_inst_folder, "misc")
