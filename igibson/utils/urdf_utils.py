@@ -151,7 +151,7 @@ def round_up(n, decimals=0):
     """
     Helper function to round a float
     """
-    multiplier = 10 ** decimals
+    multiplier = 10**decimals
     return math.ceil(n * multiplier) / multiplier
 
 

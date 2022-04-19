@@ -132,7 +132,7 @@ def sample_kinematics(
                     axis_probabilities=[0, 0, 1],
                     refuse_downwards=True,
                     undo_padding=True,
-                    **params
+                    **params,
                 )
 
                 sampled_vector = sampling_results[0][0]

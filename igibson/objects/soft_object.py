@@ -28,7 +28,7 @@ class SoftObject(StatefulObject):
         frictionCoeff=0,
         useFaceContact=0,
         useSelfCollision=0,
-        **kwargs
+        **kwargs,
     ):
         super(SoftObject, self).__init__(**kwargs)
         self.filename = filename

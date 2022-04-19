@@ -106,7 +106,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         base_name="body",
         grasping_mode="assisted",
         higher_limits=False,
-        **kwargs
+        **kwargs,
     ):
         """
         :param hands: list containing left, right or no hands

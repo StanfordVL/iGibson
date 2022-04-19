@@ -25,7 +25,7 @@ class VisualMarker(BaseObject):
         initial_offset=[0, 0, 0],
         filename=None,
         scale=[1.0] * 3,
-        **kwargs
+        **kwargs,
     ):
         """
         create a visual shape to show in pybullet and MeshRenderer
