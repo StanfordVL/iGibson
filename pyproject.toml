@@ -1,6 +1,6 @@
 [tool.black]
 line-length = 120
-target-version = ['py27', 'py36', 'py37']
+target-version = ['py36', 'py37', 'py38']
 force-exclude = 'igibson/(data|external|render/(cpp|cryptopp|glad|glfw|glm|pybind11|sranipal))'
 
 [tool.isort]

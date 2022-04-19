@@ -23,7 +23,7 @@ class Quadrotor(LocomotionRobot):
             scale=config.get("robot_scale", 1.0),
             is_discrete=config.get("is_discrete", False),
             control="torque",
-            **kwargs
+            **kwargs,
         )
 
     def set_up_continuous_action_space(self):

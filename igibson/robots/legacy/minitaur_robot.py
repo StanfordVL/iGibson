@@ -105,7 +105,7 @@ class MinitaurBase(LocomotionRobot):
             target_pos=config["target_pos"],
             resolution=config["resolution"],
             env=env,
-            **kwargs
+            **kwargs,
         )
 
         self.r_f = 0.1

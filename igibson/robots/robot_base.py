@@ -65,7 +65,7 @@ class BaseRobot(StatefulObject):
         base_name=None,
         scale=1.0,
         self_collision=False,
-        **kwargs
+        **kwargs,
     ):
         """
         :param name: None or str, name of the robot object

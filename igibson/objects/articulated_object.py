@@ -855,7 +855,7 @@ class URDFObject(StatefulObject):
                 self.class_id,
                 visual_mesh_to_material=self.visual_mesh_to_material[idx],
                 link_name_to_vm=self.link_name_to_vm[idx],
-                **self._rendering_params
+                **self._rendering_params,
             )
 
             body_ids.append(body_id)

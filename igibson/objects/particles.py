@@ -35,7 +35,7 @@ class Particle(BaseObject):
         base_shape="sphere",
         mesh_filename=None,
         mesh_bounding_box=None,
-        **kwargs
+        **kwargs,
     ):
         """
         Create a particle.
@@ -408,7 +408,7 @@ class WaterStream(ParticleSystem):
             color=self.colors,
             visual_only=False,
             mass=0.00005,  # each drop is around 0.05 grams
-            **kwargs
+            **kwargs,
         )
 
         self.steps_since_last_drop_step = float("inf")
@@ -526,7 +526,7 @@ class _Dirt(AttachedParticleSystem):
             undo_padding=True,
             aabb_offset=self._SAMPLING_AABB_OFFSET,
             refuse_downwards=True,
-            **self._sampling_kwargs
+            **self._sampling_kwargs,
         )
 
         # Reset the activated particle history
@@ -558,7 +558,7 @@ class Dust(_Dirt):
             visual_only=True,
             mass=0,
             color=(0.87, 0.80, 0.74, 1),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -627,7 +627,7 @@ class Stain(_Dirt):
             mesh_bounding_box=self._MESH_BOUNDING_BOX,
             visual_only=True,
             initial_dump=initial_dump,
-            **kwargs
+            **kwargs,
         )
 
     def reset_to_dump(self, dump):
