@@ -424,12 +424,13 @@ class MotionPlanningWrapper(object):
         log.debug("IK Solver failed to find a configuration")
         return None
 
-    def plan_arm_motion(self, arm_joint_positions):
+    def plan_arm_motion(self, arm_joint_positions, override_fetch_collision_links=False):
         """
         Attempt to reach arm arm_joint_positions and return arm trajectory
         If failed, reset the arm to its original pose and return None
 
         :param arm_joint_positions: final arm joint position to reach
+        :param override_fetch_collision_links: if True, include Fetch hand and finger collisions while motion planning
         :return: arm trajectory or None if no plan can be found
         """
         log.debug("Planning path in joint space to {}".format(arm_joint_positions))
@@ -455,7 +456,7 @@ class MotionPlanningWrapper(object):
         state_id = p.saveState()
 
         allow_collision_links = []
-        if self.robot_type == "Fetch":
+        if self.robot_type == "Fetch" and not override_fetch_collision_links:
             allow_collision_links = [self.robot.eef_links[self.robot.default_arm].link_id] + [
                 finger.link_id for finger in self.robot.finger_links[self.robot.default_arm]
             ]
