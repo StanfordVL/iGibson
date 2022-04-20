@@ -143,6 +143,22 @@ class BaseObject(with_metaclass(ABCMeta, object)):
         pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
         self.set_position_orientation(pos, orn)
 
+    def get_poses(self):
+        """Get object bodies' poses in the format of List[Tuple[List[x, y, z], List[x, y, z, w]]]."""
+        poses = []
+        for body_id in self.get_body_ids():
+            pos, orn = p.getBasePositionAndOrientation(body_id)
+            poses.append((np.array(pos), np.array(orn)))
+
+        return poses
+
+    def set_poses(self, poses):
+        """Set object base poses in the format of List[Tuple[Array[x, y, z], Array[x, y, z, w]]]"""
+        assert len(poses) == len(self.get_body_ids()), "Number of poses should match number of bodies."
+
+        for bid, (pos, orn) in zip(self.get_body_ids(), poses):
+            p.resetBasePositionAndOrientation(bid, pos, orn)
+
     def get_velocities(self):
         """Get object bodies' velocity in the format of List[Tuple[Array[vx, vy, vz], Array[wx, wy, wz]]]"""
         velocities = []

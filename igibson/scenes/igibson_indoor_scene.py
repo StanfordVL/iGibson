@@ -27,9 +27,12 @@ from igibson.utils.assets_utils import (
     get_ig_model_path,
     get_ig_scene_path,
 )
+from igibson.utils.semantics_utils import ROOM_NAME_TO_ROOM_ID
 from igibson.utils.utils import NumpyEncoder, restoreState, rotate_vector_3d
 
 SCENE_SOURCE = ["IG", "CUBICASA", "THREEDFRONT"]
+
+log = logging.getLogger(__name__)
 
 
 class InteractiveIndoorScene(StaticIndoorScene):
@@ -133,7 +136,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             self.fname = fname
             self.scene_file = os.path.join(scene_dir, "urdf", "{}.urdf".format(fname))
 
-        logging.info("Loading scene URDF: {}".format(self.scene_file))
+        log.debug("Loading scene URDF: {}".format(self.scene_file))
 
         self.scene_source = scene_source
         self.scene_dir = scene_dir
@@ -185,7 +188,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         # Store the original states retrieved from the URDF
         # self.object_states[object_name]["bbox_center_pose"] = ([x, y, z], [x, y, z, w])
-        # self.object_states[object_name]["base_com_pose"] = ([x, y, z], [x, y, z, w])
+        # self.object_states[object_name]["base_poses"] = [([x, y, z], [x, y, z, w]), ...]
         # self.object_states[object_name]["base_velocities"] = (vx, vy, vz], [wx, wy, wz])
         # self.object_states[object_name]["joint_states"] = {joint_name: (q, q_dot)}
         # self.object_states[object_name]["non_kinematic_states"] = dict()
@@ -328,7 +331,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 bbx_center_orn = np.array([0.0, 0.0, 0.0])
             bbx_center_orn = p.getQuaternionFromEuler(bbx_center_orn)
 
-            base_com_pose = json.loads(link.attrib["base_com_pose"]) if "base_com_pose" in link.attrib else None
+            base_poses = json.loads(link.attrib["base_poses"]) if "base_poses" in link.attrib else None
             base_velocities = json.loads(link.attrib["base_velocities"]) if "base_velocities" in link.attrib else None
             if "joint_states" in link.keys():
                 joint_states = json.loads(link.attrib["joint_states"])
@@ -346,7 +349,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 non_kinematic_states = None
 
             self.object_states[object_name]["bbox_center_pose"] = (bbox_center_pos, bbx_center_orn)
-            self.object_states[object_name]["base_com_pose"] = base_com_pose
+            self.object_states[object_name]["base_poses"] = base_poses
             self.object_states[object_name]["base_velocities"] = base_velocities
             self.object_states[object_name]["joint_states"] = joint_states
             self.object_states[object_name]["non_kinematic_states"] = non_kinematic_states
@@ -408,7 +411,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if room_instance in self.room_ins_name_to_ins_id:
                     load_room_instances_filtered.append(room_instance)
                 else:
-                    logging.warning("room_instance [{}] does not exist.".format(room_instance))
+                    log.warning("room_instance [{}] does not exist.".format(room_instance))
             self.load_room_instances = load_room_instances_filtered
         elif load_room_types is not None:
             if isinstance(load_room_types, str):
@@ -418,7 +421,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if room_type in self.room_sem_name_to_ins_name:
                     load_room_instances_filtered.extend(self.room_sem_name_to_ins_name[room_type])
                 else:
-                    logging.warning("room_type [{}] does not exist.".format(room_type))
+                    log.warning("room_type [{}] does not exist.".format(room_type))
             self.load_room_instances = load_room_instances_filtered
         else:
             self.load_room_instances = None
@@ -443,9 +446,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         img_ins = np.array(img_ins.resize((self.seg_map_size, self.seg_map_size), Image.NEAREST))
         img_sem = np.array(img_sem.resize((self.seg_map_size, self.seg_map_size), Image.NEAREST))
 
-        room_categories = os.path.join(igibson.ig_dataset_path, "metadata", "room_categories.txt")
-        with open(room_categories, "r") as fp:
-            room_cats = [line.rstrip() for line in fp.readlines()]
+        room_cats = list(ROOM_NAME_TO_ROOM_ID.keys())
 
         sem_id_to_ins_id = {}
         unique_ins_ids = np.unique(img_ins)
@@ -466,7 +467,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             sem_name = room_cats[sem_id - 1]
             room_sem_name_to_sem_id[sem_name] = sem_id
             for i, ins_id in enumerate(ins_ids):
-                # valid class start from 1
+                # valid room class starts from 1
                 ins_name = "{}_{}".format(sem_name, i)
                 room_ins_name_to_ins_id[ins_name] = ins_id
                 if sem_name not in room_sem_name_to_ins_name:
@@ -521,7 +522,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         """
         # Give the object a name if it doesn't already have one.
         if obj.name in self.objects_by_name.keys():
-            logging.error("Object names need to be unique! Existing name " + obj.name)
+            log.error("Object names need to be unique! Existing name " + obj.name)
             exit(-1)
 
         # Add object to database
@@ -554,7 +555,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         Randomize texture/material for all objects in the scene
         """
         if not self.texture_randomization:
-            logging.warning("calling randomize_texture while texture_randomization is False during initialization.")
+            log.warning("calling randomize_texture while texture_randomization is False during initialization.")
             return
         for int_object in self.objects_by_name:
             obj = self.objects_by_name[int_object]
@@ -685,7 +686,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.body_collision_set = set()
         for body_a, body_b in body_body_collision:
-            logging.warning(
+            log.warning(
                 "scene quality check: {} and {} has collision.".format(
                     body_id_to_name[body_a],
                     body_id_to_name[body_b],
@@ -696,7 +697,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         self.link_collision_set = set()
         for body_id in body_link_collision:
-            logging.warning(
+            log.warning(
                 "scene quality check: {} has joint that cannot extend for >66%.".format(
                     body_id_to_name[body_id],
                 )
@@ -850,9 +851,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
         if not obj_kin_state:
             return
 
-        # TODO: For velocities, we are now storing each body's com. Should we somehow do the same for positions?
-        if obj_kin_state["base_com_pose"] is not None:
-            obj.set_position_orientation(*obj_kin_state["base_com_pose"])
+        if obj_kin_state["base_poses"] is not None:
+            obj.set_poses(obj_kin_state["base_poses"])
         else:
             if isinstance(obj, BaseRobot):
                 # Backward compatibility, existing scene cache saves robot's base link CoM frame as bbox_center_pose
@@ -963,7 +963,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :return: floor (always 0), a randomly sampled point in [x, y, z]
         """
         if room_type not in self.room_sem_name_to_sem_id:
-            logging.warning("room_type [{}] does not exist.".format(room_type))
+            log.warning("room_type [{}] does not exist.".format(room_type))
             return None, None
 
         sem_id = self.room_sem_name_to_sem_id[room_type]
@@ -984,7 +984,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :return: floor (always 0), a randomly sampled point in [x, y, z]
         """
         if room_instance not in self.room_ins_name_to_ins_id:
-            logging.warning("room_instance [{}] does not exist.".format(room_instance))
+            log.warning("room_instance [{}] does not exist.".format(room_instance))
             return None, None
 
         ins_id = self.room_ins_name_to_ins_id[room_instance]
@@ -1004,7 +1004,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param room_instance: room instance (e.g. bathroom_1)
         """
         if room_instance not in self.room_ins_name_to_ins_id:
-            logging.warning("room_instance [{}] does not exist.".format(room_instance))
+            log.warning("room_instance [{}] does not exist.".format(room_instance))
             return None, None
 
         ins_id = self.room_ins_name_to_ins_id[room_instance]
@@ -1227,9 +1227,8 @@ class InteractiveIndoorScene(StaticIndoorScene):
             new_parent.attrib["link"] = "world"
 
         # Common logic for objects that are both in the scene & otherwise.
-        base_com_pose = (pos, orn)
         joint_states = obj.get_joint_states()
-        link.attrib["base_com_pose"] = json.dumps(base_com_pose, cls=NumpyEncoder)
+        link.attrib["base_poses"] = json.dumps(obj.get_poses(), cls=NumpyEncoder)
         link.attrib["base_velocities"] = json.dumps(obj.get_velocities(), cls=NumpyEncoder)
         link.attrib["joint_states"] = json.dumps(joint_states, cls=NumpyEncoder)
 
@@ -1301,11 +1300,11 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if category == "multiplexer":
                 self.objects_by_name[object_name].set_selection(int(link.attrib["current_index"]))
 
-            if category in ["grouper", "multiplexer"]:
+            if category in ["grouper", "multiplexer", "agent_pose"]:
                 continue
 
             object_states[object_name]["bbox_center_pose"] = None
-            object_states[object_name]["base_com_pose"] = json.loads(link.attrib["base_com_pose"])
+            object_states[object_name]["base_poses"] = json.loads(link.attrib["base_poses"])
             object_states[object_name]["base_velocities"] = json.loads(link.attrib["base_velocities"])
             object_states[object_name]["joint_states"] = json.loads(link.attrib["joint_states"])
             object_states[object_name]["non_kinematic_states"] = json.loads(link.attrib["states"])

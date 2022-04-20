@@ -103,7 +103,7 @@ int GLFWRendererContext::init() {
         exit(EXIT_FAILURE);
     }
 
-    if (verbosity >= 20) { printf("INFO: Succesfully initialized GLFW context and window!\n"); }
+    if (verbosity >= 20) { printf("DEBUG: Succesfully initialized GLFW context and window!\n"); }
 
     return 0;
 }

@@ -27,8 +27,8 @@ jobs:
       - name: install podman-compose
         run: pip3 install podman-compose
 
-      - name: Build and push images to quay
+      - name: Build and push images to docker hub
         run: |
           cd docker
-          podman-compose -f compose-build.yml build
-          podman-compose -f compose-build.yml push
+          podman-compose -f docker-compose.yml build
+          podman-compose -f docker-compose.yml push

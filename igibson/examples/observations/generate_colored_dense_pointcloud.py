@@ -11,18 +11,18 @@ import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of rendering and visualizing a single 3D dense pointcloud
     Loads Rs (non interactive) and a robot and renders a dense panorama depth map from the robot's camera
     It plots the point cloud with matplotlib, colored with the RGB values
     It also generates semantic segmentation
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
     # Create iGibsonEnvironment with the Fetch rearrangement config
     mode = "headless"
-    config = os.path.join(igibson.example_config_path, "fetch_rearrangement.yaml")
+    config = os.path.join(igibson.configs_path, "fetch_rearrangement.yaml")
     config_data = yaml.load(open(config, "r"), Loader=yaml.FullLoader)
     # Reduce texture scale for Mac.
     if platform == "darwin":
@@ -68,4 +68,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

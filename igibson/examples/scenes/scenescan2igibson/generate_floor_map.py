@@ -1,5 +1,5 @@
 # Code adapted from Fei Xia
-
+import logging
 import os
 
 import cv2
@@ -221,4 +221,5 @@ def generate_floorplan(mesh_dir):
 import sys
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     generate_floorplan(sys.argv[1])

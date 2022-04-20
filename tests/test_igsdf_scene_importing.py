@@ -22,11 +22,3 @@ def test_import_igsdf():
         print("Frequency: ", 1 / (end - start))
 
     s.disconnect()
-
-
-def main():
-    test_import_igsdf()
-
-
-if __name__ == "__main__":
-    main()

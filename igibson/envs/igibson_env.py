@@ -26,6 +26,8 @@ from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
 
+log = logging.getLogger(__name__)
+
 
 class iGibsonEnv(BaseEnv):
     """
@@ -76,7 +78,7 @@ class iGibsonEnv(BaseEnv):
         """
         self.initial_pos_z_offset = self.config.get("initial_pos_z_offset", 0.1)
         # s = 0.5 * G * (t ** 2)
-        drop_distance = 0.5 * 9.8 * (self.action_timestep ** 2)
+        drop_distance = 0.5 * 9.8 * (self.action_timestep**2)
         assert drop_distance < self.initial_pos_z_offset, "initial_pos_z_offset is too small for collision checking"
 
         # ignore the agent's collision with these body ids
@@ -272,7 +274,7 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
             state["bump"] = self.sensors["bump"].get_obs(self)
-        if "proprioception" in self.sensors:
+        if "proprioception" in self.output:
             state["proprioception"] = np.array(self.robots[0].get_proprioception())
 
         return state
@@ -363,9 +365,9 @@ class iGibsonEnv(BaseEnv):
         self.simulator_step()
         collisions = list(p.getContactPoints(bodyA=body_id))
 
-        if logging.root.level <= logging.DEBUG:  # Only going into this if it is for logging --> efficiency
+        if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
-                logging.debug("bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(item[1], item[2], item[3], item[4]))
+                log.debug("bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(item[1], item[2], item[3], item[4]))
 
         return len(collisions) > 0
 
@@ -440,7 +442,7 @@ class iGibsonEnv(BaseEnv):
                 break
 
         if not land_success:
-            logging.warning("Object failed to land.")
+            log.warning("Object failed to land.")
 
         if is_robot:
             obj.reset()
@@ -484,6 +486,7 @@ class iGibsonEnv(BaseEnv):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", "-c", help="which config file to use [default: use yaml files in examples/configs]")
     parser.add_argument(

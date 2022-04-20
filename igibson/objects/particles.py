@@ -9,7 +9,7 @@ from igibson.external.pybullet_tools import utils
 from igibson.external.pybullet_tools.utils import get_aabb_extent, get_link_name, link_from_name
 from igibson.objects.object_base import BaseObject
 from igibson.utils import sampling_utils
-from igibson.utils.constants import PyBulletSleepState
+from igibson.utils.constants import NO_COLLISION_GROUPS_MASK, PyBulletSleepState
 
 _STASH_POSITION = [0, 0, -100]
 
@@ -35,7 +35,7 @@ class Particle(BaseObject):
         base_shape="sphere",
         mesh_filename=None,
         mesh_bounding_box=None,
-        **kwargs
+        **kwargs,
     ):
         """
         Create a particle.
@@ -102,6 +102,17 @@ class Particle(BaseObject):
         self.force_sleep(body_id)
 
         return [body_id]
+
+    def load(self, simulator):
+        bids = super(Particle, self).load(simulator)
+
+        # By default, disable collisions for visual-only objects.
+        if self.visual_only:
+            for body_id in self.get_body_ids():
+                for link_id in [-1] + list(range(p.getNumJoints(body_id))):
+                    p.setCollisionFilterGroupMask(body_id, link_id, self.collision_group, NO_COLLISION_GROUPS_MASK)
+
+        return bids
 
     def force_sleep(self, body_id=None):
         if body_id is None:
@@ -397,7 +408,7 @@ class WaterStream(ParticleSystem):
             color=self.colors,
             visual_only=False,
             mass=0.00005,  # each drop is around 0.05 grams
-            **kwargs
+            **kwargs,
         )
 
         self.steps_since_last_drop_step = float("inf")
@@ -515,7 +526,7 @@ class _Dirt(AttachedParticleSystem):
             undo_padding=True,
             aabb_offset=self._SAMPLING_AABB_OFFSET,
             refuse_downwards=True,
-            **self._sampling_kwargs
+            **self._sampling_kwargs,
         )
 
         # Reset the activated particle history
@@ -547,7 +558,7 @@ class Dust(_Dirt):
             visual_only=True,
             mass=0,
             color=(0.87, 0.80, 0.74, 1),
-            **kwargs
+            **kwargs,
         )
 
 
@@ -616,7 +627,7 @@ class Stain(_Dirt):
             mesh_bounding_box=self._MESH_BOUNDING_BOX,
             visual_only=True,
             initial_dump=initial_dump,
-            **kwargs
+            **kwargs,
         )
 
     def reset_to_dump(self, dump):

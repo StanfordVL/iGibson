@@ -5,6 +5,9 @@ import numpy as np
 import pybullet as p
 from transforms3d import euler
 
+log = logging.getLogger(__name__)
+
+
 from igibson.external.pybullet_tools.utils import (
     control_joints,
     get_base_values,
@@ -270,7 +273,7 @@ class MotionPlanningWrapper(object):
         if self.marker is not None:
             self.set_marker_position_yaw([goal[0], goal[1], 0.05], goal[2])
 
-        logging.info("Motion planning base goal: {}".format(goal))
+        log.debug("Motion planning base goal: {}".format(goal))
 
         state = self.env.get_state()
         x, y, theta = goal
@@ -328,9 +331,9 @@ class MotionPlanningWrapper(object):
         )
 
         if path is not None and len(path) > 0:
-            logging.info("Path found!")
+            log.debug("Path found!")
         else:
-            logging.info("Path NOT found!")
+            log.debug("Path NOT found!")
 
         return path
 
@@ -390,7 +393,7 @@ class MotionPlanningWrapper(object):
         :param arm_ik_goal: [x, y, z] in the world frame
         :return: arm joint positions
         """
-        logging.info("IK query for EE position {}".format(arm_ik_goal))
+        log.debug("IK query for EE position {}".format(arm_ik_goal))
         ik_start = time()
 
         max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
@@ -454,32 +457,33 @@ class MotionPlanningWrapper(object):
             )
             if not collision_free:
                 n_attempt += 1
-                logging.info("Gripper in collision")
+                log.debug("Gripper in collision")
                 continue
 
             # self.episode_metrics['arm_ik_time'] += time() - ik_start
             # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
             restoreState(state_id)
             p.removeState(state_id)
-            logging.info("IK Solver found a valid configuration")
+            log.debug("IK Solver found a valid configuration")
             return arm_joint_positions
 
         # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         restoreState(state_id)
         p.removeState(state_id)
         # self.episode_metrics['arm_ik_time'] += time() - ik_start
-        logging.info("IK Solver failed to find a configuration")
+        log.debug("IK Solver failed to find a configuration")
         return None
 
-    def plan_arm_motion(self, arm_joint_positions):
+    def plan_arm_motion(self, arm_joint_positions, override_fetch_collision_links=False):
         """
         Attempt to reach arm arm_joint_positions and return arm trajectory
         If failed, reset the arm to its original pose and return None
 
         :param arm_joint_positions: final arm joint position to reach
+        :param override_fetch_collision_links: if True, include Fetch hand and finger collisions while motion planning
         :return: arm trajectory or None if no plan can be found
         """
-        logging.info("Planning path in joint space to {}".format(arm_joint_positions))
+        log.debug("Planning path in joint space to {}".format(arm_joint_positions))
         disabled_collisions = {}
         # if self.robot_type == "Fetch":
         #     disabled_collisions = {
@@ -510,7 +514,7 @@ class MotionPlanningWrapper(object):
         state_id = p.saveState()
 
         allow_collision_links = []
-        if self.robot_type == "Fetch":
+        if self.robot_type == "Fetch" and not override_fetch_collision_links:
             allow_collision_links = [self.robot.eef_links[self.robot.default_arm].link_id] + [
                 finger.link_id for finger in self.robot.finger_links[self.robot.default_arm]
             ]
@@ -529,9 +533,9 @@ class MotionPlanningWrapper(object):
         p.removeState(state_id)
 
         if arm_path is not None and len(arm_path) > 0:
-            logging.info("Path found!")
+            log.debug("Path found!")
         else:
-            logging.info("Path NOT found!")
+            log.debug("Path NOT found!")
 
         return arm_path
 
@@ -562,7 +566,7 @@ class MotionPlanningWrapper(object):
         :param hit_normal: direction to push after reacehing that position
         :return: arm trajectory or None if no plan can be found
         """
-        logging.info("Planning arm push at point {} with direction {}".format(hit_pos, hit_normal))
+        log.debug("Planning arm push at point {} with direction {}".format(hit_pos, hit_normal))
         if self.marker is not None:
             self.set_marker_position_direction(hit_pos, hit_normal)
 
@@ -576,7 +580,7 @@ class MotionPlanningWrapper(object):
             plan = self.plan_arm_motion(joint_positions)
             return plan
         else:
-            logging.info("Planning failed: goal position may be non-reachable")
+            log.debug("Planning failed: goal position may be non-reachable")
             return None
 
     def interact(self, push_point, push_direction):
@@ -633,10 +637,10 @@ class MotionPlanningWrapper(object):
         :param hit_normal: direction to push after reacehing that position
         """
         if plan is not None:
-            logging.info("Teleporting arm along the trajectory. No physics simulation")
+            log.debug("Teleporting arm along the trajectory. No physics simulation")
             self.dry_run_arm_plan(plan)
-            logging.info("Performing pushing actions")
+            log.debug("Performing pushing actions")
             self.interact(hit_pos, hit_normal)
-            logging.info("Teleporting arm to the default configuration")
+            log.debug("Teleporting arm to the default configuration")
             set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             self.simulator_sync()

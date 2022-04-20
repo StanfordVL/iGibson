@@ -9,20 +9,20 @@ from PIL import Image
 from igibson.utils.assets_utils import get_scene_path
 
 
-def main(random_selection=False, headless=False, short_exec=False):
+def main(selection="user", headless=False, short_exec=False):
     """
     Traversable map demo
     Loads the floor plan and obstacles for the Rs scene, and overlays them in a visual figure such that the
     highlighted area reflects the traversable (free-space) area
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
     scene_id = "Rs"
     trav_map_size = 200
     trav_map_erosion = 2
 
     with open(os.path.join(get_scene_path(scene_id), "floors.txt"), "r") as f:
         floors = sorted(list(map(float, f.readlines())))
-        logging.info("Floor heights: {}".format(floors))
+        print("Floor heights: {}".format(floors))
 
     for f in range(len(floors)):
         trav_map = Image.open(os.path.join(get_scene_path(scene_id), "floor_trav_{}.png".format(f)))
@@ -42,4 +42,5 @@ def main(random_selection=False, headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

@@ -8,6 +8,5 @@ robot:
       name: MultiFingerGripperController
       motor_type: position
       command_input_limits: default
-      command_output_limits: default
       mode: binary
       limit_tolerance: 0.01

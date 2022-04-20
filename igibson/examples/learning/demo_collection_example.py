@@ -13,27 +13,31 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.utils.ig_logging import IGLogWriter
 from igibson.utils.utils import parse_config
 
+PHYSICS_WARMING_TIMESTEPS = 200
+POST_SUCCESS_STEPS = 200
 
-def main(random_selection=False, headless=False, short_exec=False):
+
+def main(selection="user", headless=False, short_exec=False):
     """
     Example of how to save a demo of a task
     """
-    logging.info("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
+    print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
 
-    # Assuming that if random_selection=True, headless=True, short_exec=True, we are calling it from tests and we
+    # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
-    if not (random_selection and headless and short_exec):
+    if not (selection != "user" and headless and short_exec):
         args = parse_args()
         collect_demo(
             args.scene,
             args.task,
             args.task_id,
             args.instance_id,
-            args.log_path,
+            args.demo_file,
             args.disable_save,
             args.disable_scene_cache,
+            args.mode,
             args.profile,
-            args.config,
+            args.config_file,
             short_exec=headless,
         )
 
@@ -41,7 +45,7 @@ def main(random_selection=False, headless=False, short_exec=False):
         collect_demo(
             "Benevolence_1_int",
             "cleaning_out_drawers",
-            log_path=os.path.join("/", "tmp", "demo.hdf5"),
+            demo_file=os.path.join("/", "tmp", "demo.hdf5"),
             short_exec=headless,
         )
 
@@ -104,7 +108,7 @@ def parse_args():
     )
     demo_file = os.path.join(tempfile.gettempdir(), "demo.hdf5")
     parser.add_argument(
-        "--log_path", type=str, default=demo_file, required=False, help="Path (and filename) of log file"
+        "--demo_file", type=str, default=demo_file, required=False, help="Path (and filename) of demo file"
     )
     parser.add_argument("--disable_save", action="store_true", help="Whether to disable saving logfiles.")
     parser.add_argument(
@@ -112,10 +116,17 @@ def parse_args():
     )
     parser.add_argument("--profile", action="store_true", help="Whether to print profiling data.")
     parser.add_argument(
-        "--config",
+        "--config_file",
         help="which config file to use [default: use yaml files in examples/configs]",
-        default=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+        default=os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"),
         required=False,
+    )
+    parser.add_argument(
+        "--mode",
+        type=str,
+        choices=["headless", "headless_tensor", "vr", "gui_non_interactive"],
+        help="Mode for replaying",
+        default="headless",
     )
     return parser.parse_args()
 
@@ -125,11 +136,12 @@ def collect_demo(
     task,
     task_id=0,
     instance_id=0,
-    log_path=None,
+    demo_file=None,
     disable_save=False,
     disable_scene_cache=False,
+    mode="headless",
     profile=False,
-    config_file=os.path.join(igibson.example_config_path, "behavior_vr.yaml"),
+    config_file=os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"),
     short_exec=False,
 ):
     """ """
@@ -141,7 +153,6 @@ def collect_demo(
     )
     background_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "urban_street_01.jpg")
 
-    # Rendering settings
     rendering_settings = MeshRendererSettings(
         optimized=True,
         fullscreen=False,
@@ -162,9 +173,12 @@ def collect_demo(
     config["instance_id"] = instance_id
     config["online_sampling"] = disable_scene_cache
     config["load_clutter"] = True
+    if short_exec:
+        config["max_step"] = 500
+
     env = iGibsonEnv(
         config_file=config,
-        mode="headless",
+        mode=mode,
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
         rendering_settings=rendering_settings,
@@ -175,11 +189,11 @@ def collect_demo(
     log_writer = None
     if not disable_save:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        if log_path is None:
-            log_path = "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, instance_id, timestamp)
+        if demo_file is None:
+            demo_file = "{}_{}_{}_{}_{}.hdf5".format(task, task_id, scene, instance_id, timestamp)
         log_writer = IGLogWriter(
             env.simulator,
-            log_filepath=log_path,
+            log_filepath=demo_file,
             task=env.task,
             store_vr=False,
             vr_robot=robot,
@@ -189,29 +203,38 @@ def collect_demo(
         log_writer.set_up_data_storage()
         log_writer.hf.attrs["/metadata/instance_id"] = instance_id
 
-    steps = 0
-    max_steps = -1 if not short_exec else 1000
-
     # Main recording loop
-    while steps != max_steps:
-        if robot.__class__.__name__ == "BehaviorRobot" and steps < 2:
-            # Use the first 2 steps to activate BehaviorRobot
-            action = np.zeros((28,))
-            action[19] = 1
-            action[27] = 1
+    done = False
+    steps_after_success = 0
+    while not done:
+        if env.current_step < PHYSICS_WARMING_TIMESTEPS:
+            action = np.zeros(robot.action_dim)
+        elif mode == "vr":
+            action = env.simulator.gen_vr_robot_action()
         else:
             action = np.random.uniform(-0.01, 0.01, size=(robot.action_dim,))
 
         # Execute the action
         state, reward, done, info = env.step(action)
+        success = info["success"]
 
         if log_writer and not disable_save:
             log_writer.process_frame()
 
-        if done:
+        # Time out
+        if done and not success:
             break
 
-        steps += 1
+        if success:
+            steps_after_success += 1
+        else:
+            steps_after_success = 0
+
+        # Consecutive success for POST_SUCCESS_STEPS steps
+        if steps_after_success >= POST_SUCCESS_STEPS:
+            break
+
+    assert env.current_step > PHYSICS_WARMING_TIMESTEPS, "No actions were applied."
 
     if log_writer and not disable_save:
         log_writer.end_log_session()
@@ -220,4 +243,5 @@ def collect_demo(
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

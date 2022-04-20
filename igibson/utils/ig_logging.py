@@ -201,10 +201,10 @@ class IGLogWriter(object):
                 },
                 "vr_button_data": {
                     "left_controller": np.full(
-                        (self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype
+                        (self.frames_before_write, 4), self.default_fill_sentinel, dtype=self.np_dtype
                     ),
                     "right_controller": np.full(
-                        (self.frames_before_write, 3), self.default_fill_sentinel, dtype=self.np_dtype
+                        (self.frames_before_write, 4), self.default_fill_sentinel, dtype=self.np_dtype
                     ),
                 },
                 "vr_eye_tracking_data": np.full(
@@ -372,9 +372,9 @@ class IGLogWriter(object):
                     else:
                         # Calculate model rotation and store
                         if device == "left_controller":
-                            base_rot = HAND_BASE_ROTS["left_hand"]
+                            base_rot = HAND_BASE_ROTS["left"]
                         else:
-                            base_rot = HAND_BASE_ROTS["right_hand"]
+                            base_rot = HAND_BASE_ROTS["right"]
                         controller_rot = rot
                         # Use dummy translation to calculation final rotation
                         final_rot = p.multiplyTransforms([0, 0, 0], controller_rot, [0, 0, 0], base_rot)[1]

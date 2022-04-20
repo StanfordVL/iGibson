@@ -1,3 +1,4 @@
+import logging
 from abc import abstractmethod
 from collections import namedtuple
 from enum import IntEnum
@@ -38,6 +39,7 @@ MIN_ASSIST_FORCE = 0
 MAX_ASSIST_FORCE = 500
 ASSIST_FORCE = MIN_ASSIST_FORCE + (MAX_ASSIST_FORCE - MIN_ASSIST_FORCE) * ASSIST_FRACTION
 CONSTRAINT_VIOLATION_THRESHOLD = 0.1
+ASSIST_ACTIVATION_THRESHOLD = 0.5
 RELEASE_WINDOW = 1 / 30.0  # release window in seconds
 GraspingPoint = namedtuple("GraspingPoint", ["link_name", "position"])  # link_name (str), position (x,y,z tuple)
 
@@ -84,12 +86,13 @@ class ManipulationRobot(BaseRobot):
                 values specified, but setting these individual kwargs will override them
     """
 
-    def __init__(self, grasping_mode="physical", **kwargs):
+    def __init__(self, grasping_mode="physical", self_collision=True, **kwargs):
         """
         :param grasping_mode: None or str, One of {"physical", "assisted", "sticky"}.
             If "physical", no assistive grasping will be applied (relies on contact friction + finger force).
             If "assisted", will magnetize any object touching and within the gripper's fingers.
             If "sticky", will magnetize any object touching the gripper's fingers.
+        :param self_collision: bool, whether to enable self collision
         :param **kwargs: see BaseRobot
         """
         # Store relevant internal vars
@@ -108,7 +111,7 @@ class ManipulationRobot(BaseRobot):
         self._ag_release_counter = {arm: None for arm in self.arm_names}
 
         # Call super() method
-        super().__init__(**kwargs)
+        super().__init__(self_collision=self_collision, **kwargs)
 
     def _validate_configuration(self):
         # Iterate over all arms
@@ -135,6 +138,10 @@ class ManipulationRobot(BaseRobot):
 
         # run super
         super()._validate_configuration()
+
+    def is_grasping_all_arms(self, candidate_obj=None):
+        grasped_with_hand = [self.is_grasping(arm=arm, candidate_obj=candidate_obj) for arm in self.arm_names]
+        return np.array(grasped_with_hand)
 
     def is_grasping(self, arm="default", candidate_obj=None):
         """
@@ -163,6 +170,7 @@ class ManipulationRobot(BaseRobot):
                 else IsGraspingState.FALSE
             )
         else:
+            # TODO: Can we improve this grasping logic by checking contact / force?
             gripper_controller = self._controllers["gripper_{}".format(arm)]
 
             # NullGripperController cannot grasp anything
@@ -174,12 +182,8 @@ class ManipulationRobot(BaseRobot):
                 is_grasping = IsGraspingState.UNKNOWN
 
             elif isinstance(gripper_controller, MultiFingerGripperController):
-                # Independent mode of MultiFingerGripperController does not have any good heuristics to determine is_grasping
-                if gripper_controller.mode == "independent":
-                    is_grasping = IsGraspingState.UNKNOWN
-
                 # No control has been issued before
-                elif gripper_controller.control is None:
+                if gripper_controller.control is None:
                     is_grasping = IsGraspingState.FALSE
 
                 else:
@@ -215,10 +219,9 @@ class ManipulationRobot(BaseRobot):
                         min_pos = self.joint_lower_limits[self.gripper_control_idx[arm]]
                         max_pos = self.joint_upper_limits[self.gripper_control_idx[arm]]
 
-                        # Make sure we don't have any invalid values (i.e.: fingers should be within the limits)
-                        assert np.all(
-                            (min_pos <= finger_pos) * (finger_pos <= max_pos)
-                        ), "Got invalid finger joint positions when checking for grasp!"
+                        # Check we don't have any invalid values (i.e.: fingers should be within the limits)
+                        if not np.all((min_pos <= finger_pos) * (finger_pos <= max_pos)):
+                            logging.warning("Finger joint positions are outside of the joint limits")
 
                         # Check distance from both ends of the joint limits
                         dist_from_lower_limit = finger_pos - min_pos
@@ -375,20 +378,16 @@ class ManipulationRobot(BaseRobot):
                 )
                 p.resetBasePositionAndOrientation(self._ag_obj_in_hand[arm], new_pos, new_orn)
 
-    def apply_action(self, action):
+    def _deploy_control(self, control, control_type):
         # First run assisted grasping
         if self.grasping_mode != "physical":
-            self._handle_assisted_grasping(action=action)
+            self._handle_assisted_grasping(control, control_type)
 
         # Potentially freeze gripper joints
         for arm in self.arm_names:
             if self._ag_freeze_gripper[arm]:
                 self._freeze_gripper(arm)
 
-        # Run super method as normal
-        super().apply_action(action)
-
-    def _deploy_control(self, control, control_type):
         # We intercept the gripper control and replace it with velocity=0 if we're freezing our gripper
         for arm in self.arm_names:
             if self._ag_freeze_gripper[arm]:
@@ -741,7 +740,6 @@ class ManipulationRobot(BaseRobot):
         # Immediately return if there are no valid candidates
         if len(candidates_set) == 0:
             return None
-
         # Find the closest object to the gripper center
         gripper_pos, gripper_orn = self.eef_links[arm].get_position_orientation()
         gripper_center_pos, _ = p.multiplyTransforms(
@@ -866,7 +864,7 @@ class ManipulationRobot(BaseRobot):
                 "motor_type": "position",
                 "control_limits": self.control_limits,
                 "joint_idx": self.gripper_control_idx[arm],
-                "command_output_limits": "default",
+                "inverted": False,
                 "mode": "binary",
                 "limit_tolerance": 0.001,
             }
@@ -1020,40 +1018,64 @@ class ManipulationRobot(BaseRobot):
             j_val = joint.get_state()[0]
             self._ag_freeze_joint_pos[arm][joint.joint_name] = j_val
 
-    def _handle_assisted_grasping(self, action):
+    def _handle_assisted_grasping(self, control, control_type):
         """
         Handles assisted grasping.
 
-        :param action: Array[action], gripper action to apply. >= 0 is release (open), < 0 is grasp (close).
+        :param control: Array[float], raw control signals that are about to be sent to the robot's joints
+        :param control_type: Array[ControlType], control types for each joint
         """
         # Loop over all arms
         for arm in self.arm_names:
-            # Make sure gripper action dimension is only 1
-            assert (
-                self._controllers["gripper_{}".format(arm)].command_dim == 1
-            ), "Gripper {} controller command dim must be 1 to use assisted grasping, got: {}".format(
-                arm, self._controllers["gripper_{}".format(arm)].command_dim
+            joint_idxes = self.gripper_control_idx[arm]
+            current_positions = self.joint_positions[joint_idxes]
+            assert np.all(
+                control_type[joint_idxes] == ControlType.POSITION
+            ), "Assisted grasping only works with position control."
+            desired_positions = control[joint_idxes]
+
+            activation_thresholds = (
+                (1 - ASSIST_ACTIVATION_THRESHOLD) * self.joint_lower_limits
+                + ASSIST_ACTIVATION_THRESHOLD * self.joint_upper_limits
+            )[joint_idxes]
+
+            # We will clip the current positions just near the limits of the joint. This is necessary because the
+            # desired joint positions can never reach the unclipped current positions when the current positions
+            # are outside the joint limits, since the desired positions are clipped in the controller.
+            clipped_current_positions = np.clip(
+                current_positions,
+                self.joint_lower_limits[joint_idxes] + 1e-3,
+                self.joint_upper_limits[joint_idxes] - 1e-3,
             )
 
-            # TODO: Why are we separately checking for complementary conditions?
-            threshold = np.mean(self._controllers["gripper_{}".format(arm)].command_input_limits)
-            applying_grasp = action[self.controller_action_idx["gripper_{}".format(arm)]] < threshold
-            releasing_grasp = action[self.controller_action_idx["gripper_{}".format(arm)]] > threshold
+            if self._ag_obj_in_hand[arm] is None:
+                # We are not currently assisted-grasping an object and are eligible to start.
+                # We activate if the desired joint position is above the activation threshold, regardless of whether or
+                # not the desired position is achieved e.g. due to collisions with the target object. This allows AG to
+                # work with large objects.
+                if np.any(desired_positions < activation_thresholds):
+                    self._ag_data[arm] = self._calculate_in_hand_object(arm=arm)
+                    self._establish_grasp(arm=arm, ag_data=self._ag_data[arm])
 
-            # Execute gradual release of object
-            if self._ag_obj_in_hand[arm]:
-                if self._ag_release_counter[arm] is not None:
-                    self._handle_release_window(arm=arm)
-                else:
+            # Otherwise, decide if we will release the object.
+            else:
+                # If we are not already in the process of releasing, decide if we want to start.
+                # We should release an object in two cases: if the constraint is violated, or if the desired hand
+                # position in this frame is more open than both the threshold and the previous current hand position.
+                # This allows us to keep grasping in cases where the hand was frozen in a too-open position
+                # possibly due to the grasped object being large.
+                if self._ag_release_counter[arm] is None:
                     constraint_violated = (
                         get_constraint_violation(self._ag_obj_cid[arm]) > CONSTRAINT_VIOLATION_THRESHOLD
                     )
+                    thresholds = np.maximum(clipped_current_positions, activation_thresholds)
+                    releasing_grasp = np.all(desired_positions > thresholds)
                     if constraint_violated or releasing_grasp:
                         self._release_grasp(arm=arm)
 
-            elif applying_grasp:
-                self._ag_data[arm] = self._calculate_in_hand_object(arm=arm)
-                self._establish_grasp(arm=arm, ag_data=self._ag_data[arm])
+                # Otherwise, if we are already in the release window, continue releasing.
+                else:
+                    self._handle_release_window(arm=arm)
 
     def dump_config(self):
         """Dump robot config"""

@@ -15,12 +15,12 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRenderer
 from igibson.render.mesh_renderer.mesh_renderer_settings import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_tensor import MeshRendererG2G
 from igibson.render.viewer import Viewer, ViewerSimple
-from igibson.robots.behavior_robot import BehaviorRobot
-from igibson.robots.robot_base import BaseRobot
 from igibson.scenes.scene_base import Scene
 from igibson.utils.assets_utils import get_ig_avg_category_specs
 from igibson.utils.constants import PYBULLET_BASE_LINK_INDEX, PyBulletSleepState, SimulatorMode
 from igibson.utils.mesh_util import quat2rotmat, xyz2mat, xyzw2wxyz
+
+log = logging.getLogger(__name__)
 
 
 def load_without_pybullet_vis(load_func):
@@ -93,12 +93,12 @@ class Simulator:
         plt = platform.system()
         if plt == "Darwin" and self.mode == SimulatorMode.GUI_INTERACTIVE and use_pb_gui:
             self.use_pb_gui = False  # for mac os disable pybullet rendering
-            logging.warning(
+            log.warning(
                 "Simulator mode gui_interactive is not supported when `use_pb_gui` is true on macOS. Default to use_pb_gui = False."
             )
         if plt != "Linux" and self.mode == SimulatorMode.HEADLESS_TENSOR:
             self.mode = SimulatorMode.HEADLESS
-            logging.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
+            log.warning("Simulator mode headless_tensor is only supported on Linux. Default to headless mode.")
 
         self.viewer = None
         self.renderer = None
@@ -165,7 +165,7 @@ class Simulator:
         """
         Initialize the MeshRenderer.
         """
-        self.visual_objects = {}
+        self.visual_object_cache = {}
         if self.mode == SimulatorMode.HEADLESS_TENSOR:
             self.renderer = MeshRendererG2G(
                 width=self.image_width,
@@ -263,7 +263,7 @@ class Simulator:
 
     @load_without_pybullet_vis
     def import_robot(self, robot):
-        logging.warning(
+        log.warning(
             "DEPRECATED: simulator.import_robot(...) has been deprecated in favor of import_object and will be removed "
             "in a future release. Please use simulator.import_object(...) for equivalent functionality."
         )
@@ -359,7 +359,7 @@ class Simulator:
                 filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cylinder16.obj")
                 dimensions = [dimensions[1] / 0.5, dimensions[1] / 0.5, dimensions[0]]
                 if not os.path.exists(filename):
-                    logging.info(
+                    log.info(
                         "Cylinder mesh file cannot be found in the assets. Consider removing the assets folder and downloading the newest version using download_assets(). Using a cube for backcompatibility"
                     )
                     filename = os.path.join(igibson.assets_path, "models/mjcf_primitives/cube.obj")
@@ -378,7 +378,12 @@ class Simulator:
                     self.renderer.load_procedural_material(overwrite_material, texture_scale)
 
             # Load the visual object if it doesn't already exist.
-            if (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn)) not in self.visual_objects.keys():
+            caching_allowed = type == p.GEOM_MESH and overwrite_material is None
+            cache_key = (filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))
+
+            if caching_allowed and cache_key in self.visual_object_cache:
+                visual_object = self.visual_object_cache[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))]
+            else:
                 self.renderer.load_object(
                     filename,
                     transform_orn=rel_orn,
@@ -388,12 +393,12 @@ class Simulator:
                     texture_scale=texture_scale,
                     overwrite_material=overwrite_material,
                 )
-                self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))] = (
-                    len(self.renderer.visual_objects) - 1
-                )
+                visual_object = len(self.renderer.visual_objects) - 1
+                if caching_allowed:
+                    self.visual_object_cache[cache_key] = visual_object
 
             # Keep track of the objects we just loaded.
-            visual_objects.append(self.visual_objects[(filename, tuple(dimensions), tuple(rel_pos), tuple(rel_orn))])
+            visual_objects.append(visual_object)
             link_ids.append(link_id)
 
             # Keep track of the positions.

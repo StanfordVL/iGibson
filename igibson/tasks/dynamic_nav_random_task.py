@@ -1,7 +1,7 @@
 import numpy as np
 import pybullet as p
 
-from igibson.robots.turtlebot import Turtlebot
+from igibson.robots import REGISTERED_ROBOTS
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.utils.utils import restoreState
 
@@ -18,6 +18,15 @@ class DynamicNavRandomTask(PointNavRandomTask):
         # dynamic objects will repeat their actions for 10 action timesteps
         self.dynamic_objects_action_repeat = self.config.get("dynamic_objects_action_repeat", 10)
 
+        # Manually specify what these objects should be: Turtlebots with differential drive
+        self.dynamic_objects_config = dict()
+        self.dynamic_objects_config["name"] = "Turtlebot"
+        self.dynamic_objects_config["action_type"] = "continuous"
+        self.dynamic_objects_config["action_normalize"] = True
+        self.dynamic_objects_config["base_name"] = None
+        self.dynamic_objects_config["scale"] = 1
+        self.dynamic_objects_config["controller_config"] = {"base": {"name": "DifferentialDriveController"}}
+
         self.dynamic_objects = self.load_dynamic_objects(env)
         self.dynamic_objects_last_actions = [robot.action_space.sample() for robot in self.dynamic_objects]
 
@@ -29,8 +38,10 @@ class DynamicNavRandomTask(PointNavRandomTask):
         :return: a list of interactive objects
         """
         dynamic_objects = []
+
+        robot_model = self.dynamic_objects_config.pop("name")
         for _ in range(self.num_dynamic_objects):
-            robot = Turtlebot(self.config)
+            robot = REGISTERED_ROBOTS[robot_model](**self.dynamic_objects_config)
             env.simulator.import_object(robot)
             dynamic_objects.append(robot)
         return dynamic_objects

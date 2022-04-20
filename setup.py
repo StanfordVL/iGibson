@@ -95,7 +95,7 @@ class CMakeBuild(build_ext):
 
         if platform.system() == "Windows":
             cmake_args += ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY{}={}".format(cfg.upper(), extdir)]
-            if sys.maxsize > 2 ** 32:
+            if sys.maxsize > 2**32:
                 cmake_args += ["-A", "x64"]
             build_args += ["--", "/m"]
         else:
@@ -129,7 +129,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.0.5",
+    version="2.1.0",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
@@ -140,7 +140,7 @@ setup(
         "gym>=0.12",
         "numpy>=1.16.0",
         "scipy>=1.4",
-        "pybullet-svl>=3.1.6",
+        "pybullet-svl>=3.1.6.4",
         "transforms3d>=0.3.1",
         "opencv-python>=3.4.8",
         "Pillow>=5.4.0",
@@ -161,9 +161,10 @@ setup(
         "six",
         "pandas",
         "packaging",
-        "bddl>=0.0.3",
+        "bddl~=1.0.1",
         "urllib3>=1.20",
         "progressbar>=2.5",
+        "packaging",
     ],
     ext_modules=[CMakeExtension("MeshRendererContext", sourcedir="igibson/render")],
     cmdclass=dict(build_ext=CMakeBuild),

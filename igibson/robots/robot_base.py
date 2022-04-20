@@ -16,6 +16,8 @@ from igibson.objects.stateful_object import StatefulObject
 from igibson.utils.python_utils import assert_valid_key, merge_nested_dicts
 from igibson.utils.utils import rotate_vector_3d
 
+log = logging.getLogger(__name__)
+
 # Global dicts that will contain mappings
 REGISTERED_ROBOTS = {}
 ROBOT_TEMPLATE_CLASSES = {
@@ -63,7 +65,7 @@ class BaseRobot(StatefulObject):
         base_name=None,
         scale=1.0,
         self_collision=False,
-        **kwargs
+        **kwargs,
     ):
         """
         :param name: None or str, name of the robot object
@@ -138,7 +140,7 @@ class BaseRobot(StatefulObject):
         :return Array[int]: List of unique pybullet IDs corresponding to this model. This will usually
             only be a single value
         """
-        logging.info("Loading robot model file: {}".format(self.model_file))
+        log.debug("Loading robot model file: {}".format(self.model_file))
 
         # A persistent reference to simulator is needed for AG in ManipulationRobot
         self.simulator = simulator
@@ -146,7 +148,7 @@ class BaseRobot(StatefulObject):
         # Set the control frequency if one was not provided.
         expected_control_freq = 1.0 / simulator.render_timestep
         if self.control_freq is None:
-            logging.info(
+            log.debug(
                 "Control frequency is None - being set to default of 1 / render_timestep: %.4f", expected_control_freq
             )
             self.control_freq = expected_control_freq
@@ -239,7 +241,7 @@ class BaseRobot(StatefulObject):
                 self._mass += p.getDynamicsInfo(body_id, j)[0]
                 p.setJointMotorControl2(body_id, j, p.POSITION_CONTROL, positionGain=0.1, velocityGain=0.1, force=0)
                 _, joint_name, joint_type, _, _, _, _, _, _, _, _, _, link_name, _, _, _, _ = p.getJointInfo(body_id, j)
-                logging.debug("Robot joint: {}".format(p.getJointInfo(body_id, j)))
+                log.debug("Robot joint: {}".format(p.getJointInfo(body_id, j)))
                 joint_name = joint_name.decode("utf8")
                 assert (
                     joint_name not in self._joints
@@ -1418,7 +1420,7 @@ class VirtualJoint(RobotJoint):
         self,
         joint_name,
         joint_type,
-        get_pos_callback,
+        get_state_callback,
         set_pos_callback,
         reset_pos_callback,
         lower_limit=None,
@@ -1429,7 +1431,7 @@ class VirtualJoint(RobotJoint):
         assert joint_type in (p.JOINT_REVOLUTE, p.JOINT_PRISMATIC)
         self._joint_type = joint_type
 
-        self._get_pos_callback = get_pos_callback
+        self._get_state_callback = get_state_callback
         self._set_pos_callback = set_pos_callback
         self._reset_pos_callback = reset_pos_callback
 
@@ -1466,10 +1468,10 @@ class VirtualJoint(RobotJoint):
         # raise NotImplementedError("This feature is not available for virtual joints.")
 
     def get_state(self):
-        return self._get_pos_callback()
+        return self._get_state_callback()
 
     def get_relative_state(self):
-        pos, _, _ = self.get_state()
+        pos, vel, torque = self.get_state()
 
         # normalize position to [-1, 1]
         if self.has_limit:
@@ -1477,18 +1479,16 @@ class VirtualJoint(RobotJoint):
             magnitude = (self.upper_limit - self.lower_limit) / 2.0
             pos = (pos - mean) / magnitude
 
-        return pos, None, None
+        return pos, 0, 0  # Unable to scale velocity and torque, so returning 0.
 
     def set_pos(self, pos):
         self._set_pos_callback(pos)
 
     def set_vel(self, vel):
         pass
-        # raise NotImplementedError("This feature is not implemented yet for virtual joints.")
 
     def set_torque(self, torque):
         pass
-        # raise NotImplementedError("This feature is not available for virtual joints.")
 
     def reset_state(self, pos, vel):
         # VirtualJoint doesn't support resetting joint velocity yet
@@ -1529,7 +1529,7 @@ class Virtual6DOFJoint(object):
             VirtualJoint(
                 joint_name="%s_%s" % (self.joint_name, name),
                 joint_type=p.JOINT_PRISMATIC if i < 3 else p.JOINT_REVOLUTE,
-                get_pos_callback=lambda dof=i: (self.get_state()[dof], None, None),
+                get_state_callback=lambda dof=i: self.get_state()[dof],
                 set_pos_callback=lambda pos, dof=i: self.set_pos(dof, pos),
                 reset_pos_callback=lambda pos, dof=i: self.reset_pos(dof, pos),
                 lower_limit=lower_limits[i] if lower_limits is not None else None,
@@ -1545,10 +1545,44 @@ class Virtual6DOFJoint(object):
         pos, orn = self.child_link.get_position_orientation()
 
         if self.parent_link is not None:
-            pos, orn = p.multiplyTransforms(*p.invertTransform(*self.parent_link.get_position_orientation()), pos, orn)
+            world_to_parent = p.invertTransform(*self.parent_link.get_position_orientation())
+            pos, orn = p.multiplyTransforms(*world_to_parent, pos, orn)
 
         # Stack the position and the Euler orientation
-        return list(pos) + list(p.getEulerFromQuaternion(orn))
+        pos = list(pos) + list(p.getEulerFromQuaternion(orn))
+
+        #
+        # This relative velocity computation logic is incorrect and will be replaced in a later release.
+        #
+        # pos_vel, ang_vel = p.getBaseVelocity(self.child_link.body_id)
+        # if self.parent_link is not None:
+        #     # Get the parent's velocity too if it's not the same link.
+        #     parent_pos_vel, parent_ang_vel = (
+        #         ([0, 0, 0], [0, 0, 0])
+        #         if self.parent_link == self.child_link
+        #         else p.getBaseVelocity(self.parent_link.body_id)
+        #     )
+        #
+        #     # Get the relative velocity.
+        #     rel_pos_vel, rel_ang_vel = p.multiplyTransforms(
+        #         *p.invertTransform(parent_pos_vel, p.getQuaternionFromEuler(parent_ang_vel)),
+        #         pos_vel,
+        #         p.getQuaternionFromEuler(ang_vel)
+        #     )
+        #
+        #     # Get the relative velocity in the base frame.
+        #     final_pos_vel, final_rel_vel = p.multiplyTransforms(*world_to_parent, rel_pos_vel, rel_ang_vel)
+        #
+        #     pos_vel = final_pos_vel
+        #     ang_vel = p.getEulerFromQuaternion(final_rel_vel)
+        #
+        # vel = pos_vel + ang_vel
+        #
+        vel = [0, 0, 0, 0, 0, 0]
+
+        torque = [0, 0, 0, 0, 0, 0]  # Getting torque state is not supported
+
+        return list(zip(pos, vel, torque))
 
     def get_joints(self):
         """Gets the 1DOF VirtualJoints belonging to this 6DOF joint."""
