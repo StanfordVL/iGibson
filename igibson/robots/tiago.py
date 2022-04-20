@@ -12,13 +12,13 @@ from igibson.robots.robot_base import VirtualJoint
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
 
-BODY_LINEAR_VELOCITY = 0.01  # linear velocity thresholds in meters/frame
-BODY_ANGULAR_VELOCITY = 0.1  # angular velocity thresholds in radians/frame
+BODY_LINEAR_VELOCITY = 0.05  # linear velocity thresholds in meters/frame
+BODY_ANGULAR_VELOCITY = 0.05  # angular velocity thresholds in radians/frame
 
 # Body parameters
 BODY_HEIGHT_RANGE = (0.1, 2)  # meters. The body is allowed to clip the floor by about a half.
 BODY_MASS = 150  # body mass in kg
-BODY_MOVING_FORCE = BODY_MASS * 500
+BODY_MOVING_FORCE = 300
 
 DEFAULT_ARM_POSES = {
     "vertical",
@@ -99,22 +99,12 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     @property
     def tucked_default_joint_pos(self):
         return np.array(
-            [
-                0.0,
-                0.0,  # wheels
-                0.0,  # trunk
-                0.0,
-                0.0,  # head
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,  # arm
-                0.0,
-                0.0,  # gripper
-            ]
+            [0.1] +
+            [0] * 2 +
+            [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0] +
+            [0] * 2 + 
+            [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0] +
+            [0] * 2
         )
 
     @property
@@ -235,7 +225,6 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         # print(action, target_pos, target_orn)
         self.new_pos = np.round(target_pos, 5).tolist()
         self.new_orn = np.round(target_orn, 5).tolist()
-        self.new_pos[2] = 0.2
 
         self.move_constraints(self.new_pos, self.new_orn)
 
@@ -457,14 +446,14 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         """
         :return Array[int]: Indices in low-level control vector corresponding to trunk joint.
         """
-        return np.array([2])
+        return np.array([0])
 
     @property
     def camera_control_idx(self):
         """
         :return Array[int]: Indices in low-level control vector corresponding to [tilt, pan] camera joints.
         """
-        return np.array([4, 3])
+        return np.array([2, 1])
 
     @property
     def arm_control_idx(self):
@@ -472,7 +461,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to arm joints.
         """
-        return {"left":np.array([5, 6, 7, 8, 9, 10, 11]), "right":np.array([14, 15, 16, 17, 18, 19, 20])}
+        return {"left":np.array([3, 4, 5, 6, 7, 8, 9]), "right":np.array([12, 13, 14, 15, 16, 17, 18])}
 
     @property
     def gripper_control_idx(self):
@@ -480,7 +469,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {"left":np.array([12, 13]), "right":np.array([21, 22])}
+        return {"left":np.array([10, 11]), "right":np.array([19, 20])}
 
     @property
     def disabled_collision_pairs(self):
@@ -508,7 +497,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     @property
     def model_file(self):
-        return os.path.join(igibson.assets_path, "models/tiago/tiago_dual.urdf")
+        return os.path.join(igibson.assets_path, "models/tiago/tiago_dual_omnidirectional_stanford.urdf")
 
     def dump_config(self):
         """Dump robot config"""
