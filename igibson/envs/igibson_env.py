@@ -206,6 +206,14 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.n_horizontal_rays * self.n_vertical_beams, 1), low=0.0, high=1.0
             )
             scan_modalities.append("scan")
+        if "scan_rear" in self.output:
+            self.n_horizontal_rays = self.config.get("n_horizontal_rays", 128)
+            self.n_vertical_beams = self.config.get("n_vertical_beams", 1)
+            assert self.n_vertical_beams == 1, "scan can only handle one vertical beam for now"
+            observation_space["scan_rear"] = self.build_obs_space(
+                shape=(self.n_horizontal_rays * self.n_vertical_beams, 1), low=0.0, high=1.0
+            )
+            scan_modalities.append("scan_rear")
         if "occupancy_grid" in self.output:
             self.grid_resolution = self.config.get("grid_resolution", 128)
             self.occupancy_grid_space = gym.spaces.Box(
@@ -226,6 +234,9 @@ class iGibsonEnv(BaseEnv):
 
         if len(scan_modalities) > 0:
             sensors["scan_occ"] = ScanSensor(self, scan_modalities)
+
+        if "scan_rear" in scan_modalities:
+            sensors["scan_occ_rear"] = ScanSensor(self, scan_modalities, rear=True)
 
         self.observation_space = gym.spaces.Dict(observation_space)
         self.sensors = sensors
@@ -270,6 +281,10 @@ class iGibsonEnv(BaseEnv):
                 state[modality] = vision_obs[modality]
         if "scan_occ" in self.sensors:
             scan_obs = self.sensors["scan_occ"].get_obs(self)
+            for modality in scan_obs:
+                state[modality] = scan_obs[modality]
+        if "scan_occ_rear" in self.sensors:
+            scan_obs = self.sensors["scan_occ_rear"].get_obs(self)
             for modality in scan_obs:
                 state[modality] = scan_obs[modality]
         if "bump" in self.sensors:
