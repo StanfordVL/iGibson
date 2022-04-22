@@ -542,7 +542,7 @@ class VirtualPlanarJoint(object):
             VirtualJoint(
                 joint_name="%s_%s" % (self.joint_name, name),
                 joint_type=p.JOINT_PRISMATIC if i < 3 else p.JOINT_REVOLUTE,
-                get_pos_callback=lambda dof=i: (self.get_state()[dof], None, None),
+                get_state_callback=lambda dof=i: (self.get_state()[dof], None, None),
                 set_pos_callback=lambda pos, dof=i: self.set_pos(dof, pos),
                 reset_pos_callback=lambda pos, dof=i: self.reset_pos(dof, pos),
                 lower_limit=lower_limits[i] if lower_limits is not None else None,
