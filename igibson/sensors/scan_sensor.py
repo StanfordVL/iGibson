@@ -27,6 +27,7 @@ class ScanSensor(BaseSensor):
         self.noise_model = DropoutSensorNoise(env)
         self.noise_model.set_noise_rate(self.scan_noise_rate)
         self.noise_model.set_noise_value(1.0)
+        self.rear = rear
 
         self.laser_position, self.laser_orientation = (
             env.robots[0].links[self.laser_link_name].get_position_orientation()
@@ -140,7 +141,7 @@ class ScanSensor(BaseSensor):
         scan = np.expand_dims(hit_fraction, 1)
 
         state = {}
-        state["scan"] = scan
+        state["scan" if not self.rear else "scan_rear"] = scan.astype(np.float32)
         if "occupancy_grid" in self.modalities:
             state["occupancy_grid"] = self.get_local_occupancy_grid(scan)
         return state

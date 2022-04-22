@@ -58,14 +58,28 @@ robot:
       name: JointController
     arm_left:
       name: JointController
+      motor_type: position
+      fixed: true
+      default_command: [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0]
     gripper_left:
       name: JointController
+      motor_type: position
+      fixed: true
     arm_right:
       name: JointController
+      motor_type: position
+      fixed: true
+      default_command: [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0]
     gripper_right:
       name: JointController
+      motor_type: position
+      fixed: true
     camera:
       name: JointController
+      motor_type: position
+      fixed: true
+      default_command: [0.0, 0.0]
+
 
 # task
 task: point_nav_random
