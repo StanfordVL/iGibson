@@ -398,7 +398,6 @@ class PPOTrainer(BaseRLTrainer):
         Returns:
             None
         """
-        # set num_envs as 1
         random.seed(self.config['SEED'])
         np.random.seed(self.config['SEED'])
         torch.manual_seed(self.config['SEED'])
@@ -406,9 +405,10 @@ class PPOTrainer(BaseRLTrainer):
         # Map location CPU is almost always better than mapping to a CUDA device.
         ckpt_dict = self.load_checkpoint(checkpoint_path, map_location="cpu")
         data = dataset(self.config['scene'])
-        val_data = data.SCENE_SPLITS['val']
-        idx = np.random.randint(len(val_data))
-        scene_ids = [val_data[idx]]
+#         val_data = data.SCENE_SPLITS['val']
+#         idx = np.random.randint(len(val_data))
+#         scene_ids = [val_data[idx]]
+        scene_ids = data.SCENE_SPLITS["val"]
         
         def load_env(scene_id):
             return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
@@ -448,6 +448,9 @@ class PPOTrainer(BaseRLTrainer):
         audios = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]
+        topdown_frames = [
+            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+        ]
         if len(self.config['VIDEO_OPTION']) > 0:
             os.makedirs(self.config['VIDEO_DIR'], exist_ok=True)
         t = tqdm(total=self.config['TEST_EPISODE_COUNT'])
@@ -480,8 +483,10 @@ class PPOTrainer(BaseRLTrainer):
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    frame = observations_to_image(observations[i], infos[i])
+                    frame, frame_topdown = observations_to_image(observations[i], infos[i])
                     rgb_frames[i].append(frame)
+                    topdown_frames[i].append(frame_topdown)
+                    
             batch = batch_obs(observations, self.device)
 
             not_done_masks = torch.tensor(
@@ -531,12 +536,27 @@ class PPOTrainer(BaseRLTrainer):
                             audios=None,
                             fps=fps
                         )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=topdown_frames[i][:-1],
+                            scene_name=scene_ids[i],
+                            sound='telephone',
+                            sr=44100,
+                            episode_id=1,
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+                            audios=None,
+                            fps=fps
+                        )
 
                         # observations has been reset but info has not
                         # to be consistent, do not use the last frame
                         rgb_frames[i] = []
                         audios[i] = []
-   
+                        topdown_frames[i] = []
                     
             count += 1
                     
