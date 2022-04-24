@@ -273,6 +273,7 @@ namespace igibson {
         SetSourceGain(source_id, source_gain);
         SetNearFieldEffectGain(source_id, near_field_gain);
         SetSourceRoomEffectsGain(source_id, room_effects_gain);
+        SetSourceSpread(source_id, 0);
 
         return source_id;
     }
@@ -308,9 +309,6 @@ namespace igibson {
 
 
     void SetSourceOcclusion(int source_id, float occl) {
-        if (occl != resonance_audio->api->GetSoundObjectOcclusionIntensity(source_id)) {
-            py::print("Changing occlusion to ", occl);
-        }
         resonance_audio->api->SetSoundObjectOcclusionIntensity(source_id, occl);
     }
     
