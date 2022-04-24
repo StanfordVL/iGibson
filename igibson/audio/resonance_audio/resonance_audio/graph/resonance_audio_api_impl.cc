@@ -531,6 +531,7 @@ bool ResonanceAudioApiImpl::FillOutputBuffer(size_t num_channels,
   if (output_buffer == nullptr) {
     // This indicates that the graph processing is triggered without having any
     // connected sources.
+    LOG(WARNING) << "No connected sources";
     return false;
   }
 

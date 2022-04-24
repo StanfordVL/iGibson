@@ -13,6 +13,7 @@ from collections import deque
 from typing import Dict, List
 import json
 import random
+import glob
 
 import numpy as np
 import torch
@@ -108,6 +109,27 @@ class PPOTrainer(BaseRLTrainer):
         torch.save(
             checkpoint, os.path.join(self.config['CHECKPOINT_FOLDER'], file_name)
         )
+
+    def try_to_resume_checkpoint(self):
+        checkpoints = glob.glob(f"{self.config['CHECKPOINT_FOLDER']}/*.pth")
+        if len(checkpoints) == 0:
+            count_steps = 0
+            count_checkpoints = 0
+            start_update = 0
+        else:
+            last_ckpt = sorted(checkpoints, key=lambda x: int(x.split(".")[1]))[-1]
+            checkpoint_path = last_ckpt
+            # Restore checkpoints to models
+            ckpt_dict = self.load_checkpoint(checkpoint_path)
+            self.agent.load_state_dict(ckpt_dict["state_dict"])
+            self.actor_critic = self.agent.actor_critic
+            ckpt_id = int(last_ckpt.split("/")[-1].split(".")[1])
+            count_steps = 0 #Can't do better than this
+            count_checkpoints = ckpt_id + 1
+            start_update = self.config['CHECKPOINT_INTERVAL'] * ckpt_id + 1
+            print(f"Resuming checkpoint {last_ckpt} at {count_steps} frames")
+
+        return count_steps, count_checkpoints, start_update
 
     def load_checkpoint(self, checkpoint_path: str, *args, **kwargs) -> Dict:
         r"""Load checkpoint of specified path as a dict.
@@ -296,6 +318,10 @@ class PPOTrainer(BaseRLTrainer):
             optimizer=self.agent.optimizer,
             lr_lambda=lambda x: linear_decay(x, self.config['NUM_UPDATES']),
         )
+
+        # Try to resume at previous checkpoint (independent of interrupted states)
+        count_steps_start, count_checkpoints, start_update = self.try_to_resume_checkpoint()
+        count_steps = count_steps_start
 
         with TensorboardWriter(
             self.config['TENSORBOARD_DIR'], flush_secs=self.flush_secs
