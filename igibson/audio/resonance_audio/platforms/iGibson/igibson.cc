@@ -85,7 +85,6 @@ void ProcessListener(size_t num_frames, int16* output) {
 
   if (!resonance_audio_copy->api->FillInterleavedOutputBuffer(
           kNumOutputChannels, num_frames, output)) {
-    LOG(WARNING) << "No valid audio output rendered";
     // No valid output was rendered, fill the output buffer with zeros.
     const size_t buffer_size_samples = kNumOutputChannels * num_frames;
     CHECK(!vraudio::DoesIntegerMultiplicationOverflow<size_t>(

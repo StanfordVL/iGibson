@@ -461,7 +461,7 @@ class PPOTrainer(BaseRLTrainer):
             device=self.device,
         )
         prev_actions = torch.zeros(
-            self.config['EVAL_NUM_PROCESS'], 1, device=self.device, dtype=torch.long
+            self.config['EVAL_NUM_PROCESS'], 1 if self.is_discrete else self.envs.action_space.shape[0], device=self.device, dtype=torch.long
         )
         not_done_masks = torch.zeros(
             self.config['EVAL_NUM_PROCESS'], 1, device=self.device

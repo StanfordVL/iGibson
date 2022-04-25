@@ -1,12 +1,12 @@
 ## SoundSpaces
 NUM_PROCESSES: 9
-EVAL_NUM_PROCESS: 1
+EVAL_NUM_PROCESS: 5
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
 LOG_FILE: "data/audiogoal_ambisonic/train.log"
 CHECKPOINT_INTERVAL: 50
 CHECKPOINT_FOLDER: "data/audiogoal_ambisonic/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/audiogoal_ambisonic/checkpoints/ckpt.0.pth"
+EVAL_CKPT_PATH_DIR: "data/audiogoal_ambisonic/checkpoints/ckpt.422.pth"
 # 96 98
 TENSORBOARD_DIR: "data/audiogoal_ambisonic/tb"
 TEST_EPISODE_COUNT: 500
