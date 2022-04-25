@@ -1,6 +1,6 @@
 ## SoundSpaces
 NUM_PROCESSES: 9
-EVAL_NUM_PROCESS: 1
+EVAL_NUM_PROCESS: 5
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
 LOG_FILE: "data/audiogoal_continuous/train.log"
