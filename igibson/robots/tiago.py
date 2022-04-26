@@ -173,6 +173,8 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             for link in self.finger_joint_ids[arm]:
                 p.changeDynamics(self.base_link.body_id, link, lateralFriction=500)
 
+        self.tuck()
+
         return ids
 
     def _setup_virtual_joints(self):
