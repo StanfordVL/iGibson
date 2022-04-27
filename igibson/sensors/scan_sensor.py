@@ -23,7 +23,11 @@ class ScanSensor(BaseSensor):
         self.laser_linear_range = self.config.get("laser_linear_range", 10.0)
         self.laser_angular_range = self.config.get("laser_angular_range", 180.0)
         self.min_laser_dist = self.config.get("min_laser_dist", 0.05)
-        self.laser_link_name = self.config.get("laser_link_name", "scan_link") if not rear else self.config.get("laser_link_rear_name", "scan_link")
+        self.laser_link_name = (
+            self.config.get("laser_link_name", "scan_link")
+            if not rear
+            else self.config.get("laser_link_rear_name", "scan_link")
+        )
         self.noise_model = DropoutSensorNoise(env)
         self.noise_model.set_noise_rate(self.scan_noise_rate)
         self.noise_model.set_noise_value(1.0)

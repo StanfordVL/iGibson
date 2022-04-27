@@ -64,7 +64,7 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             reset_joint_pos = (
                 self.tucked_default_joint_pos if reset_joint_pos == "tuck" else self.untucked_default_joint_pos
             )
-        
+
         # Run super init
         super().__init__(reset_joint_pos=reset_joint_pos, **kwargs)
 
@@ -310,7 +310,7 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to arm joints.
         """
-        return {"left":np.array([5, 6, 7, 8, 9, 10, 11]), "right":np.array([14, 15, 16, 17, 18, 19, 20])}
+        return {"left": np.array([5, 6, 7, 8, 9, 10, 11]), "right": np.array([14, 15, 16, 17, 18, 19, 20])}
 
     @property
     def gripper_control_idx(self):
@@ -318,7 +318,7 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {"left":np.array([12, 13]), "right":np.array([21, 22])}
+        return {"left": np.array([12, 13]), "right": np.array([21, 22])}
 
     @property
     def disabled_collision_pairs(self):
@@ -330,7 +330,6 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             # ["caster_wheel_link", "torso_fixed_link"],
             # ["caster_wheel_link", "l_wheel_link"],
             # ["caster_wheel_link", "r_wheel_link"],
-            
         ]
 
     @property
@@ -339,11 +338,17 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
 
     @property
     def finger_link_names(self):
-        return {arm: ["gripper_{}_right_finger_link".format(arm), "gripper_{}_left_finger_link".format(arm)] for arm in self.arm_names}
+        return {
+            arm: ["gripper_{}_right_finger_link".format(arm), "gripper_{}_left_finger_link".format(arm)]
+            for arm in self.arm_names
+        }
 
     @property
     def finger_joint_names(self):
-        return {arm: ["gripper_{}_right_finger_joint".format(arm), "gripper_{}_left_finger_joint".format(arm)] for arm in self.arm_names}
+        return {
+            arm: ["gripper_{}_right_finger_joint".format(arm), "gripper_{}_left_finger_joint".format(arm)]
+            for arm in self.arm_names
+        }
 
     @property
     def model_file(self):

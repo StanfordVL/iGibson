@@ -6,8 +6,8 @@ import pybullet as p
 import igibson
 from igibson.controllers import ControlType
 from igibson.robots.active_camera_robot import ActiveCameraRobot
-from igibson.robots.manipulation_robot import GraspingPoint, ManipulationRobot
 from igibson.robots.locomotion_robot import LocomotionRobot
+from igibson.robots.manipulation_robot import GraspingPoint, ManipulationRobot
 from igibson.robots.robot_base import VirtualJoint
 from igibson.utils.constants import SemanticClass
 from igibson.utils.python_utils import assert_valid_key
@@ -16,8 +16,6 @@ BODY_LINEAR_VELOCITY = 0.05  # linear velocity thresholds in meters/frame
 BODY_ANGULAR_VELOCITY = 0.05  # angular velocity thresholds in radians/frame
 
 # Body parameters
-BODY_HEIGHT_RANGE = (0.1, 2)  # meters. The body is allowed to clip the floor by about a half.
-BODY_MASS = 150  # body mass in kg
 BODY_MOVING_FORCE = 300
 
 DEFAULT_ARM_POSES = {
@@ -65,8 +63,8 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         assert_valid_key(key=default_arm_pose, valid_keys=DEFAULT_ARM_POSES, name="default_arm_pose")
         self.default_arm_pose = default_arm_pose
 
-        self.new_pos = [0,0,0]
-        self.new_orn = [0,0,0,1]
+        self.new_pos = [0, 0, 0]
+        self.new_orn = [0, 0, 0, 1]
         self.movement_cid = None
 
         # Parse reset joint pos if specifying special string
@@ -77,7 +75,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             reset_joint_pos = (
                 self.tucked_default_joint_pos if reset_joint_pos == "tuck" else self.untucked_default_joint_pos
             )
-        
+
         # Run super init
         super().__init__(reset_joint_pos=reset_joint_pos, **kwargs)
 
@@ -99,12 +97,12 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     @property
     def tucked_default_joint_pos(self):
         return np.array(
-            [0.1] +
-            [0] * 2 +
-            [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0] +
-            [0] * 2 + 
-            [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0] +
-            [0] * 2
+            [0.1]
+            + [0] * 2
+            + [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0]
+            + [0] * 2
+            + [-1.17, 1.57, 2.74, 1.57, 1.57, -1.41, 0.0]
+            + [0] * 2
         )
 
     @property
@@ -112,7 +110,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         pos = np.zeros(self.n_joints)
         # pos[self.base_control_idx] = 0.0
         pos[self.trunk_control_idx] = 0.02 + self.default_trunk_offset
-        pos[self.camera_control_idx] = np.array([0.0, 0.45])
+        pos[self.camera_control_idx] = np.array([-1.0, 0.0])
         for arm in self.arm_names:
             pos[self.gripper_control_idx[arm]] = np.array([0.05, 0.05])  # open gripper
 
@@ -194,7 +192,9 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     def move_constraints(self, pos, orn):
         if self.movement_cid:
+            # orn = [0, 0, 0, 1]
             p.changeConstraint(self.movement_cid, pos, orn, maxForce=BODY_MOVING_FORCE)
+            # print(pos, orn)
         else:
             self.movement_cid = p.createConstraint(
                 parentBodyUniqueId=self.base_link.body_id,
@@ -211,20 +211,15 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     def base_command_position(self, action):
         """
-        Updates BRBody to new position and rotation, via constraints.
+        Updates Tiago to new position and rotation, via constraints.
         :param action: numpy array of actions.
         """
         # Compute the target world position from the delta position.
-        action[3] = 0
-        action[4] = 0
         action[:3] = np.clip(action[:3], -BODY_LINEAR_VELOCITY, BODY_LINEAR_VELOCITY)
         action[3:] = np.clip(action[3:], -BODY_ANGULAR_VELOCITY, BODY_ANGULAR_VELOCITY)
         delta_pos, delta_orn = action[:3], p.getQuaternionFromEuler(action[3:6])
         target_pos, target_orn = p.multiplyTransforms(*self.get_position_orientation(), delta_pos, delta_orn)
 
-        # Clip the height.
-        # target_pos = [target_pos[0], target_pos[1], np.clip(target_pos[2], BODY_HEIGHT_RANGE[0], BODY_HEIGHT_RANGE[1])]
-        # print(action, target_pos, target_orn)
         self.new_pos = np.round(target_pos, 5).tolist()
         self.new_orn = np.round(target_orn, 5).tolist()
 
@@ -232,7 +227,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     def base_reset_position(self, reset_val):
         """
-        Reset BRBody to new position and rotation, via teleportation.
+        Reset Tiago to new position and rotation, via teleportation.
         :param reset_val: numpy array of joint values to reset
         """
         # Compute the target world position from the delta position.
@@ -253,7 +248,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         return np.array(pos), np.array(orn)
 
     def set_position_orientation(self, pos, orn):
-        # super(BRBody, self).set_position_orientation(pos, orn)
+        # super(Tiago, self).set_position_orientation(pos, orn)
         self.new_pos = pos
         self.new_orn = orn
         p.resetBasePositionAndOrientation(self.base_link.body_id, pos, orn)
@@ -314,42 +309,6 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             controllers["gripper_{}".format(arm)] = "MultiFingerGripperController"
 
         return controllers
-
-    # @property
-    # def _default_base_controller_configs(self):
-    #     dic = {
-    #         "name": "JointController",
-    #         "control_freq": self.control_freq,
-    #         "control_limits": self.control_limits,
-    #         "use_delta_commands": False,
-    #         "motor_type": "position",
-    #         "compute_delta_in_quat_space": [(3, 4, 5)],
-    #         "joint_idx": self.base_control_idx,
-    #         "command_input_limits": (
-    #             np.array([-BODY_LINEAR_VELOCITY] * 3 + [-BODY_ANGULAR_VELOCITY] * 3),# * self._velocity_limit_coefficient,
-    #             np.array([BODY_LINEAR_VELOCITY] * 3 + [BODY_ANGULAR_VELOCITY] * 3),# * self._velocity_limit_coefficient,
-    #         ),
-    #         "command_output_limits": None,
-    #     }
-    #     return dic
-
-    # @property
-    # def _default_base_controller_configs(self):
-    #     dic = {
-    #         "name": "OmnidirectionalDriveController",
-    #         "control_freq": self.control_freq,
-    #         "control_limits": self.control_limits,
-    #         # "use_delta_commands": False,
-    #         # "motor_type": "position",
-    #         # "compute_delta_in_quat_space": [(3, 4, 5)],
-    #         "joint_idx": self.base_control_idx,
-    #         "command_input_limits": (
-    #             np.array([-BODY_LINEAR_VELOCITY] * 2 + [-BODY_ANGULAR_VELOCITY]),# * self._velocity_limit_coefficient,
-    #             np.array([BODY_LINEAR_VELOCITY] * 2 + [BODY_ANGULAR_VELOCITY]),# * self._velocity_limit_coefficient,
-    #         ),
-    #         "command_output_limits": None,
-    #     }
-    #     return dic
 
     @property
     def _default_base_controller_configs(self):
@@ -440,7 +399,10 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
     def base_control_idx(self):
         joints = list(self.joints.keys())
         return np.array(
-            [joints.index("body__body_%s" % (component)) for component in VirtualPlanarJoint.ACTUATED_COMPONENT_SUFFIXES]
+            [
+                joints.index("body__body_%s" % (component))
+                for component in VirtualPlanarJoint.ACTUATED_COMPONENT_SUFFIXES
+            ]
         )
 
     @property
@@ -463,7 +425,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to arm joints.
         """
-        return {"left":np.array([3, 4, 5, 6, 7, 8, 9]), "right":np.array([12, 13, 14, 15, 16, 17, 18])}
+        return {"left": np.array([3, 4, 5, 6, 7, 8, 9]), "right": np.array([12, 13, 14, 15, 16, 17, 18])}
 
     @property
     def gripper_control_idx(self):
@@ -471,18 +433,23 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control
             vector corresponding to gripper joints.
         """
-        return {"left":np.array([10, 11]), "right":np.array([19, 20])}
+        return {"left": np.array([10, 11]), "right": np.array([19, 20])}
 
     @property
     def disabled_collision_pairs(self):
         return [
-            # ["torso_lift_link", "shoulder_lift_link"],
-            # ["torso_lift_link", "torso_fixed_link"],
-            # ["caster_wheel_link", "estop_link"],
-            # ["caster_wheel_link", "laser_link"],
-            # ["caster_wheel_link", "torso_fixed_link"],
-            # ["caster_wheel_link", "l_wheel_link"],
-            # ["caster_wheel_link", "r_wheel_link"],
+            ['arm_left_1_link', 'arm_left_2_link'],
+            ['arm_left_2_link', 'arm_left_3_link'],
+            ['arm_left_3_link', 'arm_left_4_link'],
+            ['arm_left_4_link', 'arm_left_5_link'],
+            ['arm_left_5_link', 'arm_left_6_link'],
+            ['arm_left_6_link', 'arm_left_7_link'],
+            ['arm_right_1_link', 'arm_right_2_link'],
+            ['arm_right_2_link', 'arm_right_3_link'],
+            ['arm_right_3_link', 'arm_right_4_link'],
+            ['arm_right_4_link', 'arm_right_5_link'],
+            ['arm_right_5_link', 'arm_right_6_link'],
+            ['arm_right_6_link', 'arm_right_7_link'],
         ]
 
     @property
@@ -491,11 +458,17 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     @property
     def finger_link_names(self):
-        return {arm: ["gripper_{}_right_finger_link".format(arm), "gripper_{}_left_finger_link".format(arm)] for arm in self.arm_names}
+        return {
+            arm: ["gripper_{}_right_finger_link".format(arm), "gripper_{}_left_finger_link".format(arm)]
+            for arm in self.arm_names
+        }
 
     @property
     def finger_joint_names(self):
-        return {arm: ["gripper_{}_right_finger_joint".format(arm), "gripper_{}_left_finger_joint".format(arm)] for arm in self.arm_names}
+        return {
+            arm: ["gripper_{}_right_finger_joint".format(arm), "gripper_{}_left_finger_joint".format(arm)]
+            for arm in self.arm_names
+        }
 
     @property
     def model_file(self):
@@ -513,6 +486,7 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         )
         return dump
 
+
 class VirtualPlanarJoint(object):
     """A wrapper for a planar (2DOF translation and 1DOF rotation) virtual joint between two robot body parts.
 
@@ -522,7 +496,7 @@ class VirtualPlanarJoint(object):
     """
 
     COMPONENT_SUFFIXES = ["x", "y", "z", "rx", "ry", "rz"]
-    ACTUATED_COMPONENT_SUFFIXES = ["x", "y", "rz"] # 0, 1, 5
+    ACTUATED_COMPONENT_SUFFIXES = ["x", "y", "rz"]  # 0, 1, 5
 
     def __init__(
         self,

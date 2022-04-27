@@ -28,8 +28,8 @@ class JointController(LocomotionController, ManipulationController):
         inverted=False,
         use_delta_commands=False,
         compute_delta_in_quat_space=[],
-        fixed=False,
-        default_command=None
+        use_constant_goal=False,
+        default_command=None,
     ):
         """
         :param control_freq: int, controller loop frequency
@@ -69,8 +69,8 @@ class JointController(LocomotionController, ManipulationController):
         self.parallel_mode = parallel_mode
         self.use_delta_commands = use_delta_commands
         self.compute_delta_in_quat_space = compute_delta_in_quat_space
-        self.fixed = fixed
-        if self.fixed:
+        self.use_constant_goal = use_constant_goal
+        if self.use_constant_goal:
             command_input_limits = None
         if default_command is None:
             self.default_command = np.zeros(len(joint_idx))
@@ -92,7 +92,7 @@ class JointController(LocomotionController, ManipulationController):
             command_output_limits=command_output_limits,
             inverted=inverted,
         )
-    
+
     def reset(self):
         # Nothing to reset.
         pass
@@ -110,7 +110,7 @@ class JointController(LocomotionController, ManipulationController):
 
         :return: Array[float], outputted (non-clipped!) control signal to deploy
         """
-        if self.fixed:
+        if self.use_constant_goal:
             return self.default_command
         # If we're using delta commands, add this value
         if self.use_delta_commands:
@@ -150,7 +150,7 @@ class JointController(LocomotionController, ManipulationController):
 
     @property
     def command_dim(self):
-        if self.fixed:
+        if self.use_constant_goal:
             return 0
         elif self.parallel_mode:
             return 1
