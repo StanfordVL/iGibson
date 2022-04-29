@@ -17,6 +17,7 @@ BODY_ANGULAR_VELOCITY = 0.05  # angular velocity thresholds in radians/frame
 
 # Body parameters
 BODY_MOVING_FORCE = 300
+BODY_HEIGHT_RANGE = [0.15, 0.3]
 
 DEFAULT_ARM_POSES = {
     "vertical",
@@ -260,6 +261,8 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
 
     def reset(self):
         # Move the constraint for each part to the default position.
+        super().reset()
+        self.tuck()
         self.set_position_orientation(*self.get_position_orientation())
 
     def _actions_to_control(self, action):
