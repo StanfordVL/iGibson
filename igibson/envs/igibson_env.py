@@ -19,6 +19,7 @@ from igibson.tasks.behavior_task import BehaviorTask
 from igibson.tasks.dummy_task import DummyTask
 from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
+from igibson.tasks.point_nav_fixed_random_task import PointNavFixedRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
@@ -100,6 +101,8 @@ class iGibsonEnv(BaseEnv):
             self.task = PointNavFixedTask(self)
         elif self.config["task"] == "point_nav_random":
             self.task = PointNavRandomTask(self)
+        elif self.config["task"] == "point_nav_fixed_random":
+            self.task = PointNavFixedRandomTask(self)
         elif self.config["task"] == "interactive_nav_random":
             self.task = InteractiveNavRandomTask(self)
         elif self.config["task"] == "dynamic_nav_random":

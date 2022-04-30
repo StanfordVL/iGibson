@@ -1,6 +1,6 @@
 # scene
 scene: gibson
-scene_id: Rs
+scene_id: gates_kitchenette
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -69,9 +69,10 @@ robot:
 
 
 # task
-task: point_nav_random
-target_dist_min: 1.0
-target_dist_max: 10.0
+task: point_nav_fixed_random
+# target_dist_min: 1.0
+# target_dist_max: 10.0
+target_pos: [-1.0, 1.0, 0.0]
 goal_format: polar
 task_obs_dim: 4
 
