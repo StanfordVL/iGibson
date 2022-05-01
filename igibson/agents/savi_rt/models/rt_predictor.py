@@ -80,7 +80,7 @@ class RTPredictor(nn.Module):
  
         self.out_scale = (32, 32)
         self.n_channels_out = 128 # resnet 18
-        self.rt_map_input_size = 70 #self.config["rt_map_size"] 140
+        self.rt_map_input_size = 50 #self.config["rt_map_size"] 140
         self.rt_map_output_size = 28 #put it in self.config, also change in parallel_env 28
         self.rooms = 23 # 23
 
@@ -109,6 +109,9 @@ class RTPredictor(nn.Module):
         self.rnn = RNNStateEncoder(input_size=self.input_size, 
                                    hidden_size=self.hidden_size).to(self.device)
         self.outc = outconv(1, self.rooms)
+        
+        self.visual = SMTCNN(observations)
+        self.audio = AudioCNN(observations, 128, "audio")
 
 
     def feature_alignment(self, local_feature_maps, curr_poses, curr_rpys):   
@@ -141,20 +144,25 @@ class RTPredictor(nn.Module):
     def init_hidden_states(self):
         self.hidden_states = torch.zeros(1, self.batch_size, self.hidden_size, device=self.device)
     
-    def update(self, observations, dones, visual_features, audio_features): #step_observation, dones
+    def update(self, observations, dones, visual_features=None, audio_features=None): #step_observation, dones
         # 23 rooms
+        if visual_features is None or audio_features is None:
+            _, visual_features = self.visual(observations)
+            _, audio_features = self.audio(observations)
         curr_poses = observations["pose_sensor"][:, :3].cpu().detach().numpy() #(9, 3)
         curr_rpys = observations["pose_sensor"][:, 3:6].cpu().detach().numpy() #(9, 3)
         
-        local_vmaps = self.cnn_forward_visual(visual_features).cpu().detach().numpy() # batch,64,32,32  
-        local_amaps = self.cnn_forward_audio(audio_features).cpu().detach().numpy() # batch,64,32,32 
+        local_vmaps = self.cnn_forward_visual(visual_features).cpu().detach().numpy() # batch,8,32,32  
+        local_amaps = self.cnn_forward_audio(audio_features).cpu().detach().numpy() # batch,8,32,32 
         
-        global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_rpys)#(batch, 64, 140, 140)
+        global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_rpys)#(batch,8,rt_map_input_size,rt_map_input_size)
         global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_rpys)
+        
         global_vmaps = (torch.from_numpy(global_vmaps)).view(self.batch_size, -1).unsqueeze(0).to(self.device) 
         global_amaps = (torch.from_numpy(global_amaps)).view(self.batch_size, -1).unsqueeze(0).to(self.device)
-        #(1, batch, 64*140*140)
         global_maps = torch.stack([global_vmaps, global_amaps], dim=2).view(1, self.batch_size, -1) #(1, batch, 2, 23*140*140)   
+        #(1, batch, 2*global_vmaps[1:])   
+        
         masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
                              dtype=torch.float, device=self.device)
 
