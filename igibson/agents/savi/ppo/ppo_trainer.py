@@ -602,7 +602,7 @@ class PPOTrainer(BaseRLTrainer):
         num_episodes = len(stats_episodes)
 
         stats_file = os.path.join(self.config['TENSORBOARD_DIR'], '{}_stats_{}.json'.format("val", self.config['SEED']))
-        new_stats_episodes = {','.join(str(key)): value for key, value in stats_episodes.items()}
+        new_stats_episodes = {','.join([str(i) for i in key]): value for key, value in stats_episodes.items()}
 
         episode_reward_mean = aggregated_stats["reward"] / num_episodes
         episode_metrics_mean = {}

@@ -1,6 +1,5 @@
 ## SoundSpaces
 NUM_PROCESSES: 1
-EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
 LOG_FILE: "/viscam/u/wangzz/avGibson/igibson/agents/av_nav/data/data_igibson_0127_apg/eval.log"
