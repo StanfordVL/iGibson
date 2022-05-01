@@ -441,6 +441,8 @@ class PPOTrainer(BaseRLTrainer):
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_ids])
+
+        num_procs = len(scene_ids)
        
         observation_space = self.envs.observation_space
         self._setup_actor_critic_agent(observation_space)
@@ -456,26 +458,26 @@ class PPOTrainer(BaseRLTrainer):
 
         test_recurrent_hidden_states = torch.zeros(
             self.actor_critic.net.num_recurrent_layers,
-            self.config['EVAL_NUM_PROCESS'],
+            num_procs,
             self.config['hidden_size'],
             device=self.device,
         )
         prev_actions = torch.zeros(
-            self.config['EVAL_NUM_PROCESS'], 1 if self.is_discrete else self.envs.action_space.shape[0], device=self.device, dtype=torch.long
+            num_procs, 1 if self.is_discrete else self.envs.action_space.shape[0], device=self.device, dtype=torch.long
         )
         not_done_masks = torch.zeros(
-            self.config['EVAL_NUM_PROCESS'], 1, device=self.device
+            num_procs, 1, device=self.device
         )
         stats_episodes = dict()  # dict of dicts that stores stats per episode
 
         rgb_frames = [
-            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+            [] for _ in range(num_procs)
         ]  # type: List[List[np.ndarray]]
         audios = [
-            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+            [] for _ in range(num_procs)
         ]
         topdown_frames = [
-            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+            [] for _ in range(num_procs)
         ]
         if len(self.config['VIDEO_OPTION']) > 0:
             os.makedirs(self.config['VIDEO_DIR'], exist_ok=True)
@@ -594,7 +596,7 @@ class PPOTrainer(BaseRLTrainer):
         num_episodes = len(stats_episodes)
 
         stats_file = os.path.join(self.config['TENSORBOARD_DIR'], '{}_stats_{}.json'.format("val", self.config['SEED']))
-        new_stats_episodes = {','.join(str(key)): value for key, value in stats_episodes.items()}
+        new_stats_episodes = {','.join([str(i) for i in key]): value for key, value in stats_episodes.items()}
         with open(stats_file, 'w') as fo:
             json.dump(new_stats_episodes, fo)
 

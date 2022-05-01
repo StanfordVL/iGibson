@@ -1,17 +1,24 @@
 ## SoundSpaces
-NUM_PROCESSES: 9
+NUM_PROCESSES: 1
+EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "data/audiogoal_ambisonic/train.log"
+LOG_FILE: "data/audiogoal/visualize.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/audiogoal_ambisonic/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/audiogoal_ambisonic/checkpoints/ckpt.422.pth"
+CHECKPOINT_FOLDER: "data/audiogoal/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/audiogoal/checkpoints/ckpt.318.pth"
 # 96 98
-TENSORBOARD_DIR: "data/audiogoal_ambisonic/tb"
-TEST_EPISODE_COUNT: 500
+TENSORBOARD_DIR: "data/audiogoal/tb"
+TEST_EPISODE_COUNT: 1
 SEED: 0
 TORCH_GPU_ID: 0
-VIDEO_OPTION: []
+VIDEO_OPTION: ["disk"]
+VIDEO_DIR: "data/audiogoal/"
+CONTINUOUS_VIEW_CHANGE: True
+DISPLAY_RESOLUTION: 1024
+audio_write: "data/audiogoal/"
+not_load_object_categories: ['ceilings']
+
 # RL PPO
 hidden_size: 512
 ppo_epoch: 4
@@ -37,6 +44,7 @@ use_log_std: False
 use_softplus: False
 action_activation: tanh
 
+
 ## iGibson
 scene: igibson
 build_graph: true
@@ -48,7 +56,6 @@ trav_map_erosion: 2
 should_open_all_doors: true
 
 # task
-ambisonic_sensor: True
 task: audiogoal_nav
 target_dist_min: 1.0
 target_dist_max: 10.0
@@ -73,9 +80,8 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [task_obs, depth, audio, bump]
-#task_obs, 
-extra_rgb: false
+output: [task_obs, depth, audio, bump, rgb, top_down]
+extra_rgb: true
 
 # image
 # ASUS Xtion PRO LIVE
@@ -94,11 +100,10 @@ depth_noise_rate: 0.0
 scan_noise_rate: 0.0
 
 # audio
-#audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/440Hz_44100Hz.wav"
 audio_dir: "/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/audio/telephone.wav"
 
 # visual objects # not needed
-visible_target: False
+visible_target: True
 
 # reward only for point nav fixed task
 reward_type: geodesic
@@ -121,4 +126,6 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
+
+
 
