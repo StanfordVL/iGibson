@@ -8,25 +8,16 @@
   </node>
 
   <param name="robot_description" command="cat $(find igibson-ros)/turtlebot/turtlebot.urdf"/>
-
   <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
   </node>
-
   <node name="turtlebot_gibson_sim" pkg="igibson-ros" type="turtlebot_rgbd.py" output="screen">
+    <remap from="/mobile_base/commands/velocity" to="/cmd_vel"/>
   </node>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/robot.rviz" />
 
-  <!-- Velocity muxer -->
-  <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
-  <node pkg="nodelet" type="nodelet" name="cmd_vel_mux"
-        args="load yocs_cmd_vel_mux/CmdVelMuxNodelet mobile_base_nodelet_manager">
-    <param name="yaml_cfg_file" value="$(find turtlebot_bringup)/param/mux.yaml" />
-    <remap from="cmd_vel_mux/output" to="mobile_base/commands/velocity"/>
-  </node>
-
- <include file="$(find turtlebot_teleop)/launch/keyboard_teleop.launch">
- </include>
+  <node name="teleop_twist_keyboard" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
+</node>
 
  <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
     <param name="scan_height" value="2"/>

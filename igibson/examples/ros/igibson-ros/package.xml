@@ -58,10 +58,20 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <exec_depend>std_msgs</exec_depend>
-  <exec_depend>turtlebot_navigation</exec_depend>
   <exec_depend>map_server</exec_depend>
   <exec_depend>nav2d</exec_depend>
-  <exec_depend>turtlebot_teleop</exec_depend>
+  <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>depthimage_to_laserscan</exec_depend>
+  <exec_depend>depth_image_proc</exec_depend>
+  <exec_depend>rviz</exec_depend>
+  <exec_depend>teleop_twist_keyboard</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>joint_state_publisher</exec_depend>
+  <exec_depend>gmapping</exec_depend>
+  <exec_depend>map_server</exec_depend>
+  <exec_depend>move_base</exec_depend>
+  <exec_depend>amcl</exec_depend>
+  <exec_depend>dwa_local_planner</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
