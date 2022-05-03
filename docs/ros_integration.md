@@ -16,36 +16,43 @@ The possibility of using iGibson with ROS is unlimited. As a starter, we provide
 
 ![](images/node_topo.jpg)
 
-Environment Setup
+Environment Setup without docker (option 1)
 ----------------
+
+Using docker to install igibson-ros bridge is preferred. Setting up without docker has only been tested on limited system environments.
 
 ## Preparation
  
-1. Install ROS: in this package, we use navigation stack from ROS kinetic. Please follow the [instructions](http://wiki.ros.org/kinetic/Installation/Ubuntu).
-2. Install iGibson **from source** following [installation guide](installation.md) in **python2.7**. Note that ROS only supports `python2.7` at the moment, so you need to create python2.7 virtual environment to install iGibson instead of python3.x.
+1. Install ROS: in this package, we use navigation stack from ROS noetic. Please follow the [instructions](http://wiki.ros.org/noetic/Installation/Ubuntu).
+2. Install iGibson **from source** following [installation guide](installation.md) with Python 3.8. 
 ```bash
 git clone https://github.com/StanfordVL/iGibson --recursive
 cd iGibson
 
-conda create -n py2-igibson python=2.7 anaconda # we support python 2.7, 3.5, 3.6, 3.7, 3.8
-source activate py2-igibson
+# if you didn't create the conda environment before:
+conda create -y -n igibson python=3.8
+conda activate igibson
+
 pip install -e . # This step takes about 4 minutes
-source deactivate # This step is important because we will NOT use <anaconda installation root>/envs/py2-igibson/bin/python
 ```
-3. If you use anaconda for setting up python environment, some tweaks of `PATH` and `PYTHONPATH` variable are required to avoid conflict. In particular:
-	1. For `PATH`: conda related needs to be removed from `PATH`
-	```bash
-	echo $PATH | grep -oP "[^:;]+" | grep conda	## Remove these paths from $PATH
-	```
-	2. For `PYTHONPATH`: `/usr/lib/python2.7/dist-packages/`, `/opt/ros/kinetic/lib/python2.7/dist-packages`(ROS python libraries), `<anaconda installation root>/envs/py2-igibson/lib/python2.7/site-packages`(iGibson dependencies) and `<iGibson root>` need to be in `PYTHONPATH` **in this exact order**.
-4. Create `catkin_ws` folder
+3. tweak `PYTHONPATH` as below. `PYTHONPATH` need to contain four parts, in the exact order. 
+ 1. ROS python libraries: e.g. `/opt/ros/noetic/lib/python3/dist-packages`
+ 2. conda python libaries: e.g. `<anaconda installation root>/envs/igibson/lib/python3.8/site-packages`(iGibson dependencies) 
+ 3. iGibson libary: `<iGibson root>`
+
+Note the PYTHONPATH need to have the exact order as specified above, otherwise there will be complaints about numpy versions. 
+
+
+4. Create `catkin_ws/src` folder
 ```bash
-mkdir -p ~/catkin_ws
+mkdir -p ~/catkin_ws/src
 ```
 5. Soft-link `igibson-ros` folder to your `catkin_ws/src` and run `catkin_make` to index `igibson-ros` package.
 ```bash
-cd <iGibson root>/igibson
-ln -s $PWD/examples/ros/igibson-ros/ ~/catkin_ws/src/
+cd ~/catkin_ws/src
+ln -s $<iGibson root>/igibson/examples/ros/igibson-ros/ .
+
+source /opt/ros/noetic/setup.bash # to setup ros environment
 cd ~/catkin_ws && catkin_make
 ```
 5. Install `igibson-ros` dependencies:
@@ -57,9 +64,23 @@ rosdep install --from-paths src --ignore-src -r -y
 ## Sanity check 
 
 ```bash
-which python # Should give /usr/bin/python, NOT <anaconda installation root>/envs/py2-igibson/bin/python
+which python # Should give a python3 binary
 python -c 'import igibson, rospy, rospkg' # Should run without errors
 ```
+
+Environment Setup with docker (option 2)
+----------------
+
+Alternatively, you can put iGibson and ros both in docker, we have prepared the dockerfile to do it.
+```bash
+git clone https://github.com/StanfordVL/iGibson --recursive
+
+cd iGibson/docker/igibson-ros
+
+./build.sh
+./run_gui.sh
+```
+
 
 Running
 ----------------
@@ -71,14 +92,12 @@ In order to run iGibson+ROS examples, you will need to perform the following ste
 source /opt/ros/kinetic/setup.bash
 source ~/catkin_ws/devel/setup.bash
 ```
-2. Repeat Step 3 from Preparation: sanitize `PATH` and `PYTHONPATH`
+2. Repeat Step 3 from Preparation: sanitize `PYTHONPATH`
 3. Here are some of the examples that you can run, including gmapping, hector mapping and navigation.
 ```bash
 roslaunch igibson-ros turtlebot_rgbd.launch # Bare minimal bringup example
 roslaunch igibson-ros turtlebot_gmapping.launch # Run gmapping
-roslaunch igibson-ros turtlebot_hector_mapping.launch # Run hector mapping
 roslaunch igibson-ros turtlebot_navigation.launch # Run the navigation stack, we have provided the map
-roslaunch igibson-ros turtlebot_gt_navigation.launch # Run the navigation stack with ground truth localization
 ```
 
 
@@ -115,6 +134,23 @@ Subscribes:
 |`/mobile_base/commands/velocity`|`geometry_msgs/Twist`|Velocity command for turtlebot, `msg.linear.x` is the forward velocity, `msg.angular.z` is the angular velocity|
 |`/reset_pose`|`geometry_msgs/PoseStamped`|Direct reset turtlebot's pose (i.e. teleportation)|
 
+
+Adding New Robots
+----------------
+
+It should be relatively easy to support new robots with iGibson-ros bridge. First, you need to create a python file and a yaml file to run the robot in iGibson. As examples, please
+refer to 
+
+- `iGibson/igibson/examples/ros/igibson-ros/turtlebot_rgbd.py`
+- `iGibson/igibson/examples/ros/igibson-ros/turtlebot_rgbd.yaml`
+
+Then you need to import the urdf files into ros. The robot urdf used in iGibson and used for ros might be slightly different, you need to choose the ones suitable for ros. As an example, please 
+refer to
+
+- `iGibson/igibson/examples/ros/igibson-ros/turtlebot.urdf`
+- `iGibson/igibson/examples/ros/igibson-ros/turtlebot/turtlebot_description`
+
+These urdfs are referred to by launch files in `iGibson/igibson/examples/ros/igibson-ros/launch`. You need to create new launch files for new robots. Note that the example is for mobile robots, but for mobile manipulators you also need to publish joint states, which need to be added to the main python file.
 
 ### References
 
