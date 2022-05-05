@@ -81,8 +81,7 @@ class PointNavRandomTask(PointNavFixedTask):
             if reset_success:
                 break
 
-        if not reset_success:
-            log.warning("WARNING: Failed to reset robot without collision")
+        assert reset_success, "WARNING: Failed to reset robot without collision"
 
         p.removeState(state_id)
 
