@@ -2653,7 +2653,6 @@ def pairwise_collision(body1, body2, **kwargs):
         body1, links1 = expand_links(body1)
         body2, links2 = expand_links(body2)
         return any_link_pair_collision(body1, links1, body2, links2, **kwargs)
-    print("{} {} {}".format(body1, body2, body_collision(body1, body2, **kwargs)))
     return body_collision(body1, body2, **kwargs)
 
 # def single_collision(body, max_distance=1e-3):

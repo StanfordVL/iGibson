@@ -18,7 +18,7 @@ _METADATA_FIELD = "openable_joint_ids"
 _BOTH_SIDES_METADATA_FIELD = "openable_both_sides"
 
 
-def _compute_joint_threshold(joint_info, joint_direction):
+def compute_joint_threshold(joint_info, joint_direction):
     # Convert fractional threshold to actual joint position.
     f = _JOINT_THRESHOLD_BY_TYPE[joint_info.jointType]
     closed_end = joint_info.jointLowerLimit if joint_direction == 1 else joint_info.jointUpperLimit
@@ -36,7 +36,7 @@ def _is_in_range(position, threshold, range_end):
         return position < threshold
 
 
-def _get_relevant_joints(obj):
+def get_relevant_joints(obj):
     if not hasattr(obj, "metadata"):
         return None, None, None
 
@@ -81,7 +81,7 @@ def _get_relevant_joints(obj):
 
 class Open(CachingEnabledObjectState, BooleanState):
     def _compute_value(self):
-        both_sides, relevant_joint_infos, joint_directions = _get_relevant_joints(self.obj)
+        both_sides, relevant_joint_infos, joint_directions = get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
 
@@ -97,7 +97,7 @@ class Open(CachingEnabledObjectState, BooleanState):
             # Compute a boolean openness state for each joint by comparing positions to thresholds.
             joint_ids = [joint_info.jointIndex for joint_info in relevant_joint_infos]
             joint_thresholds = (
-                _compute_joint_threshold(joint_info, joint_direction * side)
+                compute_joint_threshold(joint_info, joint_direction * side)
                 for joint_info, joint_direction in zip(relevant_joint_infos, joint_directions)
             )
             joint_positions = utils.get_joint_positions(self.obj.get_body_ids()[0], joint_ids)
@@ -120,7 +120,7 @@ class Open(CachingEnabledObjectState, BooleanState):
         @param fully: whether the object should be fully opened/closed (e.g. all relevant joints to 0/1).
         @return: bool indicating setter success. Failure may happen due to unannotated objects.
         """
-        both_sides, relevant_joint_infos, joint_directions = _get_relevant_joints(self.obj)
+        both_sides, relevant_joint_infos, joint_directions = get_relevant_joints(self.obj)
         if not relevant_joint_infos:
             return False
 
@@ -142,7 +142,7 @@ class Open(CachingEnabledObjectState, BooleanState):
 
             # Go through the relevant joints & set random positions.
             for joint_info, joint_direction in zip(relevant_joint_infos, joint_directions):
-                threshold, open_end, closed_end = _compute_joint_threshold(joint_info, joint_direction * side)
+                threshold, open_end, closed_end = compute_joint_threshold(joint_info, joint_direction * side)
 
                 # Get the range
                 if new_value:

@@ -85,7 +85,6 @@ class URDFObject(StatefulObject):
     def __init__(
         self,
         filename,
-        abilities=None,
         model_path=None,
         bounding_box=None,
         scale=None,
@@ -106,7 +105,6 @@ class URDFObject(StatefulObject):
         :param filename: urdf file path of that object model
         :param name: object name, unique for each object instance, e.g. door_3
         :param category: object category, e.g. door
-        :param abilities: a list of abilities to instantiate the correspounding object states
         :param model_path: folder path of that object model
         :param bounding_box: bounding box of this object
         :param scale: scaling factor of this object
@@ -951,9 +949,21 @@ class URDFObject(StatefulObject):
                 self.unscaled_link_bounding_boxes[converted_name] = bb_data
 
     def get_base_aligned_bounding_box(
-        self, body_id=None, link_id=None, visual=False, xy_aligned=False, fallback_to_aabb=False
+        self, body_id=None, link_id=None, visual=False, xy_aligned=False, link_base=False, fallback_to_aabb=False
     ):
-        """Get a bounding box for this object that's axis-aligned in the object's base frame."""
+        """Get a bounding box for this object that's in an object-centric frame specified by the parameters.
+
+        :param body_id: the body ID of this object to include in this computation (defaults to main body)
+        :param link_id: the link ID of this object to include in this computation. If None, all links will be included.
+        :param visual: whether the visual meshes should be used instead of the collision meshes
+        :param xy_aligned: whether the given bounding box should be aligned with the world's XY plane
+        :param link_base: whether the bounding box should be axis-aligned in the link's frame instead of the body's base
+            frame
+        :param fallback_to_aabb: whether world-frame AABBs should be used if bounding box annotations cannot be found
+            (note that this produces loose bounding boxes)
+        :return: Tuple[bounding box center in world frame, bounding box orientation in world frame,
+            bounding box extent in desired frame, bounding box center in desired frame]
+        """
         if body_id is None:
             body_id = self.get_body_ids()[self.main_body]
 
@@ -1046,6 +1056,7 @@ class URDFObject(StatefulObject):
                     "AABB as fallback." % link_name
                 )
 
+        # Here we decide which frame the bounding box will be axis-aligned in.
         if xy_aligned:
             # If the user requested an XY-plane aligned bbox, convert everything to that frame.
             # The desired frame is same as the base_com frame with its X/Y rotations removed.
@@ -1059,16 +1070,24 @@ class URDFObject(StatefulObject):
                 translate=translate, angles=[0, 0, rotation_around_Z_axis]
             )
 
-            # We want to move our points to this frame as well.
-            world_to_xy_aligned_base_com = trimesh.transformations.inverse_matrix(xy_aligned_base_com_to_world)
-            base_com_to_xy_aligned_base_com = np.dot(world_to_xy_aligned_base_com, base_com_to_world)
-            points = trimesh.transformations.transform_points(points, base_com_to_xy_aligned_base_com)
-
             # Finally update our desired frame.
             desired_frame_to_world = xy_aligned_base_com_to_world
+        elif link_base:
+            # If the user wants the bb in a link frame, let's do that.
+            assert link_id != None
+            link_state = get_link_state(body_id, link_id, velocity=False)
+            desired_frame_to_world = utils.quat_pos_to_mat(
+                link_state.linkWorldPosition, link_state.linkWorldOrientation
+            )
         else:
             # Default desired frame is base CoM frame.
             desired_frame_to_world = base_com_to_world
+
+        # Transform the points to the correct frame of reference:
+        if xy_aligned or link_base:
+            world_to_desired_frame = trimesh.transformations.inverse_matrix(desired_frame_to_world)
+            base_com_to_desired_frame = np.dot(world_to_desired_frame, base_com_to_world)
+            points = trimesh.transformations.transform_points(points, base_com_to_desired_frame)
 
         # TODO: Implement logic to allow tight bounding boxes that don't necessarily have to match the base frame.
         # All points are now in the desired frame: either the base CoM or the xy-plane-aligned base CoM.

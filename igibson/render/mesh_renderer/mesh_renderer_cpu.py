@@ -1318,7 +1318,7 @@ class MeshRenderer(object):
         Optimize vertex and texture for optimized renderer.
         """
         for tex_file in self.texture_files:
-            log.debug("Texture: ", tex_file)
+            log.debug("Texture: %s", tex_file)
         # Set cutoff about 4096, otherwise we end up filling VRAM very quickly
         cutoff = 5000 * 5000
         shouldShrinkSmallTextures = True
