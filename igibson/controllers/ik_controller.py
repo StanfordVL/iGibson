@@ -42,6 +42,7 @@ class InverseKinematicsController(ManipulationController):
         smoothing_filter_size=None,
         workspace_pose_limiter=None,
         joint_range_tolerance=0.01,
+        ik_joint_idx=None,
     ):
         """
         :param base_body_id: int, unique pybullet ID corresponding to the pybullet body being controlled by IK
@@ -97,11 +98,14 @@ class InverseKinematicsController(ManipulationController):
             convergence stability (e.g.: for joint_ranges = 0 for no limits, prevents NaNs from occurring)
         """
         # Store arguments
-        control_dim = len(joint_damping)
+        # If your robot has virtual joints, you should pass ik_joint_idx with the indices in the pybullet model
+        # that correspond to the joint indices in iGibson (virtual joints will get ids in iG but not in PB).
+        # if your robot doesn't have virtual joints, we use joint_idx
+        self.ik_joint_idx = ik_joint_idx if ik_joint_idx is not None else joint_idx
         self.control_filter = (
             None
             if smoothing_filter_size in {None, 0}
-            else MovingAverageFilter(obs_dim=control_dim, filter_width=smoothing_filter_size)
+            else MovingAverageFilter(obs_dim=len(self.ik_joint_idx), filter_width=smoothing_filter_size)
         )
         assert mode in IK_MODES, "Invalid ik mode specified! Valid options are: {IK_MODES}, got: {mode}"
         self.mode = mode
@@ -227,13 +231,19 @@ class InverseKinematicsController(ManipulationController):
         )
 
         # Calculate and return IK-backed out joint angles
-        joint_targets = self._calc_joint_angles_from_ik(target_pos=target_pos, target_quat=target_quat)
+        joint_targets = self._calc_joint_angles_from_ik(target_pos=target_pos, target_quat=target_quat)[
+            self.ik_joint_idx
+        ]
+
+        # Optionally pass through smoothing filter for better stability
+        if self.control_filter is not None:
+            joint_targets = self.control_filter.estimate(joint_targets)
 
         # Grab the resulting error and scale it by the velocity gain
-        u = -self.kv * (control_dict["joint_position"] - joint_targets)
+        u = -self.kv * (control_dict["joint_position"][self.ik_joint_idx] - joint_targets)
 
-        # Return these commanded velocities, (only the relevant joint idx)
-        return u[self.joint_idx]
+        # Return these commanded velocities.
+        return u
 
     def _calc_joint_angles_from_ik(self, target_pos, target_quat):
         """
@@ -267,10 +277,6 @@ class InverseKinematicsController(ManipulationController):
                 jointDamping=self.joint_damping.tolist(),
             )
         )
-
-        # Optionally pass through smoothing filter for better stability
-        if self.control_filter is not None:
-            cmd_joint_pos = self.control_filter.estimate(cmd_joint_pos)
 
         return cmd_joint_pos
 
