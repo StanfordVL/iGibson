@@ -428,6 +428,8 @@ class BaseRobot(StatefulObject):
 
         :param action: Array[float], n-DOF length array of actions to convert and deploy on the robot
         """
+        assert len(action) == self.action_dim, "Action does not match robot's action dimension."
+
         self._last_action = action
 
         # Update state

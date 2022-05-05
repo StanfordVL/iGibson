@@ -73,7 +73,7 @@ def splitter(parent_map, child_map, joint_map, single_child_link):
     """
     new_single_child_link = []
     for (joint_name, joint_tuple) in joint_map.items():
-        log.debug("Joint: ", joint_name)
+        log.debug("Joint: %s", joint_name)
         if joint_tuple[2] == "floating":
 
             log.debug("Splitting floating joint")
