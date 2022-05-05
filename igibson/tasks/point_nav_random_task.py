@@ -63,6 +63,9 @@ class PointNavRandomTask(PointNavFixedTask):
 
         :param env: environment instance
         """
+        # We need to first reset the robot because otherwise we will move the robot in the joint conf. last seen before
+        # the reset
+        env.robots[0].reset()
         reset_success = False
         max_trials = 100
 
