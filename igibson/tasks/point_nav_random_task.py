@@ -72,8 +72,8 @@ class PointNavRandomTask(PointNavFixedTask):
         for i in range(max_trials):
             initial_pos, initial_orn, target_pos = self.sample_initial_pose_and_target_pos(env)
             reset_success = env.test_valid_position(
-                env.robots[0], initial_pos, initial_orn
-            ) and env.test_valid_position(env.robots[0], target_pos)
+                env.robots[0], initial_pos, initial_orn, ignore_self_collision=True
+            ) and env.test_valid_position(env.robots[0], target_pos, ignore_self_collision=True)
             restoreState(state_id)
             if reset_success:
                 break
