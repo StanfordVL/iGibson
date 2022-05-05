@@ -103,7 +103,7 @@ class RoomRearrangementTask(BaseTask):
         state_id = p.saveState()
         for _ in range(max_trials):
             initial_pos, initial_orn = self.sample_initial_pose(env)
-            reset_success = env.test_valid_position(env.robots[0], initial_pos, initial_orn)
+            reset_success = env.test_valid_position(env.robots[0], initial_pos, initial_orn, ignore_self_collision=True)
             restoreState(state_id)
             if reset_success:
                 break

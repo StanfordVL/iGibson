@@ -355,15 +355,16 @@ class iGibsonEnv(BaseEnv):
 
         return state, reward, done, info
 
-    def check_collision(self, body_id):
+    def check_collision(self, body_id, ignore_ids=[]):
         """
         Check whether the given body_id has collision after one simulator step
 
         :param body_id: pybullet body id
+        :param ignore_ids: pybullet body ids to ignore collisions with
         :return: whether the given body_id has collision
         """
         self.simulator_step()
-        collisions = list(p.getContactPoints(bodyA=body_id))
+        collisions = [x for x in p.getContactPoints(bodyA=body_id) if x[2] not in ignore_ids]
 
         if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
@@ -396,13 +397,14 @@ class iGibsonEnv(BaseEnv):
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj, pos, orn=None):
+    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False):
         """
         Test if the robot or the object can be placed with no collision.
 
         :param obj: an instance of robot or object
         :param pos: position
         :param orn: orientation
+        :param ignore_self_collision: whether the object's self-collisions should be ignored.
         :return: whether the position is valid
         """
         is_robot = isinstance(obj, BaseRobot)
@@ -413,7 +415,8 @@ class iGibsonEnv(BaseEnv):
             obj.reset()
             obj.keep_still()
 
-        has_collision = any(self.check_collision(body_id) for body_id in obj.get_body_ids())
+        ignore_ids = obj.get_body_ids() if ignore_self_collision else []
+        has_collision = any(self.check_collision(body_id, ignore_ids) for body_id in obj.get_body_ids())
         return not has_collision
 
     def land(self, obj, pos, orn):
