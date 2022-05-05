@@ -1006,6 +1006,18 @@ class BaseRobot(StatefulObject):
         for joint in self._joints.values():
             joint.set_vel(0.0)
 
+    @property
+    def ik_supported_joint_idx(self):
+        return [
+            idx
+            for idx, joint in enumerate(self.joints.values())
+            if not isinstance(joint, VirtualJoint) and joint.joint_type != p.JOINT_FIXED
+        ]
+
+    @property
+    def joint_idx_to_ik_joint_idx(self):
+        return {original: ik for ik, original in enumerate(self.ik_supported_joint_idx)}
+
 
 class RobotLink:
     """
@@ -1458,15 +1470,18 @@ class VirtualJoint(RobotJoint):
 
     @property
     def max_velocity(self):
-        raise NotImplementedError("This feature is not available for virtual joints.")
+        logging.debug("There is no max_velocity for virtual joints. Returning NaN. Do not use!")
+        return np.NAN
 
     @property
     def max_torque(self):
-        raise NotImplementedError("This feature is not available for virtual joints.")
+        logging.debug("There is no max_torque for virtual joints. Returning NaN. Do not use!")
+        return np.NAN
 
     @property
     def damping(self):
-        raise NotImplementedError("This feature is not available for virtual joints.")
+        logging.debug("There is no damping for virtual joints. Returning NaN. Do not use!")
+        return np.NAN
 
     def get_state(self):
         return self._get_state_callback()
@@ -1486,10 +1501,10 @@ class VirtualJoint(RobotJoint):
         self._set_pos_callback(pos)
 
     def set_vel(self, vel):
-        pass
+        log.debug("This feature is not available for virtual joints.")
 
     def set_torque(self, torque):
-        raise NotImplementedError("This feature is not available for virtual joints.")
+        log.debug("This feature is not available for virtual joints.")
 
     def reset_state(self, pos, vel):
         # VirtualJoint doesn't support resetting joint velocity yet
@@ -1602,6 +1617,87 @@ class Virtual6DOFJoint(object):
         self._stored_reset[dof] = val
 
         if all(reset_val is not None for reset_val in self._stored_reset):
+            self._reset_callback(self._stored_reset)
+            self._reset_stored_reset()
+
+    def _reset_stored_control(self):
+        self._stored_control = [None] * len(self._joints)
+
+    def _reset_stored_reset(self):
+        self._stored_reset = [None] * len(self._joints)
+
+
+class VirtualPlanarJoint(object):
+    """A wrapper for a planar (2DOF translation and 1DOF rotation) virtual joint between two robot body parts.
+
+    This wrapper generates the 6 separate VirtualJoint instances needed for such a mechanism, and accumulates their
+    set_pos calls to provide a single callback. Note that only the 3 actuated joints must be set for this
+    wrapper to trigger its callback.
+    """
+
+    COMPONENT_SUFFIXES = ["x", "y", "z", "rx", "ry", "rz"]
+    ACTUATED_COMPONENT_SUFFIXES = ["x", "y", "rz"]  # 0, 1, 5
+
+    def __init__(
+        self,
+        joint_name,
+        parent_link,
+        child_link,
+        command_callback,
+        reset_callback,
+        lower_limits=None,
+        upper_limits=None,
+    ):
+        self.joint_name = joint_name
+        self.parent_link = parent_link
+        self.child_link = child_link
+        self._command_callback = command_callback
+        self._reset_callback = reset_callback
+
+        self._joints = [
+            VirtualJoint(
+                joint_name="%s_%s" % (self.joint_name, name),
+                joint_type=p.JOINT_PRISMATIC if i < 3 else p.JOINT_REVOLUTE,
+                get_state_callback=lambda dof=i: (self.get_state()[dof], None, None),
+                set_pos_callback=lambda pos, dof=i: self.set_pos(dof, pos),
+                reset_pos_callback=lambda pos, dof=i: self.reset_pos(dof, pos),
+                lower_limit=lower_limits[i] if lower_limits is not None else None,
+                upper_limit=upper_limits[i] if upper_limits is not None else None,
+            )
+            for i, name in enumerate(VirtualPlanarJoint.COMPONENT_SUFFIXES)
+        ]
+
+        self._get_actuated_indices = lambda lst: [lst[0], lst[1], lst[5]]
+
+        self._reset_stored_control()
+        self._reset_stored_reset()
+
+    def get_state(self):
+        pos, orn = self.child_link.get_position_orientation()
+
+        if self.parent_link is not None:
+            pos, orn = p.multiplyTransforms(*p.invertTransform(*self.parent_link.get_position_orientation()), pos, orn)
+
+        # Stack the position and the Euler orientation
+        return list(pos) + list(p.getEulerFromQuaternion(orn))
+
+    def get_joints(self):
+        """Gets the 1DOF VirtualJoints belonging to this 6DOF joint."""
+        return tuple(self._joints)
+
+    def set_pos(self, dof, val):
+        """Calls the command callback with values for all 3 actuated DOF once the setter has been called for each of them."""
+        self._stored_control[dof] = val
+
+        if all(ctrl is not None for ctrl in self._get_actuated_indices(self._stored_control)):
+            self._command_callback(self._stored_control)
+            self._reset_stored_control()
+
+    def reset_pos(self, dof, val):
+        """Calls the reset callback with values for all 3 actuated DOF once the setter has been called for each of them."""
+        self._stored_reset[dof] = val
+
+        if all(reset_val is not None for reset_val in self._get_actuated_indices(self._stored_reset)):
             self._reset_callback(self._stored_reset)
             self._reset_stored_reset()
 
