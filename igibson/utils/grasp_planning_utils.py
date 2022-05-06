@@ -22,7 +22,8 @@ LATERAL_MARGIN = 0.05
 
 def get_grasp_position_for_open(robot, target_obj, should_open, link_id=None):
     # Pick a moving link of the object.
-    relevant_joints = get_relevant_joints(target_obj)
+    relevant_joints_full = get_relevant_joints(target_obj)
+    relevant_joints = relevant_joints_full[1]
 
     # If a particular link ID was specified, filter our candidates down to that one.
     if link_id is not None:
