@@ -25,14 +25,17 @@ def execute_controller(ctrl_gen, robot, s):
 
 def go_to_sink_and_toggle(s, robot, controller: StarterSemanticActionPrimitives):
     """Go to the sink object in the scene and toggle it on."""
-    for _ in range(20):
+    for i in range(20):
         try:
             sink = s.scene.objects_by_category["sink"][1]
-            print("Going to sink.")
+            print("Trying to NAVIGATE_TO sink.")
             execute_controller(controller._navigate_to_obj(sink), robot, s)
-            print("Toggling on sink.")
+            print("NAVIGATE_TO sink succeeded!")
+            print("Trying to TOGGLE_ON the sink.")
             execute_controller(controller.toggle_on(sink), robot, s)
+            print("TOGGLE_ON the sink succeeded!")
         except ActionPrimitiveError:
+            print("Attempt {} to navigate and toggle on the sink failed. Retry until 20.".format(i + 1))
             continue
 
         return
@@ -40,12 +43,14 @@ def go_to_sink_and_toggle(s, robot, controller: StarterSemanticActionPrimitives)
 
 def grasp_tray(s, robot, controller: StarterSemanticActionPrimitives):
     """Grasp the tray that's on the floor of the room."""
-    for _ in range(20):
+    for i in range(20):
         try:
-            print("Grasping tray.")
+            print("Trying to GRASP tray.")
             tray = s.scene.objects_by_category["tray"][0]
             execute_controller(controller.grasp(tray), robot, s)
+            print("GRASP the tray succeeded!")
         except ActionPrimitiveError:
+            print("Attempt {} to grasp the tray failed. Retry until 20.".format(i + 1))
             continue
 
         return
@@ -53,12 +58,14 @@ def grasp_tray(s, robot, controller: StarterSemanticActionPrimitives):
 
 def put_on_table(s, robot, controller: StarterSemanticActionPrimitives):
     """Place the currently-held object on top of the coffee table."""
-    for _ in range(20):
+    for i in range(20):
         try:
-            print("Placing held object on coffee table.")
+            print("Trying to PLACE_ON_TOP the held object on coffee table.")
             table = s.scene.objects_by_category["coffee_table"][0]
             execute_controller(controller.place_on_top(table), robot, s)
+            print("PLACE_ON_TOP succeeded!")
         except ActionPrimitiveError:
+            print("Attempt {} to place the held object failed. Retry until 20.".format(i + 1))
             continue
 
         return
@@ -66,14 +73,17 @@ def put_on_table(s, robot, controller: StarterSemanticActionPrimitives):
 
 def open_and_close_fridge(s, robot, controller: StarterSemanticActionPrimitives):
     """Demonstrate opening and closing the fridge."""
-    for _ in range(20):
+    for i in range(20):
         try:
             fridge = s.scene.objects_by_category["fridge"][0]
-            print("Opening fridge.")
+            print("Trying to OPEN the fridge.")
             execute_controller(controller.open(fridge), robot, s)
-            print("Closing fridge.")
+            print("OPEN the fridge succeeded!")
+            print("Trying to CLOSE the fridge.")
             execute_controller(controller.close(fridge), robot, s)
+            print("CLOSE the fridge succeeded!")
         except ActionPrimitiveError:
+            print("Attempt {} to open and close the fridge failed. Retry until 20.".format(i + 1))
             continue
 
         return
@@ -81,14 +91,16 @@ def open_and_close_fridge(s, robot, controller: StarterSemanticActionPrimitives)
 
 def open_and_close_door(s, robot, controller: StarterSemanticActionPrimitives):
     """Demonstrate opening and closing the bathroom door."""
-    for _ in range(20):
+    for i in range(20):
         try:
             door = (set(s.scene.objects_by_category["door"]) & set(s.scene.objects_by_room["bathroom_0"])).pop()
-            print("Opening door.")
+            print("Trying to OPEN the door.")
             execute_controller(controller.open(door), robot, s)
-            print("Closing door.")
+            print("Trying to CLOSE the door.")
             execute_controller(controller.close(door), robot, s)
+            print("CLOSE the door succeeded!")
         except ActionPrimitiveError:
+            print("Attempt {} to open and close the door failed. Retry until 20.".format(i + 1))
             continue
 
         return
@@ -96,14 +108,16 @@ def open_and_close_door(s, robot, controller: StarterSemanticActionPrimitives):
 
 def open_and_close_cabinet(s, robot, controller: StarterSemanticActionPrimitives):
     """Demonstrate opening and closing a drawer unit."""
-    for _ in range(20):
+    for i in range(20):
         try:
             cabinet = s.scene.objects_by_category["bottom_cabinet"][2]
-            print("Opening drawer.")
+            print("Trying to OPEN the cabinet.")
             execute_controller(controller.open(cabinet), robot, s)
-            print("Closing drawer.")
+            print("Trying to CLOSE the cabinet.")
             execute_controller(controller.close(cabinet), robot, s)
+            print("CLOSE the cabinet succeeded!")
         except ActionPrimitiveError:
+            print("Attempt {} to open and close the cabinet failed. Retry until 20.".format(i + 1))
             continue
 
         return
@@ -118,7 +132,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Create the simulator.
     s = Simulator(
-        mode="headless" if headless else "gui_non_interactive",
+        mode="headless" if headless else "gui_non_interactive" if platform.system() != "Darwin" else "gui_interactive",
         image_width=512,
         image_height=512,
         device_idx=0,
@@ -146,6 +160,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Load the robot and place it in the scene.
     config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_mp_behavior_task.yaml"))
+    config["robot"]["show_visual_head"] = True
     robot = BehaviorRobot(**config["robot"])
     s.import_robot(robot)
     robot.set_position_orientation([0, 0, 1], [0, 0, 0, 1])

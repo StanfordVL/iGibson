@@ -518,7 +518,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         if self._get_obj_in_hand() is None:
             raise ActionPrimitiveError(
-                ActionPrimitiveError.Reason.ActionPrimitiveError.Reason,
+                ActionPrimitiveError.Reason.EXECUTION_ERROR,
                 "No object detected in hand after executing grasp.",
             )
 
