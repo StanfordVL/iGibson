@@ -1,3 +1,10 @@
+"""
+WARNING!
+The StarterSemanticActionPrimitive is a work-in-progress and is only provided as an example.
+It currently only works with BehaviorRobot with its JointControllers set to absolute mode.
+See provided behavior_robot_mp_behavior_task.yaml config file for an example. See examples/action_primitives for
+runnable examples.
+"""
 import inspect
 import logging
 import random
@@ -176,6 +183,12 @@ class StarterSemanticActionPrimitive(IntEnum):
 
 class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
     def __init__(self, task, scene, robot):
+        logger.warning(
+            "The StarterSemanticActionPrimitive is a work-in-progress and is only provided as an example. "
+            "It currently only works with BehaviorRobot with its JointControllers set to absolute mode. "
+            "See provided behavior_robot_mp_behavior_task.yaml config file for an example. "
+            "See examples/action_primitives for runnable examples."
+        )
         super().__init__(task, scene, robot)
         self.controller_functions = {
             StarterSemanticActionPrimitive.GRASP: self.grasp,
