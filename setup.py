@@ -129,7 +129,7 @@ else:
 
 setup(
     name="igibson",
-    version="2.1.0",
+    version="2.2.0",
     author="Stanford University",
     long_description_content_type="text/markdown",
     long_description=long_description,
