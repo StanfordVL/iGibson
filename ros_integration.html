@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ROS Integration &mdash; iGibson 2.1.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <title>ROS Integration &mdash; iGibson 2.2.0 documentation</title><link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.1.0
+                2.2.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -60,11 +60,13 @@
 <li class="toctree-l1"><a class="reference internal" href="learning_framework.html">Learning Frameworks</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">ROS Integration</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#introduction">Introduction</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#environment-setup">Environment Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-setup-without-docker-option-1">Environment Setup without docker (option 1)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#preparation">Preparation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#sanity-check">Sanity check</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-setup-with-docker-option-2">Environment Setup with docker (option 2)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#running">Running</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#topics">Topics</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#topics">Topics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#adding-new-robots">Adding New Robots</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#references">References</a></li>
 </ul>
 </li>
@@ -122,46 +124,46 @@
 <p>The possibility of using iGibson with ROS is unlimited. As a starter, we provide an example of integrating iGibson with ROS for navigation. This is a ROS package integrates iGibson Env with ROS navigation stack. It follows the same node topology and topics as <code class="docutils literal notranslate"><span class="pre">turtlebot_navigation</span></code> package. As shown below, so after a policy is trained in iGibson, it requires minimal changes to deploy onto a real turtlebot.</p>
 <p><img alt="" src="_images/node_topo.jpg" /></p>
 </div>
-<div class="section" id="environment-setup">
-<h2>Environment Setup<a class="headerlink" href="#environment-setup" title="Permalink to this headline"></a></h2>
+<div class="section" id="environment-setup-without-docker-option-1">
+<h2>Environment Setup without docker (option 1)<a class="headerlink" href="#environment-setup-without-docker-option-1" title="Permalink to this headline"></a></h2>
+<p>Using docker to install igibson-ros bridge is preferred. Setting up without docker has only been tested on limited system environments.</p>
 </div>
 <div class="section" id="preparation">
 <h2>Preparation<a class="headerlink" href="#preparation" title="Permalink to this headline"></a></h2>
 <ol class="arabic simple">
-<li><p>Install ROS: in this package, we use navigation stack from ROS kinetic. Please follow the <a class="reference external" href="http://wiki.ros.org/kinetic/Installation/Ubuntu">instructions</a>.</p></li>
-<li><p>Install iGibson <strong>from source</strong> following <a class="reference internal" href="installation.html"><span class="doc std std-doc">installation guide</span></a> in <strong>python2.7</strong>. Note that ROS only supports <code class="docutils literal notranslate"><span class="pre">python2.7</span></code> at the moment, so you need to create python2.7 virtual environment to install iGibson instead of python3.x.</p></li>
+<li><p>Install ROS: in this package, we use navigation stack from ROS noetic. Please follow the <a class="reference external" href="http://wiki.ros.org/noetic/Installation/Ubuntu">instructions</a>.</p></li>
+<li><p>Install iGibson <strong>from source</strong> following <a class="reference internal" href="installation.html"><span class="doc std std-doc">installation guide</span></a> with Python 3.8.</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
 <span class="nb">cd</span> iGibson
 
-conda create -n py2-igibson <span class="nv">python</span><span class="o">=</span><span class="m">2</span>.7 anaconda <span class="c1"># we support python 2.7, 3.5, 3.6, 3.7, 3.8</span>
-<span class="nb">source</span> activate py2-igibson
+<span class="c1"># if you didn&#39;t create the conda environment before:</span>
+conda create -y -n igibson <span class="nv">python</span><span class="o">=</span><span class="m">3</span>.8
+conda activate igibson
+
 pip install -e . <span class="c1"># This step takes about 4 minutes</span>
-<span class="nb">source</span> deactivate <span class="c1"># This step is important because we will NOT use &lt;anaconda installation root&gt;/envs/py2-igibson/bin/python</span>
 </pre></div>
 </div>
-<ol class="arabic" start="3">
-<li><p>If you use anaconda for setting up python environment, some tweaks of <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> variable are required to avoid conflict. In particular:</p>
-<ol class="arabic simple">
-<li><p>For <code class="docutils literal notranslate"><span class="pre">PATH</span></code>: conda related needs to be removed from <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
+<ol class="arabic simple" start="3">
+<li><p>tweak <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> as below. <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> need to contain four parts, in the exact order.</p></li>
+<li><p>ROS python libraries: e.g. <code class="docutils literal notranslate"><span class="pre">/opt/ros/noetic/lib/python3/dist-packages</span></code></p></li>
+<li><p>conda python libaries: e.g. <code class="docutils literal notranslate"><span class="pre">&lt;anaconda</span> <span class="pre">installation</span> <span class="pre">root&gt;/envs/igibson/lib/python3.8/site-packages</span></code>(iGibson dependencies)</p></li>
+<li><p>iGibson libary: <code class="docutils literal notranslate"><span class="pre">&lt;iGibson</span> <span class="pre">root&gt;</span></code></p></li>
 </ol>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">echo</span> <span class="nv">$PATH</span> <span class="p">|</span> grep -oP <span class="s2">&quot;[^:;]+&quot;</span> <span class="p">|</span> grep conda	<span class="c1">## Remove these paths from $PATH</span>
-</pre></div>
-</div>
-<ol class="arabic simple" start="2">
-<li><p>For <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code>: <code class="docutils literal notranslate"><span class="pre">/usr/lib/python2.7/dist-packages/</span></code>, <code class="docutils literal notranslate"><span class="pre">/opt/ros/kinetic/lib/python2.7/dist-packages</span></code>(ROS python libraries), <code class="docutils literal notranslate"><span class="pre">&lt;anaconda</span> <span class="pre">installation</span> <span class="pre">root&gt;/envs/py2-igibson/lib/python2.7/site-packages</span></code>(iGibson dependencies) and <code class="docutils literal notranslate"><span class="pre">&lt;iGibson</span> <span class="pre">root&gt;</span></code> need to be in <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> <strong>in this exact order</strong>.</p></li>
+<p>Note the PYTHONPATH need to have the exact order as specified above, otherwise there will be complaints about numpy versions.</p>
+<ol class="arabic simple" start="4">
+<li><p>Create <code class="docutils literal notranslate"><span class="pre">catkin_ws/src</span></code> folder</p></li>
 </ol>
-</li>
-<li><p>Create <code class="docutils literal notranslate"><span class="pre">catkin_ws</span></code> folder</p></li>
-</ol>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir -p ~/catkin_ws
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mkdir -p ~/catkin_ws/src
 </pre></div>
 </div>
 <ol class="arabic simple" start="5">
 <li><p>Soft-link <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> folder to your <code class="docutils literal notranslate"><span class="pre">catkin_ws/src</span></code> and run <code class="docutils literal notranslate"><span class="pre">catkin_make</span></code> to index <code class="docutils literal notranslate"><span class="pre">igibson-ros</span></code> package.</p></li>
 </ol>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> &lt;iGibson root&gt;/igibson
-ln -s <span class="nv">$PWD</span>/examples/ros/igibson-ros/ ~/catkin_ws/src/
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span> ~/catkin_ws/src
+ln -s $&lt;iGibson root&gt;/igibson/examples/ros/igibson-ros/ .
+
+<span class="nb">source</span> /opt/ros/noetic/setup.bash <span class="c1"># to setup ros environment</span>
 <span class="nb">cd</span> ~/catkin_ws <span class="o">&amp;&amp;</span> catkin_make
 </pre></div>
 </div>
@@ -175,8 +177,20 @@ rosdep install --from-paths src --ignore-src -r -y
 </div>
 <div class="section" id="sanity-check">
 <h2>Sanity check<a class="headerlink" href="#sanity-check" title="Permalink to this headline"></a></h2>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which python <span class="c1"># Should give /usr/bin/python, NOT &lt;anaconda installation root&gt;/envs/py2-igibson/bin/python</span>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>which python <span class="c1"># Should give a python3 binary</span>
 python -c <span class="s1">&#39;import igibson, rospy, rospkg&#39;</span> <span class="c1"># Should run without errors</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="environment-setup-with-docker-option-2">
+<h2>Environment Setup with docker (option 2)<a class="headerlink" href="#environment-setup-with-docker-option-2" title="Permalink to this headline"></a></h2>
+<p>Alternatively, you can put iGibson and ros both in docker, we have prepared the dockerfile to do it.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git clone https://github.com/StanfordVL/iGibson --recursive
+
+<span class="nb">cd</span> iGibson/docker/igibson-ros
+
+./build.sh
+./run_gui.sh
 </pre></div>
 </div>
 </div>
@@ -191,14 +205,12 @@ python -c <span class="s1">&#39;import igibson, rospy, rospkg&#39;</span> <span 
 </pre></div>
 </div>
 <ol class="arabic simple" start="2">
-<li><p>Repeat Step 3 from Preparation: sanitize <code class="docutils literal notranslate"><span class="pre">PATH</span></code> and <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code></p></li>
+<li><p>Repeat Step 3 from Preparation: sanitize <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code></p></li>
 <li><p>Here are some of the examples that you can run, including gmapping, hector mapping and navigation.</p></li>
 </ol>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>roslaunch igibson-ros turtlebot_rgbd.launch <span class="c1"># Bare minimal bringup example</span>
 roslaunch igibson-ros turtlebot_gmapping.launch <span class="c1"># Run gmapping</span>
-roslaunch igibson-ros turtlebot_hector_mapping.launch <span class="c1"># Run hector mapping</span>
 roslaunch igibson-ros turtlebot_navigation.launch <span class="c1"># Run the navigation stack, we have provided the map</span>
-roslaunch igibson-ros turtlebot_gt_navigation.launch <span class="c1"># Run the navigation stack with ground truth localization</span>
 </pre></div>
 </div>
 <p>The following screenshot is captured when running the bare minimal bringup example.</p>
@@ -278,6 +290,22 @@ roslaunch igibson-ros turtlebot_gt_navigation.launch <span class="c1"># Run the 
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section" id="adding-new-robots">
+<h2>Adding New Robots<a class="headerlink" href="#adding-new-robots" title="Permalink to this headline"></a></h2>
+<p>It should be relatively easy to support new robots with iGibson-ros bridge. First, you need to create a python file and a yaml file to run the robot in iGibson. As examples, please
+refer to</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">iGibson/igibson/examples/ros/igibson-ros/turtlebot_rgbd.py</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">iGibson/igibson/examples/ros/igibson-ros/turtlebot_rgbd.yaml</span></code></p></li>
+</ul>
+<p>Then you need to import the urdf files into ros. The robot urdf used in iGibson and used for ros might be slightly different, you need to choose the ones suitable for ros. As an example, please
+refer to</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">iGibson/igibson/examples/ros/igibson-ros/turtlebot.urdf</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">iGibson/igibson/examples/ros/igibson-ros/turtlebot/turtlebot_description</span></code></p></li>
+</ul>
+<p>These urdfs are referred to by launch files in <code class="docutils literal notranslate"><span class="pre">iGibson/igibson/examples/ros/igibson-ros/launch</span></code>. You need to create new launch files for new robots. Note that the example is for mobile robots, but for mobile manipulators you also need to publish joint states, which need to be added to the main python file.</p>
 <div class="section" id="references">
 <h3>References<a class="headerlink" href="#references" title="Permalink to this headline"></a></h3>
 <ul class="simple">

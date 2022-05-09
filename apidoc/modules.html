@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>igibson &mdash; iGibson 2.1.0 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <title>igibson &mdash; iGibson 2.2.0 documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
@@ -27,7 +27,7 @@
             <a href="../index.html" class="icon icon-home"> iGibson
           </a>
               <div class="version">
-                2.1.0
+                2.2.0
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
@@ -106,6 +106,13 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="igibson.html">igibson package</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="igibson.html#subpackages">Subpackages</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="igibson.action_primitives.html">igibson.action_primitives package</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="igibson.action_primitives.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.action_primitives.html#igibson-action-primitives-action-primitive-set-base-module">igibson.action_primitives.action_primitive_set_base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.action_primitives.html#igibson-action-primitives-starter-semantic-action-primitives-module">igibson.action_primitives.starter_semantic_action_primitives module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.action_primitives.html#module-igibson.action_primitives">Module contents</a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="igibson.controllers.html">igibson.controllers package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.controllers.html#igibson-controllers-controller-base-module">igibson.controllers.controller_base module</a></li>
@@ -119,6 +126,7 @@
 </li>
 <li class="toctree-l3"><a class="reference internal" href="igibson.envs.html">igibson.envs package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="igibson.envs.html#submodules">Submodules</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.envs.html#igibson-envs-action-primitive-env-module">igibson.envs.action_primitive_env module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.envs.html#igibson-envs-env-base-module">igibson.envs.env_base module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.envs.html#igibson-envs-igibson-env-module">igibson.envs.igibson_env module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.envs.html#igibson-envs-igibson-ray-env-module">igibson.envs.igibson_ray_env module</a></li>
@@ -248,6 +256,8 @@
 <li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-locomotion-robot-module">igibson.robots.locomotion_robot module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-manipulation-robot-module">igibson.robots.manipulation_robot module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-robot-base-module">igibson.robots.robot_base module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-tiago-module">igibson.robots.tiago module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-tiago-differential-drive-module">igibson.robots.tiago_differential_drive module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-turtlebot-module">igibson.robots.turtlebot module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#igibson-robots-two-wheel-robot-module">igibson.robots.two_wheel_robot module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.robots.html#module-contents">Module contents</a></li>
@@ -306,11 +316,13 @@
 <li class="toctree-l3"><a class="reference internal" href="igibson.utils.html">igibson.utils package</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#submodules">Submodules</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-assets-utils-module">igibson.utils.assets_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-behavior-robot-motion-planning-utils-module">igibson.utils.behavior_robot_motion_planning_utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#module-igibson.utils.checkpoint_utils">igibson.utils.checkpoint_utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#module-igibson.utils.constants">igibson.utils.constants module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#module-igibson.utils.filters">igibson.utils.filters module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-generate-trav-map-module">igibson.utils.generate_trav_map module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-git-utils-module">igibson.utils.git_utils module</a></li>
+<li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-grasp-planning-utils-module">igibson.utils.grasp_planning_utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-ig-logging-module">igibson.utils.ig_logging module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-map-utils-module">igibson.utils.map_utils module</a></li>
 <li class="toctree-l4"><a class="reference internal" href="igibson.utils.html#igibson-utils-mesh-geometric-conversion-module">igibson.utils.mesh_geometric_conversion module</a></li>

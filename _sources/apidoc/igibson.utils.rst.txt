@@ -12,6 +12,14 @@ igibson.utils.assets\_utils module
    :undoc-members:
    :show-inheritance:
 
+igibson.utils.behavior\_robot\_motion\_planning\_utils module
+-------------------------------------------------------------
+
+.. automodule:: igibson.utils.behavior_robot_motion_planning_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 igibson.utils.checkpoint\_utils module
 --------------------------------------
 
@@ -48,6 +56,14 @@ igibson.utils.git\_utils module
 -------------------------------
 
 .. automodule:: igibson.utils.git_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.utils.grasp\_planning\_utils module
+-------------------------------------------
+
+.. automodule:: igibson.utils.grasp_planning_utils
    :members:
    :undoc-members:
    :show-inheritance:

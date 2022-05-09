@@ -1,0 +1,29 @@
+igibson.action\_primitives package
+==================================
+
+Submodules
+----------
+
+igibson.action\_primitives.action\_primitive\_set\_base module
+--------------------------------------------------------------
+
+.. automodule:: igibson.action_primitives.action_primitive_set_base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.action\_primitives.starter\_semantic\_action\_primitives module
+-----------------------------------------------------------------------
+
+.. automodule:: igibson.action_primitives.starter_semantic_action_primitives
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.action_primitives
+   :members:
+   :undoc-members:
+   :show-inheritance:

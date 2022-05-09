@@ -100,6 +100,22 @@ igibson.robots.robot\_base module
    :undoc-members:
    :show-inheritance:
 
+igibson.robots.tiago module
+---------------------------
+
+.. automodule:: igibson.robots.tiago
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.robots.tiago\_differential\_drive module
+------------------------------------------------
+
+.. automodule:: igibson.robots.tiago_differential_drive
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 igibson.robots.turtlebot module
 -------------------------------
 

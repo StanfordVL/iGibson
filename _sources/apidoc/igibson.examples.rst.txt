@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   igibson.examples.action_primitives
    igibson.examples.environments
    igibson.examples.learning
    igibson.examples.object_states

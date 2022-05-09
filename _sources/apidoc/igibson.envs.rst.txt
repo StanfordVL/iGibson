@@ -4,6 +4,14 @@ igibson.envs package
 Submodules
 ----------
 
+igibson.envs.action\_primitive\_env module
+------------------------------------------
+
+.. automodule:: igibson.envs.action_primitive_env
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 igibson.envs.env\_base module
 -----------------------------
 

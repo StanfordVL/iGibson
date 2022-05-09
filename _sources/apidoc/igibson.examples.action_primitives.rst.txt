@@ -1,0 +1,29 @@
+igibson.examples.action\_primitives package
+===========================================
+
+Submodules
+----------
+
+igibson.examples.action\_primitives.action\_primitive\_env\_example module
+--------------------------------------------------------------------------
+
+.. automodule:: igibson.examples.action_primitives.action_primitive_env_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+igibson.examples.action\_primitives.action\_primitive\_example module
+---------------------------------------------------------------------
+
+.. automodule:: igibson.examples.action_primitives.action_primitive_example
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: igibson.examples.action_primitives
+   :members:
+   :undoc-members:
+   :show-inheritance:
