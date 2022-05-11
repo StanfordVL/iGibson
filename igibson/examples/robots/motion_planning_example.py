@@ -105,13 +105,13 @@ def run_example(config, programmatic_actions, headless, short_exec):
         max_attempts = 10
 
         # If we use this flag, the robot navigates in front of the cupboard (easy) to prepare for an arm planning task
-        testing_arm_planning = True
+        testing_arm_planning = False
 
         if not testing_arm_planning:
             for attempt in range(1, max_attempts + 1):
                 plan = motion_planner.plan_base_motion(base_pose1)
                 if plan is not None and len(plan) > 0:
-                    motion_planner.dry_run_base_plan(plan)
+                    motion_planner.visualize_base_path(plan)
                     break
                 else:
                     logging.error(
