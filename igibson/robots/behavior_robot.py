@@ -209,6 +209,20 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         self._parts["body"].set_body_collision_filters()
         return body_ids
 
+    def tuck(self):
+        """
+        Immediately set this robot's configuration to be in tucked mode
+        """
+        # TODO: move to the initial configuration with the hands close to the robot
+        logging.warn("Tucking not implemented for BehaviorRobot. Passing.")
+
+    def untuck(self):
+        """
+        Immediately set this robot's configuration to be in untucked mode
+        """
+        # TODO: Do nothing?
+        logging.warn("Untucking not implemented for BehaviorRobot. Passing.")
+
     def _setup_virtual_joints(self):
         virtual_joints = []
 
@@ -333,6 +347,10 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         return [part.body_id for part in self._parts.values()]
 
     @property
+    def get_parts(self):
+        return self._parts
+
+    @property
     def n_arms(self):
         return len(self.hands)
 
@@ -367,6 +385,13 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                     for from_link, to_link in zip(FINGER_MID_LINK_NAMES, FINGER_TIP_LINK_NAMES)
                 ]
             )
+            for arm in self.arm_names
+        }
+
+    @property
+    def arm_joint_names(self):
+        return {
+            arm: ("%s_shoulder__%s_%s" % (arm, arm, name) for name in Virtual6DOFJoint.COMPONENT_SUFFIXES)
             for arm in self.arm_names
         }
 
