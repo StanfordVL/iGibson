@@ -46,14 +46,10 @@ class MotionPlanningWrapper(object):
         collision_with_pb_2d_planning=False,
         visualize_2d_planning=False,
         visualize_2d_result=False,
-        print_log=True,
-        sleep_flag=False,
     ):
         """
         Get planning related parameters.
         """
-        self.print_log = print_log
-        self.sleep_flag = sleep_flag
         self.env = env
         assert "occupancy_grid" in self.env.output
         # get planning related parameters from env
@@ -198,28 +194,13 @@ class MotionPlanningWrapper(object):
                 "r_gripper_finger_joint",
                 "l_gripper_finger_joint",
             ]
-            self.rest_joint_names = [
-                "r_wheel_joint",
-                "l_wheel_joint",
-                "head_pan_joint",
-                "head_tilt_joint",
-                "r_gripper_finger_joint",
-                "l_gripper_finger_joint",
-            ]
-
             self.arm_joint_ids = joints_from_names(
                 self.robot_id,
                 self.arm_joint_names,
             )
-
             self.robot_arm_indices = [
                 self.robot_joint_names.index(arm_joint_name) for arm_joint_name in self.arm_joint_names
             ]
-
-            self.rest_joint_ids = joints_from_names(
-                self.robot_id,
-                self.rest_joint_names,
-            )
 
         self.arm_ik_threshold = 0.05
 
@@ -269,16 +250,11 @@ class MotionPlanningWrapper(object):
             corners = [top_left, bottom_right]
 
         if self.collision_with_pb_2d_planning:
-            # obstacles = [
-            #     body_id
-            #     for body_id in self.env.scene.get_body_ids()
-            #     if body_id not in self.robot.get_body_ids()
-            #     and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
-            # ]
-
             obstacles = [
-                item.get_body_ids()[0]
-                for item in self.env.scene.objects_by_category["bottom_cabinet"]
+                body_id
+                for body_id in self.env.scene.get_body_ids()
+                if body_id not in self.robot.get_body_ids()
+                and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
             ]
         else:
             obstacles = []
@@ -339,8 +315,8 @@ class MotionPlanningWrapper(object):
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(object_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
-            if self.mode in ["headless", "headless_tensor", "gui_non_interactive", "gui_interactive"]:
-                for way_point in path[-1:]:
+            if self.mode in ["gui_non_interactive", "gui_interactive"]:
+                for way_point in path:
                     set_base_values_with_z(
                         self.robot_id, [way_point[0], way_point[1], way_point[2]], z=self.initial_height
                     )
@@ -405,7 +381,7 @@ class MotionPlanningWrapper(object):
                 self.robot_id,
                 self.robot.eef_links[self.robot.default_arm].link_id,
                 targetPosition=arm_ik_goal,
-                targetOrientation= (0, 0.7071068, 0, 0.7071068),
+                targetOrientation=(0, 0.7071068, 0, 0.7071068),
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
                 upperLimits=max_limits,
@@ -468,13 +444,12 @@ class MotionPlanningWrapper(object):
         log.debug("IK Solver failed to find a configuration")
         return None
 
-    def plan_arm_motion(self, arm_joint_positions, override_fetch_collision_links=False):
+    def plan_arm_motion(self, arm_joint_positions):
         """
         Attempt to reach arm arm_joint_positions and return arm trajectory
         If failed, reset the arm to its original pose and return None
 
         :param arm_joint_positions: final arm joint position to reach
-        :param override_fetch_collision_links: if True, include Fetch hand and finger collisions while motion planning
         :return: arm trajectory or None if no plan can be found
         """
         log.debug("Planning path in joint space to {}".format(arm_joint_positions))
@@ -500,7 +475,7 @@ class MotionPlanningWrapper(object):
         state_id = p.saveState()
 
         allow_collision_links = []
-        if self.robot_type == "Fetch" and not override_fetch_collision_links:
+        if self.robot_type == "Fetch":
             allow_collision_links = [self.robot.eef_links[self.robot.default_arm].link_id] + [
                 finger.link_id for finger in self.robot.finger_links[self.robot.default_arm]
             ]
@@ -539,8 +514,8 @@ class MotionPlanningWrapper(object):
             grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
         if arm_path is not None:
-            if self.mode in ["headless", "headless_tensor", "gui_non_interactive", "gui_interactive"]:
-                for joint_way_point in arm_path[-1:]:
+            if self.mode in ["gui_non_interactive", "gui_interactive"]:
+                for joint_way_point in arm_path:
                     set_joint_positions(self.robot_id, self.arm_joint_ids, joint_way_point)
                     set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
@@ -600,11 +575,7 @@ class MotionPlanningWrapper(object):
         max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
         base_pose = get_base_values(self.robot_id)
 
-        if self.sleep_flag:
-            steps = 50
-        else:
-            steps = 5
-
+        steps = 50
         for i in range(steps):
             push_goal = np.array(push_point) + push_vector * (i + 1) / float(steps)
 
@@ -626,14 +597,13 @@ class MotionPlanningWrapper(object):
                 joint_positions = np.array(joint_positions)[self.robot_arm_indices]
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
-            control_joints(self.robot_id, self.rest_joint_ids, np.array([0.0, 0.0, 0.0, 0.45, 0.5, 0.5]))
 
             # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
             achieved = self.robot.get_eef_position()
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode == "gui_interactive" and self.sleep_flag:
+            if self.mode == "gui_interactive":
                 sleep(0.02)  # for visualization
 
     def execute_arm_push(self, plan, hit_pos, hit_normal):
@@ -654,9 +624,6 @@ class MotionPlanningWrapper(object):
             self.dry_run_arm_plan(plan[::-1])
             # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             self.simulator_sync()
-            done, _ = self.env.task.get_termination(self.env)
-            if self.print_log:
-                print('push done: ', done)
 
     def plan_arm_pull(self, hit_pos, hit_normal):
         """
@@ -699,11 +666,7 @@ class MotionPlanningWrapper(object):
         max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
         base_pose = get_base_values(self.robot_id)
 
-        if self.sleep_flag:
-            steps = 50
-        else:
-            steps = 5
-
+        steps = 50
         for i in range(steps):
             push_goal = np.array(push_point) + push_vector * (i + 1) / float(steps)
 
@@ -723,20 +686,17 @@ class MotionPlanningWrapper(object):
 
             if self.robot_type == "Fetch":
                 joint_positions = np.array(joint_positions)[self.robot_arm_indices]
+                # joint_positions[-1] = -1.0
+                # joint_positions[-2] = -1.0
 
             control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
-            control_joints(self.robot_id, self.rest_joint_ids, np.array([0.0, 0.0, 0.0, 0.45, 0.5, 0.5]))
 
             # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-
-            # if self.robot_type == "Fetch":
-            #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-
             achieved = self.robot.get_eef_position()
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode == "gui_interactive" and self.sleep_flag:
+            if self.mode == "gui_interactive":
                 sleep(0.02)  # for visualization
 
     def execute_arm_pull(self, plan, hit_pos, hit_normal):
@@ -757,11 +717,8 @@ class MotionPlanningWrapper(object):
             self.dry_run_arm_plan(plan[::-1])
             # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             self.simulator_sync()
-            done, _ = self.env.task.get_termination(self.env)
-            if self.print_log:
-                print('pull done: ', done)
 
-    def plan_arm_pick(self, pick_pos):
+    def plan_arm_pick_place(self, pick_place_pos):
         """
         Attempt to reach a 3D position and prepare for a pick later
 
@@ -770,7 +727,7 @@ class MotionPlanningWrapper(object):
         :return: arm trajectory or None if no plan can be found
         """
         pick_normal = [0.0, 0.0, 1.0]
-        pick_place_pos = list(pick_pos)
+        pick_place_pos = list(pick_place_pos)
         if self.robot.is_grasping() == True:
             pick_place_pos[-1] += 0.2
 
@@ -791,7 +748,7 @@ class MotionPlanningWrapper(object):
             log.debug("Planning failed: goal position may be non-reachable")
             return None
 
-    def interact_pick(self, hold_sth=True):
+    def interact_pick_place(self, hold_sth=True):
         """
         Move the arm starting from the push_point along the push_direction
         and physically simulate the interaction
@@ -814,8 +771,10 @@ class MotionPlanningWrapper(object):
             #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
 
             action = np.zeros(self.robot.action_dim)
-
-            action[-1] = -1.0
+            if hold_sth:
+                action[-1] = 1.0
+            else:
+                action[-1] = -1.0
             self.robot.apply_action(action)
 
             # control_joints(self.robot_id, self.robot_arm_indices, current_joint_positions)
@@ -824,10 +783,10 @@ class MotionPlanningWrapper(object):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode == "gui_interactive" and self.sleep_flag:
+            if self.mode == "gui_interactive":
                 sleep(0.02)  # for visualization
 
-    def execute_arm_pick(self, plan, hit_pos, hit_normal):
+    def execute_arm_pick_place(self, plan, hit_pos, hit_normal):
         """
         Execute arm push given arm trajectory
         Should be called after plan_arm_push()
@@ -838,121 +797,15 @@ class MotionPlanningWrapper(object):
         """
         if plan is not None:
             is_grasping = self.robot.is_grasping()==True
+            obj_in_hand = self.robot._ag_obj_in_hand['0']
 
-            if is_grasping and False:
-                if self.print_log:
-                    print('pick done: False')
-                return
-            else:
-                obj_in_hand = self.robot._ag_obj_in_hand['0']
-
-                log.debug("Teleporting arm along the trajectory. No physics simulation")
-                self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
-                log.debug("Performing pushing actions")
-                self.interact_pick(is_grasping)
-                log.debug("Teleporting arm to the default configuration")
-                self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
-                self.simulator_sync()
-                done, _ = self.env.task.get_termination(self.env)
-                if self.print_log:
-                    print('pick done: ', done)
-
-
-    def plan_arm_place(self, place_pos):
-        """
-        Attempt to reach a 3D position and prepare for a pick later
-
-        :param pick_pos: 3D position to reach
-        :param hit_normal: direction to pick after reacehing that position
-        :return: arm trajectory or None if no plan can be found
-        """
-        pick_normal = [0.0, 0.0, 1.0]
-        pick_place_pos = list(place_pos)
-        if self.robot.is_grasping() == True:
-            pick_place_pos[-1] += 0.2
-
-        log.debug("Planning arm pick at point {} with direction {}".format(pick_place_pos, pick_normal))
-        if self.marker is not None:
-            self.set_marker_position_direction(pick_place_pos, pick_normal)
-
-        # Solve the IK problem to set the arm at the desired position
-        joint_positions = self.get_arm_joint_positions(pick_place_pos)
-
-        if joint_positions is not None:
-            # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
-            # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
+            log.debug("Teleporting arm along the trajectory. No physics simulation")
+            self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
+            log.debug("Performing pushing actions")
+            self.interact_pick_place(is_grasping)
+            log.debug("Teleporting arm to the default configuration")
+            self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
             self.simulator_sync()
-            plan = self.plan_arm_motion(joint_positions)
-            return plan
-        else:
-            log.debug("Planning failed: goal position may be non-reachable")
-            return None
-
-    def interact_place(self, hold_sth=True):
-        """
-        Move the arm starting from the push_point along the push_direction
-        and physically simulate the interaction
-
-        :param push_point: 3D point to start pushing from
-        :param push_direction: push direction
-        """
-
-        max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
-        base_pose = get_base_values(self.robot_id)
-
-        steps = 50
-        for i in range(steps):
-
-            current_joint_positions = list(get_joint_positions(self.robot_id, self.robot_arm_indices))
-            current_joint_positions[-2] = 0.0
-            current_joint_positions[-1] = 0.0
-
-            # if self.robot_type == "Fetch":
-            #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-
-            action = np.zeros(self.robot.action_dim)
-
-            action[-1] = 1.0
-            self.robot.apply_action(action)
-
-            # control_joints(self.robot_id, self.robot_arm_indices, current_joint_positions)
-            # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-            achieved = self.robot.get_eef_position()
-            self.simulator_step()
-            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-
-            if self.mode == "gui_interactive" and self.sleep_flag:
-                sleep(0.02)  # for visualization
-
-    def execute_arm_place(self, plan, hit_pos, hit_normal):
-        """
-        Execute arm push given arm trajectory
-        Should be called after plan_arm_push()
-
-        :param plan: arm trajectory or None if no plan can be found
-        :param hit_pos: 3D position to reach
-        :param hit_normal: direction to push after reacehing that position
-        """
-        if plan is not None:
-            is_grasping = self.robot.is_grasping()==True
-
-            if is_grasping or True:
-                obj_in_hand = self.robot._ag_obj_in_hand['0']
-
-                log.debug("Teleporting arm along the trajectory. No physics simulation")
-                self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
-                log.debug("Performing pushing actions")
-                self.interact_place(is_grasping)
-                log.debug("Teleporting arm to the default configuration")
-                self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
-                self.simulator_sync()
-                done, _ = self.env.task.get_termination(self.env)
-                if self.print_log:
-                    print('place done: ', done)
-            else:
-                if self.print_log:
-                    print('place done: False')
-                return
 
     def plan_arm_toggle(self, hit_pos, hit_normal):
         """
@@ -1011,7 +864,7 @@ class MotionPlanningWrapper(object):
             self.simulator_step()
             set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
 
-            if self.mode == "gui_interactive" and self.sleep_flag:
+            if self.mode == "gui_interactive":
                 sleep(0.02)  # for visualization
 
     def execute_arm_toggle(self, plan, hit_pos, hit_normal):
@@ -1032,6 +885,3 @@ class MotionPlanningWrapper(object):
             self.dry_run_arm_plan(plan[::-1])
             # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
             self.simulator_sync()
-            done, _ = self.env.task.get_termination(self.env)
-            if self.print_log:
-                print('toggle done: ', done)

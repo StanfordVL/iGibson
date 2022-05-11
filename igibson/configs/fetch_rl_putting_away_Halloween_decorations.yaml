@@ -1,6 +1,11 @@
+
 # scene
+# Task List:
+# scene_id | task | task_id | instance_id | max length | time penalty
+# Beechwood_0_int | installing_a_printer | 0 | 2 | 20 | 0.1
+# Pomaria_1_int | throwing_away_leftovers | 0 | 2 | 40 | 0.01
 scene: igibson
-scene_id: Rs_int
+scene_id: Rs_int  # Pomaria_1_int  # Beechwood_0_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -22,7 +27,7 @@ robot:
   scale: 1.0
   self_collision: true
   rendering_params: null
-  grasping_mode: assisted
+  grasping_mode: sticky
   rigid_trunk: false
   default_trunk_offset: 0.365
   default_arm_pose: diagonal30
@@ -42,9 +47,9 @@ robot:
 # task
 #task: room_rearrangement
 
-task: cleaning_kitchen_cupboard
+task: putting_away_Halloween_decorations  # putting_leftovers_away  # putting_away_toys # throwing_away_leftovers  # installing_a_printer
 task_id: 0
-instance_id: 0
+instance_id: 0  # 0
 online_sampling: false
 should_highlight_task_relevant_objs: false
 
@@ -69,7 +74,7 @@ revolute_joint_reward_scale: 1.0
 discount_factor: 0.99
 
 # termination condition
-max_step: 500
+max_step: 40
 max_collisions_allowed: 500
 
 # misc config
@@ -77,7 +82,7 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [rgb, depth, scan, occupancy_grid]
+output: [rgb, occupancy_grid]  # , depth, occupancy_grid] # scan,
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
@@ -106,4 +111,3 @@ scan_noise_rate: 0.0
 # visual objects
 visible_target: true
 visible_path: false
-

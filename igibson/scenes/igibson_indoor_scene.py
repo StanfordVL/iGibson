@@ -794,7 +794,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if not reset_success:
                     p.resetJointState(body_id, joint_id, 0.0)
             elif mode == "zero":
-                p.resetJointState(body_id, joint_id, 0.0)
+                p.resetJointState(body_id, joint_id, 0.2)
             else:
                 assert False
 
@@ -812,6 +812,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
         :param mode: opening mode (zero, max, or random)
         :param prob: opening probability
         """
+        # print('self.objects_by_category: ', self.objects_by_category.keys())
         body_joint_pairs = []
         if category not in self.objects_by_category:
             return body_joint_pairs
