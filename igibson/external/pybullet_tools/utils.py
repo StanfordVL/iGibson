@@ -2653,6 +2653,7 @@ def pairwise_collision(body1, body2, **kwargs):
         body1, links1 = expand_links(body1)
         body2, links2 = expand_links(body2)
         return any_link_pair_collision(body1, links1, body2, links2, **kwargs)
+    # print("{} {} {}".format(body1, body2, body_collision(body1, body2, **kwargs)))
     return body_collision(body1, body2, **kwargs)
 
 # def single_collision(body, max_distance=1e-3):
@@ -3362,7 +3363,7 @@ def plan_base_motion_2d(body,
             if flip_vertically:
                 planning_map_2d_upsampled = cv2.flip(planning_map_2d_upsampled, 0)
             cv2.imshow("Planning Problem", planning_map_2d_upsampled)
-            cv2.waitKey(1)
+            # cv2.waitKey(1)
 
     # Auxiliary function to draw two points and the line connecting them, to draw paths
     def draw_path(q1, q2, color, image=None):
@@ -3376,7 +3377,7 @@ def plan_base_motion_2d(body,
             if flip_vertically:
                 planning_map_2d_upsampled = cv2.flip(planning_map_2d_upsampled, 0)
             cv2.imshow("Planning Problem", planning_map_2d_upsampled)
-            cv2.waitKey(1)
+            # cv2.waitKey(1)
         else:
             cv2.line(image, [pt1[1], pt1[0]], [pt2[1], pt2[0]], color, thickness=1, lineType=8)
 
@@ -3392,7 +3393,7 @@ def plan_base_motion_2d(body,
         if flip_vertically:
             planning_map_2d_upsampled = cv2.flip(planning_map_2d_upsampled, 0)
         cv2.imshow("Planning Problem", planning_map_2d_upsampled)
-        cv2.waitKey(1)
+        # cv2.waitKey(1)
 
     # Function to check collisions for a given configuration q
     def collision_fn(q):
@@ -3401,7 +3402,7 @@ def plan_base_motion_2d(body,
 
         if visualize_planning:
             draw_point(pts, (0, 155, 155))
-            cv2.waitKey(1)
+            # cv2.waitKey(1)
 
         if use_pb_for_collisions:
             set_base_values(body, q)
@@ -3433,7 +3434,7 @@ def plan_base_motion_2d(body,
                                   pts[0] - robot_footprint_radius_in_map: pts[0] + robot_footprint_radius_in_map + 1,
                                   pts[1] - robot_footprint_radius_in_map: pts[1] + robot_footprint_radius_in_map + 1].copy()
             draw_point(pts, 1, radius=robot_footprint_radius_in_map)
-            cv2.waitKey(10) #Extra wait to visualize better the process
+            # cv2.waitKey(10) #Extra wait to visualize better the process
 
         log.debug("In collision? {}".format(in_collision))
 
@@ -3444,7 +3445,7 @@ def plan_base_motion_2d(body,
             if flip_vertically:
                 planning_map_2d_upsampled = cv2.flip(planning_map_2d_upsampled, 0)
             cv2.imshow("Planning Problem", planning_map_2d_upsampled)
-            cv2.waitKey(10)
+            # cv2.waitKey(10)
 
         return in_collision
 
@@ -3489,7 +3490,7 @@ def plan_base_motion_2d(body,
         if flip_vertically:
             result_map_2d_scaledup = cv2.flip(result_map_2d_scaledup, 0)
         cv2.imshow("Resulting Plan", result_map_2d_scaledup)
-        cv2.waitKey(10)
+        # cv2.waitKey(10)
 
     return path
 

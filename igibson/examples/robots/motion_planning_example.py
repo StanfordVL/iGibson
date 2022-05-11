@@ -58,11 +58,22 @@ def run_example(config, programmatic_actions, headless, short_exec):
     # Reduce texture scale for Mac.
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
-    config_data["load_object_categories"] = [
-        "bottom_cabinet"
-    ]  # Uncomment this line to accelerate loading with only the building
-    config_data["load_room_types"] = ["living_room"]
+
+    # config_data["load_object_categories"] = [
+    #     "bottom_cabinet",
+    #     "bottom_cabinet_no_top",
+    #     "top_cabinet",
+    #     "dishwasher",
+    #     "fridge",
+    #     "microwave",
+    #     "oven",
+    #     "washer",
+    #     "dryer",
+    # ]  # Uncomment this line to accelerate loading with only the building
+
+    # config_data["load_room_types"] = ["living_room"]
     config_data["hide_robot"] = False
+    # print(config_data["load_object_categories"])
     env = iGibsonEnv(
         config_file=config_data,
         mode="gui_interactive" if not headless else "headless",
@@ -70,7 +81,7 @@ def run_example(config, programmatic_actions, headless, short_exec):
         physics_timestep=1.0 / 120.0,
     )
 
-    full_observability_2d_planning = False
+    full_observability_2d_planning = True
     collision_with_pb_2d_planning = False
     motion_planner = MotionPlanningWrapper(
         env,
@@ -79,9 +90,10 @@ def run_example(config, programmatic_actions, headless, short_exec):
         collision_with_pb_2d_planning=collision_with_pb_2d_planning,
         visualize_2d_planning=not headless,
         visualize_2d_result=not headless,
+        fine_motion_plan=False,
     )
+    env.task.initial_state = env.task.save_scene(env)
     state = env.reset()
-
     for obj in env.scene.get_objects():
         if obj.category == "bottom_cabinet":
             obj.states[object_states.Open].set_value(True)
@@ -90,8 +102,8 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
         if not headless:
             # Set viewer camera and directly set mode to planning mode
-            env.simulator.viewer.initial_pos = [-0.8, 0.7, 1.7]
-            env.simulator.viewer.initial_view_direction = [0.1, -0.9, -0.5]
+            env.simulator.viewer.initial_pos = [-0.4, 0.7, 1.7]
+            env.simulator.viewer.initial_view_direction = [0.0, -0.9, -0.5]
             env.simulator.viewer.reset_viewer()
 
         env.land(env.robots[0], [0, 0, 0], [0, 0, 0])
@@ -153,8 +165,8 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
     else:
         # Set viewer camera and directly set mode to planning mode
-        env.simulator.viewer.initial_pos = [1.5, 0.1, 2.3]
-        env.simulator.viewer.initial_view_direction = [-0.7, -0.3, -0.6]
+        env.simulator.viewer.initial_pos = [1.5, -1.0, 2.3]
+        env.simulator.viewer.initial_view_direction = [-0.7, 0.0, -0.6]
         env.simulator.viewer.reset_viewer()
         env.simulator.viewer.mode = ViewerMode.PLANNING
         # Print out helpful information for this demo
@@ -183,7 +195,7 @@ def main(selection="user", headless=False, short_exec=False):
         parser.add_argument(
             "--config",
             "-c",
-            default=os.path.join(igibson.configs_path, "fetch_motion_planning.yaml"),
+            default=os.path.join(igibson.configs_path, "fetch_rl_halloween.yaml"),
             help="which config file to use [default: use yaml files in examples/configs]",
         )
         parser.add_argument(
@@ -199,6 +211,8 @@ def main(selection="user", headless=False, short_exec=False):
     else:
         config = os.path.join(igibson.configs_path, "fetch_motion_planning.yaml")
         programmatic_actions = True
+
+    print("Started")
     run_example(config, programmatic_actions, headless, short_exec)
 
 

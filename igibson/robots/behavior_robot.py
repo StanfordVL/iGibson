@@ -38,8 +38,6 @@ from igibson.utils.constants import SPECIAL_COLLISION_GROUPS, SimulatorMode, get
 log = logging.getLogger(__name__)
 
 # Part offset parameters
-DEFAULT_BODY_OFFSET_FROM_FLOOR = 0.55
-
 EYE_LOC_POSE_UNTRACKED = ([0.05, 0, 0], [0, 0, 0, 1])
 RIGHT_HAND_LOC_POSE_UNTRACKED = ([0.1, -0.12, -0.4], [-0.7, 0.7, 0.0, 0.15])
 LEFT_HAND_LOC_POSE_UNTRACKED = ([0.1, 0.12, -0.4], [0.7, 0.7, 0.0, 0.15])
@@ -108,7 +106,7 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         base_name="body",
         grasping_mode="assisted",
         higher_limits=False,
-        **kwargs,
+        **kwargs
     ):
         """
         :param hands: list containing left, right or no hands

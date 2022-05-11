@@ -12,13 +12,20 @@
 
   <node name="turtlebot_gibson_sim" pkg="igibson-ros" type="turtlebot_rgbd.py" output="screen">
   </node>
-
-
+  
   <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
     <param name="publish_frequency" type="double" value="5.0" />
   </node>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find igibson-ros)/rviz/navigation.rviz" />
+
+  <node pkg="tf" type="static_transform_publisher" name="gibson_world_transform" args="0 0 0 0 0 0 /world /map 100"/>
+  <node pkg="igibson-ros" type="publish_true_map_to_odom_tf.py" name="map_odom_tf"/>
+
+  <!--
+  <node name="gibson_sim_noise" pkg="igibson-ros" type="noise_injection.py">
+  </node>
+  -->
 
   <!-- Velocity muxer -->
   <node pkg="nodelet" type="nodelet" name="mobile_base_nodelet_manager" args="manager"/>
@@ -33,14 +40,8 @@
  </include>
 
   <arg name="map_file" default="$(find igibson-ros)/map/graphnav/area_1.yaml"/>
- <node pkg="map_server" type="map_server"  name="map_server" args="$(arg map_file)" />
- <node pkg="amcl" type="amcl"  name="amcl" output="screen">
-  <param name="min_particles" value="500"/>
-  <param name="kld_err" value="0.05"/>
-  <param name="initial_cov_aa" value="1.57"/>
-  <remap from="scan" to="/gibson_ros/laserscan"/>
- </node>
-
+  <rosparam param="map_file" subst_value="True">$(arg map_file)</rosparam>
+  <node pkg="map_server" type="map_server"  name="map_server" args="$(arg map_file)" />
 
   <arg name="odom_frame_id"   default="odom"/>
   <arg name="base_frame_id"   default="base_footprint"/>
@@ -54,7 +55,7 @@
     <rosparam file="$(find igibson-ros)/param/costmap_common_params.yaml" command="load" ns="local_costmap" />
     <rosparam file="$(find igibson-ros)/param/local_costmap_params.yaml" command="load" />
     <rosparam file="$(find igibson-ros)/param/global_costmap_params.yaml" command="load" />
-    <rosparam file="$(find igibson-ros)/param/dwa_local_planner_params.yaml" command="load" />
+    <rosparam file="$(find igibson-ros)/param/gt_navigation/dwa_local_planner_params.yaml" command="load" />
     <rosparam file="$(find igibson-ros)/param/move_base_params.yaml" command="load" />
     <rosparam file="$(find igibson-ros)/param/global_planner_params.yaml" command="load" />
     <rosparam file="$(find igibson-ros)/param/navfn_global_planner_params.yaml" command="load" />
@@ -75,22 +76,5 @@
 
   <node pkg="nodelet" type="nodelet" args="manager"
         name="record_player_manager" output="screen"/>
-
-  <node pkg="depthimage_to_laserscan" type="depthimage_to_laserscan" name="depthimage_to_laserscan"  output="screen">
-    <param name="scan_height" value="2"/>
-    <param name="output_frame_id" value="/camera_depth_frame"/>
-    <param name="range_min" value="0.45"/>
-    <remap from="image" to="/gibson_ros/camera/depth/image"/>
-    <remap from="scan" to="/gibson_ros/laserscan"/>
-  </node>
-
-  <node pkg="nodelet" type="nodelet" name="cloudify"
-        args="load depth_image_proc/point_cloud_xyzrgb record_player_manager --no-bond" output="screen">
-    <remap from="depth_registered/image_rect" to="/gibson_ros/camera/depth/image"/>
-    <remap from="depth_registered/points" to="/gibson_ros/camera/depth_registered/points"/>
-    <remap from="rgb/image_rect_color" to="/gibson_ros/camera/rgb/image"/>
-    <remap from="rgb/camera_info" to="/gibson_ros/camera/depth/camera_info"/>
-  </node>
-
 
 </launch>
