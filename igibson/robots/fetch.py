@@ -323,6 +323,15 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         return {self.default_arm: ["r_gripper_finger_joint", "l_gripper_finger_joint"]}
 
     @property
+    def arm_joint_names(self):
+        names = dict()
+        for arm in self.arm_control_idx:
+            names[arm] = ["torso_lift_joint"] + [
+                list(self.joints.keys())[joint_id] for joint_id in self.arm_control_idx[arm]
+            ]
+        return names
+
+    @property
     def model_file(self):
         return os.path.join(igibson.assets_path, "models/fetch/fetch_gripper.urdf")
 
