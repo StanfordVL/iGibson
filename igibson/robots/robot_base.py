@@ -528,10 +528,19 @@ class BaseRobot(StatefulObject):
         """
         return self.base_link.get_rpy()
 
-    def set_joint_positions(self, joint_positions):
-        """Set this robot's joint positions, where @joint_positions is an array"""
-        for joint, joint_pos in zip(self._joints.values(), joint_positions):
-            joint.reset_state(pos=joint_pos, vel=0.0)
+    def set_joint_positions(self, joint_positions, joint_idx=None):
+        """
+        Set this robot's joint positions, where @joint_positions is an array
+        :param joint_positions: goal pose of the robot
+        :param joint_idx: ids of the joints to move. Move all, if joint_idx is None. This are iG joint idx, do not use pybullet idx
+        """
+        if joint_idx is None:
+            for joint, joint_pos in zip(self._joints.values(), joint_positions):
+                joint.reset_state(pos=joint_pos, vel=0.0)
+        else:
+            assert len(joint_positions) == len(joint_idx), "List of indices and values are not of the same length"
+            for joint_id, joint_position in zip(joint_idx, joint_positions):
+                self._joints.values()[joint_id].reset_state(pos=joint_position, vel=0.0)
 
     def set_joint_states(self, joint_states):
         """Set this robot's joint states in the format of Dict[String: (q, q_dot)]]"""
@@ -689,6 +698,11 @@ class BaseRobot(StatefulObject):
             RobotJoint objects owned by this robot
         """
         return self._joints
+
+    @property
+    def joint_names(self):
+        """Names of the joints in this robot"""
+        return [joint.joint_name for joint in self._joints]
 
     @property
     def n_links(self):
