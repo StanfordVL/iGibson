@@ -1,0 +1,122 @@
+# scene
+scene: igibson
+scene_id: Rs_int
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+trav_map_type: no_obj
+trav_map_resolution: 0.1
+trav_map_erosion: 3
+should_open_all_doors: true
+
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
+robot:
+  name: Tiago
+  action_type: continuous
+  action_normalize: true
+  proprio_obs:
+    - eef_left_pos
+    - eef_left_quat
+    - eef_right_pos
+    - eef_right_quat
+    - trunk_qpos
+    - arm_left_qpos_sin
+    - arm_left_qpos_cos
+    - gripper_left_qpos
+    - arm_right_qpos_sin
+    - arm_right_qpos_cos
+    - gripper_right_qpos
+    - grasp_left
+    - grasp_right
+  reset_joint_pos: null
+  base_name: null
+  scale: 1.0
+  self_collision: true
+  rendering_params: null
+  grasping_mode: physical
+  rigid_trunk: true
+  default_trunk_offset: 0.14
+  default_arm_pose: vertical
+  controller_config:
+    base:
+      name: JointController
+    arm_left:
+      name: JointController
+      motor_type: position
+      use_constant_goal_position: true
+      constant_goal_position: [-1.10, 1.47, 2.71, 1.71, -1.57, 1.39, 0.0]
+    gripper_left:
+      name: JointController
+      motor_type: position
+      use_constant_goal_position: true
+      constant_goal_position: [0.04, 0.04]
+    arm_right:
+      name: JointController
+      motor_type: position
+      use_constant_goal_position: true
+      constant_goal_position: [-1.10, 1.47, 2.71, 1.71, -1.57, 1.39, 0.0]
+    gripper_right:
+      name: JointController
+      motor_type: position
+      use_constant_goal_position: true
+      constant_goal_position: [0.04, 0.04]
+    camera:
+      name: JointController
+      motor_type: position
+      use_constant_goal_position: true
+      constant_goal_position: [0.0, 0.0]
+
+# task
+task: room_rearrangement
+load_object_categories: [
+  bottom_cabinet,
+  bottom_cabinet_no_top,
+  top_cabinet,
+  dishwasher,
+  fridge,
+  microwave,
+  oven,
+  washer
+  dryer,
+]
+
+# reward
+potential_reward_weight: 1.0
+prismatic_joint_reward_scale: 3.0
+revolute_joint_reward_scale: 1.0
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition
+max_step: 500
+max_collisions_allowed: 500
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
+
+# sensor spec
+output: [rgb, depth]
+# image
+# Primesense Carmine 1.09 short-range RGBD sensor
+# http://xtionprolive.com/primesense-carmine-1.09
+fisheye: false
+image_width: 512
+image_height: 512
+vertical_fov: 90
+# depth
+depth_low: 0.35
+depth_high: 3.0
+
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0
+
+# visual objects
+visible_target: true
+visible_path: false
+

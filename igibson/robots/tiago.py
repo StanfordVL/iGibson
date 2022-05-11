@@ -1,4 +1,7 @@
+import logging
 import os
+
+log = logging.getLogger(__name__)
 
 import numpy as np
 import pybullet as p
@@ -525,6 +528,15 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             arm: ["gripper_{}_right_finger_joint".format(arm), "gripper_{}_left_finger_joint".format(arm)]
             for arm in self.arm_names
         }
+
+    @property
+    def arm_joint_names(self):
+        names = dict()
+        for arm in self.arm_control_idx:
+            names[arm] = ["torso_lift_joint"] + [
+                list(self.joints.keys())[joint_id] for joint_id in self.arm_control_idx[arm]
+            ]
+        return names
 
     @property
     def model_file(self):

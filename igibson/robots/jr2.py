@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -7,6 +8,8 @@ from igibson.external.pybullet_tools.utils import set_joint_positions
 from igibson.robots.manipulation_robot import ManipulationRobot
 from igibson.robots.two_wheel_robot import TwoWheelRobot
 from igibson.utils.constants import SemanticClass
+
+log = logging.getLogger(__name__)
 
 RESET_JOINT_OPTIONS = {
     "tuck",
@@ -162,6 +165,13 @@ class JR2(ManipulationRobot, TwoWheelRobot):
     @property
     def finger_joint_names(self):
         return {self.default_arm: ["m1n6s200_joint_finger_1", "m1n6s200_joint_finger_2"]}
+
+    @property
+    def arm_joint_names(self):
+        names = dict()
+        for arm in self.arm_control_idx:
+            names[arm] = [list(self.joints.keys())[joint_id] for joint_id in self.arm_control_idx[arm]]
+        return names
 
     @property
     def model_file(self):

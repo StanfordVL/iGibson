@@ -351,6 +351,15 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         }
 
     @property
+    def arm_joint_names(self):
+        names = dict()
+        for arm in self.arm_control_idx:
+            names[arm] = ["torso_lift_joint"] + [
+                list(self.joints.keys())[joint_id] for joint_id in self.arm_control_idx[arm]
+            ]
+        return names
+
+    @property
     def model_file(self):
         return os.path.join(igibson.assets_path, "models/tiago/tiago_dual.urdf")
 

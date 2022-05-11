@@ -530,6 +530,15 @@ class ManipulationRobot(BaseRobot):
 
     @property
     @abstractmethod
+    def arm_joint_names(self):
+        """
+        :return dict[str, list]: Dictionary mapping arm appendage name to array of joint names corresponding to
+            this robot's arm
+        """
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
     def arm_control_idx(self):
         """
         :return dict[str, Array[int]]: Dictionary mapping arm appendage name to indices in low-level control

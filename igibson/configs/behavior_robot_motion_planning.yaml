@@ -1,0 +1,98 @@
+# scene
+scene: igibson
+scene_id: Rs_int
+build_graph: true
+load_texture: true
+pybullet_load_texture: true
+trav_map_type: no_obj
+trav_map_resolution: 0.1
+trav_map_erosion: 3
+should_open_all_doors: true
+
+# domain randomization
+texture_randomization_freq: null
+object_randomization_freq: null
+
+# robot
+robot:
+  name: BehaviorRobot
+
+  action_normalize: False
+  show_visual_head: False
+  higher_limits: True  # This should probably be false.
+  controller_config:
+    gripper_right_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+    gripper_left_hand:
+      name: MultiFingerGripperController
+      mode: ternary
+
+    # These enable absolute position control like in IK.
+    camera:
+      name: JointController
+      use_delta_commands: False
+      command_input_limits: null
+      command_output_limits: default
+    arm_right_hand:
+      name: JointController
+      use_delta_commands: False
+      command_input_limits: null
+      command_output_limits: default
+    arm_left_hand:
+      name: JointController
+      use_delta_commands: False
+      command_input_limits: null
+      command_output_limits: default
+
+# task
+task: room_rearrangement
+load_object_categories: [
+  bottom_cabinet,
+  bottom_cabinet_no_top,
+  top_cabinet,
+  dishwasher,
+  fridge,
+  microwave,
+  oven,
+  washer
+  dryer,
+]
+
+# reward
+potential_reward_weight: 1.0
+prismatic_joint_reward_scale: 3.0
+revolute_joint_reward_scale: 1.0
+
+# discount factor
+discount_factor: 0.99
+
+# termination condition
+max_step: 500
+max_collisions_allowed: 500
+
+# misc config
+initial_pos_z_offset: 0.1
+collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
+
+# sensor spec
+output: [rgb, depth]
+# image
+# Primesense Carmine 1.09 short-range RGBD sensor
+# http://xtionprolive.com/primesense-carmine-1.09
+fisheye: false
+image_width: 512
+image_height: 512
+vertical_fov: 90
+# depth
+depth_low: 0.35
+depth_high: 3.0
+
+# sensor noise
+depth_noise_rate: 0.0
+scan_noise_rate: 0.0
+
+# visual objects
+visible_target: true
+visible_path: false
+
