@@ -11,6 +11,7 @@ import igibson
 from igibson import object_states
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.utils.constants import ViewerMode
+from igibson.utils.motion_planning_utils import MotionPlanner
 from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
 
 
@@ -70,14 +71,14 @@ def run_example(config, programmatic_actions, headless, short_exec):
         physics_timestep=1.0 / 120.0,
     )
 
-    full_observability_2d_planning = False
+    full_observability_2d_planning = True
     collision_with_pb_2d_planning = False
-    motion_planner = MotionPlanningWrapper(
+    motion_planner = MotionPlanner(
         env,
         optimize_iter=10,
         full_observability_2d_planning=full_observability_2d_planning,
         collision_with_pb_2d_planning=collision_with_pb_2d_planning,
-        visualize_2d_planning=not headless,
+        visualize_2d_planning=False,  # not headless,
         visualize_2d_result=not headless,
     )
     state = env.reset()
@@ -102,25 +103,30 @@ def run_example(config, programmatic_actions, headless, short_exec):
             base_pose1 = [0.48253920783756465, -1.344157042454841, 1.9658493926322262]
 
         max_attempts = 10
-        for attempt in range(1, max_attempts + 1):
-            plan = motion_planner.plan_base_motion(base_pose1)
-            if plan is not None and len(plan) > 0:
-                motion_planner.dry_run_base_plan(plan)
-                break
-            else:
-                logging.error(
-                    "MP couldn't find path to the base location. Attempt {} of {}".format(attempt, max_attempts)
-                )
 
-        if attempt == max_attempts:
-            logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
-            sys.exit()
+        # If we use this flag, the robot navigates in front of the cupboard (easy) to prepare for an arm planning task
+        testing_arm_planning = True
+
+        if not testing_arm_planning:
+            for attempt in range(1, max_attempts + 1):
+                plan = motion_planner.plan_base_motion(base_pose1)
+                if plan is not None and len(plan) > 0:
+                    motion_planner.dry_run_base_plan(plan)
+                    break
+                else:
+                    logging.error(
+                        "MP couldn't find path to the base location. Attempt {} of {}".format(attempt, max_attempts)
+                    )
+
+            if attempt == max_attempts:
+                logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
+                sys.exit()
 
         base_pose2 = [-0.8095714332404795, -0.5171366166566791, 3.0351865450216153]
         for attempt in range(1, max_attempts + 1):
             plan = motion_planner.plan_base_motion(base_pose2)
             if plan is not None and len(plan) > 0:
-                motion_planner.dry_run_base_plan(plan)
+                motion_planner.visualize_base_path(plan)
                 break
             else:
                 logging.error(
@@ -134,15 +140,38 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
         success = False
         for attempt in range(1, max_attempts + 1):
-            hit_pos = [-1.36, -0.45, 0.67]
-            hit_normal = [-0.999, -0.015, -0.04]
+            pushing_position = [-1.36, -0.45, 0.67]
+            pushing_direction = [-0.999, -0.015, -0.04]
 
-            plan = motion_planner.plan_arm_push(hit_pos, np.array(hit_normal))
-            if plan is not None and len(plan) > 0:
-                print("Executing planned arm push")
-                motion_planner.execute_arm_push(plan, hit_pos, np.array(hit_normal))
-                print("End of the execution")
+            # For Fetch, and if the flag is activated, we push with the hand oriented top-down
+            top_down_ee_pushing_orn = True
+            ee_pushing_orn = (
+                (0, np.pi / 2, -np.pi / 2) if top_down_ee_pushing_orn and env.robots[0].model_name == "Fetch" else None
+            )
+
+            # For the BehaviorRobot, we need to have longer pre-pushing distance or the prepush location will be in contact
+            pre_pushing_distance = 0.1 if env.robots[0].model_name != "BehaviorRobot" else 0.2
+
+            pre_push_path, pushing_interaction_path = motion_planner.plan_ee_push(
+                pushing_position,
+                np.array(pushing_direction),
+                pre_pushing_distance=pre_pushing_distance,
+                ee_pushing_orn=ee_pushing_orn,
+            )
+            if (
+                pre_push_path is not None
+                and len(pre_push_path) > 0
+                and pushing_interaction_path is not None
+                and len(pushing_interaction_path) > 0
+            ):
+                print("Visualizing planned arm path")
+                full_path = np.concatenate((np.array(pre_push_path), np.array(pushing_interaction_path)))
+                motion_planner.visualize_arm_path(full_path)
+                print("End of the visualization")
+
+                # TODO: execution!
                 success = True
+                break
             else:
                 logging.error(
                     "MP couldn't find path to the arm pushing location. Attempt {} of {}".format(attempt, max_attempts)
@@ -183,7 +212,8 @@ def main(selection="user", headless=False, short_exec=False):
         parser.add_argument(
             "--config",
             "-c",
-            default=os.path.join(igibson.configs_path, "fetch_motion_planning.yaml"),
+            # behavior_robot_motion_planning.yaml, fetch_motion_planning.yaml, tiago_motion_planning.yaml
+            default=os.path.join(igibson.configs_path, "tiago_motion_planning.yaml"),
             help="which config file to use [default: use yaml files in examples/configs]",
         )
         parser.add_argument(
@@ -197,7 +227,8 @@ def main(selection="user", headless=False, short_exec=False):
         config = args.config
         programmatic_actions = args.programmatic_actions
     else:
-        config = os.path.join(igibson.configs_path, "fetch_motion_planning.yaml")
+        # behavior_robot_motion_planning.yaml, fetch_motion_planning.yaml, tiago_motion_planning.yaml
+        config = os.path.join(igibson.configs_path, "behavior_robot_motion_planning.yaml")
         programmatic_actions = True
     run_example(config, programmatic_actions, headless, short_exec)
 
