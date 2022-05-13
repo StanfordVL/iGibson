@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 import sys
+import time
 from sys import platform
 
 import numpy as np
@@ -10,6 +11,7 @@ import yaml
 import igibson
 from igibson import object_states
 from igibson.envs.igibson_env import iGibsonEnv
+from igibson.tasks.behavior_task import BehaviorTask
 from igibson.utils.constants import ViewerMode
 from igibson.utils.motion_planning_utils import MotionPlanner
 from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
@@ -93,7 +95,8 @@ def run_example(config, programmatic_actions, headless, short_exec):
         visualize_2d_result=not headless,
         fine_motion_plan=False,
     )
-    env.task.initial_state = env.task.save_scene(env)
+    if isinstance(env.task, BehaviorTask):
+        env.task.initial_state = env.task.save_scene(env)
     state = env.reset()
     for obj in env.scene.get_objects():
         if obj.category == "bottom_cabinet":
@@ -117,7 +120,7 @@ def run_example(config, programmatic_actions, headless, short_exec):
         max_attempts = 10
 
         # If we use this flag, the robot navigates in front of the cupboard (easy) to prepare for an arm planning task
-        testing_arm_planning = False
+        testing_arm_planning = True
 
         if not testing_arm_planning:
             for attempt in range(1, max_attempts + 1):
@@ -152,42 +155,89 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
         success = False
         for attempt in range(1, max_attempts + 1):
-            pushing_position = [-1.36, -0.45, 0.67]
-            pushing_direction = [-0.999, -0.015, -0.04]
+            pushing_position = np.array([-1.36, -0.45, 0.67])
+            pushing_direction = np.array([-0.999, -0.015, -0.04])
+            pushing_distance = 0.1
 
             # For Fetch, and if the flag is activated, we push with the hand oriented top-down
             top_down_ee_pushing_orn = True
+            import pybullet as p
+
             ee_pushing_orn = (
-                (0, np.pi / 2, -np.pi / 2) if top_down_ee_pushing_orn and env.robots[0].model_name == "Fetch" else None
+                p.getQuaternionFromEuler((0, np.pi / 2, 0))
+                if top_down_ee_pushing_orn and env.robots[0].model_name in ["Fetch", "Tiago"]
+                else None
             )
+            print(ee_pushing_orn)
 
             # For the BehaviorRobot, we need to have longer pre-pushing distance or the prepush location will be in contact
             pre_pushing_distance = 0.1 if env.robots[0].model_name != "BehaviorRobot" else 0.2
 
-            pre_push_path, pushing_interaction_path = motion_planner.plan_ee_push(
+            success = False
+
+            visualize_reverse = True
+            plan_full_pre_push_motion = True
+
+            pre_interaction_path, approaching_path, interaction_path = None, None, None
+            pre_interaction_path, interaction_path = motion_planner.plan_ee_push(
                 pushing_position,
                 np.array(pushing_direction),
                 pre_pushing_distance=pre_pushing_distance,
                 ee_pushing_orn=ee_pushing_orn,
+                pushing_distance=pushing_distance,
+                plan_full_pre_push_motion=plan_full_pre_push_motion,
             )
-            if (
-                pre_push_path is not None
-                and len(pre_push_path) > 0
-                and pushing_interaction_path is not None
-                and len(pushing_interaction_path) > 0
-            ):
-                print("Visualizing planned arm path")
-                full_path = np.concatenate((np.array(pre_push_path), np.array(pushing_interaction_path)))
-                motion_planner.visualize_arm_path(full_path)
-                print("End of the visualization")
 
-                # TODO: execution!
-                success = True
-                break
+            if interaction_path is not None and len(interaction_path) != 0:
+                print("Visualizing push")
+                motion_planner.visualize_arm_path(pre_interaction_path)
+                motion_planner.visualize_arm_path(approaching_path)
+                motion_planner.visualize_arm_path(interaction_path)
+                if visualize_reverse:
+                    motion_planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    motion_planner.visualize_arm_path(pre_interaction_path, reverse_path=True)
+                print("End of the push visualization")
             else:
-                logging.error(
-                    "MP couldn't find path to the arm pushing location. Attempt {} of {}".format(attempt, max_attempts)
-                )
+                logging.error("MP couldn't find path to push. Attempt {} of {}".format(attempt, max_attempts))
+                continue
+
+            pulling_position = pushing_position + pushing_distance * pushing_direction
+            pulling_direction = -pushing_direction
+            pre_interaction_path, approaching_path, interaction_path = motion_planner.plan_ee_pull(
+                pulling_position,
+                pulling_direction,
+                pre_pulling_distance=pre_pushing_distance,
+                pulling_distance=0.2,
+            )
+            if interaction_path is not None and len(interaction_path) != 0:
+                print("Visualizing pull")
+                motion_planner.visualize_arm_path(pre_interaction_path)
+                motion_planner.visualize_arm_path(approaching_path)
+                motion_planner.visualize_arm_path(interaction_path)
+                print("End of the pull visualization")
+            else:
+                logging.error("MP couldn't find path to pull. Attempt {} of {}".format(attempt, max_attempts))
+                continue
+
+            grasping_position = [-1.46, -0.45, 0.75]
+            pre_interaction_path, approaching_path, interaction_path = None, None, None
+            pre_interaction_path, interaction_path = motion_planner.plan_ee_pick(
+                pushing_position,
+                pre_grasping_distance=0.1,
+            )
+            if interaction_path is not None and len(interaction_path) != 0:
+                print("Visualizing pick")
+                motion_planner.visualize_arm_path(pre_interaction_path)
+                motion_planner.visualize_arm_path(approaching_path)
+                motion_planner.visualize_arm_path(interaction_path)
+                print("End of the pick visualization")
+            else:
+                logging.error("MP couldn't find path to pick. Attempt {} of {}".format(attempt, max_attempts))
+                continue
+
+            # TODO: physical execution!
+            success = True
+            break
         if not success:
             logging.error("MP failed after {} attempts. Exiting".format(max_attempts))
             sys.exit()
@@ -224,8 +274,8 @@ def main(selection="user", headless=False, short_exec=False):
         parser.add_argument(
             "--config",
             "-c",
-            # tiago_motion_planning.yaml, behavior_robot_motion_planning.yaml, fetch_motion_planning.yaml, tiago_motion_planning.yaml, fetch_rl_halloween
-            default=os.path.join(igibson.configs_path, "tiago_motion_planning.yaml"),
+            # , fetch_behavior_motion_planning, tiago_motion_planning.yaml, behavior_robot_motion_planning.yaml, fetch_behavior_motion_planning.yaml, tiago_motion_planning.yaml, fetch_rl_halloween
+            default=os.path.join(igibson.configs_path, "fetch_rearrangement_motion_planning.yaml"),
             help="which config file to use [default: use yaml files in examples/configs]",
         )
         parser.add_argument(
@@ -239,7 +289,7 @@ def main(selection="user", headless=False, short_exec=False):
         config = args.config
         programmatic_actions = args.programmatic_actions
     else:
-        # behavior_robot_motion_planning.yaml, fetch_motion_planning.yaml, tiago_motion_planning.yaml
+        # behavior_robot_motion_planning.yaml, fetch_behavior_motion_planning.yaml, tiago_motion_planning.yaml
         config = os.path.join(igibson.configs_path, "behavior_robot_motion_planning.yaml")
         programmatic_actions = True
 

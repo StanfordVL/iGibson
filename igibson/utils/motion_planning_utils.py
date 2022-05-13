@@ -37,7 +37,7 @@ from igibson.external.pybullet_tools.utils import (
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
-from igibson.utils.utils import l2_distance, quatToXYZW, restoreState, rotate_vector_2d
+from igibson.utils.utils import l2_distance, quatToXYZW, quatXYZWFromRotMat, restoreState, rotate_vector_2d
 
 SEARCHED = []
 # Setting this higher unfortunately causes things to become impossible to pick up (they touch their hosts)
@@ -319,7 +319,7 @@ class MotionPlanner(object):
         If failed, return None
 
         :param ee_position: desired position of the end-effector [x, y, z] in the world frame
-        :param ee_orientation: desired orientation of the end-effector [rx, ry, rz] in the world frame
+        :param ee_orientation: desired orientation of the end-effector [x,y,z,w] in the world frame
         :param arm: string of the name of the arm to use. Use default arm if None
         :param check_collisions: whether we check for collisions in the solution or not
         :return: arm joint_pose
@@ -347,7 +347,7 @@ class MotionPlanner(object):
                 return None
             else:
                 if ee_orientation is not None:
-                    return np.concatenate((ee_position, ee_orientation))
+                    return np.concatenate((ee_position, p.getEulerFromQuaternion(ee_orientation)))
                 else:
                     current_orientation = np.array(self.robot.get_eef_orientation(arm=arm))
                     current_orientation_rpy = p.getEulerFromQuaternion(current_orientation)
@@ -376,8 +376,7 @@ class MotionPlanner(object):
 
             kwargs = dict()
             if ee_orientation is not None:
-                ee_orientation_q = p.getQuaternionFromEuler(ee_orientation)
-                kwargs["targetOrientation"] = ee_orientation_q
+                kwargs["targetOrientation"] = ee_orientation
             joint_pose = p.calculateInverseKinematics(
                 self.robot_body_id,
                 self.robot.eef_links[arm].link_id,
@@ -536,7 +535,7 @@ class MotionPlanner(object):
         Attempt to reach a Cartesian 6D pose (position and possibly orientation) with the end effector of one arm.
 
         :param ee_position: desired position to reach with the end-effector [x, y, z] in the world frame
-        :param ee_orientation: desired orientation of the end-effector [rx, ry, rz] in the world frame
+        :param ee_orientation: desired orientation of the end-effector [x,y,z,w] in the world frame
         :param initial_arm_configuration: initial joint configuration to initialize the arm. Use the current
         configuration, if it is `None`
         :param arm: arm to use for planning. Use the default arm if `None`
@@ -579,7 +578,11 @@ class MotionPlanner(object):
         steps=50,
         arm=None,
     ):
-        log.warning("Planning straight line motion")
+        log.warning(
+            "Planning straight line motion from {} along {} a distance of {}".format(
+                line_initial_point, line_direction, line_length
+            )
+        )
 
         # Start planning from the last pose in the pre-push trajectory
         if self.robot_type != "BehaviorRobot":
@@ -621,6 +624,7 @@ class MotionPlanner(object):
         pre_pushing_distance=0.1,
         pushing_distance=0.1,
         pushing_steps=50,
+        plan_full_pre_push_motion=True,
         arm=None,
     ):
         """
@@ -631,15 +635,15 @@ class MotionPlanner(object):
 
         :param pushing_location: 3D point to push at
         :param pushing_direction: direction to push after reaching that point
-        :param ee_pushing_orn: orientation of the end effector during pushing. None if we do not constraint it
+        :param ee_pushing_orn: orientation of the end effector during pushing [x,y,z,w]. None if we do not constraint it
         :param pre_pushing_distance: distance in front of the pushing point along the pushing direction to plan a motion
-        in free space before the interaction
+            in free space before the interaction
         :param pushing_distance: distance after the pushing point along the pushing direction to move in the interaction
-        push. The total motion in the second phase will be pre_pushing_distance + pushing_distance
+            push. The total motion in the second phase will be pre_pushing_distance + pushing_distance
         :param pushing_steps: steps to compute IK along a straight line for the second phase of the push (interaction)
         :param arm: which arm to use for multi-arm agents. `None` to use the default arm
         :return: tuple of (pre_push_path, push_interaction_path) with the joint space trajectory to follow in the two
-        phases of the interaction. Both will be None if the planner fails to find a path
+            phases of the interaction. Both will be None if the planner fails to find a path
         """
         log.warning(
             "Planning end-effector pushing action at point {} with direction {}".format(
@@ -659,10 +663,19 @@ class MotionPlanner(object):
             "".format(pre_pushing_distance, pre_pushing_location)
         )
 
-        pre_push_path = self.plan_ee_motion_to_cartesian_pose(pre_pushing_location, ee_orientation=ee_pushing_orn)
+        if plan_full_pre_push_motion:
+            pre_push_path = self.plan_ee_motion_to_cartesian_pose(
+                pre_pushing_location, ee_orientation=ee_pushing_orn, arm=arm
+            )
+        else:
+            log.warning("Not planning the pre-push path, only checking feasibility of the last location.")
+            pre_push_path = [
+                self.get_joint_pose_for_ee_pose_with_ik(pre_pushing_location, ee_orientation=ee_pushing_orn, arm=arm)
+            ]
+
         push_interaction_path = None
 
-        if pre_push_path is None:
+        if pre_push_path is None or len(pre_push_path) == 0:
             log.warning("Planning failed: no path found to pre-pushing location")
         else:
             push_interaction_path = self.plan_ee_straight_line_motion(
@@ -678,31 +691,41 @@ class MotionPlanner(object):
             if push_interaction_path is None:
                 log.warn("Planning failed: no path found to push the object")
 
-        return (pre_push_path, push_interaction_path)
+        return pre_push_path, push_interaction_path
 
     def plan_ee_pull(
         self,
         pulling_location,
         pulling_direction,
-        ee_pulling_orn=None,
-        pre_pulling_distance=0.3,
+        pre_pulling_distance=0.1,
         pulling_distance=0.1,
         pulling_steps=50,
+        plan_full_pre_pull_motion=True,
         arm=None,
     ):
         """
-        Attempt to reach a 3D position and prepare for a push later
+        Plans a full pulling trajectory.
+        The trajectory includes a pre-pulling motion in free space (contact-free) to a location in front of the pulling
+        location, and a pulling motion (with collisions, to pull) in a straight line in Cartesian space along the
+        pulling direction
 
-        :param pulling_location: 3D position to reach
-        :param pulling_direction: direction to push after reacehing that position
-        :return: arm trajectory or None if no plan can be found
+        :param pulling_location: 3D point to push at
+        :param pulling_direction: direction to push after reaching that point
+        :param pre_pulling_distance: distance in front of the pulling point in the opposite direction to the pulling
+            direction to plan a motion in free space before the interaction pull.
+        :param pulling_distance: distance after the pulling point along the pulling direction to move in the interaction
+            push.
+        :param pulling_steps: steps to compute IK
+        :param arm: which arm to use for multi-arm agents. `None` to use the default arm
+        :return: tuple of (pre_pull_path, pull_interaction_path1, pull_interaction_path2) with the joint space
+            trajectory to follow in the three phases of the interaction. All will be None if the planner fails to find a
+            path
         """
         log.warning(
             "Planning end-effector pulling action at point {} with direction {}".format(
                 pulling_location, pulling_direction
             )
         )
-
         if self.marker is not None:
             self.set_marker_position_direction(pulling_location, pulling_direction)
 
@@ -710,392 +733,292 @@ class MotionPlanner(object):
             arm = self.robot.default_arm
             log.warning("Pulling with the default arm: {}".format(arm))
 
-        pre_pulling_location = pulling_location - pre_pulling_distance * pulling_direction
+        pre_pulling_location = pulling_location + pre_pulling_distance * pulling_direction
         log.warning(
             "It will plan a motion to a location {} m in front of the pulling location in the pulling direction to {}"
             "".format(pre_pulling_distance, pre_pulling_location)
         )
 
-        pre_pull_path = self.plan_ee_motion_to_cartesian_pose(pre_pulling_location, ee_orientation=ee_pulling_orn)
+        # Compute orientation of the hand to align the fingers to the opposite of the pulling direction and the palm up
+        # to the ceiling
+        # Assuming fingers point in +x, palm points in +z in eef
+        # In world frame, +z points up
+        desired_x_dir_normalized = -np.array(pulling_direction) / np.linalg.norm(np.array(pulling_direction))
+        z_dir_in_wf = np.array([0, 0, 1.0])
+        desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
+        desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
+        desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
+        rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
+        quatt = quatXYZWFromRotMat(rot_matrix)
+
+        if plan_full_pre_pull_motion:
+            pre_pull_path = self.plan_ee_motion_to_cartesian_pose(pre_pulling_location, ee_orientation=quatt, arm=arm)
+        else:
+            log.warning("Not planning the pre-pull path, only checking feasibility of the last location.")
+            pre_pull_path = [
+                self.get_joint_pose_for_ee_pose_with_ik(pre_pulling_location, ee_orientation=quatt, arm=arm)
+            ]
+
+        approach_interaction_path = None
         pull_interaction_path = None
 
-        if pre_pull_path is None:
+        if pre_pull_path is None or len(pre_pull_path) == 0:
             log.warning("Planning failed: no path found to pre-pulling location")
         else:
-            pull_interaction_path = self.plan_ee_straight_line_motion(
-                pre_pull_path[-1],
-                pulling_location - pulling_direction * pre_pulling_distance,
-                pulling_direction,
-                ee_orn=ee_pulling_orn,
-                line_length=pre_pulling_distance + pulling_distance,
+            approach_interaction_path = self.plan_ee_straight_line_motion(
+                pre_pull_path[-1],  # This is where the pre-pulling path should end
+                pre_pulling_location,
+                -pulling_direction,
+                ee_orn=quatt,
+                line_length=pre_pulling_distance,
                 steps=pulling_steps,
                 arm=arm,
             )
-            if pull_interaction_path is None:
-                log.warn("Planning failed: no path found to pull the object")
+            if approach_interaction_path is None:
+                log.warn("Planning failed: no path found to approach the object to pull")
+            else:
+                pull_interaction_path = self.plan_ee_straight_line_motion(
+                    approach_interaction_path[-1],
+                    pre_pulling_location - pulling_direction * pre_pulling_distance,
+                    pulling_direction,
+                    ee_orn=quatt,
+                    line_length=pulling_distance,
+                    steps=pulling_steps,
+                    arm=arm,
+                )
 
-        return (pre_pull_path, pull_interaction_path)
+        return pre_pull_path, approach_interaction_path, pull_interaction_path
 
-    # def interact_pull(
-    #     self,
-    #     push_point,
-    #     push_direction):
-    #     """
-    #     Move the arm starting from the push_point along the push_direction
-    #     and physically simulate the interaction
-    #
-    #     :param push_point: 3D point to start pushing from
-    #     :param push_direction: push direction
-    #     """
-    #     push_vector = np.array(push_direction) * self.arm_interaction_length
-    #
-    #     max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
-    #     base_pose = get_base_values(self.robot_id)
-    #
-    #     if self.sleep_flag:
-    #         steps = 50
-    #     else:
-    #         steps = 5
-    #
-    #     for i in range(steps):
-    #         push_goal = np.array(push_point) + push_vector * (i + 1) / float(steps)
-    #
-    #         joint_positions = p.calculateInverseKinematics(
-    #             self.robot_id,
-    #             self.robot.eef_links[self.robot.default_arm].link_id,
-    #             targetPosition=push_goal,
-    #             # targetOrientation=(0, 0.707, 0, 0.707),
-    #             lowerLimits=min_limits,
-    #             upperLimits=max_limits,
-    #             jointRanges=joint_range,
-    #             restPoses=rest_position,
-    #             jointDamping=joint_damping,
-    #             # solver=p.IK_DLS,
-    #             maxNumIterations=100,
-    #         )
-    #
-    #         if self.robot_type == "Fetch":
-    #             joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-    #
-    #         control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
-    #
-    #         #TODO: rest_joint_ids are the joints not used for the interaction (head, torso...). This line keeps them constant
-    #         control_joints(self.robot_id, self.rest_joint_ids, np.array([0.0, 0.0, 0.0, 0.45, 0.5, 0.5]))
-    #
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-    #
-    #         # if self.robot_type == "Fetch":
-    #         #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-    #
-    #         achieved = self.robot.get_eef_position()
-    #         self.simulator_step()
-    #         set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-    #
-    #         if self.mode == "gui_interactive" and self.sleep_flag:
-    #             sleep(0.02)  # for visualization
+    def plan_ee_pick(
+        self,
+        grasping_location,
+        grasping_direction=np.array([0.0, 0.0, -1.0]),
+        pre_grasping_distance=0.1,
+        grasping_steps=50,
+        plan_full_pre_grasp_motion=True,
+        arm=None,
+    ):
+        """
+        Plans a full grasping trajectory.
+        The trajectory includes a pre-grasping motion in free space (contact-free) to a location in front of the grasping
+        location, and a grasping motion (with collisions, to grasp) in a straight line in Cartesian space along the
+        grasping direction
 
-    # def execute_arm_pull(self, plan, hit_pos, hit_normal):
-    #     """
-    #     Execute arm push given arm trajectory
-    #     Should be called after plan_arm_push()
-    #
-    #     :param plan: arm trajectory or None if no plan can be found
-    #     :param hit_pos: 3D position to reach
-    #     :param hit_normal: direction to push after reacehing that position
-    #     """
-    #     if plan is not None:
-    #         log.debug("Teleporting arm along the trajectory. No physics simulation")
-    #         self.dry_run_arm_plan(plan)
-    #         log.debug("Performing pushing actions")
-    #         self.interact_pull(hit_pos, hit_normal)
-    #         log.debug("Teleporting arm to the default configuration")
-    #         self.dry_run_arm_plan(plan[::-1])
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-    #         self.simulator_sync()
-    #         done, _ = self.env.task.get_termination(self.env)
-    #         if self.print_log:
-    #             print('pull done: ', done)
-    #
-    # def plan_ee_pick(self, pick_pos):
-    #     """
-    #     Attempt to reach a 3D position and prepare for a pick later
-    #
-    #     :param pick_pos: 3D position to reach
-    #     :param hit_normal: direction to pick after reacehing that position
-    #     :return: arm trajectory or None if no plan can be found
-    #     """
-    #     pick_normal = [0.0, 0.0, 1.0]
-    #     pick_place_pos = list(pick_pos)
-    #     if self.robot.is_grasping() == True:
-    #         pick_place_pos[-1] += 0.2
-    #
-    #     log.debug("Planning arm pick at point {} with direction {}".format(pick_place_pos, pick_normal))
-    #     if self.marker is not None:
-    #         self.set_marker_position_direction(pick_place_pos, pick_normal)
-    #
-    #     # Solve the IK problem to set the arm at the desired position
-    #     joint_positions = self.get_arm_joint_positions(pick_place_pos)
-    #
-    #     if joint_positions is not None:
-    #         # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-    #         self.simulator_sync()
-    #         plan = self.plan_arm_motion(joint_positions)
-    #         return plan
-    #     else:
-    #         log.debug("Planning failed: goal position may be non-reachable")
-    #         return None
-    #
-    # def interact_pick(self, hold_sth=True):
-    #     """
-    #     Move the arm starting from the push_point along the push_direction
-    #     and physically simulate the interaction
-    #
-    #     :param push_point: 3D point to start pushing from
-    #     :param push_direction: push direction
-    #     """
-    #
-    #     max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
-    #     base_pose = get_base_values(self.robot_id)
-    #
-    #     steps = 20
-    #     for i in range(steps):
-    #
-    #         current_joint_positions = list(get_joint_positions(self.robot_id, self.robot_arm_indices))
-    #         current_joint_positions[-2] = 0.0
-    #         current_joint_positions[-1] = 0.0
-    #
-    #         # if self.robot_type == "Fetch":
-    #         #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-    #
-    #         action = np.zeros(self.robot.action_dim)
-    #
-    #         action[-1] = -1.0
-    #         self.robot.apply_action(action)
-    #
-    #         # control_joints(self.robot_id, self.robot_arm_indices, current_joint_positions)
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-    #         achieved = self.robot.get_eef_position()
-    #         self.simulator_step()
-    #         set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-    #
-    #         if self.mode == "gui_interactive" and self.sleep_flag:
-    #             sleep(0.02)  # for visualization
-    #
-    # def execute_arm_pick(self, plan, hit_pos, hit_normal):
-    #     """
-    #     Execute arm push given arm trajectory
-    #     Should be called after plan_arm_push()
-    #
-    #     :param plan: arm trajectory or None if no plan can be found
-    #     :param hit_pos: 3D position to reach
-    #     :param hit_normal: direction to push after reacehing that position
-    #     """
-    #     if plan is not None:
-    #         is_grasping = self.robot.is_grasping()==True
-    #
-    #         if is_grasping and False:
-    #             if self.print_log:
-    #                 print('pick done: False')
-    #             return
-    #         else:
-    #             obj_in_hand = self.robot._ag_obj_in_hand['0']
-    #
-    #             log.debug("Teleporting arm along the trajectory. No physics simulation")
-    #             self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
-    #             log.debug("Performing pushing actions")
-    #             self.interact_pick(is_grasping)
-    #             log.debug("Teleporting arm to the default configuration")
-    #             self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
-    #             self.simulator_sync()
-    #             done, _ = self.env.task.get_termination(self.env)
-    #             if self.print_log:
-    #                 print('pick done: ', done)
-    #
-    # def plan_arm_place(self, place_pos):
-    #     """
-    #     Attempt to reach a 3D position and prepare for a pick later
-    #
-    #     :param pick_pos: 3D position to reach
-    #     :param hit_normal: direction to pick after reacehing that position
-    #     :return: arm trajectory or None if no plan can be found
-    #     """
-    #     pick_normal = [0.0, 0.0, 1.0]
-    #     pick_place_pos = list(place_pos)
-    #     if self.robot.is_grasping() == True:
-    #         pick_place_pos[-1] += 0.2
-    #
-    #     log.debug("Planning arm pick at point {} with direction {}".format(pick_place_pos, pick_normal))
-    #     if self.marker is not None:
-    #         self.set_marker_position_direction(pick_place_pos, pick_normal)
-    #
-    #     # Solve the IK problem to set the arm at the desired position
-    #     joint_positions = self.get_arm_joint_positions(pick_place_pos)
-    #
-    #     if joint_positions is not None:
-    #         # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-    #         self.simulator_sync()
-    #         plan = self.plan_arm_motion(joint_positions)
-    #         return plan
-    #     else:
-    #         log.debug("Planning failed: goal position may be non-reachable")
-    #         return None
-    #
-    # def interact_place(self, hold_sth=True):
-    #     """
-    #     Move the arm starting from the push_point along the push_direction
-    #     and physically simulate the interaction
-    #
-    #     :param push_point: 3D point to start pushing from
-    #     :param push_direction: push direction
-    #     """
-    #
-    #     max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
-    #     base_pose = get_base_values(self.robot_id)
-    #
-    #     steps = 50
-    #     for i in range(steps):
-    #
-    #         current_joint_positions = list(get_joint_positions(self.robot_id, self.robot_arm_indices))
-    #         current_joint_positions[-2] = 0.0
-    #         current_joint_positions[-1] = 0.0
-    #
-    #         # if self.robot_type == "Fetch":
-    #         #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-    #
-    #         action = np.zeros(self.robot.action_dim)
-    #
-    #         action[-1] = 1.0
-    #         self.robot.apply_action(action)
-    #
-    #         # control_joints(self.robot_id, self.robot_arm_indices, current_joint_positions)
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-    #         achieved = self.robot.get_eef_position()
-    #         self.simulator_step()
-    #         set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-    #
-    #         if self.mode == "gui_interactive" and self.sleep_flag:
-    #             sleep(0.02)  # for visualization
-    #
-    # def execute_arm_place(self, plan, hit_pos, hit_normal):
-    #     """
-    #     Execute arm push given arm trajectory
-    #     Should be called after plan_arm_push()
-    #
-    #     :param plan: arm trajectory or None if no plan can be found
-    #     :param hit_pos: 3D position to reach
-    #     :param hit_normal: direction to push after reacehing that position
-    #     """
-    #     if plan is not None:
-    #         is_grasping = self.robot.is_grasping()==True
-    #
-    #         if is_grasping or True:
-    #             obj_in_hand = self.robot._ag_obj_in_hand['0']
-    #
-    #             log.debug("Teleporting arm along the trajectory. No physics simulation")
-    #             self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
-    #             log.debug("Performing pushing actions")
-    #             self.interact_place(is_grasping)
-    #             log.debug("Teleporting arm to the default configuration")
-    #             self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
-    #             self.simulator_sync()
-    #             done, _ = self.env.task.get_termination(self.env)
-    #             if self.print_log:
-    #                 print('place done: ', done)
-    #         else:
-    #             if self.print_log:
-    #                 print('place done: False')
-    #             return
-    #
-    # def plan_arm_toggle(self, hit_pos, hit_normal):
-    #     """
-    #     Attempt to reach a 3D position and prepare for a push later
-    #
-    #     :param hit_pos: 3D position to reach
-    #     :param hit_normal: direction to push after reacehing that position
-    #     :return: arm trajectory or None if no plan can be found
-    #     """
-    #     log.debug("Planning arm push at point {} with direction {}".format(hit_pos, hit_normal))
-    #
-    #     if self.marker is not None:
-    #         self.set_marker_position_direction(hit_pos, hit_normal)
-    #
-    #     # Solve the IK problem to set the arm at the desired position
-    #     joint_positions = self.get_arm_joint_positions(hit_pos)
-    #
-    #     if joint_positions is not None:
-    #         # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-    #         self.simulator_sync()
-    #         plan = self.plan_arm_motion(joint_positions)
-    #         return plan
-    #     else:
-    #         log.debug("Planning failed: goal position may be non-reachable")
-    #         return None
-    #
-    # def interact_toggle(self, push_point, push_direction):
-    #     """
-    #     Move the arm starting from the push_point along the push_direction
-    #     and physically simulate the interaction
-    #
-    #     :param push_point: 3D point to start pushing from
-    #     :param push_direction: push direction
-    #     """
-    #     max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
-    #     base_pose = get_base_values(self.robot_id)
-    #
-    #     steps = 30
-    #     for i in range(steps):
-    #
-    #         current_joint_positions = list(get_joint_positions(self.robot_id, self.robot_arm_indices))
-    #         current_joint_positions[-2] = 0.0
-    #         current_joint_positions[-1] = 0.0
-    #
-    #         # if self.robot_type == "Fetch":
-    #         #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-    #
-    #         action = np.zeros(self.robot.action_dim)
-    #         action[-1] = 1.0
-    #         self.robot.apply_action(action)
-    #
-    #         # control_joints(self.robot_id, self.robot_arm_indices, current_joint_positions)
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-    #         achieved = self.robot.get_eef_position()
-    #         self.simulator_step()
-    #         set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-    #
-    #         if self.mode == "gui_interactive" and self.sleep_flag:
-    #             sleep(0.02)  # for visualization
-    #
-    # def execute_arm_toggle(self, plan, hit_pos, hit_normal):
-    #     """
-    #     Execute arm push given arm trajectory
-    #     Should be called after plan_arm_push()
-    #
-    #     :param plan: arm trajectory or None if no plan can be found
-    #     :param hit_pos: 3D position to reach
-    #     :param hit_normal: direction to push after reacehing that position
-    #     """
-    #     if plan is not None:
-    #         log.debug("Teleporting arm along the trajectory. No physics simulation")
-    #         self.dry_run_arm_plan(plan)
-    #         log.debug("Performing pushing actions")
-    #         self.interact_toggle(hit_pos, hit_normal)
-    #         log.debug("Teleporting arm to the default configuration")
-    #         self.dry_run_arm_plan(plan[::-1])
-    #         # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-    #         self.simulator_sync()
-    #         done, _ = self.env.task.get_termination(self.env)
-    #         if self.print_log:
-    #             print('toggle done: ', done)
+        :param grasping_location: 3D point to push at
+        :param grasping_direction: direction to approach the object to grasp. Default: [0,0,-1] -> top-down
+        :param pre_grasping_distance: distance in front of the grasping point along the grasping direction to plan a motion
+            in free space before the approach to grasp.
+        :param grasping_steps: steps to compute IK along a straight line for the second phase of the grasp (interaction)
+        :param arm: which arm to use for multi-arm agents. `None` to use the default arm
+        :return: tuple of (pre_grasp_path, grasp_interaction_path) with the joint space trajectory to follow in the two
+        phases of the interaction. Both will be None if the planner fails to find a path
+        """
+        log.warning(
+            "Planning end-effector grasping action at point {} with direction {}".format(
+                grasping_location, grasping_direction
+            )
+        )
+        if self.marker is not None:
+            self.set_marker_position_direction(grasping_location, grasping_direction)
 
-    def visualize_arm_path(self, arm_path, arm=None):
+        if arm is None:
+            arm = self.robot.default_arm
+            log.warning("Grasping with the default arm: {}".format(arm))
+
+        pre_grasping_location = grasping_location - pre_grasping_distance * grasping_direction
+        log.warning(
+            "It will plan a motion to a location {} m in front of the grasping location in the grasping direction to {}"
+            "".format(pre_grasping_distance, pre_grasping_location)
+        )
+
+        # Compute orientation of the hand to align the fingers to the grasping direction and the palm up to the ceiling
+        # Assuming fingers point in +x, palm points in +z in eef
+        # In world frame, +z points up
+        desired_x_dir_normalized = np.array(grasping_direction) / np.linalg.norm(np.array(grasping_direction))
+        z_dir_in_wf = np.array([0, 0, 1.0])
+        desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
+
+        if np.linalg.norm(desired_y_dir) < 0.05:
+            log.warning("Approaching grasping location top-down")
+            desired_y_dir_normalized = np.array([0.0, 1.0, 0.0])
+        else:
+            desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
+        desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
+        rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
+        quatt = quatXYZWFromRotMat(rot_matrix)
+
+        if plan_full_pre_grasp_motion:
+            pre_grasp_path = self.plan_ee_motion_to_cartesian_pose(pre_grasping_location, ee_orientation=quatt, arm=arm)
+        else:
+            log.warning("Not planning the pre-grasp path, only checking feasibility of the last location.")
+            pre_grasp_path = [
+                self.get_joint_pose_for_ee_pose_with_ik(pre_grasping_location, ee_orientation=quatt, arm=arm)
+            ]
+
+        grasp_interaction_path = None
+
+        if pre_grasp_path is None or len(pre_grasp_path) == 0:
+            log.warning("Planning failed: no path found to pre-grasping location")
+        else:
+            grasp_interaction_path = self.plan_ee_straight_line_motion(
+                pre_grasp_path[-1],
+                grasping_location
+                - grasping_direction * pre_grasping_distance,  # This is where the pre-grasping path should end
+                grasping_direction,
+                ee_orn=quatt,
+                line_length=pre_grasping_distance,
+                steps=grasping_steps,
+                arm=arm,
+            )
+            if grasp_interaction_path is None:
+                log.warn("Planning failed: no path found to grasp the object")
+
+        return pre_grasp_path, grasp_interaction_path
+
+    def plan_ee_drop(
+        self,
+        dropping_location,
+        ee_dropping_orn=None,
+        dropping_distance=0.3,
+        plan_full_pre_drop_motion=True,
+        arm=None,
+    ):
+        """
+        Plans a full dropping trajectory.
+        The trajectory includes a pre-dropping motion in free space (contact-free) to a location in front of the dropping
+        location, and a dropping motion (with collisions, to interact) in a straight line in Cartesian space along the
+        dropping direction
+
+        :param dropping_location: 3D point to push at
+        :param ee_dropping_orn: orientation of the end effector during dropping [x,y,z,w]. None if we do not constraint it
+        :param dropping_distance: distance above the dropping point in the vertical direction to plan a motion
+        in free space
+        :param arm: which arm to use for multi-arm agents. `None` to use the default arm
+        :return: tuple of (pre_drop_path, []) with the joint space trajectory to follow for the single phase of the
+            interaction (second phase is empty). pre_drop_path will be None if the planner fails to find a path
+        """
+        # TODO: it can be better to align the end-effector with the fingers towards the floor
+        log.warning(
+            "Planning end-effector dropping action over point {} a distance {}".format(
+                dropping_location, dropping_distance
+            )
+        )
+        if self.marker is not None:
+            self.set_marker_position_direction(dropping_location, np.array([0, 0, 1]))
+
+        if arm is None:
+            arm = self.robot.default_arm
+            log.warning("dropping with the default arm: {}".format(arm))
+
+        pre_dropping_location = dropping_location - dropping_distance * np.array([0, 0, 1])
+
+        if plan_full_pre_drop_motion:
+            pre_drop_path = self.plan_ee_motion_to_cartesian_pose(
+                pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm
+            )
+        else:
+            log.warning("Not planning the pre-drop path, only checking feasibility of the last location.")
+            pre_drop_path = [
+                self.get_joint_pose_for_ee_pose_with_ik(pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm)
+            ]
+
+        if pre_drop_path is None or len(pre_drop_path) == 0:
+            log.warning("Planning failed: no path found to pre-dropping location")
+
+        return pre_drop_path, []  # There is no second part of the action for dropping
+
+    def plan_ee_toggle(
+        self,
+        toggling_location,
+        toggling_direction,
+        pre_toggling_distance=0.1,
+        toggling_steps=50,
+        plan_full_pre_toggle_motion=True,
+        arm=None,
+    ):
+        """
+        Plans a full toggling trajectory.
+        The trajectory includes a pre-toggling motion in free space (contact-free) to a location in front of the toggling
+        location, and a toggling motion (with collisions, to toggle) in a straight line in Cartesian space along the
+        toggling direction
+
+        :param toggling_location: 3D point to push at
+        :param toggling_direction: direction to push after reaching that point
+        :param pre_toggling_distance: distance in front of the toggling point along the toggling direction to plan a motion
+            in free space before the interaction toggle. The total motion in the second phase will be pre_toggling_distance + toggling_distance
+        :param toggling_steps: steps to compute IK along a straight line for the second phase of the toggle (interaction)
+        :param arm: which arm to use for multi-arm agents. `None` to use the default arm
+        :return: tuple of (pre_toggle_path, toggle_interaction_path) with the joint space trajectory to follow in the two
+        phases of the interaction. Both will be None if the planner fails to find a path
+        """
+        log.warning(
+            "Planning end-effector toggling action at point {} with direction {}".format(
+                toggling_location, toggling_direction
+            )
+        )
+        if self.marker is not None:
+            self.set_marker_position_direction(toggling_location, toggling_direction)
+
+        if arm is None:
+            arm = self.robot.default_arm
+            log.warning("toggling with the default arm: {}".format(arm))
+
+        pre_toggling_location = toggling_location - pre_toggling_distance * toggling_direction
+        log.warning(
+            "It will plan a motion to a location {} m in front of the toggling location in the toggling direction to {}"
+            "".format(pre_toggling_distance, pre_toggling_location)
+        )
+
+        # Compute orientation of the hand to align the fingers to the toggling direction and the palm up to the ceiling
+        # Assuming fingers point in +x, palm points in +z in eef
+        # In world frame, +z points up
+        desired_x_dir_normalized = np.array(toggling_direction) / np.linalg.norm(np.array(toggling_direction))
+        z_dir_in_wf = np.array([0, 0, 1.0])
+        desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
+        desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
+        desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
+        rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
+        quatt = quatXYZWFromRotMat(rot_matrix)
+
+        if plan_full_pre_toggle_motion:
+            pre_toggle_path = self.plan_ee_motion_to_cartesian_pose(
+                pre_toggling_location, ee_orientation=quatt, arm=arm
+            )
+        else:
+            log.warning("Not planning the pre-toggle path, only checking feasibility of the last location.")
+            pre_toggle_path = [
+                self.get_joint_pose_for_ee_pose_with_ik(pre_toggling_location, ee_orientation=quatt, arm=arm)
+            ]
+        toggle_interaction_path = None
+
+        if pre_toggle_path is None or len(pre_toggle_path) == 0:
+            log.warning("Planning failed: no path found to pre-toggling location")
+        else:
+            toggle_interaction_path = self.plan_ee_straight_line_motion(
+                pre_toggle_path[-1],
+                toggling_location
+                - toggling_direction * pre_toggling_distance,  # This is where the pre-toggling path should end
+                toggling_direction,
+                ee_orn=quatt,
+                line_length=pre_toggling_distance,
+                steps=toggling_steps,
+                arm=arm,
+            )
+            if toggle_interaction_path is None:
+                log.warn("Planning failed: no path found to toggle the object")
+
+        return pre_toggle_path, toggle_interaction_path
+
+    def visualize_arm_path(self, arm_path, reverse_path=False, arm=None):
         """
         Dry run arm motion path by setting the arm joint position without physics simulation
 
         :param arm_path: arm trajectory or None if no path can be found
         """
+        if arm_path is None:
+            log.warning("Arm path to visualize is empty. Returning")
+            return
+
         if arm is None:
             arm = self.robot.default_arm
             log.warn("Visualizing arm path for the default arm: {}".format(arm))
@@ -1103,34 +1026,28 @@ class MotionPlanner(object):
         initial_pb_state = p.saveState()
 
         base_pose = get_base_values(self.robot_body_id)
-        if arm_path is not None:
-            if self.mode in ["gui_non_interactive", "gui_interactive"]:
-                if self.robot_type != "BehaviorRobot":
-                    arm_joint_pb_ids = np.array(
-                        joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-                    )
-                    for joint_way_point in arm_path:
-
-                        set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_way_point)
-                        set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
-                        self.simulator_sync()
-                else:
-                    for (x, y, z, roll, pitch, yaw) in arm_path:
-                        self.robot.set_eef_position_orientation(
-                            [x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]), arm
-                        )
-                        time.sleep(0.1)
-                        self.simulator_sync()
-            else:
+        if self.mode in ["gui_non_interactive", "gui_interactive"]:
+            if self.robot_type != "BehaviorRobot":
                 arm_joint_pb_ids = np.array(
                     joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
                 )
-                set_joint_positions(self.robot_base_id, arm_joint_pb_ids, arm_path[-1])
+                for joint_way_point in arm_path if not reverse_path else reversed(arm_path):
+
+                    set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_way_point)
+                    # set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
+                    self.simulator_sync()
+            else:
+                for (x, y, z, roll, pitch, yaw) in arm_path if not reverse_path else reversed(arm_path):
+                    self.robot.set_eef_position_orientation(
+                        [x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]), arm
+                    )
+                    time.sleep(0.1)
+                    self.simulator_sync()
         else:
             arm_joint_pb_ids = np.array(
                 joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
             )
-            set_joint_positions(self.robot_base_id, arm_joint_pb_ids, self.arm_default_joint_positions)
+            set_joint_positions(self.robot_base_id, arm_joint_pb_ids, arm_path[-1] if not reverse_path else arm_path[0])
 
         restoreState(initial_pb_state)
         p.removeState(initial_pb_state)

@@ -40,25 +40,11 @@ robot:
       use_delta_commands: False
 
 # task
-#task: room_rearrangement
-
 task: cleaning_kitchen_cupboard
 task_id: 0
 instance_id: 0
 online_sampling: false
 should_highlight_task_relevant_objs: false
-
-#load_object_categories: [
-#  bottom_cabinet,
-#  bottom_cabinet_no_top,
-#  top_cabinet,
-#  dishwasher,
-#  fridge,
-#  microwave,
-#  oven,
-#  washer
-#  dryer,
-#]
 
 # reward
 potential_reward_weight: 1.0
