@@ -26,7 +26,6 @@ CONTROL_MODES = OrderedDict(
 
 SCENES = OrderedDict(
     Rs_int="Realistic interactive home environment (default)",
-    gates_kitchenette="Gates kitchenette",
     empty="Empty environment with no objects",
 )
 
