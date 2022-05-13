@@ -482,7 +482,7 @@ def get_ik_fn(problem, custom_limits={}, collisions=True, teleport=False):
                 return None
             set_joint_positions(robot, arm_joints, default_conf)
             approach_path = plan_joint_motion(robot, arm_joints, approach_conf, attachments=attachments.values(),
-                                              obstacles=obstacles, self_collisions=SELF_COLLISIONS,
+                                              obstacles=obstacles, check_self_collisions=SELF_COLLISIONS,
                                               custom_limits=custom_limits, resolutions=resolutions,
                                               restarts=2, iterations=25, smooth=25)
             if approach_path is None:
@@ -541,7 +541,7 @@ def get_motion_gen(problem, custom_limits={}, collisions=True, teleport=False):
             path = [bq1, bq2]
         elif is_drake_pr2(robot):
             raw_path = plan_joint_motion(robot, bq2.joints, bq2.values, attachments=[],
-                                         obstacles=obstacles, custom_limits=custom_limits, self_collisions=SELF_COLLISIONS,
+                                         obstacles=obstacles, custom_limits=custom_limits, check_self_collisions=SELF_COLLISIONS,
                                          restarts=4, iterations=50, smooth=50)
             if raw_path is None:
                 print('Failed motion plan!')
@@ -618,7 +618,7 @@ def get_press_gen(problem, max_attempts=25, learned=True, teleport=False):
                     if control_path is None: continue
                     set_joint_positions(robot, joints, approach_conf)
                     retreat_path = plan_joint_motion(robot, joints, default_conf,
-                                                     obstacles=fixed, self_collisions=SELF_COLLISIONS)
+                                                     obstacles=fixed, check_self_collisions=SELF_COLLISIONS)
                     if retreat_path is None: continue
                     path = retreat_path[::-1] + control_path[::-1]
                 mt = Trajectory(Conf(robot, joints, q) for q in path)

@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 
 from igibson.external.pybullet_tools.utils import (
     control_joints,
-    set_pose,
     get_base_values,
     get_joint_positions,
     get_max_limits,
@@ -23,6 +22,7 @@ from igibson.external.pybullet_tools.utils import (
     plan_joint_motion,
     set_base_values_with_z,
     set_joint_positions,
+    set_pose,
 )
 from igibson.objects.visual_marker import VisualMarker
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -276,10 +276,7 @@ class MotionPlanningWrapper(object):
             #     and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
             # ]
 
-            obstacles = [
-                item.get_body_ids()[0]
-                for item in self.env.scene.objects_by_category["bottom_cabinet"]
-            ]
+            obstacles = [item.get_body_ids()[0] for item in self.env.scene.objects_by_category["bottom_cabinet"]]
         else:
             obstacles = []
 
@@ -330,12 +327,12 @@ class MotionPlanningWrapper(object):
         :param path: base waypoints or None if no plan can be found
         """
         if path is not None:
-            object_in_hand = (self.robot.is_grasping() == True)
-            object_id = self.robot._ag_obj_in_hand['0']
+            object_in_hand = self.robot.is_grasping() == True
+            object_id = self.robot._ag_obj_in_hand["0"]
 
             if object_in_hand:
-                gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[0]
-                gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[1]
+                gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[0]
+                gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[1]
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(object_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
@@ -346,8 +343,8 @@ class MotionPlanningWrapper(object):
                     )
 
                     if object_in_hand:
-                        gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[0]
-                        gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[1]
+                        gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[0]
+                        gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[1]
                         object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
                         set_pose(object_id, object_pose)
 
@@ -405,7 +402,7 @@ class MotionPlanningWrapper(object):
                 self.robot_id,
                 self.robot.eef_links[self.robot.default_arm].link_id,
                 targetPosition=arm_ik_goal,
-                targetOrientation= (0, 0.7071068, 0, 0.7071068),
+                targetOrientation=(0, 0.7071068, 0, 0.7071068),
                 # targetOrientation=self.robots[0].get_orientation(),
                 lowerLimits=min_limits,
                 upperLimits=max_limits,
@@ -508,11 +505,11 @@ class MotionPlanningWrapper(object):
             self.robot_id,
             self.arm_joint_ids,
             arm_joint_positions,
-            disabled_collisions=disabled_collisions,
-            self_collisions=self_collisions,
+            disabled_self_colliding_pairs=disabled_collisions,
+            check_self_collisions=self_collisions,
             obstacles=mp_obstacles,
             algorithm=self.arm_mp_algo,
-            allow_collision_links=allow_collision_links,
+            disabled_colliding_links=allow_collision_links,
         )
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         restoreState(state_id)
@@ -533,8 +530,8 @@ class MotionPlanningWrapper(object):
         """
         base_pose = get_base_values(self.robot_id)
         if object_in_hand:
-            gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[0]
-            gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[1]
+            gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[0]
+            gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[1]
             obj_pos, obj_orn = p.getBasePositionAndOrientation(object_id)
             grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
@@ -547,8 +544,8 @@ class MotionPlanningWrapper(object):
                     # print(self.robot.eef_link_ids, self.robot.gripper_control_idx[self.robot.default_arm])
 
                     if object_in_hand:
-                        gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[0]
-                        gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids['0'])[1]
+                        gripper_pos = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[0]
+                        gripper_orn = p.getLinkState(self.robot_id, self.robot.eef_link_ids["0"])[1]
                         object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
                         set_pose(object_id, object_pose)
 
@@ -656,7 +653,7 @@ class MotionPlanningWrapper(object):
             self.simulator_sync()
             done, _ = self.env.task.get_termination(self.env)
             if self.print_log:
-                print('push done: ', done)
+                print("push done: ", done)
 
     def plan_arm_pull(self, hit_pos, hit_normal):
         """
@@ -759,7 +756,7 @@ class MotionPlanningWrapper(object):
             self.simulator_sync()
             done, _ = self.env.task.get_termination(self.env)
             if self.print_log:
-                print('pull done: ', done)
+                print("pull done: ", done)
 
     def plan_arm_pick(self, pick_pos):
         """
@@ -837,26 +834,25 @@ class MotionPlanningWrapper(object):
         :param hit_normal: direction to push after reacehing that position
         """
         if plan is not None:
-            is_grasping = self.robot.is_grasping()==True
+            is_grasping = self.robot.is_grasping() == True
 
             if is_grasping and False:
                 if self.print_log:
-                    print('pick done: False')
+                    print("pick done: False")
                 return
             else:
-                obj_in_hand = self.robot._ag_obj_in_hand['0']
+                obj_in_hand = self.robot._ag_obj_in_hand["0"]
 
                 log.debug("Teleporting arm along the trajectory. No physics simulation")
                 self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
                 log.debug("Performing pushing actions")
                 self.interact_pick(is_grasping)
                 log.debug("Teleporting arm to the default configuration")
-                self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
+                self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping() == True, self.robot._ag_obj_in_hand["0"])
                 self.simulator_sync()
                 done, _ = self.env.task.get_termination(self.env)
                 if self.print_log:
-                    print('pick done: ', done)
-
+                    print("pick done: ", done)
 
     def plan_arm_place(self, place_pos):
         """
@@ -934,24 +930,24 @@ class MotionPlanningWrapper(object):
         :param hit_normal: direction to push after reacehing that position
         """
         if plan is not None:
-            is_grasping = self.robot.is_grasping()==True
+            is_grasping = self.robot.is_grasping() == True
 
             if is_grasping or True:
-                obj_in_hand = self.robot._ag_obj_in_hand['0']
+                obj_in_hand = self.robot._ag_obj_in_hand["0"]
 
                 log.debug("Teleporting arm along the trajectory. No physics simulation")
                 self.dry_run_arm_plan(plan, is_grasping, obj_in_hand)
                 log.debug("Performing pushing actions")
                 self.interact_place(is_grasping)
                 log.debug("Teleporting arm to the default configuration")
-                self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping()==True, self.robot._ag_obj_in_hand['0'])
+                self.dry_run_arm_plan(plan[::-1], self.robot.is_grasping() == True, self.robot._ag_obj_in_hand["0"])
                 self.simulator_sync()
                 done, _ = self.env.task.get_termination(self.env)
                 if self.print_log:
-                    print('place done: ', done)
+                    print("place done: ", done)
             else:
                 if self.print_log:
-                    print('place done: False')
+                    print("place done: False")
                 return
 
     def plan_arm_toggle(self, hit_pos, hit_normal):
@@ -1034,4 +1030,4 @@ class MotionPlanningWrapper(object):
             self.simulator_sync()
             done, _ = self.env.task.get_termination(self.env)
             if self.print_log:
-                print('toggle done: ', done)
+                print("toggle done: ", done)

@@ -2916,12 +2916,12 @@ def get_collision_fn(body, joints, obstacles, attachments, self_collisions, disa
                      custom_limits={}, allow_collision_links=[], **kwargs):
 
     # Pair of links within the robot that need to be checked for self-collisions
-    # Pairs in the disabled_collisions list are excluded
-    # If the flag self_collisions is False, we do not check for any self collisions by setting this list to be empty
+    # Pairs in the disabled_self_colliding_pairs list are excluded
+    # If the flag check_self_collisions is False, we do not check for any self collisions by setting this list to be empty
     check_link_pairs = get_self_link_pairs(body, joints, disabled_collisions) if self_collisions else []
 
     # List of links that move on the robot and that should be checked for collisions with the obstacles
-    # We do not check for collisions of the links that are allowed (in the allow_collision_links list)
+    # We do not check for collisions of the links that are allowed (in the disabled_colliding_links list)
     moving_links = frozenset([item for item in get_moving_links(body, joints) if not item in allow_collision_links])
 
     # TODO: This is a fetch specific change
@@ -3012,15 +3012,15 @@ def check_initial_end(start_conf, end_conf, collision_fn):
 
 
 def plan_joint_motion(body, joints, end_conf, obstacles=[], attachments=[],
-                      self_collisions=True, disabled_collisions=set(),
-                      weights=None, resolutions=None, max_distance=MAX_DISTANCE, custom_limits={}, algorithm='birrt', allow_collision_links=[], **kwargs):
+                      check_self_collisions=True, disabled_self_colliding_pairs=set(),
+                      weights=None, resolutions=None, max_distance=MAX_DISTANCE, custom_limits={}, algorithm='birrt', disabled_colliding_links=[], **kwargs):
 
     assert len(joints) == len(end_conf)
     sample_fn = get_sample_fn(body, joints, custom_limits=custom_limits)
     distance_fn = get_distance_fn(body, joints, weights=weights)
     extend_fn = get_extend_fn(body, joints, resolutions=resolutions)
-    collision_fn = get_collision_fn(body, joints, obstacles, attachments, self_collisions, disabled_collisions,
-                                    custom_limits=custom_limits, max_distance=max_distance, allow_collision_links=allow_collision_links)
+    collision_fn = get_collision_fn(body, joints, obstacles, attachments, check_self_collisions, disabled_self_colliding_pairs,
+                                    custom_limits=custom_limits, max_distance=max_distance, allow_collision_links=disabled_colliding_links)
 
     start_conf = get_joint_positions(body, joints)
 

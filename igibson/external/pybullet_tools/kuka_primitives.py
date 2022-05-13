@@ -262,7 +262,7 @@ def get_free_motion_gen(robot, fixed=[], teleport=False, self_collisions=True):
         else:
             conf1.assign()
             obstacles = fixed + assign_fluent_state(fluents)
-            path = plan_joint_motion(robot, conf2.joints, conf2.configuration, obstacles=obstacles, self_collisions=self_collisions)
+            path = plan_joint_motion(robot, conf2.joints, conf2.configuration, obstacles=obstacles, check_self_collisions=self_collisions)
             if path is None:
                 if DEBUG_FAILURE: user_input('Free motion failed')
                 return None
@@ -280,7 +280,7 @@ def get_holding_motion_gen(robot, fixed=[], teleport=False, self_collisions=True
             conf1.assign()
             obstacles = fixed + assign_fluent_state(fluents)
             path = plan_joint_motion(robot, conf2.joints, conf2.configuration,
-                                     obstacles=obstacles, attachments=[grasp.attachment()], self_collisions=self_collisions)
+                                     obstacles=obstacles, attachments=[grasp.attachment()], check_self_collisions=self_collisions)
             if path is None:
                 if DEBUG_FAILURE: user_input('Holding motion failed')
                 return None

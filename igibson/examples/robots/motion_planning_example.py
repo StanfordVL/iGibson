@@ -224,8 +224,8 @@ def main(selection="user", headless=False, short_exec=False):
         parser.add_argument(
             "--config",
             "-c",
-            # tiago_motion_planning.yaml, behavior_robot_motion_planning.yaml, fetch_motion_planning.yaml, tiago_motion_planning.yaml
-            default=os.path.join(igibson.configs_path, "fetch_rl_halloween.yaml"),
+            # tiago_motion_planning.yaml, behavior_robot_motion_planning.yaml, fetch_motion_planning.yaml, tiago_motion_planning.yaml, fetch_rl_halloween
+            default=os.path.join(igibson.configs_path, "tiago_motion_planning.yaml"),
             help="which config file to use [default: use yaml files in examples/configs]",
         )
         parser.add_argument(

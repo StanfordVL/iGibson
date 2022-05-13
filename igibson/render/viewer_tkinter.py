@@ -2,7 +2,10 @@ import logging
 import os
 import random
 import sys
+import threading
 import time
+import tkinter as tk
+import tkinter.font as font
 
 import cv2
 import numpy as np
@@ -10,6 +13,7 @@ import pybullet as p
 
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.constants import ViewerMode
+from igibson.utils.mesh_util import lookat, mat2xyz, ortho, perspective, quat2rotmat, safemat2quat, xyz2mat, xyzw2wxyz
 from igibson.utils.utils import rotate_vector_2d
 
 log = logging.getLogger(__name__)
@@ -128,7 +132,91 @@ class Viewer:
         cv2.moveWindow("Viewer", 0, 0)
         if not self.is_robosuite:
             cv2.namedWindow("RobotView")
-        cv2.setMouseCallback("Viewer", self.mouse_callback)
+        # cv2.setMouseCallback("Viewer", self.mouse_callback)
+        # if not self.is_robosuite:
+        #     cv2.setMouseCallback("RobotView", self.mouse_callback_robot)
+
+        class Skill_controller(threading.Thread):
+            def __init__(self):
+                threading.Thread.__init__(self)
+                self.start()
+
+            def callback(self):
+                self.root.quit()
+
+            def run(self):
+                self.root = tk.Tk(className="Skills")
+                self.root.geometry("200x500")
+
+                self.skill_mode = "No selection"
+
+                label = tk.Label(self.root, text=self.skill_mode, font=("Helvatical bold", 10), width=20, height=10)
+                label.pack()
+
+                def button_pick_cammand():
+                    self.skill_mode = "Pick"
+                    label.config(text=self.skill_mode)
+
+                button_pick = tk.Button(
+                    self.root, text="Pick", width=20, height=3, bg="#0052cc", fg="#ffffff", command=button_pick_cammand
+                )
+                button_pick.pack()
+
+                def button_place_cammand():
+                    self.skill_mode = "Place"
+                    label.config(text=self.skill_mode)
+
+                button_pick = tk.Button(
+                    self.root,
+                    text="Place",
+                    width=20,
+                    height=3,
+                    bg="#0052cc",
+                    fg="#ffffff",
+                    command=button_place_cammand,
+                )
+                button_pick.pack()
+
+                def button_toggle_cammand():
+                    self.skill_mode = "Toggle"
+                    label.config(text=self.skill_mode)
+
+                button_toggle = tk.Button(
+                    self.root,
+                    text="Toggle",
+                    width=20,
+                    height=3,
+                    bg="#0052cc",
+                    fg="#ffffff",
+                    command=button_toggle_cammand,
+                )
+                button_toggle.pack()
+
+                def button_push_cammand():
+                    self.skill_mode = "Push"
+                    label.config(text=self.skill_mode)
+
+                button_push = tk.Button(
+                    self.root, text="Push", width=20, height=3, bg="#0052cc", fg="#ffffff", command=button_push_cammand
+                )
+                button_push.pack()
+
+                def button_pull_cammand():
+                    self.skill_mode = "Pull"
+                    label.config(text=self.skill_mode)
+
+                button_pull = tk.Button(
+                    self.root, text="Pull", width=20, height=3, bg="#0052cc", fg="#ffffff", command=button_pull_cammand
+                )
+                button_pull.pack()
+
+                button_exit = tk.Button(self.root, text="Exit", width=20, height=3, command=quit)
+                button_exit.pack()
+
+                self.root.mainloop()
+
+        self.skill_controller = Skill_controller()
+
         self.create_visual_object()
         self.planner = None
         self.block_command = False
@@ -292,7 +380,7 @@ class Viewer:
             if diff > 0.2:
                 self.remove_constraint()
 
-    def get_hit(self, x, y):
+    def get_hit(self, x, y, robotview=False):
         """
         Shoot a ray through pixel location (x, y) and returns the position and
         normal that this ray hits
@@ -300,8 +388,18 @@ class Viewer:
         :param x: image pixel x coordinate
         :param y: image pixel y coordinate
         """
-        camera_pose = np.array([self.px, self.py, self.pz])
-        self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
+
+        if robotview:
+            robot = self.simulator.scene.robots[0]
+            camera_pose = robot.eyes.get_position()
+            orn = robot.eyes.get_orientation()
+            mat = quat2rotmat(xyzw2wxyz(orn))[:3, :3]
+            view_direction = mat.dot(np.array([1, 0, 0]))
+            self.renderer.set_camera(camera_pose, camera_pose + view_direction, self.up)
+        else:
+            camera_pose = np.array([self.px, self.py, self.pz])
+            self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
+
         position_cam = np.array(
             [
                 (x - self.renderer.width / 2)
@@ -555,8 +653,182 @@ class Viewer:
                 hit_pos, hit_normal = self.get_hit(x, y)
                 if hit_pos is not None:
                     self.block_command = True
-                    plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
-                    self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
+                    plan = self.planner.plan_arm_pick_place(hit_pos)
+                    self.planner.execute_arm_pick_place(plan, hit_pos, -np.array(hit_normal))
+                    self.block_command = False
+
+    def mouse_callback_robot(self, event, x, y, flags, params):
+        """
+        Mouse callback that handles all the mouse events
+
+        :param event: OpenCV mouse event
+        :param x: image pixel x coordinate
+        :param y: image pixel y coordinate
+        :param flags: any relevant flags passed by OpenCV.
+        :param params: any extra parameters supplied by OpenCV
+        """
+
+        # Navigation mode
+        if self.mode == ViewerMode.NAVIGATION:
+            # Only once, when pressing left mouse while ctrl key is pressed
+            if flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_CTRLKEY and not self.right_down:
+                self._mouse_ix, self._mouse_iy = x, y
+                self.right_down = True
+
+            # Middle mouse button press or only once, when pressing left
+            # mouse while shift key is pressed (Mac compatibility)
+            elif (event == cv2.EVENT_MBUTTONDOWN) or (
+                flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down
+            ):
+                self._mouse_ix, self._mouse_iy = x, y
+                self.middle_down = True
+
+            # left mouse button press
+            elif event == cv2.EVENT_LBUTTONDOWN:
+                self._mouse_ix, self._mouse_iy = x, y
+                self.left_down = True
+
+            # left mouse button released
+            elif event == cv2.EVENT_LBUTTONUP:
+                self.left_down = False
+                self.right_down = False
+                self.middle_down = False
+
+            # middle mouse button released
+            elif event == cv2.EVENT_MBUTTONUP:
+                self.middle_down = False
+
+            # moving mouse location on the window
+            if event == cv2.EVENT_MOUSEMOVE:
+                # if left button was pressed we change orientation of camera
+                if self.left_down:
+                    dx = (x - self._mouse_ix) / 100.0
+                    dy = (y - self._mouse_iy) / 100.0
+                    self._mouse_ix = x
+                    self._mouse_iy = y
+                    if not (
+                        (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_SHIFTKEY)
+                        or (flags & cv2.EVENT_FLAG_CTRLKEY and flags & cv2.EVENT_FLAG_ALTKEY)
+                    ):
+                        self.phi += dy
+                        self.phi = np.clip(self.phi, -np.pi / 2 + 1e-5, np.pi / 2 - 1e-5)
+                        self.theta += dx
+                        self.view_direction = np.array(
+                            [
+                                np.cos(self.theta) * np.cos(self.phi),
+                                np.sin(self.theta) * np.cos(self.phi),
+                                np.sin(self.phi),
+                            ]
+                        )
+
+                # if middle button was pressed we get closer/further away in the viewing direction
+                elif self.middle_down:
+                    d_vd = (y - self._mouse_iy) / 25.0
+                    self._mouse_iy = y
+
+                    motion_along_vd = d_vd * self.view_direction
+                    self.px += motion_along_vd[0]
+                    self.py += motion_along_vd[1]
+                    self.pz += motion_along_vd[2]
+                    self.pz = max(self.min_cam_z, self.pz)
+
+                # if right button was pressed we change translation of camera
+                elif self.right_down:
+                    zz = self.view_direction / np.linalg.norm(self.view_direction)
+                    xx = np.cross(zz, np.array([0, 0, 1]))
+                    xx = xx / np.linalg.norm(xx)
+                    yy = np.cross(xx, zz)
+                    motion_along_vx = -((x - self._mouse_ix) / 100.0) * xx
+                    motion_along_vy = ((y - self._mouse_iy) / 100.0) * yy
+                    self._mouse_ix = x
+                    self._mouse_iy = y
+
+                    self.px += motion_along_vx[0] + motion_along_vy[0]
+                    self.py += motion_along_vx[1] + motion_along_vy[1]
+                    self.pz += motion_along_vx[2] + motion_along_vy[2]
+                    self.pz = max(self.min_cam_z, self.pz)
+
+        # Manipulation mode
+        elif self.mode == ViewerMode.MANIPULATION:
+            # Middle mouse button press or only once, when pressing left mouse
+            # while shift key is pressed (Mac compatibility)
+            if (event == cv2.EVENT_MBUTTONDOWN) or (
+                flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down
+            ):
+                self._mouse_ix, self._mouse_iy = x, y
+                self.middle_down = True
+                self.create_constraint(x, y, fixed=True)
+            elif event == cv2.EVENT_LBUTTONDOWN:  # left mouse button press
+                self._mouse_ix, self._mouse_iy = x, y
+                self.left_down = True
+                self.create_constraint(x, y, fixed=False)
+            elif event == cv2.EVENT_LBUTTONUP:  # left mouse button released
+                self.left_down = False
+                self.right_down = False
+                self.middle_down = False
+                self.remove_constraint()
+            elif event == cv2.EVENT_MBUTTONUP:  # middle mouse button released
+                self.left_down = False
+                self.right_down = False
+                self.middle_down = False
+                self.remove_constraint()
+            if event == cv2.EVENT_MOUSEMOVE:  # moving mouse location on the window
+                if (self.left_down or self.middle_down) and not flags & cv2.EVENT_FLAG_CTRLKEY:
+                    self._mouse_ix = x
+                    self._mouse_iy = y
+                    self.move_constraint(x, y)
+                elif (self.left_down or self.middle_down) and flags & cv2.EVENT_FLAG_CTRLKEY:
+                    dy = (y - self._mouse_iy) / 500.0
+                    self.move_constraint_z(dy)
+
+        # Motion planning / execution mode
+        elif self.mode == ViewerMode.PLANNING and not self.block_command:
+            # left mouse button press
+            if event == cv2.EVENT_LBUTTONDOWN:
+                self._mouse_ix, self._mouse_iy = x, y
+                self.left_down = True
+                self.hit_pos, _ = self.get_hit(x, y, robotview=True)
+
+            # Base motion
+            if event == cv2.EVENT_LBUTTONUP:
+                hit_pos, _ = self.get_hit(x, y, robotview=True)
+                target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+                self.left_down = False
+                if hit_pos is not None:
+                    self.block_command = True
+                    plan = self.planner.plan_base_motion([self.hit_pos[0], self.hit_pos[1], target_yaw])
+                    if plan is not None and len(plan) > 0:
+                        self.planner.dry_run_base_plan(plan)
+                    self.block_command = False
+
+            # Visualize base subgoal orientation
+            if event == cv2.EVENT_MOUSEMOVE:
+                if self.left_down:
+                    hit_pos, _ = self.get_hit(x, y, robotview=True)
+                    target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
+                    self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
+
+            # Arm motion
+            if event == cv2.EVENT_MBUTTONDOWN:
+                hit_pos, hit_normal = self.get_hit(x, y, robotview=True)
+                if hit_pos is not None:
+                    self.block_command = True
+                    if self.skill_controller.skill_mode == "Pick":
+                        plan = self.planner.plan_arm_pick(hit_pos)
+                        self.planner.execute_arm_pick(plan, hit_pos, -np.array(hit_normal))
+                    elif self.skill_controller.skill_mode == "Place":
+                        plan = self.planner.plan_arm_place(hit_pos)
+                        self.planner.execute_arm_place(plan, hit_pos, -np.array(hit_normal))
+                    elif self.skill_controller.skill_mode == "Push":
+                        plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
+                        self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
+                    elif self.skill_controller.skill_mode == "Pull":
+                        plan = self.planner.plan_arm_pull(hit_pos, np.array(hit_normal))
+                        self.planner.execute_arm_pull(plan, hit_pos, np.array(hit_normal))
+                    elif self.skill_controller.skill_mode == "Toggle":
+                        plan = self.planner.plan_arm_toggle(hit_pos, -np.array(hit_normal))
+                        self.planner.execute_arm_toggle(plan, hit_pos, -np.array(hit_normal))
                     self.block_command = False
 
     def show_help_text(self, frame):
@@ -651,6 +923,9 @@ class Viewer:
         """
         Update images of Viewer
         """
+        robot_pos, _ = self.simulator.scene.robots[0].get_position_orientation()
+        self.px = robot_pos[0] + 1.0
+        self.py = robot_pos[1]
         camera_pose = np.array([self.px, self.py, self.pz])
         if self.renderer is not None:
             self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
