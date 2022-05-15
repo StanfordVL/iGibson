@@ -36,7 +36,7 @@ shared_settings:
   # Serial number of VR torso tracker - this can be found by connecting/pairing the tracker,
   # then going into Steam VR settings -> controllers -> manage vive trackers
   # Note: replace this with your own tracker serial number or leave blank to not use one
-  torso_tracker_serial: "LHR-DF82C682"
+  torso_tracker_serial: "LHR-BDE12AB6"
 # Settings that are specific to different VR devices (eg. eye tracking, button mapping)
 device_settings:
   HTC_VIVE_PRO_EYE:
