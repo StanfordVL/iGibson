@@ -3,7 +3,8 @@ import logging
 import os
 import time
 from collections import OrderedDict
-
+import cv2
+from PIL import Image
 import gym
 import numpy as np
 import pybullet as p
@@ -234,6 +235,9 @@ class iGibsonEnv(BaseEnv):
             spectrogram = self.audio_system.get_spectrogram()
             observation_space['audio'] = self.build_obs_space(
                 shape=spectrogram.shape, low=-np.inf, high=np.inf)
+        if 'top_down' in self.output:
+            observation_space['top_down'] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3), low=-np.inf, high=np.inf)
         if 'category_belief' in self.output:
             observation_space['category_belief'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
@@ -246,7 +250,9 @@ class iGibsonEnv(BaseEnv):
         if 'category' in self.output:
             observation_space['category'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
-            
+        if 'floorplan_map' in self.output:
+            observation_space['floorplan_map'] = self.build_obs_space(
+                shape=(self.image_height, self.image_height), low=0, high=23)
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -307,6 +313,22 @@ class iGibsonEnv(BaseEnv):
         if 'audio' in self.output:
             state['audio'] = self.audio_system.get_spectrogram()
             
+        if 'top_down' in self.output:
+            camera_pose = np.array([0, 0, 4.0])
+            view_direction = np.array([0, 0, -1])
+            self.simulator.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 1, 0])
+            p_range = self.config['map_size'] / 200.0
+            prevP = self.simulator.renderer.P.copy()
+            self.simulator.renderer.P = ortho(-p_range, p_range, -p_range, p_range, -10, 20.0)
+            frame, three_d = self.simulator.renderer.render(modes=("rgb", "3d"))
+            depth = -three_d[:, :, 2]
+            frame[depth == 0] = 1.0
+            frame = cv2.flip(frame, 0)
+            bg = (frame[:, :, 0:3][:, :, ::-1] * 255).astype(np.uint8)
+            cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/floorplan_Rs.png", bg)
+            state['top_down'] = bg
+            self.simulator.renderer.P = prevP
+            
         if 'pose_sensor' in self.output:
             # TODO: pose sensor in the episode frame
             pos = np.array(self.robots[0].get_position()) #[x,y,z]
@@ -331,7 +353,11 @@ class iGibsonEnv(BaseEnv):
             state["category_belief"] = np.zeros(len(CATEGORIES))
         if "location_belief" in self.output:
             state["location_belief"] = np.zeros(2)
-
+        
+        if "floorplan_map" in self.output:
+            mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"
+            state["floorplan_map"] = np.array(Image.open(mapdir))
+            
         return state
 
     def run_simulation(self):

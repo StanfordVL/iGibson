@@ -44,11 +44,12 @@ class SAViTask(PointNavRandomTask):
     # reward function
     def __init__(self, env):
         super().__init__(env)
-        self.reward_funcions = [
-            PotentialReward(self.config), # geodesic distance, potential_reward_weight
+        self.reward_functions = [
+            PotentialReward(self.config),
+            TimeReward(self.config), # geodesic distance, potential_reward_weight
             PointGoalReward(self.config), # success_reward
             CollisionReward(self.config),
-            TimeReward(self.config), # time_reward_weight
+             # time_reward_weight
         ]
         self.cat = None # audio category
         self._episode_time = 0.0
@@ -78,21 +79,8 @@ class SAViTask(PointNavRandomTask):
         # The visual object indicating the target location may be visible
         for instance in self.target_obj.renderer_instances:
             instance.hidden = not self.visible_target
-    
-#     def get_task_obs(self, env):
-#         """
-#         Get current velocities
 
-#         :param env: environment instance
-#         :return: task-specific observation
-#         """
-#         # linear velocity along the x-axis
-#         linear_velocity = rotate_vector_3d(env.robots[0].get_linear_velocity(), *env.robots[0].get_rpy())[0]
-#         # angular velocity along the z-axis
-#         angular_velocity = rotate_vector_3d(env.robots[0].get_angular_velocity(), *env.robots[0].get_rpy())[2]
-#         task_obs = np.append(linear_velocity, angular_velocity)
-
-#         return task_obs
+            
     def get_task_obs(self, env):
         """
         Get task-specific observation, including goal position, current velocities, etc.
@@ -109,7 +97,6 @@ class SAViTask(PointNavRandomTask):
         # angular velocity along the z-axis
         angular_velocity = rotate_vector_3d(env.robots[0].get_angular_velocity(), *env.robots[0].get_rpy())[2]
         task_obs = np.append(task_obs, [linear_velocity, angular_velocity])
-
         return task_obs
     
         
@@ -140,6 +127,7 @@ class SAViTask(PointNavRandomTask):
                     target_pos[:2], entire_path=False)
             else:
                 dist = l2_distance(initial_pos, target_pos)
+                print("distance to goal", dist)
             if self.target_dist_min < dist < self.target_dist_max:  
                 break
                 
