@@ -75,7 +75,7 @@ train_encoder: False
 current_pred_only: False
 weighting_factor: 0.5
 belief_cfg_lr: 0.001
-label_models: '/viscam/u/wangzz/avGibson/igibson/agents/savi/data/pretraining_1201/ckpt.20.pth'
+label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0414/ckpt.25.pth'
 
 ## igibson
 # scene
@@ -99,7 +99,7 @@ action_activation: tanh
 
 # task
 task: SAVi
-target_dist_min: 1.0
+target_dist_min: 4.0
 target_dist_max: 10.0
 goal_format: "cartesian"
 task_obs_dim: 4
@@ -122,7 +122,7 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [depth, rgb, audio, category_belief, location_belief, pose_sensor, task_obs, category]
+output: [depth, rgb, audio, category_belief, location_belief, pose_sensor, task_obs, category, bump]
 extra_rgb: false
 
 # image
