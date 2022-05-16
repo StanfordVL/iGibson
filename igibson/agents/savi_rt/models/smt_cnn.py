@@ -55,7 +55,6 @@ class SMTCNN(nn.Module):
             self._feat_dims += 64
 
         # Semantic instance segmentation
-        # not using
 #         if "semantic" in observation_space.spaces:
 #             # not executed in SoundSpaces
 #             # Semantic object segmentation
@@ -113,7 +112,6 @@ class SMTCNN(nn.Module):
 #             cnn_features.append(self.semantic_encoder(semantic_observations))
 
         cnn_features = torch.cat(cnn_features, dim=1)
-        print("cnn_features shape", cnn_features.shape)
         return cnn_features, cnn_features
 
     @property

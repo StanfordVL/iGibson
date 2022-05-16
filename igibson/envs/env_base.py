@@ -1,7 +1,9 @@
 import logging
 
 import gym
-
+import cv2
+import numpy as np
+from igibson.utils.mesh_util import ortho
 from igibson.audio.audio_system import AudioSystem
 import igibson.audio.default_config as default_audio_config
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
@@ -103,8 +105,10 @@ class BaseEnv(gym.Env):
                 mode=mode,
                 physics_timestep=physics_timestep,
                 render_timestep=action_timestep,
-                image_width=self.config.get("image_width", 128),
-                image_height=self.config.get("image_height", 128),
+                image_width=self.config.get("image_width", 128) if not self.config["extra_rgb"] \
+                                                        else self.config.get("image_width_video", 128),
+                image_height=self.config.get("image_height", 128)if not self.config["extra_rgb"] \
+                                                        else self.config.get("image_height_video", 128),
                 vertical_fov=self.config.get("vertical_fov", 90),
                 device_idx=device_idx,
                 rendering_settings=self.rendering_settings,
@@ -250,7 +254,7 @@ class BaseEnv(gym.Env):
         if self.audio_system is not None:
             self.audio_system.disconnect()
         self.audio_system = AudioSystem(self.simulator, self.robots[0], acousticMesh, 
-                                        is_Viewer=False, writeToFile=self.config.get('audio_write', ""), SR = 44100,
+                                        is_Viewer=False, writeToFile=self.config.get('AUDIO_DIR', ""), SR = 44100,
                                         occl_multiplier=self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER),
                                         spectrogram_window_len=self.config.get('spectrogram_window_len', default_audio_config.SPECTROGRAM_WINDOW_LEN),
                                         renderAmbisonics=self.config.get('ambisonic_sensor', False))
@@ -291,3 +295,4 @@ class BaseEnv(gym.Env):
         Overwritten by subclasses.
         """
         return NotImplementedError()
+

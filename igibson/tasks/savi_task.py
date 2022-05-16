@@ -13,12 +13,19 @@ from igibson.reward_functions.reward_function_base import BaseRewardFunction
 from igibson.reward_functions.potential_reward import PotentialReward
 from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
+from igibson.termination_conditions.max_collision import MaxCollision
+from igibson.termination_conditions.out_of_bound import OutOfBound
+from igibson.termination_conditions.point_goal import PointGoal
+from igibson.termination_conditions.timeout import Timeout
+from igibson.termination_conditions.termination_condition_base import BaseTerminationCondition
 from igibson.objects import cube
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.utils import l2_distance, restoreState
 from igibson.agents.savi.utils import dataset
 from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP
 from igibson.utils.utils import rotate_vector_3d
+
+log = logging.getLogger(__name__)
 
 class TimeReward(BaseRewardFunction):
     """
@@ -40,22 +47,57 @@ class TimeReward(BaseRewardFunction):
         """
         return self.time_reward_weight
 
+    
+class ViewPoints(BaseTerminationCondition):
+    """
+    PointGoal used for PointNavFixed/RandomTask
+    Episode terminates if point goal is reached
+    """
+
+    def __init__(self, config):
+        super().__init__(config)
+        self.dist_tol = self.config.get("dist_tol", 0.5)
+
+    def get_termination(self, task, env):
+        """
+        Return whether the episode should terminate.
+        Terminate if point goal is reached (distance below threshold)
+        :param task: task instance
+        :param env: environment instance
+        :return: done, info
+        """
+        done = False
+        if any([l2_distance(env.robots[0].get_position()[:2], view_point) < self.dist_tol for view_point in task.view_points]):
+            done = True
+        success = done
+        return done, success
+    
+    
 class SAViTask(PointNavRandomTask):
     # reward function
     def __init__(self, env):
         super().__init__(env)
         self.reward_functions = [
-            PotentialReward(self.config),
-            TimeReward(self.config), # geodesic distance, potential_reward_weight
+            PotentialReward(self.config), # geodesic distance, potential_reward_weight
+            TimeReward(self.config), # time_reward_weight 
             PointGoalReward(self.config), # success_reward
             CollisionReward(self.config),
-             # time_reward_weight
+             
+        ]
+        self.termination_conditions = [
+            MaxCollision(self.config),
+            Timeout(self.config),
+            OutOfBound(self.config),
+            PointGoal(self.config),
+            ViewPoints(self.config),
         ]
         self.cat = None # audio category
         self._episode_time = 0.0
         self.target_obj = None
         self.target_pos = None
-#         self.load_target(env)
+        self.view_points = []
+###
+        self.load_target(env)
         
         
     def load_target(self, env):
@@ -66,18 +108,18 @@ class SAViTask(PointNavRandomTask):
 
         cyl_length = 0.2
 
-        self.target_obj = VisualMarker(
+        self.target_marker = VisualMarker(
             visual_shape=p.GEOM_CYLINDER,
             rgba_color=[0, 0, 1, 0.3],
-            radius=self.dist_tol,
+            radius=self.dist_tol*4, # * 2 for clearer view
             length=cyl_length,
             initial_offset=[0, 0, cyl_length / 2.0],
         )
 
-        env.simulator.import_object(self.target_obj)
+        env.simulator.import_object(self.target_marker)
 
         # The visual object indicating the target location may be visible
-        for instance in self.target_obj.renderer_instances:
+        for instance in self.target_marker.renderer_instances:
             instance.hidden = not self.visible_target
 
             
@@ -113,8 +155,8 @@ class SAViTask(PointNavRandomTask):
             self.cat = random.choice(CATEGORIES)
             objects = env.scene.objects_by_category[self.cat]
             if len(objects) != 0:
-                self.target_obj = random.choice(objects)
-                target_pos = self.target_obj.get_position()
+                self.target_obj = random.choice(objects)             
+                target_pos = np.array(self.target_obj.get_position())
                 break
         assert len(objects) != 0
         
@@ -127,16 +169,39 @@ class SAViTask(PointNavRandomTask):
                     target_pos[:2], entire_path=False)
             else:
                 dist = l2_distance(initial_pos, target_pos)
-                print("distance to goal", dist)
-            if self.target_dist_min < dist < self.target_dist_max:  
+            if self.target_dist_min < dist < self.target_dist_max: 
                 break
                 
         if not (self.target_dist_min < dist < self.target_dist_max):
-            print("WARNING: Failed to sample initial and target positions")
+            logging.warning("WARNING: Failed to sample initial and target positions")
         initial_orn = np.array([0, 0, np.random.uniform(0, np.pi * 2)])
         return initial_pos, initial_orn, target_pos
 
-    
+
+    def sample_pose_near_object(self, env):
+        obj = self.target_obj
+        pos_on_obj = self.target_pos
+        obj_rooms = obj.in_rooms if obj.in_rooms else [env.scene.get_room_instance_by_point(pos_on_obj[:2])]
+        max_trials = 100
+        for _ in range(max_trials):
+            distance = np.random.uniform(0.2, 1.0)
+            yaw = np.random.uniform(-np.pi, np.pi)
+            pose_2d = np.array(
+                [pos_on_obj[0] + distance * np.cos(yaw), pos_on_obj[1] + distance * np.sin(yaw), np.pi+yaw]
+            )
+
+            # Check room
+            if env.scene.get_room_instance_by_point(pose_2d[:2]) not in obj_rooms:
+                continue
+
+            if not env.test_valid_position(env.robots[0], pose_2d):
+                continue
+            self.view_points.append(pose_2d[:2])
+            
+            if len(self.view_points) >= 8:
+                break
+        
+        
     def reset_agent(self, env, train=True):
         """
         Reset robot initial pose.
@@ -145,6 +210,7 @@ class SAViTask(PointNavRandomTask):
         """
         reset_success = False
         max_trials = 100
+        self.view_points = []
 
         # cache pybullet state
         # TODO: p.saveState takes a few seconds, need to speed up
@@ -162,17 +228,23 @@ class SAViTask(PointNavRandomTask):
 
         if not reset_success:
             logging.warning("WARNING: Failed to reset robot without collision")
-
-        p.removeState(state_id)
-
+            
         self.target_pos = target_pos
         self.initial_pos = initial_pos
         self.initial_orn = initial_orn
         self.initial_rpy = np.array(env.robots[0].get_rpy())
+        self.target_marker.set_position(np.array([*self.target_pos[:2], 0.1]))
+        
+        self.sample_pose_near_object(env)
+        if len(self.view_points) == 0:
+            logging.warning("WARNING: Failed to sample poses near the object" + str(self.cat))
+            self.view_points.append(target_pos)
+        
+        p.removeState(state_id)
+        
         env.land(env.robots[0], self.initial_pos, self.initial_orn)
         
         # for savi
-#         self.target_obj.set_position(self.target_pos)
         self.audio_obj_id = self.target_obj.get_body_ids()[0]
         if train:
             env.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'] \
@@ -182,7 +254,3 @@ class SAViTask(PointNavRandomTask):
                                             +"/val/"+self.cat+".wav", enabled=True)    
         env.audio_system.setSourceRepeat(self.audio_obj_id)#, repeat = False)
         
-#         env.audio_system.step()
-    
-        
-

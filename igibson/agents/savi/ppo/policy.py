@@ -291,6 +291,9 @@ class AudioNavSMTNet(Net):
             action_encoding_dims = 0
         nfeats = self.visual_encoder.feature_dims + action_encoding_dims + audio_feature_dims
         
+        if 'task_obs' in observation_space.spaces:
+            nfeats += 2
+        
         if self._use_category_input:
             nfeats += len(CATEGORIES)
 
@@ -350,10 +353,10 @@ class AudioNavSMTNet(Net):
                 if self._normalize_category_distribution:
                     belief[:, :len(CATEGORIES)] = nn.functional.softmax(observations['category_belief'], dim=1)
                 else:
-                    belief[:, :len(CATEGORIES)] = observations['category_belief'] # :21
+                    belief[:, :len(CATEGORIES)] = observations['category_belief']
 
             if self._use_location_belief:
-                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief'] # 21:23
+                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief']
 
             if self._use_belief_encoder:
                 belief = self.belief_encoder(belief)
@@ -405,6 +408,7 @@ class AudioNavSMTNet(Net):
         x.append(self.visual_encoder(observations))
         x.append(self.action_encoder(self._get_one_hot(prev_actions)))
         x.append(self.goal_encoder(observations))
+        x.append(observations['task_obs'][:, -2:])
         if self._use_category_input:
             x.append(observations["category"])
         x.append(observations["pose_sensor"])

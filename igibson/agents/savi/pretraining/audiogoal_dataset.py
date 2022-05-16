@@ -25,38 +25,17 @@ from igibson.agents.savi.utils.dataset import CATEGORY_MAP
 from env_pretrain import AVNavRLEnv
 # from soundspaces.mp3d_utils import CATEGORY_INDEX_MAPPING
 
+src_dir = "/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/"
 
 class AudioGoalDataset(Dataset):
     def __init__(self, scenes, split):
         # scenes = SCENE_SPLITS[split]
         # split = "train" or "eval"
         self.split = split
-        self.files = list()
-        self.goals = list()
-        self.source_sound_dir = f'/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits/{split}'
-        self.source_sound_dict = dict()
-        self.sampling_rate = 44100 # 16000
-        sound_files = os.listdir(self.source_sound_dir)
-        
-        self.floor_num = 0   
-        for scene_name in tqdm(scenes): # 9 scenes
-            self.env = AVNavRLEnv(config_file='pretraining/config/pretraining.yaml', 
-                                  mode='headless', scene_id=scene_name) # write_to_file = True
-            goals = []
-            for _ in range(4000): # 20000
-                sound_file = random.choice(sound_files) # eg: sound_file = chair.wav
-                index = CATEGORY_MAP[sound_file[:-4]] # remove .wav
-                
-                self.compute_audio(sound_file) # change audio system in reset
-               
-                goal = to_tensor(np.zeros(self.env.config["num_steps"]))
-                goal[:] = index              
-                goals.append(goal)
-
-            self.goals += goals
-            
-#             print(len(self.files), len(self.goals))
-            self.env.close() # destroy audio system
+        with open(os.path.join(src_dir + "pretraining/dataset/", '{}.pkl'.format(split)), 'rb') as fi:
+            audios, goals = pickle.load(fi)       
+        self.files = audios
+        self.goals = np.array(goals).flatten().astype('int').tolist()
 
     def __len__(self):
         return len(self.goals)
@@ -65,14 +44,4 @@ class AudioGoalDataset(Dataset):
         inputs_outputs = (self.files[item], self.goals[item])
         return inputs_outputs 
        
-    def compute_audio(self, sound_file):
-        self.env.reset(self.split, sound_file)
-        for _ in range(self.env.config["num_steps"]):
-            action = self.env.action_space.sample()
-            state, _, _, _ = self.env.step(action)
-            spectro = to_tensor(state["audio"])
-            self.files.append(spectro)
 
-        if self.env.audio_system is not None:
-            self.env.audio_system.reset()
-            

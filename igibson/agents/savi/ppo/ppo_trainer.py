@@ -31,7 +31,7 @@ from igibson.agents.savi.utils.environment import AVNavRLEnv
 from igibson.agents.savi.utils.tensorboard_utils import TensorboardWriter
 from igibson.agents.savi.utils.logs import logger
 from igibson.agents.savi.utils.utils import batch_obs, linear_decay, observations_to_image, images_to_video, generate_video
-from igibson.agents.savi.utils import dataset
+from igibson.agents.savi.utils.dataset import dataset
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.envs.parallel_env import ParallelNavEnv
 
@@ -129,7 +129,7 @@ class PPOTrainer(BaseRLTrainer):
 
         return count_steps, count_checkpoints, start_update
 
-    METRICS_BLACKLIST = {"top_down_map", "collisions.is_collision"}
+    METRICS_BLACKLIST = {"top_down_map", "collisions.is_collision", "last_observation.bump"}
     
     @classmethod
     def _extract_scalars_from_info(
@@ -195,7 +195,6 @@ class PPOTrainer(BaseRLTrainer):
                 rollouts.masks[rollouts.step],
                 external_memory,
                 external_memory_masks,)
-
         pth_time += time.time() - t_sample_action
 
         t_step_env = time.time()
@@ -223,11 +222,10 @@ class PPOTrainer(BaseRLTrainer):
             v = torch.tensor(
                 v, dtype=torch.float, device=current_episode_reward.device
             ).unsqueeze(1)
-            if k not in running_episode_stats:
+            if k not in running_episode_stats and k != 'last_observation.bump':
                 running_episode_stats[k] = torch.zeros_like(
                     running_episode_stats["count"]
                 )
-
             running_episode_stats[k] += (1 - masks) * v
 
         current_episode_reward *= masks
@@ -248,7 +246,6 @@ class PPOTrainer(BaseRLTrainer):
             self.belief_predictor.update(step_observation, dones)
             for sensor in ['location_belief', 'category_belief']:
                 rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
-
         pth_time += time.time() - t_update_stats
 
         return pth_time, env_time, self.envs.batch_size
@@ -284,9 +281,7 @@ class PPOTrainer(BaseRLTrainer):
                     external_memory,
                     external_memory_masks,
                 ) = sample
-
                 bp.optimizer.zero_grad()
-
                 inputs = obs_batch['audio'].permute(0, 3, 1, 2)
                 preds = bp.cnn_forward(obs_batch) # [rightward, backward]
 
@@ -294,12 +289,12 @@ class PPOTrainer(BaseRLTrainer):
                         (obs_batch['audio'].shape[0], -1)), dim=1, keepdim=True) != 0).float()
                 gts = obs_batch['task_obs'] #[forward, leftward] in the agent's frame
 
-                transformed_gts = torch.stack([-gts[:, 1], -gts[:, 0]], dim=1)
+                transformed_gts = torch.stack([gts[:, 0], gts[:, 1]], dim=1)
                 masked_preds = masks.expand_as(preds) * preds # [rightward, backward]
                 masked_gts = masks.expand_as(transformed_gts) * transformed_gts
                 loss = bp.regressor_criterion(masked_preds, masked_gts) # (input, target)
-
                 bp.before_backward(loss)
+                
                 loss.backward()
                 # self.after_backward(loss)
 
@@ -388,7 +383,8 @@ class PPOTrainer(BaseRLTrainer):
         # Map location CPU is almost always better than mapping to a CUDA device.
         ckpt_dict = self.load_checkpoint(checkpoint_path, map_location="cpu")
         
-        val_data = dataset.getValValue()
+        data = dataset(self.config['scene'])
+        val_data = data.SCENE_SPLITS["val"]
         idx = np.random.randint(len(val_data))
         scene_ids = [val_data[idx]]
         
@@ -407,8 +403,7 @@ class PPOTrainer(BaseRLTrainer):
         if self.config['use_belief_predictor'] and "belief_predictor" in ckpt_dict:
             self.belief_predictor.load_state_dict(ckpt_dict["belief_predictor"])
 
-
-        observations = self.envs.reset(train=False)
+        observations = self.envs.reset()
         batch = batch_obs(observations, self.device, skip_list=['view_point_goals', 'intermediate',
                                                             'oracle_action_sensor'])
 
@@ -490,7 +485,6 @@ class PPOTrainer(BaseRLTrainer):
                     test_em.masks if self.config['use_external_memory'] else None,
                 )
                 prev_actions.copy_(actions)
-
             outputs = self.envs.step([a[0].item() for a in actions])
 
             observations, rewards, dones, infos = [
@@ -602,7 +596,7 @@ class PPOTrainer(BaseRLTrainer):
         num_episodes = len(stats_episodes)
 
         stats_file = os.path.join(self.config['TENSORBOARD_DIR'], '{}_stats_{}.json'.format("val", self.config['SEED']))
-        new_stats_episodes = {','.join([str(i) for i in key]): value for key, value in stats_episodes.items()}
+        new_stats_episodes = {','.join(str(key)): value for key, value in stats_episodes.items()}
 
         episode_reward_mean = aggregated_stats["reward"] / num_episodes
         episode_metrics_mean = {}
@@ -624,3 +618,4 @@ class PPOTrainer(BaseRLTrainer):
         }
         result['episode_{}_mean'.format('spl')] = episode_metrics_mean['spl']
         return result
+

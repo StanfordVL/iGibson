@@ -25,7 +25,7 @@ class AudioGoalPredictorTrainer:
         self.model_dir = model_dir
         self.device = (torch.device("cuda", 0))
 
-        self.batch_size = 160 #80 # 1024
+        self.batch_size = 1024 # 1024
         self.num_worker = 4 #8 related to mem
         self.lr = 1e-3
         self.weight_decay = None
@@ -87,9 +87,7 @@ class AudioGoalPredictorTrainer:
                 running_classifier_corrects = 0
                 # Iterating over data once is one epoch
                 for i, data in enumerate(tqdm(dataloaders[split])):                    
-                    # get the inputs
                     inputs, gts = data
-#                     inputs = [x.to(device=self.device, dtype=torch.float) for x in inputs]
                     inputs = inputs.to(device=self.device, dtype=torch.float)
                     gts = gts.to(device=self.device, dtype=torch.float)
                     
@@ -99,7 +97,7 @@ class AudioGoalPredictorTrainer:
                         classifier_loss = classifier_criterion(predicts[:, :-2], gts[:, 0].long())
                         regressor_loss = regressor_criterion(predicts[:, -2:], gts[:, -2:])
                     elif self.predict_label:
-                        classifier_loss = classifier_criterion(predicts, gts[:, 0].long())
+                        classifier_loss = classifier_criterion(predicts, gts.long())
                     elif self.predict_location:
                         regressor_loss = regressor_criterion(predicts, gts[:, -2:])
                         classifier_loss = torch.tensor([0], device=self.device)
@@ -127,7 +125,7 @@ class AudioGoalPredictorTrainer:
                             torch.argmax(torch.abs(predicts[:, :-2]), dim=1) == gts[:, 0]).item()
                     elif self.predict_label:
                         running_classifier_corrects += torch.sum(
-                            torch.argmax(torch.abs(predicts), dim=1) == gts[:, 0]).item()
+                            torch.argmax(torch.abs(predicts), dim=1) == gts).item()
                         running_regressor_corrects = 0
                     elif self.predict_location:
                         running_regressor_corrects += np.sum(np.bitwise_and(
@@ -225,5 +223,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
