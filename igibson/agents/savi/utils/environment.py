@@ -72,7 +72,7 @@ class AVNavRLEnv(iGibsonEnv):
     def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4'):
         self._episode_time = 0.0
         self.scene_id = scene_id
-        super().__init__(config_file, scene_id, mode, automatic_reset=True)
+        super().__init__(config_file, scene_id, mode)
 
     def load_observation_space(self):
         super().load_observation_space()

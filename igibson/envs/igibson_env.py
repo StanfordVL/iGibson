@@ -48,7 +48,6 @@ class iGibsonEnv(BaseEnv):
         rendering_settings=None,
         vr_settings=None,
         device_idx=0,
-        automatic_reset=False,
         use_pb_gui=False,
     ):
         """
@@ -74,7 +73,7 @@ class iGibsonEnv(BaseEnv):
             device_idx=device_idx,
             use_pb_gui=use_pb_gui,
         )
-        self.automatic_reset = automatic_reset
+        self.automatic_reset = self.config.get("automatic_reset", True)
         
 
     def load_task_setup(self):
@@ -150,6 +149,8 @@ class iGibsonEnv(BaseEnv):
         self.output = self.config["output"]
         self.image_width = self.config.get("image_width", 128)
         self.image_height = self.config.get("image_height", 128)
+        self.image_width_video = self.config.get("image_width_video", 800)
+        self.image_height_video = self.config.get("image_height_video", 800)
         observation_space = OrderedDict()
         sensors = OrderedDict()
         vision_modalities = []
@@ -160,10 +161,16 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.task.task_obs_dim,), low=-np.inf, high=np.inf
             )
         if "rgb" in self.output:
-            observation_space["rgb"] = self.build_obs_space(
-                shape=(self.image_height, self.image_width, 3), low=0.0, high=1.0
-            )
-            vision_modalities.append("rgb")
+            if self.config['extra_rgb']:
+                observation_space["rgb"] = self.build_obs_space(
+                shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
+                )
+                vision_modalities.append("rgb")
+            else:      
+                observation_space["rgb"] = self.build_obs_space(
+                    shape=(self.image_height, self.image_width, 3), low=0.0, high=1.0
+                )
+                vision_modalities.append("rgb")
         if "depth" in self.output:
             observation_space["depth"] = self.build_obs_space(
                 shape=(self.image_height, self.image_width, 1), low=0.0, high=1.0
@@ -301,6 +308,8 @@ class iGibsonEnv(BaseEnv):
             vision_obs = self.sensors["vision"].get_obs(self)
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
+            if self.config["extra_rgb"]:
+                state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,3), np.mean)
         if "scan_occ" in self.sensors:
             scan_obs = self.sensors["scan_occ"].get_obs(self)
             for modality in scan_obs:
@@ -429,7 +438,10 @@ class iGibsonEnv(BaseEnv):
         done, info = self.task.get_termination(self, collision_links, action, info)
         self.task.step(self)
         self.populate_info(info)
-
+        
+        if done and not self.automatic_reset:
+            self.audio_system.disconnect()
+            
         if done and self.automatic_reset:
             info["last_observation"] = state
             state = self.reset()

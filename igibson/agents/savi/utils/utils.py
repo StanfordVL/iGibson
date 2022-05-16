@@ -195,7 +195,9 @@ def batch_obs(
         )
         if sensor == "bump":
             batch["bump"] = batch["bump"][:, None]
-
+        elif sensor == "task_obs":
+            batch["task_obs"] = batch["task_obs"][:, -2:]
+ 
     return batch
 
 

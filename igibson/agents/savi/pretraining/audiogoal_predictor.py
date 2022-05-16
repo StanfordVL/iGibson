@@ -40,3 +40,4 @@ class AudioGoalPredictor(nn.Module):
         audio_observations = audio_observations.permute(0, 3, 1, 2)
         return self.predictor(audio_observations)
 
+

@@ -11,13 +11,16 @@ import itertools
 import torch
 import torch.nn as nn
 from torchsummary import summary
-from igibson.agents.savi_rt.utils.utils import CategoricalNet, GaussianNet
-# from igibson.agents.savi_rt.models.rnn_state_encoder import RNNStateEncoder
-from igibson.agents.savi_rt.models.visual_cnn import VisualCNN
-from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
-from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
-from igibson.agents.savi_rt.models.smt_state_encoder import SMTStateEncoder
-from igibson.agents.savi_rt.utils.dataset import CATEGORIES
+from igibson.agents.savi.utils.utils import CategoricalNet, GaussianNet
+from igibson.agents.savi.models.rnn_state_encoder import RNNStateEncoder
+from igibson.agents.savi.models.visual_cnn import VisualCNN
+from igibson.agents.savi.models.audio_cnn import AudioCNN
+from igibson.agents.savi.models.smt_cnn import SMTCNN
+from igibson.agents.savi.models.smt_state_encoder import SMTStateEncoder
+
+from igibson.agents.savi.utils.dataset import CATEGORIES
+
+DUAL_GOAL_DELIMITER = ','
 
 
 class Policy(nn.Module):
@@ -51,7 +54,7 @@ class Policy(nn.Module):
         ext_memory_masks,
         deterministic=False,
     ):
-        features, rnn_hidden_states, ext_memory_feats, visual_features, audio_features = self.net(
+        features, rnn_hidden_states, ext_memory_feats = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -66,10 +69,10 @@ class Policy(nn.Module):
             action = distribution.sample()
 
         action_log_probs = distribution.log_probs(action)
-        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, visual_features, audio_features
+        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats
 
     def get_value(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        features, _, _, _, _ = self.net(
+        features, _, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         return self.critic(features)
@@ -77,7 +80,7 @@ class Policy(nn.Module):
     def evaluate_actions(
         self, observations, rnn_hidden_states, prev_actions, masks, action, ext_memory, ext_memory_masks
     ):
-        features, rnn_hidden_states, ext_memory_feats, _, _ = self.net(
+        features, rnn_hidden_states, ext_memory_feats = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -272,7 +275,7 @@ class AudioNavSMTNet(Net):
         self._use_location_belief = use_location_belief
         self._hidden_size = hidden_size
         self._action_size = action_space.n if is_discrete else action_space.shape[0]     
-        self._use_belief_encoder = use_belief_encoding # False
+        self._use_belief_encoder = use_belief_encoding
         self._normalize_category_distribution = normalize_category_distribution
         self._use_category_input = use_category_input
         
@@ -287,6 +290,9 @@ class AudioNavSMTNet(Net):
         else:
             action_encoding_dims = 0
         nfeats = self.visual_encoder.feature_dims + action_encoding_dims + audio_feature_dims
+        
+        if 'task_obs' in observation_space.spaces:
+            nfeats += 2
         
         if self._use_category_input:
             nfeats += len(CATEGORIES)
@@ -310,7 +316,7 @@ class AudioNavSMTNet(Net):
             **kwargs
         )
 
-        if self._use_belief_encoder: # False
+        if self._use_belief_encoder:
             self.belief_encoder = nn.Linear(self._hidden_size, self._hidden_size)
 
         if use_pretrained:
@@ -339,7 +345,7 @@ class AudioNavSMTNet(Net):
         return -1
 
     def forward(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        x, visual_features, audio_features = self.get_features(observations, prev_actions)
+        x = self.get_features(observations, prev_actions)
 
         if self._use_belief_as_goal:
             belief = torch.zeros((x.shape[0], self._hidden_size), device=x.device)
@@ -347,12 +353,12 @@ class AudioNavSMTNet(Net):
                 if self._normalize_category_distribution:
                     belief[:, :len(CATEGORIES)] = nn.functional.softmax(observations['category_belief'], dim=1)
                 else:
-                    belief[:, :len(CATEGORIES)] = observations['category_belief'] # :21
+                    belief[:, :len(CATEGORIES)] = observations['category_belief']
 
             if self._use_location_belief:
-                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief'] # 21:23
+                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief']
 
-            if self._use_belief_encoder: # False
+            if self._use_belief_encoder:
                 belief = self.belief_encoder(belief)
         else:
             belief = None
@@ -361,7 +367,7 @@ class AudioNavSMTNet(Net):
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
 
-        return x_att, rnn_hidden_states, x, visual_features, audio_features
+        return x_att, rnn_hidden_states, x
 
     def _get_one_hot(self, actions):
         if actions.shape[1] == self._action_size:
@@ -399,14 +405,13 @@ class AudioNavSMTNet(Net):
 
     def get_features(self, observations, prev_actions):
         x = []
-        visual_output, visual_features = self.visual_encoder(observations)
-        audio_output, audio_features = self.goal_encoder(observations)
-        x.append(visual_output)
+        x.append(self.visual_encoder(observations))
         x.append(self.action_encoder(self._get_one_hot(prev_actions)))
-        x.append(audio_output)
+        x.append(self.goal_encoder(observations))
+        x.append(observations['task_obs'][:, -2:])
         if self._use_category_input:
             x.append(observations["category"])
         x.append(observations["pose_sensor"])
         x = torch.cat(x, dim=1)
 
-        return x, visual_features, audio_features
+        return x

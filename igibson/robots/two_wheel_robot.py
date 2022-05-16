@@ -43,7 +43,7 @@ class TwoWheelRobot(LocomotionRobot):
                 [-wheel_straight_vel, -wheel_straight_vel],
                 [wheel_rotate_vel, -wheel_rotate_vel],
                 [-wheel_rotate_vel, wheel_rotate_vel],
-                [0, 0],
+#                 [0, 0],
             ]
         else:
             # DifferentialDriveController
