@@ -412,7 +412,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         assert not robot._controllers[
             "arm_" + self.arm
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
-        self.skip_base_planning = False
+        self.skip_base_planning = True
         self.skip_arm_planning = True
         self.is_grasping = False
 
