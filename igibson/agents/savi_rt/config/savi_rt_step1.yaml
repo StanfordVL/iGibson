@@ -102,7 +102,7 @@ task: SAVi
 target_dist_min: 4.0
 target_dist_max: 10.0
 goal_format: "cartesian"
-task_obs_dim: 4
+task_obs_dim: 2
 
 # robot
 robot:
@@ -152,7 +152,7 @@ collision_reward_weight: -0.005
 time_reward_weight: -0.01
 
 # termination condition
-dist_tol: 1
+dist_tol: 0.36
 max_step: 500
 max_collisions_allowed: 500
 

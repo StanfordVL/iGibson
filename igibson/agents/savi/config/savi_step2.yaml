@@ -1,13 +1,13 @@
-NUM_PROCESSES: 9
+NUM_PROCESSES: 2
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "data/data_igibson_0108/train.log"
+LOG_FILE: "data/step1_0515_2/train_2.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/data_igibson_0108/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/data_igibson_0108/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/data_igibson_0108/tb"
-MODEL_DIR: "data/models"
+CHECKPOINT_FOLDER: "data/step1_0515_2/checkpoints_2"
+EVAL_CKPT_PATH_DIR: "data/step1_0515_2/checkpoints_2/ckpt.52.pth"
+TENSORBOARD_DIR: "data/step1_0515_2/tb_2"
+MODEL_DIR: "data/step1_0515_2/output"
 TORCH_GPU_ID: 0
 SEED: 0
 VIDEO_OPTION: []
@@ -17,7 +17,6 @@ HAS_DISTRACTOR_SOUND: False
 hidden_size: 512
 ppo_epoch: 2
 num_mini_batch: 1 
-# 2
 num_steps: 150
 value_loss_coef: 0.5
 entropy_coef: 0.05
@@ -35,7 +34,7 @@ use_normalized_advantage: False
 
 policy_type: 'smt'
 pretrained: True
-pretrained_weights: "data/data_igibson_0108/checkpoints/ckpt.105.pth"
+pretrained_weights: "data/step1_0515_2/checkpoints/ckpt.28.pth"
 reset_critic: False
 use_belief_predictor: True
 use_external_memory: True
@@ -69,7 +68,8 @@ train_encoder: False
 current_pred_only: False
 weighting_factor: 0.5
 belief_cfg_lr: 0.001
-label_models: '/viscam/u/wangzz/avGibson/igibson/agents/savi/data/pretraining_models/ckpt.8.pth'
+label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0414/ckpt.25.pth'
+
 
 
 ## igibson
@@ -80,7 +80,7 @@ load_texture: true
 pybullet_load_texture: true
 trav_map_type: with_obj
 trav_map_resolution: 0.1
-trav_map_erosion: 3
+trav_map_erosion: 2
 should_open_all_doors: true
 
 is_discrete: True
@@ -94,14 +94,14 @@ action_activation: tanh
 
 # task
 task: SAVi
-target_dist_min: 1.0
+target_dist_min: 2.0
 target_dist_max: 10.0
-task_obs_dim: 4
+task_obs_dim: 2
 
 # robot
 robot:
    name: AVNavTurtlebot
-   action_type: discrete
+   action_type: continuous
    action_normalize: true
    base_name: null
    scale: 1.0
@@ -109,19 +109,23 @@ robot:
    rendering_params: null
    controller_config:
      base:
-       name: DifferentialDriveController
+        name: JointController
+        motor_type: velocity
+        command_input_limits: default
+        command_output_limits: default
+        use_delta_commands: false
 
 # sensor spec
 goal_format: "cartesian"
-output: [depth, rgb, audio, CategoryBelief, LocationBelief, PoseSensor, task_obs]
+output: [depth, rgb, audio, category_belief, location_belief, pose_sensor, task_obs, category, bump]
 # the last two are for the ground truth
 extra_rgb: false
-audio_write: false
+audio_write: ""
 
 # image
 fisheye: false
-image_width: 64
-image_height: 64
+image_width: 160
+image_height: 160
 vertical_fov: 45
 # depth
 depth_low: 0.8
@@ -136,6 +140,7 @@ audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits"
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
+visible_target: false
 
 # reward only for point nav fixed task
 reward_type: geodesic
@@ -145,7 +150,7 @@ collision_reward_weight: -0.005
 time_reward_weight: -0.01
 
 # termination condition
-dist_tol: 1
+dist_tol: 0.36
 max_step: 500
 max_collisions_allowed: 500
 
@@ -157,3 +162,4 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
+
