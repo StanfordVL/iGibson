@@ -3,6 +3,8 @@ import random
 
 from transforms3d import euler
 
+from igibson.robots.manipulation_robot import IsGraspingState
+
 log = logging.getLogger(__name__)
 
 import time
@@ -33,8 +35,10 @@ from igibson.external.pybullet_tools.utils import (
     plan_joint_motion,
     set_base_values_with_z,
     set_joint_positions,
+    set_pose,
 )
 from igibson.objects.visual_marker import VisualMarker
+from igibson.render.viewer import Viewer
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.utils.utils import l2_distance, quatToXYZW, quatXYZWFromRotMat, restoreState, rotate_vector_2d
@@ -115,7 +119,8 @@ class MotionPlanner(object):
         self.fine_motion_plan = fine_motion_plan
         self.robot_type = self.robot.model_name
 
-        if self.env.simulator.viewer is not None:
+        # Only load for the able Viewer, not for VR or simple viewers
+        if self.env.simulator.viewer is not None and isinstance(self.env.simulator.viewer, Viewer):
             self.env.simulator.viewer.setup_motion_planner(self)
 
         self.arm_interaction_length = 0.2
@@ -159,83 +164,108 @@ class MotionPlanner(object):
         self.env.simulator.step()
         self.simulator_sync()
 
-    def plan_base_motion(self, goal):
+    def plan_base_motion(self, goal, plan_full_base_motion=True):
         """
-        Plan base motion given a base subgoal
+        Plan base motion given a base goal location and orientation
 
-        :param goal: base subgoal
-        :return: waypoints or None if no plan can be found
+        :param goal: base goal location (x, y, theta) in global coordinates
+        :param plan_full_base_motion: compute only feasibility of the goal location and return it as only point in the
+            path
+        :return: path or None if no path can be found
         """
+
         if self.marker is not None:
             self.set_marker_position_yaw([goal[0], goal[1], 0.05], goal[2])
 
         log.debug("Motion planning base goal: {}".format(goal))
 
+        initial_pb_state = p.saveState()
+
         state = self.env.get_state()
         x, y, theta = goal
 
-        map_2d = state["occupancy_grid"] if not self.full_observability_2d_planning else self.map_2d
+        # Check only feasibility of the last location
+        if not plan_full_base_motion:
+            collision_free = self.env.test_valid_position(
+                self.robot,
+                np.array((x, y, self.env.scene.floor_heights[0])),
+                orn=np.array([0, 0, theta]),
+                ignore_self_collision=True,
+                ignore_obj_in_hand=True,
+            )
 
-        if not self.full_observability_2d_planning:
-            yaw = self.robot.get_rpy()[2]
-            half_occupancy_range = self.occupancy_range / 2.0
-            robot_position_xy = self.robot.get_position()[:2]
-            corners = [
-                robot_position_xy + rotate_vector_2d(local_corner, -yaw)
-                for local_corner in [
-                    np.array([half_occupancy_range, half_occupancy_range]),
-                    np.array([half_occupancy_range, -half_occupancy_range]),
-                    np.array([-half_occupancy_range, half_occupancy_range]),
-                    np.array([-half_occupancy_range, -half_occupancy_range]),
+            if collision_free:
+                path = [goal]
+            else:
+                log.warning("Goal in collision")
+                path = None
+        else:
+            map_2d = state["occupancy_grid"] if not self.full_observability_2d_planning else self.map_2d
+
+            if not self.full_observability_2d_planning:
+                yaw = self.robot.get_rpy()[2]
+                half_occupancy_range = self.occupancy_range / 2.0
+                robot_position_xy = self.robot.get_position()[:2]
+                corners = [
+                    robot_position_xy + rotate_vector_2d(local_corner, -yaw)
+                    for local_corner in [
+                        np.array([half_occupancy_range, half_occupancy_range]),
+                        np.array([half_occupancy_range, -half_occupancy_range]),
+                        np.array([-half_occupancy_range, half_occupancy_range]),
+                        np.array([-half_occupancy_range, -half_occupancy_range]),
+                    ]
                 ]
-            ]
-        else:
-            top_left = self.env.scene.map_to_world(np.array([0, 0]))
-            bottom_right = self.env.scene.map_to_world(np.array(self.map_2d.shape) - np.array([1, 1]))
-            corners = [top_left, bottom_right]
+            else:
+                top_left = self.env.scene.map_to_world(np.array([0, 0]))
+                bottom_right = self.env.scene.map_to_world(np.array(self.map_2d.shape) - np.array([1, 1]))
+                corners = [top_left, bottom_right]
 
-        if self.collision_with_pb_2d_planning:
-            # obstacles = [
-            #     body_id
-            #     for body_id in self.env.scene.get_body_ids()
-            #     if body_id not in self.robot.get_body_ids()
-            #     and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
-            # ]
-            # print('1.', obstacles)
-            obstacles = [
-                item.get_body_ids()[0]
-                for item in self.env.scene.objects_by_category["bottom_cabinet"]
-            ]
-            # print('2.', obstacles)
-        else:
-            obstacles = []
+            if self.collision_with_pb_2d_planning:
+                obstacles = [
+                    body_id
+                    for body_id in self.env.scene.get_body_ids()
+                    if body_id not in self.robot.get_body_ids()
+                    and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+                ]
+                # TODO: keeping this for Chen, remove later
+                # obstacles = [
+                #     item.get_body_ids()[0]
+                #     for item in self.env.scene.objects_by_category["bottom_cabinet"]
+                # ]
+            else:
+                obstacles = []
 
-        path = plan_base_motion_2d(
-            self.robot_body_id,
-            [x, y, theta],
-            (tuple(np.min(corners, axis=0)), tuple(np.max(corners, axis=0))),
-            map_2d=map_2d,
-            occupancy_range=self.occupancy_range,
-            grid_resolution=self.grid_resolution,
-            # If we use the global map, it has been eroded: we do not need to use the full size of the robot, a 1 px
-            # robot would be enough
-            robot_footprint_radius_in_map=[self.robot_footprint_radius_in_map, 1][self.full_observability_2d_planning],
-            resolutions=self.base_mp_resolutions,
-            # Add all objects in the scene as obstacles except the robot itself and the floor
-            obstacles=obstacles,
-            algorithm=self.base_mp_algo,
-            optimize_iter=self.optimize_iter,
-            visualize_planning=self.visualize_2d_planning,
-            visualize_result=self.visualize_2d_result,
-            metric2map=[None, self.env.scene.world_to_map][self.full_observability_2d_planning],
-            flip_vertically=self.full_observability_2d_planning,
-            use_pb_for_collisions=self.collision_with_pb_2d_planning,
-        )
+            path = plan_base_motion_2d(
+                self.robot_body_id,
+                [x, y, theta],
+                (tuple(np.min(corners, axis=0)), tuple(np.max(corners, axis=0))),
+                map_2d=map_2d,
+                occupancy_range=self.occupancy_range,
+                grid_resolution=self.grid_resolution,
+                # If we use the global map, it has been eroded: we do not need to use the full size of the robot, a 1 px
+                # robot would be enough
+                robot_footprint_radius_in_map=[self.robot_footprint_radius_in_map, 1][
+                    self.full_observability_2d_planning
+                ],
+                resolutions=self.base_mp_resolutions,
+                # Add all objects in the scene as obstacles except the robot itself and the floor
+                obstacles=obstacles,
+                algorithm=self.base_mp_algo,
+                optimize_iter=self.optimize_iter,
+                visualize_planning=self.visualize_2d_planning,
+                visualize_result=self.visualize_2d_result,
+                metric2map=[None, self.env.scene.world_to_map][self.full_observability_2d_planning],
+                flip_vertically=self.full_observability_2d_planning,
+                use_pb_for_collisions=self.collision_with_pb_2d_planning,
+            )
 
         if path is not None and len(path) > 0:
             log.debug("Path found!")
         else:
             log.debug("Path NOT found!")
+
+        restoreState(initial_pb_state)
+        p.removeState(initial_pb_state)
 
         return path
 
@@ -251,6 +281,15 @@ class MotionPlanner(object):
             if not keep_last_location:
                 initial_pb_state = p.saveState()
 
+            grasping_object = self.robot.is_grasping() == IsGraspingState.TRUE
+            grasped_obj_id = self.robot._ag_obj_in_hand[self.robot.default_arm]
+
+            if grasping_object:
+                gripper_pos = self.robot.get_eef_position(arm="default")
+                gripper_orn = self.robot.get_eef_orientation(arm="default")
+                obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
+                grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
+
             if self.mode in ["gui_non_interactive", "gui_interactive"]:
                 for way_point in path:
                     robot_position, robot_orn = self.env.robots[0].get_position_orientation()
@@ -259,6 +298,11 @@ class MotionPlanner(object):
                     robot_orn = p.getQuaternionFromEuler([0, 0, way_point[2]])
 
                     self.env.robots[0].set_position_orientation(robot_position, robot_orn)
+                    if grasping_object:
+                        gripper_pos = self.robot.get_eef_position(arm="default")
+                        gripper_orn = self.robot.get_eef_orientation(arm="default")
+                        object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
+                        set_pose(grasped_obj_id, object_pose)
                     self.simulator_sync()
             else:
                 robot_position, robot_orn = self.env.robots[0].get_position_orientation()
@@ -266,6 +310,11 @@ class MotionPlanner(object):
                 robot_position[1] = path[-1][1]
                 robot_orn = p.getQuaternionFromEuler([0, 0, path[-1][2]])
                 self.env.robots[0].set_position_orientation(robot_position, robot_orn)
+                if grasping_object:
+                    gripper_pos = self.robot.get_eef_position(arm="default")
+                    gripper_orn = self.robot.get_eef_orientation(arm="default")
+                    object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
+                    set_pose(grasped_obj_id, object_pose)
                 self.simulator_sync()
 
             if not keep_last_location:
@@ -296,13 +345,7 @@ class MotionPlanner(object):
             joint_range = [item + 1 for item in joint_range]
             joint_damping = [0.1 for _ in joint_range]
         elif self.robot_type == "Tiago":
-            # print(get_joints(self.robot_body_id))
-            # print(get_joint_names(self.robot_body_id, get_joints(self.robot_body_id)))
-            # print(get_movable_joints(self.robot_body_id))
-            # print(get_joint_names(self.robot_body_id, get_movable_joints(self.robot_body_id)))
-            # print(self.robot.arm_joint_names[self.robot.default_arm])
-            # print(len(self.robot.arm_joint_names[self.robot.default_arm]))
-            # print(len(get_joint_names(self.robot_body_id, get_movable_joints(self.robot_body_id))))
+            # TODO: Could we do this for Fetch too? Compare values
             max_limits = get_max_limits(self.robot_body_id, get_movable_joints(self.robot_body_id))
             min_limits = get_min_limits(self.robot_body_id, get_movable_joints(self.robot_body_id))
             current_position = get_joint_positions(self.robot_body_id, get_movable_joints(self.robot_body_id))
@@ -318,7 +361,13 @@ class MotionPlanner(object):
         return max_limits, min_limits, rest_position, joint_range, joint_damping
 
     def get_joint_pose_for_ee_pose_with_ik(
-        self, ee_position, ee_orientation=None, arm=None, check_collisions=True, randomize_initial_pose=True, obj_name=None
+        self,
+        ee_position,
+        ee_orientation=None,
+        arm=None,
+        check_collisions=True,
+        randomize_initial_pose=True,
+        obj_name=None,
     ):
         """
         Attempt to find arm_joint_pose that satisfies ee_position (and possibly, ee_orientation)
@@ -383,7 +432,9 @@ class MotionPlanner(object):
             kwargs = dict()
             if ee_orientation is not None:
                 kwargs["targetOrientation"] = ee_orientation
-            if obj_name in ['microwave.n.02_1-cleaning_microwave_oven',]:
+            if obj_name in [
+                "microwave.n.02_1-cleaning_microwave_oven",
+            ]:
                 kwargs["targetOrientation"] = (0.1830127, -0.1830127, 0.6830127, 0.6830127)
             joint_pose = p.calculateInverseKinematics(
                 self.robot_body_id,
@@ -404,8 +455,8 @@ class MotionPlanner(object):
             set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_pose)
 
             dist = l2_distance(self.robot.get_eef_position(arm=arm), ee_position)
-            # print('dist', dist)
             if dist > self.arm_ik_threshold:
+                log.warning("IK solution is not close enough to the desired pose. Distance: {}".format(dist))
                 n_attempt += 1
                 continue
 
@@ -422,7 +473,7 @@ class MotionPlanner(object):
 
                 if not collision_free:
                     n_attempt += 1
-                    log.debug("IK solution brings the arm into collision")
+                    log.warning("IK solution brings the arm into collision")
                     continue
 
                 # gripper should not have any self-collision
@@ -433,7 +484,7 @@ class MotionPlanner(object):
                 )
                 if not collision_free:
                     n_attempt += 1
-                    log.debug("Gripper in collision")
+                    log.warning("IK solution brings the gripper into collision")
                     continue
 
             # self.episode_metrics['arm_ik_time'] += time() - ik_start
@@ -493,6 +544,9 @@ class MotionPlanner(object):
                 "Should it use the utils function or the iG function to move the arm? What indices?"
             )
             exit(-1)
+        else:
+            # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
+            self.robot.untuck()
 
         disabled_colliding_links = []
         if disable_collision_hand_links:
@@ -562,8 +616,6 @@ class MotionPlanner(object):
         joint_pose = self.get_joint_pose_for_ee_pose_with_ik(ee_position, ee_orientation=ee_orientation, arm=arm)
 
         if joint_pose is not None:
-            # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
-            self.robot.untuck()
             path = self.plan_arm_motion_to_joint_pose(
                 joint_pose, initial_arm_configuration=initial_arm_configuration, arm=arm
             )
@@ -578,7 +630,7 @@ class MotionPlanner(object):
 
     def plan_ee_straight_line_motion(
         self,
-        initial_pose,
+        initial_arm_pose,
         line_initial_point,
         line_direction,
         ee_orn=None,
@@ -591,16 +643,25 @@ class MotionPlanner(object):
                 line_initial_point, line_direction, line_length
             )
         )
+        log.warning("Initial joint configuration {}".format(initial_arm_pose))
 
-        # Start planning from the last pose in the pre-push trajectory
+        if line_length == 0.0:
+            log.warning("Requested line of length 0. Returning a path with only one configuration: initial_arm_pose")
+            return [initial_arm_pose]
+
+        initial_pb_state = p.saveState()
+
+        # Start planning from the given pose
         if self.robot_type != "BehaviorRobot":
             arm_joint_pb_ids = np.array(
                 joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
             )
-            set_joint_positions(self.robot_body_id, arm_joint_pb_ids, initial_pose)
+            set_joint_positions(self.robot_body_id, arm_joint_pb_ids, initial_arm_pose)
             self.simulator_sync()
         else:
-            self.robot.set_eef_position_orientation(initial_pose[:3], p.getQuaternionFromEuler(initial_pose[3:]), arm)
+            self.robot.set_eef_position_orientation(
+                initial_arm_pose[:3], p.getQuaternionFromEuler(initial_arm_pose[3:]), arm
+            )
             self.simulator_sync()
 
         line_segment = np.array(line_direction) * (line_length)
@@ -617,11 +678,15 @@ class MotionPlanner(object):
             )
 
             if joint_pose is None:
+                restoreState(initial_pb_state)
+                p.removeState(initial_pb_state)
                 log.warning("Failed to retrieve IK solution for EE line path. Failure.")
                 return None
 
             line_path.append(joint_pose)
 
+        restoreState(initial_pb_state)
+        p.removeState(initial_pb_state)
         return line_path
 
     def plan_ee_push(
@@ -677,9 +742,10 @@ class MotionPlanner(object):
             )
         else:
             log.warning("Not planning the pre-push path, only checking feasibility of the last location.")
-            pre_push_path = [
-                self.get_joint_pose_for_ee_pose_with_ik(pre_pushing_location, ee_orientation=ee_pushing_orn, arm=arm)
-            ]
+            last_pose = self.get_joint_pose_for_ee_pose_with_ik(
+                pre_pushing_location, ee_orientation=ee_pushing_orn, arm=arm
+            )
+            pre_push_path = [last_pose] if last_pose is not None else []
 
         push_interaction_path = None
 
@@ -705,6 +771,7 @@ class MotionPlanner(object):
         self,
         pulling_location,
         pulling_direction,
+        ee_pulling_orn=None,
         pre_pulling_distance=0.1,
         pulling_distance=0.1,
         pulling_steps=50,
@@ -747,25 +814,28 @@ class MotionPlanner(object):
             "".format(pre_pulling_distance, pre_pulling_location)
         )
 
-        # Compute orientation of the hand to align the fingers to the opposite of the pulling direction and the palm up
-        # to the ceiling
-        # Assuming fingers point in +x, palm points in +z in eef
-        # In world frame, +z points up
-        desired_x_dir_normalized = -np.array(pulling_direction) / np.linalg.norm(np.array(pulling_direction))
-        z_dir_in_wf = np.array([0, 0, 1.0])
-        desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
-        desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
-        desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
-        rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
-        quatt = quatXYZWFromRotMat(rot_matrix)
+        if ee_pulling_orn is None:
+            # Compute orientation of the hand to align the fingers to the opposite of the pulling direction and the palm up
+            # to the ceiling
+            # Assuming fingers point in +x, palm points in +z in eef
+            # In world frame, +z points up
+            desired_x_dir_normalized = -np.array(pulling_direction) / np.linalg.norm(np.array(pulling_direction))
+            z_dir_in_wf = np.array([0, 0, 1.0])
+            desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
+            desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
+            desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
+            rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
+            quatt = quatXYZWFromRotMat(rot_matrix)
+        else:
+            log.warning("Planning pulling with end-effector orientation {}".format(ee_pulling_orn))
+            quatt = ee_pulling_orn
 
         if plan_full_pre_pull_motion:
             pre_pull_path = self.plan_ee_motion_to_cartesian_pose(pre_pulling_location, ee_orientation=quatt, arm=arm)
         else:
             log.warning("Not planning the pre-pull path, only checking feasibility of the last location.")
-            pre_pull_path = [
-                self.get_joint_pose_for_ee_pose_with_ik(pre_pulling_location, ee_orientation=quatt, arm=arm)
-            ]
+            last_pose = self.get_joint_pose_for_ee_pose_with_ik(pre_pulling_location, ee_orientation=quatt, arm=arm)
+            pre_pull_path = [last_pose] if last_pose is not None else []
 
         approach_interaction_path = None
         pull_interaction_path = None
@@ -859,9 +929,8 @@ class MotionPlanner(object):
             pre_grasp_path = self.plan_ee_motion_to_cartesian_pose(pre_grasping_location, ee_orientation=quatt, arm=arm)
         else:
             log.warning("Not planning the pre-grasp path, only checking feasibility of the last location.")
-            pre_grasp_path = [
-                self.get_joint_pose_for_ee_pose_with_ik(pre_grasping_location, ee_orientation=quatt, arm=arm)
-            ]
+            last_pose = self.get_joint_pose_for_ee_pose_with_ik(pre_grasping_location, ee_orientation=quatt, arm=arm)
+            pre_grasp_path = [last_pose] if last_pose is not None else []
 
         grasp_interaction_path = None
 
@@ -919,7 +988,8 @@ class MotionPlanner(object):
             arm = self.robot.default_arm
             log.warning("dropping with the default arm: {}".format(arm))
 
-        pre_dropping_location = dropping_location - dropping_distance * np.array([0, 0, 1])
+        pre_dropping_location = dropping_location + dropping_distance * np.array([0, 0, 1])
+        log.warning("Predropping location {}".format(pre_dropping_location))
 
         if plan_full_pre_drop_motion:
             pre_drop_path = self.plan_ee_motion_to_cartesian_pose(
@@ -927,10 +997,10 @@ class MotionPlanner(object):
             )
         else:
             log.warning("Not planning the pre-drop path, only checking feasibility of the last location.")
-            pre_drop_path = [
-                self.get_joint_pose_for_ee_pose_with_ik(pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm,
-                obj_name=obj_name)
-            ]
+            last_pose = self.get_joint_pose_for_ee_pose_with_ik(
+                pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm, obj_name=obj_name
+            )
+            pre_drop_path = [last_pose] if last_pose is not None else []
 
         if pre_drop_path is None or len(pre_drop_path) == 0:
             log.warning("Planning failed: no path found to pre-dropping location")
@@ -978,7 +1048,7 @@ class MotionPlanner(object):
             "It will plan a motion to a location {} m in front of the toggling location in the toggling direction to {}"
             "".format(pre_toggling_distance, pre_toggling_location)
         )
-        '''
+        """
         # Compute orientation of the hand to align the fingers to the toggling direction and the palm up to the ceiling
         # Assuming fingers point in +x, palm points in +z in eef
         # In world frame, +z points up
@@ -989,7 +1059,7 @@ class MotionPlanner(object):
         desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
         rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
         quatt = quatXYZWFromRotMat(rot_matrix)
-        '''
+        """
         quatt = (0, 0.7071068, 0, 0.7071068)
         if plan_full_pre_toggle_motion:
             pre_toggle_path = self.plan_ee_motion_to_cartesian_pose(
@@ -997,9 +1067,9 @@ class MotionPlanner(object):
             )
         else:
             log.warning("Not planning the pre-toggle path, only checking feasibility of the last location.")
-            pre_toggle_path = [
-                self.get_joint_pose_for_ee_pose_with_ik(pre_toggling_location, ee_orientation=quatt, arm=arm)
-            ]
+            last_pose = self.get_joint_pose_for_ee_pose_with_ik(pre_toggling_location, ee_orientation=quatt, arm=arm)
+            pre_toggle_path = [last_pose] if last_pose is not None else []
+
         toggle_interaction_path = None
 
         if pre_toggle_path is None or len(pre_toggle_path) == 0:
@@ -1020,7 +1090,7 @@ class MotionPlanner(object):
 
         return pre_toggle_path, toggle_interaction_path
 
-    def visualize_arm_path(self, arm_path, reverse_path=False, arm=None):
+    def visualize_arm_path(self, arm_path, reverse_path=False, arm=None, grasped_obj_id=None, keep_last_location=True):
         """
         Dry run arm motion path by setting the arm joint position without physics simulation
 
@@ -1034,34 +1104,57 @@ class MotionPlanner(object):
             arm = self.robot.default_arm
             log.warn("Visualizing arm path for the default arm: {}".format(arm))
 
-        initial_pb_state = p.saveState()
+        if not keep_last_location:
+            initial_pb_state = p.saveState()
+
+        if grasped_obj_id is not None:
+            if self.robot_type != "BehaviorRobot":
+                gripper_pos = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[0]
+                gripper_orn = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[1]
+                obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
+                grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
+            else:
+                gripper_pos = self.robot.get_eef_position(arm)
+                gripper_orn = self.robot.get_eef_orientation(arm)
+                obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
+                grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
         base_pose = get_base_values(self.robot_body_id)
-        if self.mode in ["gui_non_interactive", "gui_interactive"]:
-            if self.robot_type != "BehaviorRobot":
-                arm_joint_pb_ids = np.array(
-                    joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-                )
-                for joint_way_point in arm_path if not reverse_path else reversed(arm_path):
-
-                    set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_way_point)
-                    # set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
-                    self.simulator_sync()
-            else:
-                for (x, y, z, roll, pitch, yaw) in arm_path if not reverse_path else reversed(arm_path):
-                    self.robot.set_eef_position_orientation(
-                        [x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]), arm
-                    )
-                    time.sleep(0.1)
-                    self.simulator_sync()
-        else:
+        execution_path = arm_path if not reverse_path else reversed(arm_path)
+        execution_path = (
+            execution_path if self.mode in ["gui_non_interactive", "gui_interactive"] else [execution_path[-1]]
+        )
+        if self.robot_type != "BehaviorRobot":
             arm_joint_pb_ids = np.array(
                 joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
             )
-            set_joint_positions(self.robot_base_id, arm_joint_pb_ids, arm_path[-1] if not reverse_path else arm_path[0])
+            for joint_way_point in execution_path:
+                set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_way_point)
+                # set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
 
-        restoreState(initial_pb_state)
-        p.removeState(initial_pb_state)
+                # Teleport also the grasped object
+                if grasped_obj_id is not None:
+                    gripper_pos = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[0]
+                    gripper_orn = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[1]
+                    object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
+                    set_pose(grasped_obj_id, object_pose)
+                self.simulator_sync()
+        else:
+            for (x, y, z, roll, pitch, yaw) in execution_path:
+                self.robot.set_eef_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]), arm)
+                # Teleport also the grasped object
+                if grasped_obj_id is not None:
+                    gripper_pos = self.robot.get_eef_position(arm)
+                    gripper_orn = self.robot.get_eef_orientation(arm)
+                    object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
+                    set_pose(grasped_obj_id, object_pose)
+                time.sleep(0.1)
+                self.simulator_sync()
+
+        if not keep_last_location:
+            restoreState(initial_pb_state)
+            self.simulator_sync()
+            p.removeState(initial_pb_state)
 
     def set_marker_position(self, pos):
         """
