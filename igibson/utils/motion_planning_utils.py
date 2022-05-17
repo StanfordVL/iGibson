@@ -184,81 +184,80 @@ class MotionPlanner(object):
         state = self.env.get_state()
         x, y, theta = goal
 
-        goal_collision_free = self.env.test_valid_position(
-            self.robot,
-            np.array((x, y, self.env.scene.floor_heights[0])),
-            orn=np.array([0, 0, theta]),
-            ignore_self_collision=True,
-            ignore_obj_in_hand=True,
-        )
+        # Check only feasibility of the last location
+        if not plan_full_base_motion:
+            collision_free = self.env.test_valid_position(
+                self.robot,
+                np.array((x, y, self.env.scene.floor_heights[0])),
+                orn=np.array([0, 0, theta]),
+                ignore_self_collision=True,
+                ignore_obj_in_hand=True,
+            )
 
-        if not goal_collision_free:
-            log.warning("Goal in collision")
-            path = None
-        else:
-            # Check only feasibility of the last location
-            if not plan_full_base_motion:
-                if goal_collision_free:
-                    path = [goal]
+            if collision_free:
+                path = [goal]
             else:
-                map_2d = state["occupancy_grid"] if not self.full_observability_2d_planning else self.map_2d
+                log.warning("Goal in collision")
+                path = None
+        else:
+            map_2d = state["occupancy_grid"] if not self.full_observability_2d_planning else self.map_2d
 
-                if not self.full_observability_2d_planning:
-                    yaw = self.robot.get_rpy()[2]
-                    half_occupancy_range = self.occupancy_range / 2.0
-                    robot_position_xy = self.robot.get_position()[:2]
-                    corners = [
-                        robot_position_xy + rotate_vector_2d(local_corner, -yaw)
-                        for local_corner in [
-                            np.array([half_occupancy_range, half_occupancy_range]),
-                            np.array([half_occupancy_range, -half_occupancy_range]),
-                            np.array([-half_occupancy_range, half_occupancy_range]),
-                            np.array([-half_occupancy_range, -half_occupancy_range]),
-                        ]
+            if not self.full_observability_2d_planning:
+                yaw = self.robot.get_rpy()[2]
+                half_occupancy_range = self.occupancy_range / 2.0
+                robot_position_xy = self.robot.get_position()[:2]
+                corners = [
+                    robot_position_xy + rotate_vector_2d(local_corner, -yaw)
+                    for local_corner in [
+                        np.array([half_occupancy_range, half_occupancy_range]),
+                        np.array([half_occupancy_range, -half_occupancy_range]),
+                        np.array([-half_occupancy_range, half_occupancy_range]),
+                        np.array([-half_occupancy_range, -half_occupancy_range]),
                     ]
-                else:
-                    top_left = self.env.scene.map_to_world(np.array([0, 0]))
-                    bottom_right = self.env.scene.map_to_world(np.array(self.map_2d.shape) - np.array([1, 1]))
-                    corners = [top_left, bottom_right]
+                ]
+            else:
+                top_left = self.env.scene.map_to_world(np.array([0, 0]))
+                bottom_right = self.env.scene.map_to_world(np.array(self.map_2d.shape) - np.array([1, 1]))
+                corners = [top_left, bottom_right]
 
-                if self.collision_with_pb_2d_planning:
-                    obstacles = [
-                        body_id
-                        for body_id in self.env.scene.get_body_ids()
-                        if body_id not in self.robot.get_body_ids()
-                        and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
-                    ]
-                    # TODO: keeping this for Chen, remove later
-                    # obstacles = [
-                    #     item.get_body_ids()[0]
-                    #     for item in self.env.scene.objects_by_category["bottom_cabinet"]
-                    # ]
-                else:
-                    obstacles = []
+            if self.collision_with_pb_2d_planning:
+                obstacles = [
+                    body_id
+                    for body_id in self.env.scene.get_body_ids()
+                    if body_id not in self.robot.get_body_ids()
+                    and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+                ]
+                # TODO: keeping this for Chen, remove later
+                # obstacles = [
+                #     item.get_body_ids()[0]
+                #     for item in self.env.scene.objects_by_category["bottom_cabinet"]
+                # ]
+            else:
+                obstacles = []
 
-                path = plan_base_motion_2d(
-                    self.robot_body_id,
-                    [x, y, theta],
-                    (tuple(np.min(corners, axis=0)), tuple(np.max(corners, axis=0))),
-                    map_2d=map_2d,
-                    occupancy_range=self.occupancy_range,
-                    grid_resolution=self.grid_resolution,
-                    # If we use the global map, it has been eroded: we do not need to use the full size of the robot, a 1 px
-                    # robot would be enough
-                    robot_footprint_radius_in_map=[self.robot_footprint_radius_in_map, 1][
-                        self.full_observability_2d_planning
-                    ],
-                    resolutions=self.base_mp_resolutions,
-                    # Add all objects in the scene as obstacles except the robot itself and the floor
-                    obstacles=obstacles,
-                    algorithm=self.base_mp_algo,
-                    optimize_iter=self.optimize_iter,
-                    visualize_planning=self.visualize_2d_planning,
-                    visualize_result=self.visualize_2d_result,
-                    metric2map=[None, self.env.scene.world_to_map][self.full_observability_2d_planning],
-                    flip_vertically=self.full_observability_2d_planning,
-                    use_pb_for_collisions=self.collision_with_pb_2d_planning,
-                )
+            path = plan_base_motion_2d(
+                self.robot_body_id,
+                [x, y, theta],
+                (tuple(np.min(corners, axis=0)), tuple(np.max(corners, axis=0))),
+                map_2d=map_2d,
+                occupancy_range=self.occupancy_range,
+                grid_resolution=self.grid_resolution,
+                # If we use the global map, it has been eroded: we do not need to use the full size of the robot, a 1 px
+                # robot would be enough
+                robot_footprint_radius_in_map=[self.robot_footprint_radius_in_map, 1][
+                    self.full_observability_2d_planning
+                ],
+                resolutions=self.base_mp_resolutions,
+                # Add all objects in the scene as obstacles except the robot itself and the floor
+                obstacles=obstacles,
+                algorithm=self.base_mp_algo,
+                optimize_iter=self.optimize_iter,
+                visualize_planning=self.visualize_2d_planning,
+                visualize_result=self.visualize_2d_result,
+                metric2map=[None, self.env.scene.world_to_map][self.full_observability_2d_planning],
+                flip_vertically=self.full_observability_2d_planning,
+                use_pb_for_collisions=self.collision_with_pb_2d_planning,
+            )
 
         if path is not None and len(path) > 0:
             log.debug("Path found!")
