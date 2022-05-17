@@ -44,7 +44,8 @@ class BaseActionPrimitiveSet(with_metaclass(ABCMeta, object)):
         if not inspect.isabstract(cls):
             REGISTERED_PRIMITIVE_SETS[cls.__name__] = cls
 
-    def __init__(self, task, scene, robot):
+    def __init__(self, env, task, scene, robot):
+        self.env = env
         self.task: BaseTask = task
         self.scene: InteractiveIndoorScene = scene
         self.robot: BaseRobot = robot
