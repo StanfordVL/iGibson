@@ -195,12 +195,18 @@ class MotionPlanner(object):
             corners = [top_left, bottom_right]
 
         if self.collision_with_pb_2d_planning:
+            # obstacles = [
+            #     body_id
+            #     for body_id in self.env.scene.get_body_ids()
+            #     if body_id not in self.robot.get_body_ids()
+            #     and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+            # ]
+            # print('1.', obstacles)
             obstacles = [
-                body_id
-                for body_id in self.env.scene.get_body_ids()
-                if body_id not in self.robot.get_body_ids()
-                and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+                item.get_body_ids()[0]
+                for item in self.env.scene.objects_by_category["bottom_cabinet"]
             ]
+            # print('2.', obstacles)
         else:
             obstacles = []
 
@@ -312,7 +318,7 @@ class MotionPlanner(object):
         return max_limits, min_limits, rest_position, joint_range, joint_damping
 
     def get_joint_pose_for_ee_pose_with_ik(
-        self, ee_position, ee_orientation=None, arm=None, check_collisions=True, randomize_initial_pose=True
+        self, ee_position, ee_orientation=None, arm=None, check_collisions=True, randomize_initial_pose=True, obj_name=None
     ):
         """
         Attempt to find arm_joint_pose that satisfies ee_position (and possibly, ee_orientation)
@@ -377,6 +383,8 @@ class MotionPlanner(object):
             kwargs = dict()
             if ee_orientation is not None:
                 kwargs["targetOrientation"] = ee_orientation
+            if obj_name in ['microwave.n.02_1-cleaning_microwave_oven',]:
+                kwargs["targetOrientation"] = (0.1830127, -0.1830127, 0.6830127, 0.6830127)
             joint_pose = p.calculateInverseKinematics(
                 self.robot_body_id,
                 self.robot.eef_links[arm].link_id,
@@ -882,6 +890,7 @@ class MotionPlanner(object):
         dropping_distance=0.3,
         plan_full_pre_drop_motion=True,
         arm=None,
+        obj_name=None,
     ):
         """
         Plans a full dropping trajectory.
@@ -919,7 +928,8 @@ class MotionPlanner(object):
         else:
             log.warning("Not planning the pre-drop path, only checking feasibility of the last location.")
             pre_drop_path = [
-                self.get_joint_pose_for_ee_pose_with_ik(pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm)
+                self.get_joint_pose_for_ee_pose_with_ik(pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm,
+                obj_name=obj_name)
             ]
 
         if pre_drop_path is None or len(pre_drop_path) == 0:
@@ -968,7 +978,7 @@ class MotionPlanner(object):
             "It will plan a motion to a location {} m in front of the toggling location in the toggling direction to {}"
             "".format(pre_toggling_distance, pre_toggling_location)
         )
-
+        '''
         # Compute orientation of the hand to align the fingers to the toggling direction and the palm up to the ceiling
         # Assuming fingers point in +x, palm points in +z in eef
         # In world frame, +z points up
@@ -979,7 +989,8 @@ class MotionPlanner(object):
         desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
         rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
         quatt = quatXYZWFromRotMat(rot_matrix)
-
+        '''
+        quatt = (0, 0.7071068, 0, 0.7071068)
         if plan_full_pre_toggle_motion:
             pre_toggle_path = self.plan_ee_motion_to_cartesian_pose(
                 pre_toggling_location, ee_orientation=quatt, arm=arm

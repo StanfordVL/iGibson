@@ -308,11 +308,11 @@ action_list_cleaning_microwave_oven = [
     [0, 'cabinet.n.01_1'],
     [1, 'towel'],  # pick
     [0, 'sink.n.01_1'],  # move
-    # [2, 'sink.n.01_1'],  # place
-    # [3, 'sink.n.01_1'],  # toggle
-    # [1, 'towel'],  # pick
-    # [0, 'microwave.n.02_1'],  # move
-    # [2, 'microwave.n.02_1'],  # place
+    [2, 'sink.n.01_1'],  # place
+    [3, 'sink.n.01_1'],  # toggle
+    [1, 'towel'],  # pick
+    [0, 'microwave.n.02_1'],  # move
+    [2, 'microwave.n.02_1'],  # place
 ]
 
 action_dict = {'installing_a_printer': action_list_installing_a_printer,
@@ -590,6 +590,8 @@ class SkillEnv(gym.Env):
                     if plan is not None and len(plan) > 0:
                         # self.planner.dry_run_base_plan(plan)
                         self.planner.visualize_base_path(plan)
+                    else:
+                        logging.error("MP couldn't find path to the base location.")
 
                 if self.print_log:
                     print('move {}'.format(action[1]))
@@ -658,7 +660,7 @@ class SkillEnv(gym.Env):
                 if pre_interaction_path is not None and len(pre_interaction_path) != 0:
                     print("Visualizing drop")
                     self.planner.visualize_arm_path(pre_interaction_path)
-                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    self.planner.visualize_arm_path(pre_interaction_path, reverse_path=True)
                     print("End of the drop visualization")
                 else:
                     logging.error("MP couldn't find path to drop.")
@@ -892,7 +894,7 @@ class SkillEnv(gym.Env):
                 pick_place_pos[1] += vector[1]
                 pick_place_pos[2] += vector[2]
                 # print('place_pos: ', pick_place_pos)
-                pre_interaction_path, _ = self.planner.plan_ee_drop(pick_place_pos)
+                pre_interaction_path, _ = self.planner.plan_ee_drop(pick_place_pos, dropping_distance=0.1, obj_name=action[1]+'-'+self.config['task'])
                 # self.planner.execute_arm_place(plan, pick_place_pos, -np.array(hit_normal))
                 if pre_interaction_path is not None and len(pre_interaction_path) != 0:
                     print("Visualizing drop")
