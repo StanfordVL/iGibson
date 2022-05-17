@@ -212,6 +212,12 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             [self.trunk_control_idx, self.arm_control_idx[self.default_arm]]
         )
 
+        if not self.rigid_trunk:
+            # Override joint idx in Joint arm controller
+            cfg["arm_{}".format(self.default_arm)]["JointController"]["joint_idx"] = np.concatenate(
+                [self.trunk_control_idx, self.arm_control_idx[self.default_arm]]
+            )
+
         # If using rigid trunk, we also clamp its limits
         if self.rigid_trunk:
             cfg["arm_{}".format(self.default_arm)]["InverseKinematicsController"]["control_limits"]["position"][0][
