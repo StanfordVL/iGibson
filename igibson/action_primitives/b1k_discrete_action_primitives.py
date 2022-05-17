@@ -409,8 +409,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         assert not robot._controllers[
             "arm_" + self.arm
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
-        self.skip_base_planning = True
-        self.skip_arm_planning = True
+        self.skip_base_planning = False
+        self.skip_arm_planning = False
         self.is_grasping = False
 
     def get_action_space(self):
@@ -772,13 +772,15 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pre_pulling_distance = 0.10
         pulling_distance = 0.30
 
+        plan_full_pre_pull_motion = not self.skip_arm_planning
+
         pre_pull_path, approach_interaction_path, pull_interaction_path = self.planner.plan_ee_pull(
             pulling_location=pick_place_pos,
             pulling_direction=pulling_direction,
             ee_pulling_orn=ee_pulling_orn,
             pre_pulling_distance=pre_pulling_distance,
             pulling_distance=pulling_distance,
-            plan_full_pre_pull_motion=False,
+            plan_full_pre_pull_motion=plan_full_pre_pull_motion,
             pulling_steps=15,
         )
 
@@ -857,12 +859,14 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pushing_distance = 0.3
         ee_pushing_orn = np.array(p.getQuaternionFromEuler((0, np.pi / 2, 0)))
 
+        plan_full_pre_push_motion = not self.skip_arm_planning
+
         pre_push_path, push_interaction_path = self.planner.plan_ee_push(
             pick_place_pos,
             pushing_direction=pushing_direction,
             ee_pushing_orn=ee_pushing_orn,
             pushing_distance=pushing_distance,
-            plan_full_pre_push_motion=False,
+            plan_full_pre_push_motion=plan_full_pre_push_motion,
         )
 
         if (
