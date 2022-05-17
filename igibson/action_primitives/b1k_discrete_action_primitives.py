@@ -410,7 +410,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             "arm_" + self.arm
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
         self.skip_base_planning = False
-        self.skip_arm_planning = False
+        self.skip_arm_planning = True
         self.is_grasping = False
 
     def get_action_space(self):
@@ -572,6 +572,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         return
 
     def _pick(self, object_name):
+        logger.warning("Picking object {}".format(object_name))
         # Don't do anything if the object is already grasped.
         object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
         robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
@@ -654,6 +655,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         logger.warning("Pick action completed")
 
     def _place(self, object_name):
+        logger.warning("Placing on object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -697,6 +699,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         logger.warning("Place action completed")
 
     def _toggle(self, object_name):
+        logger.warning("Toggling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -754,6 +757,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         logger.warning("Toggle action completed")
 
     def _pull(self, object_name):
+        logger.warning("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -841,6 +845,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         logger.warning("Pull action completed")
 
     def _push(self, object_name):
+        logger.warning("Pushing object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PUSH][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
