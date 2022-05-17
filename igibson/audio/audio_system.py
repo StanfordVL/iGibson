@@ -133,7 +133,7 @@ class AudioSystem(object):
                     self.alwaysCountCollisionIDs.add(obj)
 
         self.sourceToEnabled, self.sourceToBuffer, self.sourceToRepeat,  self.sourceToResonanceID = {}, {}, {}, {}
-        self.current_output, self.complete_output = [], []
+        self.current_output, self.complete_output = [0]*(4*self.framesPerBuf), []
 
         # Try to stream audio live
         if stream_audio:
