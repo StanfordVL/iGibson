@@ -1,3 +1,5 @@
+import logging
+
 import gym
 
 from igibson.action_primitives.action_primitive_set_base import (
@@ -6,6 +8,8 @@ from igibson.action_primitives.action_primitive_set_base import (
     BaseActionPrimitiveSet,
 )
 from igibson.envs.igibson_env import iGibsonEnv
+
+logger = logging.getLogger(__name__)
 
 
 class ActionPrimitivesEnv(gym.Env):
@@ -21,7 +25,7 @@ class ActionPrimitivesEnv(gym.Env):
         """
         self.env = iGibsonEnv(**kwargs)
         self.action_generator: BaseActionPrimitiveSet = REGISTERED_PRIMITIVE_SETS[action_primitives_class_name](
-            self.env.task, self.env.scene, self.env.robots[0]
+            self.env, self.env.task, self.env.scene, self.env.robots[0]
         )
 
         self.action_space = self.action_generator.get_action_space()
@@ -32,7 +36,7 @@ class ActionPrimitivesEnv(gym.Env):
         self.num_attempts = num_attempts
 
     def step(self, action: int):
-        # Run the goal generator and feed the goals into the motion planning env.
+        # Run the goal generator and feed the goals into the env.
         accumulated_reward = 0
         accumulated_obs = []
 
@@ -60,10 +64,9 @@ class ActionPrimitivesEnv(gym.Env):
                     info["primitive_error_metadata"] = None
                     info["primitive_error_message"] = None
 
-                    # If the episode is done, stop sending more commands.
-                    if done:
-                        break
+                break
             except ActionPrimitiveError as e:
+                logger.warning("Action primitive failed! Exception {}".format(e))
                 # Record the error info.
                 info["primitive_success"] = False
                 info["primitive_error_reason"] = e.reason
