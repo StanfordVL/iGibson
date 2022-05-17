@@ -713,13 +713,13 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         toggle_pos[1] += vector[1]
         toggle_pos[2] += vector[2]
 
-        pre_toggle_distance = 0.0
+        pre_toggling_distance = 0.0
         plan_full_pre_toggle_motion = not self.skip_arm_planning
 
         pre_toggle_path, toggle_interaction_path = self.planner.plan_ee_toggle(
             toggle_pos,
             -np.array(self.default_direction),
-            pre_toggle_distance=pre_toggle_distance,
+            pre_toggling_distance=pre_toggling_distance,
             plan_full_pre_toggle_motion=plan_full_pre_toggle_motion,
         )
 
@@ -727,7 +727,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             pre_toggle_path is None
             or len(pre_toggle_path) == 0
             or toggle_interaction_path is None
-            or (len(toggle_interaction_path) == 0 and pre_toggle_distance != 0)
+            or (len(toggle_interaction_path) == 0 and pre_toggling_distance != 0)
         ):
             raise ActionPrimitiveError(
                 ActionPrimitiveError.Reason.PLANNING_ERROR,
