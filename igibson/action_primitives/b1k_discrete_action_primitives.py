@@ -397,7 +397,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         )
         self.default_direction = np.array((0.0, 0.0, -1.0))  # default hit normal
         self.execute_free_space_motion = execute_free_space_motion
-        self.obj_pose_check = False
+
+        # Whether we check if the objects have moved from the previous navigation attempt and do not try to navigate
+        # to them if they have (this avoids moving to objects after pick and place)
+        self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
         assert isinstance(
@@ -520,53 +523,51 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _navigate_to(self, object_name):
         logger.warning("Navigating to object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name]
-        skip_move_flag = False
 
         # If we check whether the object has moved from its initial location. If we check that, and the object has moved
         # more than a threshold, we ignore the command
         moved_distance_threshold = 1e-1
         if self.obj_pose_check:
             if self.env.config["task"] in ["putting_away_Halloween_decorations"]:
-                obj_pos = self.self.env.task.object_scope[object_name].states[Pose].get_value()[0]
+                obj_pos = self.env.task.object_scope[object_name].states[Pose].get_value()[0]
                 if object_name in ["pumpkin.n.02_1", "pumpkin.n.02_2"]:
                     if object_name not in self.initial_pos_dict:
                         self.initial_pos_dict[object_name] = obj_pos
                     else:
                         moved_distance = np.abs(np.sum(self.initial_pos_dict[object_name] - obj_pos))
-                        if np.abs(np.sum(self.initial_pos_dict[object_name] - obj_pos)) > moved_distance_threshold:
-                            skip_move_flag = True
-                            logger.debug(
-                                "Ignoring command to move to object {} because the object has been moved {} m "
-                                "from its initial location".format(object_name, moved_distance)
+                        if moved_distance > moved_distance_threshold:
+                            raise ActionPrimitiveError(
+                                ActionPrimitiveError.Reason.PRE_CONDITION_ERROR,
+                                "Object moved from its initial location",
+                                {"object_to_navigate": object_name},
                             )
 
-        if not skip_move_flag:
-            obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
-            obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
+        obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
+        obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
-            # process the offset from object frame to world frame
-            mat = quat2mat(obj_rot_XYZW)
-            vector = mat @ np.array(params[:3])
+        # process the offset from object frame to world frame
+        mat = quat2mat(obj_rot_XYZW)
+        vector = mat @ np.array(params[:3])
 
-            # acquire the base direction
-            euler = mat2euler(mat)
-            target_yaw = euler[-1] + params[3]
+        # acquire the base direction
+        euler = mat2euler(mat)
+        target_yaw = euler[-1] + params[3]
 
-            plan = self.planner.plan_base_motion(
-                [obj_pos[0] + vector[0], obj_pos[1] + vector[1], target_yaw],
-                plan_full_base_motion=not self.skip_base_planning,
+        plan = self.planner.plan_base_motion(
+            [obj_pos[0] + vector[0], obj_pos[1] + vector[1], target_yaw],
+            plan_full_base_motion=not self.skip_base_planning,
+        )
+
+        if plan is not None and len(plan) > 0:
+            self.planner.visualize_base_path(plan, keep_last_location=True)
+        else:
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.PLANNING_ERROR,
+                "No base path found to object",
+                {"object_to_navigate": object_name},
             )
 
-            if plan is not None and len(plan) > 0:
-                self.planner.visualize_base_path(plan, keep_last_location=True)
-            else:
-                raise ActionPrimitiveError(
-                    ActionPrimitiveError.Reason.PLANNING_ERROR,
-                    "No base path found to object",
-                    {"object_to_navigate": object_name},
-                )
-
-            logger.warning("Moving to object: {}".format(object_name))
+        logger.warning("Moving to object: {}".format(object_name))
 
         yield self._get_still_action()
         return
