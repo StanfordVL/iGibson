@@ -578,7 +578,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         robot_is_grasping_obj = self.robot.is_grasping(candidate_obj=object_id)
         if robot_is_grasping == IsGraspingState.TRUE:
             if robot_is_grasping_obj == IsGraspingState.TRUE:
-                print("Robot already grasping the desired object")
+                logger.warning("Robot already grasping the desired object")
                 yield np.zeros(self.robot.action_dim)
                 return
             else:
@@ -694,8 +694,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # At the end, close the hand
         yield from self._execute_ungrasp()
 
-        if self.print_log:
-            print("place {}, pos: {}".format(object_name, pick_place_pos))
+        logger.warning("Place action completed")
 
     def _toggle(self, object_name):
         params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
@@ -711,19 +710,48 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         toggle_pos[1] += vector[1]
         toggle_pos[2] += vector[2]
 
+        pre_toggle_distance = 0.0
         plan_full_pre_toggle_motion = not self.skip_arm_planning
 
         pre_toggle_path, toggle_interaction_path = self.planner.plan_ee_toggle(
-            toggle_pos, -np.array(self.default_direction), plan_full_pre_toggle_motion=plan_full_pre_toggle_motion
+            toggle_pos,
+            -np.array(self.default_direction),
+            pre_toggle_distance=pre_toggle_distance,
+            plan_full_pre_toggle_motion=plan_full_pre_toggle_motion,
         )
 
-        # First, teleport the robot to the beginning of the pre-pick path
-        self.planner.visualize_arm_path(pre_toggle_path, arm=self.arm)
-        # Then, execute the interaction_pick_path stopping if there is a contact
-        self._execute_ee_path(toggle_interaction_path, stop_on_contact=True)
+        if (
+            pre_toggle_path is None
+            or len(pre_toggle_path) == 0
+            or toggle_interaction_path is None
+            or (len(toggle_interaction_path) == 0 and pre_toggle_distance != 0)
+        ):
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.PLANNING_ERROR,
+                "No arm path found to toggle object",
+                {"object_to_toggle": object_name},
+            )
 
-        if self.print_log:
-            print("toggle {}".format(object_name))
+        # First, teleport the robot to the beginning of the pre-pick path
+        logger.warning("Visualizing pre-toggle path")
+        self.planner.visualize_arm_path(pre_toggle_path, arm=self.arm, keep_last_location=True)
+        yield self._get_still_action()
+        # Then, execute the interaction_pick_path stopping if there is a contact
+        logger.warning("Executing interaction-toggle path")
+        yield from self._execute_ee_path(toggle_interaction_path, stop_on_contact=True)
+
+        logger.warning("Executing retracting path")
+        if plan_full_pre_toggle_motion:
+            self.planner.visualize_arm_path(pre_toggle_path, arm=self.arm, reverse_path=True, keep_last_location=True)
+        else:
+            self.planner.visualize_arm_path(
+                [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
+                arm=self.arm,
+                keep_last_location=True,
+            )
+        yield self._get_still_action()
+
+        logger.warning("Toggle action completed")
 
     def _pull(self, object_name):
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
@@ -865,5 +893,4 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         )
         yield self._get_still_action()
 
-        if self.print_log:
-            print("push {}".format(object_name))
+        logger.warning("Push action completed")
