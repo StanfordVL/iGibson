@@ -11,6 +11,7 @@ from transforms3d.euler import euler2quat
 
 from igibson import object_states
 from igibson.envs.env_base import BaseEnv
+from igibson.robots import ManipulationRobot
 from igibson.robots.robot_base import BaseRobot
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
@@ -383,7 +384,11 @@ class iGibsonEnv(BaseEnv):
 
         if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
-                log.debug("bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(item[1], item[2], item[3], item[4]))
+                log.debug(
+                    "bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(
+                        self.scene.objects_by_id[item[1]].name, self.scene.objects_by_id[item[2]].name, item[3], item[4]
+                    )
+                )
 
         return len(collisions) > 0
 
@@ -412,7 +417,7 @@ class iGibsonEnv(BaseEnv):
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False):
+    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False, ignore_obj_in_hand=False):
         """
         Test if the robot or the object can be placed with no collision.
 
@@ -420,17 +425,26 @@ class iGibsonEnv(BaseEnv):
         :param pos: position
         :param orn: orientation
         :param ignore_self_collision: whether the object's self-collisions should be ignored.
+        :param ignore_obj_in_hand: for manipulation robots, whether to ignore collisions with the grasped object
         :return: whether the position is valid
         """
-        is_robot = isinstance(obj, BaseRobot)
-
         self.set_pos_orn_with_z_offset(obj, pos, orn)
 
+        ignore_ids = list(obj.get_body_ids() if ignore_self_collision else [])
+
+        is_robot = isinstance(obj, BaseRobot)
         if is_robot:
+            # If the object is a robot, we reset it so that we do not keep any previous joint configuration
+            # TODO: there may be cases when we DO want to keep the configuration. Add a flag
             obj.reset()
             obj.keep_still()
 
-        ignore_ids = obj.get_body_ids() if ignore_self_collision else []
+            # Add the object in hand to the list of objects to ignore collisions, if the flag is set
+            # TODO: it could be better to add it always as default
+            if ignore_obj_in_hand and isinstance(self.robots[0], ManipulationRobot):
+                if self.robots[0]._ag_obj_in_hand[self.robots[0].default_arm] is not None:
+                    ignore_ids.append(self.robots[0]._ag_obj_in_hand[self.robots[0].default_arm])
+
         has_collision = any(self.check_collision(body_id, ignore_ids) for body_id in obj.get_body_ids())
         return not has_collision
 
