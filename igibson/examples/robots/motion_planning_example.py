@@ -168,7 +168,6 @@ def run_example(config, programmatic_actions, headless, short_exec):
                 if top_down_ee_pushing_orn and env.robots[0].model_name in ["Fetch", "Tiago"]
                 else None
             )
-            print(ee_pushing_orn)
 
             # For the BehaviorRobot, we need to have longer pre-pushing distance or the prepush location will be in contact
             pre_pushing_distance = 0.1 if env.robots[0].model_name != "BehaviorRobot" else 0.2
