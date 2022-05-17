@@ -41,6 +41,9 @@ from igibson.utils.utils import parse_config
 from igibson.utils.constants import ViewerMode
 from igibson.object_states.pose import Pose
 from igibson.utils.transform_utils import quat2mat, quat2axisangle, mat2euler
+from igibson.utils.motion_planning_utils import MotionPlanner
+from igibson.object_states.soaked import Soaked
+
 
 from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
 
@@ -57,6 +60,7 @@ index_action_mapping = {
     7: 'vis_place',
     8: 'vis_pull',
     9: 'vis_push',
+    10: 'toggle',
 }
 
 skill_object_offset_params = {
@@ -81,6 +85,10 @@ skill_object_offset_params = {
             'pumpkin.n.02_1': [0.4, 0.0, 0.0, 1.0 * np.pi],
             'pumpkin.n.02_2': [0, -0.5, 0, 0.5 * np.pi],
             'cabinet.n.01_1': [0.4, -1.15, 0, 0.5 * np.pi],
+            # cleaning_microwave_oven
+            'sink.n.01_1-cleaning_microwave_oven': [0., -0.5, 0, 0.5 * np.pi],
+            'microwave.n.02_1-cleaning_microwave_oven': [0., -1.0, 0, 0.5 * np.pi],
+            'cabinet.n.01_1-cleaning_microwave_oven': [1.0, -0.8, 0, 0.5 * np.pi],
          },
     1: # pick
         {
@@ -92,6 +100,12 @@ skill_object_offset_params = {
             # putting_away_Halloween_decorations
             'pumpkin.n.02_1': [0.0, 0.0, 0.025,],
             'pumpkin.n.02_2': [0.0, 0.0, 0.025,],
+            # cleaning_microwave_oven
+            # 'rag.n.01_1': [0.0, 0.0, 0.025,],
+            'towel': [0.0, 0.0, 0.0],
+            # 'towel@cabinet.n.01_1-cleaning_microwave_oven': [1.0, -0.2, 0.5,],
+            # # 'towel@sink.n.01_1-cleaning_microwave_oven': [-0.23, -0.1, 0.052],
+            # 'towel@sink.n.01_1-cleaning_microwave_oven': [0.0, 0.0, 0.0],
         },
     2:  # place
         {
@@ -103,10 +117,16 @@ skill_object_offset_params = {
             # putting_away_Halloween_decorations
             # 'cabinet.n.01_1': [0.3, -0.55, 0.25],
             'cabinet.n.01_1': [0.3, -0.60, 0.25],
+            # cleaning_microwave_oven
+            'sink.n.01_1-cleaning_microwave_oven': [-0.2, -0.08, 0.2],
+            'microwave.n.02_1-cleaning_microwave_oven': [-0.2, -0., -0.13],
         },
     3: # toggle
         {
             'printer.n.03_1': [-0.3, -0.25, 0.23],  # dx, dy, dz
+            # cleaning_microwave_oven
+            'sink.n.01_1-cleaning_microwave_oven': [-0.05, 0.18, 0.32],  #
+            # 'sink.n.01_1-cleaning_microwave_oven': [-0.15, 0.2, 0.25],  #
         },
     4:  # pull
         {
@@ -210,25 +230,6 @@ action_list_throwing_away_leftovers = [
 #     [7, 'ashcan.n.01_1'],  # place
 # ]
 
-action_list_putting_leftovers_away = [
-    [0, 'pasta.n.02_1'],
-    [1, 'pasta.n.02_1'],
-    [0, 'countertop.n.01_1'],
-    [2, 'countertop.n.01_1'],  # place
-    [0, 'pasta.n.02_2'],
-    [1, 'pasta.n.02_2'],
-    [0, 'countertop.n.01_1'],
-    [2, 'countertop.n.01_1'],  # place
-    [0, 'pasta.n.02_2_3'],
-    [1, 'pasta.n.02_2_3'],
-    [0, 'countertop.n.01_1'],
-    [2, 'countertop.n.01_1'],  # place
-    [0, 'pasta.n.02_2_4'],
-    [1, 'pasta.n.02_2_4'],
-    [0, 'countertop.n.01_1'],
-    [2, 'countertop.n.01_1'],  # place
-]
-
 # full set
 # action_list_putting_away_Halloween_decorations = [
 #     [0, 'cabinet.n.01_1'],  # move
@@ -241,7 +242,7 @@ action_list_putting_leftovers_away = [
 #     [5, 'cabinet.n.01_1'],  # push
 # ]
 
-# full set
+# full sequence
 action_list_putting_away_Halloween_decorations_v1 = [
     [0, 'cabinet.n.01_1'],  # move
     [4, 'cabinet.n.01_1'],  # pull
@@ -255,23 +256,6 @@ action_list_putting_away_Halloween_decorations_v1 = [
     # [2, 'cabinet.n.01_1'],  # place
     [5, 'cabinet.n.01_1'],  # push
 ]
-
-# full sequence
-# action_list_putting_away_Halloween_decorations = [
-#     # [0, 'cabinet.n.01_1'],  # move
-#     # [4, 'cabinet.n.01_1'],  # pull
-#     [0, 'pumpkin.n.02_1'],  # move
-#     [1, 'pumpkin.n.02_1'],  # pick
-#     [0, 'cabinet.n.01_1'],  # move
-#     [2, 'cabinet.n.01_1'],  # place
-#     [0, 'pumpkin.n.02_2'],  # move
-#     [1, 'pumpkin.n.02_2'],  # pick
-#     #
-#     # [0, 'cabinet.n.01_1'],  # move
-#     # [2, 'cabinet.n.01_1'],  # place
-#     #
-#     # [5, 'cabinet.n.01_1'],  # push
-# ] # * 4
 
 # /home/robot/Desktop/behavior/iGibson-dev-jk/igibson/examples/robots/log_dir_his/20220510-001432_putting_away_Halloween_decorations_discrete_rgb_accumReward_m0.01
 # wo vis operation
@@ -320,9 +304,20 @@ action_list_putting_away_Halloween_decorations = [
     [5, 'cabinet.n.01_1'],  # vis push
 ]
 
+action_list_cleaning_microwave_oven = [
+    [0, 'cabinet.n.01_1'],
+    [1, 'towel'],  # pick
+    [0, 'sink.n.01_1'],  # move
+    # [2, 'sink.n.01_1'],  # place
+    # [3, 'sink.n.01_1'],  # toggle
+    # [1, 'towel'],  # pick
+    # [0, 'microwave.n.02_1'],  # move
+    # [2, 'microwave.n.02_1'],  # place
+]
+
 action_dict = {'installing_a_printer': action_list_installing_a_printer,
                'throwing_away_leftovers': action_list_throwing_away_leftovers,
-               'putting_leftovers_away': action_list_putting_leftovers_away,
+               'cleaning_microwave_oven': action_list_cleaning_microwave_oven,
                'putting_away_Halloween_decorations': action_list_putting_away_Halloween_decorations,
                'throwing_away_leftovers_discrete': action_list_throwing_away_leftovers_discrete,}
 
@@ -345,7 +340,7 @@ class SkillEnv(gym.Env):
             use_pb_gui=False,
             print_log=True,
             dense_reward=True,
-            action_space_type='multi_discrete',
+            action_space_type='discrete',
             multi_discrete_grid_size=10,
             accum_reward_obs=True,
             obj_joint_obs=False,
@@ -353,6 +348,7 @@ class SkillEnv(gym.Env):
             ins_seg_obs=True,
             is_success_count=True,
             obj_pose_check=False,
+            visualize_arm_path=True,
     ):
         """
         :param config_file: config_file path
@@ -397,7 +393,7 @@ class SkillEnv(gym.Env):
             physics_timestep=physics_timestep,
         )
         # 'occupancy_grid' modality is required as input
-        self.planner = MotionPlanningWrapper(
+        self.planner = MotionPlanner(
             self.env,
             optimize_iter=10,
             full_observability_2d_planning=full_observability_2d_planning,
@@ -405,7 +401,7 @@ class SkillEnv(gym.Env):
             visualize_2d_planning=not (mode == 'headless') and False,
             visualize_2d_result=not (mode == 'headless') and False,
             fine_motion_plan=False,
-            print_log=print_log,
+            # print_log=print_log,
         )
         self.current_step = self.env.current_step
 
@@ -471,6 +467,8 @@ class SkillEnv(gym.Env):
         self.initial_pos_dict = {}
         self.multi_discrete_grid_size = multi_discrete_grid_size
         self.obj_pose_check = obj_pose_check
+        self.soak_bonus = True
+        self.visualize_arm_path_flag = visualize_arm_path
 
     def step(self, action_index):
         """
@@ -537,8 +535,14 @@ class SkillEnv(gym.Env):
                     params[3] = new_params[3] * 0.4 * np.pi + 0.5 * np.pi
             print('action: {} {}, params: {}'.format(index_action_mapping[action[0]], action[1], params))
         else:  # 'discrete'
-            action = self.action_list[action_index]
-            params = skill_object_offset_params[action[0]][action[1]]
+            action = copy.deepcopy(self.action_list[action_index])
+            # print(self.action_list)
+            if self.config['task'] in ['cleaning_microwave_oven'] and not(action[1] in ['towel']):
+                # print(action)
+                params = skill_object_offset_params[action[0]][action[1] + '-' + self.config['task']]
+            else:
+                params = skill_object_offset_params[action[0]][action[1]]
+
             if len(action) == 3:
                 params = params[action[2]]
                 # print('action 3, params: ', params)
@@ -582,15 +586,31 @@ class SkillEnv(gym.Env):
 
                 plan = self.planner.plan_base_motion([obj_pos[0] + vector[0], obj_pos[1] + vector[1], target_yaw])
                 # print('plan: ', plan, 'obj_pos', obj_pos, 'obj_rot_XYZW', obj_rot_XYZW, )
-                if plan is not None and len(plan) > 0:
-                    self.planner.dry_run_base_plan(plan)
+                if self.visualize_arm_path_flag:
+                    if plan is not None and len(plan) > 0:
+                        # self.planner.dry_run_base_plan(plan)
+                        self.planner.visualize_base_path(plan)
 
                 if self.print_log:
                     print('move {}'.format(action[1]))
 
         elif action[0] == 1:  # arm pick
-            obj_pos = self.task_obj_list[action[1]].states[Pose].get_value()[0]
-            obj_rot_XYZW = self.task_obj_list[action[1]].states[Pose].get_value()[1]
+            if action[1] in ['towel'] and self.config['task'] in ['cleaning_microwave_oven']:
+                # towel: 132
+                # plt.imshow(self.state['ins_seg'])
+                # plt.show()
+                # print('self.env.scene.object_states: ', self.env.scene.object_states.keys())
+                pos, orn = p.getBasePositionAndOrientation(132)  # towel: 132
+                # print('pos, orn: ', pos, orn)
+                # action[1] = action[1].split('@')[-1]
+                # obj_pos = self.task_obj_list[action[1]].states[Pose].get_value()[0]
+                # obj_rot_XYZW = self.task_obj_list[action[1]].states[Pose].get_value()[1]
+                # print('obj_pos, obj_rot_XYZW: ', obj_pos, obj_rot_XYZW)
+                obj_pos = list(pos)
+                obj_rot_XYZW = list(orn)
+            else:
+                obj_pos = self.task_obj_list[action[1]].states[Pose].get_value()[0]
+                obj_rot_XYZW = self.task_obj_list[action[1]].states[Pose].get_value()[1]
 
             # process the offset from object frame to world frame
             mat = quat2mat(obj_rot_XYZW)
@@ -601,8 +621,17 @@ class SkillEnv(gym.Env):
             pick_place_pos[1] += vector[1]
             pick_place_pos[2] += vector[2]
 
-            plan = self.planner.plan_arm_pick(pick_place_pos)
-            self.planner.execute_arm_pick(plan, pick_place_pos, -np.array(hit_normal))
+            pre_interaction_path, approaching_path, interaction_path = None, None, None
+            pre_interaction_path, interaction_path = self.planner.plan_ee_pick(pick_place_pos, pre_grasping_distance=0.1)
+            if self.visualize_arm_path_flag:
+                if interaction_path is not None and len(interaction_path) != 0:
+                    print("Visualizing pick")
+                    self.planner.visualize_arm_path(interaction_path)
+                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    print("End of the pick visualization")
+                else:
+                    logging.error("MP couldn't find path to pick.")
+            # self.planner.execute_arm_pick(plan, pick_place_pos, -np.array(hit_normal))
             # print('plan: ', plan)
             if self.print_log:
                 print('pick {}'.format(action[1], ))
@@ -622,8 +651,17 @@ class SkillEnv(gym.Env):
             pick_place_pos[1] += vector[1]
             pick_place_pos[2] += vector[2]
 
-            plan = self.planner.plan_arm_place(pick_place_pos)
-            self.planner.execute_arm_place(plan, pick_place_pos, -np.array(hit_normal))
+            pre_interaction_path, _ = self.planner.plan_ee_drop(pick_place_pos, dropping_distance=0.1, obj_name=action[1]+'-'+self.config['task'])
+            # print('pre_interaction_path: ', pre_interaction_path)
+            # self.planner.execute_arm_place(plan, pick_place_pos, -np.array(hit_normal))
+            if self.visualize_arm_path_flag:
+                if pre_interaction_path is not None and len(pre_interaction_path) != 0:
+                    print("Visualizing drop")
+                    self.planner.visualize_arm_path(pre_interaction_path)
+                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    print("End of the drop visualization")
+                else:
+                    logging.error("MP couldn't find path to drop.")
 
             if self.print_log:
                 print('place {}, pos: {}'.format(action[1], pick_place_pos))
@@ -641,9 +679,17 @@ class SkillEnv(gym.Env):
             toggle_pos[1] += vector[1]
             toggle_pos[2] += vector[2]
 
-            plan = self.planner.plan_arm_toggle(toggle_pos, -np.array(hit_normal))
-            self.planner.execute_arm_toggle(plan, toggle_pos, -np.array(hit_normal))
-
+            pre_interaction_path, interaction_path = self.planner.plan_ee_toggle(toggle_pos, -np.array(hit_normal), pre_toggling_distance=0.1,)
+            if self.visualize_arm_path_flag:
+                if interaction_path is not None and len(interaction_path) != 0:
+                    print("Visualizing toggle")
+                    self.planner.visualize_arm_path(interaction_path)
+                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    print("End of the toggle visualization")
+                else:
+                    logging.error("MP couldn't find path to toggle.")
+            # self.planner.execute_arm_toggle(plan, toggle_pos, -np.array(hit_normal))
+            # print('toggle plan: ', plan)
             if self.print_log:
                 print('toggle {}'.format(action[1]))
 
@@ -660,11 +706,18 @@ class SkillEnv(gym.Env):
             pick_place_pos[1] += vector[1]
             pick_place_pos[2] += vector[2]
 
-            # plan = self.planner.plan_arm_pull(pick_place_pos, hit_normal=np.array((-1.0, 0.0, 0.0)))
+            # plan = self.planner.plan_ee_pull(pick_place_pos, hit_normal=np.array((-1.0, 0.0, 0.0)))
             # self.planner.execute_arm_pull(plan, pick_place_pos, -np.array(hit_normal))
 
-            plan = self.planner.plan_arm_pull(pick_place_pos, np.array((-1.0, 0.0, 0.0)))
-            self.planner.execute_arm_pull(plan, pick_place_pos, np.array((-1.0, 0.0, 0.0)))
+            pre_interaction_path, approach_interaction_path, interaction_path = self.planner.plan_ee_pull(pick_place_pos, np.array((-1.0, 0.0, 0.0)))
+            if self.visualize_arm_path_flag:
+                if interaction_path is not None and len(interaction_path) != 0:
+                    print("Visualizing toggle")
+                    self.planner.visualize_arm_path(interaction_path)
+                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    print("End of the toggle visualization")
+                else:
+                    logging.error("MP couldn't find path to toggle.")
 
             if self.print_log:
                 print('pull {}'.format(action[1]))
@@ -682,9 +735,16 @@ class SkillEnv(gym.Env):
             pick_place_pos[1] += vector[1]
             pick_place_pos[2] += vector[2]
 
-            plan = self.planner.plan_arm_push(pick_place_pos, np.array((1.0, 0.0, 0.0)))
-            self.planner.execute_arm_push(plan, pick_place_pos, np.array((1.0, 0.0, 0.0)))
-
+            pre_interaction_path, interaction_path = self.planner.plan_ee_push(pick_place_pos, np.array((1.0, 0.0, 0.0)))
+            # self.planner.execute_arm_push(plan, pick_place_pos, np.array((1.0, 0.0, 0.0)))
+            if self.visualize_arm_path_flag:
+                if interaction_path is not None and len(interaction_path) != 0:
+                    print("Visualizing push")
+                    self.planner.visualize_arm_path(interaction_path)
+                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    print("End of the push visualization")
+                else:
+                    logging.error("MP couldn't find path to push.")
             if self.print_log:
                 print('push {}'.format(action[1]))
 
@@ -731,7 +791,8 @@ class SkillEnv(gym.Env):
 
                     plan = self.planner.plan_base_motion([obj_pos[0] + vector[0], obj_pos[1] + vector[1], target_yaw])
                     if plan is not None and len(plan) > 0:
-                        self.planner.dry_run_base_plan(plan)
+                        # self.planner.dry_run_base_plan(plan)
+                        self.planner.visualize_base_path(plan)
 
                     if self.print_log:
                         print('vis pick move {}'.format(action[1]))
@@ -749,8 +810,16 @@ class SkillEnv(gym.Env):
                 pick_place_pos[1] += vector[1]
                 pick_place_pos[2] += vector[2]
                 # print('pick_pos: ', pick_place_pos)
-                plan = self.planner.plan_arm_pick(pick_place_pos)
-                self.planner.execute_arm_pick(plan, pick_place_pos, -np.array(hit_normal))
+                pre_interaction_path, approaching_path, interaction_path = None, None, None
+                pre_interaction_path, interaction_path = self.planner.plan_ee_pick(pick_place_pos, pre_grasping_distance=0.1)
+                if self.visualize_arm_path_flag:
+                    if interaction_path is not None and len(interaction_path) != 0:
+                        print("Visualizing pick")
+                        self.planner.visualize_arm_path(interaction_path)
+                        self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                        print("End of the pick visualization")
+                    else:
+                        logging.error("MP couldn't find path to pick.")
                 # print('plan: ', plan)
                 if self.print_log:
                     print('vis_pick {}'.format(action[1], ))
@@ -802,8 +871,10 @@ class SkillEnv(gym.Env):
                     target_yaw = euler[-1] + move_params[3]
 
                     plan = self.planner.plan_base_motion([obj_pos[0] + vector[0], obj_pos[1] + vector[1], target_yaw])
-                    if plan is not None and len(plan) > 0:
-                        self.planner.dry_run_base_plan(plan)
+                    if self.visualize_arm_path_flag:
+                        if plan is not None and len(plan) > 0:
+                            # self.planner.dry_run_base_plan(plan)
+                            self.planner.visualize_base_path(plan)
 
                     if self.print_log:
                         print('vis place move {}'.format(action[1]))
@@ -821,8 +892,15 @@ class SkillEnv(gym.Env):
                 pick_place_pos[1] += vector[1]
                 pick_place_pos[2] += vector[2]
                 # print('place_pos: ', pick_place_pos)
-                plan = self.planner.plan_arm_place(pick_place_pos)
-                self.planner.execute_arm_place(plan, pick_place_pos, -np.array(hit_normal))
+                pre_interaction_path, _ = self.planner.plan_ee_drop(pick_place_pos)
+                # self.planner.execute_arm_place(plan, pick_place_pos, -np.array(hit_normal))
+                if pre_interaction_path is not None and len(pre_interaction_path) != 0:
+                    print("Visualizing drop")
+                    self.planner.visualize_arm_path(pre_interaction_path)
+                    self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                    print("End of the drop visualization")
+                else:
+                    logging.error("MP couldn't find path to drop.")
 
                 if self.print_log:
                     print('vis_place {}'.format(action[1]))
@@ -855,11 +933,19 @@ class SkillEnv(gym.Env):
                 pick_place_pos[1] += vector[1]
                 pick_place_pos[2] += vector[2]
 
-                # plan = self.planner.plan_arm_pull(pick_place_pos, hit_normal=np.array((-1.0, 0.0, 0.0)))
+                # plan = self.planner.plan_ee_pull(pick_place_pos, hit_normal=np.array((-1.0, 0.0, 0.0)))
                 # self.planner.execute_arm_pull(plan, pick_place_pos, -np.array(hit_normal))
 
-                plan = self.planner.plan_arm_pull(pick_place_pos, np.array((-1.0, 0.0, 0.0)))
-                self.planner.execute_arm_pull(plan, pick_place_pos, np.array((-1.0, 0.0, 0.0)))
+                pre_interaction_path, approach_interaction_path, interaction_path = self.planner.plan_ee_pull(pick_place_pos, np.array((-1.0, 0.0, 0.0)))
+                # self.planner.execute_arm_pull(plan, pick_place_pos, np.array((-1.0, 0.0, 0.0)))
+                if self.visualize_arm_path_flag:
+                    if pre_interaction_path is not None and len(pre_interaction_path) != 0:
+                        print("Visualizing pull")
+                        self.planner.visualize_arm_path(pre_interaction_path)
+                        self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                        print("End of the pull visualization")
+                    else:
+                        logging.error("MP couldn't find path to pull.")
 
                 if self.print_log:
                     print('vis pull {}'.format(action[1]))
@@ -891,8 +977,16 @@ class SkillEnv(gym.Env):
                 pick_place_pos[1] += vector[1]
                 pick_place_pos[2] += vector[2]
 
-                plan = self.planner.plan_arm_push(pick_place_pos, np.array((1.0, 0.0, 0.0)))
-                self.planner.execute_arm_push(plan, pick_place_pos, np.array((1.0, 0.0, 0.0)))
+                pre_interaction_path, interaction_path = self.planner.plan_ee_push(pick_place_pos, np.array((1.0, 0.0, 0.0)))
+                # self.planner.execute_arm_push(plan, pick_place_pos, np.array((1.0, 0.0, 0.0)))
+                if self.visualize_arm_path_flag:
+                    if interaction_path is not None and len(interaction_path) != 0:
+                        print("Visualizing push")
+                        self.planner.visualize_arm_path(interaction_path)
+                        self.planner.visualize_arm_path(interaction_path, reverse_path=True)
+                        print("End of the push visualization")
+                    else:
+                        logging.error("MP couldn't find path to push.")
 
                 if self.print_log:
                     print('vis push {}'.format(action[1]))
@@ -911,8 +1005,12 @@ class SkillEnv(gym.Env):
             is_grasping = (robot.is_grasping() == True)
             robot_position_xy = robot.get_position()[:2]
             self.state['state_vec'] = np.concatenate((np.array([robot_position_xy]), np.array([[is_grasping]]).astype(np.float32)), axis=1)
-
         reward, info = self.env.task.get_reward(self.env)
+        if self.config['task'] in ['cleaning_microwave_oven']:
+            if self.soak_bonus and self.env.scene.objects_by_id[132].states[Soaked].get_value():
+                reward = reward + 0.5
+                self.soak_bonus = False
+
         self.accum_reward = self.accum_reward + reward
         if self.dense_reward:
             if self.config['task'] in ['throwing_away_leftovers', ]:
@@ -921,6 +1019,7 @@ class SkillEnv(gym.Env):
                 reward = reward - 0.1
             else:  # in ['putting_away_Halloween_decorations']:
                 reward = reward - 0.01
+
         done, info = self.env.task.get_termination(self.env)
         # if self.print_log:
         print('reward: ', reward)
@@ -946,6 +1045,7 @@ class SkillEnv(gym.Env):
             print('is_success: {}'.format(info['is_success']))
         self.state['accum_reward'] = self.accum_reward
         print('self.accum_reward: ', self.state['accum_reward'])
+        # print('info: ', info)
         if self.obj_joint_obs:
             self.obj_joint = self.get_joint()
             self.state['obj_joint'] = self.obj_joint
@@ -965,11 +1065,18 @@ class SkillEnv(gym.Env):
             # self.env.scene.open_all_objs_by_category(category='bottom_cabinet', mode='max')
             print('bottom_cabinet opened!')
             self.initial_pos_dict = {}
+            self.env.simulator.sync()
             # self.env.scene.open_all_objs_by_category(category='top_cabinet', mode='max')
             # print('top_cabinet opened!')
+        elif self.config['task'] in ['cleaning_microwave_oven']:
+            self.env.scene.open_all_objs_by_category(category='microwave', mode='max')
+            print('microwave opened!')
+            self.initial_pos_dict = {}
+            self.env.simulator.sync()
         print("new trial!!!, success rate: {}".format(np.mean(self.is_success_list)))
         self.state['accum_reward'] = self.accum_reward
         self.state['obj_joint'] = self.obj_joint
+        self.soak_bonus = True
         return self.state
 
     def close(self):
@@ -1064,7 +1171,8 @@ if __name__ == "__main__":
 
     step_time_list = []
     # action_list = action_dict['throwing_away_leftovers']
-    action_list = action_dict['putting_away_Halloween_decorations']
+    # action_list = action_dict['putting_away_Halloween_decorations']
+    action_list = action_dict['cleaning_microwave_oven']
     for episode in range(1):
         print("Episode: {}".format(episode))
         start = time.time()
@@ -1074,7 +1182,7 @@ if __name__ == "__main__":
         for i in range(len(action_list)):  # 10 seconds
             # state, reward, done, info = env.step([i, 0, 0, 5])
             # state, reward, done, info = env.step([i, 0, 0, 0.25, 0.5*np.pi])
-            state, reward, done, info = env.step([i, 1])
+            state, reward, done, info = env.step(i)
             print("{}, reward: {}, done: {}, is_success: {}".format(i, reward, done, info['success']))
             # if done:
             #     break
