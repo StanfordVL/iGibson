@@ -553,9 +553,14 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         euler = mat2euler(mat)
         target_yaw = euler[-1] + params[3]
 
+        obj_idx_to_ignore = []
+        if self.is_grasping:
+            obj_idx_to_ignore = [self.robot._ag_obj_in_hand[self.arm]]
+
         plan = self.planner.plan_base_motion(
             [obj_pos[0] + vector[0], obj_pos[1] + vector[1], target_yaw],
             plan_full_base_motion=not self.skip_base_planning,
+            obj_idx_to_ignore=obj_idx_to_ignore,
         )
 
         if plan is not None and len(plan) > 0:

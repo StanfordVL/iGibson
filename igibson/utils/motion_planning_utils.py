@@ -164,13 +164,15 @@ class MotionPlanner(object):
         self.env.simulator.step()
         self.simulator_sync()
 
-    def plan_base_motion(self, goal, plan_full_base_motion=True):
+    def plan_base_motion(self, goal, plan_full_base_motion=True, obj_idx_to_ignore=[]):
         """
         Plan base motion given a base goal location and orientation
 
         :param goal: base goal location (x, y, theta) in global coordinates
         :param plan_full_base_motion: compute only feasibility of the goal location and return it as only point in the
             path
+        :param obj_idx_to_ignore: Object pybullet ids to ignore in the collision checking (only when using pb for
+            collision checking). This is useful to plan base motions while grasping objects
         :return: path or None if no path can be found
         """
 
@@ -226,6 +228,7 @@ class MotionPlanner(object):
                     for body_id in self.env.scene.get_body_ids()
                     if body_id not in self.robot.get_body_ids()
                     and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+                    and body_id not in obj_idx_to_ignore
                 ]
                 # TODO: keeping this for Chen, remove later
                 # obstacles = [
