@@ -410,7 +410,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             "arm_" + self.arm
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
         self.skip_base_planning = True
-        self.skip_arm_planning = False
+        self.skip_arm_planning = True
         self.is_grasping = False
 
     def get_action_space(self):
@@ -500,7 +500,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         MAX_STEPS_FOR_GRASP_OR_RELEASE = 10
         for idx in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
-            action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1 + float(idx) / (
+            action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1 + float(idx) / float(
                 MAX_STEPS_FOR_GRASP_OR_RELEASE - 1
             )
             yield action
@@ -602,7 +602,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pick_place_pos[2] += vector[2]
 
         pre_grasping_distance = 0.0
-        plan_full_pre_grasp_motion = False
+        plan_full_pre_grasp_motion = not self.skip_arm_planning
 
         pre_pick_path, interaction_pick_path = self.planner.plan_ee_pick(
             pick_place_pos,
@@ -669,7 +669,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pick_place_pos[1] += vector[1]
         pick_place_pos[2] += vector[2]
 
-        plan_full_pre_drop_motion = False
+        plan_full_pre_drop_motion = not self.skip_arm_planning
 
         pre_drop_path, _ = self.planner.plan_ee_drop(
             pick_place_pos, arm=self.arm, plan_full_pre_drop_motion=plan_full_pre_drop_motion
@@ -711,8 +711,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         toggle_pos[1] += vector[1]
         toggle_pos[2] += vector[2]
 
+        plan_full_pre_toggle_motion = not self.skip_arm_planning
+
         pre_toggle_path, toggle_interaction_path = self.planner.plan_ee_toggle(
-            toggle_pos, -np.array(self.default_direction), plan_full_pre_toggle_motion=False
+            toggle_pos, -np.array(self.default_direction), plan_full_pre_toggle_motion=plan_full_pre_toggle_motion
         )
 
         # First, teleport the robot to the beginning of the pre-pick path
