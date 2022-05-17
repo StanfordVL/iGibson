@@ -735,12 +735,13 @@ class InteractiveIndoorScene(StaticIndoorScene):
             "objects to be loaded from the scene."
         )
 
-    def open_one_obj(self, body_id, mode="random"):
+    def open_one_obj(self, body_id, mode="random", value=None):
         """
         Attempt to open one object without collision
 
         :param body_id: body id of the object
-        :param mode: opening mode (zero, max, or random)
+        :param mode: opening mode (zero, max, random, value)
+        :param value: value to open the joints (for mode "value")
         """
         body_joint_pairs = []
         for joint_id in range(p.getNumJoints(body_id)):
@@ -794,7 +795,10 @@ class InteractiveIndoorScene(StaticIndoorScene):
                 if not reset_success:
                     p.resetJointState(body_id, joint_id, 0.0)
             elif mode == "zero":
-                p.resetJointState(body_id, joint_id, 0.2)
+                p.resetJointState(body_id, joint_id, 0)
+            elif mode == "value":
+                assert value is not None, "Requested opening joints by value but passed value is None"
+                p.resetJointState(body_id, joint_id, value)
             else:
                 assert False
 
@@ -804,15 +808,15 @@ class InteractiveIndoorScene(StaticIndoorScene):
 
         return body_joint_pairs
 
-    def open_all_objs_by_category(self, category, mode="random", prob=1.0):
+    def open_all_objs_by_category(self, category, mode="random", prob=1.0, value=None):
         """
         Attempt to open all objects of a certain category without collision
 
         :param category: object category (str)
-        :param mode: opening mode (zero, max, or random)
-        :param prob: opening probability
+        :param mode: opening mode (zero, max, random, value)
+        :param prob: opening probability (we sample which joints to open, not all are opened if prob<1)
+        :param value: opening value (for value)
         """
-        # print('self.objects_by_category: ', self.objects_by_category.keys())
         body_joint_pairs = []
         if category not in self.objects_by_category:
             return body_joint_pairs
@@ -821,7 +825,7 @@ class InteractiveIndoorScene(StaticIndoorScene):
             if np.random.random() > prob:
                 continue
             for body_id in obj.get_body_ids():
-                body_joint_pairs += self.open_one_obj(body_id, mode=mode)
+                body_joint_pairs += self.open_one_obj(body_id, mode=mode, value=value)
         return body_joint_pairs
 
     def open_all_objs_by_categories(self, categories, mode="random", prob=1.0):
