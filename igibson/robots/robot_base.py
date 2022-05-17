@@ -702,7 +702,7 @@ class BaseRobot(StatefulObject):
     @property
     def joint_names(self):
         """Names of the joints in this robot"""
-        return [joint.joint_name for joint in self._joints]
+        return list(self._joints.keys())
 
     @property
     def n_links(self):
@@ -886,6 +886,18 @@ class BaseRobot(StatefulObject):
             cmd_dim = self._controllers[controller].command_dim
             dic[controller] = np.arange(idx, idx + cmd_dim)
             idx += cmd_dim
+
+        return dic
+
+    @property
+    def controller_joint_idx(self):
+        """
+        :return: Dict[str, Array[int]]: Mapping from controller names (e.g.: head, base, arm, etc.) to corresponding
+            indices of the joint state vector controlled by each controller
+        """
+        dic = {}
+        for controller in self.controller_order:
+            dic[controller] = self._controllers[controller].joint_idx
 
         return dic
 
