@@ -1,6 +1,7 @@
 import copy
 import logging
 import random
+import time
 from enum import IntEnum
 
 import gym
@@ -433,11 +434,12 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         state = self.robot.get_joint_states()
         joint_positions = np.array([state[joint_name][0] for joint_name in state])
         action = np.zeros(self.robot.action_dim)
-        for controller_name in self.robot._controllers:
+        for controller_name, controller in self.robot._controllers.items():
             if (
-                isinstance(self.robot._controllers[controller_name], JointController)
-                and self.robot._controllers[controller_name].control_type == ControlType.POSITION
-                and not self.robot._controllers[controller_name].use_delta_commands
+                isinstance(controller, JointController)
+                and controller.control_type == ControlType.POSITION
+                and not controller.use_delta_commands
+                and not controller.use_constant_goal_position
             ):
                 action_idx = self.robot.controller_action_idx[controller_name]
                 joint_idx = self.robot.controller_joint_idx[controller_name]
@@ -484,7 +486,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
         action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1.0
 
-        MAX_STEPS_FOR_GRASP_OR_RELEASE = 10
+        MAX_STEPS_FOR_GRASP_OR_RELEASE = 1
         for _ in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
             yield action
 
@@ -501,7 +503,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _execute_ungrasp(self):
         action = self._get_still_action()
 
-        MAX_STEPS_FOR_GRASP_OR_RELEASE = 10
+        MAX_STEPS_FOR_GRASP_OR_RELEASE = 3
         for idx in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
             action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1 + float(idx) / float(
                 MAX_STEPS_FOR_GRASP_OR_RELEASE - 1
@@ -572,7 +574,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 {"object_to_navigate": object_name},
             )
         yield self._get_still_action()
-        logger.info("Finished moving to object: {}".format(object_name))
+        logger.info("Finished navigating to object: {}".format(object_name))
         return
 
     def _pick(self, object_name):
@@ -632,16 +634,18 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         logger.info("Visualizing pre-pick path")
         self.planner.visualize_arm_path(pre_pick_path, arm=self.arm, keep_last_location=True)
         yield self._get_still_action()
-        # Then, execute the interaction_pick_path stopping if there is a contact
-        logger.info("Executing interaction-pick path")
-        yield from self._execute_ee_path(interaction_pick_path, stop_on_contact=True)
+        if pre_grasping_distance != 0:
+            # Then, execute the interaction_pick_path stopping if there is a contact
+            logger.info("Executing interaction-pick path")
+            yield from self._execute_ee_path(interaction_pick_path, stop_on_contact=True)
         # At the end, close the hand
         logger.info("Executing grasp")
         yield from self._execute_grasp()
-        logger.info("Executing retracting path")
-        yield from self._execute_ee_path(
-            interaction_pick_path, stop_on_contact=False, reverse_path=True, while_grasping=True
-        )
+        if pre_grasping_distance != 0:
+            logger.info("Executing retracting path")
+            yield from self._execute_ee_path(
+                interaction_pick_path, stop_on_contact=False, reverse_path=True, while_grasping=True
+            )
         logger.info("Executing retracting path")
         if plan_full_pre_grasp_motion:
             self.planner.visualize_arm_path(
