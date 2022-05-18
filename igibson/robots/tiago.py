@@ -349,8 +349,8 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             "compute_delta_in_quat_space": [(3, 4, 5)],
             "joint_idx": self.base_control_idx,
             "command_input_limits": (
-                np.array([-BODY_LINEAR_VELOCITY] * 3 + [-BODY_ANGULAR_VELOCITY] * 3),
-                np.array([BODY_LINEAR_VELOCITY] * 3 + [BODY_ANGULAR_VELOCITY] * 3),
+                np.array([-BODY_LINEAR_VELOCITY] * 2 + [-BODY_ANGULAR_VELOCITY] * 1),
+                np.array([BODY_LINEAR_VELOCITY] * 2 + [BODY_ANGULAR_VELOCITY] * 1),
             ),
             "command_output_limits": None,
         }
