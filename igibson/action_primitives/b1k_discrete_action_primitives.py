@@ -416,6 +416,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.skip_base_planning = True
         self.skip_arm_planning = True
         self.is_grasping = False
+        self.fast_execution = True
 
     def get_action_space(self):
         return gym.spaces.Discrete(self.num_discrete_action)
@@ -483,11 +484,12 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _execute_grasp(self):
         action = self._get_still_action()
 
+        # TODO: Extend to non-binary grasping controllers
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
         action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1.0
 
-        MAX_STEPS_FOR_GRASP_OR_RELEASE = 1
-        for _ in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
+        grasping_steps = 1 if self.fast_execution else 5
+        for _ in range(grasping_steps):
             yield action
 
         grasped_object = self._get_obj_in_hand()
@@ -503,16 +505,12 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _execute_ungrasp(self):
         action = self._get_still_action()
 
-        MAX_STEPS_FOR_GRASP_OR_RELEASE = 3
-        for idx in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
-            action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1 + float(idx) / float(
-                MAX_STEPS_FOR_GRASP_OR_RELEASE - 1
-            )
+        # TODO: Extend to non-binary grasping controllers
+        # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
+        ungrasping_steps = 10 if self.fast_execution else 30
+        for idx in range(ungrasping_steps):
+            action[self.robot.controller_action_idx["gripper_" + self.arm]] = 0.0
             yield action
-        action[self.robot.controller_action_idx["gripper_" + self.arm]] = 0.0
-        yield action
-        action[self.robot.controller_action_idx["gripper_" + self.arm]] = 0.0
-        yield action
 
         if self._get_obj_in_hand() is not None:
             raise ActionPrimitiveError(
