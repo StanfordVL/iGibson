@@ -21,7 +21,7 @@ def main(selection="user", headless=False, short_exec=False):
         "B1KActionPrimitives",
         config_file=config,
         mode="headless" if headless else "gui_interactive",
-        use_pb_gui=(not headless and platform.system() != "Darwin"),
+        use_pb_gui=False,#(not headless and platform.system() != "Darwin"),
     )
 
     env.task.initial_state = env.task.save_scene(env)

@@ -1115,8 +1115,14 @@ class MotionPlanner(object):
 
         if grasped_obj_id is not None:
             if self.robot_type != "BehaviorRobot":
+                arm_joint_pb_ids = np.array(
+                    joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
+                )
+                set_joint_positions(self.robot_body_id, arm_joint_pb_ids, arm_path[-1])
+                self.simulator_sync()
                 gripper_pos = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[0]
                 gripper_orn = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[1]
+
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
             else:

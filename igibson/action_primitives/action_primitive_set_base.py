@@ -20,7 +20,7 @@ class ActionPrimitiveError(ValueError):
         PLANNING_ERROR = 1
 
         # A primitive could not be executed because a precondition was not satisfied, e.g. PLACE was called without an
-        # object currently in hand.
+        # object currently in hand.f
         PRE_CONDITION_ERROR = 2
 
         # A sampling error occurred: a position to place an object could not be found.
