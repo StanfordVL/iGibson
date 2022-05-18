@@ -52,5 +52,9 @@ def main(selection="user", headless=False, short_exec=False):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    # Change the level to logging.DEBUG logging.INFO logging.WARNING ... depending on how much you want to see
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger(name="igibson").setLevel(level=logging.INFO)
+    logging.getLogger(name="igibson.action_primitives").setLevel(level=logging.DEBUG)
+    logging.getLogger(name="igibson.utils.motion_planning_utils").setLevel(level=logging.DEBUG)
     main()

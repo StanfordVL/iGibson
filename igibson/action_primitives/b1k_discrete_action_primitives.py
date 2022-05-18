@@ -371,7 +371,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         }
         if arm is None:
             self.arm = self.robot.default_arm
-            logger.warning("Using with the default arm: {}".format(self.arm))
+            logger.info("Using with the default arm: {}".format(self.arm))
 
         if self.env.config["task"] == "throwing_away_leftovers":
             self.action_list = action_dict["throwing_away_leftovers_discrete"]
@@ -457,9 +457,9 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     ):
         for arm_action in path if not reverse_path else reversed(path):
             if stop_on_contact and len(self.robot._find_gripper_contacts(arm=self.arm)[0]) != 0:
-                logger.warning("Contact detected. Stop motion")
-                logger.warning("Contacts {}".format(self.robot._find_gripper_contacts(arm=self.arm)))
-                logger.warning("Finger ids {}".format([link.link_id for link in self.robot.finger_links[self.arm]]))
+                logger.info("Contact detected. Stop motion")
+                logger.debug("Contacts {}".format(self.robot._find_gripper_contacts(arm=self.arm)))
+                logger.debug("Finger ids {}".format([link.link_id for link in self.robot.finger_links[self.arm]]))
                 return
             logger.debug("Executing action {}".format(arm_action))
             full_body_action = np.zeros(self.robot.action_dim)
@@ -476,7 +476,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             logger.warning("End of motion and no contact detected")
             raise ActionPrimitiveError(ActionPrimitiveError.Reason.EXECUTION_ERROR, "No contact was made.")
         else:
-            logger.warning("End of the path execution")
+            logger.debug("End of the path execution")
 
     def _execute_grasp(self):
         action = self._get_still_action()
@@ -495,7 +495,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 "No object detected in hand after executing grasp.",
             )
         else:
-            logger.warning("Execution of grasping ended with grasped object {}".format(grasped_object.name))
+            logger.info("Execution of grasping ended with grasped object {}".format(grasped_object.name))
             self.is_grasping = True
 
     def _execute_ungrasp(self):
@@ -521,7 +521,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.is_grasping = False
 
     def _navigate_to(self, object_name):
-        logger.warning("Navigating to object {}".format(object_name))
+        logger.info("Navigating to object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name]
 
         # If we check whether the object has moved from its initial location. If we check that, and the object has moved
@@ -571,14 +571,12 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 "No base path found to object",
                 {"object_to_navigate": object_name},
             )
-
-        logger.warning("Moving to object: {}".format(object_name))
-
         yield self._get_still_action()
+        logger.info("Finished moving to object: {}".format(object_name))
         return
 
     def _pick(self, object_name):
-        logger.warning("Picking object {}".format(object_name))
+        logger.info("Picking object {}".format(object_name))
         # Don't do anything if the object is already grasped.
         object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
         robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
@@ -631,20 +629,20 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
 
         # First, teleport the robot to the beginning of the pre-pick path
-        logger.warning("Visualizing pre-pick path")
+        logger.info("Visualizing pre-pick path")
         self.planner.visualize_arm_path(pre_pick_path, arm=self.arm, keep_last_location=True)
         yield self._get_still_action()
         # Then, execute the interaction_pick_path stopping if there is a contact
-        logger.warning("Executing interaction-pick path")
+        logger.info("Executing interaction-pick path")
         yield from self._execute_ee_path(interaction_pick_path, stop_on_contact=True)
         # At the end, close the hand
-        logger.warning("Executing grasp")
+        logger.info("Executing grasp")
         yield from self._execute_grasp()
-        logger.warning("Executing retracting path")
+        logger.info("Executing retracting path")
         yield from self._execute_ee_path(
             interaction_pick_path, stop_on_contact=False, reverse_path=True, while_grasping=True
         )
-        logger.warning("Executing retracting path")
+        logger.info("Executing retracting path")
         if plan_full_pre_grasp_motion:
             self.planner.visualize_arm_path(
                 pre_pick_path, arm=self.arm, reverse_path=True, grasped_obj_id=object_id, keep_last_location=True
@@ -658,10 +656,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
         yield self._get_still_action()
 
-        logger.warning("Pick action completed")
+        logger.info("Pick action completed")
 
     def _place(self, object_name):
-        logger.warning("Placing on object {}".format(object_name))
+        logger.info("Placing on object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -702,10 +700,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # At the end, close the hand
         yield from self._execute_ungrasp()
 
-        logger.warning("Place action completed")
+        logger.info("Place action completed")
 
     def _toggle(self, object_name):
-        logger.warning("Toggling object {}".format(object_name))
+        logger.info("Toggling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -742,14 +740,14 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
 
         # First, teleport the robot to the beginning of the pre-pick path
-        logger.warning("Visualizing pre-toggle path")
+        logger.info("Visualizing pre-toggle path")
         self.planner.visualize_arm_path(pre_toggle_path, arm=self.arm, keep_last_location=True)
         yield self._get_still_action()
         # Then, execute the interaction_pick_path stopping if there is a contact
-        logger.warning("Executing interaction-toggle path")
+        logger.info("Executing interaction-toggle path")
         yield from self._execute_ee_path(toggle_interaction_path, stop_on_contact=True)
 
-        logger.warning("Executing retracting path")
+        logger.info("Executing retracting path")
         if plan_full_pre_toggle_motion:
             self.planner.visualize_arm_path(pre_toggle_path, arm=self.arm, reverse_path=True, keep_last_location=True)
         else:
@@ -760,10 +758,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
         yield self._get_still_action()
 
-        logger.warning("Toggle action completed")
+        logger.info("Toggle action completed")
 
     def _pull(self, object_name):
-        logger.warning("Pulling object {}".format(object_name))
+        logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -809,20 +807,20 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
 
         # First, teleport the robot to the beginning of the pre-pick path
-        logger.warning("Visualizing pre-pull path")
+        logger.info("Visualizing pre-pull path")
         self.planner.visualize_arm_path(pre_pull_path, arm=self.arm)
         yield self._get_still_action()
         # Then, execute the interaction_pick_path stopping if there is a contact
-        logger.warning("Executing approaching pull path")
+        logger.info("Executing approaching pull path")
         yield from self._execute_ee_path(approach_interaction_path, stop_on_contact=True)
         # At the end, close the hand
-        logger.warning("Executing grasp")
+        logger.info("Executing grasp")
         yield from self._execute_grasp()
         # Then, execute the interaction_pull_path
         # Since we may have stopped earlier due to contact, the precomputed path may be wrong
         # We have two options here: 1) (re)plan from the current pose (online planning), or 2) find the closest point
         # in the precomputed trajectory and start the execution there. Implementing option 1)
-        logger.warning("Replaning interaction pull path and executing")
+        logger.info("Replaning interaction pull path and executing")
         current_ee_position = self.robot.get_eef_position(arm=self.arm)
         current_ee_orn = self.robot.get_eef_orientation(arm=self.arm)
         state = self.robot.get_joint_states()
@@ -838,9 +836,9 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         )
         yield from self._execute_ee_path(pull_interaction_path, while_grasping=True)
         # Then, open the hand
-        logger.warning("Executing ungrasp")
+        logger.info("Executing ungrasp")
         yield from self._execute_ungrasp()
-        logger.warning("Tuck arm")
+        logger.info("Tuck arm")
         self.planner.visualize_arm_path(
             [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
             arm=self.arm,
@@ -848,10 +846,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         )
         yield self._get_still_action()
 
-        logger.warning("Pull action completed")
+        logger.info("Pull action completed")
 
     def _push(self, object_name):
-        logger.warning("Pushing object {}".format(object_name))
+        logger.info("Pushing object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PUSH][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
@@ -893,14 +891,14 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
 
         # First, teleport the robot to the beginning of the pre-pick path
-        logger.warning("Pre-push motion")
+        logger.info("Pre-push motion")
         self.planner.visualize_arm_path(pre_push_path, arm=self.arm, keep_last_location=True)
         yield self._get_still_action()
         # Then, execute the interaction_pick_path stopping if there is a contact
-        logger.warning("Pushing interaction")
+        logger.info("Pushing interaction")
         yield from self._execute_ee_path(push_interaction_path, stop_on_contact=False)
 
-        logger.warning("Tuck arm")
+        logger.info("Tuck arm")
         self.planner.visualize_arm_path(
             [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
             arm=self.arm,
@@ -908,4 +906,4 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         )
         yield self._get_still_action()
 
-        logger.warning("Push action completed")
+        logger.info("Push action completed")
