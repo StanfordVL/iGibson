@@ -939,6 +939,9 @@ class MotionPlanner(object):
 
         if pre_grasp_path is None or len(pre_grasp_path) == 0:
             log.warning("Planning failed: no path found to pre-grasping location")
+        elif pre_grasping_distance == 0:
+            log.debug("Skipping computation of interaction path because the pre-grasping distance is zero")
+            grasp_interaction_path = []
         else:
             grasp_interaction_path = self.plan_ee_straight_line_motion(
                 pre_grasp_path[-1],
