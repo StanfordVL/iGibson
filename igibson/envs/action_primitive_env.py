@@ -1,4 +1,5 @@
 import logging
+import time
 
 import gym
 
@@ -23,7 +24,7 @@ class ActionPrimitivesEnv(gym.Env):
         @param num_attempts: How many times a primitive will be re-attempted if previous tries fail.
         @param kwargs: The arguments to pass to the inner iGibsonEnv constructor.
         """
-        self.env = iGibsonEnv(**kwargs)
+        self.env = iGibsonEnv(action_timestep=1 / 30.0, physics_timestep=1 / 120, **kwargs)
         self.action_generator: BaseActionPrimitiveSet = REGISTERED_PRIMITIVE_SETS[action_primitives_class_name](
             self.env, self.env.task, self.env.scene, self.env.robots[0]
         )
@@ -39,6 +40,8 @@ class ActionPrimitivesEnv(gym.Env):
         # Run the goal generator and feed the goals into the env.
         accumulated_reward = 0
         accumulated_obs = []
+
+        start_time = time.time()
 
         for _ in range(self.num_attempts):
             obs, done, info = None, None, {}
@@ -66,6 +69,8 @@ class ActionPrimitivesEnv(gym.Env):
 
                 break
             except ActionPrimitiveError as e:
+                end_time = time.time()
+                logger.error("AP time: {}".format(end_time - start_time))
                 logger.warning("Action primitive failed! Exception {}".format(e))
                 # Record the error info.
                 info["primitive_success"] = False
@@ -80,6 +85,8 @@ class ActionPrimitivesEnv(gym.Env):
                 return_obs = accumulated_obs
             else:
                 return_obs = accumulated_obs[-1]
+        end_time = time.time()
+        logger.error("AP time: {}".format(end_time - start_time))
         return return_obs, accumulated_reward, done, info
 
     def reset(self):
