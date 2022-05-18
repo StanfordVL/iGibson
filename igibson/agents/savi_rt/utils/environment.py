@@ -32,7 +32,7 @@ from utils.dataset import CATEGORIES, CATEGORY_MAP
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
 from igibson.utils.utils import rotate_vector_3d
-from igibson.tasks.point_nav_savi_task import SAViTask
+from igibson.tasks.savi_task import SAViTask
         
 
 class AVNavRLEnv(iGibsonEnv):
