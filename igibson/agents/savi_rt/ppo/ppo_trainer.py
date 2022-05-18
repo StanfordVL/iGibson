@@ -93,6 +93,7 @@ class PPOTrainer(BaseRLTrainer):
                 use_belief_as_goal=self.config['use_belief_predictor'],
                 use_label_belief=self.config['use_label_belief'],
                 use_location_belief=self.config['use_location_belief'],
+                use_rt_map_features=self.config['use_rt_map'],
                 normalize_category_distribution=self.config['normalize_category_distribution'],
             )
             if self.config['smt_cfg_freeze_encoders']: # False, True
@@ -224,15 +225,15 @@ class PPOTrainer(BaseRLTrainer):
             if self.config['use_external_memory']:
                 external_memory = rollouts.external_memory[:, rollouts.step].contiguous()
                 external_memory_masks = rollouts.external_memory_masks[rollouts.step]
-                
-            (values, actions, actions_log_probs, recurrent_hidden_states, external_memory_features,
-            visual_features, audio_features) = self.actor_critic.act(
+
+            (values, actions, actions_log_probs, recurrent_hidden_states, external_memory_features) = self.actor_critic.act(
                 step_observation,
                 rollouts.recurrent_hidden_states[rollouts.step],
                 rollouts.prev_actions[rollouts.step],
                 rollouts.masks[rollouts.step],
                 external_memory,
                 external_memory_masks)
+            visual_features, audio_features = external_memory_features[0], external_memory_features[2]
 
         pth_time += time.time() - t_sample_action
 
@@ -282,9 +283,11 @@ class PPOTrainer(BaseRLTrainer):
                 rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
         #RT
         if self.config['use_rt_map']:
-            step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}
-                        # step observation: pose sensor, vision_feature      
-            global_map_pred = self.rt_predictor.update(step_observation, dones, visual_features, audio_features) # (9, 784, 23) 
+            step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}    
+            glbal_map_pred = self.rt_predictor.update(step_observation, dones, visual_features, audio_features) # (9, 784, 23)
+            rollouts.observations['rt_map_features'][rollouts.step].copy_(step_observation['rt_map_features'])
+            #(batch, 23, 28, 28) -> (batch, 28*28, 23)
+            global_map_pred = global_map_pred.permute(0, 2, 3, 1).view(self.batch_size, -1, self.rooms)
             global_map_gt = to_tensor(self.envs.padded_gt_rt).view(self.envs.batch_size, -1).to(self.device) #(9, 784)
             rt_loss = self.rt_loss_fn(global_map_pred.view(-1, self.rt_predictor.rooms), global_map_gt.view(-1)) / self.envs.batch_size
             self.rt_optimizer.zero_grad()
@@ -294,7 +297,6 @@ class PPOTrainer(BaseRLTrainer):
         pth_time += time.time() - t_update_stats
 
         return pth_time, env_time, self.envs.batch_size
-    
     
     def train_belief_predictor(self, rollouts):  
         # for location prediction

@@ -262,6 +262,7 @@ class AudioNavSMTNet(Net):
         use_belief_as_goal=True,
         use_label_belief=True,
         use_location_belief=True,
+        use_rt_map_features=True,
         use_belief_encoding=False,
         normalize_category_distribution=False,
         use_category_input=False,
@@ -273,6 +274,7 @@ class AudioNavSMTNet(Net):
         self._use_belief_as_goal = use_belief_as_goal
         self._use_label_belief = use_label_belief
         self._use_location_belief = use_location_belief
+        self._use_rt_map_features = use_rt_map_features
         self._hidden_size = hidden_size
         self._action_size = action_space.n if is_discrete else action_space.shape[0]     
         self._use_belief_encoder = use_belief_encoding
@@ -289,6 +291,7 @@ class AudioNavSMTNet(Net):
             action_encoding_dims = 16
         else:
             action_encoding_dims = 0
+
         nfeats = self.visual_encoder.feature_dims + action_encoding_dims + audio_feature_dims
         
         if 'task_obs' in observation_space.spaces:
@@ -296,6 +299,10 @@ class AudioNavSMTNet(Net):
         
         if self._use_category_input:
             nfeats += len(CATEGORIES)
+
+        if self._use_rt_map_features:
+            assert "rt_map_features" in observation_space.spaces
+            nfeats += observation_space.spaces["rt_map_features"].shape[0]
 
         # Add pose observations to the memory
         assert "pose_sensor" in observation_space.spaces
@@ -411,6 +418,8 @@ class AudioNavSMTNet(Net):
         x.append(observations['task_obs'][:, -2:])
         if self._use_category_input:
             x.append(observations["category"])
+        if self._use_rt_map_features:
+            x.append(observations["rt_map_features"])
         x.append(observations["pose_sensor"])
         x = torch.cat(x, dim=1)
 

@@ -27,7 +27,7 @@ from igibson.tasks.savi_task import SAViTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
-from igibson.utils.utils import quatToXYZW
+from igibson.utils.utils import quatToXYZW, rotate_vector_3d
 from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP
 
 log = logging.getLogger(__name__)
@@ -260,7 +260,10 @@ class iGibsonEnv(BaseEnv):
         if 'floorplan_map' in self.output:
             observation_space['floorplan_map'] = self.build_obs_space(
                 shape=(self.image_height, self.image_height), low=0, high=23)
-
+        if 'rt_map_features' in self.output:
+            observation_space['rt_map_features'] = self.build_obs_space(
+                shape=(784,), low=-np.inf, high=np.inf)
+        
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
 
@@ -357,11 +360,13 @@ class iGibsonEnv(BaseEnv):
             onehot[index] = 1
             state['category'] = onehot
         
-        # categoty_belief and location_belief are updated in _collect_rollout_step
+        # categoty_belief, rt_map_features, and location_belief are updated in _collect_rollout_step
         if "category_belief" in self.output:
             state["category_belief"] = np.zeros(len(CATEGORIES))
         if "location_belief" in self.output:
             state["location_belief"] = np.zeros(2)
+        if 'rt_map_features' in self.output:
+            state['rt_map_features'] = np.zeros(784)
         
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"

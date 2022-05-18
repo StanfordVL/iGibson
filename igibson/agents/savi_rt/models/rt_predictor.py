@@ -15,6 +15,8 @@ import scipy
 from igibson.agents.savi_rt.utils.utils import to_tensor
 from igibson.agents.savi_rt.models.Unet_parts import UNetUp
 from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
+from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
+from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
 
 
 class SimpleWeightedCrossEntropy(nn.Module):
@@ -110,8 +112,8 @@ class RTPredictor(nn.Module):
                                    hidden_size=self.hidden_size).to(self.device)
         self.outc = outconv(1, self.rooms)
         
-        self.visual = SMTCNN(observations)
-        self.audio = AudioCNN(observations, 128, "audio")
+        #self.visual = SMTCNN(observations)
+        #self.audio = AudioCNN(observations, 128, "audio")
 
 
     def feature_alignment(self, local_feature_maps, curr_poses, curr_rpys):   
@@ -171,10 +173,11 @@ class RTPredictor(nn.Module):
                                                    hidden_states_clone, masks)
         #(batch, 28*28)
         global_maps = global_maps.view(self.batch_size, 1, self.rt_map_output_size, self.rt_map_output_size)
+        observations['rt_map_features'].copy_(torch.flatten(global_maps))
+
         global_maps = self.outc(global_maps)
-        #(batch, 23, 28, 28)
-        global_maps = global_maps.permute(0, 2, 3, 1).view(self.batch_size, -1, self.rooms)
         return global_maps
+        #(batch, 23, 28, 28)
 
     def cnn_forward_visual(self, features):
         # input feature size: batch_size * 64 * cnn_dims[0] * cnn_dims[1]       
