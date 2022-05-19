@@ -408,9 +408,7 @@ def main(selection="user", headless=False, short_exec=False):
     s = Simulator(mode=render_mode, use_pb_gui=use_pb_gui, image_width=512, image_height=512)
 
     # Load scene
-    scene = (
-        EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1]) if scene_id == "empty" else StaticIndoorScene(scene_id)
-    )  # InteractiveIndoorScene(scene_id)
+    scene = EmptyScene(floor_plane_rgba=[0.6, 0.6, 0.6, 1]) if scene_id == "empty" else InteractiveIndoorScene(scene_id)
     s.import_scene(scene)
 
     # Load robot
