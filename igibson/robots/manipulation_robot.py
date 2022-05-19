@@ -642,6 +642,17 @@ class ManipulationRobot(BaseRobot):
         :return dict[str, Array[float]]: Dictionary mapping arm appendage name to (dx,dy,dz) relative distance from
             the gripper link frame to the expected center of the robot's grasping point.
             Unique to each robot embodiment.
+            We assume as default the tip of the fingers to be the grasping point, and this to be in the x axis
+            of the ee frame, but this can be overriden
+        """
+        return {arm: np.array([self.finger_lengths[arm], 0, 0]) for arm in self.arm_names}
+
+    @property
+    @abstractmethod
+    def finger_lengths(self):
+        """
+        :return dict[str, float]: Dictionary mapping arm appendage name to corresponding length of the fingers in that
+            hand defined from the palm (assuming all fingers in one hand are equally long)
         """
         raise NotImplementedError
 

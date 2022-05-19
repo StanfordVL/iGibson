@@ -418,9 +418,7 @@ class MotionPlanner(object):
         n_attempt = 0
         max_attempt = 75
 
-        arm_joint_pb_ids = np.array(
-            joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-        )
+        arm_joint_pb_ids = np.array(joints_from_names(self.robot_body_id, self.robot.arm_joint_names[arm]))
         sample_fn = get_sample_fn(self.robot_body_id, arm_joint_pb_ids)
         base_pose = get_base_values(self.robot_body_id)
         initial_pb_state = p.saveState()
@@ -554,14 +552,12 @@ class MotionPlanner(object):
 
         disabled_colliding_links = []
         if disable_collision_hand_links:
-            disabled_colliding_links = [self.robot.eef_links[self.robot.default_arm].link_id] + [
-                finger.link_id for finger in self.robot.finger_links[self.robot.default_arm]
+            disabled_colliding_links = [self.robot.eef_links[arm].link_id] + [
+                finger.link_id for finger in self.robot.finger_links[arm]
             ]
 
         if self.robot_type != "BehaviorRobot":
-            arm_joint_pb_ids = np.array(
-                joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-            )
+            arm_joint_pb_ids = np.array(joints_from_names(self.robot_body_id, self.robot.arm_joint_names[arm]))
             arm_path = plan_joint_motion(
                 self.robot_body_id,
                 arm_joint_pb_ids,
@@ -649,6 +645,10 @@ class MotionPlanner(object):
         )
         log.warning("Initial joint configuration {}".format(initial_arm_pose))
 
+        if arm is None:
+            arm = self.robot.default_arm
+            log.warn("Planning straight line for the default arm: {}".format(arm))
+
         if line_length == 0.0:
             log.warning("Requested line of length 0. Returning a path with only one configuration: initial_arm_pose")
             return [initial_arm_pose]
@@ -657,9 +657,7 @@ class MotionPlanner(object):
 
         # Start planning from the given pose
         if self.robot_type != "BehaviorRobot":
-            arm_joint_pb_ids = np.array(
-                joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-            )
+            arm_joint_pb_ids = np.array(joints_from_names(self.robot_body_id, self.robot.arm_joint_names[arm]))
             set_joint_positions(self.robot_body_id, arm_joint_pb_ids, initial_arm_pose)
             # self.simulator_sync()
         else:
@@ -739,8 +737,8 @@ class MotionPlanner(object):
 
         pre_pushing_location = pushing_location - pre_pushing_distance * pushing_direction
         log.warning(
-            "It will plan a motion to a location {} m in front of the pushing location in the pushing direction to {}"
-            "".format(pre_pushing_distance, pre_pushing_location)
+            "It will plan a motion to the location {}, {} m in front of the pushing location"
+            "".format(pre_pushing_location, pre_pushing_distance)
         )
 
         if plan_full_pre_push_motion:
@@ -817,8 +815,8 @@ class MotionPlanner(object):
 
         pre_pulling_location = pulling_location + pre_pulling_distance * pulling_direction
         log.warning(
-            "It will plan a motion to a location {} m in front of the pulling location in the pulling direction to {}"
-            "".format(pre_pulling_distance, pre_pulling_location)
+            "It will plan a motion to the location {}, {} m in front of the pulling location"
+            "".format(pre_pulling_location, pre_pulling_distance)
         )
 
         if ee_pulling_orn is None:
@@ -912,7 +910,7 @@ class MotionPlanner(object):
 
         pre_grasping_location = grasping_location - pre_grasping_distance * grasping_direction
         log.warning(
-            "It will plan a motion to a location {} m in front of the grasping location in the grasping direction to {}"
+            "It will plan a motion to the location {}, {} m in front of the grasping location"
             "".format(pre_grasping_distance, pre_grasping_location)
         )
 
@@ -1055,7 +1053,7 @@ class MotionPlanner(object):
 
         pre_toggling_location = toggling_location - pre_toggling_distance * toggling_direction
         log.warning(
-            "It will plan a motion to a location {} m in front of the toggling location in the toggling direction to {}"
+            "It will plan a motion to the location {}, {} m in front of the toggling location"
             "".format(pre_toggling_distance, pre_toggling_location)
         )
         """
@@ -1136,9 +1134,7 @@ class MotionPlanner(object):
             execution_path if self.mode in ["gui_non_interactive", "gui_interactive"] else [execution_path[-1]]
         )
         if self.robot_type != "BehaviorRobot":
-            arm_joint_pb_ids = np.array(
-                joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-            )
+            arm_joint_pb_ids = np.array(joints_from_names(self.robot_body_id, self.robot.arm_joint_names[arm]))
             for joint_way_point in execution_path:
                 set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_way_point)
                 # set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)

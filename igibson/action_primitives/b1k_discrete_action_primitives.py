@@ -363,7 +363,27 @@ class B1KActionPrimitive(IntEnum):
 
 class B1KActionPrimitives(BaseActionPrimitiveSet):
     def __init__(self, env, task, scene, robot, arm=None, execute_free_space_motion=False):
+        """ """
         super().__init__(env, task, scene, robot)
+
+        if arm is None:
+            self.arm = self.robot.default_arm
+            logger.info("Using with the default arm: {}".format(self.arm))
+
+        # Checks for the right type of robot and controller to use planned trajectories
+        assert robot.grasping_mode == "assisted", "This APs implementation requires assisted grasping to check success"
+        if robot.model_name in ["Tiago", "Fetch"]:
+            assert not robot.rigid_trunk, "The APs will use the trunk of Fetch/Tiago, it can't be rigid"
+        assert isinstance(
+            robot._controllers["arm_" + self.arm], JointController
+        ), "The arm to use with the primitives must be controlled in joint space"
+        assert (
+            robot._controllers["arm_" + self.arm].control_type == ControlType.POSITION
+        ), "The arm to use with the primitives must be controlled in absolute positions"
+        assert not robot._controllers[
+            "arm_" + self.arm
+        ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
+
         self.controller_functions = {
             B1KActionPrimitive.NAVIGATE_TO: self._navigate_to,
             B1KActionPrimitive.PICK: self._pick,
@@ -373,9 +393,6 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             B1KActionPrimitive.PUSH: self._push,
             B1KActionPrimitive.PULL_OPEN: self._pull_open,
         }
-        if arm is None:
-            self.arm = self.robot.default_arm
-            logger.info("Using with the default arm: {}".format(self.arm))
 
         if self.env.config["task"] == "throwing_away_leftovers":
             self.action_list = action_dict["throwing_away_leftovers_discrete"]
@@ -407,15 +424,6 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        assert isinstance(
-            robot._controllers["arm_" + self.arm], JointController
-        ), "The arm to use with the primitives must be controlled in joint space"
-        assert (
-            robot._controllers["arm_" + self.arm].control_type == ControlType.POSITION
-        ), "The arm to use with the primitives must be controlled in absolute positions"
-        assert not robot._controllers[
-            "arm_" + self.arm
-        ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
         self.skip_base_planning = True
         self.skip_arm_planning = True  # False
         self.is_grasping = False

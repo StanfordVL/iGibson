@@ -242,8 +242,8 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         return 0.372
 
     @property
-    def gripper_link_to_grasp_point(self):
-        return {self.default_arm: np.array([0.1, 0, 0])}
+    def finger_lengths(self):
+        return {self.default_arm: 0.1}
 
     @property
     def assisted_grasp_start_points(self):

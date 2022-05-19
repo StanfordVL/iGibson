@@ -389,6 +389,10 @@ class BehaviorRobot(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         }
 
     @property
+    def finger_lengths(self):
+        return {arm: 0.08 for arm in self.arm_names}
+
+    @property
     def arm_joint_names(self):
         return {
             arm: ("%s_shoulder__%s_%s" % (arm, arm, name) for name in Virtual6DOFJoint.COMPONENT_SUFFIXES)

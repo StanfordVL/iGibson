@@ -121,6 +121,10 @@ class JR2(ManipulationRobot, TwoWheelRobot):
         return 0.5421
 
     @property
+    def finger_lengths(self):
+        return {arm: 0.10 for arm in self.arm_names}
+
+    @property
     def base_control_idx(self):
         """
         :return Array[int]: Indices in low-level control vector corresponding to [Left, Right] wheel joints.
