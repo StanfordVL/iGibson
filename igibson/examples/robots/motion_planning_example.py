@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import random
 import sys
 import time
 from sys import platform
@@ -153,6 +154,8 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
         env.robots[0].untuck()
 
+        arm = random.choice(env.robots[0].arm_names)  # Change this if you want to use a specific one
+
         success = False
         for attempt in range(1, max_attempts + 1):
             pushing_position = np.array([-1.36, -0.45, 0.67])
@@ -185,16 +188,34 @@ def run_example(config, programmatic_actions, headless, short_exec):
                 ee_pushing_orn=ee_pushing_orn,
                 pushing_distance=pushing_distance,
                 plan_full_pre_push_motion=plan_full_pre_push_motion,
+                arm=arm,
             )
 
             if interaction_path is not None and len(interaction_path) != 0:
                 print("Visualizing push")
-                motion_planner.visualize_arm_path(pre_interaction_path)
-                motion_planner.visualize_arm_path(approaching_path)
-                motion_planner.visualize_arm_path(interaction_path)
+                motion_planner.visualize_arm_path(
+                    pre_interaction_path,
+                    arm=arm,
+                )
+                motion_planner.visualize_arm_path(
+                    approaching_path,
+                    arm=arm,
+                )
+                motion_planner.visualize_arm_path(
+                    interaction_path,
+                    arm=arm,
+                )
                 if visualize_reverse:
-                    motion_planner.visualize_arm_path(interaction_path, reverse_path=True)
-                    motion_planner.visualize_arm_path(pre_interaction_path, reverse_path=True)
+                    motion_planner.visualize_arm_path(
+                        interaction_path,
+                        reverse_path=True,
+                        arm=arm,
+                    )
+                    motion_planner.visualize_arm_path(
+                        pre_interaction_path,
+                        reverse_path=True,
+                        arm=arm,
+                    )
                 print("End of the push visualization")
             else:
                 logging.error("MP couldn't find path to push. Attempt {} of {}".format(attempt, max_attempts))
@@ -207,12 +228,22 @@ def run_example(config, programmatic_actions, headless, short_exec):
                 pulling_direction,
                 pre_pulling_distance=pre_pushing_distance,
                 pulling_distance=0.2,
+                arm=arm,
             )
             if interaction_path is not None and len(interaction_path) != 0:
                 print("Visualizing pull")
-                motion_planner.visualize_arm_path(pre_interaction_path)
-                motion_planner.visualize_arm_path(approaching_path)
-                motion_planner.visualize_arm_path(interaction_path)
+                motion_planner.visualize_arm_path(
+                    pre_interaction_path,
+                    arm=arm,
+                )
+                motion_planner.visualize_arm_path(
+                    approaching_path,
+                    arm=arm,
+                )
+                motion_planner.visualize_arm_path(
+                    interaction_path,
+                    arm=arm,
+                )
                 print("End of the pull visualization")
             else:
                 logging.error("MP couldn't find path to pull. Attempt {} of {}".format(attempt, max_attempts))
@@ -223,12 +254,22 @@ def run_example(config, programmatic_actions, headless, short_exec):
             pre_interaction_path, interaction_path = motion_planner.plan_ee_pick(
                 pushing_position,
                 pre_grasping_distance=0.1,
+                arm=arm,
             )
             if interaction_path is not None and len(interaction_path) != 0:
                 print("Visualizing pick")
-                motion_planner.visualize_arm_path(pre_interaction_path)
-                motion_planner.visualize_arm_path(approaching_path)
-                motion_planner.visualize_arm_path(interaction_path)
+                motion_planner.visualize_arm_path(
+                    pre_interaction_path,
+                    arm=arm,
+                )
+                motion_planner.visualize_arm_path(
+                    approaching_path,
+                    arm=arm,
+                )
+                motion_planner.visualize_arm_path(
+                    interaction_path,
+                    arm=arm,
+                )
                 print("End of the pick visualization")
             else:
                 logging.error("MP couldn't find path to pick. Attempt {} of {}".format(attempt, max_attempts))
