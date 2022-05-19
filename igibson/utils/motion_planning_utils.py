@@ -6,6 +6,7 @@ from transforms3d import euler
 from igibson.robots.manipulation_robot import IsGraspingState
 
 log = logging.getLogger(__name__)
+log.setLevel(logging.ERROR)
 
 import time
 
@@ -672,14 +673,16 @@ class MotionPlanner(object):
         line_path = []
 
         for i in range(steps):
-
+            start_push_goal = time.time()
             push_goal = line_initial_point + line_segment * (i + 1) / float(steps)
-
+            start_joint_pose = time.time()
+            # print(i, 'start joint pose time {}'.format(start_joint_pose - start_push_goal))
             # Solve the IK problem to set the arm at the desired position
             joint_pose = self.get_joint_pose_for_ee_pose_with_ik(
                 push_goal, ee_orientation=ee_orn, arm=arm, check_collisions=False, randomize_initial_pose=False
             )
-
+            start_restore = time.time()
+            # print('start restore {}'.format(start_restore-start_joint_pose))
             if joint_pose is None:
                 restoreState(initial_pb_state)
                 p.removeState(initial_pb_state)
@@ -687,7 +690,8 @@ class MotionPlanner(object):
                 return None
 
             line_path.append(joint_pose)
-
+            end_restore = time.time()
+            # print('end restore {}'.format(end_restore - start_restore))
         restoreState(initial_pb_state)
         p.removeState(initial_pb_state)
         return line_path

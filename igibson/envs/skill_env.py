@@ -77,20 +77,15 @@ class SkillEnv(gym.Env):
 
     def __init__(self, selection="user", headless=False, short_exec=False):
         config_filename = os.path.join(igibson.configs_path, "fetch_behavior_aps.yaml")
-        config = parse_config(config_filename)
+        self.config = parse_config(config_filename)
         self.env = ActionPrimitivesEnv(
             "B1KActionPrimitives",
-            config_file=config,
+            config_file=self.config,
             mode="headless" if headless else "gui_interactive",
             use_pb_gui=False,  # (not headless and platform.system() != "Darwin"),
         )
-
         self.env.task.initial_state = self.env.task.save_scene(self.env)
-
-        self.env.reset()
-        if self.env.env.config["task"] in ["putting_away_Halloween_decorations"]:
-            self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.05)
-            print("bottom_cabinet opened!")
+        self.reset()
 
         # env.env.simulator.viewer.initial_pos = [1.5, -2.0, 2.3]
         # env.env.simulator.viewer.initial_view_direction = [-0.7, 0.0, -0.6]
@@ -100,6 +95,9 @@ class SkillEnv(gym.Env):
 
     def reset(self):
         self.env.reset()
+        if self.env.env.config["task"] in ["putting_away_Halloween_decorations"]:
+            self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.05)
+            print("bottom_cabinet opened!")
 
     def close(self):
         self.env.close()
@@ -130,13 +128,13 @@ if __name__ == "__main__":
 
     env = SkillEnv()
 
-    action_list = [2, 3, 0, 4, 5, 6, 0, 4]
+    # action_list = [2, 3, 0, 4, 5, 6, 0, 4]
+    action_list = [0, 1, 2]
 
     for episode in range(1):
         print("Episode: {}".format(episode))
+        # env.reset()
         start = time.time()
-        env.reset()
-
         for action_idx in action_list:
             state, reward, done, info = env.step(action_idx)
             print("{}, reward: {}, done: {}, is_success: {}".format(action_idx, reward, done, info['success']))

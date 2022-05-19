@@ -16,6 +16,7 @@ from igibson.utils.motion_planning_utils import MotionPlanner
 from igibson.utils.transform_utils import mat2euler, quat2mat
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.ERROR)
 
 index_action_mapping = {
     0: "move",
@@ -317,7 +318,7 @@ action_list_putting_away_Halloween_decorations_v3 = [
 # vis version: full set
 action_list_putting_away_Halloween_decorations = [
     [0, "cabinet.n.01_1"],  # navigate_to
-    [4, "cabinet.n.01_1"],  # pull
+    [6, "cabinet.n.01_1"],  # pull
     [0, "pumpkin.n.02_1"],  # navigate_to
     [1, "pumpkin.n.02_1"],  # pick
     [2, "cabinet.n.01_1"],  # place
@@ -357,6 +358,7 @@ class B1KActionPrimitive(IntEnum):
     TOGGLE = 3
     PULL = 4
     PUSH = 5
+    PULL_OPEN = 6
 
 
 class B1KActionPrimitives(BaseActionPrimitiveSet):
@@ -369,6 +371,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             B1KActionPrimitive.TOGGLE: self._toggle,
             B1KActionPrimitive.PULL: self._pull,
             B1KActionPrimitive.PUSH: self._push,
+            B1KActionPrimitive.PULL_OPEN: self._pull_open,
         }
         if arm is None:
             self.arm = self.robot.default_arm
@@ -414,7 +417,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             "arm_" + self.arm
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
         self.skip_base_planning = True
-        self.skip_arm_planning = False
+        self.skip_arm_planning = True  # False
         self.is_grasping = False
         self.fast_execution = False
 
@@ -488,7 +491,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
         action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1.0
 
-        grasping_steps = 1 if self.fast_execution else 10
+        grasping_steps = 5 if self.fast_execution else 10
         for _ in range(grasping_steps):
             yield action
 
@@ -507,7 +510,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         # TODO: Extend to non-binary grasping controllers
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
-        ungrasping_steps = 10 if self.fast_execution else 30
+        ungrasping_steps = 5 if self.fast_execution else 10
         for idx in range(ungrasping_steps):
             action[self.robot.controller_action_idx["gripper_" + self.arm]] = 0.0
             yield action
@@ -849,6 +852,199 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         yield self._get_still_action()
 
         logger.info("Pull action completed")
+
+    def _pull_open(self, object_name):
+        logger.info("Pulling object {}".format(object_name))
+        params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
+        obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
+
+        # process the offset from object frame to world frame
+        mat = quat2mat(obj_rot_XYZW)
+        vector = mat @ np.array(params[:3])
+
+        pick_place_pos = copy.deepcopy(obj_pos)
+        pick_place_pos[0] += vector[0]
+        pick_place_pos[1] += vector[1]
+        pick_place_pos[2] += vector[2]
+
+        pulling_direction = np.array(params[3:6])
+        ee_pulling_orn = p.getQuaternionFromEuler((np.pi / 2, 0, 0))
+        pre_pulling_distance = 0.10
+        pulling_distance = 0.30
+
+        plan_full_pre_pull_motion = not self.skip_arm_planning
+
+        print("AAAAAAAAAAAAAAAAAA")
+
+        pre_pull_path, approach_interaction_path, pull_interaction_path = self.planner.plan_ee_pull(
+            pulling_location=pick_place_pos,
+            pulling_direction=pulling_direction,
+            ee_pulling_orn=ee_pulling_orn,
+            pre_pulling_distance=pre_pulling_distance,
+            pulling_distance=pulling_distance,
+            plan_full_pre_pull_motion=plan_full_pre_pull_motion,
+            pulling_steps=5,
+        )
+
+        if (
+            pre_pull_path is None
+            or len(pre_pull_path) == 0
+            or approach_interaction_path is None
+            or (len(approach_interaction_path) == 0 and pre_pulling_distance != 0)
+            or pull_interaction_path is None
+            or (len(pull_interaction_path) == 0 and pulling_distance != 0)
+        ):
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.PLANNING_ERROR,
+                "No arm path found to pull object",
+                {"object_to_pull": object_name},
+            )
+
+        # First, teleport the robot to the beginning of the pre-pick path
+        print("Visualizing pre-pull path")
+        self.planner.visualize_arm_path(pre_pull_path, arm=self.arm)
+        # yield self._get_still_action()
+        # Then, execute the interaction_pick_path stopping if there is a contact
+        print("Executing approaching pull path")
+        yield from self._execute_ee_path(approach_interaction_path, stop_on_contact=True)
+        # At the end, close the hand
+        print("Executing grasp")
+        yield from self._execute_grasp()
+        # Then, execute the interaction_pull_path
+        # Since we may have stopped earlier due to contact, the precomputed path may be wrong
+        # We have two options here: 1) (re)plan from the current pose (online planning), or 2) find the closest point
+        # in the precomputed trajectory and start the execution there. Implementing option 1)
+        # logger.info("Replaning interaction pull path and executing")
+        # current_ee_position = self.robot.get_eef_position(arm=self.arm)
+        # current_ee_orn = self.robot.get_eef_orientation(arm=self.arm)
+        # state = self.robot.get_joint_states()
+        # joint_positions = np.array([state[joint_name][0] for joint_name in state])
+        # arm_joint_positions = joint_positions[self.robot.controller_joint_idx["arm_" + self.arm]]
+        # pull_interaction_path = self.planner.plan_ee_straight_line_motion(
+        #     arm_joint_positions,
+        #     current_ee_position,
+        #     pulling_direction,
+        #     ee_orn=current_ee_orn,
+        #     line_length=pulling_distance,
+        #     arm=self.arm,
+        # )
+        yield from self._execute_ee_path(pull_interaction_path, while_grasping=True)
+        # Then, open the hand
+        print("Executing ungrasp")
+        yield from self._execute_ungrasp()
+        # logger.info("Tuck arm")
+        # self.planner.visualize_arm_path(
+        #     [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
+        #     arm=self.arm,
+        #     keep_last_location=True,
+        # )
+        yield self._get_still_action()
+
+        print("Pull action completed")
+
+    def _pull_open_v2(self, object_name):
+        logger.info("Pulling object {}".format(object_name))
+        params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
+        obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
+
+        # process the offset from object frame to world frame
+        mat = quat2mat(obj_rot_XYZW)
+        vector = mat @ np.array(params[:3])
+
+        pick_place_pos = copy.deepcopy(obj_pos)
+        pick_place_pos[0] += vector[0]
+        pick_place_pos[1] += vector[1]
+        pick_place_pos[2] += vector[2]
+
+        pulling_direction = np.array(params[3:6])
+        ee_pulling_orn = p.getQuaternionFromEuler((np.pi / 2, 0, 0))
+        pre_pulling_distance = 0.10
+        pulling_distance = 0.30
+
+        plan_full_pre_pull_motion = not self.skip_arm_planning
+
+        pre_pull_path, approach_interaction_path, pull_interaction_path = self.planner.plan_ee_pull(
+            pulling_location=pick_place_pos,
+            pulling_direction=pulling_direction,
+            ee_pulling_orn=ee_pulling_orn,
+            pre_pulling_distance=pre_pulling_distance,
+            pulling_distance=pulling_distance,
+            plan_full_pre_pull_motion=plan_full_pre_pull_motion,
+            pulling_steps=10, # 15,
+            # approach_pulling_steps=1,  # 15,
+        )
+
+        if (
+            pre_pull_path is None
+            or len(pre_pull_path) == 0
+            or approach_interaction_path is None
+            or (len(approach_interaction_path) == 0 and pre_pulling_distance != 0)
+            or pull_interaction_path is None
+            or (len(pull_interaction_path) == 0 and pulling_distance != 0)
+        ):
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.PLANNING_ERROR,
+                "No arm path found to pull object",
+                {"object_to_pull": object_name},
+            )
+
+        # First, teleport the robot to the beginning of the pre-pick path
+        start_1 = time.time()
+        logger.info("Visualizing pre-pull path")
+        self.planner.visualize_arm_path(pre_pull_path, arm=self.arm)
+        yield self._get_still_action()
+        start_2 = time.time()
+        print('time 2: {}'.format(start_2 - start_1))
+        # Then, execute the interaction_pick_path stopping if there is a contact
+        logger.info("Executing approaching pull path")
+        yield from self._execute_ee_path(approach_interaction_path, stop_on_contact=True)
+
+        # At the end, close the hand
+        # logger.info("Executing grasp")
+        # yield from self._execute_grasp()
+
+        # Then, execute the interaction_pull_path
+        # Since we may have stopped earlier due to contact, the precomputed path may be wrong
+        # We have two options here: 1) (re)plan from the current pose (online planning), or 2) find the closest point
+        # in the precomputed trajectory and start the execution there. Implementing option 1)
+        logger.info("Replaning interaction pull path and executing")
+        # current_ee_position = self.robot.get_eef_position(arm=self.arm)
+        # current_ee_orn = self.robot.get_eef_orientation(arm=self.arm)
+        # state = self.robot.get_joint_states()
+        # joint_positions = np.array([state[joint_name][0] for joint_name in state])
+        # arm_joint_positions = joint_positions[self.robot.controller_joint_idx["arm_" + self.arm]]
+        start_3 = time.time()
+        print('time 3: {}'.format(start_3 - start_2))
+        # pull_interaction_path = self.planner.plan_ee_straight_line_motion(
+        #     arm_joint_positions,
+        #     current_ee_position,
+        #     pulling_direction,
+        #     ee_orn=current_ee_orn,
+        #     line_length=pulling_distance,
+        #     arm=self.arm,
+        #     steps=5,
+        # )
+        yield from self._execute_ee_path(pull_interaction_path, while_grasping=True)
+        start_4 = time.time()
+        print('time 4: {}'.format(start_4 - start_3))
+
+        # Then, open the hand
+        logger.info("Executing ungrasp")
+        yield from self._execute_ungrasp()
+
+        logger.info("Tuck arm")
+        self.planner.visualize_arm_path(
+            [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
+            arm=self.arm,
+            keep_last_location=True,
+        )
+        yield self._get_still_action()
+        start_5 = time.time()
+        print('time 5: {}'.format(start_5 - start_4))
+        logger.info("Pull action completed")
+
 
     def _push(self, object_name):
         logger.info("Pushing object {}".format(object_name))
