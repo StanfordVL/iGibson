@@ -38,6 +38,24 @@ from igibson.external.pybullet_tools.utils import (
     set_joint_positions,
     set_pose,
 )
+
+from igibson.external.pybullet_tools.utils import (
+    control_joints,
+    get_base_values,
+    get_joint_positions,
+    get_max_limits,
+    get_min_limits,
+    get_sample_fn,
+    is_collision_free,
+    joints_from_names,
+    link_from_name,
+    plan_base_motion_2d,
+    plan_joint_motion,
+    set_base_values_with_z,
+    set_joint_positions,
+    set_pose,
+)
+
 from igibson.objects.visual_marker import VisualMarker
 from igibson.render.viewer import Viewer
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -155,6 +173,8 @@ class MotionPlanner(object):
             # Since the refactoring, the robot is another object in the scene
             # We need to remove it to not check twice for self collisions
             self.mp_obstacles.remove(self.robot_body_id)
+        self.enable_simulator_sync = True
+        self.enable_simulator_step = False
 
     def simulator_sync(self):
         """Sync the simulator to renderer"""
@@ -307,7 +327,8 @@ class MotionPlanner(object):
                         gripper_orn = self.robot.get_eef_orientation(arm="default")
                         object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
                         set_pose(grasped_obj_id, object_pose)
-                    self.simulator_sync()
+                    if self.enable_simulator_sync:
+                        self.simulator_sync()
             else:
                 robot_position, robot_orn = self.env.robots[0].get_position_orientation()
                 robot_position[0] = path[-1][0]
@@ -319,7 +340,8 @@ class MotionPlanner(object):
                     gripper_orn = self.robot.get_eef_orientation(arm="default")
                     object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
                     set_pose(grasped_obj_id, object_pose)
-                self.simulator_sync()
+                if self.enable_simulator_sync:
+                    self.simulator_sync()
 
             if not keep_last_location:
                 log.info("Not keeping the last state, only visualizing the path and restoring at the end")
@@ -664,7 +686,8 @@ class MotionPlanner(object):
             self.robot.set_eef_position_orientation(
                 initial_arm_pose[:3], p.getQuaternionFromEuler(initial_arm_pose[3:]), arm
             )
-            self.simulator_sync()
+            if self.enable_simulator_sync:
+                self.simulator_sync()
 
         line_segment = np.array(line_direction) * (line_length)
 
@@ -871,7 +894,172 @@ class MotionPlanner(object):
                 )
 
         return pre_pull_path, approach_interaction_path, pull_interaction_path
+    '''
+    def plan_arm_pull(self, hit_pos, hit_normal):
+        """
+        Attempt to reach a 3D position and prepare for a push later
 
+        :param hit_pos: 3D position to reach
+        :param hit_normal: direction to push after reacehing that position
+        :return: arm trajectory or None if no plan can be found
+        """
+        log.debug("Planning arm push at point {} with direction {}".format(hit_pos, hit_normal))
+
+        hit_pos = hit_pos + (np.array(hit_normal) * -1.0) * (self.arm_interaction_length * 0.3)
+
+        # if self.marker is not None:
+        #     self.set_marker_position_direction(hit_pos, hit_normal)
+        #
+        # # Solve the IK problem to set the arm at the desired position
+        # joint_positions = self.get_joint_pose_for_ee_pose_with_ik(hit_pos)
+
+        if joint_positions is not None:
+            # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
+            # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
+            self.simulator_sync()
+            plan = self.plan_base_motion([hit_pos[0], hit_pos[1], 0.05])
+            return plan
+        else:
+            log.debug("Planning failed: goal position may be non-reachable")
+            return None
+
+    def interact_pull(self, push_point, push_direction):
+        """
+        Move the arm starting from the push_point along the push_direction
+        and physically simulate the interaction
+
+        :param push_point: 3D point to start pushing from
+        :param push_direction: push direction
+        """
+        body_ids = self.robots.get_body_ids()
+        assert len(body_ids) == 1, "Only single-body robots are supported."
+        self.robot_id = body_ids[0]
+        self.arm_default_joint_positions = (
+            0.1,
+            -1.41,
+            1.517,
+            0.82,
+            2.2,
+            2.96,
+            -1.286,
+            0.0,
+        )
+        self.arm_joint_names = [
+            "torso_lift_joint",
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "upperarm_roll_joint",
+            "elbow_flex_joint",
+            "forearm_roll_joint",
+            "wrist_flex_joint",
+            "wrist_roll_joint",
+        ]
+        self.robot_joint_names = [
+            "r_wheel_joint",
+            "l_wheel_joint",
+            "torso_lift_joint",
+            "head_pan_joint",
+            "head_tilt_joint",
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "upperarm_roll_joint",
+            "elbow_flex_joint",
+            "forearm_roll_joint",
+            "wrist_flex_joint",
+            "wrist_roll_joint",
+            "r_gripper_finger_joint",
+            "l_gripper_finger_joint",
+        ]
+        self.rest_joint_names = [
+            "r_wheel_joint",
+            "l_wheel_joint",
+            "head_pan_joint",
+            "head_tilt_joint",
+            "r_gripper_finger_joint",
+            "l_gripper_finger_joint",
+        ]
+
+        self.arm_joint_ids = joints_from_names(
+            self.robot_id,
+            self.arm_joint_names,
+        )
+
+        self.robot_arm_indices = [
+            self.robot_joint_names.index(arm_joint_name) for arm_joint_name in self.arm_joint_names
+        ]
+
+        self.rest_joint_ids = joints_from_names(
+            self.robot_id,
+            self.rest_joint_names,
+        )
+
+        push_vector = np.array(push_direction) * self.arm_interaction_length
+
+        max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
+        base_pose = get_base_values(self.robot_id)
+
+        # if self.sleep_flag:
+        #     steps = 50
+        # else:
+        steps = 5
+
+        for i in range(steps):
+            push_goal = np.array(push_point) + push_vector * (i + 1) / float(steps)
+
+            joint_positions = p.calculateInverseKinematics(
+                self.robot_id,
+                self.robot.eef_links[self.robot.default_arm].link_id,
+                targetPosition=push_goal,
+                # targetOrientation=(0, 0.707, 0, 0.707),
+                lowerLimits=min_limits,
+                upperLimits=max_limits,
+                jointRanges=joint_range,
+                restPoses=rest_position,
+                jointDamping=joint_damping,
+                # solver=p.IK_DLS,
+                maxNumIterations=100,
+            )
+
+            if self.robot_type == "Fetch":
+                joint_positions = np.array(joint_positions)[self.robot_arm_indices]
+
+            control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
+            control_joints(self.robot_id, self.rest_joint_ids, np.array([0.0, 0.0, 0.0, 0.45, 0.5, 0.5]))
+
+            # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
+
+            # if self.robot_type == "Fetch":
+            #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
+
+            achieved = self.robot.get_eef_position()
+            self.simulator_step()
+            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
+
+            if self.mode == "gui_interactive" and self.sleep_flag:
+                sleep(0.02)  # for visualization
+
+    def execute_arm_pull(self, plan, hit_pos, hit_normal):
+        """
+        Execute arm push given arm trajectory
+        Should be called after plan_arm_push()
+
+        :param plan: arm trajectory or None if no plan can be found
+        :param hit_pos: 3D position to reach
+        :param hit_normal: direction to push after reacehing that position
+        """
+        if plan is not None:
+            log.debug("Teleporting arm along the trajectory. No physics simulation")
+            self.visualize_base_path(plan)
+            log.debug("Performing pushing actions")
+            self.interact_pull(hit_pos, hit_normal)
+            log.debug("Teleporting arm to the default configuration")
+            self.visualize_base_path(plan[::-1])
+            # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
+            self.simulator_sync()
+            done, _ = self.env.task.get_termination(self.env)
+            if self.print_log:
+                print("pull done: ", done)
+    '''
     def plan_ee_pick(
         self,
         grasping_location,
@@ -1128,7 +1316,7 @@ class MotionPlanner(object):
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
-        base_pose = get_base_values(self.robot_body_id)
+        # base_pose = get_base_values(self.robot_body_id)
         execution_path = arm_path if not reverse_path else reversed(arm_path)
         execution_path = (
             execution_path if self.mode in ["gui_non_interactive", "gui_interactive"] else [execution_path[-1]]
@@ -1145,7 +1333,8 @@ class MotionPlanner(object):
                     gripper_orn = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[1]
                     object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
                     set_pose(grasped_obj_id, object_pose)
-                self.simulator_sync()
+                if self.enable_simulator_sync:
+                    self.simulator_sync()
         else:
             for (x, y, z, roll, pitch, yaw) in execution_path:
                 self.robot.set_eef_position_orientation([x, y, z], p.getQuaternionFromEuler([roll, pitch, yaw]), arm)
@@ -1156,11 +1345,13 @@ class MotionPlanner(object):
                     object_pose = p.multiplyTransforms(gripper_pos, gripper_orn, grasp_pose[0], grasp_pose[1])
                     set_pose(grasped_obj_id, object_pose)
                 time.sleep(0.1)
-                self.simulator_sync()
+                if self.enable_simulator_sync:
+                    self.simulator_sync()
 
         if not keep_last_location:
             restoreState(initial_pb_state)
-            self.simulator_sync()
+            if self.enable_simulator_sync:
+                self.simulator_sync()
             p.removeState(initial_pb_state)
 
     def set_marker_position(self, pos):
