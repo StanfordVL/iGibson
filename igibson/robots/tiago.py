@@ -151,14 +151,12 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
         """
         Immediately set this robot's configuration to be in tucked mode
         """
-        log.error("Tucking robot to pose: {}".format(self.tucked_default_joint_pos))
         self.set_joint_positions(self.tucked_default_joint_pos)
 
     def untuck(self):
         """
         Immediately set this robot's configuration to be in untucked mode
         """
-        log.error("Untucking robot to pose: {}".format(self.untucked_default_joint_pos))
         self.set_joint_positions(self.untucked_default_joint_pos)
 
     def load(self, simulator):
