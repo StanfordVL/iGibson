@@ -378,7 +378,6 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
                 if arm == arm_controlling_trunk
                 else self.arm_control_idx[arm]
             )
-            # TODO: is this not assigning the trunk to both arms?
 
             # If using rigid trunk, we also clamp its limits
             if self.rigid_trunk and arm == arm_controlling_trunk:
