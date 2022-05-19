@@ -465,7 +465,7 @@ class MotionPlanner(object):
 
             if check_collisions:
                 # need to simulator_step to get the latest collision
-                self.simulator_step()
+                # self.simulator_step()
 
                 # simulator_step will slightly move the robot base and the objects
                 set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
@@ -1115,11 +1115,6 @@ class MotionPlanner(object):
 
         if grasped_obj_id is not None:
             if self.robot_type != "BehaviorRobot":
-                arm_joint_pb_ids = np.array(
-                    joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
-                )
-                set_joint_positions(self.robot_body_id, arm_joint_pb_ids, arm_path[-1])
-                self.simulator_sync()
                 gripper_pos = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[0]
                 gripper_orn = p.getLinkState(self.robot_body_id, self.robot.eef_link_ids[arm])[1]
 
