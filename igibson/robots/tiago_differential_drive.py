@@ -114,30 +114,22 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             pos[self.gripper_control_idx[arm]] = np.array([0.05, 0.05])  # open gripper
 
             # Choose arm based on setting
+            # Original: [0.22, -0.48, 1.52, 1.76, 0.04, -0.49, 0]
             if self.default_arm_pose == "vertical":
-                pos[self.arm_control_idx[arm]] = np.array(
-                    # [-0.94121, -0.64134, 1.55186, 1.65672, -0.93218, 1.53416, 2.14474]
-                    [0.22, 0.48, 1.52, 1.76, 0.04, -0.49, 0]
-                )
+                pos[self.arm_control_idx[arm]] = np.array([0.22, -1.48, 1.52, 1.76, 0.04, -0.49, 0])
             elif self.default_arm_pose == "diagonal15":
-                pos[self.arm_control_idx[arm]] = np.array(
-                    # [-0.95587, -0.34778, 1.46388, 1.47821, -0.93813, 1.4587, 1.9939]
-                    [0.22, 0.48, 1.52, 1.76, 0.04, -0.49, 0]
-                )
+                pos[self.arm_control_idx[arm]] = np.array([0.22, -1.1, 1.52, 1.76, 0.04, -0.49, 0])
             elif self.default_arm_pose == "diagonal30":
-                pos[self.arm_control_idx[arm]] = np.array(
-                    # [-1.06595, -0.22184, 1.53448, 1.46076, -0.84995, 1.36904, 1.90996]
-                    [0.22, 0.48, 1.52, 1.76, 0.04, -0.49, 0]
-                )
+                pos[self.arm_control_idx[arm]] = np.array([0.22, -0.8, 1.52, 1.76, 0.04, -0.49, 0])
             elif self.default_arm_pose == "diagonal45":
                 pos[self.arm_control_idx[arm]] = np.array(
                     # [-1.11479, -0.0685, 1.5696, 1.37304, -0.74273, 1.3983, 1.79618]
-                    [0.22, 0.48, 1.52, 1.76, 0.04, -0.49, 0]
+                    [0.22, -0.4, 1.52, 1.76, 0.04, -0.49, 0]
                 )
             elif self.default_arm_pose == "horizontal":
                 pos[self.arm_control_idx[arm]] = np.array(
                     # [-1.43016, 0.20965, 1.86816, 1.77576, -0.27289, 1.31715, 2.01226]
-                    [0.22, 0.48, 1.52, 1.76, 0.04, -0.49, 0]
+                    [0.22, 0.0, 1.52, 1.76, 0.04, -0.49, 0]
                 )
             else:
                 raise ValueError("Unknown default arm pose: {}".format(self.default_arm_pose))
@@ -280,9 +272,9 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
         # we need to add palm (0.1) + finger length (0.12) in -z direction
         return {
             arm: [
-                GraspingPoint(link_name="gripper_{}_right_finger_link".format(arm), position=[0.0, -0.012, -0.20]),
+                GraspingPoint(link_name="gripper_{}_right_finger_link".format(arm), position=[0.0, -0.012, -0.22]),
                 GraspingPoint(link_name="gripper_{}_right_finger_link".format(arm), position=[0.0, -0.012, -0.15]),
-                GraspingPoint(link_name="gripper_{}_right_finger_link".format(arm), position=[0.0, 0.012, -0.20]),
+                GraspingPoint(link_name="gripper_{}_right_finger_link".format(arm), position=[0.0, 0.012, -0.22]),
                 GraspingPoint(link_name="gripper_{}_right_finger_link".format(arm), position=[0.0, 0.012, -0.15]),
             ]
             for arm in self.arm_names
@@ -292,9 +284,9 @@ class Tiago(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
     def assisted_grasp_end_points(self):
         return {
             arm: [
-                GraspingPoint(link_name="gripper_{}_left_finger_link".format(arm), position=[0.0, -0.012, -0.20]),
+                GraspingPoint(link_name="gripper_{}_left_finger_link".format(arm), position=[0.0, -0.012, -0.22]),
                 GraspingPoint(link_name="gripper_{}_left_finger_link".format(arm), position=[0.0, -0.012, -0.15]),
-                GraspingPoint(link_name="gripper_{}_left_finger_link".format(arm), position=[0.0, 0.012, -0.20]),
+                GraspingPoint(link_name="gripper_{}_left_finger_link".format(arm), position=[0.0, 0.012, -0.22]),
                 GraspingPoint(link_name="gripper_{}_left_finger_link".format(arm), position=[0.0, 0.012, -0.15]),
             ]
             for arm in self.arm_names
