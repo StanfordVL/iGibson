@@ -71,12 +71,14 @@ skill_object_offset_params = {
         "pumpkin.n.02_1": [
             0.0,
             0.0,
-            0.025,
+            0.0,
+            1.0,
         ],
         "pumpkin.n.02_2": [
             0.0,
             0.0,
-            0.025,
+            0.0,
+            1.0,
         ],
     },
     2: {  # place
@@ -86,14 +88,14 @@ skill_object_offset_params = {
         # Ihlen_1_int, 0
         "ashcan.n.01_1": [0, 0, 0.5],
         # putting_away_Halloween_decorations
-        # 'cabinet.n.01_1': [0.3, -0.55, 0.25],
-        "cabinet.n.01_1": [0.3, -0.60, 0.25],
+        "cabinet.n.01_1": [0.3, -0.55, 0.25],
+        # "cabinet.n.01_1": [0.3, -0.60, 0.25],
     },
     3: {  # toggle
         "printer.n.03_1": [-0.3, -0.25, 0.23],  # dx, dy, dz
     },
     4: {  # pull
-        "cabinet.n.01_1": [0.35, -0.35, 0.35, -1, 0, 0],  # dx, dy, dz
+        "cabinet.n.01_1": [0.35, -0.3, 0.35, -1, 0, 0],  # dx, dy, dz
     },
     5: {  # push
         "cabinet.n.01_1": [0.3, -0.65, 0.35, 1, 0, 0],  # dx, dy, dz
@@ -476,7 +478,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 logger.debug("Finger ids {}".format([link.link_id for link in self.robot.finger_links[self.arm]]))
                 return
             logger.debug("Executing action {}".format(arm_action))
-            full_body_action = np.zeros(self.robot.action_dim)
+            full_body_action = self._get_still_action()
             # This assumes the arms are called "arm_"+self.arm. Maybe some robots do not follow this convention
             arm_controller_action_idx = self.robot.controller_action_idx["arm_" + self.arm]
             full_body_action[arm_controller_action_idx] = arm_action
@@ -625,9 +627,19 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pre_grasping_distance = 0.0
         plan_full_pre_grasp_motion = not self.skip_arm_planning
 
+        picking_direction = self.default_direction
+
+        if len(params) > 3:
+            logger.warning(
+                "The number of params indicate that this picking position was made robot-agnostic."
+                "Adding finger offset."
+            )
+            finger_size = self.robot.finger_lengths[self.arm]
+            pick_place_pos -= picking_direction * finger_size
+
         pre_pick_path, interaction_pick_path = self.planner.plan_ee_pick(
             pick_place_pos,
-            self.default_direction,
+            grasping_direction=picking_direction,
             pre_grasping_distance=pre_grasping_distance,
             plan_full_pre_grasp_motion=plan_full_pre_grasp_motion,
         )
@@ -699,25 +711,40 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             pick_place_pos, arm=self.arm, plan_full_pre_drop_motion=plan_full_pre_drop_motion
         )
 
-        # First, teleport the robot to the beginning of the pre-pick path
-        if plan_full_pre_drop_motion:
+        if pre_drop_path is None or len(pre_drop_path) == 0:
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.PLANNING_ERROR,
+                "No arm path found to place object",
+                {"object_to_place": object_name},
+            )
+
+        # First, teleport the robot to the pre-ungrasp motion
+        logger.info("Visualizing pre-place path")
+        self.planner.visualize_arm_path(
+            pre_drop_path,
+            arm=self.arm,
+            grasped_obj_id=self.robot._ag_obj_in_hand[self.arm],
+            keep_last_location=True,
+        )
+        yield self._get_still_action()
+        # At the end, open the hand
+        logger.info("Executing ungrasp")
+        yield from self._execute_ungrasp()
+        # Then, retract the arm
+        logger.info("Executing retracting path")
+        if plan_full_pre_drop_motion:  # Visualizing the full path...
             self.planner.visualize_arm_path(
                 pre_drop_path,
                 arm=self.arm,
-                grasped_obj_id=self.robot._ag_obj_in_hand[self.arm],
                 keep_last_location=True,
+                reverse_path=True,
             )
-        else:
+        else:  # ... or directly teleporting to the last location
             self.planner.visualize_arm_path(
                 [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
                 arm=self.arm,
-                grasped_obj_id=self.robot._ag_obj_in_hand[self.arm],
                 keep_last_location=True,
             )
-        yield self._get_still_action()
-        # At the end, close the hand
-        yield from self._execute_ungrasp()
-
         logger.info("Place action completed")
 
     def _toggle(self, object_name):
@@ -788,20 +815,23 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         mat = quat2mat(obj_rot_XYZW)
         vector = mat @ np.array(params[:3])
 
-        pick_place_pos = copy.deepcopy(obj_pos)
-        pick_place_pos[0] += vector[0]
-        pick_place_pos[1] += vector[1]
-        pick_place_pos[2] += vector[2]
+        pulling_pos = copy.deepcopy(obj_pos)
+        pulling_pos[0] += vector[0]
+        pulling_pos[1] += vector[1]
+        pulling_pos[2] += vector[2]
 
         pulling_direction = np.array(params[3:6])
         ee_pulling_orn = p.getQuaternionFromEuler((np.pi / 2, 0, 0))
         pre_pulling_distance = 0.10
         pulling_distance = 0.30
 
+        finger_size = self.robot.finger_lengths[self.arm]
+        pulling_pos += pulling_direction * finger_size
+
         plan_full_pre_pull_motion = not self.skip_arm_planning
 
         pre_pull_path, approach_interaction_path, pull_interaction_path = self.planner.plan_ee_pull(
-            pulling_location=pick_place_pos,
+            pulling_location=pulling_pos,
             pulling_direction=pulling_direction,
             ee_pulling_orn=ee_pulling_orn,
             pre_pulling_distance=pre_pulling_distance,
@@ -856,7 +886,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # Then, open the hand
         logger.info("Executing ungrasp")
         yield from self._execute_ungrasp()
-        logger.info("Tuck arm")
+        logger.info("Untuck arm")
         self.planner.visualize_arm_path(
             [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
             arm=self.arm,
@@ -1084,7 +1114,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         pushing_direction = np.array(params[3:6])
 
-        pushing_distance = 0.3
+        pushing_distance = 0.2
         ee_pushing_orn = np.array(p.getQuaternionFromEuler((0, np.pi / 2, 0)))
 
         plan_full_pre_push_motion = not self.skip_arm_planning
