@@ -660,7 +660,7 @@ class MotionPlanner(object):
                 joints_from_names(self.robot_body_id, self.robot.arm_joint_names[self.robot.default_arm])
             )
             set_joint_positions(self.robot_body_id, arm_joint_pb_ids, initial_arm_pose)
-            self.simulator_sync()
+            # self.simulator_sync()
         else:
             self.robot.set_eef_position_orientation(
                 initial_arm_pose[:3], p.getQuaternionFromEuler(initial_arm_pose[3:]), arm

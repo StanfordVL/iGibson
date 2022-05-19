@@ -414,9 +414,9 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             "arm_" + self.arm
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
         self.skip_base_planning = True
-        self.skip_arm_planning = True
+        self.skip_arm_planning = False
         self.is_grasping = False
-        self.fast_execution = True
+        self.fast_execution = False
 
     def get_action_space(self):
         return gym.spaces.Discrete(self.num_discrete_action)
@@ -488,7 +488,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
         action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1.0
 
-        grasping_steps = 1 if self.fast_execution else 5
+        grasping_steps = 1 if self.fast_execution else 10
         for _ in range(grasping_steps):
             yield action
 
