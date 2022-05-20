@@ -89,6 +89,7 @@ class SkillEnv(gym.Env):
             config_file=self.config,
             mode="headless" if headless else "gui_interactive",
             use_pb_gui=False,  # (not headless and platform.system() != "Darwin"),
+            num_attempts=4,
         )
         self.env.task.initial_state = self.env.task.save_scene(self.env)
         self.reset()
@@ -137,6 +138,7 @@ class SkillEnv(gym.Env):
                 self.reward = 0.
             self.done = False
         else:
+            self.accum_reward = self.accum_reward + r
             if self.dense_reward:
                 if self.config['task'] == 'installing_a_printer':
                     r = r - 0.1
@@ -146,15 +148,13 @@ class SkillEnv(gym.Env):
             self.reward = r
             self.done = d
             self.info = i
-            if i["primitive_success"]:
-                print("Primitive success!")
-            else:
-                print("Primitive {} failed. Ending".format(action_idx))
             if d:
                 i["is_success"] = i["success"]
                 print('is_success: {}'.format(i['is_success']))
-            self.accum_reward = self.accum_reward + r
-
+        if i["primitive_success"]:
+            print("Primitive success!")
+        else:
+            print("Primitive {} failed. Ending".format(action_idx))
         self.state['accum_reward'] = self.accum_reward
         print('self.accum_reward: ', self.state['accum_reward'])
         return self.state, self.reward, self.done, self.info
