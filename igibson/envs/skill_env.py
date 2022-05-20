@@ -120,6 +120,9 @@ class SkillEnv(gym.Env):
             self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.2)
             print("bottom_cabinet opened!")
         self.state['accum_reward'] = self.accum_reward
+        self.default_obs = {}
+        for key, value in self.state:
+            self.default_obs[key] = np.ones_like(value)
         return self.state
 
     def close(self):
@@ -137,6 +140,7 @@ class SkillEnv(gym.Env):
             else:
                 self.reward = 0.
             self.done = False
+            self.state = self.default_obs
         else:
             self.accum_reward = self.accum_reward + r
             if self.dense_reward:
@@ -157,6 +161,7 @@ class SkillEnv(gym.Env):
             print("Primitive {} failed. Ending".format(action_idx))
         self.state['accum_reward'] = self.accum_reward
         print('self.accum_reward: ', self.state['accum_reward'])
+        print(self.state, self.reward)
         return self.state, self.reward, self.done, self.info
 
 
