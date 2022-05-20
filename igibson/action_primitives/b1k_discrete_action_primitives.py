@@ -98,7 +98,7 @@ skill_object_offset_params = {
         "cabinet.n.01_1": [0.3, -0.55, 0.35, -1, 0, 0],  # dx, dy, dz
     },
     5: {  # push
-        "cabinet.n.01_1": [0.3, -0.65, 0.35, 1, 0, 0],  # dx, dy, dz
+        "cabinet.n.01_1": [0.3, -0.85, 0.35, 1, 0, 0],  # dx, dy, dz
     },
     6: {  # vis_pick
         "hamburger.n.01_1": [0, -0.8, 0, 0.5 * np.pi, 0.0, 0.0, 0.025],
@@ -326,7 +326,7 @@ action_list_putting_away_Halloween_decorations = [
     [2, "cabinet.n.01_1"],  # place 4
     [0, "pumpkin.n.02_2"],  # navigate_to 5
     [1, "pumpkin.n.02_2"],  # pick 6
-    [6, "cabinet.n.01_1"],  # push 7
+    [5, "cabinet.n.01_1"],  # push 7
 ]
 
 action_list_room_rearrangement = [
@@ -361,6 +361,7 @@ class B1KActionPrimitive(IntEnum):
     PULL = 4
     PUSH = 5
     PUSH_OPEN = 6
+    DUMMY = 10
 
 
 class B1KActionPrimitives(BaseActionPrimitiveSet):
@@ -394,6 +395,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             B1KActionPrimitive.PULL: self._pull,
             B1KActionPrimitive.PUSH: self._push,
             B1KActionPrimitive.PUSH_OPEN: self._push_open,
+            B1KActionPrimitive.DUMMY: self._dummy,
         }
 
         if self.env.config["task"] == "throwing_away_leftovers":
@@ -435,8 +437,15 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         return gym.spaces.Discrete(self.num_discrete_action)
 
     def apply(self, action_index):
-        primitive_obj_pair = self.action_list[action_index]
-        return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1])
+        if action_index == 10:
+            return self._dummy()
+        else:
+            primitive_obj_pair = self.action_list[action_index]
+            # try:
+            return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1])
+        # except:
+        #     return self._dummy(primitive_obj_pair[1])
+            # return self._dummy(primitive_obj_pair[1])
 
     def _get_obj_in_hand(self):
         obj_in_hand_id = self.robot._ag_obj_in_hand[self.arm]  # TODO(MP): Expose this interface.
@@ -537,6 +546,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 {"object_in_hand": self._get_obj_in_hand()},
             )
         self.is_grasping = False
+
+    def _dummy(self):
+        logger.info("Dummy".format())
+        yield self._get_still_action()
+        logger.info("Finished dummy".format())
 
     def _navigate_to(self, object_name):
         logger.info("Navigating to object {}".format(object_name))
@@ -685,7 +699,6 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 grasped_obj_id=object_id,
             )
         yield self._get_still_action()
-
         logger.info("Pick action completed")
 
     def _place(self, object_name):
@@ -745,6 +758,15 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 arm=self.arm,
                 keep_last_location=True,
             )
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
         logger.info("Place action completed")
 
     def _toggle(self, object_name):
@@ -1125,6 +1147,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             ee_pushing_orn=ee_pushing_orn,
             pushing_distance=pushing_distance,
             plan_full_pre_push_motion=plan_full_pre_push_motion,
+            pushing_steps=5,
         )
 
         if (

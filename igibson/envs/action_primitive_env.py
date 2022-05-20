@@ -46,11 +46,16 @@ class ActionPrimitivesEnv(gym.Env):
         print("action", action)
 
         for _ in range(self.num_attempts):
-            obs, done, info = None, None, {}
+            # obs, done, info = None, None, {}
+            for lower_level_action in self.action_generator.apply(10):
+                obs, reward, done, info = self.env.step(lower_level_action)
+                if self.accumulate_obs:
+                    accumulated_obs.append(obs)
+                else:
+                    accumulated_obs = [obs]  # Do this to save some memory.
             try:
                 for lower_level_action in self.action_generator.apply(action):
                     obs, reward, done, info = self.env.step(lower_level_action)
-
                     if self.reward_accumulation == "sum":
                         accumulated_reward += reward
                     elif self.reward_accumulation == "max":
@@ -68,7 +73,6 @@ class ActionPrimitivesEnv(gym.Env):
                     info["primitive_error_reason"] = None
                     info["primitive_error_metadata"] = None
                     info["primitive_error_message"] = None
-
                 break
             except ActionPrimitiveError as e:
                 end_time = time.time()
