@@ -96,7 +96,7 @@ class SkillEnv(gym.Env):
     def reset(self):
         self.env.reset()
         if self.env.env.config["task"] in ["putting_away_Halloween_decorations"]:
-            self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.05)
+            self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.2)
             print("bottom_cabinet opened!")
 
     def close(self):
@@ -128,8 +128,8 @@ if __name__ == "__main__":
 
     env = SkillEnv()
 
-    # action_list = [2, 3, 0, 4, 5, 6, 0, 4]
-    action_list = [0, 1, 2]
+    action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4]
+    # action_list = [0, 1]
 
     for episode in range(1):
         print("Episode: {}".format(episode))

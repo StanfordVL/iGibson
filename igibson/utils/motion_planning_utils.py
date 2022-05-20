@@ -1151,7 +1151,7 @@ class MotionPlanner(object):
     def plan_ee_drop(
         self,
         dropping_location,
-        ee_dropping_orn=None,
+        ee_dropping_orn=np.array([0.0, 0.0, -1.0]),
         dropping_distance=0.3,
         plan_full_pre_drop_motion=True,
         arm=None,
@@ -1187,14 +1187,27 @@ class MotionPlanner(object):
         pre_dropping_location = dropping_location + dropping_distance * np.array([0, 0, 1])
         log.warning("Predropping location {}".format(pre_dropping_location))
 
+        desired_x_dir_normalized = np.array(ee_dropping_orn) / np.linalg.norm(np.array(ee_dropping_orn))
+        z_dir_in_wf = np.array([0, 0, 1.0])
+        desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
+
+        if np.linalg.norm(desired_y_dir) < 0.05:
+            log.warning("Approaching grasping location top-down")
+            desired_y_dir_normalized = np.array([0.0, 1.0, 0.0])
+        else:
+            desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
+        desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
+        rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
+        quatt = quatXYZWFromRotMat(rot_matrix)
+
         if plan_full_pre_drop_motion:
             pre_drop_path = self.plan_ee_motion_to_cartesian_pose(
-                pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm
+                pre_dropping_location, ee_orientation=quatt, arm=arm
             )
         else:
             log.warning("Not planning the pre-drop path, only checking feasibility of the last location.")
             last_pose = self.get_joint_pose_for_ee_pose_with_ik(
-                pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm, obj_name=obj_name
+                pre_dropping_location, ee_orientation=quatt, arm=arm, obj_name=obj_name
             )
             pre_drop_path = [last_pose] if last_pose is not None else []
 
