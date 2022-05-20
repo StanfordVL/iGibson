@@ -135,14 +135,16 @@ def main():
     # env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
     # env = VecMonitor(env)
 
-    eval_env = SkillEnv(
-        config_file=config_file,
-        mode="gui_interactive",
-        # action_timestep=1 / 30.0,
-        # physics_timestep=1 / 300.0,
-        print_log=True,
-        action_space_type='continuous',
-    )
+    # eval_env = SkillEnv(
+    #     config_file=config_file,
+    #     mode="gui_interactive",
+    #     # action_timestep=1 / 30.0,
+    #     # physics_timestep=1 / 300.0,
+    #     print_log=True,
+    #     action_space_type='continuous',
+    # )
+
+    eval_env = SkillEnv()
 
     policy_kwargs = dict(
         features_extractor_class=CustomCombinedExtractor,

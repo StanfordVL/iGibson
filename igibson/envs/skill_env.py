@@ -75,9 +75,15 @@ class SkillEnv(gym.Env):
     Skill RL Environment (OpenAI Gym interface).
     """
 
-    def __init__(self, selection="user", headless=False, short_exec=False):
-        config_filename = os.path.join(igibson.configs_path, "fetch_behavior_aps.yaml")
+    def __init__(self, selection="user", headless=False, short_exec=False,
+                 accum_reward_obs=False,
+                 obj_joint_obs=False,
+                 config_file="fetch_behavior_aps.yaml",
+                 dense_reward=True,
+                 ):
+        config_filename = os.path.join(igibson.configs_path, config_file)
         self.config = parse_config(config_filename)
+        # print(self.config['output'])
         self.env = ActionPrimitivesEnv(
             "B1KActionPrimitives",
             config_file=self.config,
@@ -93,23 +99,65 @@ class SkillEnv(gym.Env):
         self.env.env.simulator.viewer.initial_view_direction = [-0.1, -0.8, -0.5]
         self.env.env.simulator.viewer.reset_viewer()
 
+        # Observation Space
+        self.accum_reward_obs = accum_reward_obs
+        self.obj_joint_obs = obj_joint_obs
+        self.observation_space = self.env.observation_space
+        self.action_space = self.env.action_space
+
+        self.state = None
+        self.reward = 0.
+        self.done = False
+        self.info = {}
+        self.dense_reward = dense_reward
+        self.accum_reward = np.array([0.])
+
     def reset(self):
-        self.env.reset()
+        self.state = self.env.reset()
+        self.accum_reward = np.array([0.])
         if self.env.env.config["task"] in ["putting_away_Halloween_decorations"]:
             self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.2)
             print("bottom_cabinet opened!")
+        self.state['accum_reward'] = self.accum_reward
+        return self.state
 
     def close(self):
         self.env.close()
 
     def step(self, action_idx):
         o, r, d, i = self.env.step(action_idx)
-        if i["primitive_success"]:
-            print("Primitive success!")
+        # print(o, r, d, i)
+        if o is None:
+            if self.dense_reward:
+                if self.config['task'] == 'installing_a_printer':
+                    self.reward = -0.1
+                else:  # in ['putting_away_Halloween_decorations']:
+                    self.reward = -0.01
+            else:
+                self.reward = 0.
+            self.done = False
         else:
-            print("Primitive {} failed. Ending".format(action_idx))
+            if self.dense_reward:
+                if self.config['task'] == 'installing_a_printer':
+                    r = r - 0.1
+                else:  # in ['putting_away_Halloween_decorations']:
+                    r = r - 0.01
+            self.state = o
+            self.reward = r
+            self.done = d
+            self.info = i
+            if i["primitive_success"]:
+                print("Primitive success!")
+            else:
+                print("Primitive {} failed. Ending".format(action_idx))
+            if d:
+                i["is_success"] = i["success"]
+                print('is_success: {}'.format(i['is_success']))
+            self.accum_reward = self.accum_reward + r
 
-        return o, r, d, i
+        self.state['accum_reward'] = self.accum_reward
+        print('self.accum_reward: ', self.state['accum_reward'])
+        return self.state, self.reward, self.done, self.info
 
 
 if __name__ == "__main__":
@@ -128,7 +176,8 @@ if __name__ == "__main__":
 
     env = SkillEnv()
 
-    action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4]
+    action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7, ]
+    # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
 
     for episode in range(1):

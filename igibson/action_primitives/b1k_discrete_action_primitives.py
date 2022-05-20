@@ -319,14 +319,14 @@ action_list_putting_away_Halloween_decorations_v3 = [
 ]
 # vis version: full set
 action_list_putting_away_Halloween_decorations = [
-    [0, "cabinet.n.01_1"],  # navigate_to
-    [6, "cabinet.n.01_1"],  # pull
-    [0, "pumpkin.n.02_1"],  # navigate_to
-    [1, "pumpkin.n.02_1"],  # pick
-    [2, "cabinet.n.01_1"],  # place
-    [0, "pumpkin.n.02_2"],  # navigate_to
-    [1, "pumpkin.n.02_2"],  # pick
-    [5, "cabinet.n.01_1"],  # push
+    [0, "cabinet.n.01_1"],  # navigate_to 0
+    [6, "cabinet.n.01_1"],  # pull 1
+    [0, "pumpkin.n.02_1"],  # navigate_to 2
+    [1, "pumpkin.n.02_1"],  # pick 3
+    [2, "cabinet.n.01_1"],  # place 4
+    [0, "pumpkin.n.02_2"],  # navigate_to 5
+    [1, "pumpkin.n.02_2"],  # pick 6
+    [6, "cabinet.n.01_1"],  # push 7
 ]
 
 action_list_room_rearrangement = [
@@ -426,8 +426,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        self.skip_base_planning = True
-        self.skip_arm_planning = True  # False
+        self.skip_base_planning = True  # False  # True
+        self.skip_arm_planning = True  # False  # True  # False
         self.is_grasping = False
         self.fast_execution = False
 
@@ -498,7 +498,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         get_still_action_time = time.time()
         action = self._get_still_action()
         after_get_still_action_time = time.time()
-        print('_get_still_action: {}'.format(after_get_still_action_time - get_still_action_time))
+        # print('_get_still_action: {}'.format(after_get_still_action_time - get_still_action_time))
         # TODO: Extend to non-binary grasping controllers
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
         action[self.robot.controller_action_idx["gripper_" + self.arm]] = -1.0
@@ -507,7 +507,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         for _ in range(grasping_steps):
             yield action
         yield_action_time = time.time()
-        print('yield grasping action: {}'.format(yield_action_time - after_get_still_action_time))
+        # print('yield grasping action: {}'.format(yield_action_time - after_get_still_action_time))
         grasped_object = self._get_obj_in_hand()
         if grasped_object is None:
             raise ActionPrimitiveError(
@@ -529,7 +529,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             action[self.robot.controller_action_idx["gripper_" + self.arm]] = 0.0
             yield action
         yield_action_time = time.time()
-        print('yield ungrasping action: {}'.format(yield_action_time - after_get_still_action_time))
+        # print('yield ungrasping action: {}'.format(yield_action_time - after_get_still_action_time))
         if self._get_obj_in_hand() is not None:
             raise ActionPrimitiveError(
                 ActionPrimitiveError.Reason.EXECUTION_ERROR,
@@ -1074,27 +1074,27 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # sum_approach_interaction_path = [np.sum(approach_interaction_path, axis=0)]
         # print('sum_approach_interaction_path: ', sum_approach_interaction_path)
         start_execute_ee_time = time.time()
-        print('pre_pull_time: {}'.format(start_execute_ee_time - pre_pull_time))
+        # print('pre_pull_time: {}'.format(start_execute_ee_time - pre_pull_time))
         yield from self._execute_ee_path(approach_interaction_path, stop_on_contact=True)
         execute_ee_time = time.time()
-        print('execute_ee_time: {}'.format(execute_ee_time - start_execute_ee_time))
+        # print('execute_ee_time: {}'.format(execute_ee_time - start_execute_ee_time))
         # At the end, close the hand
         # print("Executing grasp")
         yield from self._execute_grasp()
         grasp_time = time.time()
-        print('grasp_time: {}'.format(grasp_time - execute_ee_time))
+        # print('grasp_time: {}'.format(grasp_time - execute_ee_time))
         yield from self._execute_ee_path(pull_interaction_path, while_grasping=True)
         pull_interaction_time = time.time()
-        print('pull_interaction_time: {}'.format(pull_interaction_time - grasp_time))
+        # print('pull_interaction_time: {}'.format(pull_interaction_time - grasp_time))
         # Then, open the hand
         # print("Executing ungrasp")
         yield from self._execute_ungrasp()
         ungrasp_time = time.time()
-        print('ungrasp_time: {}'.format(ungrasp_time - pull_interaction_time))
+        # print('ungrasp_time: {}'.format(ungrasp_time - pull_interaction_time))
         yield self._get_still_action()
         still_action_time = time.time()
-        print('still_action_time: {}'.format(still_action_time - ungrasp_time))
-        print('total time: {}'.format(still_action_time - plan_ee_pull_time))
+        # print('still_action_time: {}'.format(still_action_time - ungrasp_time))
+        # print('total time: {}'.format(still_action_time - plan_ee_pull_time))
         print("Pull action completed")
 
     def _push(self, object_name):

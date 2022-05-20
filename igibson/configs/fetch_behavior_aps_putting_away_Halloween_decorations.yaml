@@ -1,11 +1,6 @@
-
 # scene
-# Task List:
-# scene_id | task | task_id | instance_id | max length | time penalty
-# Beechwood_0_int | installing_a_printer | 0 | 2 | 20 | 0.1
-# Pomaria_1_int | throwing_away_leftovers | 0 | 2 | 40 | 0.01
 scene: igibson
-scene_id: Rs_int  # Pomaria_1_int  # Beechwood_0_int
+scene_id: Rs_int
 build_graph: true
 load_texture: true
 pybullet_load_texture: true
@@ -22,12 +17,12 @@ object_randomization_freq: null
 robot:
   name: Fetch
   action_type: continuous
-  action_normalize: true
+  action_normalize: false
   base_name: null
   scale: 1.0
   self_collision: true
   rendering_params: null
-  grasping_mode: sticky
+  grasping_mode: assisted
   rigid_trunk: false
   default_trunk_offset: 0.365
   default_arm_pose: diagonal30
@@ -35,8 +30,11 @@ robot:
     base:
       name: DifferentialDriveController
     arm_0:
-      name: InverseKinematicsController
-      kv: 2.0
+      name: JointController
+      use_delta_commands: False
+      motor_type: position
+      command_input_limits: null
+      command_output_limits: null
     gripper_0:
       name: MultiFingerGripperController
       mode: binary
@@ -45,25 +43,11 @@ robot:
       use_delta_commands: False
 
 # task
-#task: room_rearrangement
-
-task: putting_away_Halloween_decorations  # putting_leftovers_away  # putting_away_toys # throwing_away_leftovers  # installing_a_printer
+task: putting_away_Halloween_decorations
 task_id: 0
-instance_id: 0  # 0
+instance_id: 0
 online_sampling: false
 should_highlight_task_relevant_objs: false
-
-#load_object_categories: [
-#  bottom_cabinet,
-#  bottom_cabinet_no_top,
-#  top_cabinet,
-#  dishwasher,
-#  fridge,
-#  microwave,
-#  oven,
-#  washer
-#  dryer,
-#]
 
 # reward
 potential_reward_weight: 1.0
@@ -82,7 +66,7 @@ initial_pos_z_offset: 0.1
 collision_ignore_link_a_ids: [0, 1, 2]  # ignore collisions with these robot links
 
 # sensor spec
-output: [ins_seg, occupancy_grid]  # [rgb, occupancy_grid]  # , depth, occupancy_grid] # scan,
+output: [ins_seg, occupancy_grid]
 # image
 # Primesense Carmine 1.09 short-range RGBD sensor
 # http://xtionprolive.com/primesense-carmine-1.09
@@ -111,3 +95,4 @@ scan_noise_rate: 0.0
 # visual objects
 visible_target: true
 visible_path: false
+

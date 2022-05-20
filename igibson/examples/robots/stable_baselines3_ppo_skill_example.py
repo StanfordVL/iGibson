@@ -131,7 +131,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
             #     observations[key] = observations[key].permute((0, 3, 1, 2))
             # elif key in ["scan"]:
             #     observations[key] = observations[key].permute((0, 2, 1))
-
+            # print(key, observations[key])  # [0, 500]
             if key in ["rgb",]:
                 observations[key] = observations[key].permute((0, 3, 1, 2))  # range: [0, 1]
             elif key in ["ins_seg"]:
@@ -160,7 +160,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 def main():
     # config_file = os.path.join('..', 'configs', "behavior_pick_and_place.yaml")
     # config_file = os.path.join('..', '..', 'configs', 'robots', "fetch_rl.yaml")
-    config_file = os.path.join(igibson.configs_path, "fetch_rl.yaml")
+    config_file = os.path.join(igibson.configs_path, "fetch_behavior_aps_putting_away_Halloween_decorations.yaml")
     tensorboard_log_dir = os.path.join("log_dir", time.strftime("%Y%m%d-%H%M%S"))
     os.makedirs(tensorboard_log_dir, exist_ok=True)
     prefix = ''
@@ -169,14 +169,15 @@ def main():
 
     def make_env(rank: int, seed: int = 0, print_log=True) -> Callable:
         def _init() -> SkillEnv:
-            env = SkillEnv(
-                config_file=config_file,
-                mode='gui_interactive',  # 'headless',  # "gui_interactive",
-                # action_timestep=1 / 30.0,
-                # physics_timestep=1 / 300.0,
-                print_log=print_log,
-                action_space_type='multi_discrete', # 'discrete', # 'continuous',  # 'discrete',  # 'multi_discrete',
-            )
+            env = SkillEnv(config_file=config_file)
+            # env = SkillEnv(
+            #     config_file=config_file,
+            #     mode='gui_interactive',  # 'headless',  # "gui_interactive",
+            #     # action_timestep=1 / 30.0,
+            #     # physics_timestep=1 / 300.0,
+            #     print_log=print_log,
+            #     action_space_type='multi_discrete', # 'discrete', # 'continuous',  # 'discrete',  # 'multi_discrete',
+            # )
             env.seed(seed + rank)
             return env
 

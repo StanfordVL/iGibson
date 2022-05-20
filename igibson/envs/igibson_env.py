@@ -144,7 +144,6 @@ class iGibsonEnv(BaseEnv):
         sensors = OrderedDict()
         vision_modalities = []
         scan_modalities = []
-
         if "task_obs" in self.output:
             observation_space["task_obs"] = self.build_obs_space(
                 shape=(self.task.task_obs_dim,), low=-np.inf, high=np.inf

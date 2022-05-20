@@ -43,7 +43,7 @@ class ActionPrimitivesEnv(gym.Env):
 
         start_time = time.time()
 
-        print("action", action, action, action)
+        print("action", action)
 
         for _ in range(self.num_attempts):
             obs, done, info = None, None, {}
