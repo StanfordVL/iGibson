@@ -113,7 +113,7 @@ class SkillEnv(gym.Env):
         self.dense_reward = dense_reward
         self.accum_reward = np.array([0.])
         self.step_index = 0
-        # self.default_obs = OrderedDict()
+        self.max_step = self.config['max_step']
 
     def reset(self):
         self.state = self.env.reset()
@@ -123,11 +123,6 @@ class SkillEnv(gym.Env):
             print("bottom_cabinet opened!")
         self.state['accum_reward'] = self.accum_reward
         self.step_index = 0
-        # self.default_obs = OrderedDict()
-        # # print(self.state)
-        # for key, value in self.state.items():
-        #     self.default_obs[key] = np.ones_like(value)
-        # print('self.default_obs: ', self.default_obs)
         return self.state
 
     def close(self):
@@ -143,12 +138,9 @@ class SkillEnv(gym.Env):
                 r = r - 0.01
         self.state = o
         self.reward = r
-        self.done = d
-        self.info = i
-        if d:
-            i["is_success"] = i["success"]
+        # if d:
+        #     i["is_success"] = i["success"]
             # print('is_success: {}'.format(i['is_success']))
-
         if i["primitive_success"]:
             print("Primitive success!")
         else:
@@ -156,6 +148,15 @@ class SkillEnv(gym.Env):
         self.state['accum_reward'] = self.accum_reward
         print('self.accum_reward: ', self.state['accum_reward'])
         self.step_index = self.step_index + 1
+        # print('\n\n\n\n\n', self.step_index, self.max_step)
+        if self.step_index >= self.max_step:
+            self.done = True
+        elif 'success' in i and i['success']:
+            self.done = True
+            i["is_success"] = i["success"]
+        else:
+            self.done = False
+        self.info = i
         # print('\n\n\n\nself.step_index: ', self.step_index)
         # print(self.state, self.reward)
         return self.state, self.reward, self.done, self.info
