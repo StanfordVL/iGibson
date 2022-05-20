@@ -89,7 +89,7 @@ class SkillEnv(gym.Env):
             config_file=self.config,
             mode="headless" if headless else "gui_interactive",
             use_pb_gui=False,  # (not headless and platform.system() != "Darwin"),
-            num_attempts=4,
+            num_attempts=1,
         )
         self.env.task.initial_state = self.env.task.save_scene(self.env)
         self.reset()
@@ -112,6 +112,7 @@ class SkillEnv(gym.Env):
         self.info = {}
         self.dense_reward = dense_reward
         self.accum_reward = np.array([0.])
+        self.step_index = 0
         # self.default_obs = OrderedDict()
 
     def reset(self):
@@ -121,6 +122,7 @@ class SkillEnv(gym.Env):
             self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.2)
             print("bottom_cabinet opened!")
         self.state['accum_reward'] = self.accum_reward
+        self.step_index = 0
         # self.default_obs = OrderedDict()
         # # print(self.state)
         # for key, value in self.state.items():
@@ -133,20 +135,6 @@ class SkillEnv(gym.Env):
 
     def step(self, action_idx):
         o, r, d, i = self.env.step(action_idx)
-        # print(o, r, d, i)
-        # if o is None:
-        #     if self.dense_reward:
-        #         if self.config['task'] == 'installing_a_printer':
-        #             self.reward = -0.1
-        #         else:  # in ['putting_away_Halloween_decorations']:
-        #             self.reward = -0.01
-        #     else:
-        #         self.reward = 0.
-        #     self.done = False
-        #     # self.state = self.default_obs
-        #     for key, value in self.state.items():
-        #         self.default_obs[key] = np.random.randn(*value.shape) * 500
-        # else:
         self.accum_reward = self.accum_reward + r
         if self.dense_reward:
             if self.config['task'] == 'installing_a_printer':
@@ -167,6 +155,8 @@ class SkillEnv(gym.Env):
             print("Primitive {} failed. Ending".format(action_idx))
         self.state['accum_reward'] = self.accum_reward
         print('self.accum_reward: ', self.state['accum_reward'])
+        self.step_index = self.step_index + 1
+        # print('\n\n\n\nself.step_index: ', self.step_index)
         # print(self.state, self.reward)
         return self.state, self.reward, self.done, self.info
 
