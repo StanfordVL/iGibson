@@ -166,7 +166,9 @@ class Fetch(ManipulationRobot, TwoWheelRobot, ActiveCameraRobot):
             u_vec[self.trunk_control_idx] = self.untucked_default_joint_pos[self.trunk_control_idx]
             u_type_vec[self.trunk_control_idx] = ControlType.POSITION
 
-
+        # Override camera value
+        u_vec[self.camera_control_idx[1]] = 0.4
+        u_type_vec[self.camera_control_idx] = ControlType.POSITION
         # Return control
         return u_vec, u_type_vec
 
