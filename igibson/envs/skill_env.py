@@ -151,12 +151,15 @@ class SkillEnv(gym.Env):
         # print('\n\n\n\n\n', self.step_index, self.max_step)
         if self.step_index >= self.max_step:
             self.done = True
-        elif 'success' in i and i['success']:
+            i["is_success"] = i["success"]
+        elif i['success']:  # 'success' always in info
             self.done = True
             i["is_success"] = i["success"]
         else:
             self.done = False
         self.info = i
+        # print(self.env.env.robots[0].get_proprioception())
+        # print('self.info: ', self.info)
         # print('\n\n\n\nself.step_index: ', self.step_index)
         # print(self.state, self.reward)
         return self.state, self.reward, self.done, self.info
@@ -178,13 +181,15 @@ if __name__ == "__main__":
 
     env = SkillEnv()
 
-    action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7, ]
+    # action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7, ]
+    # action_list = [0, 1, 5, 6, 0, 4, 2, 3, 0, 4, 7, ]
+    action_list = [0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, ]
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
 
     for episode in range(1):
-        print("Episode: {}".format(episode))
-        # env.reset()
+        print("\n\n\n\n\n Episode: {}".format(episode))
+        env.reset()
         start = time.time()
         for action_idx in action_list:
             state, reward, done, info = env.step(action_idx)
