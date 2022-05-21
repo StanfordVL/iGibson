@@ -53,7 +53,7 @@ class BehaviorTask(BaseTask):
         super(BehaviorTask, self).__init__(env)
         self.scene = env.scene
         self.termination_conditions = [
-            Timeout(self.config),
+            # Timeout(self.config),
             PredicateGoal(self.config),
         ]
         self.reward_functions = [
