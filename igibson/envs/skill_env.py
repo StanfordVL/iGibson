@@ -78,9 +78,13 @@ class SkillEnv(gym.Env):
     def __init__(self, selection="user", headless=False, short_exec=False,
                  accum_reward_obs=False,
                  obj_joint_obs=False,
-                 config_file="fetch_behavior_aps.yaml",
+                 config_file="fetch_behavior_aps_putting_away_Halloween_decorations.yaml",
                  dense_reward=True,
+                 action_space_type='multi_discrete',
+                 seed=0,
                  ):
+        self.seed(seed)
+        self.action_space_type = action_space_type
         config_filename = os.path.join(igibson.configs_path, config_file)
         self.config = parse_config(config_filename)
         # print(self.config['output'])
@@ -89,7 +93,8 @@ class SkillEnv(gym.Env):
             config_file=self.config,
             mode="headless" if headless else "gui_interactive",
             use_pb_gui=False,  # (not headless and platform.system() != "Darwin"),
-            num_attempts=1,
+            num_attempts=4,
+            action_space_type=action_space_type,
         )
         self.env.task.initial_state = self.env.task.save_scene(self.env)
         self.reset()
@@ -129,7 +134,9 @@ class SkillEnv(gym.Env):
         self.env.close()
 
     def step(self, action_idx):
-        o, r, d, i = self.env.step(action_idx)
+        # action_idx = [action_idx, 0]  # array([3, 3])
+        # action_idx = [action_idx, 1]
+        o, r, d, i = self.env.step(action_idx, self.state)
         self.accum_reward = self.accum_reward + r
         if self.dense_reward:
             if self.config['task'] == 'installing_a_printer':
@@ -138,17 +145,13 @@ class SkillEnv(gym.Env):
                 r = r - 0.01
         self.state = o
         self.reward = r
-        # if d:
-        #     i["is_success"] = i["success"]
-            # print('is_success: {}'.format(i['is_success']))
         if i["primitive_success"]:
             print("Primitive success!")
         else:
             print("Primitive {} failed. Ending".format(action_idx))
         self.state['accum_reward'] = self.accum_reward
-        print('self.accum_reward: ', self.state['accum_reward'])
+        print('self.accum_reward: ', self.state['accum_reward'], 'r: ', r)
         self.step_index = self.step_index + 1
-        # print('\n\n\n\n\n', self.step_index, self.max_step)
         if self.step_index >= self.max_step:
             self.done = True
             i["is_success"] = i["success"]
@@ -158,11 +161,11 @@ class SkillEnv(gym.Env):
         else:
             self.done = False
         self.info = i
-        # print(self.env.env.robots[0].get_proprioception())
-        # print('self.info: ', self.info)
-        # print('\n\n\n\nself.step_index: ', self.step_index)
-        # print(self.state, self.reward)
         return self.state, self.reward, self.done, self.info
+
+    def seed(self, seed):
+        random.seed(seed)
+        np.random.seed(seed)
 
 
 if __name__ == "__main__":
@@ -183,7 +186,8 @@ if __name__ == "__main__":
 
     # action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7, ]
     # action_list = [0, 1, 5, 6, 0, 4, 2, 3, 0, 4, 7, ]
-    action_list = [0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, ]
+    action_list = [0, 1, 5, 6, 0, 4, 2, 3, 0, 4, 7, ]
+    # action_list = [0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, ]
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
 

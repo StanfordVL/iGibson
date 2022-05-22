@@ -320,12 +320,23 @@ action_list_putting_away_Halloween_decorations_v3 = [
 # vis version: full set
 action_list_putting_away_Halloween_decorations = [
     [0, "cabinet.n.01_1"],  # navigate_to 0
-    [6, "cabinet.n.01_1"],  # pull 1
+    [11, "cabinet.n.01_1"],  # pull 1
     [0, "pumpkin.n.02_1"],  # navigate_to 2
     [1, "pumpkin.n.02_1"],  # pick 3
     [2, "cabinet.n.01_1"],  # place 4
     [0, "pumpkin.n.02_2"],  # navigate_to 5
     [1, "pumpkin.n.02_2"],  # pick 6
+    [5, "cabinet.n.01_1"],  # push 7
+]
+
+action_list_putting_away_Halloween_decorations_multi_discrete = [
+    [0, "cabinet.n.01_1"],  # navigate_to 0
+    [11, "cabinet.n.01_1"],  # pull 1
+    [0, "pumpkin.n.02_1"],  # navigate_to 2
+    [6, "pumpkin.n.02_1"],  # vis pick 3
+    [7, "cabinet.n.01_1"],  # vis place 4
+    [0, "pumpkin.n.02_2"],  # navigate_to 5
+    [6, "pumpkin.n.02_2"],  # vis pick 6
     [5, "cabinet.n.01_1"],  # push 7
 ]
 
@@ -348,6 +359,7 @@ action_dict = {
     "throwing_away_leftovers": action_list_throwing_away_leftovers,
     "putting_leftovers_away": action_list_putting_leftovers_away,
     "putting_away_Halloween_decorations": action_list_putting_away_Halloween_decorations,
+    "putting_away_Halloween_decorations_multi_discrete": action_list_putting_away_Halloween_decorations_multi_discrete,
     "throwing_away_leftovers_discrete": action_list_throwing_away_leftovers_discrete,
     "room_rearrangement": action_list_room_rearrangement,
 }
@@ -360,18 +372,23 @@ class B1KActionPrimitive(IntEnum):
     TOGGLE = 3
     PULL = 4
     PUSH = 5
-    PUSH_OPEN = 6
+    VIS_PICK = 6
+    VIS_PLACE = 7
     DUMMY = 10
+    PUSH_OPEN = 11
 
 
 class B1KActionPrimitives(BaseActionPrimitiveSet):
-    def __init__(self, env, task, scene, robot, arm=None, execute_free_space_motion=False):
+    def __init__(self, env, task, scene, robot, arm=None, execute_free_space_motion=False, action_space_type='discrete'):
         """ """
         super().__init__(env, task, scene, robot)
+        self.action_space_type = action_space_type
 
         if arm is None:
             self.arm = self.robot.default_arm
-            logger.info("Using with the default arm: {}".format(self.arm))
+        else:
+            self.arm = arm
+        logger.info("Using with the default arm: {}".format(self.arm))
 
         # Checks for the right type of robot and controller to use planned trajectories
         assert robot.grasping_mode == "assisted", "This APs implementation requires assisted grasping to check success"
@@ -394,6 +411,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             B1KActionPrimitive.TOGGLE: self._toggle,
             B1KActionPrimitive.PULL: self._pull,
             B1KActionPrimitive.PUSH: self._push,
+            B1KActionPrimitive.VIS_PICK: self._vis_pick,
+            B1KActionPrimitive.VIS_PLACE: self._vis_place,
             B1KActionPrimitive.PUSH_OPEN: self._push_open,
             B1KActionPrimitive.DUMMY: self._dummy,
         }
@@ -406,7 +425,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 [0.0, -0.8, 0, 0.8 * np.pi],
             ]
         else:
-            self.action_list = action_dict[self.env.config["task"]]
+            if self.action_space_type == 'multi_discrete':
+                self.action_list = action_dict[self.env.config["task"]+'_multi_discrete']
+            else:
+                self.action_list = action_dict[self.env.config["task"]]
         self.num_discrete_action = len(self.action_list)
         self.initial_pos_dict = {}  # TODO: what for?
         full_observability_2d_planning = True
@@ -432,20 +454,49 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.skip_arm_planning = True  # False  # True  # False
         self.is_grasping = False
         self.fast_execution = False
+        self.action_space_type = action_space_type
 
     def get_action_space(self):
-        return gym.spaces.Discrete(self.num_discrete_action)
+        if self.action_space_type == 'discrete':
+            return gym.spaces.Discrete(self.num_discrete_action)
+        if self.action_space_type == 'multi_discrete':
+            if self.env.config['task'] in ['throwing_away_leftovers']:
+                multi_discrete_grid_size = 10
+                return gym.spaces.MultiDiscrete([self.num_discrete_action] + [multi_discrete_grid_size, ] * 1)
+            elif self.env.config['task'] in ['putting_away_Halloween_decorations']:
+                multi_discrete_grid_size = 4
+                return gym.spaces.MultiDiscrete([self.num_discrete_action] + [multi_discrete_grid_size, ] * 1)
 
-    def apply(self, action_index):
-        if action_index == 10:
-            return self._dummy()
-        else:
-            primitive_obj_pair = self.action_list[action_index]
-            # try:
-            return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1])
-        # except:
-        #     return self._dummy(primitive_obj_pair[1])
-            # return self._dummy(primitive_obj_pair[1])
+    def apply(self, action_index, obs=None):
+        if self.action_space_type == 'discrete':
+            if action_index == 10:
+                return self._dummy()
+            else:
+                primitive_obj_pair = self.action_list[action_index]
+                return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1], obs)
+        elif self.action_space_type == 'multi_discrete':
+            # print('action_index: ', action_index, action_index[0])
+            if action_index[0] == 10:
+                return self._dummy()
+            else:
+                primitive_obj_pair = self.action_list[action_index[0]]
+                if self.env.config['task'] in ['throwing_away_leftovers']:
+                    if primitive_obj_pair[0] in [0, ] and primitive_obj_pair[1] == 'countertop.n.01_1':
+                        # [1, 10] * [1, pi]
+                        yaw = (action_index[1] + 1) * 0.1 * np.pi
+                        print('action: {} {}, discrete action: {}'.format(index_action_mapping[primitive_obj_pair[0]],
+                                                                         primitive_obj_pair[1], action_index[1] + 1))
+                    else:
+                        yaw = None
+                elif self.env.config['task'] in ['putting_away_Halloween_decorations']:
+                    if primitive_obj_pair[0] in [0, ] and primitive_obj_pair[1] in ['pumpkin.n.02_1', 'pumpkin.n.02_2']:
+                        yaw = (action_index[1] + 1) * 0.5 * np.pi
+                        # print('\n\n\n\n\n', primitive_obj_pair, 'yaw', yaw)
+                    else:
+                        yaw = None
+                else:
+                    yaw = None
+                return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1], obs, yaw=yaw)
 
     def _get_obj_in_hand(self):
         obj_in_hand_id = self.robot._ag_obj_in_hand[self.arm]  # TODO(MP): Expose this interface.
@@ -552,7 +603,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         yield self._get_still_action()
         logger.info("Finished dummy".format())
 
-    def _navigate_to(self, object_name):
+    def _navigate_to(self, object_name, obs=None, yaw=None):
         logger.info("Navigating to object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name]
 
@@ -583,7 +634,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         # acquire the base direction
         euler = mat2euler(mat)
-        target_yaw = euler[-1] + params[3]
+        if yaw is None:
+            target_yaw = euler[-1] + params[3]
+        else:
+            print('navigate to yaw: ', yaw)
+            target_yaw = euler[-1] + yaw
 
         obj_idx_to_ignore = []
         if self.is_grasping:
@@ -605,9 +660,9 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             )
         yield self._get_still_action()
         logger.info("Finished navigating to object: {}".format(object_name))
-        return
+        # return
 
-    def _pick(self, object_name):
+    def _pick(self, object_name, obs=None, yaw=None):
         logger.info("Picking object {}".format(object_name))
         # Don't do anything if the object is already grasped.
         object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
@@ -701,7 +756,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         yield self._get_still_action()
         logger.info("Pick action completed")
 
-    def _place(self, object_name):
+    def _place(self, object_name, obs=None, yaw=None):
         logger.info("Placing on object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -769,7 +824,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         yield self._get_still_action()
         logger.info("Place action completed")
 
-    def _toggle(self, object_name):
+    def _toggle(self, object_name, obs=None, yaw=None):
         logger.info("Toggling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -827,7 +882,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         logger.info("Toggle action completed")
 
-    def _pull(self, object_name):
+    def _pull(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -918,7 +973,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         logger.info("Pull action completed")
 
-    def _pull_open_v2(self, object_name):
+    def _pull_open_v2(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -987,7 +1042,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         print('total time: {}'.format(still_action_time - plan_ee_pull_time))
         print("Pull action completed")
 
-    def _pull_open_v3(self, object_name):
+    def _pull_open_v3(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -1037,7 +1092,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         print('body_joint_pairs: ', body_joint_pairs)
         print("Pull action completed")
 
-    def _pull_open_v4(self, object_name):
+    def _pull_open_v4(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -1119,7 +1174,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # print('total time: {}'.format(still_action_time - plan_ee_pull_time))
         print("Pull action completed")
 
-    def _push(self, object_name):
+    def _push(self, object_name, obs=None, yaw=None):
         logger.info("Pushing object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PUSH][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -1180,7 +1235,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         logger.info("Push action completed")
 
-    def _push_open(self, object_name):
+    def _push_open(self, object_name, obs=None, yaw=None):
         logger.info("Pushing object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -1240,4 +1295,32 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         yield self._get_still_action()
 
         logger.info("Push action completed")
+
+    def _vis_pick(self, object_name, obs=None, yaw=None):
+        logger.info("Vis_pick object {}".format(object_name))
+        ins_seg = np.round(obs['ins_seg'][:, :, 0]).astype(int)
+        id_ins_seg = self.env.simulator.renderer.get_pb_ids_for_instance_ids(ins_seg)
+        obj_id = self.task_obj_list[object_name].get_body_ids()
+        print('obj_id in id_ins_seg: ', obj_id in id_ins_seg)
+        if obj_id in id_ins_seg:
+            yield from self._navigate_to(object_name, yaw=yaw)
+            yield from self._pick(object_name)
+            print('Vis_pick {} completed'.format(object_name, ))
+        else:
+            yield self._get_still_action()
+            print('Vis_pick {} ignored'.format(object_name, ))
+
+    def _vis_place(self, object_name, obs=None, yaw=None):
+        logger.info("Vis_place Pushing object {}".format(object_name))
+        ins_seg = np.round(obs['ins_seg'][:, :, 0]).astype(int)
+        id_ins_seg = self.env.simulator.renderer.get_pb_ids_for_instance_ids(ins_seg)
+        obj_id = self.task_obj_list[object_name].get_body_ids()
+        print('obj_id in id_ins_seg: ', obj_id in id_ins_seg)
+        if obj_id in id_ins_seg:
+            yield from self._navigate_to(object_name, yaw=yaw)
+            yield from self._place(object_name)
+            print('Vis_place {}'.format(object_name))
+        else:
+            yield self._get_still_action()
+            print('Vis_place {} ignored'.format(object_name))
 

@@ -56,6 +56,6 @@ class BaseActionPrimitiveSet(with_metaclass(ABCMeta, object)):
         pass
 
     @abstractmethod
-    def apply(self, action):
+    def apply(self, action, obs=None):
         """Given a higher-level action, generates a sequence of lower level actions (or raise ActionPrimitiveError)"""
         pass
