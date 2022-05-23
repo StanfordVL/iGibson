@@ -1235,6 +1235,62 @@ class MotionPlanner(object):
         yaw = np.arctan2(direction[1], direction[0])
         self.set_marker_position_yaw(pos, yaw)
 
+    def check_ee_collision(
+        self, ee_position, ee_orientation, obj_in_hand, obstacles, max_distance=HAND_MAX_DISTANCE, arm=None
+    ):
+        """
+        Checks if an ee pose is in collision with the environment
+        This doesn't check the entire arm!
+
+        :param ee_position: Desired position of the ee to check for collisions
+        :param ee_orientation: Desired orientation (quaternion xyzw) of the ee to check for collisions
+        :param obj_in_hand: iGibson object that is grasped by the robot and needs to also be checked for collisions
+        :param obstacles: List of obstacles to check for collisions
+        :param max_distance: Maximum distance allowed between hand and obstacles
+        :param arm: arm to check for collisions in the given pose
+        """
+
+        if arm is None:
+            arm = self.robot.default_arm
+            log.debug("Checking hand collision for the default arm: {}".format(arm))
+
+        # List all objects that can be obstacles except the hand and the object in hand
+        non_hand_non_oih_obstacles = {
+            obs
+            for obs in obstacles
+            if (
+                (obj_in_hand is None or obs not in obj_in_hand.get_body_ids())
+                and (obs != self.robot.eef_links[arm].body_id)
+            )
+        }
+
+        self.robot.set_eef_position_orientation(ee_position, ee_orientation, "right_hand")
+        close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(self.robot.eef_links[arm].body_id)))
+        close_obstacles = close_objects & non_hand_non_oih_obstacles
+        collisions = [
+            (obs, pairwise_collision(self.robot.eef_links[arm].body_id, obs, max_distance=max_distance))
+            for obs in close_obstacles
+        ]
+        colliding_bids = [obs for obs, col in collisions if col]
+        if colliding_bids:
+            log.debug("Hand collision with objects: ", colliding_bids)
+        collision = bool(colliding_bids)
+
+        if obj_in_hand is not None:
+            # Generalize more.
+            [oih_bid] = obj_in_hand.get_body_ids()  # Generalize.
+            oih_close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(oih_bid)))
+            oih_close_obstacles = (oih_close_objects & non_hand_non_oih_obstacles) | close_obstacles
+            obj_collisions = [
+                (obs, pairwise_collision(oih_bid, obs, max_distance=max_distance)) for obs in oih_close_obstacles
+            ]
+            obj_colliding_bids = [obs for obs, col in obj_collisions if col]
+            if obj_colliding_bids:
+                log.debug("Held object collision with objects: ", obj_colliding_bids)
+            collision = collision or bool(obj_colliding_bids)
+
+        return collision
+
 
 def plan_hand_motion_br(
     robot,

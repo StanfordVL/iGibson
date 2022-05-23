@@ -26,12 +26,8 @@ from igibson.objects.object_base import BaseObject
 from igibson.robots import BaseRobot, behavior_robot
 from igibson.robots.behavior_robot import DEFAULT_BODY_OFFSET_FROM_FLOOR, BehaviorRobot
 from igibson.tasks.behavior_task import BehaviorTask
-from igibson.utils.behavior_robot_motion_planning_utils import (
-    get_pose3d_hand_collision_fn,
-    plan_base_motion_br,
-    plan_hand_motion_br,
-)
 from igibson.utils.grasp_planning_utils import get_grasp_poses_for_object, get_grasp_position_for_open
+from igibson.utils.motion_planning_utils import MotionPlanner
 from igibson.utils.utils import restoreState
 
 MAX_STEPS_FOR_HAND_MOVE = 100
@@ -199,6 +195,17 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             StarterSemanticActionPrimitive.NAVIGATE_TO: self._navigate_to_obj,
         }
         self.arm = "right_hand"
+        full_observability_2d_planning = True
+        collision_with_pb_2d_planning = True
+        self.planner = MotionPlanner(
+            self.env,
+            optimize_iter=10,
+            full_observability_2d_planning=full_observability_2d_planning,
+            collision_with_pb_2d_planning=collision_with_pb_2d_planning,
+            visualize_2d_planning=False,
+            visualize_2d_result=False,
+            fine_motion_plan=False,
+        )
 
     def get_action_space(self):
         if ACTIVITY_RELEVANT_OBJECTS_ONLY:
@@ -250,9 +257,6 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         yield from self._open_or_close(obj, False)
 
     def _open_or_close(self, obj, should_open):
-        hand_collision_fn = get_pose3d_hand_collision_fn(
-            self.robot, None, self._get_collision_body_ids(include_robot=True)
-        )
 
         # Open the hand first
         yield from self._execute_release()
@@ -276,7 +280,13 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         grasp_pose, target_poses, object_direction, joint_info, grasp_required = grasp_data
         with UndoableContext(self.robot):
-            if hand_collision_fn(grasp_pose):
+            if self.planner.check_ee_collision(
+                ee_position=grasp_pose[0],
+                ee_orientation=grasp_pose[1],
+                obj_in_hand=None,
+                obstacles=self._get_collision_body_ids(include_robot=True),
+                arm=self.arm,
+            ):
                 raise ActionPrimitiveError(
                     ActionPrimitiveError.Reason.SAMPLING_ERROR,
                     "Rejecting grasp pose due to collision.",
@@ -345,9 +355,6 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
                     {"object": obj, "object_in_hand": obj_in_hand},
                 )
 
-        hand_collision_fn = get_pose3d_hand_collision_fn(
-            self.robot, None, self._get_collision_body_ids(include_robot=True)
-        )
         if self._get_obj_in_hand() != obj:
             # Open the hand first
             yield from self._execute_release()
@@ -357,7 +364,13 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             grasp_poses = get_grasp_poses_for_object(self.robot, obj, force_allow_any_extent=force_allow_any_extent)
             grasp_pose, object_direction = random.choice(grasp_poses)
             with UndoableContext(self.robot):
-                if hand_collision_fn(grasp_pose):
+                if self.planner.check_ee_collision(
+                    ee_position=grasp_pose[0],
+                    ee_orientation=grasp_pose[1],
+                    obj_in_hand=None,
+                    obstacles=self._get_collision_body_ids(include_robot=True),
+                    arm=self.arm,
+                ):
                     raise ActionPrimitiveError(
                         ActionPrimitiveError.Reason.SAMPLING_ERROR,
                         "Rejecting grasp pose candidate due to collision",
@@ -461,12 +474,9 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         max_pos = np.max(both_pos, axis=0) + HAND_SAMPLING_DOMAIN_PADDING
 
         with UndoableContext(self.robot):
-            plan = plan_hand_motion_br(
-                robot=self.robot,
-                obj_in_hand=self._get_obj_in_hand(),
-                end_conf=target_pose_in_correct_format,
-                hand_limits=(min_pos, max_pos),
-                obstacles=self._get_collision_body_ids(include_robot=True),
+            plan = self.planner.plan_ee_motion_to_cartesian_pose(
+                ee_position=target_pose[0],
+                ee_orientation=target_pose[1],
             )
 
         if plan is None:
@@ -582,12 +592,8 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         with UndoableContext(self.robot):
             # Note that the plan returned by this planner only contains xy pairs & not yaw.
-            plan = plan_base_motion_br(
-                robot=self.robot,
-                obj_in_hand=self._get_obj_in_hand(),
-                end_conf=pose_2d,
-                sample_fn=sample_fn,
-                obstacles=self._get_collision_body_ids(),
+            plan = self.planner.plan_base_motion(
+                goal=pose_2d,
             )
 
         if plan is None:
