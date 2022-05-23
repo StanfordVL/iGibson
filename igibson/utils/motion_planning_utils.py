@@ -72,7 +72,7 @@ class MotionPlanner(object):
         Get planning related parameters.
         """
         self.env = env
-        assert "occupancy_grid" in self.env.output or full_observability_2d_planning
+        assert full_observability_2d_planning or "occupancy_grid" in self.env.output
         # get planning related parameters from env
         self.robot = self.env.robots[0]
         body_ids = self.robot.get_body_ids()
@@ -230,12 +230,20 @@ class MotionPlanner(object):
                 corners = [top_left, bottom_right]
 
             if self.collision_with_pb_2d_planning:
+                floor_idx = []
+                carpet_idx = []
+                if isinstance(self.env.scene, InteractiveIndoorScene):
+                    for floor in self.env.scene.objects_by_category["floors"]:
+                        floor_idx.extend(floor.get_body_ids())
+                    for carpet in self.env.scene.objects_by_category["carpet"]:
+                        carpet_idx.extend(carpet.get_body_ids())
+
                 obstacles = [
                     body_id
                     for body_id in self.env.scene.get_body_ids()
                     if body_id not in self.robot.get_body_ids()
-                    and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
-                    and body_id != self.env.scene.objects_by_category["carpet"][0].get_body_ids()[0]
+                    and body_id not in floor_idx
+                    and body_id not in carpet_idx
                     and body_id not in obj_idx_to_ignore
                 ]
                 # TODO: keeping this for Chen, remove later
