@@ -3,7 +3,7 @@ import random
 
 from transforms3d import euler
 
-from igibson.robots.manipulation_robot import IsGraspingState
+from igibson.robots.manipulation_robot import IsGraspingState, ManipulationRobot
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.ERROR)
@@ -293,16 +293,19 @@ class MotionPlanner(object):
             if not keep_last_location:
                 initial_pb_state = p.saveState()
 
-            # If the robot is grasping an object, we move it together with the robot
-            # For that, we first store the grasp_pose (offset between the EE frame and the object frame) and then we
-            # maintain that constant after teleporting the robot, effectively moving the object to the right location
-            grasping_object = self.robot.is_grasping() == IsGraspingState.TRUE
-            grasped_obj_id = self.robot._ag_obj_in_hand[self.robot.default_arm]
-            if grasping_object:
-                gripper_pos = self.robot.get_eef_position(arm="default")
-                gripper_orn = self.robot.get_eef_orientation(arm="default")
-                obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
-                grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
+            if isinstance(self.robot, ManipulationRobot):
+                # If the robot is grasping an object, we move it together with the robot
+                # For that, we first store the grasp_pose (offset between the EE frame and the object frame) and then we
+                # maintain that constant after teleporting the robot, effectively moving the object to the right location
+                grasping_object = self.robot.is_grasping() == IsGraspingState.TRUE
+                grasped_obj_id = self.robot._ag_obj_in_hand[self.robot.default_arm]
+                if grasping_object:
+                    gripper_pos = self.robot.get_eef_position(arm="default")
+                    gripper_orn = self.robot.get_eef_orientation(arm="default")
+                    obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
+                    grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
+            else:
+                grasping_object = False
 
             # Only visualize the entire path if we have a viewer, otherwise it doesn't make sense
             if self.mode in ["gui_non_interactive", "gui_interactive"]:
