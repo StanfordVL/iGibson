@@ -2631,7 +2631,14 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
         if (body1 == body2) and (link1 == link2):
             continue
         if pairwise_link_collision(body1, link1, body2, link2, **kwargs):
-            #print('body {} link {} body {} link {}'.format(body1, get_link_name(body1, link1), body2, get_link_name(body2, link2)))
+            log.debug('body {} ({}) link {} body {} ({}) link {}'.format(
+                get_body_name(body1),
+                body1,
+                get_link_name(body1, link1),
+                get_body_name(body2),
+                body2,
+                get_link_name(body2, link2)),
+            )
             return True
     return False
 
@@ -2639,13 +2646,11 @@ def any_link_pair_collision(body1, links1, body2, links2=None, **kwargs):
 def body_collision(body1, body2, max_distance=MAX_DISTANCE):  # 10000
     # TODO: confirm that this doesn't just check the base link
 
-    #for i in range(p.getNumJoints(body1)):
-    #    for j in range(p.getNumJoints(body2)):
-    #        #if len(p.getContactPoints(body1, body2, i, j)) > 0:
-    #            #print('body {} {} collide with body {} {}'.format(body1, i, body2, j))
+    if len(p.getClosestPoints(bodyA=body1, bodyB=body2, distance=max_distance, physicsClientId=CLIENT)) != 0:
+        log.debug('Body collision between body1 {} ({}) and body2 {} ({})'.format(get_body_name(body1), body1, get_body_name(body2), body2))
+        return True
 
-    return len(p.getClosestPoints(bodyA=body1, bodyB=body2, distance=max_distance,
-                                  physicsClientId=CLIENT)) != 0  # getContactPoints`
+    return False
 
 
 def pairwise_collision(body1, body2, **kwargs):
@@ -2653,7 +2658,20 @@ def pairwise_collision(body1, body2, **kwargs):
         body1, links1 = expand_links(body1)
         body2, links2 = expand_links(body2)
         return any_link_pair_collision(body1, links1, body2, links2, **kwargs)
-    return body_collision(body1, body2, **kwargs)
+
+    in_collision = body_collision(body1, body2, **kwargs)
+
+    if in_collision:
+        collisions = p.getContactPoints(bodyA=body1)
+
+        if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
+            for item in collisions:
+                log.debug(
+                    "bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(
+                       get_body_name(item[1]), get_body_name(item[2]), item[3], item[4]
+                    )
+                )
+    return in_collision
 
 # def single_collision(body, max_distance=1e-3):
 #    return len(p.getClosestPoints(body, max_distance=max_distance)) != 0
@@ -3320,7 +3338,7 @@ def plan_base_motion_2d(body,
     # Do not plan for goals that are very close by
     # This makes it impossible to "plan" for pure rotations. Use a negative min_goal_dist to allow pure rotations
     if np.abs(start_conf[0] - end_conf[0]) < min_goal_dist and np.abs(start_conf[1] - end_conf[1]) < min_goal_dist:
-        log.debug("goal is too close to the initial position. Returning")
+        log.info("Goal is too close to the initial position. Returning")
         return None
 
     def transform_point_to_occupancy_map(q):
@@ -3450,12 +3468,12 @@ def plan_base_motion_2d(body,
 
     # Do not plan if the initial pose is in collision
     if collision_fn(start_conf):
-        log.debug("Warning: initial configuration is in collision")
+        log.info("Warning: initial configuration is in collision")
         return None
 
     # Do not plan if the final pose is in collision
     if collision_fn(end_conf):
-        log.debug("Warning: end configuration is in collision")
+        log.info("Warning: end configuration is in collision")
         return None
 
     if algorithm == 'direct':
