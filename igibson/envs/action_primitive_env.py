@@ -43,26 +43,21 @@ class ActionPrimitivesEnv(gym.Env):
 
         start_time = time.time()
 
-        print("action", action, action, action)
-
         for _ in range(self.num_attempts):
             obs, done, info = None, None, {}
             try:
                 for lower_level_action in self.action_generator.apply(action):
                     obs, reward, done, info = self.env.step(lower_level_action)
-
                     if self.reward_accumulation == "sum":
                         accumulated_reward += reward
                     elif self.reward_accumulation == "max":
                         accumulated_reward = max(reward, accumulated_reward)
                     else:
                         raise ValueError("Reward accumulation should be one of 'sum' and 'max'.")
-
                     if self.accumulate_obs:
                         accumulated_obs.append(obs)
                     else:
                         accumulated_obs = [obs]  # Do this to save some memory.
-
                     # Record additional info.
                     info["primitive_success"] = True
                     info["primitive_error_reason"] = None
@@ -88,7 +83,7 @@ class ActionPrimitivesEnv(gym.Env):
             else:
                 return_obs = accumulated_obs[-1]
         end_time = time.time()
-        logger.error("AP time: {}".format(end_time - start_time))
+        logger.info("Execution time of the action primitive: {}".format(end_time - start_time))
         return return_obs, accumulated_reward, done, info
 
     def reset(self):
