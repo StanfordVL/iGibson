@@ -80,7 +80,7 @@ class SkillEnv(gym.Env):
                  obj_joint_obs=False,
                  config_file="fetch_behavior_aps_putting_away_Halloween_decorations.yaml",
                  dense_reward=True,
-                 action_space_type='multi_discrete',
+                 action_space_type='discrete',
                  seed=0,
                  is_success_count=True,
                  ):
@@ -90,7 +90,6 @@ class SkillEnv(gym.Env):
         self.action_space_type = action_space_type
         config_filename = os.path.join(igibson.configs_path, config_file)
         self.config = parse_config(config_filename)
-        # print(self.config['output'])
         self.env = ActionPrimitivesEnv(
             "B1KActionPrimitives",
             config_file=self.config,
@@ -182,7 +181,7 @@ class SkillEnv(gym.Env):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", "-c", default=os.path.join(igibson.configs_path, "fetch_rl.yaml"),
+    parser.add_argument("--config", "-c", default=os.path.join(igibson.configs_path, "fetch_rl_cleaning_microwave_oven.yaml"),
                         help="which config file to use [default: use yaml files in examples/configs]")
     parser.add_argument(
         "--mode",
@@ -192,18 +191,19 @@ if __name__ == "__main__":
         help="which mode for simulation (default: headless)",
     )
     args = parser.parse_args()
-
-    env = SkillEnv()
-
+    env = SkillEnv(config_file=args.config)
+    # putting_away_Halloween_decorations
     # action_list = [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7, ]
     # action_list = [0, 1, 5, 6, 0, 4, 2, 3, 0, 4, 7, ]
-    action_list = [0, 1, 5, 6, 0, 4, 2, 3, 0, 4, 7, ]
+    # action_list = [0, 1, 5, 6, 0, 4, 2, 3, 0, 4, 7, ]
     # action_list = [0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, 1, 7, 0, 1, 7, 1, 7, ]
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
+    # cleaning_microwave_oven
+    action_list = [0, 1, 2, 3, 4, 1, 5, 6,]
 
     for episode in range(1):
-        print("\n\n Episode: {}".format(episode))
+        print("\n Episode: {}".format(episode))
         env.reset()
         start = time.time()
         for action_idx in action_list:

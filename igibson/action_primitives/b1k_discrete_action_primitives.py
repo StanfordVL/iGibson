@@ -40,59 +40,44 @@ skill_object_offset_params = {
         "hamburger.n.01_2": [0, -0.7, 0, 0.5 * np.pi],
         "hamburger.n.01_3": [0, -0.8, 0, 0.5 * np.pi],
         "ashcan.n.01_1": [0, 0.8, 0, -0.5 * np.pi],
-        "countertop.n.01_1": [0.0, -0.8, 0, 0.5 * np.pi],  # [0.1, 0.5, 0.8 1.0]
-        # 'countertop.n.01_1': [[0.0, -0.8, 0, 0.1 * np.pi], [0.0, -0.8, 0, 0.5 * np.pi], [0.0, -0.8, 0, 0.8 * np.pi],],  # [0.1, 0.5, 0.8 1.0]
-        # # Ihlen_1_int, 0
-        # 'hamburger.n.01_1': [0, 0.8, 0, -0.5 * np.pi],
-        # 'hamburger.n.01_2': [0, 0.8, 0, -0.5 * np.pi],
-        # 'hamburger.n.01_3': [-0.2, 0.7, 0, -0.6 * np.pi],
-        # 'ashcan.n.01_1': [-0.2, -0.5, 0, 0.4 * np.pi],
-        # 'countertop.n.01_1': [-0.5, -0.6, 0, 0.5 * np.pi],
+        "countertop.n.01_1": [0.0, -0.8, 0, 0.5 * np.pi],
         # putting_away_Halloween_decorations
         "pumpkin.n.02_1": [0.4, 0.0, 0.0, 1.0 * np.pi],
         "pumpkin.n.02_2": [0, -0.5, 0, 0.5 * np.pi],
         "cabinet.n.01_1": [0.4, -1.15, 0, 0.5 * np.pi],
+        # cleaning_microwave_oven
+        "sink.n.01_1-cleaning_microwave_oven": [0., -0.5, 0, 0.5 * np.pi],
+        "microwave.n.02_1-cleaning_microwave_oven": [0., -1.0, 0, 0.5 * np.pi],
+        "cabinet.n.01_1-cleaning_microwave_oven": [1.0, -0.8, 0, 0.5 * np.pi],
     },
     1: {  # pick
         "printer.n.03_1": [-0.2, 0.0, 0.2],  # dx, dy, dz
         # Pomaria_1_int, 2
         "hamburger.n.01_1": [0.0, 0.0, 0.025],
-        "hamburger.n.01_2": [
-            0.0,
-            0.0,
-            0.025,
-        ],
-        "hamburger.n.01_3": [
-            0.0,
-            0.0,
-            0.025,
-        ],
+        "hamburger.n.01_2": [0.0, 0.0, 0.025,],
+        "hamburger.n.01_3": [0.0, 0.0, 0.025,],
         # putting_away_Halloween_decorations
-        "pumpkin.n.02_1": [
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-        ],
-        "pumpkin.n.02_2": [
-            0.0,
-            0.0,
-            0.0,
-            1.0,
-        ],
+        "pumpkin.n.02_1": [0.0, 0.0, 0.0, 1.0,],
+        "pumpkin.n.02_2": [0.0, 0.0, 0.0, 1.0,],
+        # cleaning_microwave_oven
+        "towel": [0.0, 0.0, 0.0],
     },
     2: {  # place
         "table.n.02_1": [0, 0, 0.5],  # dx, dy, dz
         # Pomaria_1_int, 2
-        # 'ashcan.n.01_1': [0, 0, 0.5],
+        # "ashcan.n.01_1": [0, 0, 0.5],
         # Ihlen_1_int, 0
         "ashcan.n.01_1": [0, 0, 0.5],
         # putting_away_Halloween_decorations
         "cabinet.n.01_1": [0.3, -0.55, 0.25],
-        # "cabinet.n.01_1": [0.3, -0.60, 0.25],
+        # cleaning_microwave_oven
+        "sink.n.01_1-cleaning_microwave_oven": [-0.2, -0.08, 0.2],
+        "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0., -0.13],
     },
     3: {  # toggle
         "printer.n.03_1": [-0.3, -0.25, 0.23],  # dx, dy, dz
+        # cleaning_microwave_oven
+        "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.18, 0.32],
     },
     4: {  # pull
         "cabinet.n.01_1": [0.3, -0.55, 0.35, -1, 0, 0],  # dx, dy, dz
@@ -102,43 +87,11 @@ skill_object_offset_params = {
     },
     6: {  # vis_pick
         "hamburger.n.01_1": [0, -0.8, 0, 0.5 * np.pi, 0.0, 0.0, 0.025],
-        "hamburger.n.01_2": [
-            0,
-            -0.7,
-            0,
-            0.5 * np.pi,
-            0.0,
-            0.0,
-            0.025,
-        ],
-        "hamburger.n.01_3": [
-            0,
-            -0.8,
-            0,
-            0.5 * np.pi,
-            0.0,
-            0.0,
-            0.025,
-        ],
+        "hamburger.n.01_2": [0, -0.7, 0, 0.5 * np.pi, 0.0, 0.0, 0.025,],
+        "hamburger.n.01_3": [0, -0.8, 0, 0.5 * np.pi, 0.0, 0.0, 0.025,],
         # vis: putting_away_Halloween_decorations
-        "pumpkin.n.02_1": [
-            0.4,
-            0.0,
-            0.0,
-            1.0 * np.pi,
-            0.0,
-            0.0,
-            0.025,
-        ],
-        "pumpkin.n.02_2": [
-            0,
-            -0.5,
-            0,
-            0.5 * np.pi,
-            0.0,
-            0.0,
-            0.025,
-        ],
+        "pumpkin.n.02_1": [0.4, 0.0, 0.0, 1.0 * np.pi, 0.0, 0.0, 0.025,],
+        "pumpkin.n.02_2": [0, -0.5, 0, 0.5 * np.pi, 0.0, 0.0, 0.025,],
     },
     7: {  # vis_place
         "ashcan.n.01_1": [0, 0.8, 0, -0.5 * np.pi, 0, 0, 0.5],
@@ -160,21 +113,6 @@ action_list_installing_a_printer = [
     [2, "table.n.02_1"],
     [3, "printer.n.03_1"],
 ]
-
-# action_list_throwing_away_leftovers = [
-#     [0, 'hamburger.n.01_1'],
-#     [1, 'hamburger.n.01_1'],
-#     [0, 'ashcan.n.01_1'],
-#     [2, 'ashcan.n.01_1'],  # place
-#     [0, 'hamburger.n.01_2'],
-#     [1, 'hamburger.n.01_2'],
-#     [0, 'ashcan.n.01_1'],
-#     [2, 'ashcan.n.01_1'],  # place
-#     [0, 'hamburger.n.01_3'],
-#     [1, 'hamburger.n.01_3'],
-#     [0, 'ashcan.n.01_1'],
-#     [2, 'ashcan.n.01_1'],  # place
-# ]*4
 
 action_list_throwing_away_leftovers_v1 = [
     [0, "hamburger.n.01_1"],
@@ -207,21 +145,6 @@ action_list_throwing_away_leftovers = [
     [6, "hamburger.n.01_3"],
 ]
 
-# action_list_throwing_away_leftovers = [
-#     [0, 'countertop.n.01_1', 0],
-#     [6, 'hamburger.n.01_2'],  # 1: 137, 2: 138, 3: 139, plate: 135, ashcan: 140
-#     [0, 'ashcan.n.01_1'],
-#     [7, 'ashcan.n.01_1'],  # place
-#     [0, 'countertop.n.01_1', 1],
-#     [6, 'hamburger.n.01_1'],
-#     [0, 'ashcan.n.01_1'],
-#     [7, 'ashcan.n.01_1'],  # place
-#     [0, 'countertop.n.01_1', 2],
-#     [6, 'hamburger.n.01_3'],
-#     [0, 'ashcan.n.01_1'],
-#     [7, 'ashcan.n.01_1'],  # place
-# ]
-
 action_list_putting_leftovers_away = [
     [0, "pasta.n.02_1"],
     [1, "pasta.n.02_1"],
@@ -242,18 +165,6 @@ action_list_putting_leftovers_away = [
 ]
 
 # full set
-# action_list_putting_away_Halloween_decorations = [
-#     [0, 'cabinet.n.01_1'],  # move
-#     [4, 'cabinet.n.01_1'],  # pull
-#     [0, 'pumpkin.n.02_1'],  # move
-#     [1, 'pumpkin.n.02_1'],  # pick
-#     [2, 'cabinet.n.01_1'],  # place
-#     [0, 'pumpkin.n.02_2'],  # move
-#     [1, 'pumpkin.n.02_2'],  # pick
-#     [5, 'cabinet.n.01_1'],  # push
-# ]
-
-# full set
 action_list_putting_away_Halloween_decorations_v1 = [
     [0, "cabinet.n.01_1"],  # move
     [4, "cabinet.n.01_1"],  # pull
@@ -267,23 +178,6 @@ action_list_putting_away_Halloween_decorations_v1 = [
     # [2, 'cabinet.n.01_1'],  # place
     [5, "cabinet.n.01_1"],  # push
 ]
-
-# full sequence
-# action_list_putting_away_Halloween_decorations = [
-#     # [0, 'cabinet.n.01_1'],  # move
-#     # [4, 'cabinet.n.01_1'],  # pull
-#     [0, 'pumpkin.n.02_1'],  # move
-#     [1, 'pumpkin.n.02_1'],  # pick
-#     [0, 'cabinet.n.01_1'],  # move
-#     [2, 'cabinet.n.01_1'],  # place
-#     [0, 'pumpkin.n.02_2'],  # move
-#     [1, 'pumpkin.n.02_2'],  # pick
-#     #
-#     # [0, 'cabinet.n.01_1'],  # move
-#     # [2, 'cabinet.n.01_1'],  # place
-#     #
-#     # [5, 'cabinet.n.01_1'],  # push
-# ] # * 4
 
 # /home/robot/Desktop/behavior/iGibson-dev-jk/igibson/examples/robots/log_dir_his/20220510-001432_putting_away_Halloween_decorations_discrete_rgb_accumReward_m0.01
 # wo vis operation
@@ -340,6 +234,17 @@ action_list_putting_away_Halloween_decorations_multi_discrete = [
     [5, "cabinet.n.01_1"],  # push 7
 ]
 
+action_list_cleaning_microwave_oven = [
+    [0, "cabinet.n.01_1"], # move 0
+    [1, "towel"],  # pick 1
+    [0, "sink.n.01_1"],  # move 2
+    [2, "sink.n.01_1"],  # place 3
+    [3, "sink.n.01_1"],  # toggle 4
+    # [1, "towel"],  # pick
+    [0, "microwave.n.02_1"],  # move 5
+    [2, "microwave.n.02_1"],  # place 6
+]
+
 action_list_room_rearrangement = [
     [0, "cabinet.n.01_1"],  # move
     [4, "cabinet.n.01_1"],  # vis pull
@@ -362,6 +267,7 @@ action_dict = {
     "putting_away_Halloween_decorations_multi_discrete": action_list_putting_away_Halloween_decorations_multi_discrete,
     "throwing_away_leftovers_discrete": action_list_throwing_away_leftovers_discrete,
     "room_rearrangement": action_list_room_rearrangement,
+    "cleaning_microwave_oven": action_list_cleaning_microwave_oven,
 }
 
 
@@ -417,6 +323,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             B1KActionPrimitive.DUMMY: self._dummy,
         }
 
+        print('self.env.config["task"]: ', self.env.config["task"])
         if self.env.config["task"] == "throwing_away_leftovers":
             self.action_list = action_dict["throwing_away_leftovers_discrete"]
             skill_object_offset_params[0]["countertop.n.01_1"] = [
@@ -450,8 +357,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        self.skip_base_planning = True
-        self.skip_arm_planning = True  # False
+        self.skip_base_planning = False  # True
+        self.skip_arm_planning = False  # True  # False
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
@@ -466,6 +373,9 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             elif self.env.config['task'] in ['putting_away_Halloween_decorations']:
                 multi_discrete_grid_size = 4
                 return gym.spaces.MultiDiscrete([self.num_discrete_action] + [multi_discrete_grid_size, ] * 1)
+            elif self.env.config['task'] in ['cleaning_microwave_oven']:
+                multi_discrete_grid_size = 2
+                return gym.spaces.MultiDiscrete([self.num_discrete_action] + [multi_discrete_grid_size, ] * 1)
 
     def apply(self, action_index, obs=None):
         if self.action_space_type == 'discrete':
@@ -473,7 +383,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 return self._dummy()
             else:
                 primitive_obj_pair = self.action_list[action_index]
+                # if self.env.config['task'] in ['cleaning_microwave_oven'] and not (primitive_obj_pair[1] in ['towel']):
+                #     return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1] + '-' + self.env.config['task'], obs)
+                # else:
                 return self.controller_functions[primitive_obj_pair[0]](primitive_obj_pair[1], obs)
+
         elif self.action_space_type == 'multi_discrete':
             # print('action_index: ', action_index, action_index[0])
             if action_index[0] == 10:
@@ -492,6 +406,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                     if primitive_obj_pair[0] in [0, ] and primitive_obj_pair[1] in ['pumpkin.n.02_1', 'pumpkin.n.02_2']:
                         yaw = (action_index[1] + 1) * 0.5 * np.pi
                         # print('\n\n\n\n\n', primitive_obj_pair, 'yaw', yaw)
+                    else:
+                        yaw = None
+                elif self.env.config['task'] in ['cleaning_microwave_oven']:
+                    if primitive_obj_pair[0] in [1, 2]:
+                        yaw = action_index[1]
                     else:
                         yaw = None
                 else:
@@ -605,7 +524,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _navigate_to(self, object_name, obs=None, yaw=None):
         logger.info("Navigating to object {}".format(object_name))
-        params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name]
+        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
+            params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name+'-'+self.env.config['task']]
+        else:
+            params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name]
 
         # If we check whether the object has moved from its initial location. If we check that, and the object has moved
         # more than a threshold, we ignore the command
@@ -664,8 +586,21 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _pick(self, object_name, obs=None, yaw=None):
         logger.info("Picking object {}".format(object_name))
+        params = skill_object_offset_params[B1KActionPrimitive.PICK][object_name]
+        if object_name in ['towel'] and self.env.config['task'] in ['cleaning_microwave_oven']:
+            # towel: 132
+            # plt.imshow(self.state['ins_seg'])
+            # plt.show()
+            object_id = 132
+            pos, orn = p.getBasePositionAndOrientation(object_id)  # towel: 132
+            obj_pos = list(pos)
+            obj_rot_XYZW = list(orn)
+        else:
+            obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
+            obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
+            object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
+
         # Don't do anything if the object is already grasped.
-        object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
         robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
         robot_is_grasping_obj = self.robot.is_grasping(candidate_obj=object_id)
         if robot_is_grasping == IsGraspingState.TRUE:
@@ -680,10 +615,6 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                     {"object": object_name},
                 )
 
-        params = skill_object_offset_params[B1KActionPrimitive.PICK][object_name]
-        obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
-        obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
-
         # process the offset from object frame to world frame
         mat = quat2mat(obj_rot_XYZW)
         vector = mat @ np.array(params[:3])
@@ -696,7 +627,13 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pre_grasping_distance = 0.0
         plan_full_pre_grasp_motion = not self.skip_arm_planning
 
-        picking_direction = self.default_direction
+        if yaw == 0:
+            picking_direction = np.array((0.0, -1.0, 0.0))  # euler angles:  x: 0.5235988, y: 0, z: 1.5707963
+            # axis with angle magnitude: 0.4103802, -0.4103802, 1.5315599
+        elif yaw == 1:
+            picking_direction = np.array((0.0, 0.0, -1.0))
+        else:
+            picking_direction = self.default_direction
 
         if len(params) > 3:
             logger.warning(
@@ -758,7 +695,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _place(self, object_name, obs=None, yaw=None):
         logger.info("Placing on object {}".format(object_name))
-        params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
+        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
+            params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name+'-'+self.env.config['task']]
+        else:
+            params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -774,9 +714,15 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pick_place_pos[2] += vector[2]
 
         plan_full_pre_drop_motion = not self.skip_arm_planning
-
+        if yaw == 0:
+            ee_dropping_orn = np.array([0.0, -1.0, 0.0])
+        elif yaw == 1:
+            ee_dropping_orn = np.array([0.0, 0.0, -1.0])
+        else:
+            ee_dropping_orn = None
         pre_drop_path, _ = self.planner.plan_ee_drop(
-            pick_place_pos, arm=self.arm, plan_full_pre_drop_motion=plan_full_pre_drop_motion
+            pick_place_pos, arm=self.arm, plan_full_pre_drop_motion=plan_full_pre_drop_motion,
+            ee_dropping_orn=ee_dropping_orn,
         )
 
         if pre_drop_path is None or len(pre_drop_path) == 0:
@@ -826,7 +772,10 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _toggle(self, object_name, obs=None, yaw=None):
         logger.info("Toggling object {}".format(object_name))
-        params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
+        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
+            params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name+'-'+self.env.config['task']]
+        else:
+            params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 

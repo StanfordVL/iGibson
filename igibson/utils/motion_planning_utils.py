@@ -456,9 +456,7 @@ class MotionPlanner(object):
             kwargs = dict()
             if ee_orientation is not None:
                 kwargs["targetOrientation"] = ee_orientation
-            if obj_name in [
-                "microwave.n.02_1-cleaning_microwave_oven",
-            ]:
+            if obj_name in ["microwave.n.02_1-cleaning_microwave_oven",]:
                 kwargs["targetOrientation"] = (0.1830127, -0.1830127, 0.6830127, 0.6830127)
             joint_pose = p.calculateInverseKinematics(
                 self.robot_body_id,

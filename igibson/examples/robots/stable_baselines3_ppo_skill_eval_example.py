@@ -113,7 +113,8 @@ This only serves as a starting point that users can further build upon.
 def main():
     # config_file = os.path.join('..', 'configs', "behavior_pick_and_place.yaml")
     # config_file = os.path.join('..', '..', 'configs', 'robots', "fetch_rl.yaml")
-    config_file = os.path.join(igibson.configs_path, "fetch_behavior_aps_putting_away_Halloween_decorations.yaml")
+    # config_file = os.path.join(igibson.configs_path, "fetch_behavior_aps_putting_away_Halloween_decorations.yaml")
+    config_file = os.path.join(igibson.configs_path, "fetch_rl_cleaning_microwave_oven.yaml")
     tensorboard_log_dir = "log_dir"
     num_cpu = 1
 
