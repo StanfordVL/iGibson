@@ -82,8 +82,11 @@ class SkillEnv(gym.Env):
                  dense_reward=True,
                  action_space_type='multi_discrete',
                  seed=0,
+                 is_success_count=True,
                  ):
         self.seed(seed)
+        self.is_success_count = is_success_count
+        self.is_success_list = []
         self.action_space_type = action_space_type
         config_filename = os.path.join(igibson.configs_path, config_file)
         self.config = parse_config(config_filename)
@@ -121,11 +124,17 @@ class SkillEnv(gym.Env):
         self.max_step = self.config['max_step']
 
     def reset(self):
+        try:
+            self.is_success_list.append(self.info['is_success'])
+        except:
+            print('no self.info[is_success]')
+
         self.state = self.env.reset()
         self.accum_reward = np.array([0.])
         if self.env.env.config["task"] in ["putting_away_Halloween_decorations"]:
             self.env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.2)
             print("bottom_cabinet opened!")
+        print("new trial!!!, success rate: {}\n".format(np.mean(self.is_success_list)))
         self.state['accum_reward'] = self.accum_reward
         self.step_index = 0
         return self.state
@@ -160,6 +169,8 @@ class SkillEnv(gym.Env):
             i["is_success"] = i["success"]
         else:
             self.done = False
+        # if self.done and self.is_success_count:
+        #     self.is_success_list.append(i['is_success'])
         self.info = i
         return self.state, self.reward, self.done, self.info
 

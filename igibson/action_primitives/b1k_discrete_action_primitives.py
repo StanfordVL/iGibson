@@ -450,8 +450,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        self.skip_base_planning = True  # False  # True
-        self.skip_arm_planning = True  # False  # True  # False
+        self.skip_base_planning = True
+        self.skip_arm_planning = True  # False
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
