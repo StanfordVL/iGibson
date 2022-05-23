@@ -1178,7 +1178,9 @@ class MotionPlanner(object):
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
-        execution_path = arm_path if not reverse_path else arm_path.reverse()
+        execution_path = arm_path
+        if reverse_path:
+            execution_path.reverse()
         execution_path = (
             execution_path if self.mode in ["gui_non_interactive", "gui_interactive"] else [execution_path[-1]]
         )
