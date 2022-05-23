@@ -130,15 +130,9 @@ class Tiago(ManipulationRobot, LocomotionRobot, ActiveCameraRobot):
             elif self.default_arm_pose == "diagonal30":
                 pos[self.arm_control_idx[arm]] = np.array([0.22, -0.8, 1.52, 1.76, 0.04, -0.49, 0])
             elif self.default_arm_pose == "diagonal45":
-                pos[self.arm_control_idx[arm]] = np.array(
-                    # [-1.11479, -0.0685, 1.5696, 1.37304, -0.74273, 1.3983, 1.79618]
-                    [0.22, -0.4, 1.52, 1.76, 0.04, -0.49, 0]
-                )
+                pos[self.arm_control_idx[arm]] = np.array([0.22, -0.4, 1.52, 1.76, 0.04, -0.49, 0])
             elif self.default_arm_pose == "horizontal":
-                pos[self.arm_control_idx[arm]] = np.array(
-                    # [-1.43016, 0.20965, 1.86816, 1.77576, -0.27289, 1.31715, 2.01226]
-                    [0.22, 0.0, 1.52, 1.76, 0.04, -0.49, 0]
-                )
+                pos[self.arm_control_idx[arm]] = np.array([0.22, 0.0, 1.52, 1.76, 0.04, -0.49, 0])
             else:
                 raise ValueError("Unknown default arm pose: {}".format(self.default_arm_pose))
         return pos
