@@ -2,6 +2,8 @@ import logging
 import os
 import platform
 
+import numpy as np
+
 import igibson
 from igibson.action_primitives.b1k_discrete_action_primitives import B1KActionPrimitives
 from igibson.action_primitives.starter_semantic_action_primitives import StarterSemanticActionPrimitive
@@ -11,18 +13,22 @@ from igibson.utils.utils import parse_config
 
 def main(selection="user", headless=False, short_exec=False):
     """
-    Creates an action primitive environment and showcases the NAVIGATE_TO primitive from the starter semantic action
+    Creates an action primitive environment and showcases the several primitive from the b1k action primitives set
     primitives.
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config_filename = os.path.join(igibson.configs_path, "fetch_behavior_aps.yaml")
+    config_filename = os.path.join(igibson.configs_path, "tiago_behavior_aps.yaml")
     config = parse_config(config_filename)
     env = ActionPrimitivesEnv(
         "B1KActionPrimitives",
         config_file=config,
         mode="headless" if headless else "gui_interactive",
-        use_pb_gui=False,#(not headless and platform.system() != "Darwin"),
+        use_pb_gui=(not headless and platform.system() != "Darwin"),
     )
+    # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
+    if env.env.simulator.viewer is not None:
+        env.env.simulator.viewer.following_viewer = True
+        env.env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 2.2])  # x is in front of the robot
 
     env.task.initial_state = env.task.save_scene(env)
 
@@ -30,12 +36,11 @@ def main(selection="user", headless=False, short_exec=False):
     if env.env.config["task"] in ["putting_away_Halloween_decorations"]:
         env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.05)
         print("bottom_cabinet opened!")
-
-    # env.env.simulator.viewer.initial_pos = [1.5, -2.0, 2.3]
-    # env.env.simulator.viewer.initial_view_direction = [-0.7, 0.0, -0.6]
-    env.env.simulator.viewer.initial_pos = [1.0, -0.3, 1.9]
-    env.env.simulator.viewer.initial_view_direction = [-0.1, -0.8, -0.5]
-    env.env.simulator.viewer.reset_viewer()
+        if env.env.robots[0].model_name == "Tiago":
+            # Change its initial location because it collides
+            robot_position, robot_orn = env.env.robots[0].get_position_orientation()
+            env.env.robots[0].set_position_orientation(np.array([0.5, 0, robot_position[2]]), robot_orn)
+            print("robot moved!")
 
     # Pass the action into the environment. This will start an attempt to plan and execute the primitive action.
     for action_idx in [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7]:
@@ -56,5 +61,6 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     logging.getLogger(name="igibson").setLevel(level=logging.INFO)
     logging.getLogger(name="igibson.action_primitives").setLevel(level=logging.DEBUG)
-    logging.getLogger(name="igibson.utils.motion_planning_utils").setLevel(level=logging.DEBUG)
+    logging.getLogger(name="igibson.utils.motion_planning_utils").setLevel(level=logging.INFO)
+    logging.getLogger(name="igibson.external.pybullet_tools.utils").setLevel(level=logging.INFO)
     main()
