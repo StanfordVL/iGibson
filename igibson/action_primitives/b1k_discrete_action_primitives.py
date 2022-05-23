@@ -719,7 +719,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         elif yaw == 1:
             ee_dropping_orn = np.array([0.0, 0.0, -1.0])
         else:
-            ee_dropping_orn = None
+            ee_dropping_orn = np.array([0.0, 0.0, -1.0])
         pre_drop_path, _ = self.planner.plan_ee_drop(
             pick_place_pos, arm=self.arm, plan_full_pre_drop_motion=plan_full_pre_drop_motion,
             ee_dropping_orn=ee_dropping_orn,
