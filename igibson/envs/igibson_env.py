@@ -380,13 +380,19 @@ class iGibsonEnv(BaseEnv):
         :return: whether the given body_id has collision
         """
         self.simulator_step()
+
         collisions = [x for x in p.getContactPoints(bodyA=body_id) if x[2] not in ignore_ids]
 
         if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
                 log.debug(
-                    "bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(
-                        self.scene.objects_by_id[item[1]].name, self.scene.objects_by_id[item[2]].name, item[3], item[4]
+                    "bodyA:{} ({}), bodyB:{} ({}), linkA:{}, linkB:{}".format(
+                        self.scene.objects_by_id[item[1]].name,
+                        item[1],
+                        self.scene.objects_by_id[item[2]].name,
+                        item[2],
+                        item[3],
+                        item[4],
                     )
                 )
 
@@ -398,7 +404,7 @@ class iGibsonEnv(BaseEnv):
 
         :param obj: an instance of robot or object
         :param pos: position
-        :param orn: orientation
+        :param orn: orientation (euler)
         :param offset: z offset
         """
         if orn is None:
@@ -417,7 +423,16 @@ class iGibsonEnv(BaseEnv):
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False, ignore_obj_in_hand=False):
+    def test_valid_position(
+        self,
+        obj,
+        pos,
+        orn=None,
+        ignore_self_collision=False,
+        ignore_obj_in_hand=False,
+        ignore_floors=False,
+        z_offset=None,
+    ):
         """
         Test if the robot or the object can be placed with no collision.
 
@@ -426,11 +441,19 @@ class iGibsonEnv(BaseEnv):
         :param orn: orientation
         :param ignore_self_collision: whether the object's self-collisions should be ignored.
         :param ignore_obj_in_hand: for manipulation robots, whether to ignore collisions with the grasped object
+        :param ignore_floors: whether to ignore collisions with the floor
+        :param z_offset: offset in the height of the object to check for valid position. If None, we will use the
+            default from the scene
         :return: whether the position is valid
         """
-        self.set_pos_orn_with_z_offset(obj, pos, orn)
+        self.set_pos_orn_with_z_offset(obj, pos, orn, offset=z_offset)
 
         ignore_ids = list(obj.get_body_ids() if ignore_self_collision else [])
+        if ignore_floors:
+            for floor in self.scene.objects_by_category["floors"]:
+                ignore_ids.extend(floor.get_body_ids())
+            for carpet in self.scene.objects_by_category["carpet"]:
+                ignore_ids.extend(carpet.get_body_ids())
 
         is_robot = isinstance(obj, BaseRobot)
         if is_robot:
@@ -454,7 +477,7 @@ class iGibsonEnv(BaseEnv):
 
         :param obj: an instance of robot or object
         :param pos: position
-        :param orn: orientation
+        :param orn: orientation (euler)
         """
         is_robot = isinstance(obj, BaseRobot)
 
