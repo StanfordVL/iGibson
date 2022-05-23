@@ -13,6 +13,7 @@ from igibson import object_states
 from igibson.envs.env_base import BaseEnv
 from igibson.robots import ManipulationRobot
 from igibson.robots.robot_base import BaseRobot
+from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
@@ -385,16 +386,26 @@ class iGibsonEnv(BaseEnv):
 
         if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
             for item in collisions:
-                log.debug(
-                    "bodyA:{} ({}), bodyB:{} ({}), linkA:{}, linkB:{}".format(
-                        self.scene.objects_by_id[item[1]].name,
-                        item[1],
-                        self.scene.objects_by_id[item[2]].name,
-                        item[2],
-                        item[3],
-                        item[4],
+                if isinstance(self.scene, InteractiveIndoorScene):
+                    log.debug(
+                        "bodyA:{} ({}), bodyB:{} ({}), linkA:{}, linkB:{}".format(
+                            self.scene.objects_by_id[item[1]].name,
+                            item[1],
+                            self.scene.objects_by_id[item[2]].name,
+                            item[2],
+                            item[3],
+                            item[4],
+                        )
                     )
-                )
+                else:
+                    log.debug(
+                        "bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(
+                            item[1],
+                            item[2],
+                            item[3],
+                            item[4],
+                        )
+                    )
 
         return len(collisions) > 0
 
