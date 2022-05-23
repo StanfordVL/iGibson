@@ -203,7 +203,7 @@ if __name__ == "__main__":
     # action_list = [0, 1]
 
     for episode in range(1):
-        print("\n\n\n\n\n Episode: {}".format(episode))
+        print("\n\n Episode: {}".format(episode))
         env.reset()
         start = time.time()
         for action_idx in action_list:

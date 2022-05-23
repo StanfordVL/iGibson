@@ -1240,6 +1240,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
+        is_grasping = self.robot.is_grasping() == True
+        # print('is_grasping: ', is_grasping)
 
         # process the offset from object frame to world frame
         mat = quat2mat(obj_rot_XYZW)
@@ -1280,20 +1282,31 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         # First, teleport the robot to the beginning of the pre-pick path
         logger.info("Pre-push motion")
-        self.planner.visualize_arm_path(pre_push_path, arm=self.arm, keep_last_location=True)
+        if is_grasping:
+            self.planner.visualize_arm_path(pre_push_path, arm=self.arm, keep_last_location=True, grasped_obj_id=self.robot._ag_obj_in_hand[self.arm])
+        else:
+            self.planner.visualize_arm_path(pre_push_path, arm=self.arm, keep_last_location=True,)
         yield self._get_still_action()
         # Then, execute the interaction_pick_path stopping if there is a contact
         logger.info("Pushing interaction")
         yield from self._execute_ee_path(push_interaction_path, stop_on_contact=False)
 
         logger.info("Tuck arm")
-        self.planner.visualize_arm_path(
-            [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
-            arm=self.arm,
-            keep_last_location=True,
-        )
+        if is_grasping:
+            self.planner.visualize_arm_path(
+                [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
+                arm=self.arm,
+                keep_last_location=True,
+                grasped_obj_id=self.robot._ag_obj_in_hand[self.arm],
+            )
+        else:
+            self.planner.visualize_arm_path(
+                [self.robot.untucked_default_joint_pos[self.robot.controller_joint_idx["arm_" + self.arm]]],
+                arm=self.arm,
+                keep_last_location=True,
+            )
         yield self._get_still_action()
-
+        # yield from self._place(object_name)  # cabinet
         logger.info("Push action completed")
 
     def _vis_pick(self, object_name, obs=None, yaw=None):
