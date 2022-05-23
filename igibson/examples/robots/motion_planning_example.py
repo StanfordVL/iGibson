@@ -15,7 +15,6 @@ from igibson.envs.igibson_env import iGibsonEnv
 from igibson.tasks.behavior_task import BehaviorTask
 from igibson.utils.constants import ViewerMode
 from igibson.utils.motion_planning_utils import MotionPlanner
-from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
 
 
 def print_mp_info():
@@ -300,8 +299,8 @@ def run_example(config, programmatic_actions, headless, short_exec):
 
 def main(selection="user", headless=False, short_exec=False):
     """
-    Example of usage of the motion planner wrapper
-    Creates an Rs_int scene, loads a Fetch and a MP wrapper
+    Example of usage of the motion planner object
+    Creates an Rs_int scene, loads a Fetch and a motion planner
     The user can select to control the MP through the GUI or see the execution of a series of programmatic base
     and arm goals
     """
