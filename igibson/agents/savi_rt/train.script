@@ -3,8 +3,9 @@
 #SBATCH --job-name=savi_rt
 #SBATCH --partition=svl
 #SBATCH --nodes=1
+#SBATCH --nodelist=svl6
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem=80G
+#SBATCH --mem=60G
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=6
 #SBATCH --time 192:00:00
