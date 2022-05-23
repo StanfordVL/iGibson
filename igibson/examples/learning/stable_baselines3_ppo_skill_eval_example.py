@@ -5,8 +5,6 @@ import os
 from typing import Callable
 
 import igibson
-import behavior
-# from igibson.envs.igibson_env import iGibsonEnv
 from igibson.envs.skill_env import SkillEnv
 
 log = logging.getLogger(__name__)
@@ -141,7 +139,7 @@ def main():
         # action_timestep=1 / 30.0,
         # physics_timestep=1 / 300.0,
         print_log=True,
-        action_space_type='continuous',
+        action_space_type="continuous",
     )
 
     policy_kwargs = dict(
@@ -156,7 +154,7 @@ def main():
     #     policy_kwargs=policy_kwargs,
     #     n_steps=20*10,
     # )
-    load_path = 'log_dir/20220504-113956/_51000_steps.zip'
+    load_path = "log_dir/20220504-113956/_51000_steps.zip"
     # model.load(load_path)
     # model.set_parameters(load_path)
     model = PPO.load(load_path)
@@ -164,12 +162,12 @@ def main():
     for name, param in model.policy.named_parameters():
         print(name, param)
     # model.env = env
-    print('Successfully loaded from {}'.format(load_path))
+    print("Successfully loaded from {}".format(load_path))
     log.debug(model.policy)
-    print('Evaluating Started ...')
+    print("Evaluating Started ...")
     # model.learn(1000000)
     mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=50)
-    print('Evaluating Finished ...')
+    print("Evaluating Finished ...")
     log.info(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
 

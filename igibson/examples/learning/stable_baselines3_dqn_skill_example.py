@@ -5,8 +5,6 @@ import os
 from typing import Callable
 
 import igibson
-import behavior
-# from igibson.envs.igibson_env import iGibsonEnv
 from igibson.envs.skill_env import SkillEnv
 
 log = logging.getLogger(__name__)
@@ -15,7 +13,8 @@ try:
     import gym
     import torch as th
     import torch.nn as nn
-    from stable_baselines3 import PPO, DQN
+    from stable_baselines3 import DQN, PPO
+    from stable_baselines3.common.callbacks import CallbackList, CheckpointCallback, EvalCallback
     from stable_baselines3.common.evaluation import evaluate_policy
     from stable_baselines3.common.preprocessing import maybe_transpose
     from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
@@ -80,7 +79,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
                     n_flatten = cnn(test_tensor[None]).shape[1]
                 fc = nn.Sequential(nn.Linear(n_flatten, feature_size), nn.ReLU())
                 extractors[key] = nn.Sequential(cnn, fc)
-            elif key in ['occupancy_grid']:
+            elif key in ["occupancy_grid"]:
                 continue
             else:
                 raise ValueError("Unknown observation key: %s" % key)
@@ -96,7 +95,7 @@ class CustomCombinedExtractor(BaseFeaturesExtractor):
 
         # self.extractors contain nn.Modules that do all the processing.
         for key, extractor in self.extractors.items():
-            if key in ['occupancy_grid']:
+            if key in ["occupancy_grid"]:
                 continue
             if key in ["rgb", "highlight", "depth", "seg", "ins_seg"]:
                 observations[key] = observations[key].permute((0, 3, 1, 2))
@@ -114,60 +113,82 @@ def main():
     # config_file = os.path.join('..', '..', 'configs', 'robots', "fetch_rl.yaml")
     config_file = os.path.join(igibson.configs_path, "fetch_rl.yaml")
     tensorboard_log_dir = "log_dir"
+    prefix = "toggle_off"
     num_cpu = 1
+    mode = "callback"  # 'callback'
 
-    # def make_env(rank: int, seed: int = 0) -> Callable:
-    #     def _init() -> SkillEnv:
-    #         env = SkillEnv(
-    #             config_file=config_file,
-    #             mode="headless",
-    #             action_timestep=1 / 30.0,
-    #             physics_timestep=1 / 300.0,
-    #             print_log=True,
-    #         )
-    #         env.seed(seed + rank)
-    #         return env
-    #
-    #     set_random_seed(seed)
-    #     return _init
+    def make_env(rank: int, seed: int = 0) -> Callable:
+        def _init() -> SkillEnv:
+            env = SkillEnv(
+                config_file=config_file,
+                mode="headless",
+                action_timestep=1 / 30.0,
+                physics_timestep=1 / 300.0,
+                print_log=False,
+            )
+            env.seed(seed + rank)
+            return env
 
-    # env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
-    # env = VecMonitor(env)
+        set_random_seed(seed)
+        return _init
+
+    env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
+    env = VecMonitor(env)
 
     eval_env = SkillEnv(
         config_file=config_file,
-        mode="gui_interactive",
+        mode="headless",
         action_timestep=1 / 30.0,
         physics_timestep=1 / 300.0,
-        print_log=True,
+        print_log=False,
     )
 
     policy_kwargs = dict(
         features_extractor_class=CustomCombinedExtractor,
     )
     os.makedirs(tensorboard_log_dir, exist_ok=True)
-    # model = PPO(
-    #     "MultiInputPolicy",
-    #     env,
-    #     verbose=1,
-    #     tensorboard_log=tensorboard_log_dir,
-    #     policy_kwargs=policy_kwargs,
-    #     n_steps=20*10,
-    # )
-    load_path = '_108000_steps'
-    # model.load(load_path)
-    # model.set_parameters(load_path)
-    model = DQN.load(load_path)
-    print(model.policy)
-    for name, param in model.policy.named_parameters():
-        print(name, param)
-    # model.env = env
-    print('Successfully loaded from {}'.format(load_path))
+    model = DQN(
+        "MultiInputPolicy",
+        env,
+        verbose=1,
+        tensorboard_log=tensorboard_log_dir,
+        policy_kwargs=policy_kwargs,
+        buffer_size=20 * 10,
+    )
+
     log.debug(model.policy)
-    print('Evaluating Started ...')
-    # model.learn(1000000)
-    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10)
-    print('Evaluating Finished ...')
+
+    if mode == "for_loop":
+        for i in range(1000):
+            model.learn(1000)
+
+            mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=20)
+            log.info(f"After Training {i}: Mean reward: {mean_reward} +/- {std_reward:.2f}")
+
+            model.save(os.path.join(tensorboard_log_dir, "ckpt_{:03d}_{}".format(i, prefix)))
+        del model
+    elif mode == "callback":
+        # Save a checkpoint every 1000 steps
+        checkpoint_callback = CheckpointCallback(save_freq=1000, save_path=tensorboard_log_dir, name_prefix=prefix)
+        eval_callback = EvalCallback(
+            eval_env,
+            best_model_save_path=os.path.join(tensorboard_log_dir),
+            log_path=os.path.join(tensorboard_log_dir),
+            eval_freq=500,
+        )
+        # Create the callback list
+        callback = CallbackList([checkpoint_callback, eval_callback])
+
+        model.learn(1000000, callback=callback)
+
+        mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=20)
+        log.info(f"After Training: Mean reward: {mean_reward} +/- {std_reward:.2f}")
+
+        model.save(os.path.join(tensorboard_log_dir, "ckpt_{}".format(prefix)))
+        del model
+
+    model = PPO.load(os.path.join(tensorboard_log_dir, "ckpt_{}".format(prefix)))
+    mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=20)
     log.info(f"After Loading: Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
 
