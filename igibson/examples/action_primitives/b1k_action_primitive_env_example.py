@@ -17,7 +17,7 @@ def main(selection="user", headless=False, short_exec=False):
     primitives.
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config_filename = os.path.join(igibson.configs_path, "tiago_behavior_aps.yaml")
+    config_filename = os.path.join(igibson.configs_path, "fetch_behavior_aps.yaml")
     config = parse_config(config_filename)
     env = ActionPrimitivesEnv(
         "B1KActionPrimitives",
@@ -25,6 +25,13 @@ def main(selection="user", headless=False, short_exec=False):
         mode="headless" if headless else "gui_interactive",
         use_pb_gui=(not headless and platform.system() != "Darwin"),
     )
+
+    # Change this if you want to visualize full paths
+    full_base_path = False
+    full_arm_path = False
+    env.action_generator.skip_base_planning = not full_base_path
+    env.action_generator.skip_arm_planning = not full_arm_path
+
     # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
     if env.env.simulator.viewer is not None:
         env.env.simulator.viewer.following_viewer = True
@@ -60,7 +67,7 @@ if __name__ == "__main__":
     # Change the level to logging.DEBUG logging.INFO logging.WARNING ... depending on how much you want to see
     logging.basicConfig(level=logging.INFO)
     logging.getLogger(name="igibson").setLevel(level=logging.INFO)
-    logging.getLogger(name="igibson.action_primitives").setLevel(level=logging.DEBUG)
+    logging.getLogger(name="igibson.action_primitives").setLevel(level=logging.INFO)
     logging.getLogger(name="igibson.utils.motion_planning_utils").setLevel(level=logging.INFO)
     logging.getLogger(name="igibson.external.pybullet_tools.utils").setLevel(level=logging.INFO)
     main()
