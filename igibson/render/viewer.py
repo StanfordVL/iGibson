@@ -10,6 +10,7 @@ import pybullet as p
 
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.constants import ViewerMode
+from igibson.utils.transform_utils import mat2euler, quat2mat
 from igibson.utils.utils import rotate_vector_2d
 
 log = logging.getLogger(__name__)
@@ -132,6 +133,10 @@ class Viewer:
         self.create_visual_object()
         self.planner = None
         self.block_command = False
+
+        # Use a viewer that follos the robot in front or on the sid
+        self.following_viewer = False
+        self.camlocation_in_rf = np.array([1, 0, 2])  # Default: camera in front of the robot, looking down
 
     def setup_motion_planner(self, planner=None):
         """
@@ -713,6 +718,19 @@ class Viewer:
             self.show_help += 1
 
         # move
+        elif self.following_viewer:
+            robot_pos, robot_orn = self.simulator.scene.robots[0].get_position_orientation()
+            robot_orn_mat = quat2mat(robot_orn)
+            cam_in_wf = robot_pos + np.dot(robot_orn_mat, self.camlocation_in_rf)
+            self.px = cam_in_wf[0]
+            self.py = cam_in_wf[1]
+            self.pz = cam_in_wf[2]
+            self.view_direction = np.array((robot_pos[0], robot_pos[1], 0.6)) - np.array((self.px, self.py, self.pz))
+            self.view_direction /= np.linalg.norm(self.view_direction)
+            camera_pose = np.array([self.px, self.py, self.pz])
+            if self.renderer is not None:
+                self.renderer.set_camera(camera_pose, camera_pose + self.view_direction, self.up)
+
         elif self.last_key in [ord("w"), ord("s"), ord("a"), ord("d")]:
             if self.last_key == ord("w"):
                 yaw = 0.0
