@@ -54,7 +54,7 @@ class Policy(nn.Module):
         ext_memory_masks,
         deterministic=False,
     ):
-        features, rnn_hidden_states, ext_memory_feats = self.net(
+        features, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -69,10 +69,10 @@ class Policy(nn.Module):
             action = distribution.sample()
 
         action_log_probs = distribution.log_probs(action)
-        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats
+        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats
 
     def get_value(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        features, _, _ = self.net(
+        features, _, _, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         return self.critic(features)
@@ -80,7 +80,7 @@ class Policy(nn.Module):
     def evaluate_actions(
         self, observations, rnn_hidden_states, prev_actions, masks, action, ext_memory, ext_memory_masks
     ):
-        features, rnn_hidden_states, ext_memory_feats = self.net(
+        features, rnn_hidden_states, ext_memory_feats, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -352,7 +352,7 @@ class AudioNavSMTNet(Net):
         return -1
 
     def forward(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        x = self.get_features(observations, prev_actions)
+        x, x_unflattened = self.get_features(observations, prev_actions)
 
         if self._use_belief_as_goal:
             belief = torch.zeros((x.shape[0], self._hidden_size), device=x.device)
@@ -374,7 +374,7 @@ class AudioNavSMTNet(Net):
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
 
-        return x_att, rnn_hidden_states, x
+        return x_att, rnn_hidden_states, x, x_unflattened
 
     def _get_one_hot(self, actions):
         if actions.shape[1] == self._action_size:
@@ -411,16 +411,16 @@ class AudioNavSMTNet(Net):
         self.visual_encoder.eval()
 
     def get_features(self, observations, prev_actions):
-        x = []
-        x.append(self.visual_encoder(observations))
-        x.append(self.action_encoder(self._get_one_hot(prev_actions)))
-        x.append(self.goal_encoder(observations))
-        x.append(observations['task_obs'][:, -2:])
+        x_unflattened = []
+        x_unflattened.append(self.visual_encoder(observations))
+        x_unflattened.append(self.action_encoder(self._get_one_hot(prev_actions)))
+        x_unflattened.append(self.goal_encoder(observations))
+        x_unflattened.append(observations['task_obs'][:, -2:])
         if self._use_category_input:
-            x.append(observations["category"])
+            x_unflattened.append(observations["category"])
         if self._use_rt_map_features:
-            x.append(observations["rt_map_features"])
-        x.append(observations["pose_sensor"])
-        x = torch.cat(x, dim=1)
+            x_unflattened.append(observations["rt_map_features"])
+        x_unflattened.append(observations["pose_sensor"])
+        x = torch.cat(x_unflattened, dim=1)
 
-        return x
+        return x, x_unflattened

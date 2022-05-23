@@ -24,6 +24,9 @@ from igibson.utils.utils import l2_distance, restoreState
 from igibson.agents.savi.utils import dataset
 from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP
 from igibson.utils.utils import rotate_vector_3d
+from PIL import Image
+import cv2
+from scipy import ndimage
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +101,7 @@ class SAViTask(PointNavRandomTask):
         self.view_points = []
 ###
         self.load_target(env)
+        self.padded_gt_rt = None
         
         
     def load_target(self, env):
@@ -243,7 +247,7 @@ class SAViTask(PointNavRandomTask):
         p.removeState(state_id)
         
         env.land(env.robots[0], self.initial_pos, self.initial_orn)
-        
+        self.load_gt_rt_map(env)
         # for savi
         self.audio_obj_id = self.target_obj.get_body_ids()[0]
         if train:
@@ -253,4 +257,23 @@ class SAViTask(PointNavRandomTask):
             env.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'] \
                                             +"/val/"+self.cat+".wav", enabled=True)    
         env.audio_system.setSourceRepeat(self.audio_obj_id)#, repeat = False)
+
+
+    def load_gt_rt_map(self, env):
+        maps_path = "/viscam/u/wangzz/iGibson/gibson2/data/ig_dataset/scenes/"  \
+                    + env.config['scene_id'] + "/layout/"
+        floor = 0
+        gt_rt = np.flip(np.array(Image.open(os.path.join(maps_path, "floor_semseg_{}.png".format(floor)))), axis=1)
+        gt_rt = cv2.resize(gt_rt, (100, 100))
+        padded_gt_rt = np.zeros((int(100*1.4), int(100*1.4)), dtype=float)
+        padded_gt_rt[int(int(100*1.4)/2-100/2):int(int(100*1.4)/2+100/2), 
+                    int(int(100*1.4)/2-100/2):int(int(100*1.4)/2+100/2)] = gt_rt
+        rotated_gt_rt = ndimage.rotate(padded_gt_rt, -90+self.initial_rpy[2]*180.0/3.141593, 
+                                axes=(1, 0), reshape=False) # (64, 140, 140)
+        rotated_gt_rt = ndimage.shift(rotated_gt_rt, 
+                                            [-self.initial_pos[1]/(100/1000), 
+                                              self.initial_pos[0]/(100/1000)]) # down, right
+        self.padded_gt_rt = cv2.resize(padded_gt_rt, (28, 28))
         
+    def get_room_type_map(self):
+        return self.padded_gt_rt

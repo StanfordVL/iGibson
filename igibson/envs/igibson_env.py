@@ -263,6 +263,8 @@ class iGibsonEnv(BaseEnv):
         if 'rt_map_features' in self.output:
             observation_space['rt_map_features'] = self.build_obs_space(
                 shape=(784,), low=-np.inf, high=np.inf)
+            observation_space['rt_map_gt'] = self.build_obs_space(
+                shape=(28,28), low=-np.inf, high=np.inf)
         
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -367,6 +369,7 @@ class iGibsonEnv(BaseEnv):
             state["location_belief"] = np.zeros(2)
         if 'rt_map_features' in self.output:
             state['rt_map_features'] = np.zeros(784)
+            state['rt_map_gt'] = self.task.get_room_type_map()
         
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"
