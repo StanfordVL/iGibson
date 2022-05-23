@@ -480,7 +480,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pulling_pos[2] += vector[2]
 
         pulling_direction = np.array(params[3:6])
-        ee_pulling_orn = p.getQuaternionFromEuler((np.pi / 2, 0, 0))
+        ee_pulling_orn = p.getQuaternionFromEuler((np.pi / 2, np.pi / 16, 0))
         pre_pulling_distance = 0.1
         pulling_distance = 0.30
 
@@ -498,7 +498,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             pre_pulling_distance=pre_pulling_distance,
             pulling_distance=pulling_distance,
             plan_full_pre_pull_motion=plan_full_pre_pull_motion,
-            pulling_steps=10 if self.fast_execution else 30,
+            pulling_steps=20 if self.fast_execution else 30,
             plan_pull_interaction_motion=plan_pull_interaction_motion,
         )
 
