@@ -6,7 +6,7 @@ import numpy as np
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.utils.assets_utils import download_assets, download_demo_data
-from igibson.utils.motion_planning_wrapper import MotionPlanningWrapper
+from igibson.utils.motion_planning_utils import MotionPlanner
 
 
 def test_occupancy_grid():
@@ -37,7 +37,7 @@ def test_base_planning():
     config_filename = os.path.join(os.path.dirname(__file__), "test_house_occupancy_grid.yaml")
 
     nav_env = iGibsonEnv(config_file=config_filename, mode="headless")
-    motion_planner = MotionPlanningWrapper(nav_env)
+    motion_planner = MotionPlanner(nav_env)
     nav_env.reset()
     nav_env.robots[0].set_position_orientation([0, 0, 0], [0, 0, 0, 1])
     nav_env.simulator.step()
@@ -47,7 +47,7 @@ def test_base_planning():
         plan = motion_planner.plan_base_motion([0.5, 0, 0])
         print(plan)
         itr += 1
-    motion_planner.dry_run_base_plan(plan)
+    motion_planner.visualize_base_path(plan)
 
     assert len(plan) > 0
     nav_env.clean()
