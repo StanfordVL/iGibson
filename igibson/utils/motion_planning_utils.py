@@ -17,6 +17,7 @@ from igibson.external.motion.motion_planners.rrt_connect import birrt
 from igibson.external.pybullet_tools.utils import (
     PI,
     circular_difference,
+    control_joints,
     direct_path,
     get_aabb,
     get_base_values,
@@ -38,24 +39,6 @@ from igibson.external.pybullet_tools.utils import (
     set_joint_positions,
     set_pose,
 )
-
-from igibson.external.pybullet_tools.utils import (
-    control_joints,
-    get_base_values,
-    get_joint_positions,
-    get_max_limits,
-    get_min_limits,
-    get_sample_fn,
-    is_collision_free,
-    joints_from_names,
-    link_from_name,
-    plan_base_motion_2d,
-    plan_joint_motion,
-    set_base_values_with_z,
-    set_joint_positions,
-    set_pose,
-)
-
 from igibson.objects.visual_marker import VisualMarker
 from igibson.render.viewer import Viewer
 from igibson.scenes.gibson_indoor_scene import StaticIndoorScene
@@ -180,7 +163,7 @@ class MotionPlanner(object):
         """Sync the simulator to renderer"""
         self.env.simulator.sync()
 
-    def simulator_step(self):
+    def simulator_step(self, with_sync=True):
         """Step the simulator and sync the simulator to renderer"""
         self.env.simulator.step()
         self.simulator_sync()
@@ -200,7 +183,7 @@ class MotionPlanner(object):
         if self.marker is not None:
             self.set_marker_position_yaw([goal[0], goal[1], 0.05], goal[2])
 
-        log.debug("Motion planning base goal: {}".format(goal))
+        log.debug("Motion planning base to goal {}".format(goal))
 
         initial_pb_state = p.saveState()
 
@@ -209,12 +192,15 @@ class MotionPlanner(object):
 
         # Check only feasibility of the last location
         if not plan_full_base_motion:
+            robot_position = self.env.robots[0].get_position()
             collision_free = self.env.test_valid_position(
                 self.robot,
-                np.array((x, y, self.env.scene.floor_heights[0])),
+                np.array((x, y, robot_position[2])),
                 orn=np.array([0, 0, theta]),
                 ignore_self_collision=True,
                 ignore_obj_in_hand=True,
+                ignore_floors=True,
+                z_offset=0.0,  # We are not sampling to drop/land, but to check feasibility
             )
 
             if collision_free:
@@ -249,13 +235,14 @@ class MotionPlanner(object):
                     for body_id in self.env.scene.get_body_ids()
                     if body_id not in self.robot.get_body_ids()
                     and body_id != self.env.scene.objects_by_category["floors"][0].get_body_ids()[0]
+                    and body_id != self.env.scene.objects_by_category["carpet"][0].get_body_ids()[0]
                     and body_id not in obj_idx_to_ignore
                 ]
                 # TODO: keeping this for Chen, remove later
-                # obstacles = [
+                # obstacles.extend([
                 #     item.get_body_ids()[0]
                 #     for item in self.env.scene.objects_by_category["bottom_cabinet"]
-                # ]
+                # ])
             else:
                 obstacles = []
 
@@ -295,9 +282,10 @@ class MotionPlanner(object):
 
     def visualize_base_path(self, path, keep_last_location=True):
         """
-        Dry run base motion plan by setting the base positions without physics simulation
+        Visualize the base motion plan by setting the base positions without physics simulation
 
         :param path: base waypoints or None if no plan can be found
+        :param keep_last_location: Flag indicating is we want to keep the robot at the last location visualized
         """
 
         if path is not None:
@@ -305,15 +293,18 @@ class MotionPlanner(object):
             if not keep_last_location:
                 initial_pb_state = p.saveState()
 
+            # If the robot is grasping an object, we move it together with the robot
+            # For that, we first store the grasp_pose (offset between the EE frame and the object frame) and then we
+            # maintain that constant after teleporting the robot, effectively moving the object to the right location
             grasping_object = self.robot.is_grasping() == IsGraspingState.TRUE
             grasped_obj_id = self.robot._ag_obj_in_hand[self.robot.default_arm]
-
             if grasping_object:
                 gripper_pos = self.robot.get_eef_position(arm="default")
                 gripper_orn = self.robot.get_eef_orientation(arm="default")
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
+            # Only visualize the entire path if we have a viewer, otherwise it doesn't make sense
             if self.mode in ["gui_non_interactive", "gui_interactive"]:
                 for way_point in path:
                     robot_position, robot_orn = self.env.robots[0].get_position_orientation()
@@ -393,7 +384,6 @@ class MotionPlanner(object):
         arm=None,
         check_collisions=True,
         randomize_initial_pose=True,
-        obj_name=None,
     ):
         """
         Attempt to find arm_joint_pose that satisfies ee_position (and possibly, ee_orientation)
@@ -403,13 +393,15 @@ class MotionPlanner(object):
         :param ee_orientation: desired orientation of the end-effector [x,y,z,w] in the world frame
         :param arm: string of the name of the arm to use. Use default arm if None
         :param check_collisions: whether we check for collisions in the solution or not
+        :param randomize_initial_pose: whether we sample random initial locations to iteratively compute IK or if we
+            want to use the current location as starting point
         :return: arm joint_pose
         """
         log.debug("IK query for end-effector pose ({}, {}) with arm {}".format(ee_position, ee_orientation, arm))
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("Defaulting to get IK for the default arm: {}".format(arm))
+            log.debug("Defaulting to get IK for the default arm: {}".format(arm))
 
         if self.robot_type == "BehaviorRobot":
             if arm == "left_hand":
@@ -434,7 +426,6 @@ class MotionPlanner(object):
                     current_orientation_rpy = p.getEulerFromQuaternion(current_orientation)
                     return np.concatenate((ee_position, np.asarray(current_orientation_rpy)))
 
-        ik_start = time.time()
         max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
 
         n_attempt = 0
@@ -444,22 +435,16 @@ class MotionPlanner(object):
         sample_fn = get_sample_fn(self.robot_body_id, arm_joint_pb_ids)
         base_pose = get_base_values(self.robot_body_id)
         initial_pb_state = p.saveState()
-        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         # find collision-free IK solution for arm_subgoal
         while n_attempt < max_attempt:
 
             if randomize_initial_pose:
                 # Start the iterative IK from a different random initial joint pose
-                sample = sample_fn()
                 set_joint_positions(self.robot_body_id, arm_joint_pb_ids, sample_fn())
 
             kwargs = dict()
             if ee_orientation is not None:
                 kwargs["targetOrientation"] = ee_orientation
-            if obj_name in [
-                "microwave.n.02_1-cleaning_microwave_oven",
-            ]:
-                kwargs["targetOrientation"] = (0.1830127, -0.1830127, 0.6830127, 0.6830127)
             joint_pose = p.calculateInverseKinematics(
                 self.robot_body_id,
                 self.robot.eef_links[arm].link_id,
@@ -480,49 +465,45 @@ class MotionPlanner(object):
 
             dist = l2_distance(self.robot.get_eef_position(arm=arm), ee_position)
             if dist > self.arm_ik_threshold:
-                log.warning("IK solution is not close enough to the desired pose. Distance: {}".format(dist))
+                log.debug("IK solution is not close enough to the desired pose. Distance: {}".format(dist))
                 n_attempt += 1
                 continue
 
             if check_collisions:
                 # need to simulator_step to get the latest collision
-                # self.simulator_step()
-
+                # TODO: is it really necessary? We deactivate it, check if things run as expected
+                self.simulator_step(with_sync=False)
                 # simulator_step will slightly move the robot base and the objects
                 set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
                 # self.reset_object_states()
-                # TODO: have a principled way for stashing and resetting object states
+
                 # arm should not have any collision
                 collision_free = is_collision_free(body_a=self.robot_body_id, link_a_list=arm_joint_pb_ids)
 
                 if not collision_free:
                     n_attempt += 1
-                    log.warning("IK solution brings the arm into collision")
+                    log.debug("IK solution brings the arm into collision with the environment")
                     continue
 
                 # gripper should not have any self-collision
-                collision_free = is_collision_free(
+                self_collision_free = is_collision_free(
                     body_a=self.robot_body_id,
                     link_a_list=[self.robot.eef_links[arm].link_id],
                     body_b=self.robot_body_id,
                 )
-                if not collision_free:
+                if not self_collision_free:
                     n_attempt += 1
-                    log.warning("IK solution brings the gripper into collision")
+                    log.debug("IK solution brings the gripper into collision with robot's body")
                     continue
 
-            # self.episode_metrics['arm_ik_time'] += time() - ik_start
-            # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
             restoreState(initial_pb_state)
             p.removeState(initial_pb_state)
             log.debug("IK Solver found a valid configuration")
             return joint_pose
 
-        # p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         restoreState(initial_pb_state)
         p.removeState(initial_pb_state)
-        # self.episode_metrics['arm_ik_time'] += time() - ik_start
-        log.debug("IK Solver failed to find a configuration")
+        log.warning("IK Solver failed to find a configuration")
         return None
 
     def plan_arm_motion_to_joint_pose(
@@ -540,11 +521,11 @@ class MotionPlanner(object):
         :param disable_collision_hand_links: if True, include Fetch hand and finger collisions while motion planning
         :return: arm trajectory or None if no plan can be found
         """
-        log.warning("Planning path in joint space to {}".format(arm_joint_pose))
+        log.info("Planning path in joint space to {}".format(arm_joint_pose))
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("Defaulting to planning a joint space trajectory with the default arm: {}".format(arm))
+            log.debug("Defaulting to planning a joint space trajectory with the default arm: {}".format(arm))
 
         disabled_self_colliding_pairs = {}
         if self.fine_motion_plan:
@@ -559,7 +540,6 @@ class MotionPlanner(object):
             check_self_collisions = False
             mp_obstacles = []
 
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, False)
         initial_pb_state = p.saveState()
 
         if initial_arm_configuration is not None:
@@ -567,7 +547,7 @@ class MotionPlanner(object):
                 "Start the planning trajectory from a given joint configuration is not implemented yet."
                 "Should it use the utils function or the iG function to move the arm? What indices?"
             )
-            exit(-1)
+            raise NotImplementedError
         else:
             # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
             self.robot.untuck()
@@ -601,12 +581,11 @@ class MotionPlanner(object):
                 obstacles=mp_obstacles,
                 algorithm=self.arm_mp_algo,
             )
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, True)
         restoreState(initial_pb_state)
         p.removeState(initial_pb_state)
 
         if arm_path is not None and len(arm_path) > 0:
-            log.warning("Path found!")
+            log.info("Path found!")
         else:
             log.warning("Path NOT found!")
 
@@ -626,13 +605,13 @@ class MotionPlanner(object):
         :param set_marker: whether we set the visual marker at the given goal
         :return: arm trajectory or None if no plan can be found
         """
-        log.warn("Planning arm motion to end-effector pose ({}, {})".format(ee_position, ee_orientation))
+        log.info("Planning arm motion to end-effector pose ({}, {})".format(ee_position, ee_orientation))
         if self.marker is not None and set_marker:
             self.set_marker_position_direction(ee_position, [0, 0, 1])
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("Defaulting to plan EE to Cartesian pose with the default arm: {}".format(arm))
+            log.debug("Defaulting to plan EE to Cartesian pose with the default arm: {}".format(arm))
 
         # Solve the IK problem to set the arm at the desired position
         joint_pose = self.get_joint_pose_for_ee_pose_with_ik(ee_position, ee_orientation=ee_orientation, arm=arm)
@@ -642,7 +621,7 @@ class MotionPlanner(object):
                 joint_pose, initial_arm_configuration=initial_arm_configuration, arm=arm
             )
             if path is not None and len(path) > 0:
-                log.warning("Planning succeeded: found path in joint space to Cartesian goal")
+                log.info("Planning succeeded: found path in joint space to Cartesian goal")
             else:
                 log.warning("Planning failed: no collision free path to Cartesian goal")
             return path
@@ -660,19 +639,33 @@ class MotionPlanner(object):
         steps=50,
         arm=None,
     ):
-        log.warning(
+        """
+        Plans a straight line in Cartesian space for the end-effector by iteratively requesting a new IK solution
+        along the line in small steps. Due to the iterative nature of IK, solutions tend to be close/smooth in joint
+        space, but there is no guarantees that the joint space path won't jump
+        :param initial_arm_pose: initial joint space configuration to start planning from
+        :param line_initial_point: initial point in 3D space where the ee starts the line. It should coincide to the
+            ee location when the robot is at the initial_arm_pose
+        :param line_direction: vector indicating the direction to move in a line
+        :param ee_orn: orientation of the end-effector to maintain while moving along the line
+        :param line_length: length of the line segment to move the ee
+        :param steps: steps along the line to compute IK. More steps lead to smoother and less abrupt motion, but
+            will take longer to execute
+        :param arm: name of the arm to use from the robot to move the ee
+        """
+        log.info(
             "Planning straight line motion from {} along {} a distance of {}".format(
                 line_initial_point, line_direction, line_length
             )
         )
-        log.warning("Initial joint configuration {}".format(initial_arm_pose))
+        log.info("Initial joint configuration {}".format(initial_arm_pose))
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warn("Planning straight line for the default arm: {}".format(arm))
+            log.debug("Planning straight line for the default arm: {}".format(arm))
 
         if line_length == 0.0:
-            log.warning("Requested line of length 0. Returning a path with only one configuration: initial_arm_pose")
+            log.info("Requested line of length 0. Returning a path with only one configuration: initial_arm_pose")
             return [initial_arm_pose]
 
         initial_pb_state = p.saveState()
@@ -681,7 +674,8 @@ class MotionPlanner(object):
         if self.robot_type != "BehaviorRobot":
             arm_joint_pb_ids = np.array(joints_from_names(self.robot_body_id, self.robot.arm_joint_names[arm]))
             set_joint_positions(self.robot_body_id, arm_joint_pb_ids, initial_arm_pose)
-            # self.simulator_sync()
+            if self.enable_simulator_sync:
+                self.simulator_sync()
         else:
             self.robot.set_eef_position_orientation(
                 initial_arm_pose[:3], p.getQuaternionFromEuler(initial_arm_pose[3:]), arm
@@ -689,21 +683,16 @@ class MotionPlanner(object):
             if self.enable_simulator_sync:
                 self.simulator_sync()
 
-        line_segment = np.array(line_direction) * (line_length)
+        line_segment = np.array(line_direction) * line_length
 
         line_path = []
 
         for i in range(steps):
-            start_push_goal = time.time()
             push_goal = line_initial_point + line_segment * (i + 1) / float(steps)
-            start_joint_pose = time.time()
-            # print(i, 'start joint pose time {}'.format(start_joint_pose - start_push_goal))
             # Solve the IK problem to set the arm at the desired position
             joint_pose = self.get_joint_pose_for_ee_pose_with_ik(
                 push_goal, ee_orientation=ee_orn, arm=arm, check_collisions=False, randomize_initial_pose=False
             )
-            start_restore = time.time()
-            # print('start restore {}'.format(start_restore-start_joint_pose))
             if joint_pose is None:
                 restoreState(initial_pb_state)
                 p.removeState(initial_pb_state)
@@ -711,10 +700,10 @@ class MotionPlanner(object):
                 return None
 
             line_path.append(joint_pose)
-            end_restore = time.time()
-            # print('end restore {}'.format(end_restore - start_restore))
+
         restoreState(initial_pb_state)
         p.removeState(initial_pb_state)
+        log.info("Cartesian line computed")
         return line_path
 
     def plan_ee_push(
@@ -742,11 +731,13 @@ class MotionPlanner(object):
         :param pushing_distance: distance after the pushing point along the pushing direction to move in the interaction
             push. The total motion in the second phase will be pre_pushing_distance + pushing_distance
         :param pushing_steps: steps to compute IK along a straight line for the second phase of the push (interaction)
+        :param plan_full_pre_push_motion: whether we plan the entire joint space trajectory or only check feasibilty of
+            the final configuration to achieve the interaction point
         :param arm: which arm to use for multi-arm agents. `None` to use the default arm
         :return: tuple of (pre_push_path, push_interaction_path) with the joint space trajectory to follow in the two
             phases of the interaction. Both will be None if the planner fails to find a path
         """
-        log.warning(
+        log.info(
             "Planning end-effector pushing action at point {} with direction {}".format(
                 pushing_location, pushing_direction
             )
@@ -756,10 +747,10 @@ class MotionPlanner(object):
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("Pushing with the default arm: {}".format(arm))
+            log.debug("Pushing with the default arm: {}".format(arm))
 
         pre_pushing_location = pushing_location - pre_pushing_distance * pushing_direction
-        log.warning(
+        log.info(
             "It will plan a motion to the location {}, {} m in front of the pushing location"
             "".format(pre_pushing_location, pre_pushing_distance)
         )
@@ -769,7 +760,7 @@ class MotionPlanner(object):
                 pre_pushing_location, ee_orientation=ee_pushing_orn, arm=arm
             )
         else:
-            log.warning("Not planning the pre-push path, only checking feasibility of the last location.")
+            log.info("Not planning the pre-push path, only checking feasibility of the last location.")
             last_pose = self.get_joint_pose_for_ee_pose_with_ik(
                 pre_pushing_location, ee_orientation=ee_pushing_orn, arm=arm
             )
@@ -791,8 +782,9 @@ class MotionPlanner(object):
                 arm=arm,
             )
             if push_interaction_path is None:
-                log.warn("Planning failed: no path found to push the object")
+                log.warning("Planning failed: no path found to push the object")
 
+        log.info("Planning succeeded. Returning pushing strategy")
         return pre_push_path, push_interaction_path
 
     def plan_ee_pull(
@@ -804,6 +796,7 @@ class MotionPlanner(object):
         pulling_distance=0.1,
         pulling_steps=50,
         plan_full_pre_pull_motion=True,
+        plan_pull_interaction_motion=True,
         arm=None,
     ):
         """
@@ -814,17 +807,22 @@ class MotionPlanner(object):
 
         :param pulling_location: 3D point to push at
         :param pulling_direction: direction to push after reaching that point
+        :param ee_pulling_orn: orientation of the ee while pulling. Computed internally if None
         :param pre_pulling_distance: distance in front of the pulling point in the opposite direction to the pulling
             direction to plan a motion in free space before the interaction pull.
         :param pulling_distance: distance after the pulling point along the pulling direction to move in the interaction
             push.
         :param pulling_steps: steps to compute IK
+        :param plan_full_pre_pull_motion: whether we plan the entire joint space trajectory or only check feasibilty of
+            the final configuration to achieve the interaction point
+        :param plan_pull_interaction_motion: plan the straight line motion to follow after grasp (this can be invalid
+            if we stop earlier due to contact)
         :param arm: which arm to use for multi-arm agents. `None` to use the default arm
         :return: tuple of (pre_pull_path, pull_interaction_path1, pull_interaction_path2) with the joint space
             trajectory to follow in the three phases of the interaction. All will be None if the planner fails to find a
             path
         """
-        log.warning(
+        log.info(
             "Planning end-effector pulling action at point {} with direction {}".format(
                 pulling_location, pulling_direction
             )
@@ -834,10 +832,10 @@ class MotionPlanner(object):
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("Pulling with the default arm: {}".format(arm))
+            log.debug("Pulling with the default arm: {}".format(arm))
 
         pre_pulling_location = pulling_location + pre_pulling_distance * pulling_direction
-        log.warning(
+        log.info(
             "It will plan a motion to the location {}, {} m in front of the pulling location"
             "".format(pre_pulling_location, pre_pulling_distance)
         )
@@ -855,13 +853,13 @@ class MotionPlanner(object):
             rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
             quatt = quatXYZWFromRotMat(rot_matrix)
         else:
-            log.warning("Planning pulling with end-effector orientation {}".format(ee_pulling_orn))
+            log.debug("Planning pulling with end-effector orientation {}".format(ee_pulling_orn))
             quatt = ee_pulling_orn
 
         if plan_full_pre_pull_motion:
             pre_pull_path = self.plan_ee_motion_to_cartesian_pose(pre_pulling_location, ee_orientation=quatt, arm=arm)
         else:
-            log.warning("Not planning the pre-pull path, only checking feasibility of the last location.")
+            log.debug("Not planning the pre-pull path, only checking feasibility of the last location.")
             last_pose = self.get_joint_pose_for_ee_pose_with_ik(pre_pulling_location, ee_orientation=quatt, arm=arm)
             pre_pull_path = [last_pose] if last_pose is not None else []
 
@@ -881,8 +879,8 @@ class MotionPlanner(object):
                 arm=arm,
             )
             if approach_interaction_path is None:
-                log.warn("Planning failed: no path found to approach the object to pull")
-            else:
+                log.warning("Planning failed: no path found to approach the object to pull")
+            elif plan_pull_interaction_motion:
                 pull_interaction_path = self.plan_ee_straight_line_motion(
                     approach_interaction_path[-1],
                     pre_pulling_location - pulling_direction * pre_pulling_distance,
@@ -893,173 +891,9 @@ class MotionPlanner(object):
                     arm=arm,
                 )
 
+        log.info("Planning succeeded. Returning pulling strategy")
         return pre_pull_path, approach_interaction_path, pull_interaction_path
-    '''
-    def plan_arm_pull(self, hit_pos, hit_normal):
-        """
-        Attempt to reach a 3D position and prepare for a push later
 
-        :param hit_pos: 3D position to reach
-        :param hit_normal: direction to push after reacehing that position
-        :return: arm trajectory or None if no plan can be found
-        """
-        log.debug("Planning arm push at point {} with direction {}".format(hit_pos, hit_normal))
-
-        hit_pos = hit_pos + (np.array(hit_normal) * -1.0) * (self.arm_interaction_length * 0.3)
-
-        # if self.marker is not None:
-        #     self.set_marker_position_direction(hit_pos, hit_normal)
-        #
-        # # Solve the IK problem to set the arm at the desired position
-        # joint_positions = self.get_joint_pose_for_ee_pose_with_ik(hit_pos)
-
-        if joint_positions is not None:
-            # Set the arm in the default configuration to initiate arm motion planning (e.g. untucked)
-            # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-            self.simulator_sync()
-            plan = self.plan_base_motion([hit_pos[0], hit_pos[1], 0.05])
-            return plan
-        else:
-            log.debug("Planning failed: goal position may be non-reachable")
-            return None
-
-    def interact_pull(self, push_point, push_direction):
-        """
-        Move the arm starting from the push_point along the push_direction
-        and physically simulate the interaction
-
-        :param push_point: 3D point to start pushing from
-        :param push_direction: push direction
-        """
-        body_ids = self.robots.get_body_ids()
-        assert len(body_ids) == 1, "Only single-body robots are supported."
-        self.robot_id = body_ids[0]
-        self.arm_default_joint_positions = (
-            0.1,
-            -1.41,
-            1.517,
-            0.82,
-            2.2,
-            2.96,
-            -1.286,
-            0.0,
-        )
-        self.arm_joint_names = [
-            "torso_lift_joint",
-            "shoulder_pan_joint",
-            "shoulder_lift_joint",
-            "upperarm_roll_joint",
-            "elbow_flex_joint",
-            "forearm_roll_joint",
-            "wrist_flex_joint",
-            "wrist_roll_joint",
-        ]
-        self.robot_joint_names = [
-            "r_wheel_joint",
-            "l_wheel_joint",
-            "torso_lift_joint",
-            "head_pan_joint",
-            "head_tilt_joint",
-            "shoulder_pan_joint",
-            "shoulder_lift_joint",
-            "upperarm_roll_joint",
-            "elbow_flex_joint",
-            "forearm_roll_joint",
-            "wrist_flex_joint",
-            "wrist_roll_joint",
-            "r_gripper_finger_joint",
-            "l_gripper_finger_joint",
-        ]
-        self.rest_joint_names = [
-            "r_wheel_joint",
-            "l_wheel_joint",
-            "head_pan_joint",
-            "head_tilt_joint",
-            "r_gripper_finger_joint",
-            "l_gripper_finger_joint",
-        ]
-
-        self.arm_joint_ids = joints_from_names(
-            self.robot_id,
-            self.arm_joint_names,
-        )
-
-        self.robot_arm_indices = [
-            self.robot_joint_names.index(arm_joint_name) for arm_joint_name in self.arm_joint_names
-        ]
-
-        self.rest_joint_ids = joints_from_names(
-            self.robot_id,
-            self.rest_joint_names,
-        )
-
-        push_vector = np.array(push_direction) * self.arm_interaction_length
-
-        max_limits, min_limits, rest_position, joint_range, joint_damping = self.get_ik_parameters()
-        base_pose = get_base_values(self.robot_id)
-
-        # if self.sleep_flag:
-        #     steps = 50
-        # else:
-        steps = 5
-
-        for i in range(steps):
-            push_goal = np.array(push_point) + push_vector * (i + 1) / float(steps)
-
-            joint_positions = p.calculateInverseKinematics(
-                self.robot_id,
-                self.robot.eef_links[self.robot.default_arm].link_id,
-                targetPosition=push_goal,
-                # targetOrientation=(0, 0.707, 0, 0.707),
-                lowerLimits=min_limits,
-                upperLimits=max_limits,
-                jointRanges=joint_range,
-                restPoses=rest_position,
-                jointDamping=joint_damping,
-                # solver=p.IK_DLS,
-                maxNumIterations=100,
-            )
-
-            if self.robot_type == "Fetch":
-                joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-
-            control_joints(self.robot_id, self.arm_joint_ids, joint_positions)
-            control_joints(self.robot_id, self.rest_joint_ids, np.array([0.0, 0.0, 0.0, 0.45, 0.5, 0.5]))
-
-            # set_joint_positions(self.robot_id, self.arm_joint_ids, joint_positions)
-
-            # if self.robot_type == "Fetch":
-            #     joint_positions = np.array(joint_positions)[self.robot_arm_indices]
-
-            achieved = self.robot.get_eef_position()
-            self.simulator_step()
-            set_base_values_with_z(self.robot_id, base_pose, z=self.initial_height)
-
-            if self.mode == "gui_interactive" and self.sleep_flag:
-                sleep(0.02)  # for visualization
-
-    def execute_arm_pull(self, plan, hit_pos, hit_normal):
-        """
-        Execute arm push given arm trajectory
-        Should be called after plan_arm_push()
-
-        :param plan: arm trajectory or None if no plan can be found
-        :param hit_pos: 3D position to reach
-        :param hit_normal: direction to push after reacehing that position
-        """
-        if plan is not None:
-            log.debug("Teleporting arm along the trajectory. No physics simulation")
-            self.visualize_base_path(plan)
-            log.debug("Performing pushing actions")
-            self.interact_pull(hit_pos, hit_normal)
-            log.debug("Teleporting arm to the default configuration")
-            self.visualize_base_path(plan[::-1])
-            # set_joint_positions(self.robot_id, self.arm_joint_ids, self.arm_default_joint_positions)
-            self.simulator_sync()
-            done, _ = self.env.task.get_termination(self.env)
-            if self.print_log:
-                print("pull done: ", done)
-    '''
     def plan_ee_pick(
         self,
         grasping_location,
@@ -1080,11 +914,13 @@ class MotionPlanner(object):
         :param pre_grasping_distance: distance in front of the grasping point along the grasping direction to plan a motion
             in free space before the approach to grasp.
         :param grasping_steps: steps to compute IK along a straight line for the second phase of the grasp (interaction)
+        :param plan_full_pre_grasp_motion: whether we plan the entire joint space trajectory or only check feasibilty of
+            the final configuration to achieve the interaction point
         :param arm: which arm to use for multi-arm agents. `None` to use the default arm
         :return: tuple of (pre_grasp_path, grasp_interaction_path) with the joint space trajectory to follow in the two
         phases of the interaction. Both will be None if the planner fails to find a path
         """
-        log.warning(
+        log.info(
             "Planning end-effector grasping action at point {} with direction {}".format(
                 grasping_location, grasping_direction
             )
@@ -1094,10 +930,10 @@ class MotionPlanner(object):
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("Grasping with the default arm: {}".format(arm))
+            log.debug("Grasping with the default arm: {}".format(arm))
 
         pre_grasping_location = grasping_location - pre_grasping_distance * grasping_direction
-        log.warning(
+        log.info(
             "It will plan a motion to the location {}, {} m in front of the grasping location"
             "".format(pre_grasping_distance, pre_grasping_location)
         )
@@ -1110,7 +946,7 @@ class MotionPlanner(object):
         desired_y_dir = -np.cross(desired_x_dir_normalized, z_dir_in_wf)
 
         if np.linalg.norm(desired_y_dir) < 0.05:
-            log.warning("Approaching grasping location top-down")
+            log.info("Approaching grasping location top-down")
             desired_y_dir_normalized = np.array([0.0, 1.0, 0.0])
         else:
             desired_y_dir_normalized = desired_y_dir / np.linalg.norm(desired_y_dir)
@@ -1121,7 +957,7 @@ class MotionPlanner(object):
         if plan_full_pre_grasp_motion:
             pre_grasp_path = self.plan_ee_motion_to_cartesian_pose(pre_grasping_location, ee_orientation=quatt, arm=arm)
         else:
-            log.warning("Not planning the pre-grasp path, only checking feasibility of the last location.")
+            log.debug("Not planning the pre-grasp path, only checking feasibility of the last location.")
             last_pose = self.get_joint_pose_for_ee_pose_with_ik(pre_grasping_location, ee_orientation=quatt, arm=arm)
             pre_grasp_path = [last_pose] if last_pose is not None else []
 
@@ -1144,8 +980,9 @@ class MotionPlanner(object):
                 arm=arm,
             )
             if grasp_interaction_path is None:
-                log.warn("Planning failed: no path found to grasp the object")
+                log.warning("Planning failed: no path found to grasp the object")
 
+        log.info("Planning succeeded. Returning grasping strategy")
         return pre_grasp_path, grasp_interaction_path
 
     def plan_ee_drop(
@@ -1155,7 +992,6 @@ class MotionPlanner(object):
         dropping_distance=0.3,
         plan_full_pre_drop_motion=True,
         arm=None,
-        obj_name=None,
     ):
         """
         Plans a full dropping trajectory.
@@ -1166,13 +1002,15 @@ class MotionPlanner(object):
         :param dropping_location: 3D point to push at
         :param ee_dropping_orn: orientation of the end effector during dropping [x,y,z,w]. None if we do not constraint it
         :param dropping_distance: distance above the dropping point in the vertical direction to plan a motion
-        in free space
+            in free space
+        :param plan_full_pre_drop_motion: whether we plan the entire joint space trajectory or only check feasibilty of
+            the final configuration to achieve the interaction point
         :param arm: which arm to use for multi-arm agents. `None` to use the default arm
         :return: tuple of (pre_drop_path, []) with the joint space trajectory to follow for the single phase of the
             interaction (second phase is empty). pre_drop_path will be None if the planner fails to find a path
         """
         # TODO: it can be better to align the end-effector with the fingers towards the floor
-        log.warning(
+        log.info(
             "Planning end-effector dropping action over point {} a distance {}".format(
                 dropping_location, dropping_distance
             )
@@ -1182,25 +1020,26 @@ class MotionPlanner(object):
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("dropping with the default arm: {}".format(arm))
+            log.debug("Dropping with the default arm: {}".format(arm))
 
         pre_dropping_location = dropping_location + dropping_distance * np.array([0, 0, 1])
-        log.warning("Predropping location {}".format(pre_dropping_location))
+        log.info("Predropping location {}".format(pre_dropping_location))
 
         if plan_full_pre_drop_motion:
             pre_drop_path = self.plan_ee_motion_to_cartesian_pose(
                 pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm
             )
         else:
-            log.warning("Not planning the pre-drop path, only checking feasibility of the last location.")
+            log.debug("Not planning the pre-drop path, only checking feasibility of the last location.")
             last_pose = self.get_joint_pose_for_ee_pose_with_ik(
-                pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm, obj_name=obj_name
+                pre_dropping_location, ee_orientation=ee_dropping_orn, arm=arm
             )
             pre_drop_path = [last_pose] if last_pose is not None else []
 
         if pre_drop_path is None or len(pre_drop_path) == 0:
             log.warning("Planning failed: no path found to pre-dropping location")
 
+        log.info("Planning succeeded. Returning dropping strategy")
         return pre_drop_path, []  # There is no second part of the action for dropping
 
     def plan_ee_toggle(
@@ -1223,11 +1062,13 @@ class MotionPlanner(object):
         :param pre_toggling_distance: distance in front of the toggling point along the toggling direction to plan a motion
             in free space before the interaction toggle. The total motion in the second phase will be pre_toggling_distance + toggling_distance
         :param toggling_steps: steps to compute IK along a straight line for the second phase of the toggle (interaction)
+        :param plan_full_pre_toggle_motion: whether we plan the entire joint space trajectory or only check feasibilty of
+            the final configuration to achieve the interaction point
         :param arm: which arm to use for multi-arm agents. `None` to use the default arm
         :return: tuple of (pre_toggle_path, toggle_interaction_path) with the joint space trajectory to follow in the two
-        phases of the interaction. Both will be None if the planner fails to find a path
+            phases of the interaction. Both will be None if the planner fails to find a path
         """
-        log.warning(
+        log.info(
             "Planning end-effector toggling action at point {} with direction {}".format(
                 toggling_location, toggling_direction
             )
@@ -1237,14 +1078,14 @@ class MotionPlanner(object):
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warning("toggling with the default arm: {}".format(arm))
+            log.debug("toggling with the default arm: {}".format(arm))
 
         pre_toggling_location = toggling_location - pre_toggling_distance * toggling_direction
-        log.warning(
+        log.info(
             "It will plan a motion to the location {}, {} m in front of the toggling location"
             "".format(pre_toggling_distance, pre_toggling_location)
         )
-        """
+
         # Compute orientation of the hand to align the fingers to the toggling direction and the palm up to the ceiling
         # Assuming fingers point in +x, palm points in +z in eef
         # In world frame, +z points up
@@ -1255,14 +1096,13 @@ class MotionPlanner(object):
         desired_z_dir_normalized = np.cross(desired_x_dir_normalized, desired_y_dir_normalized)
         rot_matrix = np.column_stack((desired_x_dir_normalized, desired_y_dir_normalized, desired_z_dir_normalized))
         quatt = quatXYZWFromRotMat(rot_matrix)
-        """
-        quatt = (0, 0.7071068, 0, 0.7071068)
+
         if plan_full_pre_toggle_motion:
             pre_toggle_path = self.plan_ee_motion_to_cartesian_pose(
                 pre_toggling_location, ee_orientation=quatt, arm=arm
             )
         else:
-            log.warning("Not planning the pre-toggle path, only checking feasibility of the last location.")
+            log.debug("Not planning the pre-toggle path, only checking feasibility of the last location.")
             last_pose = self.get_joint_pose_for_ee_pose_with_ik(pre_toggling_location, ee_orientation=quatt, arm=arm)
             pre_toggle_path = [last_pose] if last_pose is not None else []
 
@@ -1270,6 +1110,9 @@ class MotionPlanner(object):
 
         if pre_toggle_path is None or len(pre_toggle_path) == 0:
             log.warning("Planning failed: no path found to pre-toggling location")
+        elif pre_toggling_distance == 0:
+            log.debug("Skipping computation of interaction path because the pre-toggling distance is zero")
+            toggle_interaction_path = []
         else:
             toggle_interaction_path = self.plan_ee_straight_line_motion(
                 pre_toggle_path[-1],
@@ -1282,23 +1125,31 @@ class MotionPlanner(object):
                 arm=arm,
             )
             if toggle_interaction_path is None:
-                log.warn("Planning failed: no path found to toggle the object")
+                log.warning("Planning failed: no path found to toggle the object")
 
+        log.info("Planning succeeded. Returning toggling strategy")
         return pre_toggle_path, toggle_interaction_path
 
     def visualize_arm_path(self, arm_path, reverse_path=False, arm=None, grasped_obj_id=None, keep_last_location=True):
         """
-        Dry run arm motion path by setting the arm joint position without physics simulation
+        Visualize an arm motion path by setting the arm joint position without physics simulation, possibly keeping
+        the last configuration as new state. The arm_path is usually collision-free
 
+        :param reverse_path: whether to visualize from arm_path[-1] to arm_path[0] or in the normal order
+        :param arm: name of the arm of the robot to use in the visualization of the path
+        :param grasped_obj_id: pybullet id of the grasped object (if any). When given, we will move it together with the
+            arm
+        :param keep_last_location: whether we keep the last arm location as new robot state or we restore the state
+            before the visualization. If we keep it, we bypass the physics simulation
         :param arm_path: arm trajectory or None if no path can be found
         """
         if arm_path is None:
-            log.warning("Arm path to visualize is empty. Returning")
+            log.info("Arm path to visualize is empty. Returning")
             return
 
         if arm is None:
             arm = self.robot.default_arm
-            log.warn("Visualizing arm path for the default arm: {}".format(arm))
+            log.debug("Visualizing arm path for the default arm: {}".format(arm))
 
         if not keep_last_location:
             initial_pb_state = p.saveState()
@@ -1316,7 +1167,6 @@ class MotionPlanner(object):
                 obj_pos, obj_orn = p.getBasePositionAndOrientation(grasped_obj_id)
                 grasp_pose = p.multiplyTransforms(*p.invertTransform(gripper_pos, gripper_orn), obj_pos, obj_orn)
 
-        # base_pose = get_base_values(self.robot_body_id)
         execution_path = arm_path if not reverse_path else reversed(arm_path)
         execution_path = (
             execution_path if self.mode in ["gui_non_interactive", "gui_interactive"] else [execution_path[-1]]
@@ -1325,7 +1175,6 @@ class MotionPlanner(object):
             arm_joint_pb_ids = np.array(joints_from_names(self.robot_body_id, self.robot.arm_joint_names[arm]))
             for joint_way_point in execution_path:
                 set_joint_positions(self.robot_body_id, arm_joint_pb_ids, joint_way_point)
-                # set_base_values_with_z(self.robot_body_id, base_pose, z=self.initial_height)
 
                 # Teleport also the grasped object
                 if grasped_obj_id is not None:
