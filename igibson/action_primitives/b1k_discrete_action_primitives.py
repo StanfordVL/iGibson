@@ -46,8 +46,10 @@ skill_object_offset_params = {
         "pumpkin.n.02_2": [0, -0.5, 0, 0.5 * np.pi],
         "cabinet.n.01_1": [0.4, -1.15, 0, 0.5 * np.pi],
         # cleaning_microwave_oven
-        "sink.n.01_1-cleaning_microwave_oven": [0., -0.5, 0, 0.5 * np.pi],
-        "microwave.n.02_1-cleaning_microwave_oven": [0., -1.0, 0, 0.5 * np.pi],
+        # "sink.n.01_1-cleaning_microwave_oven": [0., -0.5, 0, 0.5 * np.pi],
+        "sink.n.01_1-cleaning_microwave_oven": [0., -0.57, 0, 0.5 * np.pi],
+        # "microwave.n.02_1-cleaning_microwave_oven": [0., -1.02, 0, 0.5 * np.pi],
+        "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0.75, 0, 0.5 * np.pi],
         "cabinet.n.01_1-cleaning_microwave_oven": [1.0, -0.8, 0, 0.5 * np.pi],
     },
     1: {  # pick
@@ -72,12 +74,14 @@ skill_object_offset_params = {
         "cabinet.n.01_1": [0.3, -0.55, 0.25],
         # cleaning_microwave_oven
         "sink.n.01_1-cleaning_microwave_oven": [-0.2, -0.08, 0.2],
-        "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0., -0.13],
+        # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0., -0.13],
+        "microwave.n.02_1-cleaning_microwave_oven": [-0.35, -0., -0.4],
     },
     3: {  # toggle
         "printer.n.03_1": [-0.3, -0.25, 0.23],  # dx, dy, dz
         # cleaning_microwave_oven
         "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.18, 0.32],
+        # "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.17, 0.32],
     },
     4: {  # pull
         "cabinet.n.01_1": [0.3, -0.55, 0.35, -1, 0, 0],  # dx, dy, dz
@@ -245,6 +249,8 @@ action_list_cleaning_microwave_oven = [
     [2, "microwave.n.02_1"],  # place 6
 ]
 
+action_list_cleaning_microwave_oven_multi_discrete = action_list_cleaning_microwave_oven
+
 action_list_room_rearrangement = [
     [0, "cabinet.n.01_1"],  # move
     [4, "cabinet.n.01_1"],  # vis pull
@@ -268,6 +274,7 @@ action_dict = {
     "throwing_away_leftovers_discrete": action_list_throwing_away_leftovers_discrete,
     "room_rearrangement": action_list_room_rearrangement,
     "cleaning_microwave_oven": action_list_cleaning_microwave_oven,
+    "cleaning_microwave_oven_multi_discrete": action_list_cleaning_microwave_oven_multi_discrete,
 }
 
 
@@ -357,8 +364,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        self.skip_base_planning = False  # True
-        self.skip_arm_planning = False  # True  # False
+        self.skip_base_planning = True
+        self.skip_arm_planning = True  # False
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
@@ -628,7 +635,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         plan_full_pre_grasp_motion = not self.skip_arm_planning
 
         if yaw == 0:
-            picking_direction = np.array((0.0, -1.0, 0.0))  # euler angles:  x: 0.5235988, y: 0, z: 1.5707963
+            picking_direction = np.array((1.0, -0.0, 0.0))  # from right side, euler angles:  x: 0.5235988, y: 0, z: 1.5707963
             # axis with angle magnitude: 0.4103802, -0.4103802, 1.5315599
         elif yaw == 1:
             picking_direction = np.array((0.0, 0.0, -1.0))
@@ -696,12 +703,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _place(self, object_name, obs=None, yaw=None):
         logger.info("Placing on object {}".format(object_name))
         if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
-            params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name+'-'+self.env.config['task']]
+            params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name+'-'+self.env.config['task']]
         else:
             params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
-
         # process the offset from object frame to world frame
         mat = quat2mat(obj_rot_XYZW)
         np_array = np.array(params[:3])
@@ -714,8 +720,9 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pick_place_pos[2] += vector[2]
 
         plan_full_pre_drop_motion = not self.skip_arm_planning
+        print('place yaw: ', yaw)
         if yaw == 0:
-            ee_dropping_orn = np.array([0.0, -1.0, 0.0])
+            ee_dropping_orn = np.array([1.0, 0.0, 0.0])
         elif yaw == 1:
             ee_dropping_orn = np.array([0.0, 0.0, -1.0])
         else:
@@ -773,7 +780,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _toggle(self, object_name, obs=None, yaw=None):
         logger.info("Toggling object {}".format(object_name))
         if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
-            params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name+'-'+self.env.config['task']]
+            params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name+'-'+self.env.config['task']]
         else:
             params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
@@ -827,6 +834,17 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 arm=self.arm,
                 keep_last_location=True,
             )
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
+        yield self._get_still_action()
         yield self._get_still_action()
 
         logger.info("Toggle action completed")

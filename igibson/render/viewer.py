@@ -128,6 +128,7 @@ class Viewer:
         cv2.moveWindow("Viewer", 0, 0)
         if not self.is_robosuite:
             cv2.namedWindow("RobotView")
+            cv2.moveWindow("Viewer", 630, 10)
         cv2.setMouseCallback("Viewer", self.mouse_callback)
         self.create_visual_object()
         self.planner = None

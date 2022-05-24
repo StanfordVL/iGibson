@@ -80,7 +80,7 @@ class SkillEnv(gym.Env):
                  obj_joint_obs=False,
                  config_file="fetch_behavior_aps_putting_away_Halloween_decorations.yaml",
                  dense_reward=True,
-                 action_space_type='discrete',
+                 action_space_type='multi_discrete',
                  seed=0,
                  is_success_count=True,
                  ):
@@ -103,8 +103,11 @@ class SkillEnv(gym.Env):
 
         # env.env.simulator.viewer.initial_pos = [1.5, -2.0, 2.3]
         # env.env.simulator.viewer.initial_view_direction = [-0.7, 0.0, -0.6]
-        self.env.env.simulator.viewer.initial_pos = [1.0, -0.3, 1.9]
-        self.env.env.simulator.viewer.initial_view_direction = [-0.1, -0.8, -0.5]
+        # self.env.env.simulator.viewer.initial_pos = [1.0, -0.3, 1.9]
+        # self.env.env.simulator.viewer.initial_view_direction = [-0.1, -0.8, -0.5]
+        # For cleaning_microwave_oven
+        self.env.env.simulator.viewer.initial_pos = [0.0, -1.5, 2.1]
+        self.env.env.simulator.viewer.initial_view_direction = [-0.1, 0.8, -0.5]
         self.env.env.simulator.viewer.reset_viewer()
 
         # Observation Space
@@ -142,8 +145,13 @@ class SkillEnv(gym.Env):
         self.env.close()
 
     def step(self, action_idx):
-        # action_idx = [action_idx, 0]  # array([3, 3])
-        # action_idx = [action_idx, 1]
+        # if action_idx in [6, ]:  # place
+        #     action_idx = [action_idx, 0]
+        # elif action_idx in [1, ]:  # pick
+        #     action_idx = [action_idx, 1]
+        # else:
+        #     action_idx = [action_idx, 1]  # array([3, 3])
+
         o, r, d, i = self.env.step(action_idx, self.state)
         self.accum_reward = self.accum_reward + r
         if self.dense_reward:
@@ -200,7 +208,9 @@ if __name__ == "__main__":
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
     # cleaning_microwave_oven
-    action_list = [0, 1, 2, 3, 4, 1, 5, 6,]
+    action_list = [0, 1, 2, 3, 4, 1, 5, 6, 0, ]
+    # action_list = [0, 1, 5, 6, ]
+    # action_list = [0, 1, 2, 3, ]
 
     for episode in range(1):
         print("\n Episode: {}".format(episode))
