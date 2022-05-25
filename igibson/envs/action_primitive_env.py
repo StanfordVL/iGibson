@@ -46,6 +46,7 @@ class ActionPrimitivesEnv(gym.Env):
 
         for _ in range(self.num_attempts):
             # obs, done, info = None, None, {}
+            # print('self.action_space_type: ', self.action_space_type)
             if self.action_space_type == 'multi_discrete':
                 pre_action = [10, ]
             else:

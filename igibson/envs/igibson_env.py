@@ -416,7 +416,54 @@ class iGibsonEnv(BaseEnv):
         # in case the surface is not perfect smooth (has bumps)
         obj.set_position([pos[0], pos[1], stable_z + offset])
 
-    def test_valid_position(self, obj, pos, orn=None, ignore_self_collision=False, ignore_obj_in_hand=False):
+    def test_valid_position(
+        self,
+        obj,
+        pos,
+        orn=None,
+        ignore_self_collision=False,
+        ignore_obj_in_hand=False,
+        ignore_floors=False,
+        z_offset=None,
+    ):
+        """
+        Test if the robot or the object can be placed with no collision.
+        :param obj: an instance of robot or object
+        :param pos: position
+        :param orn: orientation
+        :param ignore_self_collision: whether the object's self-collisions should be ignored.
+        :param ignore_obj_in_hand: for manipulation robots, whether to ignore collisions with the grasped object
+        :param ignore_floors: whether to ignore collisions with the floor
+        :param z_offset: offset in the height of the object to check for valid position. If None, we will use the
+            default from the scene
+        :return: whether the position is valid
+        """
+        self.set_pos_orn_with_z_offset(obj, pos, orn, offset=z_offset)
+
+        ignore_ids = list(obj.get_body_ids() if ignore_self_collision else [])
+        if ignore_floors:
+            for floor in self.scene.objects_by_category["floors"]:
+                ignore_ids.extend(floor.get_body_ids())
+            for carpet in self.scene.objects_by_category["carpet"]:
+                ignore_ids.extend(carpet.get_body_ids())
+
+        is_robot = isinstance(obj, BaseRobot)
+        if is_robot:
+            # If the object is a robot, we reset it so that we do not keep any previous joint configuration
+            # TODO: there may be cases when we DO want to keep the configuration. Add a flag
+            obj.reset()
+            obj.keep_still()
+
+            # Add the object in hand to the list of objects to ignore collisions, if the flag is set
+            # TODO: it could be better to add it always as default
+            if ignore_obj_in_hand and isinstance(self.robots[0], ManipulationRobot):
+                if self.robots[0]._ag_obj_in_hand[self.robots[0].default_arm] is not None:
+                    ignore_ids.append(self.robots[0]._ag_obj_in_hand[self.robots[0].default_arm])
+
+        has_collision = any(self.check_collision(body_id, ignore_ids) for body_id in obj.get_body_ids())
+        return not has_collision
+
+    def test_valid_position_v0(self, obj, pos, orn=None, ignore_self_collision=False, ignore_obj_in_hand=False):
         """
         Test if the robot or the object can be placed with no collision.
 

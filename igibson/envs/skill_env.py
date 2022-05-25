@@ -145,12 +145,12 @@ class SkillEnv(gym.Env):
         self.env.close()
 
     def step(self, action_idx):
-        # if action_idx in [6, ]:  # place
-        #     action_idx = [action_idx, 0]
-        # elif action_idx in [1, ]:  # pick
-        #     action_idx = [action_idx, 1]
-        # else:
-        #     action_idx = [action_idx, 1]  # array([3, 3])
+        if action_idx in [6, ]:  # place
+            action_idx = [action_idx, 0]
+        elif action_idx in [1, ]:  # pick
+            action_idx = [action_idx, 1]
+        else:
+            action_idx = [action_idx, 1]  # array([3, 3])
 
         o, r, d, i = self.env.step(action_idx, self.state)
         self.accum_reward = self.accum_reward + r
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
     # cleaning_microwave_oven
-    action_list = [0, 1, 2, 3, 4, 1, 5, 6, 0, ]
+    action_list = [0, 1, 2, 3, 4, 1, 5, 6, ]
     # action_list = [0, 1, 5, 6, ]
     # action_list = [0, 1, 2, 3, ]
 
