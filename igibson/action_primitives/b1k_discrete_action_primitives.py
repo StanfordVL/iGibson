@@ -712,7 +712,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name+'-'+self.env.config['task']]
         else:
             params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
-        print('place params: ', params)
+        # print('place params: ', params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
         # process the offset from object frame to world frame
