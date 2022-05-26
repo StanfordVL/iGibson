@@ -70,7 +70,8 @@ skill_object_offset_params = {
         "pumpkin.n.02_1": [0.0, 0.0, 0.0, 1.0,],
         "pumpkin.n.02_2": [0.0, 0.0, 0.0, 1.0,],
         # cleaning_microwave_oven
-        "towel": [0.0, 0.0, 0.0],
+        "towel.cabinet": [0.0, 0.0, 0.0],
+        "towel.sink": [0.0, 0.0, 0.0],
     },
     2: {  # place
         "table.n.02_1": [0, 0, 0.5],  # dx, dy, dz
@@ -82,11 +83,11 @@ skill_object_offset_params = {
         "cabinet.n.01_1": [0.3, -0.55, 0.25],
         # cleaning_microwave_oven
         # "sink.n.01_1-cleaning_microwave_oven": [-0.2, -0.08, 0.2],
-        "sink.n.01_1-cleaning_microwave_oven": [-0.22, -0.08, 0.2],
+        "sink.n.01_1-cleaning_microwave_oven": [-0.18, -0.08, 0.2],
         # "sink.n.01_1-cleaning_microwave_oven": [-0.22, -0.04, 0.2],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0., -0.13],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.35, -0., -0.4],
-        "microwave.n.02_1-cleaning_microwave_oven": [-0.11, -0.0, -0.35],
+        "microwave.n.02_1-cleaning_microwave_oven": [-0.15, -0., -0.35],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.09, -0.0, -0.35],
     },
     3: {  # toggle
@@ -252,13 +253,13 @@ action_list_putting_away_Halloween_decorations_multi_discrete = [
 
 action_list_cleaning_microwave_oven = [
     [0, "cabinet.n.01_1"], # move 0
-    [1, "towel"],  # pick 1
+    [1, "towel.cabinet"],  # pick 1
     [0, "sink.n.01_1"],  # move 2
     [2, "sink.n.01_1"],  # place 3
     [3, "sink.n.01_1"],  # toggle 4
-    # [1, "towel"],  # pick
-    [0, "microwave.n.02_1"],  # move 5
-    [2, "microwave.n.02_1"],  # place 6
+    [1, "towel.sink"],  # pick 5
+    [0, "microwave.n.02_1"],  # move 6
+    [2, "microwave.n.02_1"],  # place 7
 ]
 
 action_list_cleaning_microwave_oven_multi_discrete = action_list_cleaning_microwave_oven
@@ -355,6 +356,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 self.action_list = action_dict[self.env.config["task"]+'_multi_discrete']
             else:
                 self.action_list = action_dict[self.env.config["task"]]
+        print('self.action_list: ', self.action_list)
         self.num_discrete_action = len(self.action_list)
         self.initial_pos_dict = {}  # TODO: what for?
         full_observability_2d_planning = True
@@ -377,7 +379,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
         self.skip_base_planning = True  # False  # True # True
-        self.skip_arm_planning = True  # False  # True  # False  # False
+        self.skip_arm_planning = True  # False  # False
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
@@ -417,7 +419,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             if action_index[0] == 10:
                 return self._dummy()
             else:
-                primitive_obj_pair = self.action_list[action_index[0]]
+                primitive_obj_pair = copy.deepcopy(self.action_list[action_index[0]])
                 if self.env.config['task'] in ['throwing_away_leftovers']:
                     if primitive_obj_pair[0] in [0, ] and primitive_obj_pair[1] == 'countertop.n.01_1':
                         # [1, 10] * [1, pi]
@@ -553,11 +555,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _navigate_to(self, object_name, obs=None, yaw=None):
         logger.info("Navigating to object {}".format(object_name))
-        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
+        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel.cabinet', 'towel.sink']):
             params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name+'-'+self.env.config['task']]
         else:
             params = skill_object_offset_params[B1KActionPrimitive.NAVIGATE_TO][object_name]
-
+        params = copy.deepcopy(params)
         # If we check whether the object has moved from its initial location. If we check that, and the object has moved
         # more than a threshold, we ignore the command
         moved_distance_threshold = 1e-1
@@ -618,7 +620,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _pick(self, object_name, obs=None, yaw=None):
         logger.info("Picking object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PICK][object_name]
-        if object_name in ['towel'] and self.env.config['task'] in ['cleaning_microwave_oven']:
+        params = copy.deepcopy(params)
+        if object_name in ['towel.sink', 'towel.cabinet'] and self.env.config['task'] in ['cleaning_microwave_oven']:
             # towel: 132
             # plt.imshow(self.state['ins_seg'])
             # plt.show()
@@ -637,7 +640,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         if robot_is_grasping == IsGraspingState.TRUE:
             if robot_is_grasping_obj == IsGraspingState.TRUE:
                 logger.warning("Robot already grasping the desired object")
-                yield np.zeros(self.robot.action_dim)
+                # yield np.zeros(self.robot.action_dim)
+                yield self._get_still_action()
                 return
             else:
                 raise ActionPrimitiveError(
@@ -722,21 +726,31 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 grasped_obj_id=object_id,
             )
         yield self._get_still_action()
+        # print('\n\n\n\n\nself._navigate_to(object_name): ', object_name)
+        if self.env.config['task'] in ['cleaning_microwave_oven']:
+            if object_name in ['towel.sink']:
+                # print('self._navigate_to(object_name): ', object_name)
+                # yield from self._navigate_to('cabinet.n.01_1')
+                yield from self._navigate_to('sink.n.01_1')
+            elif object_name in ['towel.cabinet']:
+                # yield from self._navigate_to('cabinet.n.01_1')
+                yield from self._navigate_to('cabinet.n.01_1')
         logger.info("Pick action completed")
 
     def _place(self, object_name, obs=None, yaw=None):
         logger.info("Placing on object {}".format(object_name))
-        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
+        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel.cabinet', 'towel.sink']):
             params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name+'-'+self.env.config['task']]
         else:
             params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name]
-        # print('place params: ', params)
+        params = copy.deepcopy(params)
+        print('params: ', params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
         # process the offset from object frame to world frame
         mat = quat2mat(obj_rot_XYZW)
         np_array = np.array(params[:3])
-        np_array[0] += random.uniform(0, 0.2)
+        # np_array[0] += random.uniform(0, 0.2)
         vector = mat @ np_array
 
         pick_place_pos = copy.deepcopy(obj_pos)
@@ -745,13 +759,16 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         pick_place_pos[2] += vector[2]
 
         plan_full_pre_drop_motion = not self.skip_arm_planning
-        print('place yaw: ', yaw)
+        # print('place yaw: ', yaw)
         if yaw == 0:
             ee_dropping_orn = np.array([1.0, 0.0, 0.0])
         elif yaw == 1:
             ee_dropping_orn = np.array([0.0, 0.0, -1.0])
         else:
             ee_dropping_orn = np.array([0.0, 0.0, -1.0])
+        # if object_name in ['microwave.n.02_1']:
+        #     print('object_name in [microwave.n.02_1], place params: ', params, 'pick_place_pos: ', pick_place_pos,
+        #           'obj_pos: ', obj_pos, 'vector', vector)
         pre_drop_path, _ = self.planner.plan_ee_drop(
             pick_place_pos, arm=self.arm, plan_full_pre_drop_motion=plan_full_pre_drop_motion,
             ee_dropping_orn=ee_dropping_orn,
@@ -775,12 +792,12 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         yield self._get_still_action()
 
         # print(self.robot.is_grasping())
-        print('object_name', object_name)
+        # print('object_name', object_name)
         if self.robot.is_grasping() == True and object_name in ['sink.n.01_1']:
             obj_in_hand = self.robot._ag_obj_in_hand[self.arm]
             obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
             # print(1, obj_in_hand_pos)
-            obj_in_hand_pos = list(obj_in_hand_pos)
+            obj_in_hand_pos = copy.deepcopy(list(obj_in_hand_pos))
             obj_in_hand_pos[-1] -= 0.2  # 0.03
             # print(2, obj_in_hand_pos)
             set_pose(obj_in_hand, (obj_in_hand_pos, obj_in_hand_ori))
@@ -790,7 +807,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             obj_in_hand = self.robot._ag_obj_in_hand[self.arm]
             obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
             # print(1, obj_in_hand_pos, obj_in_hand_ori)
-            obj_in_hand_pos = list(obj_in_hand_pos)
+            obj_in_hand_pos = copy.deepcopy(list(obj_in_hand_pos))
             obj_in_hand_pos[0] -= 0.1  # 0.03
             # obj_in_hand_ori = (obj_in_hand_ori[0], obj_in_hand_ori[1], obj_in_hand_ori[2], obj_in_hand_ori[3]-0.4)  # 0.03
             # print(2, obj_in_hand_pos, obj_in_hand_ori)
@@ -828,14 +845,18 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         # if self.env.config['task'] in ['cleaning_microwave_oven']:
         #     for _ in range(place_steps * 2):
         #         yield action
+        if object_name in ['microwave.n.02_1']:
+            # print('self._navigate_to(object_name): ', object_name)
+            yield from self._navigate_to(object_name)
         logger.info("Place action completed")
 
     def _toggle(self, object_name, obs=None, yaw=None):
         logger.info("Toggling object {}".format(object_name))
-        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel']):
+        if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel.cabinet', 'towel.sink']):
             params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name+'-'+self.env.config['task']]
         else:
             params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -894,6 +915,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _pull(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -985,6 +1007,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _pull_open_v2(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -1054,6 +1077,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _pull_open_v3(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -1104,6 +1128,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _pull_open_v4(self, object_name, obs=None, yaw=None):
         logger.info("Pulling object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -1186,6 +1211,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _push(self, object_name, obs=None, yaw=None):
         logger.info("Pushing object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PUSH][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -1247,6 +1273,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
     def _push_open(self, object_name, obs=None, yaw=None):
         logger.info("Pushing object {}".format(object_name))
         params = skill_object_offset_params[B1KActionPrimitive.PULL][object_name]
+        params = copy.deepcopy(params)
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
         is_grasping = self.robot.is_grasping() == True

@@ -145,14 +145,15 @@ class SkillEnv(gym.Env):
         self.env.close()
 
     def step(self, action_idx):
-        if action_idx[0] in [6, ]:  # place
+        # print('action_idx: ', action_idx)
+        if action_idx[0] in [7, ]:  # place
             action_idx = [action_idx[0], 0]
         elif action_idx[0] in [1, ]:  # pick
             action_idx = [action_idx[0], 1]
         else:
             action_idx = [action_idx[0], 1]  # array([3, 3])
 
-        # if action_idx in [6, ]:  # place
+        # if action_idx in [7, ]:  # place
         #     action_idx = [action_idx, 0]
         # elif action_idx in [1, ]:  # pick
         #     action_idx = [action_idx, 1]
@@ -215,15 +216,18 @@ if __name__ == "__main__":
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
     # cleaning_microwave_oven
-    action_list = [0, 1, 2, 3, 4, 1, 5, 6, ]
+    action_list = [0, 1, 2, 3, 4, 5, 6, 7, ] # * 10
+    # action_list = action_list[:40]
+    # action_list = [0, 1, ] + [1, ] * 40
     # action_list = [0, 1, 5, 6, ]
     # action_list = [0, 1, 2, 3, ]
 
-    for episode in range(10):
+    for episode in range(1):
         print("\n Episode: {}".format(episode))
         env.reset()
         start = time.time()
         for action_idx in action_list:
+            # action_idx = np.random.randint(7)
             state, reward, done, info = env.step(action_idx)
             print("{}, reward: {}, done: {}, success: {}".format(action_idx, reward, done, info['success']))
         print("Episode finished after {} timesteps, took {} seconds.".format(len(action_list), time.time() - start))
