@@ -8,6 +8,9 @@ import gym
 import numpy as np
 import pybullet as p
 
+from igibson.external.pybullet_tools.utils import (
+    set_pose,
+)
 from igibson.action_primitives.action_primitive_set_base import ActionPrimitiveError, BaseActionPrimitiveSet
 from igibson.controllers import ControlType, JointController
 from igibson.object_states.pose import Pose
@@ -48,10 +51,13 @@ skill_object_offset_params = {
         # cleaning_microwave_oven
         # "sink.n.01_1-cleaning_microwave_oven": [0., -0.5, 0, 0.5 * np.pi],
         # "sink.n.01_1-cleaning_microwave_oven": [-0., -0.57, 0, 0.5 * np.pi],
-        "sink.n.01_1-cleaning_microwave_oven": [-0.02, -0.57, 0, 0.5 * np.pi],
+        # "sink.n.01_1-cleaning_microwave_oven": [-0.02, -0.57, 0, 0.5 * np.pi],
+
+        "sink.n.01_1-cleaning_microwave_oven": [-0.07, -0.6, 0, 0.5 * np.pi],
         # "microwave.n.02_1-cleaning_microwave_oven": [0., -1.02, 0, 0.5 * np.pi],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0.75, 0, 0.5 * np.pi],
         "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0.75, 0, 0.5 * np.pi],
+        # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0.8, 0, 0.5 * np.pi],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.3, -1., 0, 0.5 * np.pi],
         "cabinet.n.01_1-cleaning_microwave_oven": [1.0, -0.8, 0, 0.5 * np.pi],
     },
@@ -81,12 +87,13 @@ skill_object_offset_params = {
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0., -0.13],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.35, -0., -0.4],
         "microwave.n.02_1-cleaning_microwave_oven": [-0.11, -0.0, -0.35],
+        # "microwave.n.02_1-cleaning_microwave_oven": [-0.11, -0.0, -0.35],
     },
     3: {  # toggle
         "printer.n.03_1": [-0.3, -0.25, 0.23],  # dx, dy, dz
         # cleaning_microwave_oven
-        "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.18, 0.32],
-        # "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.17, 0.32],
+        # "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.18, 0.32],
+        "sink.n.01_1-cleaning_microwave_oven": [-0.05, 0.17, 0.32],
     },
     4: {  # pull
         "cabinet.n.01_1": [0.3, -0.55, 0.35, -1, 0, 0],  # dx, dy, dz
@@ -369,8 +376,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        self.skip_base_planning = True # True
-        self.skip_arm_planning = True  # False  # False
+        self.skip_base_planning = False  # True # True
+        self.skip_arm_planning = False  # True  # False  # False
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
@@ -467,6 +474,11 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 logger.info("Contact detected. Stop motion")
                 logger.debug("Contacts {}".format(self.robot._find_gripper_contacts(arm=self.arm)))
                 logger.debug("Finger ids {}".format([link.link_id for link in self.robot.finger_links[self.arm]]))
+                toggle_steps = 5 if self.fast_execution else 15  # 10
+                action = self._get_still_action()
+                for _ in range(toggle_steps):
+                    yield action
+                # print('\n\n\n\n yield self._get_still_action(): {}'.format(toggle_steps))
                 return
             logger.debug("Executing action {}".format(arm_action))
             full_body_action = self._get_still_action()
@@ -755,9 +767,28 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             keep_last_location=True,
         )
         yield self._get_still_action()
+
+        # print(self.robot.is_grasping())
+        print('object_name', object_name)
+        if self.robot.is_grasping() == True and object_name in ['sink.n.01_1']:
+            obj_in_hand = self.robot._ag_obj_in_hand[self.arm]
+            obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
+            # print(1, obj_in_hand_pos)
+            obj_in_hand_pos = list(obj_in_hand_pos)
+            obj_in_hand_pos[-1] -= 0.1  # 0.03
+            # print(2, obj_in_hand_pos)
+            set_pose(obj_in_hand, (obj_in_hand_pos, obj_in_hand_ori))
+            obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
+            # print(3, obj_in_hand_pos)
         # At the end, open the hand
         logger.info("Executing ungrasp")
         yield from self._execute_ungrasp()
+
+        place_steps = 9 if self.fast_execution else 5  # 10
+        action = self._get_still_action()
+        for _ in range(place_steps):
+            yield action
+
         # Then, retract the arm
         logger.info("Executing retracting path")
         if plan_full_pre_drop_motion:  # Visualizing the full path...
@@ -773,35 +804,13 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 arm=self.arm,
                 keep_last_location=True,
             )
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        yield self._get_still_action()
-        if self.env.config['task'] in ['cleaning_microwave_oven']:
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
-            yield self._get_still_action()
+        # place_steps = 9 if self.fast_execution else 9  # 10
+        # action = self._get_still_action()
+        # for _ in range(place_steps):
+        #     yield action
+        # if self.env.config['task'] in ['cleaning_microwave_oven']:
+        #     for _ in range(place_steps * 2):
+        #         yield action
         logger.info("Place action completed")
 
     def _toggle(self, object_name, obs=None, yaw=None):

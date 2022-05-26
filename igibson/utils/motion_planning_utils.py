@@ -263,7 +263,8 @@ class MotionPlanner(object):
                     and body_id not in carpet_idx
                     and body_id not in obj_idx_to_ignore
                 ]
-                # print('obstacles: ', obstacles)
+                print('obstacles: {}, floor_idx: {}, carpet_idx: {}, obj_idx_to_ignore: {}, self.robot.get_body_ids(): {}'
+                      .format(obstacles, floor_idx, carpet_idx, obj_idx_to_ignore, self.robot.get_body_ids()))
                 # TODO: keeping this for Chen, remove later
                 # obstacles.extend([
                 #     item.get_body_ids()[0]

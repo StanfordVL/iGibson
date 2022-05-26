@@ -145,12 +145,19 @@ class SkillEnv(gym.Env):
         self.env.close()
 
     def step(self, action_idx):
-        if action_idx[0] in [6, ]:  # place
-            action_idx = [action_idx[0], 0]
-        elif action_idx[0] in [1, ]:  # pick
-            action_idx = [action_idx[0], 1]
+        # if action_idx[0] in [6, ]:  # place
+        #     action_idx = [action_idx[0], 0]
+        # elif action_idx[0] in [1, ]:  # pick
+        #     action_idx = [action_idx[0], 1]
+        # else:
+        #     action_idx = [action_idx[0], 1]  # array([3, 3])
+
+        if action_idx in [6, ]:  # place
+            action_idx = [action_idx, 0]
+        elif action_idx in [1, ]:  # pick
+            action_idx = [action_idx, 1]
         else:
-            action_idx = [action_idx[0], 1]  # array([3, 3])
+            action_idx = [action_idx, 1]  # array([3, 3])
 
         o, r, d, i = self.env.step(action_idx, self.state)
         self.accum_reward = self.accum_reward + r
@@ -218,6 +225,6 @@ if __name__ == "__main__":
         start = time.time()
         for action_idx in action_list:
             state, reward, done, info = env.step(action_idx)
-            print("{}, reward: {}, done: {}, is_success: {}".format(action_idx, reward, done, info['success']))
+            print("{}, reward: {}, done: {}, success: {}".format(action_idx, reward, done, info['success']))
         print("Episode finished after {} timesteps, took {} seconds.".format(len(action_list), time.time() - start))
     env.close()

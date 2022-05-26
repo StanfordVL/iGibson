@@ -381,13 +381,13 @@ class iGibsonEnv(BaseEnv):
         self.simulator_step()
         collisions = [x for x in p.getContactPoints(bodyA=body_id) if x[2] not in ignore_ids]
 
-        if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
-            for item in collisions:
-                log.debug(
-                    "bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(
-                        self.scene.objects_by_id[item[1]].name, self.scene.objects_by_id[item[2]].name, item[3], item[4]
-                    )
-                )
+        # if log.isEnabledFor(logging.INFO):  # Only going into this if it is for logging --> efficiency
+        #     for item in collisions:
+        #         log.debug(
+        #             "bodyA:{}, bodyB:{}, linkA:{}, linkB:{}".format(
+        #                 self.scene.objects_by_id[item[1]].name, self.scene.objects_by_id[item[2]].name, item[3], item[4]
+        #             )
+        #         )
 
         return len(collisions) > 0
 
