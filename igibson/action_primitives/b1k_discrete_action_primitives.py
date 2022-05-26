@@ -645,21 +645,14 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
             obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
             object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
+
         # Don't do anything if the object is already grasped.
         robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
-        robot_is_grasping_obj = self.robot.is_grasping(candidate_obj=object_id)
         if robot_is_grasping == IsGraspingState.TRUE:
-            if robot_is_grasping_obj == IsGraspingState.TRUE:
-                logger.warning("Robot already grasping the desired object")
-                # yield np.zeros(self.robot.action_dim)
-                yield self._get_still_action()
-                return
-            else:
-                raise ActionPrimitiveError(
-                    ActionPrimitiveError.Reason.PRE_CONDITION_ERROR,
-                    "Cannot grasp when hand is already full.",
-                    {"object": object_name},
-                )
+            logger.warning("Robot already grasping the desired object")
+            # yield np.zeros(self.robot.action_dim)
+            yield self._get_still_action()
+            return
 
         # process the offset from object frame to world frame
         mat = quat2mat(obj_rot_XYZW)
@@ -750,6 +743,14 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _place(self, object_name, obs=None, yaw=None):
         logger.info("Placing on object {}".format(object_name))
+
+        # Don't do anything if nothing in hand.
+        robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
+        if robot_is_grasping == IsGraspingState.FALSE:
+            logger.warning("nothing in hand")
+            yield self._get_still_action()
+            return
+
         if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel.cabinet', 'towel.sink']):
             params = skill_object_offset_params[B1KActionPrimitive.PLACE][object_name+'-'+self.env.config['task']]
         else:
@@ -863,6 +864,13 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _toggle(self, object_name, obs=None, yaw=None):
         logger.info("Toggling object {}".format(object_name))
+
+        robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
+        if robot_is_grasping == IsGraspingState.TRUE:
+            logger.warning("cannot toggle if something in hand")
+            yield self._get_still_action()
+            return
+
         if self.env.config['task'] in ['cleaning_microwave_oven'] and not (object_name in ['towel.cabinet', 'towel.sink']):
             params = skill_object_offset_params[B1KActionPrimitive.TOGGLE][object_name+'-'+self.env.config['task']]
         else:
