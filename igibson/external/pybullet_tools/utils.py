@@ -3239,6 +3239,7 @@ def plan_base_motion_2d(body,
                         flip_vertically=False,
                         use_pb_for_collisions=False,
                         upsampling_factor = 4,
+                        id_to_name=None,
                         **kwargs):
     """
     Performs motion planning for a robot base in 2D
@@ -3408,8 +3409,9 @@ def plan_base_motion_2d(body,
             for obs in obstacles:
                 collision = pairwise_collision(body, obs, max_distance=max_distance)
                 if collision:
-                    print('body, obs, collision: ', body, obs, collision)
-
+                    pass
+                    # print('body: {}, obs: {}, collsion: {}'.format(body, obs, collision, ))
+                    # print('obs name: ', p.getBodyInfo(obs)[0].decode())
             in_collision = any(pairwise_collision(body, obs, max_distance=max_distance) for obs in obstacles)
             set_base_values(body, start_conf)   # Reset the original configuration
         else:   # Use local or global map

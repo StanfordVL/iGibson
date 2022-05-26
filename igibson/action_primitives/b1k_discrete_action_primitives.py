@@ -51,9 +51,8 @@ skill_object_offset_params = {
         # cleaning_microwave_oven
         # "sink.n.01_1-cleaning_microwave_oven": [0., -0.5, 0, 0.5 * np.pi],
         # "sink.n.01_1-cleaning_microwave_oven": [-0., -0.57, 0, 0.5 * np.pi],
-        # "sink.n.01_1-cleaning_microwave_oven": [-0.02, -0.57, 0, 0.5 * np.pi],
-
-        "sink.n.01_1-cleaning_microwave_oven": [-0.07, -0.6, 0, 0.5 * np.pi],
+        "sink.n.01_1-cleaning_microwave_oven": [-0.02, -0.57, 0, 0.5 * np.pi],
+        # "sink.n.01_1-cleaning_microwave_oven": [-0.07, -0.6, 0, 0.5 * np.pi],
         # "microwave.n.02_1-cleaning_microwave_oven": [0., -1.02, 0, 0.5 * np.pi],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0.75, 0, 0.5 * np.pi],
         "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0.75, 0, 0.5 * np.pi],
@@ -84,10 +83,11 @@ skill_object_offset_params = {
         # cleaning_microwave_oven
         # "sink.n.01_1-cleaning_microwave_oven": [-0.2, -0.08, 0.2],
         "sink.n.01_1-cleaning_microwave_oven": [-0.22, -0.08, 0.2],
+        # "sink.n.01_1-cleaning_microwave_oven": [-0.22, -0.04, 0.2],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.2, -0., -0.13],
         # "microwave.n.02_1-cleaning_microwave_oven": [-0.35, -0., -0.4],
         "microwave.n.02_1-cleaning_microwave_oven": [-0.11, -0.0, -0.35],
-        # "microwave.n.02_1-cleaning_microwave_oven": [-0.11, -0.0, -0.35],
+        # "microwave.n.02_1-cleaning_microwave_oven": [-0.09, -0.0, -0.35],
     },
     3: {  # toggle
         "printer.n.03_1": [-0.3, -0.25, 0.23],  # dx, dy, dz
@@ -376,11 +376,16 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.obj_pose_check = True
         self.task_obj_list = self.env.task.object_scope
         self.print_log = True
-        self.skip_base_planning = False  # True # True
-        self.skip_arm_planning = False  # True  # False  # False
+        self.skip_base_planning = True  # False  # True # True
+        self.skip_arm_planning = True  # False  # True  # False  # False
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
+
+        self.obj_body_id_to_name = {}
+        for obj_name, obj in self.env.task.object_scope.items():
+            for body_id in obj.get_body_ids():
+                self.obj_body_id_to_name[body_id] = obj_name
 
     def get_action_space(self):
         if self.action_space_type == 'discrete':
@@ -595,6 +600,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             plan_full_base_motion=(not self.skip_base_planning),
                                   # or (self.env.config['task'] in ['cleaning_microwave_oven'] and object_name == 'microwave.n.02_1'),
             obj_idx_to_ignore=obj_idx_to_ignore,
+            id_to_name=self.obj_body_id_to_name,
         )
 
         if plan is not None and len(plan) > 0:
@@ -775,11 +781,22 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
             # print(1, obj_in_hand_pos)
             obj_in_hand_pos = list(obj_in_hand_pos)
-            obj_in_hand_pos[-1] -= 0.1  # 0.03
+            obj_in_hand_pos[-1] -= 0.2  # 0.03
             # print(2, obj_in_hand_pos)
             set_pose(obj_in_hand, (obj_in_hand_pos, obj_in_hand_ori))
-            obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
+            # obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
             # print(3, obj_in_hand_pos)
+        elif self.robot.is_grasping() == True and object_name in ['microwave.n.02_1']:
+            obj_in_hand = self.robot._ag_obj_in_hand[self.arm]
+            obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
+            # print(1, obj_in_hand_pos, obj_in_hand_ori)
+            obj_in_hand_pos = list(obj_in_hand_pos)
+            obj_in_hand_pos[0] -= 0.1  # 0.03
+            # obj_in_hand_ori = (obj_in_hand_ori[0], obj_in_hand_ori[1], obj_in_hand_ori[2], obj_in_hand_ori[3]-0.4)  # 0.03
+            # print(2, obj_in_hand_pos, obj_in_hand_ori)
+            set_pose(obj_in_hand, (obj_in_hand_pos, obj_in_hand_ori))
+            # obj_in_hand_pos, obj_in_hand_ori = p.getBasePositionAndOrientation(obj_in_hand)
+            # print(3, obj_in_hand_pos, obj_in_hand_ori)
         # At the end, open the hand
         logger.info("Executing ungrasp")
         yield from self._execute_ungrasp()

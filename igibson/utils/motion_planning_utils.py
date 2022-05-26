@@ -185,7 +185,7 @@ class MotionPlanner(object):
         self.env.simulator.step()
         self.simulator_sync()
 
-    def plan_base_motion(self, goal, plan_full_base_motion=True, obj_idx_to_ignore=[]):
+    def plan_base_motion(self, goal, plan_full_base_motion=True, obj_idx_to_ignore=[], id_to_name=None):
         """
         Plan base motion given a base goal location and orientation
         :param goal: base goal location (x, y, theta) in global coordinates
@@ -247,6 +247,7 @@ class MotionPlanner(object):
                 corners = [top_left, bottom_right]
 
             if self.collision_with_pb_2d_planning:
+
                 floor_idx = []
                 carpet_idx = []
                 if isinstance(self.env.scene, InteractiveIndoorScene):
@@ -263,13 +264,16 @@ class MotionPlanner(object):
                     and body_id not in carpet_idx
                     and body_id not in obj_idx_to_ignore
                 ]
-                print('obstacles: {}, floor_idx: {}, carpet_idx: {}, obj_idx_to_ignore: {}, self.robot.get_body_ids(): {}'
-                      .format(obstacles, floor_idx, carpet_idx, obj_idx_to_ignore, self.robot.get_body_ids()))
+                '''
+                # print('obstacles: {}, floor_idx: {}, carpet_idx: {}, obj_idx_to_ignore: {}, self.robot.get_body_ids(): {}'
+                #       .format(obstacles, floor_idx, carpet_idx, obj_idx_to_ignore, self.robot.get_body_ids()))
                 # TODO: keeping this for Chen, remove later
-                # obstacles.extend([
-                #     item.get_body_ids()[0]
-                #     for item in self.env.scene.objects_by_category["bottom_cabinet"]
-                # ])
+                obstacles = []
+                obstacles.extend([
+                    item.get_body_ids()[0]
+                    for item in self.env.scene.objects_by_category["bottom_cabinet"]
+                ])
+                '''
             else:
                 obstacles = []
 
@@ -295,6 +299,7 @@ class MotionPlanner(object):
                 metric2map=[None, self.env.scene.world_to_map][self.full_observability_2d_planning],
                 flip_vertically=self.full_observability_2d_planning,
                 use_pb_for_collisions=self.collision_with_pb_2d_planning,
+                id_to_name=id_to_name,
             )
 
         if path is not None and len(path) > 0:
