@@ -531,7 +531,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
         # TODO: Extend to non-binary grasping controllers
         # This assumes the grippers are called "gripper_"+self.arm. Maybe some robots do not follow this convention
-        ungrasping_steps = 5 if self.fast_execution else 2 # 10
+        ungrasping_steps = 5 if self.fast_execution else 9 # 10
         after_get_still_action_time = time.time()
         for idx in range(ungrasping_steps):
             action[self.robot.controller_action_idx["gripper_" + self.arm]] = 0.0
