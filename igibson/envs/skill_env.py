@@ -85,7 +85,6 @@ class SkillEnv(gym.Env):
                  is_success_count=True,
                  ):
         self.seed(seed)
-        self.soak_bonus = True
         self.is_success_count = is_success_count
         self.is_success_list = []
         self.action_space_type = action_space_type
@@ -147,27 +146,21 @@ class SkillEnv(gym.Env):
 
     def step(self, action_idx):
         # print('action_idx: ', action_idx)
-        if True:
-            if action_idx[0] in [7, ]:  # place
-                action_idx = [action_idx[0], 0]
-            elif action_idx[0] in [1, ]:  # pick
-                action_idx = [action_idx[0], 1]
-            else:
-                action_idx = [action_idx[0], 1]  # array([3, 3])
+        # if action_idx[0] in [6, ]:  # place
+        #     action_idx = [action_idx[0], 0]
+        # elif action_idx[0] in [1, ]:  # pick
+        #     action_idx = [action_idx[0], 1]
+        # else:
+        #     action_idx = [action_idx[0], 1]  # array([3, 3])
+
+        if action_idx in [6, ]:  # place
+            action_idx = [action_idx, 0]
+        elif action_idx in [1, ]:  # pick
+            action_idx = [action_idx, 1]
         else:
-            if action_idx in [7, ]:  # place
-                action_idx = [action_idx, 0]
-            elif action_idx in [1, ]:  # pick
-                action_idx = [action_idx, 1]
-            else:
-                action_idx = [action_idx, 1]  # array([3, 3])
+            action_idx = [action_idx, 1]  # array([3, 3])
 
         o, r, d, i = self.env.step(action_idx, self.state)
-        if self.config['task'] in ['cleaning_microwave_oven']:
-            if self.soak_bonus and self.env.env.scene.objects_by_id[132].states[Soaked].get_value():
-                r = r + 0.5
-                self.soak_bonus = False
-
         self.accum_reward = self.accum_reward + r
         if self.dense_reward:
             if self.config['task'] == 'installing_a_printer':
@@ -223,9 +216,10 @@ if __name__ == "__main__":
     # action_list_2 = [0, 1, 2, 3, 4, 5, 6, 7]
     # action_list = [0, 1]
     # cleaning_microwave_oven
-    # action_list = [0, 1, 2, 3, 4, 5, 6, 7, ] # * 10
+    # action_list = [0, 1, 2, 3, 4, 1, 3, 1, 3, 1, 3, 1, 4, 4, 4, 4, 4]
     # action_list = action_list[:40]
-    action_list = [0, 1, 2, 3, 4, 5, 6, 7] # + [6, 7] * 100
+    action_list = [random.randint(0, 6) for _ in range(500)]# + [7] * 100
+
     # action_list = [0, 1, 5, 6, ]
     # action_list = [0, 1, 2, 3, ]
 

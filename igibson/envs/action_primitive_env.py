@@ -44,19 +44,21 @@ class ActionPrimitivesEnv(gym.Env):
 
         start_time = time.time()
 
+        if self.action_space_type == 'multi_discrete':
+            pre_action = [10, ]
+        else:
+            pre_action = 10
+        for lower_level_action in self.action_generator.apply(pre_action, obs):
+            obs, reward, done, info = self.env.step(lower_level_action)
+            if self.accumulate_obs:
+                accumulated_obs.append(obs)
+            else:
+                accumulated_obs = [obs]  # Do this to save some memory.
+
         for _ in range(self.num_attempts):
             # obs, done, info = None, None, {}
             # print('self.action_space_type: ', self.action_space_type)
-            if self.action_space_type == 'multi_discrete':
-                pre_action = [10, ]
-            else:
-                pre_action = 10
-            for lower_level_action in self.action_generator.apply(pre_action, obs):
-                obs, reward, done, info = self.env.step(lower_level_action)
-                if self.accumulate_obs:
-                    accumulated_obs.append(obs)
-                else:
-                    accumulated_obs = [obs]  # Do this to save some memory.
+
             try:
                 for lower_level_action in self.action_generator.apply(action, obs):
                     # print('lower_level_action: ', lower_level_action)
