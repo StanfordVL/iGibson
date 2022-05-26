@@ -85,7 +85,6 @@ def main(selection="user", headless=False, short_exec=False):
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
     config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"))
-
     bvr_robot = BehaviorRobot(**config["robot"])
     s.import_object(bvr_robot)
     bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
