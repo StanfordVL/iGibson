@@ -65,7 +65,7 @@ def main(selection="user", headless=False, short_exec=False):
         fpath = item[0]
         pos = item[1]
         orn = item[2]
-        item_ob = ArticulatedObject(fpath, scale=1, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        item_ob = ArticulatedObject(fpath, scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
         s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
@@ -89,7 +89,7 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Represents gaze
     eye_marker = ArticulatedObject(
-        "sphere_small.urdf", scale=2, renderer_params={"use_pbr": False, "use_pbr_mapping": False}
+        "sphere_small.urdf", scale=2, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
     )
     s.import_object(eye_marker)
     gaze_max_dist = 1.5
@@ -101,7 +101,7 @@ def main(selection="user", headless=False, short_exec=False):
         s.step()
 
         # Update VR agent using action data from simulator
-        bvr_robot.update(s.gen_vr_robot_action())
+        bvr_robot.apply_action(s.gen_vr_robot_action())
 
         # Update gaze marker
         is_valid, origin, dir, _, _ = s.get_eye_tracking_data()
