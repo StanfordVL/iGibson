@@ -383,6 +383,8 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         self.is_grasping = False
         self.fast_execution = False
         self.action_space_type = action_space_type
+        self.obj_pos_towel_cabinet = np.array([-0.3812442399859821, -0.4130304043731172, 0.9164026575444292])
+        self.obj_pos_towel_sink = np.array([1.0077845310832008, 0.3318670792954048, 0.5670036741954683])
 
         self.obj_body_id_to_name = {}
         for obj_name, obj in self.env.task.object_scope.items():
@@ -629,11 +631,20 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
             pos, orn = p.getBasePositionAndOrientation(object_id)  # towel: 132
             obj_pos = list(pos)
             obj_rot_XYZW = list(orn)
+            if object_name in ['towel.sink']:
+                print(object_name, obj_pos)
+                if np.sum(np.abs(np.array(obj_pos) - self.obj_pos_towel_sink)) > 1e-1:
+                    yield self._get_still_action()
+                    return
+            elif object_name in ['towel.cabinet']:
+                print(object_name, obj_pos)
+                if np.sum(np.abs(np.array(obj_pos) - self.obj_pos_towel_cabinet)) > 1e-1:
+                    yield self._get_still_action()
+                    return
         else:
             obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
             obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
             object_id = self.task_obj_list[object_name].get_body_ids()[0]  # Assume single body objects
-
         # Don't do anything if the object is already grasped.
         robot_is_grasping = self.robot.is_grasping(candidate_obj=None)
         robot_is_grasping_obj = self.robot.is_grasping(candidate_obj=object_id)
