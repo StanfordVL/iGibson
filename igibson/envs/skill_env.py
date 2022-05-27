@@ -85,6 +85,7 @@ class SkillEnv(gym.Env):
                  is_success_count=True,
                  ):
         self.seed(seed)
+        self.soak_bonus = True
         self.is_success_count = is_success_count
         self.is_success_list = []
         self.action_space_type = action_space_type
@@ -126,6 +127,7 @@ class SkillEnv(gym.Env):
         self.max_step = self.config['max_step']
 
     def reset(self):
+        self.soak_bonus = True
         try:
             self.is_success_list.append(self.info['is_success'])
         except:
@@ -161,6 +163,10 @@ class SkillEnv(gym.Env):
         #     action_idx = [action_idx, 1]  # array([3, 3])
 
         o, r, d, i = self.env.step(action_idx, self.state)
+        if self.config['task'] in ['cleaning_microwave_oven']:
+            if self.soak_bonus and self.env.env.scene.objects_by_id[132].states[Soaked].get_value():
+                r = r + 0.5
+                self.soak_bonus = False
         self.accum_reward = self.accum_reward + r
         if self.dense_reward:
             if self.config['task'] == 'installing_a_printer':
