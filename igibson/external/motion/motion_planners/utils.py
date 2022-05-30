@@ -8,8 +8,8 @@ import time
 
 INF = float('inf')
 
-RRT_ITERATIONS = 100
-RRT_RESTARTS = 2
+RRT_ITERATIONS = 500 #100
+RRT_RESTARTS = 10 #2
 RRT_SMOOTHING = 20
 
 

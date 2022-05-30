@@ -988,7 +988,7 @@ class BRHand(BRHandBase):
 
         return ag_bid, ag_link
 
-    def handle_assisted_grasping(self, action, override_ag_data=None):
+    def handle_assisted_grasping(self, action, override_ag_data=None, bypass_force_check=False):
         """
         Handles assisted grasping.
         :param action: numpy array of actions.
@@ -1020,9 +1020,12 @@ class BRHand(BRHandBase):
                 if override_ag_data is not None:
                     ag_data = override_ag_data
                     force_data = self.find_hand_contacts(find_all=True)
-                    if not force_data or ag_data not in force_data:
+                    if not bypass_force_check and (not force_data or ag_data not in force_data):
                         return False
                 else:
+                    if bypass_force_check:
+                        print("override_ag_data must be given with bypass_force_check in handle_assisted_grasping")
+                        return False
                     ag_data = self.calculate_ag_object()
 
                 # Return early if no AG-valid object can be grasped

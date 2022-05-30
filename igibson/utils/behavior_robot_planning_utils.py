@@ -52,6 +52,9 @@ def plan_base_motion_br(
     for part in ["body", "left_hand", "right_hand", "eye"]:
         body_ids.append(robot.parts[part].body_id)
 
+    if robot.parts["right_hand"].object_in_hand is not None:
+        body_ids.append(robot.parts["right_hand"].object_in_hand)
+
     def extend_fn(q1, q2):
         target_theta = np.arctan2(q2[1] - q1[1], q2[0] - q1[0])
 
@@ -202,7 +205,7 @@ def plan_hand_motion_br(
             else:
                 obj_in_hand_body_id = obj_in_hand.body_id
             collision = collision or any(
-                pairwise_collision(obj_in_hand_body_id, obs, max_distance=max_distance) for obs in obstacles
+                pairwise_collision(obj_in_hand_body_id, obs, max_distance=max_distance) for obs in obstacles if obs != 0
             )
 
         return collision

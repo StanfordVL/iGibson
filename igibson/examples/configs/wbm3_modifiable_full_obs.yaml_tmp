@@ -15,9 +15,9 @@ robot: BehaviorRobot
 
 # task
 # task: cleaning_cupboards
-task: re-shelving_library_books
+task: sorting_books
 task_id: 0
-online_sampling: True
+online_sampling: False
 target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: polar
