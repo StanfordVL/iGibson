@@ -25,6 +25,7 @@ class RolloutStorage:
         external_memory_size,
         external_memory_capacity,
         external_memory_dim,
+        rt_num_hidden_size,
         num_recurrent_layers=1,
     ):
         self.observations = {}
@@ -78,7 +79,8 @@ class RolloutStorage:
             )
         else:
             self.em = None
-
+        self.rt_hidden_states = torch.zeros(num_steps + 1, 1, num_envs, rt_num_hidden_size)
+        
         self.num_steps = num_steps
         self.step = 0
 
@@ -97,6 +99,7 @@ class RolloutStorage:
         self.em_masks = self.em_masks.to(device)
         if self.use_external_memory:
             self.em.to(device)
+        self.rt_hidden_states = self.rt_hidden_states.to(device)
 
     def insert(
         self,
@@ -108,6 +111,7 @@ class RolloutStorage:
         rewards,
         not_done_masks,
         em_features,
+        rt_hidden_states
     ):
         for sensor in observations:
             self.observations[sensor][self.step + 1].copy_(
@@ -125,6 +129,7 @@ class RolloutStorage:
         if self.use_external_memory:
             self.em.insert(em_features, not_done_masks)
             self.em_masks[self.step + 1].copy_(self.em.masks)
+        self.rt_hidden_states[self.step + 1].copy_(rt_hidden_states)
 
         self.step = self.step + 1
 
@@ -141,6 +146,7 @@ class RolloutStorage:
         self.prev_actions[0].copy_(self.prev_actions[self.step])
         if self.use_external_memory:
             self.em_masks[0].copy_(self.em_masks[self.step])
+        self.rt_hidden_states[0].copy_(self.rt_hidden_states[self.step])
         self.step = 0
 
     def compute_returns(self, next_value, use_gae, gamma, tau):
@@ -182,6 +188,7 @@ class RolloutStorage:
             return_batch = []
             masks_batch = []
             old_action_log_probs_batch = []
+            rt_hidden_states_batch = []
             adv_targ = []
             if self.use_external_memory:
                 em_store_batch = []
@@ -200,6 +207,10 @@ class RolloutStorage:
 
                 recurrent_hidden_states_batch.append(
                     self.recurrent_hidden_states[0, :, ind]
+                )
+                
+                rt_hidden_states_batch.append(
+                    self.rt_hidden_states[0,:,ind]
                 )
 
                 actions_batch.append(self.actions[: self.step, ind])
@@ -242,6 +253,9 @@ class RolloutStorage:
             recurrent_hidden_states_batch = torch.stack(
                 recurrent_hidden_states_batch, 1
             )
+            rt_hidden_states_batch = torch.stack(
+                rt_hidden_states_batch, 1
+            )
 
             # Flatten the (T, N, ...) tensors to (T * N, ...)
             for sensor in observations_batch:
@@ -274,6 +288,7 @@ class RolloutStorage:
                 adv_targ,
                 em_store_batch,
                 em_masks_batch,
+                rt_hidden_states_batch
             )
 
     @staticmethod
