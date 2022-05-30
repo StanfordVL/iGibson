@@ -81,6 +81,7 @@ class PPO(nn.Module):
                     adv_targ,
                     external_memory,
                     external_memory_masks,
+                    _
                 ) = sample
                 # Reshape to do in a single forward pass for all steps
                 (
@@ -166,4 +167,5 @@ class PPO(nn.Module):
 
     def after_step(self):
         pass
+
 

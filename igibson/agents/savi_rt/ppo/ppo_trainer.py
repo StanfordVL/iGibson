@@ -39,6 +39,7 @@ from igibson.agents.savi_rt.utils.utils import to_tensor
 from igibson.agents.savi_rt.ppo.ddp_utils import init_distrib_slurm
 from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy
 
+
 class PPOTrainer(BaseRLTrainer):
     r"""Trainer class for PPO algorithm
     Paper: https://arxiv.org/abs/1707.06347.
@@ -52,6 +53,7 @@ class PPOTrainer(BaseRLTrainer):
         self.envs = None
         self._static_smt_encoder = False
         self._encoder = None
+        torch.autograd.set_detect_anomaly(True)
         
 
     def _setup_actor_critic_agent(self, observation_space=None) -> None:
@@ -121,12 +123,13 @@ class PPOTrainer(BaseRLTrainer):
 #                 rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
                 rt_class = RTPredictor
                 self.rt_predictor = rt_class(self.config, self.device, self.envs.batch_size).to(device=self.device)
-                self.rt_loss_fn = NonZeroWeightedCrossEntropy().to(device=self.device)
+                self.rt_predictor.rt_loss_fn = NonZeroWeightedCrossEntropy().to(device=self.device)
                 if self.config['online_training']:
-                    self.rt_optimizer = torch.optim.SGD(self.rt_predictor.parameters(),
+                    self.rt_predictor.optimizer = torch.optim.SGD(self.rt_predictor.parameters(),
                                                 lr=0.1,
                                                 momentum=0.9,
                                                 weight_decay=0.0001)
+                
                 
         else:
             raise ValueError(f'Policy type is not defined!')
@@ -266,6 +269,7 @@ class PPOTrainer(BaseRLTrainer):
         current_episode_reward *= masks
         current_episode_step *= masks
         
+        rt_hidden_states = torch.zeros(1, self.envs.batch_size, self.rt_predictor.hidden_size)      
         rollouts.insert(
             batch,
             recurrent_hidden_states,
@@ -275,6 +279,7 @@ class PPOTrainer(BaseRLTrainer):
             rewards.to(device=self.device),
             masks.to(device=self.device),
             external_memory_features,
+            rt_hidden_states
         )
         
         if self.config['use_belief_predictor']:
@@ -284,16 +289,12 @@ class PPOTrainer(BaseRLTrainer):
                 rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
         #RT
         if self.config['use_rt_map']:
-            step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}    
-            global_map_pred = self.rt_predictor.update(step_observation, dones, visual_features, audio_features) # (9, 784, 23)
-            rollouts.observations['rt_map_features'][rollouts.step].copy_(step_observation['rt_map_features'])
-            #(batch, 23, 28, 28) -> (batch, 28*28, 23)
-            global_map_pred = global_map_pred.permute(0, 2, 3, 1).view(self.envs.batch_size, -1, self.rt_predictor.rooms)
-            global_map_gt = to_tensor(step_observation['rt_map_gt']).view(self.envs.batch_size, -1).to(self.device) #(9, 784)
-            rt_loss = self.rt_loss_fn(global_map_pred.view(-1, self.rt_predictor.rooms), global_map_gt.view(-1)) / self.envs.batch_size
-            self.rt_optimizer.zero_grad()
-            rt_loss.backward()
-            self.rt_optimizer.step() 
+            step_observation = {k: v[rollouts.step] for k, v in rollouts.observations.items()}
+            updated_rt_hidden_states = self.rt_predictor.update(step_observation, dones, 
+                                     rollouts.rt_hidden_states[rollouts.step-1])
+            rollouts.rt_hidden_states[rollouts.step].copy_(updated_rt_hidden_states)
+            for sensor in['rt_map', 'rt_map_features']:
+                rollouts.observations[sensor][rollouts.step].copy_(step_observation[sensor])
                 
         pth_time += time.time() - t_update_stats
 
@@ -336,6 +337,7 @@ class PPOTrainer(BaseRLTrainer):
                     adv_targ,
                     external_memory,
                     external_memory_masks,
+                    _,
                 ) = sample
 
                 bp.optimizer.zero_grad()
@@ -374,6 +376,66 @@ class PPOTrainer(BaseRLTrainer):
         return value_loss_epoch, prediction_accuracy
     
     
+    def train_rt_predictor(self, rollouts): 
+        num_epoch = 5
+        num_mini_batch = 1
+
+        advantages = torch.zeros_like(rollouts.returns)
+        value_loss_epoch = 0
+        num_correct = 0
+        num_sample = 0
+
+        for e in range(num_epoch):
+            data_generator = rollouts.recurrent_generator(
+                advantages, num_mini_batch
+            )
+
+            for sample in data_generator:
+                (
+                    obs_batch,
+                    recurrent_hidden_states_batch,
+                    actions_batch,
+                    prev_actions_batch,
+                    value_preds_batch,
+                    return_batch,
+                    masks_batch,
+                    old_action_log_probs_batch,
+                    adv_targ,
+                    external_memory,
+                    external_memory_masks,
+                    rt_hidden_states_batch
+                ) = sample
+
+                self.rt_predictor.optimizer.zero_grad()
+#                 self.rt_predictor.init_hidden_states()
+                
+                _, global_map_preds, rt_hidden_states = self.rt_predictor.cnn_forward(obs_batch, 
+                                                                                      rt_hidden_states_batch, 
+                                                                                      masks_batch)
+
+                global_map_preds = global_map_preds.permute(0, 2, 3, 1).view(global_map_preds.shape[0], -1,
+                                                                             self.rt_predictor.rooms)
+                #(150*batch_size, 28*28, 23)
+                global_map_preds = global_map_preds.reshape(-1, self.rt_predictor.rooms)
+                #(150*batch_size*28*28, 23)
+                global_map_gt = to_tensor(obs_batch['rt_map_gt']).view(global_map_preds.shape[0], -1).to(self.device)
+                global_map_gt = global_map_gt.reshape(-1)
+                #(150*batch_size*28*28,)
+                rt_loss = self.rt_predictor.rt_loss_fn(global_map_preds,
+                                                       global_map_gt)
+                rt_loss.backward(retain_graph=True)
+                self.rt_predictor.optimizer.step() 
+
+                value_loss_epoch += rt_loss.item()
+                preds = torch.argmax(global_map_preds, dim=1)
+                num_correct += torch.sum(torch.eq(preds, global_map_gt))
+                num_sample += global_map_gt.shape[0]
+                
+        value_loss_epoch /= num_epoch * num_mini_batch
+        num_correct = num_correct.item() / num_sample
+        return value_loss_epoch, num_correct
+
+    
     def _update_agent(self, rollouts):
         t_update_model = time.time()
         with torch.no_grad():
@@ -398,7 +460,7 @@ class PPOTrainer(BaseRLTrainer):
         rollouts.compute_returns(
             next_value, self.config['use_gae'], self.config['gamma'], self.config['tau']
         )
-
+        # train
         value_loss, action_loss, dist_entropy = self.agent.update(rollouts)
 
         rollouts.after_update()
@@ -500,6 +562,7 @@ class PPOTrainer(BaseRLTrainer):
             self.config['smt_cfg_memory_size'] + self.config['num_steps'],
             self.config['smt_cfg_memory_size'],
             memory_dim,
+            rt_num_hidden_size = self.rt_predictor.hidden_size,
             num_recurrent_layers=self.actor_critic.net.num_recurrent_layers,
         )
         rollouts.to(self.device)
@@ -574,6 +637,8 @@ class PPOTrainer(BaseRLTrainer):
                 self.agent.eval() # set to eval mode
                 if self.config['use_belief_predictor']:
                     self.belief_predictor.eval()
+                if self.config['use_rt_map']:
+                    self.rt_predictor.eval()
                     
                 for step in range(self.config['num_steps']):
                     # At each timestep, `env.step` calls `task.get_reward`,
@@ -601,6 +666,9 @@ class PPOTrainer(BaseRLTrainer):
                 if self.config['use_belief_predictor']:
                     self.belief_predictor.train()
                     self.belief_predictor.set_eval_encoders()
+                if self.config['use_rt_map']:
+                    self.rt_predictor.train()
+                    
                 if self._static_smt_encoder:
                     self.actor_critic.net.set_eval_encoders()
                 if self.config['use_belief_predictor'] and self.config['online_training']:
@@ -608,7 +676,12 @@ class PPOTrainer(BaseRLTrainer):
                 else:
                     location_predictor_loss = 0
                     prediction_accuracy = 0
-                    
+                if self.config['use_rt_map']:
+                    rt_predictor_loss, rt_prediction_accuracy = self.train_rt_predictor(rollouts)
+                else:
+                    rt_predictor_loss = 0
+                    rt_prediction_accuracy = 0
+                
                 delta_pth_time, value_loss, action_loss, dist_entropy = self._update_agent(
                     rollouts
                 )
@@ -623,7 +696,9 @@ class PPOTrainer(BaseRLTrainer):
                           action_loss/ self.world_size, 
                           dist_entropy/ self.world_size, 
                           location_predictor_loss/ self.world_size, 
-                          prediction_accuracy/ self.world_size]
+                          prediction_accuracy/ self.world_size,
+                          rt_predictor_loss/ self.world_size,
+                          rt_prediction_accuracy/ self.world_size]
                 stats = zip(
                     ["count", "reward", "step", 'spl'],
                     [window_episode_counts, window_episode_reward, window_episode_step, window_episode_spl],)
@@ -645,6 +720,8 @@ class PPOTrainer(BaseRLTrainer):
                     writer.add_scalar('Policy/Entropy', dist_entropy, count_steps)
                     writer.add_scalar("Policy/predictor_loss", location_predictor_loss, count_steps)
                     writer.add_scalar("Policy/predictor_accuracy", prediction_accuracy, count_steps)
+                    writer.add_scalar("Policy/rt_predictor_loss", rt_predictor_loss, count_steps)
+                    writer.add_scalar("Policy/rt_predictor_accuracy", rt_prediction_accuracy, count_steps)
                     writer.add_scalar('Policy/Learning_Rate', lr_scheduler.get_lr()[0], count_steps)
 
                 # log stats
@@ -881,4 +958,5 @@ class PPOTrainer(BaseRLTrainer):
         result['episode_{}_mean'.format('spl')] = episode_metrics_mean['spl']
 
         return result
+
 

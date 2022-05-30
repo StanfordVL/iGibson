@@ -11,12 +11,12 @@ import itertools
 import torch
 import torch.nn as nn
 from torchsummary import summary
-from igibson.agents.savi.utils.utils import CategoricalNet, GaussianNet
-from igibson.agents.savi.models.rnn_state_encoder import RNNStateEncoder
-from igibson.agents.savi.models.visual_cnn import VisualCNN
-from igibson.agents.savi.models.audio_cnn import AudioCNN
-from igibson.agents.savi.models.smt_cnn import SMTCNN
-from igibson.agents.savi.models.smt_state_encoder import SMTStateEncoder
+from igibson.agents.savi_rt.utils.utils import CategoricalNet, GaussianNet
+from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
+from igibson.agents.savi_rt.models.visual_cnn import VisualCNN
+from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
+from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
+from igibson.agents.savi_rt.models.smt_state_encoder import SMTStateEncoder
 
 from igibson.agents.savi.utils.dataset import CATEGORIES
 
@@ -369,7 +369,6 @@ class AudioNavSMTNet(Net):
                 belief = self.belief_encoder(belief)
         else:
             belief = None
-
         x_att = self.smt_state_encoder(x, ext_memory, ext_memory_masks, goal=belief)
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
@@ -412,9 +411,11 @@ class AudioNavSMTNet(Net):
 
     def get_features(self, observations, prev_actions):
         x_unflattened = []
-        x_unflattened.append(self.visual_encoder(observations))
+        observations['visual_features'].copy_(self.visual_encoder(observations))
+        x_unflattened.append(observations['visual_features'])
         x_unflattened.append(self.action_encoder(self._get_one_hot(prev_actions)))
-        x_unflattened.append(self.goal_encoder(observations))
+        observations['audio_features'].copy_(self.goal_encoder(observations))
+        x_unflattened.append(observations['audio_features'])
         x_unflattened.append(observations['task_obs'][:, -2:])
         if self._use_category_input:
             x_unflattened.append(observations["category"])
@@ -422,5 +423,5 @@ class AudioNavSMTNet(Net):
             x_unflattened.append(observations["rt_map_features"])
         x_unflattened.append(observations["pose_sensor"])
         x = torch.cat(x_unflattened, dim=1)
-
+        # redundant: x_unflattened[0] in ppo_trainer, observations['visual_features']
         return x, x_unflattened
