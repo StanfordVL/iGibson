@@ -17,6 +17,8 @@ from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.simulator_vr import SimulatorVR
 
 # HDR files for PBR rendering
+from igibson.utils.utils import parse_config
+
 hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
 hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
 light_modulation_map_filename = os.path.join(
@@ -65,7 +67,7 @@ def main(selection="user", headless=False, short_exec=False):
         fpath = item[0]
         pos = item[1]
         orn = item[2]
-        item_ob = ArticulatedObject(fpath, scale=1, renderer_params={"use_pbr": False, "use_pbr_mapping": False})
+        item_ob = ArticulatedObject(fpath, scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
         s.import_object(item_ob)
         item_ob.set_position(pos)
         item_ob.set_orientation(orn)
@@ -83,13 +85,14 @@ def main(selection="user", headless=False, short_exec=False):
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
-    bvr_robot = BehaviorRobot()
+    config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"))
+    bvr_robot = BehaviorRobot(**config["robot"])
     s.import_object(bvr_robot)
     bvr_robot.set_position_orientation([0, 0, 1.5], [0, 0, 0, 1])
 
     # Represents gaze
     eye_marker = ArticulatedObject(
-        "sphere_small.urdf", scale=2, renderer_params={"use_pbr": False, "use_pbr_mapping": False}
+        "sphere_small.urdf", scale=2, rendering_params={"use_pbr": False, "use_pbr_mapping": False}
     )
     s.import_object(eye_marker)
     gaze_max_dist = 1.5
@@ -101,7 +104,7 @@ def main(selection="user", headless=False, short_exec=False):
         s.step()
 
         # Update VR agent using action data from simulator
-        bvr_robot.update(s.gen_vr_robot_action())
+        bvr_robot.apply_action(s.gen_vr_robot_action())
 
         # Update gaze marker
         is_valid, origin, dir, _, _ = s.get_eye_tracking_data()
