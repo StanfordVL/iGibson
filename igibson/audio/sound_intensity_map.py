@@ -44,22 +44,15 @@ def compute_stft(signal, signal_sr):
     stft = np.abs(librosa.stft(signal_resampled, n_fft=N_FFT, hop_length=hop_length, win_length=win_length))
     return stft
     
-def plot_spectrogram(stft, fname="spectrogram.png"):
+def plot_spectrogram(spec, fname="spectrogram.png"):
     fig, ax = plt.subplots()
-    img = librosa.display.specshow(librosa.amplitude_to_db(stft,
-                                                       ref=np.max),
-                               y_axis='log', x_axis='time', ax=ax)
+    img = librosa.display.specshow(spec, y_axis='log', x_axis='time', ax=ax, sr=44100, hop_length=160)
     ax.set_title('Power spectrogram')
     fig.colorbar(img, ax=ax, format="%+2.0f dB")
     plt.savefig(fname)
 
-def stft_power(stft):
-    stft_db = librosa.amplitude_to_db(stft, ref=np.max)
-    #avg_power = np.sum(stft_db) / stft_db.shape[1]
-    #if avg_power == 0:
-    #    print(stft_db)
-    #S, _ = librosa.magphase(stft)
-    rms = librosa.feature.rms(S=stft_db, frame_length=512, hop_length=160)
+def spec_power(spec):
+    rms = librosa.feature.rms(S=spec, frame_length=512, hop_length=160)
     avg_rms = np.sum(rms) / np.size(rms)
     return avg_rms
 
@@ -161,11 +154,8 @@ def main():
             fake_viewer.pz = world_point[2]
             s.step()
             audioSystem.step()
-            stft = compute_stft(np.array(audioSystem.ambisonic_output[0]), audioSystem.SR)
-            if idx == 0:
-                plot_spectrogram(stft)
-            
-            intensity = stft_power(stft)
+            spectrograms = audioSystem.get_spectrogram()
+            intensity = spec_power(spectrograms[:,:,0])
             if intensity == 0.0:
                 continue
 

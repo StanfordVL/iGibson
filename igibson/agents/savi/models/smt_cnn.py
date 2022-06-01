@@ -54,6 +54,12 @@ class SMTCNN(nn.Module):
             self.depth_encoder = custom_resnet18(num_input_channels=n_input_depth)
             self._feat_dims += 64
 
+        if "floorplan_map" in observation_space.spaces:
+            self.input_modalities.append("floorplan_map")
+            n_input_depth = 1
+            self.floorplan_map_encoder = custom_resnet18(num_input_channels=n_input_depth)
+            self._feat_dims += 64
+            
         # Semantic instance segmentation
         if "semantic" in observation_space.spaces:
             # not executed in SoundSpaces
@@ -94,7 +100,8 @@ class SMTCNN(nn.Module):
             if self.obs_transform:
                 depth_observations = self.obs_transform(depth_observations)
             cnn_features.append(self.depth_encoder(depth_observations))
-
+        
+        
         if "semantic" in self.input_modalities:
             assert "semantic_object" in observations.keys(), \
                 "SMTCNN: Both instance and class segmentations must be available"
@@ -142,4 +149,5 @@ def convert_semantics_to_rgb(semantics):
     semantics_rgb = torch.stack([semantics_r, semantics_g, semantics_b], -1)
 
     return semantics_rgb
+
 

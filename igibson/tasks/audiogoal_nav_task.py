@@ -4,48 +4,16 @@ import numpy as np
 import pybullet as p
 
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
-from igibson.reward_functions.reward_function_base import BaseRewardFunction
-from igibson.reward_functions.potential_reward import PotentialReward
-from igibson.reward_functions.collision_reward import CollisionReward
-from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.objects.visual_marker import VisualMarker
 from igibson.utils.utils import cartesian_to_polar, restoreState, l2_distance, rotate_vector_3d
-
-
-class TimeReward(BaseRewardFunction):
-    """
-    Time reward
-    A negative reward per time step
-    """
-
-    def __init__(self, config):
-        super().__init__(config)
-        self.time_reward_weight = self.config.get(
-            'time_reward_weight', -0.01)
-
-    def get_reward(self, task, env):
-        """
-        Reward is proportional to the number of steps
-        :param task: task instance
-        :param env: environment instance
-        :return: reward
-        """
-        return self.time_reward_weight
 
 class AudioGoalNavTask(PointNavRandomTask):
     """
     Redefine the task (reward functions)
     """
     def __init__(self, env):
-        super().__init__(env)
+        super(AudioGoalNavTask, self).__init__(env)
         self.target_obj  = None
-        self.reward_functions = [
-            PotentialReward(self.config), # geodesic distance, potential_reward_weight
-            CollisionReward(self.config),
-            PointGoalReward(self.config), # success_reward
-            TimeReward(self.config), # time_reward_weight
-        ]
-
         self.load_target(env)
 
     def reset_agent(self, env):

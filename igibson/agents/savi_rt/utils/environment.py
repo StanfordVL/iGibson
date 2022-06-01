@@ -38,19 +38,30 @@ from transforms3d.euler import euler2quat
 
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
+<<<<<<< HEAD
 
 
 COUNT_CURR_EPISODE = 0
 
+=======
+from igibson.utils.utils import rotate_vector_3d
+from igibson.tasks.savi_task import SAViTask
+        
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 
 class AVNavRLEnv(iGibsonEnv):
     """
     Redefine the environment (robot, task, dataset)
     """
+<<<<<<< HEAD
     def __init__(self, config_file, mode, scene_splits):
         scene_id = np.random.choice(scene_splits)
         super().__init__(config_file, scene_id, mode)
         self.config["scene_splits"] = scene_splits
+=======
+    def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4'):
+        super().__init__(config_file, scene_id, mode)
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         
     def load(self):
         """

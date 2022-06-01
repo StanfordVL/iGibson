@@ -2,6 +2,7 @@ import numpy as np
 import pybullet as p
 
 from igibson.objects.visual_marker import VisualMarker
+from igibson.reward_functions.time_reward import TimeReward
 from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.reward_functions.potential_reward import PotentialReward
@@ -34,6 +35,7 @@ class PointNavFixedTask(BaseTask):
             PotentialReward(self.config),
             CollisionReward(self.config),
             PointGoalReward(self.config),
+            TimeReward(self.config)
         ]
 
         self.initial_pos = np.array(self.config.get("initial_pos", [0, 0, 0]))

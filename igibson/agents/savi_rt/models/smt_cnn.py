@@ -61,6 +61,7 @@ class SMTCNN(nn.Module):
             self._feat_dims += 64
             
         # Semantic instance segmentation
+<<<<<<< HEAD
         if "semantic" in observation_space.spaces:
             # not executed in SoundSpaces
             # Semantic object segmentation
@@ -68,6 +69,15 @@ class SMTCNN(nn.Module):
             self.input_modalities.append("semantic_object")
             self.semantic_encoder = custom_resnet18(num_input_channels=6)
             self._feat_dims += 64
+=======
+#         if "semantic" in observation_space.spaces:
+#             # not executed in SoundSpaces
+#             # Semantic object segmentation
+#             self.input_modalities.append("semantic")
+#             self.input_modalities.append("semantic_object")
+#             self.semantic_encoder = custom_resnet18(num_input_channels=6)
+#             self._feat_dims += 64
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 
         self.layer_init()
 
@@ -100,6 +110,7 @@ class SMTCNN(nn.Module):
             if self.obs_transform:
                 depth_observations = self.obs_transform(depth_observations)
             cnn_features.append(self.depth_encoder(depth_observations))
+<<<<<<< HEAD
         
         
         if "semantic" in self.input_modalities:
@@ -121,6 +132,11 @@ class SMTCNN(nn.Module):
         cnn_features = torch.cat(cnn_features, dim=1)
 
         return cnn_features
+=======
+
+        cnn_features = torch.cat(cnn_features, dim=1)
+        return cnn_features, cnn_features
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 
     @property
     def feature_dims(self):

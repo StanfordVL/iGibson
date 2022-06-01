@@ -227,6 +227,7 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
         generated image of a single frame.
     """
     egocentric_view_l: List[np.ndarray] = []
+    topdown_view_l: List[np.ndarray] = []
     if "rgb" in observation:
         rgb = observation["rgb"]
         if not isinstance(rgb, np.ndarray):
@@ -245,6 +246,12 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
         egocentric_view_l.append(depth_map)
 
     # add image goal if observation has image_goal info
+    if "top_down" in observation:
+        topdown = observation["top_down"]
+        if not isinstance(topdown, np.ndarray):
+            topdown = topdown.cpu().numpy()
+        topdown_view_l.append(topdown)
+    
     if "imagegoal" in observation:
         rgb = observation["imagegoal"]
         if not isinstance(rgb, np.ndarray):
@@ -256,9 +263,13 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
         len(egocentric_view_l) > 0
     ), "Expected at least one visual sensor enabled."
     egocentric_view = np.concatenate(egocentric_view_l, axis=1)
-
+    if "top_down" not in observation:
+        topdown_view = egocentric_view
+    else:
+        topdown_view = np.concatenate(topdown_view_l, axis=1)
     frame = egocentric_view
-    return frame
+    frame_topdown = topdown_view
+    return frame, frame_topdown
 
 def images_to_video(
     images: List[np.ndarray],
@@ -332,7 +343,7 @@ def generate_video(
     if len(images) < 1:
         return
 
-    video_name = f"{scene_name}_{sound}_{metric_name}{metric_value:.2f}"
+    video_name = f"{scene_name}_{sound}_{episode_id}_{metric_name}{metric_value:.2f}"
     if "disk" in video_option:
         assert video_dir is not None
         if audios is None:

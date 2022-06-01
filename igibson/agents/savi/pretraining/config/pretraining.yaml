@@ -26,7 +26,11 @@ robot:
    rendering_params: null
    controller_config:
      base:
-       name: DifferentialDriveController
+        name: JointController
+        motor_type: velocity
+        command_input_limits: default
+        command_output_limits: default
+        use_delta_commands: false
 
 # sensor spec
 output: [depth, audio]
@@ -69,7 +73,8 @@ object_randomization_freq: null
 
 
 # traning
-num_steps: 150
+num_steps: 100
+
 
 
 

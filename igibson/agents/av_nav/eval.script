@@ -1,0 +1,24 @@
+#!/bin/bash
+#
+#SBATCH --job-name=audiogoal_occl1
+#SBATCH --partition=svl
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --mem=80G
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=6
+#SBATCH --time 192:00:00
+#SBATCH --output=slurm/slurm_%A.out
+#SBATCH --error=slurm/slurm_%A.err
+#SBATCH --mail-user=gdharan@stanford.edu
+#SBATCH --mail-type=ALL
+######################
+# Begin work section #
+######################
+echo “SLURM_JOBID=“$SLURM_JOBID
+echo “SLURM_JOB_NODELIST”=$SLURM_JOB_NODELIST
+echo “SLURM_NNODES”=$SLURM_NNODES
+echo “SLURMTMPDIR=“$SLURMTMPDIR
+echo “working directory = “$SLURM_SUBMIT_DIR
+. /cvgl2/u/gdharan/anaconda3/bin/activate igibson_new
+python3 run.py --run-type eval --exp-config $1
