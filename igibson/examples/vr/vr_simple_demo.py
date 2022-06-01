@@ -13,10 +13,13 @@ from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
 from igibson.robots import BehaviorRobot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
+from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
+from igibson.audio.audio_system import AudioSystem
 
 # HDR files for PBR rendering
 from igibson.simulator_vr import SimulatorVR
 from igibson.utils.utils import parse_config
+
 
 hdr_texture = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_02.hdr")
 hdr_texture2 = os.path.join(igibson.ig_dataset_path, "scenes", "background", "probe_03.hdr")
@@ -54,7 +57,6 @@ def main(selection="user", headless=False, short_exec=False):
         ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
         ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
         ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (0.800000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
         ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107)),
         ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
         ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
@@ -84,15 +86,36 @@ def main(selection="user", headless=False, short_exec=False):
     s.import_object(obj)
     obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
 
+    speaker = ArticulatedObject(
+        os.path.join(
+            igibson.ig_dataset_path,
+            "objects",
+            "loudspeaker",
+            "563b0c299b32e73327ac18a9705c27f1",
+            "563b0c299b32e73327ac18a9705c27f1.urdf",
+        ),
+        scale=1,
+    )
+    s.import_object(speaker)
+    speaker.set_position_orientation([1.050000, -0.750000, 0.750000], [0, 0, 0, 1])
+
+
     config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"))
 
     bvr_robot = BehaviorRobot(**config["robot"])
     s.import_object(bvr_robot)
     bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
 
+    acousticMesh = getIgAcousticMesh(s)
+
+    # Audio System Initialization!
+    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_VR_Viewer=True, stream_audio=True)
+    audioSystem.registerSource(speaker.get_body_ids()[0], "telephone.wav", enabled=True)
+
     # Main simulation loop
     while True:
         s.step()
+        audioSystem.step()
 
         bvr_robot.apply_action(s.gen_vr_robot_action())
 

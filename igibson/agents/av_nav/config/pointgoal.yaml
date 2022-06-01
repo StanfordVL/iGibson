@@ -1,12 +1,11 @@
 ## SoundSpaces
 NUM_PROCESSES: 9
-EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
 LOG_FILE: "data/pointgoal/train.log"
 CHECKPOINT_INTERVAL: 50
 CHECKPOINT_FOLDER: "data/pointgoal/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/pointgoal/checkpoints/ckpt.96.pth"
+EVAL_CKPT_PATH_DIR: "data/pointgoal/checkpoints/ckpt.307.pth"
 # 96 98
 TENSORBOARD_DIR: "data/pointgoal/tb"
 TEST_EPISODE_COUNT: 500

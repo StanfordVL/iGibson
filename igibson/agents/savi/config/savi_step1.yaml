@@ -1,15 +1,15 @@
-NUM_PROCESSES: 9
+NUM_PROCESSES: 2
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 40000
 LOG_INTERVAL: 10
-LOG_FILE: "data/step1_0105/train.log"
+LOG_FILE: "data/savi_0516/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/step1_0105/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/step1_0105/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/step1_0105/tb"
-MODEL_DIR: "data/step1_0105"
+CHECKPOINT_FOLDER: "data/savi_0516/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/savi_0516/checkpoints/ckpt.52.pth"
+TENSORBOARD_DIR: "data/savi_0516/tb"
+MODEL_DIR: "data/savi_0516"
 TORCH_GPU_ID: 0
-SEED: 0
+SEED: 1
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
 
@@ -69,7 +69,8 @@ train_encoder: False
 current_pred_only: False
 weighting_factor: 0.5
 belief_cfg_lr: 0.001
-label_models: '/viscam/u/wangzz/avGibson/igibson/agents/savi/data/pretraining_1201/ckpt.20.pth'
+label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0414/ckpt.25.pth'
+
 
 
 ## igibson
@@ -80,7 +81,7 @@ load_texture: true
 pybullet_load_texture: true
 trav_map_type: with_obj
 trav_map_resolution: 0.1
-trav_map_erosion: 3
+trav_map_erosion: 2
 should_open_all_doors: true
 
 is_discrete: True
@@ -94,14 +95,14 @@ action_activation: tanh
 
 # task
 task: SAVi
-target_dist_min: 1.0
+target_dist_min: 2.0
 target_dist_max: 10.0
-task_obs_dim: 4
+task_obs_dim: 2
 
 # robot
 robot:
    name: AVNavTurtlebot
-   action_type: discrete
+   action_type: continuous
    action_normalize: true
    base_name: null
    scale: 1.0
@@ -109,7 +110,11 @@ robot:
    rendering_params: null
    controller_config:
      base:
-       name: DifferentialDriveController
+        name: JointController
+        motor_type: velocity
+        command_input_limits: default
+        command_output_limits: default
+        use_delta_commands: false
 
 # sensor spec
 goal_format: "cartesian"
@@ -119,8 +124,8 @@ audio_write: ""
 
 # image
 fisheye: false
-image_width: 64
-image_height: 64
+image_width: 160
+image_height: 160
 vertical_fov: 45
 # depth
 depth_low: 0.8
@@ -135,6 +140,7 @@ audio_dir: "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits"
 # visual objects
 visual_object_at_initial_target_pos: true
 target_visual_object_visible_to_agent: false
+visible_target: false
 
 # reward only for point nav fixed task
 reward_type: geodesic
@@ -144,7 +150,7 @@ collision_reward_weight: -0.005
 time_reward_weight: -0.01
 
 # termination condition
-dist_tol: 1
+dist_tol: 0.36
 max_step: 500
 max_collisions_allowed: 500
 
@@ -156,3 +162,4 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
+

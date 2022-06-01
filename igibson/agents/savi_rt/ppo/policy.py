@@ -69,7 +69,10 @@ class Policy(nn.Module):
             action = distribution.sample()
 
         action_log_probs = distribution.log_probs(action)
+<<<<<<< HEAD
         
+=======
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats
 
     
@@ -287,7 +290,11 @@ class AudioNavSMTNet(Net):
         self._use_belief_as_goal = use_belief_as_goal
         self._use_label_belief = use_label_belief
         self._use_location_belief = use_location_belief
+<<<<<<< HEAD
         self._use_rt_map_features= use_rt_map_features
+=======
+        self._use_rt_map_features = use_rt_map_features
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         self._hidden_size = hidden_size
         self._action_size = action_space.n if is_discrete else action_space.shape[0]     
         self._use_belief_encoder = use_belief_encoding
@@ -305,10 +312,12 @@ class AudioNavSMTNet(Net):
             action_encoding_dims = 16
         else:
             action_encoding_dims = 0
+
         nfeats = self.visual_encoder.feature_dims + action_encoding_dims + audio_feature_dims
         
         if 'task_obs' in observation_space.spaces:
             nfeats += 2
+<<<<<<< HEAD
             
         if 'bump' in observation_space.spaces:
             self._bump = True
@@ -321,6 +330,16 @@ class AudioNavSMTNet(Net):
             assert "rt_map_features" in observation_space.spaces
             nfeats += observation_space.spaces["rt_map_features"].shape[0]
         
+=======
+        
+        if self._use_category_input:
+            nfeats += len(CATEGORIES)
+
+        if self._use_rt_map_features:
+            assert "rt_map_features" in observation_space.spaces
+            nfeats += observation_space.spaces["rt_map_features"].shape[0]
+
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         # Add pose observations to the memory
         assert "pose_sensor" in observation_space.spaces
         if "pose_sensor" in observation_space.spaces:
@@ -386,7 +405,6 @@ class AudioNavSMTNet(Net):
                 belief = self.belief_encoder(belief)
         else:
             belief = None
-
         x_att = self.smt_state_encoder(x, ext_memory, ext_memory_masks, goal=belief)
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
@@ -435,11 +453,14 @@ class AudioNavSMTNet(Net):
         observations['audio_features'].copy_(self.goal_encoder(observations))
         x_unflattened.append(observations['audio_features'])
         x_unflattened.append(observations['task_obs'][:, -2:])
+<<<<<<< HEAD
         if self._bump:
             if len(observations["bump"].size()) == 3:
                 x.append(torch.squeeze(observations["bump"], 2))
             else:
                 x.append(observations["bump"])
+=======
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         if self._use_category_input:
             x_unflattened.append(observations["category"])
         if self._use_rt_map_features:
@@ -447,4 +468,8 @@ class AudioNavSMTNet(Net):
         x_unflattened.append(observations["pose_sensor"])
         x = torch.cat(x_unflattened, dim=1)
         # redundant: x_unflattened[0] in ppo_trainer, observations['visual_features']
+<<<<<<< HEAD
         return x, x_unflattened
+=======
+        return x, x_unflattened
+>>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c

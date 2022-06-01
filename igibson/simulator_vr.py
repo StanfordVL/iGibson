@@ -113,7 +113,7 @@ class SimulatorVR(Simulator):
         )
 
     def initialize_renderer(self):
-        self.visual_objects = {}
+        self.visual_object_cache = {}
         self.renderer = MeshRendererVR(
             rendering_settings=self.rendering_settings, vr_settings=self.vr_settings, simulator=self
         )
