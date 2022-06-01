@@ -23,6 +23,8 @@ from scipy.io import wavfile
 import moviepy.editor as mpy
 from moviepy.audio.AudioClip import CompositeAudioClip
 
+
+
 class Flatten(nn.Module):
     def forward(self, x):
         return x.reshape(x.size(0), -1)
@@ -168,7 +170,7 @@ def to_tensor(v):
 
 
 def batch_obs(
-    observations: List[Dict], device: Optional[torch.device] = None
+    observations: List[Dict], device: Optional[torch.device] = None, skip_list = []
 ) -> Dict[str, torch.Tensor]:
     r"""Transpose a batch of observation dicts to a dict of batched
     observations.
@@ -180,14 +182,22 @@ def batch_obs(
         transposed dict of lists of observations.
     """
     batch = defaultdict(list)
+
     for obs in observations:
         for sensor in obs:
+            if sensor in skip_list:
+                continue
             batch[sensor].append(to_tensor(obs[sensor]))
+
     for sensor in batch:
         batch[sensor] = torch.stack(batch[sensor], dim=0).to(
             device=device, dtype=torch.float
         )
-
+        if sensor == "bump":
+            batch["bump"] = batch["bump"][:, None]
+        elif sensor == "task_obs":
+            batch["task_obs"] = batch["task_obs"][:, -2:]
+ 
     return batch
 
 
@@ -215,6 +225,8 @@ def poll_checkpoint_folder(
     if ind < len(models_paths):
         return models_paths[ind]
     return None
+
+
 
 class ResizeCenterCropper(nn.Module):
     def __init__(self, size, channels_last: bool = False):
@@ -272,6 +284,19 @@ class ResizeCenterCropper(nn.Module):
             channels_last=self.channels_last,
         )
 
+def quaternion_from_coeff(coeffs: np.ndarray) -> np.quaternion:
+    r"""Creates a quaternions from coeffs in [x, y, z, w] format"""
+    quat = np.quaternion(0, 0, 0, 0)
+    quat.real = coeffs[3]
+    quat.imag = coeffs[0:3]
+    return quat    
+    
+def cartesian_to_polar(x, y):
+    rho = np.sqrt(x ** 2 + y ** 2)
+    phi = np.arctan2(y, x)
+    return rho, phi
+
+    
 def image_resize_shortest_edge(
     img, size: int, channels_last: bool = False
 ) -> torch.Tensor:
@@ -320,8 +345,8 @@ def image_resize_shortest_edge(
     if no_batch_dim:
         img = img.squeeze(dim=0)  # Removes the batch dimension
     return img
-    
-    
+
+
 def center_crop(img, size, channels_last: bool = False):
     """Performs a center crop on an image.
 
@@ -351,6 +376,8 @@ def center_crop(img, size, channels_last: bool = False):
     else:
         return img[..., starty : starty + cropy, startx : startx + cropx]    
 
+    
+    
 
 def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
     r"""Generate image of single frame from observation and info
@@ -533,6 +560,8 @@ def generate_video(
         else:
             images_to_video_with_audio(images, video_dir, video_name, audios, sr, fps=fps)
             
+            
+
             
 d3_40_colors_rgb: np.ndarray = np.array(
     [
