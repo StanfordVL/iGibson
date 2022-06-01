@@ -12,12 +12,15 @@ import torch
 import torch.nn as nn
 from torchsummary import summary
 from igibson.agents.savi_rt.utils.utils import CategoricalNet, GaussianNet
-# from igibson.agents.savi_rt.models.rnn_state_encoder import RNNStateEncoder
+from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
 from igibson.agents.savi_rt.models.visual_cnn import VisualCNN
 from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
 from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
 from igibson.agents.savi_rt.models.smt_state_encoder import SMTStateEncoder
-from igibson.agents.savi_rt.utils.dataset import CATEGORIES
+
+from igibson.agents.savi.utils.dataset import CATEGORIES
+
+DUAL_GOAL_DELIMITER = ','
 
 
 class Policy(nn.Module):
@@ -51,7 +54,7 @@ class Policy(nn.Module):
         ext_memory_masks,
         deterministic=False,
     ):
-        features, rnn_hidden_states, ext_memory_feats, visual_features, audio_features = self.net(
+        features, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -66,10 +69,12 @@ class Policy(nn.Module):
             action = distribution.sample()
 
         action_log_probs = distribution.log_probs(action)
-        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, visual_features, audio_features
+        
+        return value, action, action_log_probs, rnn_hidden_states, ext_memory_feats, ext_memory_unflattened_feats
 
+    
     def get_value(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        features, _, _, _, _ = self.net(
+        features, _, _, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         return self.critic(features)
@@ -77,7 +82,7 @@ class Policy(nn.Module):
     def evaluate_actions(
         self, observations, rnn_hidden_states, prev_actions, masks, action, ext_memory, ext_memory_masks
     ):
-        features, rnn_hidden_states, ext_memory_feats, _, _ = self.net(
+        features, rnn_hidden_states, ext_memory_feats, _ = self.net(
             observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks
         )
         distribution = self.action_distribution(features)
@@ -172,8 +177,10 @@ class AudioNavBaselineNet(Net):
         super().__init__()
         self._hidden_size = hidden_size
         self._audiogoal = False
-        self._pointgoal = False
-        self._n_pointgoal = 0
+        self._task_obs = False
+        self._n_task_obs = 0
+        self._bump = False
+        self._n_bump = 0
         
         self._label = 'category' in observation_space.spaces
         
@@ -183,17 +190,21 @@ class AudioNavBaselineNet(Net):
         self._use_mlp_state_encoder = use_mlp_state_encoder
 
         if 'task_obs' in observation_space.spaces:
-            self._pointgoal = True
-            self._n_pointgoal = observation_space.spaces["task_obs"].shape[0]
+            self._task_obs = True
+            self._n_task_obs = observation_space.spaces["task_obs"].shape[0]
+        if 'bump' in observation_space.spaces:
+            self._bump = True
+            self._n_bump = observation_space.spaces["bump"].shape[0]
+            
         if 'audio' in observation_space.spaces:
             self._audiogoal = True
             audiogoal_sensor = "audio"
-            self.audio_encoder = AudioCNN(observation_space, hidden_size, audiogoal_sensor)
-            
+            self.audio_encoder = AudioCNN(observation_space, hidden_size, audiogoal_sensor) 
         self.visual_encoder = VisualCNN(observation_space, hidden_size, extra_rgb)
         
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
-                         (self._n_pointgoal if self._pointgoal else 0) + (self._hidden_size if self._audiogoal else 0) + \
+                         (self._n_task_obs if self._task_obs else 0) + (self._hidden_size if self._audiogoal else 0) + \
+                         (self._n_bump if self._bump else 0) + \
                          (observation_space.spaces['category'].shape[0] if self._label else 0) + \
                          (observation_space.spaces['category_belief'].shape[0] if self._use_label_belief else 0) + \
                          (observation_space.spaces['location_belief'].shape[0] if self._use_location_belief else 0)
@@ -226,8 +237,13 @@ class AudioNavBaselineNet(Net):
     def forward(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory=None, ext_memory_masks=None):
         x = []
 
-        if self._pointgoal:
+        if self._task_obs:
             x.append(observations["task_obs"])
+        if self._bump:
+            if len(observations["bump"].size()) == 3:
+                x.append(torch.squeeze(observations["bump"], 2))
+            else:
+                x.append(observations["bump"]) 
         if self._audiogoal:
             x.append(self.audio_encoder(observations))
         if not self.is_blind:
@@ -238,7 +254,7 @@ class AudioNavBaselineNet(Net):
 
         assert not torch.isnan(x2).any().item()
 
-        return x2, rnn_hidden_states1
+        return x2, rnn_hidden_states1, None
 
     
     
@@ -259,6 +275,7 @@ class AudioNavSMTNet(Net):
         use_belief_as_goal=True,
         use_label_belief=True,
         use_location_belief=True,
+        use_rt_map_features=True,
         use_belief_encoding=False,
         normalize_category_distribution=False,
         use_category_input=False,
@@ -270,11 +287,13 @@ class AudioNavSMTNet(Net):
         self._use_belief_as_goal = use_belief_as_goal
         self._use_label_belief = use_label_belief
         self._use_location_belief = use_location_belief
+        self._use_rt_map_features= use_rt_map_features
         self._hidden_size = hidden_size
         self._action_size = action_space.n if is_discrete else action_space.shape[0]     
-        self._use_belief_encoder = use_belief_encoding # False
+        self._use_belief_encoder = use_belief_encoding
         self._normalize_category_distribution = normalize_category_distribution
-        self._use_category_input = use_category_input
+        self._use_category_input = use_category_input #has_distractor_sound
+        self._bump = False
         
         assert "audio" in observation_space.spaces
         self.goal_encoder = AudioCNN(observation_space, 128, "audio")
@@ -288,9 +307,20 @@ class AudioNavSMTNet(Net):
             action_encoding_dims = 0
         nfeats = self.visual_encoder.feature_dims + action_encoding_dims + audio_feature_dims
         
+        if 'task_obs' in observation_space.spaces:
+            nfeats += 2
+            
+        if 'bump' in observation_space.spaces:
+            self._bump = True
+            nfeats += observation_space.spaces["bump"].shape[0]
+
         if self._use_category_input:
             nfeats += len(CATEGORIES)
-
+            
+        if self._use_rt_map_features:
+            assert "rt_map_features" in observation_space.spaces
+            nfeats += observation_space.spaces["rt_map_features"].shape[0]
+        
         # Add pose observations to the memory
         assert "pose_sensor" in observation_space.spaces
         if "pose_sensor" in observation_space.spaces:
@@ -300,7 +330,7 @@ class AudioNavSMTNet(Net):
             nfeats += pose_dims
         else:
             pose_indices = None
-
+            
         self._feature_size = nfeats
 
         self.smt_state_encoder = SMTStateEncoder(
@@ -310,7 +340,7 @@ class AudioNavSMTNet(Net):
             **kwargs
         )
 
-        if self._use_belief_encoder: # False
+        if self._use_belief_encoder:
             self.belief_encoder = nn.Linear(self._hidden_size, self._hidden_size)
 
         if use_pretrained:
@@ -339,7 +369,7 @@ class AudioNavSMTNet(Net):
         return -1
 
     def forward(self, observations, rnn_hidden_states, prev_actions, masks, ext_memory, ext_memory_masks):
-        x, visual_features, audio_features = self.get_features(observations, prev_actions)
+        x, x_unflattened = self.get_features(observations, prev_actions)
 
         if self._use_belief_as_goal:
             belief = torch.zeros((x.shape[0], self._hidden_size), device=x.device)
@@ -347,12 +377,12 @@ class AudioNavSMTNet(Net):
                 if self._normalize_category_distribution:
                     belief[:, :len(CATEGORIES)] = nn.functional.softmax(observations['category_belief'], dim=1)
                 else:
-                    belief[:, :len(CATEGORIES)] = observations['category_belief'] # :21
+                    belief[:, :len(CATEGORIES)] = observations['category_belief']
 
             if self._use_location_belief:
-                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief'] # 21:23
+                belief[:, len(CATEGORIES):len(CATEGORIES)+2] = observations['location_belief']
 
-            if self._use_belief_encoder: # False
+            if self._use_belief_encoder:
                 belief = self.belief_encoder(belief)
         else:
             belief = None
@@ -361,7 +391,7 @@ class AudioNavSMTNet(Net):
         if self._use_residual_connection:
             x_att = torch.cat([x_att, x], 1)
 
-        return x_att, rnn_hidden_states, x, visual_features, audio_features
+        return x_att, rnn_hidden_states, x, x_unflattened
 
     def _get_one_hot(self, actions):
         if actions.shape[1] == self._action_size:
@@ -398,15 +428,23 @@ class AudioNavSMTNet(Net):
         self.visual_encoder.eval()
 
     def get_features(self, observations, prev_actions):
-        x = []
-        visual_output, visual_features = self.visual_encoder(observations)
-        audio_output, audio_features = self.goal_encoder(observations)
-        x.append(visual_output)
-        x.append(self.action_encoder(self._get_one_hot(prev_actions)))
-        x.append(audio_output)
+        x_unflattened = []
+        observations['visual_features'].copy_(self.visual_encoder(observations))
+        x_unflattened.append(observations['visual_features'])
+        x_unflattened.append(self.action_encoder(self._get_one_hot(prev_actions)))
+        observations['audio_features'].copy_(self.goal_encoder(observations))
+        x_unflattened.append(observations['audio_features'])
+        x_unflattened.append(observations['task_obs'][:, -2:])
+        if self._bump:
+            if len(observations["bump"].size()) == 3:
+                x.append(torch.squeeze(observations["bump"], 2))
+            else:
+                x.append(observations["bump"])
         if self._use_category_input:
-            x.append(observations["category"])
-        x.append(observations["pose_sensor"])
-        x = torch.cat(x, dim=1)
-
-        return x, visual_features, audio_features
+            x_unflattened.append(observations["category"])
+        if self._use_rt_map_features:
+            x_unflattened.append(observations["rt_map_features"])
+        x_unflattened.append(observations["pose_sensor"])
+        x = torch.cat(x_unflattened, dim=1)
+        # redundant: x_unflattened[0] in ppo_trainer, observations['visual_features']
+        return x, x_unflattened

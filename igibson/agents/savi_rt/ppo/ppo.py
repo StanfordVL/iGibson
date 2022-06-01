@@ -56,7 +56,7 @@ class PPO(nn.Module):
 
         return (advantages - advantages.mean()) / (advantages.std() + EPS_PPO)
 
-    def update(self, rollouts):
+    def update(self, rollouts, rt_predictor_loss=None):
         advantages = self.get_advantages(rollouts)
 
         value_loss_epoch = 0
@@ -81,6 +81,7 @@ class PPO(nn.Module):
                     adv_targ,
                     external_memory,
                     external_memory_masks,
+                    _
                 ) = sample
                 # Reshape to do in a single forward pass for all steps
                 (
@@ -132,6 +133,8 @@ class PPO(nn.Module):
                     + action_loss
                     - dist_entropy * self.entropy_coef
                 )
+                if rt_predictor_loss is not None:
+                    total_loss += rt_predictor_loss
 
                 self.before_backward(total_loss)
                 total_loss.backward()
@@ -166,4 +169,3 @@ class PPO(nn.Module):
 
     def after_step(self):
         pass
-
