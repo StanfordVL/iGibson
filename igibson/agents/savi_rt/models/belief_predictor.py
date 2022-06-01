@@ -12,9 +12,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 import torchvision.models as models
-from igibson.agents.savi_rt.models.smt_resnet import custom_resnet18
+from igibson.agents.savi.models.smt_resnet import custom_resnet18
 from igibson.utils.utils import rotate_vector_3d, rotate_vector_2d
-from igibson.agents.savi_rt.utils.dataset import CATEGORIES
+from igibson.agents.savi.utils.dataset import CATEGORIES
+from skimage.measure import block_reduce
 
 
 class DecentralizedDistributedMixinBelief:
@@ -55,7 +56,6 @@ class BeliefPredictor(nn.Module):
     def __init__(self, config, device, input_size, pose_indices,
                  hidden_state_size, num_env=1, has_distractor_sound=False):
         super(BeliefPredictor, self).__init__()
-        # input_size, pose_indices, hidden_state_size not used
         self.config = config
         self.device = device
         self.predict_label = self.config['use_label_belief']
@@ -69,8 +69,10 @@ class BeliefPredictor(nn.Module):
                 else:
                     self.predictor = custom_resnet18(num_input_channels=2)
                 # 65*26 -> 4608
-                # 65*69 -> 16896
-                self.predictor.fc = nn.Linear(16896, 2)
+                # 65*69 -> 16896 1s
+                # 13056
+                # 
+                self.predictor.fc = nn.Linear(13056, 2)
             else:
                 self.predictor = models.resnet18(pretrained=True)
                 self.predictor.conv1 = nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -124,12 +126,11 @@ class BeliefPredictor(nn.Module):
 
     def cnn_forward(self, observations):
         spectrograms = observations["audio"].permute(0, 3, 1, 2)
-
         if self.has_distractor_sound:
             labels = observations["category"]
             expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + spectrograms.shape[-2:])
             inputs = torch.cat([spectrograms, expanded_labels], dim=1)
-        else:
+        else:           
             inputs = spectrograms
         pointgoals = self.predictor(inputs)
 
@@ -150,10 +151,9 @@ class BeliefPredictor(nn.Module):
                 pointgoals = self.cnn_forward(observations).cpu().numpy()
 
             for i in range(batch_size):
-                # base: agent's frame; odom: global frame
                 pose = observations['pose_sensor'][i].cpu().numpy()
-                pos = pose[:3]
-                rpy = pose[3:6]
+                pos = pose[:2]
+                heading = pose[2]
 
                 pointgoal = pointgoals[i]
                 if dones is not None and dones[i]:
@@ -162,7 +162,8 @@ class BeliefPredictor(nn.Module):
                 if observations["audio"][i].sum().item() != 0:
                     # pointgoal_with_gps_compass: X is forward, Y is rightward,
                     # pose: same XY but heading is positive from X to -Y defined based on the initial pose
-                    pointgoal_base = np.array([-pointgoal[1], -pointgoal[0], pos[2]]) #[forward, leftward] in the agent's frame
+#                     pointgoal_base = np.array([-pointgoal[1], -pointgoal[0]]) #[forward, leftward] in the agent's frame
+                    pointgoal_base = np.array([pointgoal[0], pointgoal[1]])
                     if self.last_pointgoal[i] is None:
                         pointgoal_avg = pointgoal_base
                     else:
@@ -170,17 +171,14 @@ class BeliefPredictor(nn.Module):
                             pointgoal_avg = pointgoal_base
                         else:
                             w = self.config['weighting_factor']
-                            pointgoal_avg = (1-w) * pointgoal_base + w * rotate_vector_3d(self.last_pointgoal[i] - pos, *rpy)
-                            # global_to_local(self.last_pointgoal[i], pose)
-                    self.last_pointgoal[i] = rotate_vector_3d(pointgoal_avg, *rpy, cck=False) + pos
-                    #local_to_global(pointgoal_avg, pose)
+                            pointgoal_avg = (1-w) * pointgoal_base + w * global_to_local(self.last_pointgoal[i], pos, heading)
+                    self.last_pointgoal[i] = local_to_global(pointgoal_avg, pos, heading)                   
                 else:
                     if self.last_pointgoal[i] is None:
-                        pointgoal_avg = np.array([10, 10, pos[2]])
+                        pointgoal_avg = np.array([10, 10])
                     else:
-                        pointgoal_avg = rotate_vector_3d(self.last_pointgoal[i] - pos, *rpy)
-                        # global_to_local
-                observations['location_belief'][i].copy_(torch.from_numpy(pointgoal_avg[:2]))
+                        pointgoal_avg = global_to_local(self.last_pointgoal[i], pos, heading)
+                observations['location_belief'][i].copy_(torch.from_numpy(pointgoal_avg[:2])) # 0104 [forward, leftward]
 
         if self.predict_label:
             with torch.no_grad():
@@ -214,21 +212,15 @@ class BeliefPredictorDDP(BeliefPredictor, DecentralizedDistributedMixinBelief):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-# base: agent's frame; odom: global frame; episode frame
-def base_to_odom(pointgoal_base, pose):
-    angle = -pose[2]
-    d = np.linalg.norm(pointgoal_base)
-    theta = np.arctan2(pointgoal_base[1], pointgoal_base[0])
 
-    pointgoal_odom = np.array([pose[0] + d*np.cos(theta+angle), pose[1] + d * np.sin(theta+angle)])
-    return pointgoal_odom
-
-
-def odom_to_base(pointgoal_odom, pose):
-    angle = -pose[2]
-    delta = pointgoal_odom - pose[:2]
+def global_to_local(pointgoal_global, pose, angle):
+    delta = pointgoal_global - pose[:2]
     delta_theta = np.arctan2(delta[1], delta[0]) - angle
     d = np.linalg.norm(delta)
+    return np.array([d * np.cos(delta_theta), d * np.sin(delta_theta)])
 
-    pointgoal_base = np.array([d * np.cos(delta_theta), d * np.sin(delta_theta)])
-    return pointgoal_base
+
+def local_to_global(pointgoal_local, pose, angle):
+    d = np.linalg.norm(pointgoal_local)
+    theta = np.arctan2(pointgoal_local[1], pointgoal_local[0])
+    return np.array([pose[0] + d*np.cos(theta+angle), pose[1] + d * np.sin(theta+angle)])
