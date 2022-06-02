@@ -5,12 +5,10 @@ import time
 from collections import OrderedDict
 import cv2
 from PIL import Image
-import skimage
 import gym
 import numpy as np
 import pybullet as p
 from transforms3d.euler import euler2quat
-from igibson.utils.mesh_util import ortho
 
 from igibson import object_states
 from igibson.envs.env_base import BaseEnv
@@ -26,14 +24,12 @@ from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.tasks.audiogoal_nav_task import AudioGoalNavTask, AudioPointGoalNavTask
 from igibson.tasks.savi_task import SAViTask
-from igibson.tasks.audio_nav_in_savi_task import avNavSAViTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
-from igibson.utils.utils import quatToXYZW
+from igibson.utils.utils import quatToXYZW, rotate_vector_3d
 from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP
-from igibson.utils.utils import rotate_vector_3d
-from igibson.agents.savi.utils.logs import logger
+
 log = logging.getLogger(__name__)
 
 
@@ -77,9 +73,8 @@ class iGibsonEnv(BaseEnv):
             device_idx=device_idx,
             use_pb_gui=use_pb_gui,
         )
-        self.scene_id = scene_id
-        self.num_episode = 0
         self.automatic_reset = self.config.get("automatic_reset", True)
+        
 
     def load_task_setup(self):
         """
@@ -123,8 +118,6 @@ class iGibsonEnv(BaseEnv):
             self.task = AudioPointGoalNavTask(self)
         elif self.config['task'] == 'SAVi':
             self.task = SAViTask(self)
-        elif self.config['task'] == "avNavSAViTask":
-            self.task = avNavSAViTask(self)
         else:
             try:
                 import bddl
@@ -156,8 +149,8 @@ class iGibsonEnv(BaseEnv):
         self.output = self.config["output"]
         self.image_width = self.config.get("image_width", 128)
         self.image_height = self.config.get("image_height", 128)
-        self.image_width_video = self.config.get("image_width_video", 960)
-        self.image_height_video = self.config.get("image_height_video", 960)
+        self.image_width_video = self.config.get("image_width_video", 800)
+        self.image_height_video = self.config.get("image_height_video", 800)
         observation_space = OrderedDict()
         sensors = OrderedDict()
         vision_modalities = []
@@ -168,7 +161,7 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.task.task_obs_dim,), low=-np.inf, high=np.inf
             )
         if "rgb" in self.output:
-            if len(self.config["VIDEO_OPTION"])!=0 and self.config['extra_rgb']:
+            if self.config['extra_rgb']:
                 observation_space["rgb"] = self.build_obs_space(
                 shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
                 )
@@ -251,7 +244,7 @@ class iGibsonEnv(BaseEnv):
                 shape=spectrogram.shape, low=-np.inf, high=np.inf)
         if 'top_down' in self.output:
             observation_space['top_down'] = self.build_obs_space(
-                shape=(self.image_width_video, self.image_width_video, 3), low=-np.inf, high=np.inf)
+                shape=(self.image_height, self.image_width, 3), low=-np.inf, high=np.inf)
         if 'category_belief' in self.output:
             observation_space['category_belief'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
@@ -260,7 +253,7 @@ class iGibsonEnv(BaseEnv):
                 shape=(2,), low=0.0, high=1.0)
         if 'pose_sensor' in self.output:
             observation_space['pose_sensor'] = self.build_obs_space(
-                shape=(4,), low=-np.inf, high=np.inf)
+                shape=(7,), low=-np.inf, high=np.inf)
         if 'category' in self.output:
             observation_space['category'] = self.build_obs_space(
                 shape=(len(CATEGORIES),), low=0.0, high=1.0)
@@ -270,15 +263,9 @@ class iGibsonEnv(BaseEnv):
         if 'rt_map_features' in self.output:
             observation_space['rt_map_features'] = self.build_obs_space(
                 shape=(784,), low=-np.inf, high=np.inf)
-            observation_space['rt_map'] = self.build_obs_space(
-                shape=(23,28,28), low=-np.inf, high=np.inf)
             observation_space['rt_map_gt'] = self.build_obs_space(
                 shape=(28,28), low=-np.inf, high=np.inf)
-            observation_space['visual_features'] = self.build_obs_space(
-                shape=(128,), low=-np.inf, high=np.inf)
-            observation_space['audio_features'] = self.build_obs_space(
-                shape=(128,), low=-np.inf, high=np.inf)
-
+        
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
 
@@ -326,12 +313,8 @@ class iGibsonEnv(BaseEnv):
             vision_obs = self.sensors["vision"].get_obs(self)
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
-            if len(self.config["VIDEO_OPTION"])!=0:
+            if self.config["extra_rgb"]:
                 state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,3), np.mean)
-                if not self.config["extra_rgb"]:
-                    state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,1), np.mean)
-            # (img_height, img_height, 1)
-            # because the rendered robot camera should have the same image size for rgb and depth
         if "scan_occ" in self.sensors:
             scan_obs = self.sensors["scan_occ"].get_obs(self)
             for modality in scan_obs:
@@ -354,7 +337,7 @@ class iGibsonEnv(BaseEnv):
             frame, three_d = self.simulator.renderer.render(modes=("rgb", "3d"))
             depth = -three_d[:, :, 2]
             frame[depth == 0] = 1.0
-#             frame = cv2.flip(frame, 0)
+            frame = cv2.flip(frame, 0)
             bg = (frame[:, :, 0:3][:, :, ::-1] * 255).astype(np.uint8)
             cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/floorplan_Rs.png", bg)
             state['top_down'] = bg
@@ -362,26 +345,16 @@ class iGibsonEnv(BaseEnv):
             
         if 'pose_sensor' in self.output:
             # TODO: pose sensor in the episode frame
-            # (x, y, heading, time)
             pos = np.array(self.robots[0].get_position()) #[x,y,z]
             rpy = np.array(self.robots[0].get_rpy()) #(3,)
-            pos[2] = 0
-            self.task.initial_pos[2] = 0 # remove z axis offset
-            #initial rpy[2]: -pi to pi
-            #initial orn[2]: 0 to 2pi
+            
             pos_eframe = rotate_vector_3d(pos - self.task.initial_pos, 0, 0, self.task.initial_rpy[2])
-            # the new x axis is the forward direction of the initial pose
-            # the new y axis is the leftward direction of the initial pose
-            if rpy[2] - self.task.initial_rpy[2] > np.pi:
-                orn_eframe = rpy[2] - self.task.initial_rpy[2] - 2*np.pi
-            elif rpy[2] - self.task.initial_rpy[2] < -np.pi:
-                orn_eframe = rpy[2] - self.task.initial_rpy[2] + 2*np.pi
-            else:
-                orn_eframe = rpy[2] - self.task.initial_rpy[2]
+            rpy_eframe = rpy - self.task.initial_rpy
+            
             state['pose_sensor'] = np.array(
-                [*pos_eframe[:2], orn_eframe, self.task._episode_time],
+                [*pos_eframe, *rpy_eframe, self.task._episode_time],
                 dtype=np.float32)
-            self.task._episode_time += 1.0 #* action_time
+            self.task._episode_time += 1.0
         
         if 'category' in self.output:
             index = CATEGORY_MAP[self.task.cat]
@@ -389,22 +362,19 @@ class iGibsonEnv(BaseEnv):
             onehot[index] = 1
             state['category'] = onehot
         
-        # categoty_belief and location_belief are updated in _collect_rollout_step
+        # categoty_belief, rt_map_features, and location_belief are updated in _collect_rollout_step
         if "category_belief" in self.output:
             state["category_belief"] = np.zeros(len(CATEGORIES))
         if "location_belief" in self.output:
             state["location_belief"] = np.zeros(2)
         if 'rt_map_features' in self.output:
             state['rt_map_features'] = np.zeros(784)
-            state['rt_map'] = np.zeros((23,28,28))
             state['rt_map_gt'] = self.task.get_room_type_map()
-            state['visual_features'] = np.zeros(128)
-            state['audio_features'] = np.zeros(128)
-            
+        
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"
             state["floorplan_map"] = np.array(Image.open(mapdir))
-
+            
         return state
 
     def run_simulation(self):
@@ -477,20 +447,12 @@ class iGibsonEnv(BaseEnv):
         self.task.step(self)
         self.populate_info(info)
         
-        if done and len(self.config['VIDEO_OPTION'])>0: # generate video
-            self.audio_system.save_audio()
-
+        if done and not self.automatic_reset:
+            self.audio_system.disconnect()
+            
         if done and self.automatic_reset:
             info["last_observation"] = state
-            episodes_per_scene = self.config.get("TRAIN_EPISODE_PER_SCENE", None)
-            if episodes_per_scene is not None and self.num_episode % episodes_per_scene == 0:# and self.num_episode!=0:
-                next_scene_id = np.random.choice(self.config['scene_splits'])
-                logger.info("reloading scene {}".format(next_scene_id))
-                self.config["robot"] = self.robot_config_.copy()
-                self.reload_model(next_scene_id)
-            self.num_episode += 1            
             state = self.reset()
-            
 
         return state, reward, done, info
 

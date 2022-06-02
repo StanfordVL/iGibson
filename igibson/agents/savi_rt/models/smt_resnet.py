@@ -139,6 +139,7 @@ class CustomResNet(nn.Module):
         x = self.layer4(x)
 
         x = torch.flatten(x, 1)
+        # x = batchsize * 16896
         x = self.fc(x)
 
         return x
@@ -160,4 +161,5 @@ def custom_resnet18(**kwargs):
     and AdaptiveAvgPool layers are removed.
     """
     return _resnet(CustomBasicBlock, [2, 2, 2, 2], **kwargs)
+
 

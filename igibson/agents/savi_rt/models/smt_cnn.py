@@ -12,8 +12,8 @@ import torch.nn as nn
 # from ss_baselines.common.utils import ResizeCenterCropper
 # from ss_baselines.savi.models.smt_resnet import custom_resnet18
 
-from igibson.agents.savi.models.smt_resnet import custom_resnet18
-from igibson.agents.savi.utils.utils import ResizeCenterCropper, d3_40_colors_rgb
+from igibson.agents.savi_rt.models.smt_resnet import custom_resnet18
+from igibson.agents.savi_rt.utils.utils import ResizeCenterCropper, d3_40_colors_rgb
 
 
 class SMTCNN(nn.Module):
@@ -54,22 +54,7 @@ class SMTCNN(nn.Module):
             self.depth_encoder = custom_resnet18(num_input_channels=n_input_depth)
             self._feat_dims += 64
 
-        if "floorplan_map" in observation_space.spaces:
-            self.input_modalities.append("floorplan_map")
-            n_input_depth = 1
-            self.floorplan_map_encoder = custom_resnet18(num_input_channels=n_input_depth)
-            self._feat_dims += 64
-            
         # Semantic instance segmentation
-<<<<<<< HEAD
-        if "semantic" in observation_space.spaces:
-            # not executed in SoundSpaces
-            # Semantic object segmentation
-            self.input_modalities.append("semantic")
-            self.input_modalities.append("semantic_object")
-            self.semantic_encoder = custom_resnet18(num_input_channels=6)
-            self._feat_dims += 64
-=======
 #         if "semantic" in observation_space.spaces:
 #             # not executed in SoundSpaces
 #             # Semantic object segmentation
@@ -77,7 +62,6 @@ class SMTCNN(nn.Module):
 #             self.input_modalities.append("semantic_object")
 #             self.semantic_encoder = custom_resnet18(num_input_channels=6)
 #             self._feat_dims += 64
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 
         self.layer_init()
 
@@ -110,33 +94,9 @@ class SMTCNN(nn.Module):
             if self.obs_transform:
                 depth_observations = self.obs_transform(depth_observations)
             cnn_features.append(self.depth_encoder(depth_observations))
-<<<<<<< HEAD
-        
-        
-        if "semantic" in self.input_modalities:
-            assert "semantic_object" in observations.keys(), \
-                "SMTCNN: Both instance and class segmentations must be available"
-            semantic_observations = convert_semantics_to_rgb(
-                observations["semantic"]
-            ).float()
-            semantic_object_observations = observations["semantic_object"].float()
-            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            semantic_observations = torch.cat(
-                [semantic_observations, semantic_object_observations], -1
-            )
-            semantic_observations = semantic_observations.permute(0, 3, 1, 2) / 255.0
-            if self.obs_transform:
-                semantic_observations = self.obs_transform(semantic_observations)
-            cnn_features.append(self.semantic_encoder(semantic_observations))
-
-        cnn_features = torch.cat(cnn_features, dim=1)
-
-        return cnn_features
-=======
 
         cnn_features = torch.cat(cnn_features, dim=1)
         return cnn_features, cnn_features
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 
     @property
     def feature_dims(self):
@@ -165,4 +125,5 @@ def convert_semantics_to_rgb(semantics):
     semantics_rgb = torch.stack([semantics_r, semantics_g, semantics_b], -1)
 
     return semantics_rgb
+
 
