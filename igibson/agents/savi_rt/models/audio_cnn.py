@@ -144,6 +144,6 @@ class AudioCNN(nn.Module):
             cnn_input.append(expanded_labels)
 
         cnn_input = torch.cat(cnn_input, dim=1)
+        return self.cnn(cnn_input), self.cnn(cnn_input) 
 
-        return self.cnn(cnn_input)
 

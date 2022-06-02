@@ -15,7 +15,6 @@ import torchvision.models as models
 from igibson.agents.savi.models.smt_resnet import custom_resnet18
 from igibson.utils.utils import rotate_vector_3d, rotate_vector_2d
 from igibson.agents.savi.utils.dataset import CATEGORIES
-from skimage.measure import block_reduce
 
 
 class DecentralizedDistributedMixinBelief:
@@ -70,9 +69,8 @@ class BeliefPredictor(nn.Module):
                     self.predictor = custom_resnet18(num_input_channels=2)
                 # 65*26 -> 4608
                 # 65*69 -> 16896 1s
-                # 13056
                 # 
-                self.predictor.fc = nn.Linear(13056, 2)
+                self.predictor.fc = nn.Linear(46464, 2)
             else:
                 self.predictor = models.resnet18(pretrained=True)
                 self.predictor.conv1 = nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -130,7 +128,7 @@ class BeliefPredictor(nn.Module):
             labels = observations["category"]
             expanded_labels = labels.reshape(labels.shape + (1, 1)).expand(labels.shape + spectrograms.shape[-2:])
             inputs = torch.cat([spectrograms, expanded_labels], dim=1)
-        else:           
+        else:
             inputs = spectrograms
         pointgoals = self.predictor(inputs)
 
@@ -149,11 +147,12 @@ class BeliefPredictor(nn.Module):
             # predicted pointgoal: X is rightward, Y is backward, heading increases X to Y, agent faces -Y
             with torch.no_grad():
                 pointgoals = self.cnn_forward(observations).cpu().numpy()
+#                 print("new pointgoal", pointgoals)
 
             for i in range(batch_size):
                 pose = observations['pose_sensor'][i].cpu().numpy()
                 pos = pose[:2]
-                heading = pose[2]
+                rpy = pose[3:6]
 
                 pointgoal = pointgoals[i]
                 if dones is not None and dones[i]:
@@ -171,13 +170,13 @@ class BeliefPredictor(nn.Module):
                             pointgoal_avg = pointgoal_base
                         else:
                             w = self.config['weighting_factor']
-                            pointgoal_avg = (1-w) * pointgoal_base + w * global_to_local(self.last_pointgoal[i], pos, heading)
-                    self.last_pointgoal[i] = local_to_global(pointgoal_avg, pos, heading)                   
+                            pointgoal_avg = (1-w) * pointgoal_base + w * global_to_local(self.last_pointgoal[i], pos, rpy[2])
+                    self.last_pointgoal[i] = local_to_global(pointgoal_avg, pos, rpy[2])                   
                 else:
                     if self.last_pointgoal[i] is None:
                         pointgoal_avg = np.array([10, 10])
                     else:
-                        pointgoal_avg = global_to_local(self.last_pointgoal[i], pos, heading)
+                        pointgoal_avg = global_to_local(self.last_pointgoal[i], pos, rpy[2])
                 observations['location_belief'][i].copy_(torch.from_numpy(pointgoal_avg[:2])) # 0104 [forward, leftward]
 
         if self.predict_label:

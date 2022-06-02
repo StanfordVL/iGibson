@@ -56,7 +56,7 @@ class PPO(nn.Module):
 
         return (advantages - advantages.mean()) / (advantages.std() + EPS_PPO)
 
-    def update(self, rollouts, rt_predictor_loss=None):
+    def update(self, rollouts):
         advantages = self.get_advantages(rollouts)
 
         value_loss_epoch = 0
@@ -133,8 +133,6 @@ class PPO(nn.Module):
                     + action_loss
                     - dist_entropy * self.entropy_coef
                 )
-                if rt_predictor_loss is not None:
-                    total_loss += rt_predictor_loss
 
                 self.before_backward(total_loss)
                 total_loss.backward()
@@ -169,8 +167,5 @@ class PPO(nn.Module):
 
     def after_step(self):
         pass
-<<<<<<< HEAD
-=======
 
 
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c

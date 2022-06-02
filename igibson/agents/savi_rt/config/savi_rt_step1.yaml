@@ -13,7 +13,6 @@ TORCH_GPU_ID: 1
 SEED: 0
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
-joint_loss: False
 
 
 #ppo & DDPPO config
@@ -166,4 +165,3 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
-

@@ -4,19 +4,17 @@ import logging
 import pybullet as p
 import librosa
 from skimage.measure import block_reduce
-import random
 from collections import OrderedDict
-import time
-import xml.etree.ElementTree as ET
-import glob
 import os
+import random
+import time
+import glob
+import xml.etree.ElementTree as ET
 
 import igibson
 from igibson.envs.igibson_env import iGibsonEnv
-from igibson.robots import REGISTERED_ROBOTS
 from igibson.robots.turtlebot import Turtlebot
 from igibson.robots.robot_base import BaseRobot
-from igibson.sensors.bump_sensor import BumpSensor
 from igibson.sensors.scan_sensor import ScanSensor
 from igibson.sensors.vision_sensor import VisionSensor
 from igibson.reward_functions.reward_function_base import BaseRewardFunction
@@ -28,40 +26,21 @@ from igibson.reward_functions.point_goal_reward import PointGoalReward
 from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.objects import cube
 from igibson.audio.audio_system import AudioSystem
-import igibson.audio.default_config as default_audio_config
-from utils import dataset
-# from utils.utils import quaternion_from_coeff, cartesian_to_polar
-from utils.dataset import CATEGORIES, CATEGORY_MAP
 from utils.logs import logger
-from transforms3d.euler import euler2quat
-
-
+from utils import dataset
+from utils.dataset import CATEGORIES, CATEGORY_MAP
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
-<<<<<<< HEAD
-
-
-COUNT_CURR_EPISODE = 0
-
-=======
 from igibson.utils.utils import rotate_vector_3d
 from igibson.tasks.savi_task import SAViTask
         
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 
 class AVNavRLEnv(iGibsonEnv):
     """
     Redefine the environment (robot, task, dataset)
     """
-<<<<<<< HEAD
-    def __init__(self, config_file, mode, scene_splits):
-        scene_id = np.random.choice(scene_splits)
-        super().__init__(config_file, scene_id, mode)
-        self.config["scene_splits"] = scene_splits
-=======
     def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4'):
         super().__init__(config_file, scene_id, mode)
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         
     def load(self):
         """
@@ -78,4 +57,3 @@ class AVNavRLEnv(iGibsonEnv):
                     for i in range(len(carpet.get_body_ids())):
                         p.setCollisionFilterPair(carpet.get_body_ids()[i], 
                                                  self.robots[0].get_body_ids()[0], -1, robot_link_id, 0)
-

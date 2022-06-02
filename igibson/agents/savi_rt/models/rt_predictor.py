@@ -18,10 +18,7 @@ from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
 from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
 from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
 
-<<<<<<< HEAD
-=======
 import pdb
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
 class SimpleWeightedCrossEntropy(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
@@ -150,25 +147,6 @@ class RTPredictor(nn.Module):
     def update(self, observations, dones, rt_hidden_states, visual_features=None, audio_features=None):
         # 23 rooms
         # save to observations
-<<<<<<< HEAD
-        if dones is None and rt_hidden_states is None:
-            observations['rt_map_features'].copy_(torch.zeros((self.batch_size, 784))) #, 
-            observations['rt_map'].copy_(torch.zeros((self.batch_size, 23,28,28)))
-            observations['rt_map_gt'].copy_(torch.zeros((self.batch_size, 28,28)))
-            observations['visual_features'].copy_(torch.zeros((self.batch_size, 128)))
-            observations['audio_features'].copy_(torch.zeros((self.batch_size, 128)))
-
-            rt_hidden_states = torch.zeros(1, self.batch_size, self.hidden_size)   
-        
-        else:
-            with torch.no_grad():
-                masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
-                                     dtype=torch.float, device=self.device)
-                global_maps_features, global_maps, rt_hidden_states = self.cnn_forward(observations, rt_hidden_states, masks)
-    #             pdb.set_trace()
-                observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) #, 
-                observations['rt_map'].copy_(global_maps)
-=======
         with torch.no_grad():
             masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
                                  dtype=torch.float, device=self.device)
@@ -176,7 +154,6 @@ class RTPredictor(nn.Module):
 #             pdb.set_trace()
             observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) #, 
             observations['rt_map'].copy_(global_maps)
->>>>>>> 0d26ccd4fc069c6a87c98cb59538ab85cf6b2d7c
         return rt_hidden_states
             
     def cnn_forward_visual(self, features):       
