@@ -83,8 +83,6 @@ class RNNStateEncoder(nn.Module):
         """ 
         hidden_states = self._unpack_hidden(hidden_states)
         
-        print(x.unsqueeze(0).shape)
-        print(self._mask_hidden(hidden_states, masks.unsqueeze(0)).shape)
         x, hidden_states = self.rnn(
             x,
             self._mask_hidden(hidden_states, masks.unsqueeze(0)),
@@ -151,3 +149,5 @@ class RNNStateEncoder(nn.Module):
 #             return self.single_forward(x, hidden_states, masks)
 #         else:
         return self.seq_forward(x, hidden_states, masks)
+
+

@@ -1,18 +1,19 @@
-NUM_PROCESSES: 1
+NUM_PROCESSES: 3
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/step1_0512/train.log"
+LOG_FILE: "data/step1_0602/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/step1_0512/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/step1_0512/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/step1_0512/tb"
-MODEL_DIR: "data/step1_0512"
+CHECKPOINT_FOLDER: "data/step1_0602/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/step1_0602/checkpoints/ckpt.52.pth"
+TENSORBOARD_DIR: "data/step1_0602/tb"
+MODEL_DIR: "data/step1_0602"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
 TORCH_GPU_ID: 1
 SEED: 0
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
+joint_loss: False
 
 
 #ppo & DDPPO config
@@ -75,8 +76,8 @@ train_encoder: False
 current_pred_only: False
 weighting_factor: 0.5
 belief_cfg_lr: 0.001
-#label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0414/ckpt.25.pth'
-label_models: '/cvgl2/u/gdharan/clean_igibson/iGibson-dev/igibson/agents/savi/data/models/pretrained/ckpt.25.pth'
+label_models: '/viscam/u/wangzz/avGibson/igibson/repo/iGibson-dev/igibson/agents/savi/data/models/pretrain_0501/ckpt.16.pth'
+
 
 ## igibson
 # scene
@@ -100,7 +101,7 @@ action_activation: tanh
 
 # task
 task: SAVi
-target_dist_min: 4.0
+target_dist_min: 1.0
 target_dist_max: 10.0
 goal_format: "cartesian"
 task_obs_dim: 2
@@ -165,3 +166,4 @@ discount_factor: 0.99
 # domain randomization
 texture_randomization_freq: null
 object_randomization_freq: null
+

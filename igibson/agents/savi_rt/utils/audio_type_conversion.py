@@ -1,8 +1,8 @@
 from scipy.io import wavfile
 
 # source_file = "/viscam/u/wangzz/avGibson/igibson/audio/440Hz_44100Hz.wav"
-source_file = "/viscam/u/wangzz/SoundSpaces/sound-spaces/data/sounds/semantic_splits/val/counter.wav"
-output_file = "/viscam/u/wangzz/avGibson/igibson/audio/semantic_splits/val/counter.wav"
+source_file = "/viscam/u/wangzz/SoundSpaces/sound-spaces/data/sounds/1s_all/telephone.wav"
+output_file = "/viscam/u/wangzz/avGibson/igibson/audio/telephone.wav"
 
 sampling_freq, binaural_rir = wavfile.read(source_file)
 

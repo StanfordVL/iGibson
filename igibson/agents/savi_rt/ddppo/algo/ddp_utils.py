@@ -18,14 +18,50 @@ import ifcfg
 import torch
 import torch.distributed as distrib
 
+# from habitat import logger
+
+EXIT = threading.Event()
+EXIT.clear()
+REQUEUE = threading.Event()
+REQUEUE.clear()
+
+
 # Default port to initialized the TCP store on
 DEFAULT_PORT = 8738
 # Default address of world rank 0
 DEFAULT_MASTER_ADDR = "127.0.0.1"
+
 SLURM_JOBID = os.environ.get("SLURM_JOB_ID", None)
 INTERRUPTED_STATE_FILE = osp.join(
     os.environ["HOME"], ".interrupted_states", f"{SLURM_JOBID}.pth"
 )
+
+
+def _clean_exit_handler(signum, frame):
+    EXIT.set()
+    print("Exiting cleanly", flush=True)
+
+
+def _requeue_handler(signal, frame):
+    print("Got signal to requeue", flush=True)
+    EXIT.set()
+    REQUEUE.set()
+
+
+def add_signal_handlers():
+    signal.signal(signal.SIGINT, _clean_exit_handler)
+    signal.signal(signal.SIGTERM, _clean_exit_handler)
+
+    # SIGUSR2 can be sent to all processes to have them cleanup
+    # and exit nicely.  This is nice to use with SLURM as scancel <job_id>
+    # sets a 30 second timer for the job to exit, and it can take more than
+    # 30 seconds for the job to cleanup and exit nicely.  When using NCCL,
+    # forcing the job to exit without cleaning up can be bad.
+    # scancel --signal SIGUSR2 <job_id> will set no such timer and will give
+    # the job ample time to cleanup and exit.
+    signal.signal(signal.SIGUSR2, _clean_exit_handler)
+
+    signal.signal(signal.SIGUSR1, _requeue_handler)
 
 
 def save_interrupted_state(state: Any, filename: str = None):
@@ -36,6 +72,7 @@ def save_interrupted_state(state: Any, filename: str = None):
     :param filename: The filename.  Defaults to "${HOME}/.interrupted_states/${SLURM_JOBID}.pth"
     """
     if SLURM_JOBID is None and filename is None:
+#         logger.warn("SLURM_JOBID is none, not saving interrupted state")
         return
 
     if filename is None:
@@ -60,6 +97,22 @@ def load_interrupted_state(filename: str = None) -> Optional[Any]:
         return None
 
     return torch.load(filename, map_location="cpu")
+
+
+def requeue_job():
+    r"""Requeues the job by calling ``scontrol requeue ${SLURM_JOBID}``
+    """
+    if SLURM_JOBID is None:
+        return
+
+    if not REQUEUE.is_set():
+        return
+
+    distrib.barrier()
+
+    if distrib.get_rank() == 0:
+#         logger.info(f"Requeueing job {SLURM_JOBID}")
+        subprocess.check_call(shlex.split(f"scontrol requeue {SLURM_JOBID}"))
 
 
 def get_ifname():
@@ -111,5 +164,4 @@ def init_distrib_slurm(
     distrib.init_process_group(
         backend, store=tcp_store, rank=world_rank, world_size=world_size
     )
-
     return local_rank, tcp_store
