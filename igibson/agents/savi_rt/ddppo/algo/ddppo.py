@@ -1,8 +1,17 @@
+#!/usr/bin/env python3
+
+# Copyright (c) Facebook, Inc. and its affiliates.
+# All rights reserved.
+
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
+
 from typing import Tuple
 
 import torch
 import torch.distributed as distrib
 
+from igibson.agents.savi_rt.models.rollout_storage import RolloutStorage
 from igibson.agents.savi_rt.ppo.ppo import PPO
 
 EPS_PPO = 1e-5
@@ -35,7 +44,8 @@ def distributed_mean_and_var(
 
 class DecentralizedDistributedMixin:
     def _get_advantages_distributed(
-        self, rollouts) -> torch.Tensor:
+        self, rollouts: RolloutStorage
+    ) -> torch.Tensor:
         advantages = rollouts.returns[:-1] - rollouts.value_preds[:-1]
         if not self.use_normalized_advantage:
             return advantages

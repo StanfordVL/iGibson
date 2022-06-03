@@ -7,8 +7,12 @@ class dataset:
             self.SCENE_SPLITS = {
                 "train": ["Pomaria_1_int", "Benevolence_2_int", "Beechwood_1_int", "Ihlen_0_int", "Benevolence_1_int", 
                           "Pomaria_2_int", "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int"],  # "Benevolence_0_int"], 
-                "val": ["Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"]
+                "val": ["Merom_1_int"]#"Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"]
             }
+#             self.SCENE_SPLITS = {
+#                 "train": ["Rs_int"],
+#                 "val": ["Rs_int"]
+#             }
         if scene == 'mp3d':
             self.SCENE_SPLITS = {
                 'train': ['sT4fr6TAbpF', 'E9uDoFAP3SH', 'VzqfbhrpDEA', 'kEZ7cmS4wCh', '29hnd4uzFmX', 'ac26ZMwG7aT',
@@ -38,7 +42,7 @@ class dataset:
             self.scene_splits[idx % len(self.scene_splits)].append(scene)
         assert sum(map(len, self.scene_splits)) == len(self.SCENE_SPLITS['train'])
         return self.scene_splits
-    
+
 # for igibson
 CATEGORIES = ['chair', 'table', 'picture', 'bottom_cabinet', 'cushion', 'sofa', 'bed', 'plant', 'sink', 'toilet', 'stool', 'standing_tv', 'shower', 'bathtub', 'counter']
 # 15
@@ -60,3 +64,47 @@ CATEGORY_MAP = {
                 'bathtub': 13,
                 'counter': 14,
             }
+
+
+
+# # for mp3d
+# CATEGORIES = ['chair', 'table', 'picture', 'cabinet', 'cushion', 'sofa', 'bed', 'chest_of_drawers', 'plant', 'sink', 'toilet', 'stool', 'towel', 'tv_monitor', 'shower', 'bathtub', 'counter', 'fireplace', 'gym_equipment', 'seating', 'clothes']
+# CATEGORY_MAP = {
+#                 'chair': 3,
+#                 'table': 5,
+#                 'picture': 6,
+#                 'cabinet': 7,
+#                 'cushion': 8,
+#                 'sofa': 10,
+#                 'bed': 11,
+#                 'chest_of_drawers': 13,
+#                 'plant': 14,
+#                 'sink': 15,
+#                 'toilet': 18,
+#                 'stool': 19,
+#                 'towel': 20,
+#                 'tv_monitor': 22,
+#                 'shower': 23,
+#                 'bathtub': 25,
+#                 'counter': 26,
+#                 'fireplace': 27,
+#                 'gym_equipment': 33,
+#                 'seating': 34,
+#                 'clothes': 38
+#             }
+
+
+
+def initialize(num_processes):
+    global scene_splits
+    scene_splits = [[] for _ in range(num_processes)]
+    for idx, scene in enumerate(SCENE_SPLITS['train']):
+        scene_splits[idx % len(scene_splits)].append(scene)
+    assert sum(map(len, scene_splits)) == len(SCENE_SPLITS['train'])
+    
+def getValue():
+    global scene_splits
+    return scene_splits
+
+def getValValue():
+    return SCENE_SPLITS['val']

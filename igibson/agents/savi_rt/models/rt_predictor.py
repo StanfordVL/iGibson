@@ -18,7 +18,6 @@ from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
 from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
 from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
 
-import pdb
 class SimpleWeightedCrossEntropy(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
@@ -147,18 +146,28 @@ class RTPredictor(nn.Module):
     def update(self, observations, dones, rt_hidden_states, visual_features=None, audio_features=None):
         # 23 rooms
         # save to observations
-        with torch.no_grad():
-            masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
-                                 dtype=torch.float, device=self.device)
-            global_maps_features, global_maps, rt_hidden_states = self.cnn_forward(observations, rt_hidden_states, masks)
-#             pdb.set_trace()
-            observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) #, 
-            observations['rt_map'].copy_(global_maps)
+        if dones is None and rt_hidden_states is None:
+            observations['rt_map_features'].copy_(torch.zeros((self.batch_size, 784))) #, 
+            observations['rt_map'].copy_(torch.zeros((self.batch_size, 23,28,28)))
+            observations['rt_map_gt'].copy_(torch.zeros((self.batch_size, 28,28)))
+            observations['visual_features'].copy_(torch.zeros((self.batch_size, 128)))
+            observations['audio_features'].copy_(torch.zeros((self.batch_size, 128)))
+
+            rt_hidden_states = torch.zeros(1, self.batch_size, self.hidden_size)   
+        
+        else:
+            with torch.no_grad():
+                masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
+                                     dtype=torch.float, device=self.device)
+                global_maps_features, global_maps, rt_hidden_states = self.cnn_forward(observations, rt_hidden_states, masks)
+    #             pdb.set_trace()
+                observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) #, 
+                observations['rt_map'].copy_(global_maps)
         return rt_hidden_states
             
     def cnn_forward_visual(self, features):       
         x_feat = features.view(-1, 128, 1, 1) # [batch size, 128, 1,1], or [batch size*step size, 128, 1,1]
-        
+        print("**", x_feat.shape)
         for mod in self.scaler:
             x_feat = mod(x_feat)
         return x_feat
@@ -176,19 +185,25 @@ class RTPredictor(nn.Module):
         
         local_vmaps = self.cnn_forward_visual(visual_features).cpu().detach().numpy()
         local_amaps = self.cnn_forward_audio(audio_features).cpu().detach().numpy()
+        
         curr_poses = observations["pose_sensor"][:, :2].cpu().detach().numpy()
         curr_rpys = observations["pose_sensor"][:, 2].cpu().detach().numpy()
-
+        
         global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_rpys)
         global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_rpys)
-        global_vmaps = (torch.from_numpy(global_vmaps)).view(self.batch_size, -1).unsqueeze(0).to(self.device) 
-        global_amaps = (torch.from_numpy(global_amaps)).view(self.batch_size, -1).unsqueeze(0).to(self.device)
-        global_maps = torch.stack([global_vmaps, global_amaps], dim=2).view(visual_features.shape[0], self.batch_size, -1)
+        # [batch_sz*step_sz, 8, 50, 50]
         
+        print("-1", global_vmaps.shape)
+        global_vmaps = (torch.from_numpy(global_vmaps)).view(visual_features.shape[0], -1).to(self.device) 
+        global_amaps = (torch.from_numpy(global_amaps)).view(visual_features.shape[0], -1).to(self.device)
+        # [batch_sz*step_sz, 20000]
+
+        global_maps = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
+        # [batch_sz*step_sz, 2, 20000] (view)-> [batch_sz*step_sz, 2*20000]
         
-#         hidden_states = self.init_hidden_states()
         global_maps, rt_hidden_states = self.rnn(global_maps.type(torch.FloatTensor).to(self.device), 
                                                rt_hidden_states, masks)
+        
         global_maps_features = global_maps.view(visual_features.shape[0], 1, 
                                        self.rt_map_output_size, self.rt_map_output_size)
         global_maps = self.outc(global_maps_features)

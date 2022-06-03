@@ -3,6 +3,7 @@ import logging
 import gym
 import cv2
 import numpy as np
+import copy
 from igibson.utils.mesh_util import ortho
 from igibson.audio.audio_system import AudioSystem
 import igibson.audio.default_config as default_audio_config
@@ -105,9 +106,9 @@ class BaseEnv(gym.Env):
                 mode=mode,
                 physics_timestep=physics_timestep,
                 render_timestep=action_timestep,
-                image_width=self.config.get("image_width", 128) if not self.config["extra_rgb"] \
+                image_width=self.config.get("image_width", 128) if len(self.config["VIDEO_OPTION"])==0 \
                                                         else self.config.get("image_width_video", 128),
-                image_height=self.config.get("image_height", 128)if not self.config["extra_rgb"] \
+                image_height=self.config.get("image_height", 128) if len(self.config["VIDEO_OPTION"])==0 \
                                                         else self.config.get("image_height_video", 128),
                 vertical_fov=self.config.get("vertical_fov", 90),
                 device_idx=device_idx,
@@ -206,6 +207,7 @@ class BaseEnv(gym.Env):
 
         # Get robot config
         robot_config = self.config["robot"]
+        self.robot_config_ = copy.deepcopy(robot_config)
 
         # If no robot has been imported from the scene
         if len(scene.robots) == 0:
@@ -215,7 +217,6 @@ class BaseEnv(gym.Env):
             robot = REGISTERED_ROBOTS[robot_name](**robot_config)
 
             self.simulator.import_object(robot)
-
             # The scene might contain cached agent pose
             # By default, we load the agent pose that matches the robot name (e.g. Fetch, BehaviorRobot)
             # The user can also specify "agent_pose" in the config file to use the cached agent pose for any robot

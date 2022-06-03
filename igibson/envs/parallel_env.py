@@ -228,8 +228,6 @@ class ProcessPyEnvironment(object):
                 if message == self._ACCESS:
                     name = payload
                     result = getattr(env, name)
-                    print(name)
-                    print(result)
                     conn.send((self._RESULT, result))
                     continue
                 if message == self._CALL:

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 
@@ -9,49 +11,11 @@ import torch
 import torch.nn as nn
 
 # from ss_baselines.common.utils import Flatten
-from utils.utils import Flatten
-
-
-def conv_output_dim(dimension, padding, dilation, kernel_size, stride
-):
-    r"""Calculates the output height and width based on the input
-    height and width to the convolution layer.
-
-    ref: https://pytorch.org/docs/master/nn.html#torch.nn.Conv2d
-    """
-    assert len(dimension) == 2
-    out_dimension = []
-    for i in range(len(dimension)):
-        out_dimension.append(
-            int(
-                np.floor(
-                    (
-                            (
-                                    dimension[i]
-                                    + 2 * padding[i]
-                                    - dilation[i] * (kernel_size[i] - 1)
-                                    - 1
-                            )
-                            / stride[i]
-                    )
-                    + 1
-                )
-            )
-        )
-    return tuple(out_dimension)
-
-
-def layer_init(cnn):
-    for layer in cnn:
-        if isinstance(layer, (nn.Conv2d, nn.Linear)):
-            nn.init.kaiming_normal_(
-                layer.weight, nn.init.calculate_gain("relu")
-            )
-            if layer.bias is not None:
-                nn.init.constant_(layer.bias, val=0)
+from utils.utils import Flatten, d3_40_colors_rgb
 
 
 class VisualCNN(nn.Module):
+    # unrelated
     r"""A Simple 3-Conv CNN followed by a fully connected layer
 
     Takes in observations and produces an embedding of the rgb and/or depth components
@@ -61,7 +25,7 @@ class VisualCNN(nn.Module):
         output_size: The size of the embedding vector
     """
 
-    def __init__(self, observation_space, output_size, extra_rgb):
+    def __init__(self, observation_space, output_size, extra_rgb=False):
         super().__init__()
         self._output_size = output_size
         if "rgb" in observation_space.spaces and not extra_rgb:
@@ -73,7 +37,12 @@ class VisualCNN(nn.Module):
             self._n_input_depth = observation_space.spaces["depth"].shape[2]
         else:
             self._n_input_depth = 0
-
+            
+        if "floorplan_map" in observation_space.spaces:
+            self._n_input_map = 1
+        else:
+            self._n_input_map = 0
+       
         # kernel size for different CNN layers
         self._cnn_layers_kernel_size = [(8, 8), (4, 4), (3, 3)]
 
@@ -92,12 +61,12 @@ class VisualCNN(nn.Module):
         if self.is_blind:
             self.cnn = nn.Sequential()
         else:
-            self._input_shape = (self._n_input_rgb + self._n_input_depth,
+            self._input_shape = (self._n_input_rgb + self._n_input_depth + self._n_input_map,
                                  int(cnn_dims[0]), int(cnn_dims[1]))
             for kernel_size, stride in zip(
                 self._cnn_layers_kernel_size, self._cnn_layers_stride
             ):
-                cnn_dims = conv_output_dim(
+                cnn_dims = self._conv_output_dim(
                     dimension=cnn_dims,
                     padding=np.array([0, 0], dtype=np.float32),
                     dilation=np.array([1, 1], dtype=np.float32),
@@ -105,9 +74,9 @@ class VisualCNN(nn.Module):
                     stride=np.array(stride, dtype=np.float32),
                 )
 
-            self.cnn1 = nn.Sequential(
+            self.cnn = nn.Sequential(
                 nn.Conv2d(
-                    in_channels=self._n_input_rgb + self._n_input_depth,
+                    in_channels=self._n_input_rgb + self._n_input_depth + self._n_input_map,
                     out_channels=32,
                     kernel_size=self._cnn_layers_kernel_size[0],
                     stride=self._cnn_layers_stride[0],
@@ -125,25 +94,57 @@ class VisualCNN(nn.Module):
                     out_channels=64,
                     kernel_size=self._cnn_layers_kernel_size[2],
                     stride=self._cnn_layers_stride[2],
-                ))
-            self.cnn2 = nn.Sequential(
+                ),
                 #  nn.ReLU(True),
                 Flatten(),
                 nn.Linear(64 * cnn_dims[0] * cnn_dims[1], output_size),
                 nn.ReLU(True),
             )
-        layer_init(self.cnn1)
-        layer_init(self.cnn2)
-        
-#         self.activation = {}
-#         layers = self.cnn._modules.items()
-#         print("visual_cnn.py, layers", layers)
-#         self.cnn.layers[-4].register_forward_hook(get_activation('visual_cnn_features'))
+
+        self.layer_init()
+
+    def _conv_output_dim(
+        self, dimension, padding, dilation, kernel_size, stride
+    ):
+        r"""Calculates the output height and width based on the input
+        height and width to the convolution layer.
+
+        ref: https://pytorch.org/docs/master/nn.html#torch.nn.Conv2d
+        """
+        assert len(dimension) == 2
+        out_dimension = []
+        for i in range(len(dimension)):
+            out_dimension.append(
+                int(
+                    np.floor(
+                        (
+                            (
+                                dimension[i]
+                                + 2 * padding[i]
+                                - dilation[i] * (kernel_size[i] - 1)
+                                - 1
+                            )
+                            / stride[i]
+                        )
+                        + 1
+                    )
+                )
+            )
+        return tuple(out_dimension)
+
+    def layer_init(self):
+        for layer in self.cnn:
+            if isinstance(layer, (nn.Conv2d, nn.Linear)):
+                nn.init.kaiming_normal_(
+                    layer.weight, nn.init.calculate_gain("relu")
+                )
+                if layer.bias is not None:
+                    nn.init.constant_(layer.bias, val=0)
 
     @property
     def is_blind(self):
         return self._n_input_rgb + self._n_input_depth == 0
-    
+
     @property
     def input_shape(self):
         return self._input_shape
@@ -170,13 +171,24 @@ class VisualCNN(nn.Module):
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
             depth_observations = depth_observations.permute(0, 3, 1, 2)
             cnn_input.append(depth_observations)
-
+            
+        if self._n_input_map > 0:
+            map_observations = observations["floorplan_map"]
+            # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
+            map_observations = map_observations.permute(0, 3, 1, 2)
+            cnn_input.append(map_observations)
         cnn_input = torch.cat(cnn_input, dim=1)
-        
-        cnn_input = self.cnn1(cnn_input)
-        return self.cnn2(cnn_input), cnn_input
+        return self.cnn(cnn_input)
 
-    def get_activation(activation, name):
-        def hook(model, input, output):
-            activation[name] = output.detach()
-        return hook
+
+def convert_semantics_to_rgb(semantics):
+    r"""Converts semantic IDs to RGB images.
+    """
+    semantics = semantics.long() % 40
+    mapping_rgb = torch.from_numpy(d3_40_colors_rgb).to(semantics.device)
+    semantics_r = torch.take(mapping_rgb[:, 0], semantics)
+    semantics_g = torch.take(mapping_rgb[:, 1], semantics)
+    semantics_b = torch.take(mapping_rgb[:, 2], semantics)
+    semantics_rgb = torch.stack([semantics_r, semantics_g, semantics_b], -1)
+
+    return semantics_rgb
