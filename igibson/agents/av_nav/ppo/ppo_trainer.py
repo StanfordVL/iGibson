@@ -21,19 +21,19 @@ from torch.optim.lr_scheduler import LambdaLR
 from tqdm import tqdm
 from numpy.linalg import norm
 
-from utils.logs import logger
-from ppo.base_trainer import BaseRLTrainer
-from utils.rollout_storage import RolloutStorage
-from utils.tensorboard_utils import TensorboardWriter
-from utils.utils import (batch_obs, linear_decay)
-from ppo.policy import AudioNavBaselinePolicy
-from ppo.ppo import PPO
-from utils.environment import AVNavRLEnv
-from utils.dataset import dataset
+from igibson.agents.av_nav.utils.logs import logger
+from igibson.agents.av_nav.ppo.base_trainer import BaseRLTrainer
+from igibson.agents.av_nav.utils.rollout_storage import RolloutStorage
+from igibson.agents.av_nav.utils.tensorboard_utils import TensorboardWriter
+from igibson.agents.av_nav.utils.utils import (batch_obs, linear_decay)
+from igibson.agents.av_nav.ppo.policy import AudioNavBaselinePolicy
+from igibson.agents.av_nav.ppo.ppo import PPO
+from igibson.agents.av_nav.utils.environment import AVNavRLEnv
+from igibson.agents.av_nav.utils.dataset import dataset
 from igibson.envs.igibson_env import iGibsonEnv
 from igibson.envs.parallel_env import ParallelNavEnv
 
-from utils.utils import observations_to_image, images_to_video, generate_video
+from igibson.agents.av_nav.utils.utils import observations_to_image, images_to_video, generate_video
 
 
 class PPOTrainer(BaseRLTrainer):
@@ -49,7 +49,7 @@ class PPOTrainer(BaseRLTrainer):
         self.envs = None
         self.scene_splits = None
 
-    def _setup_actor_critic_agent(self, observation_space=None) -> None:
+    def _setup_actor_critic_agent(self, observation_space=None, action_space=None) -> None:
         r"""Sets up actor critic and agent for PPO.
 
         Args:
@@ -69,9 +69,11 @@ class PPOTrainer(BaseRLTrainer):
 
         if observation_space is None:
             observation_space = self.envs.observation_space
+        if action_space is None:
+            action_space = self.envs.action_space
         self.actor_critic = AudioNavBaselinePolicy(
             observation_space=observation_space,
-            action_space=self.envs.action_space,
+            action_space=action_space,
             hidden_size=self.config['hidden_size'],
             is_discrete=self.is_discrete,
             min_std=self.config['min_std'], max_std=self.config['max_std'],

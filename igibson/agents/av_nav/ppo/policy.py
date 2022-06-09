@@ -11,10 +11,10 @@ import torch
 import torch.nn as nn
 from torchsummary import summary
 
-from utils.utils import CategoricalNet, GaussianNet
-from models.rnn_state_encoder import RNNStateEncoder
-from models.visual_cnn import VisualCNN
-from models.audio_cnn import AudioCNN
+from igibson.agents.av_nav.utils.utils import CategoricalNet, GaussianNet
+from igibson.agents.av_nav.models.rnn_state_encoder import RNNStateEncoder
+from igibson.agents.av_nav.models.visual_cnn import VisualCNN
+from igibson.agents.av_nav.models.audio_cnn import AudioCNN
 
 
 DUAL_GOAL_DELIMITER = ','
@@ -203,10 +203,10 @@ class AudioNavBaselineNet(Net):
         if self._task_obs:
             x.append(observations["task_obs"])
         if self._bump:
-            if len(observations["bump"].size()) == 3:
+            if len(observations["bump"]) == 3:
                 x.append(torch.squeeze(observations["bump"], 2))
             else:
-                x.append(observations["bump"]) 
+                x.append(observations["bump"])
         if self._audiogoal:
             x.append(self.audio_encoder(observations))
         if not self.is_blind:

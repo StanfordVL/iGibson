@@ -22,8 +22,8 @@ from igibson.utils.utils import parse_config
 from igibson.objects import cube
 from igibson.audio.audio_system import AudioSystem
 import igibson.audio.default_config as default_audio_config
-from utils.logs import logger
-from utils.dataset import dataset
+from igibson.agents.av_nav.utils.logs import logger
+from igibson.agents.av_nav.utils.dataset import dataset
 
 from collections import OrderedDict
 import time

@@ -14,9 +14,9 @@ import glob
 import torch
 
 from igibson.utils.utils import parse_config
-from utils.logs import logger
-from utils.tensorboard_utils import TensorboardWriter
-from utils.utils import poll_checkpoint_folder
+from igibson.agents.av_nav.utils.logs import logger
+from igibson.agents.av_nav.utils.tensorboard_utils import TensorboardWriter
+from igibson.agents.av_nav.utils.utils import poll_checkpoint_folder
 
 
 class BaseTrainer:

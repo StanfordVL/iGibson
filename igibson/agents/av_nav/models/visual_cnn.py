@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 
 # from ss_baselines.common.utils import Flatten
-from utils.utils import Flatten
+from igibson.agents.av_nav.utils.utils import Flatten
 
 
 def conv_output_dim(dimension, padding, dilation, kernel_size, stride
