@@ -8,8 +8,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from utils.utils import Flatten
-from models.visual_cnn import conv_output_dim, layer_init
+from igibson.agents.av_nav.utils.utils import Flatten
+from igibson.agents.av_nav.models.visual_cnn import conv_output_dim, layer_init
 
 
 class AudioCNN(nn.Module):
