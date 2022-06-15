@@ -60,6 +60,30 @@ class AudioGoalNavTask(PointNavRandomTask):
 
         return task_obs
 
+class AudioGoalVRNavTask(PointNavRandomTask):
+    """
+    Redefine the task (reward functions)
+    """
+    def __init__(self, env):
+        super(AudioGoalVRNavTask, self).__init__(env)
+
+    def reset_agent(self, env):
+        super().reset_agent(env)
+
+    def get_task_obs(self, env):
+        """
+        Get current velocities
+
+        :param env: environment instance
+        :return: task-specific observation
+        """
+        # linear velocity along the x-axis
+        linear_velocity = rotate_vector_3d(env.robots[0].get_linear_velocity(), *env.robots[0].get_rpy())[0]
+        # angular velocity along the z-axis
+        angular_velocity = rotate_vector_3d(env.robots[0].get_angular_velocity(), *env.robots[0].get_rpy())[2]
+        task_obs = np.append(linear_velocity, angular_velocity)
+
+        return task_obs
 
 class AudioPointGoalNavTask(AudioGoalNavTask):
     """ AudioGoal, but with target position information in observation space """

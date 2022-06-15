@@ -38,8 +38,8 @@ class AVNavRLEnv(iGibsonEnv):
     """
     Redefine the environment (robot, task, dataset)
     """
-    def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4'):
-        super().__init__(config_file, scene_id, mode)
+    def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4', **kwargs):
+        super().__init__(config_file, scene_id, mode, **kwargs)
         
     def load(self):
         """

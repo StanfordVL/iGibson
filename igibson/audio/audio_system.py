@@ -43,6 +43,7 @@ class AudioSystem(object):
                  renderAmbisonics=False,
                  renderReverbReflections=True,
                  stream_audio=False,
+                 stream_input=False,
                  ):
         """
         :param scene: iGibson scene
@@ -81,6 +82,7 @@ class AudioSystem(object):
         else:
             self.get_pos = self.listener.eyes.get_position
             self.get_ori = self.listener.eyes.get_orientation
+
 
         #TODO: Here we assume an integer number of audio frames per simulator time step. 
         #Usually true, but if not, is this even a problem?
@@ -136,7 +138,7 @@ class AudioSystem(object):
         self.current_output, self.complete_output = [0]*(4*self.framesPerBuf), []
 
         # Try to stream audio live
-        if stream_audio:
+        if stream_audio or stream_input:
             import pyaudio
             self.streaming_input = []
             def pyaudOutputCallback(in_data, frame_count, time_info, status):
@@ -146,8 +148,9 @@ class AudioSystem(object):
                 return (None, pyaudio.paContinue)
             pyaud = pyaudio.PyAudio()
             out_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=2, output=True, stream_callback=pyaudOutputCallback)
-            in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
-
+            if stream_input:
+                in_stream = pyaud.open(rate=self.SR, frames_per_buffer=self.framesPerBuf, format=pyaudio.paInt16, channels=1, input=True, stream_callback=pyaudInputCallback)
+            
     def getClosestReverbProbe(self, pos):
         floor = 0
         for i in range(len(self.scene.floor_heights)):
@@ -211,7 +214,7 @@ class AudioSystem(object):
         buffer = self.sourceToBuffer[source]
         if buffer is None:
             # streaming input
-            return self.streaming_input
+            return np.frombuffer(self.streaming_input, dtype=np.int16)
         return np.frombuffer(buffer.readframes(nframes), dtype=np.int16)
 
     def step(self):
