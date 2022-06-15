@@ -11,10 +11,14 @@ import igibson
 from igibson.objects.articulated_object import ArticulatedObject
 from igibson.render.mesh_renderer.mesh_renderer_cpu import MeshRendererSettings
 from igibson.render.mesh_renderer.mesh_renderer_vr import VrSettings
-from igibson.robots import BehaviorRobot
+from igibson.robots import BehaviorRobot, Turtlebot
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.audio_system import AudioSystem
+from igibson.agents.av_nav.ppo.ppo_trainer import PPOTrainer
+from igibson.agents.av_nav.utils.environment import AVNavRLEnv
+from igibson.objects.visual_marker import VisualMarker
+import torch
 
 # HDR files for PBR rendering
 from igibson.simulator_vr import SimulatorVR
@@ -43,89 +47,97 @@ def main(selection="user", headless=False, short_exec=False):
         msaa=True,
         light_dimming_factor=1.0,
     )
-    s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    #s = SimulatorVR(mode="vr", rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
 
-    scene = InteractiveIndoorScene(
-        "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
+    #scene = InteractiveIndoorScene(
+    #    "Rs_int", load_object_categories=["walls", "floors", "ceilings"], load_room_types=["kitchen"]
+    #)
+
+
+    bvr_config = os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml")
+    exp_config = "audiogoal_continuous.yaml"
+    #ppo_trainer = PPOTrainer(exp_config)
+    #ppo_trainer.device = (
+    #        torch.device("cuda", ppo_trainer.config['TORCH_GPU_ID'])
+    #        if torch.cuda.is_available()
+    #        else torch.device("cpu")
+    #    )
+    env = AVNavRLEnv(config_file=exp_config, mode='vr', scene_id='Rs_int', rendering_settings=vr_rendering_settings, vr_settings=VrSettings(use_vr=True))
+    #bvr_robot = env.robots[0]
+    
+    #ppo_trainer._setup_actor_critic_agent(env.observation_space, action_space=env.action_space)
+    #ckpt_dict = ppo_trainer.load_checkpoint(r"C:\Users\Takara\Repositories\iGibson\igibson\agents\av_nav\data\audiogoal_continuous\checkpoints\ckpt.307.pth", map_location="cpu")
+    #ppo_trainer.agent.load_state_dict(ckpt_dict["state_dict"])
+
+    #config = parse_config(bvr_config)
+    #bvr_robot = BehaviorRobot(**config["robot"])
+    #env.simulator.import_object(bvr_robot)
+    #bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
+    #env.simulator.switch_main_vr_robot(bvr_robot)
+    env.simulator.main_vr_robot = None
+
+
+    #rnn_hidden_states = torch.zeros(
+    #        ppo_trainer.agent.actor_critic.net.num_recurrent_layers,
+    #        1,
+    #        ppo_trainer.config['hidden_size'],
+    #        device=ppo_trainer.agent.device,
+    #        )
+
+    #prev_actions = torch.zeros(
+    #        1, env.action_space.shape[0], device=ppo_trainer.agent.device, dtype=torch.long
+    #    )
+    #not_done_masks = torch.zeros(
+    #        1, 1, device=ppo_trainer.agent.device
+    #    )
+
+
+    source_obj = VisualMarker(
+        visual_shape=p.GEOM_CYLINDER,
+        rgba_color=[0, 0, 1, 0.3],
+        radius=0.1,
+        length= 0.2,
+        initial_offset=[0, 0, 0.2 / 2.0],
     )
-    s.import_scene(scene)
-    p.setAdditionalSearchPath(pybullet_data.getDataPath())
 
-    objects = [
-        ("jenga/jenga.urdf", (1.300000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (1.200000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (1.100000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (1.000000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("jenga/jenga.urdf", (0.900000, -0.700000, 0.750000), (0.000000, 0.707107, 0.000000, 0.707107)),
-        ("table/table.urdf", (1.000000, -0.200000, 0.000000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("duck_vhacd.urdf", (1.050000, -0.500000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("duck_vhacd.urdf", (0.950000, -0.100000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("sphere_small.urdf", (0.850000, -0.400000, 0.700000), (0.000000, 0.000000, 0.707107, 0.707107)),
-        ("duck_vhacd.urdf", (0.850000, -0.400000, 1.00000), (0.000000, 0.000000, 0.707107, 0.707107)),
-    ]
+    env.simulator.import_object(source_obj)
 
-    for item in objects:
-        fpath = item[0]
-        pos = item[1]
-        orn = item[2]
-        item_ob = ArticulatedObject(fpath, scale=1, rendering_params={"use_pbr": False, "use_pbr_mapping": False})
-        s.import_object(item_ob)
-        item_ob.set_position(pos)
-        item_ob.set_orientation(orn)
+    # The visual object indicating the target location may be visible
+    for instance in source_obj.renderer_instances:
+        instance.hidden = True
 
-    obj = ArticulatedObject(
-        os.path.join(
-            igibson.ig_dataset_path,
-            "objects",
-            "basket",
-            "e3bae8da192ab3d4a17ae19fa77775ff",
-            "e3bae8da192ab3d4a17ae19fa77775ff.urdf",
-        ),
-        scale=2,
-    )
-    s.import_object(obj)
-    obj.set_position_orientation([1.1, 0.300000, 1.0], [0, 0, 0, 1])
-
-    speaker = ArticulatedObject(
-        os.path.join(
-            igibson.ig_dataset_path,
-            "objects",
-            "loudspeaker",
-            "563b0c299b32e73327ac18a9705c27f1",
-            "563b0c299b32e73327ac18a9705c27f1.urdf",
-        ),
-        scale=1,
-    )
-    s.import_object(speaker)
-    speaker.set_position_orientation([1.050000, -0.750000, 0.750000], [0, 0, 0, 1])
-
-
-    config = parse_config(os.path.join(igibson.configs_path, "behavior_robot_vr_behavior_task.yaml"))
-
-    bvr_robot = BehaviorRobot(**config["robot"])
-    s.import_object(bvr_robot)
-    bvr_robot.set_position_orientation([0.5, 0, 0.7], [0, 0, 0, 1])
-
-    acousticMesh = getIgAcousticMesh(s)
-
-    # Audio System Initialization!
-    audioSystem = AudioSystem(s, s.viewer, acousticMesh, is_VR_Viewer=True, stream_audio=True)
-    audioSystem.registerSource(speaker.get_body_ids()[0], "telephone.wav", enabled=True)
 
     # Main simulation loop
+    obs = env.reset()
+    source_pos = env.simulator.get_vr_pos()
+    source_obj.set_position(source_pos)
+    env.audio_system.registerSource(
+                source_obj,
+                "",
+                enabled=True,
+                repeat=True
+            )
     while True:
-        s.step()
-        audioSystem.step()
-
-        bvr_robot.apply_action(s.gen_vr_robot_action())
+        #bvr_robot.apply_action(env.simulator.gen_vr_robot_action())
+        obs = env.step(env.simulator.gen_vr_robot_action())
+        source_obj.set_position(env.simulator.get_vr_pos())
+        #with torch.no_grad():
+            #_, action, _, rnn_hidden_states = ppo_trainer.agent.actor_critic.act(
+            #    obs,
+            #    rnn_hidden_states,
+            #    prev_actions,
+            #    not_done_masks
+            #)
+        #obs = env.step(action)
+        #prev_actions.copy_(action[0].tolist())
 
         # End demo by pressing overlay toggle
-        if s.query_vr_event("left_controller", "overlay_toggle"):
+        if env.simulator.query_vr_event("left_controller", "overlay_toggle"):
             break
 
-    s.disconnect()
+    env.simulator.disconnect()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     main()

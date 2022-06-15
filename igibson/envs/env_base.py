@@ -258,7 +258,7 @@ class BaseEnv(gym.Env):
                                         is_Viewer=False, writeToFile=self.config.get('AUDIO_DIR', ""), SR = 44100,
                                         occl_multiplier=self.config.get('occl_multiplier', default_audio_config.OCCLUSION_MULTIPLIER),
                                         spectrogram_window_len=self.config.get('spectrogram_window_len', default_audio_config.SPECTROGRAM_WINDOW_LEN),
-                                        renderAmbisonics=self.config.get('ambisonic_sensor', False))
+                                        renderAmbisonics=self.config.get('ambisonic_sensor', False), stream_input=self.config.get('VR_audio_source', False))
 
     def clean(self):
         """

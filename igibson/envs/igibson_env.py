@@ -24,9 +24,8 @@ from igibson.tasks.dynamic_nav_random_task import DynamicNavRandomTask
 from igibson.tasks.interactive_nav_random_task import InteractiveNavRandomTask
 from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
-from igibson.tasks.audiogoal_nav_task import AudioGoalNavTask, AudioPointGoalNavTask
+from igibson.tasks.audiogoal_nav_task import AudioGoalNavTask, AudioPointGoalNavTask, AudioGoalVRNavTask
 from igibson.tasks.savi_task import SAViTask
-from igibson.tasks.audio_nav_in_savi_task import avNavSAViTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
@@ -119,6 +118,8 @@ class iGibsonEnv(BaseEnv):
             self.task = RoomRearrangementTask(self)
         elif self.config['task'] == 'audiogoal_nav':
             self.task = AudioGoalNavTask(self)
+        elif self.config['task'] == 'audiogoal_nav_vr':
+            self.task = AudioGoalVRNavTask(self)
         elif self.config['task'] == 'audiopointgoal_nav':
             self.task = AudioPointGoalNavTask(self)
         elif self.config['task'] == 'SAVi':
