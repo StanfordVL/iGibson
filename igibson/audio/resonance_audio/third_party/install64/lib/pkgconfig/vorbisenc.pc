@@ -1,0 +1,14 @@
+# libvorbisenc pkg-config source file
+
+prefix=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64
+exec_prefix=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64/bin
+libdir=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64/lib
+includedir=C:/Users/Takara/Repositories/iGibson/igibson/audio/resonance_audio/third_party/install64/include
+
+Name: vorbisenc
+Description: vorbisenc is a library that provides a convenient API for setting up an encoding environment using libvorbis
+Version: 1.3.7
+Requires.private: vorbis
+Conflicts:
+Libs: -L${libdir} -lvorbisenc
+Cflags: -I${includedir}
