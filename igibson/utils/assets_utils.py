@@ -414,3 +414,13 @@ if __name__ == "__main__":
 
     if args.download_assets:
         download_assets()
+    elif args.download_demo_data:
+        download_demo_data()
+    elif args.download_dataset is not None:
+        download_dataset(args.download_dataset)
+    elif args.download_ig_dataset:
+        download_ig_dataset()
+    elif args.change_data_path:
+        change_data_path()
+    elif args.download_ext_scene_assets:
+        download_ext_scene_assets()
