@@ -153,9 +153,11 @@ class PointNavFixedTask(BaseTask):
         :param env: environment instance
         """
         env.land(env.robots[0], self.initial_pos, self.initial_orn)
+        self.initial_rpy = np.array(env.robots[0].get_rpy())
 
     def reset_variables(self, env):
         self.path_length = 0.0
+        self.num_actions = 0
         self.robot_pos = self.initial_pos[:2]
         self.geodesic_dist = self.get_geodesic_potential(env)
 
@@ -166,10 +168,13 @@ class PointNavFixedTask(BaseTask):
         done, info = super(PointNavFixedTask, self).get_termination(env, collision_links, action, info)
 
         info["path_length"] = self.path_length
+        info["num_actions"] = self.num_actions
         if done:
             info["spl"] = float(info["success"]) * min(1.0, self.geodesic_dist / self.path_length)
+#             info["sna"] = float(info["success"]) * min(1.0, self.min_action / self.num_actions)
         else:
             info["spl"] = 0.0
+#             info["sna"] = 0.0
 
         return done, info
 
@@ -250,4 +255,5 @@ class PointNavFixedTask(BaseTask):
         self.step_visualization(env)
         new_robot_pos = env.robots[0].get_position()[:2]
         self.path_length += l2_distance(self.robot_pos, new_robot_pos)
+        self.num_actions += 1
         self.robot_pos = new_robot_pos

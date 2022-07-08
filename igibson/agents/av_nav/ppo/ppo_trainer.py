@@ -253,20 +253,14 @@ class PPOTrainer(BaseRLTrainer):
         )
         
         data = dataset(self.config['scene'])
-#         self.scene_splits = data.split(self.config['NUM_PROCESSES'])
-        
-#         scene_ids = []
-#         for i in range(self.config['NUM_PROCESSES']):
-#             idx = np.random.randint(len(self.scene_splits[i]))
-#             scene_ids.append(self.scene_splits[i][idx])
-        
-        scene_ids = data.SCENE_SPLITS["train"]
-        
-        def load_env(scene_id):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_id=scene_id)
+        scene_splits = data.split(self.config['NUM_PROCESSES'])
+
+
+        def load_env(scene_ids):
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
-                         for sid in scene_ids], blocking=False)
+                         for sid in scene_splits], blocking=False)
   
         if not os.path.isdir(self.config['CHECKPOINT_FOLDER']):
             os.makedirs(self.config['CHECKPOINT_FOLDER'])
@@ -279,7 +273,7 @@ class PPOTrainer(BaseRLTrainer):
         
         rollouts = RolloutStorage(
             self.config['num_steps'],
-            self.envs.batch_size, #should be self.envs.batch_size-len(self._paused), self.envs.num_envs,
+            self.envs.batch_size,
             self.envs.observation_space,
             self.envs.action_space,
             self.config['hidden_size'],

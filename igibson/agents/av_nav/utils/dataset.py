@@ -9,7 +9,7 @@ class dataset:
                           "Pomaria_2_int", "Merom_1_int", "Ihlen_1_int", "Wainscott_0_int"],  # "Benevolence_0_int"], 
                 "val": ["Beechwood_0_int", "Wainscott_1_int", "Merom_0_int", "Rs_int", "Pomaria_0_int"]
             }
-        if scene == 'mp3d':
+        if scene == 'mp3d' or scene == "gibson":
             self.SCENE_SPLITS = {
                 'train': ['sT4fr6TAbpF', 'E9uDoFAP3SH', 'VzqfbhrpDEA', 'kEZ7cmS4wCh', '29hnd4uzFmX', 'ac26ZMwG7aT',
                           'i5noydFURQK', 's8pcmisQ38h', 'rPc6DW4iMge', 'EDJbREhghzL', 'mJXqzFtmKg4', 'B6ByNegPMKs',

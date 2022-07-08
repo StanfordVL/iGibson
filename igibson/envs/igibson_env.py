@@ -26,11 +26,13 @@ from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.tasks.audiogoal_nav_task import AudioGoalNavTask, AudioPointGoalNavTask, AudioGoalVRNavTask
 from igibson.tasks.savi_task import SAViTask
+from igibson.tasks.savi_rt_task import SAViRTTask
+from igibson.tasks.audio_nav_in_savi_task import avNavSAViTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
-from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP
+from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP, MAP_SIZE
 from igibson.utils.utils import rotate_vector_3d
 from igibson.agents.savi.utils.logs import logger
 log = logging.getLogger(__name__)
@@ -124,6 +126,8 @@ class iGibsonEnv(BaseEnv):
             self.task = AudioPointGoalNavTask(self)
         elif self.config['task'] == 'SAVi':
             self.task = SAViTask(self)
+        elif self.config['task'] == 'SAViRT':
+            self.task = SAViRTTask(self)
         elif self.config['task'] == "avNavSAViTask":
             self.task = avNavSAViTask(self)
         else:
@@ -169,20 +173,25 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.task.task_obs_dim,), low=-np.inf, high=np.inf
             )
         if "rgb" in self.output:
-            if len(self.config["VIDEO_OPTION"])!=0 and self.config['extra_rgb']:
-                observation_space["rgb"] = self.build_obs_space(
+            if len(self.config["VIDEO_OPTION"])!=0:
+                observation_space["rgb_video"] = self.build_obs_space(
                 shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
                 )
-                vision_modalities.append("rgb")
-            else:      
-                observation_space["rgb"] = self.build_obs_space(
-                    shape=(self.image_height, self.image_width, 3), low=0.0, high=1.0
-                )
-                vision_modalities.append("rgb")
-        if "depth" in self.output:
-            observation_space["depth"] = self.build_obs_space(
-                shape=(self.image_height, self.image_width, 1), low=0.0, high=1.0
+                
+            observation_space["rgb"] = self.build_obs_space(
+                shape=(self.image_height, self.image_width, 3), low=0.0, high=1.0
             )
+            vision_modalities.append("rgb")
+            
+        if "depth" in self.output:
+            if len(self.config["VIDEO_OPTION"])!=0:
+                observation_space["depth_video"] = self.build_obs_space(
+                shape=(self.image_height_video, self.image_width_video, 1), low=0.0, high=1.0
+                )     
+            observation_space["depth"] = self.build_obs_space(
+            shape=(self.image_height, self.image_width, 1), low=0.0, high=1.0
+            )
+            
             vision_modalities.append("depth")
         if "pc" in self.output:
             observation_space["pc"] = self.build_obs_space(
@@ -279,6 +288,8 @@ class iGibsonEnv(BaseEnv):
                 shape=(128,), low=-np.inf, high=np.inf)
             observation_space['audio_features'] = self.build_obs_space(
                 shape=(128,), low=-np.inf, high=np.inf)
+            observation_space['map_resolution'] = self.build_obs_space(
+                shape=(1,), low=0.0, high=np.inf)
 
         if len(vision_modalities) > 0:
             sensors["vision"] = VisionSensor(self, vision_modalities)
@@ -328,9 +339,11 @@ class iGibsonEnv(BaseEnv):
             for modality in vision_obs:
                 state[modality] = vision_obs[modality]
             if len(self.config["VIDEO_OPTION"])!=0:
+                state['depth_video'] = state['depth']
+                state['rgb_video'] = state['rgb']
                 state["depth"] = skimage.measure.block_reduce(state["depth"], (6,6,3), np.mean)
-                if not self.config["extra_rgb"]:
-                    state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,1), np.mean)
+#                 if not self.config["extra_rgb"]:
+                state["rgb"] = skimage.measure.block_reduce(state["rgb"], (6,6,1), np.mean)
             # (img_height, img_height, 1)
             # because the rendered robot camera should have the same image size for rgb and depth
         if "scan_occ" in self.sensors:
@@ -349,7 +362,7 @@ class iGibsonEnv(BaseEnv):
             camera_pose = np.array([0, 0, 4.0])
             view_direction = np.array([0, 0, -1])
             self.simulator.renderer.set_camera(camera_pose, camera_pose + view_direction, [0, 1, 0])
-            p_range = self.config['map_size'] / 200.0
+            p_range = MAP_SIZE[self.scene_id] / 200.0
             prevP = self.simulator.renderer.P.copy()
             self.simulator.renderer.P = ortho(-p_range, p_range, -p_range, p_range, -10, 20.0)
             frame, three_d = self.simulator.renderer.render(modes=("rgb", "3d"))
@@ -401,6 +414,7 @@ class iGibsonEnv(BaseEnv):
             state['rt_map_gt'] = self.task.get_room_type_map()
             state['visual_features'] = np.zeros(128)
             state['audio_features'] = np.zeros(128)
+            state['map_resolution'] = self.scene.trav_map_resolution
             
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"

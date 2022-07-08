@@ -273,22 +273,26 @@ class AudioSystem(object):
             self.complete_output.extend(self.current_output)
     
     def reset(self):
-        if self.writeToFile != "":
-            deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
-            write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
+        self.save_audio()
         
         for source, _ in self.sourceToBuffer.items():
             audio.DestroySource(self.sourceToResonanceID[source])
 
         self.sourceToEnabled, self.sourceToBuffer, self.sourceToRepeat,  self.sourceToResonanceID = {}, {}, {}, {}
         self.current_output, self.complete_output = [], []
-
+    
+    def save_audio(self):
+        if self.writeToFile != "":
+            deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
+            write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
+    
     def get_spectrogram(self):
         def compute_stft(signal):
             n_fft = 512
             hop_length = 160
             win_length = 400
             stft = np.abs(librosa.stft(signal, n_fft=n_fft, hop_length=hop_length, win_length=win_length))
+#             stft = block_reduce(stft, block_size=(2, 2), func=np.mean)
             return stft
 
         spectrogram_per_channel = []
@@ -301,8 +305,5 @@ class AudioSystem(object):
         return spectrogram
 
     def disconnect(self):
-        if self.writeToFile != "":
-            deinterleaved_audio = np.array([self.complete_output[::2], self.complete_output[1::2]], dtype=np.int16).T
-            write(self.writeToFile + '.wav', self.SR, deinterleaved_audio)
-        
+        self.save_audio()    
         audio.ShutdownSystem()
