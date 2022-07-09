@@ -361,7 +361,4 @@ class SAViTask(PointNavRandomTask):
         else:
             env.audio_system.registerSource(self.audio_obj_id, self.config['audio_dir'] \
                                             +"/val/"+self.cat+".wav", enabled=True)    
-        env.audio_system.setSourceRepeat(self.audio_obj_id#, repeat = False)
-
-
-
+        env.audio_system.setSourceRepeat(self.audio_obj_id)#, repeat = False)
