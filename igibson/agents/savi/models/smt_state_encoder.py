@@ -216,9 +216,8 @@ class SMTStateEncoder(nn.Module):
             At the origin, x is forward, y is rightward,
             and heading is measured from x to -y.
         """
-        # Negate the heading to get angle from x to y
-        heading_a = -pose_a[..., 2]
-        heading_b = -pose_b[..., 2]
+        heading_a = pose_a[..., 2]
+        heading_b = pose_b[..., 2]
         # Compute relative pose
         r_ab = torch.norm(pose_a[..., :2] - pose_b[..., :2], dim=-1)
         phi_ab = torch.atan2(pose_b[..., 1] - pose_a[..., 1], pose_b[..., 0] - pose_a[..., 0])
@@ -228,11 +227,11 @@ class SMTStateEncoder(nn.Module):
         heading_ab = heading_b - heading_a
         # Normalize angles to lie between -pi to pi
         heading_ab = torch.atan2(torch.sin(heading_ab), torch.cos(heading_ab))
-        # Negate the heading to get angle from x to -y
-        heading_ab = -heading_ab
+        # y is leftward
 
         return torch.stack([x_ab, y_ab, heading_ab], -1) # (..., 3)
 
+    
     def _format_pose(self, pose):
         """
         Args:
@@ -247,4 +246,6 @@ class SMTStateEncoder(nn.Module):
     @property
     def pose_indices(self):
         return self._pose_indices
+
+
 

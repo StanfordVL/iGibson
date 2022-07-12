@@ -29,11 +29,10 @@ from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.objects import cube
 from igibson.audio.audio_system import AudioSystem
 import igibson.audio.default_config as default_audio_config
-from utils.logs import logger
 from utils import dataset
 # from utils.utils import quaternion_from_coeff, cartesian_to_polar
 from utils.dataset import CATEGORIES, CATEGORY_MAP
-
+from utils.logs import logger
 from transforms3d.euler import euler2quat
 
 
@@ -43,78 +42,31 @@ from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
 
 COUNT_CURR_EPISODE = 0
 
-class AVNavTurtlebot(Turtlebot):
-    """
-    Redefine the robot
-    """
-    def set_up_discrete_action_space(self):
-        """
-        Set up discrete action space
-        """
-        self.action_list = [[self.velocity, self.velocity], #[-self.velocity, -self.velocity],
-                            [self.velocity * 0.5, -self.velocity * 0.5],
-                            [-self.velocity * 0.5, self.velocity * 0.5], [0, 0]]
-        self.action_space = gym.spaces.Discrete(len(self.action_list))
-        self.setup_keys_to_action()
-        
-    def setup_keys_to_action(self):
-        self.keys_to_action = {
-            (ord('w'),): 0,  # forward
-            (ord('d'),): 1,  # turn right
-            (ord('a'),): 2,  # turn left
-            (): 3  # stay still
-        }
 
 class AVNavRLEnv(iGibsonEnv):
     """
     Redefine the environment (robot, task, dataset)
     """
-    def __init__(self, config_file, mode, scene_id='mJXqzFtmKg4'):
-        self._episode_time = 0.0
-        self.scene_id = scene_id
+    def __init__(self, config_file, mode, scene_splits):
+        scene_id = np.random.choice(scene_splits)
         super().__init__(config_file, scene_id, mode)
-
-    def load_observation_space(self):
-        super().load_observation_space()
-        spaces = self.observation_space.spaces.copy()
-
-        if 'pose_sensor' in self.output:
-            spaces['pose_sensor'] = self.build_obs_space(
-                shape=(7,), low=-np.inf, high=np.inf)
-
-        self.observation_space = gym.spaces.Dict(spaces)
-
-    def get_state(self):
+        self.config["scene_splits"] = scene_splits
+        
+    def load(self):
         """
-        Get the current observation
-
-        :param collision_links: collisions from last physics timestep
-        :return: observation as a dictionary
+        Load scene, robot, and environment
         """
-        state = super().get_state()
+        super().load()
         
-        if 'pose_sensor' in self.output:
-            # pose sensor in the episode frame
-            pos = self.robots[0].get_position() #[x,y,z]
-            rpy = self.robots[0].get_rpy() #(3,)
-            
-            state['pose_sensor'] = np.array(
-                [*pos, *rpy, self._episode_time],
-                dtype=np.float32)
-            self._episode_time += 1.0
-        
-        if 'category' in self.output:
-            index = CATEGORY_MAP[self.cat]
-            onehot = np.zeros(len(CATEGORIES))
-            onehot[index] = 1
-            state['category'] = onehot
-        
-        # categoty_belief and location_belief are updated in _collect_rollout_step
-        if "category_belief" in self.output:
-            state["category_belief"] = np.zeros(len(CATEGORIES))
-        if "location_belief" in self.output:
-            state["location_belief"] = np.zeros(2)
+        if self.config['scene'] == 'igibson':
+            carpets = []
+            if "carpet" in self.scene.objects_by_category.keys():
+                carpets = self.scene.objects_by_category["carpet"]
+            for carpet in carpets:
+                for robot_link_id in range(p.getNumJoints(self.robots[0].get_body_ids()[0])):
+                    for i in range(len(carpet.get_body_ids())):
+                        p.setCollisionFilterPair(carpet.get_body_ids()[i], 
+                                                 self.robots[0].get_body_ids()[0], -1, robot_link_id, 0)
 
-        return state
-    
+
 

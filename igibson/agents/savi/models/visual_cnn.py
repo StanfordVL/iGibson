@@ -36,12 +36,12 @@ class VisualCNN(nn.Module):
             self._n_input_depth = observation_space.spaces["depth"].shape[2]
         else:
             self._n_input_depth = 0
-
-        if "semantic" in observation_space.spaces:
-            self._n_input_semantic = 6
+            
+        if "floorplan_map" in observation_space.spaces:
+            self._n_input_map = 1
         else:
-            self._n_input_semantic = 0
-
+            self._n_input_map = 0
+       
         # kernel size for different CNN layers
         self._cnn_layers_kernel_size = [(8, 8), (4, 4), (3, 3)]
 
@@ -51,20 +51,16 @@ class VisualCNN(nn.Module):
         if self._n_input_rgb > 0:
             cnn_dims = np.array(
                 observation_space.spaces["rgb"].shape[:2], dtype=np.float32
-            )
+            )          
         elif self._n_input_depth > 0:
             cnn_dims = np.array(
                 observation_space.spaces["depth"].shape[:2], dtype=np.float32
             )
-        elif self._n_input_semantic > 0:
-            cnn_dims = np.array(
-                observation_space.spaces["semantic"].shape[:2], dtype=np.float32
-            )
-
+            
         if self.is_blind:
             self.cnn = nn.Sequential()
         else:
-            self._input_shape = (self._n_input_rgb + self._n_input_depth + self._n_input_semantic,
+            self._input_shape = (self._n_input_rgb + self._n_input_depth + self._n_input_map,
                                  int(cnn_dims[0]), int(cnn_dims[1]))
             for kernel_size, stride in zip(
                 self._cnn_layers_kernel_size, self._cnn_layers_stride
@@ -79,7 +75,7 @@ class VisualCNN(nn.Module):
 
             self.cnn = nn.Sequential(
                 nn.Conv2d(
-                    in_channels=self._n_input_rgb + self._n_input_depth + self._n_input_semantic,
+                    in_channels=self._n_input_rgb + self._n_input_depth + self._n_input_map,
                     out_channels=32,
                     kernel_size=self._cnn_layers_kernel_size[0],
                     stride=self._cnn_layers_stride[0],
@@ -146,7 +142,7 @@ class VisualCNN(nn.Module):
 
     @property
     def is_blind(self):
-        return self._n_input_rgb + self._n_input_depth + self._n_input_semantic == 0
+        return self._n_input_rgb + self._n_input_depth == 0
 
     @property
     def input_shape(self):
@@ -174,17 +170,13 @@ class VisualCNN(nn.Module):
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
             depth_observations = depth_observations.permute(0, 3, 1, 2)
             cnn_input.append(depth_observations)
-
-        if self._n_input_semantic > 0:
-            semantic_observations = convert_semantics_to_rgb(observations["semantic"]).float()
-            semantic_object_observations = observations["semantic_object"].float()
+            
+        if self._n_input_map > 0:
+            map_observations = observations["floorplan_map"]
             # permute tensor to dimension [BATCH x CHANNEL x HEIGHT X WIDTH]
-            semantic_observations = torch.cat([semantic_observations, semantic_object_observations], dim=-1)
-            semantic_observations = semantic_observations.permute(0, 3, 1, 2) / 255.0
-            cnn_input.append(semantic_observations)
-
+            map_observations = map_observations.permute(0, 3, 1, 2)
+            cnn_input.append(map_observations)
         cnn_input = torch.cat(cnn_input, dim=1)
-
         return self.cnn(cnn_input)
 
 

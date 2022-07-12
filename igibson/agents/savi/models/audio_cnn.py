@@ -34,7 +34,6 @@ class AudioCNN(nn.Module):
         self._has_distractor_sound = has_distractor_sound
         if has_distractor_sound:
             self._n_input_category = 21
-            print('Concatenate category label with spectrogram!')
         else:
             self._n_input_category = 0
 

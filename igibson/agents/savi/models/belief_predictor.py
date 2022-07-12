@@ -67,7 +67,7 @@ class BeliefPredictor(nn.Module):
                     self.predictor = custom_resnet18(num_input_channels=len(CATEGORIES)+2)
                 else:
                     self.predictor = custom_resnet18(num_input_channels=2)
-                self.predictor.fc = nn.Linear(46464, 2)
+                self.predictor.fc = nn.Linear(13056, 2) # 46464
             else:
                 self.predictor = models.resnet18(pretrained=True)
                 self.predictor.conv1 = nn.Conv2d(2, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -148,7 +148,7 @@ class BeliefPredictor(nn.Module):
             for i in range(batch_size):
                 pose = observations['pose_sensor'][i].cpu().numpy()
                 pos = pose[:2]
-                rpy = pose[3:6]
+                heading = pose[2]
 
                 pointgoal = pointgoals[i]
                 if dones is not None and dones[i]:
@@ -166,15 +166,14 @@ class BeliefPredictor(nn.Module):
                             pointgoal_avg = pointgoal_base
                         else:
                             w = self.config['weighting_factor']
-                            pointgoal_avg = (1-w) * pointgoal_base + w * global_to_local(self.last_pointgoal[i], pos, rpy[2])
-                    self.last_pointgoal[i] = local_to_global(pointgoal_avg, pos, rpy[2])                   
+                            pointgoal_avg = (1-w) * pointgoal_base + w * global_to_local(self.last_pointgoal[i], pos, heading)
+                    self.last_pointgoal[i] = local_to_global(pointgoal_avg, pos, heading)                   
                 else:
                     if self.last_pointgoal[i] is None:
                         pointgoal_avg = np.array([10, 10])
                     else:
-                        pointgoal_avg = global_to_local(self.last_pointgoal[i], pos, rpy[2])
+                        pointgoal_avg = global_to_local(self.last_pointgoal[i], pos, heading)
                 observations['location_belief'][i].copy_(torch.from_numpy(pointgoal_avg[:2])) # 0104 [forward, leftward]
-
         if self.predict_label:
             with torch.no_grad():
                 labels = self.classifier(spectrograms)[:, :len(CATEGORIES)].cpu().numpy()
@@ -203,9 +202,9 @@ class BeliefPredictor(nn.Module):
                 observations['category_belief'][i].copy_(torch.from_numpy(label_avg))
 
 
-class BeliefPredictorDDP(BeliefPredictor, DecentralizedDistributedMixinBelief):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+# class BeliefPredictorDDP(BeliefPredictor, DecentralizedDistributedMixinBelief):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
 
 
 def global_to_local(pointgoal_global, pose, angle):

@@ -195,8 +195,6 @@ def batch_obs(
         )
         if sensor == "bump":
             batch["bump"] = batch["bump"][:, None]
-        elif sensor == "task_obs":
-            batch["task_obs"] = batch["task_obs"][:, -2:]
  
     return batch
 
@@ -388,23 +386,24 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
     Returns:
         generated image of a single frame.
     """
-    egocentric_view_l: List[np.ndarray] = []
+    egocentric_view_l_rgb: List[np.ndarray] = []
+    egocentric_view_l_depth: List[np.ndarray] = []
     if "rgb" in observation:
-        rgb = observation["rgb"]
+        rgb = observation["rgb_video"]
         if not isinstance(rgb, np.ndarray):
             rgb = rgb.cpu().numpy()
 
-        egocentric_view_l.append(rgb)
+        egocentric_view_l_rgb.append(rgb)
 
     # draw depth map if observation has depth info
-    elif "depth" in observation:
-        depth_map = observation["depth"].squeeze() * 255.0
+    if "depth" in observation:
+        depth_map = observation["depth_video"].squeeze() * 255.0
         if not isinstance(depth_map, np.ndarray):
             depth_map = depth_map.cpu().numpy()
 
         depth_map = depth_map.astype(np.uint8)
         depth_map = np.stack([depth_map for _ in range(3)], axis=2)
-        egocentric_view_l.append(depth_map)
+        egocentric_view_l_depth.append(depth_map)
 
     # add image goal if observation has image_goal info
     if "imagegoal" in observation:
@@ -414,23 +413,10 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
 
         egocentric_view_l.append(rgb)
 
-    assert (
-        len(egocentric_view_l) > 0
-    ), "Expected at least one visual sensor enabled."
-    egocentric_view = np.concatenate(egocentric_view_l, axis=1)
+    egocentric_view_rgb = np.concatenate(egocentric_view_l_rgb, axis=1)
+    egocentric_view_depth = np.concatenate(egocentric_view_l_depth, axis=1)
 
-    # draw collision
-#     if "collisions" in info and info["collisions"]["is_collision"]:
-#         egocentric_view = draw_collision(egocentric_view)
-
-    frame = egocentric_view
-
-#     if "top_down_map" in info:
-#         top_down_map = maps.colorize_draw_agent_and_fit_to_height(
-#             info["top_down_map"], egocentric_view.shape[0]
-#         )
-#         frame = np.concatenate((egocentric_view, top_down_map), axis=1)
-    return frame
+    return egocentric_view_rgb, egocentric_view_depth
 
 def images_to_video(
     images: List[np.ndarray],
