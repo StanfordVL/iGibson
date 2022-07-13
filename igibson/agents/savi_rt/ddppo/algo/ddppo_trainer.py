@@ -106,7 +106,7 @@ class DDPPOTrainer(PPOTrainer):
                                   list(self.actor_critic.net.visual_encoder.parameters()) + \
                                   list(self.actor_critic.net.action_encoder.parameters())
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-                self.belief_predictor.freeze_encoders()
+#                 self.belief_predictor.freeze_encoders() # ?
 
         elif self.config['policy_type'] == 'smt':
             self.actor_critic = AudioNavSMTPolicy(
@@ -154,7 +154,7 @@ class DDPPOTrainer(PPOTrainer):
                                   list(self.actor_critic.net.visual_encoder.parameters()) + \
                                   list(self.actor_critic.net.action_encoder.parameters())
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-                self.belief_predictor.freeze_encoders()
+#                 self.belief_predictor.freeze_encoders() # ?
                 
             #RT
             if self.config['use_rt_map']:
@@ -254,14 +254,8 @@ class DDPPOTrainer(PPOTrainer):
         else:
             self.device = torch.device("cpu")
 
-#         dataset.initialize(self.config['NUM_PROCESSES'])
-#         scene_splits = dataset.getValue()
-
         data = dataset(self.config['scene'])
         scene_splits = data.split(self.config['NUM_PROCESSES'])
-            
-#         data = dataset(self.config['scene'])
-#         scene_ids = data.SCENE_SPLITS["train"][:self.config['NUM_PROCESSES']]
 
         def load_env(scene_ids):
             return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
@@ -544,10 +538,14 @@ class DDPPOTrainer(PPOTrainer):
                         writer.add_scalar('Policy/Value_Loss', value_loss, count_steps)
                         writer.add_scalar('Policy/Action_Loss', action_loss, count_steps)
                         writer.add_scalar('Policy/Entropy', dist_entropy, count_steps)
+                        writer.add_scalar('Policy/location_predictor_loss', location_predictor_loss, count_steps)
+                        writer.add_scalar('Policy/prediction_accuracy', prediction_accuracy, count_steps)
                         writer.add_scalar('Policy/rt_predictor_loss', rt_predictor_loss, count_steps)
                         writer.add_scalar('Policy/rt_predictor_accuracy', rt_prediction_accuracy, count_steps)
                         writer.add_scalar('Policy/Learning_Rate', lr_scheduler.get_lr()[0], count_steps)
-
+#                         grid = torchvision.utils.make_grid(images)
+#                         writer.add_image('images', grid, 0)
+#                         writer.add_graph(model, images)
                     # log stats 0518
 #                     if update > 0 and update % self.config['LOG_INTERVAL'] == 0:
 #                         logger.info(
@@ -591,6 +589,7 @@ class DDPPOTrainer(PPOTrainer):
                             logger.info(
                                 "Average window size {} reward: {:3f}".format(len(window_episode_reward),
                                     (window_rewards / window_counts).item(),))
+                            logger.info("rt_predictor_loss: {:3f}".format(rt_predictor_loss))
                         else:
                             logger.info("No episodes finish in current window")
                         
@@ -605,5 +604,3 @@ class DDPPOTrainer(PPOTrainer):
                         count_checkpoints += 1
 
             self.envs.close()
-
-

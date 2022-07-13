@@ -70,8 +70,6 @@ class BeliefPredictor(nn.Module):
                     self.predictor = custom_resnet18(num_input_channels=2)
                 # 65*26 -> 4608
                 # 65*69 -> 16896 1s
-                # 13056
-                # 
                 self.predictor.fc = nn.Linear(13056, 2)
             else:
                 self.predictor = models.resnet18(pretrained=True)

@@ -81,12 +81,12 @@ class RTPredictor(nn.Module):
  
         self.out_scale = (32, 32)
         self.n_channels_out = 128 # resnet 18
-        self.rt_map_input_size = 50 #self.config["rt_map_size"] 140
+        self.rt_map_input_size = 50
         self.rt_map_output_size = 28 #put it in self.config, also change in parallel_env 28
-        self.rooms = 23 # 23
+        self.rooms = 23
 
         max_out_scale = np.amax(self.out_scale)
-        n_upscale = int(np.ceil(math.log(max_out_scale, 2))) # = 5
+        n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
         unet = [UNetUp(max(self.n_channels_out // (2**i), 8),
                    max(self.n_channels_out // (2**(i + 1)), 8),
                    bilinear=False,
@@ -101,73 +101,52 @@ class RTPredictor(nn.Module):
         ).to(device)   
         
         # for encoder/decoder:
-
         self.input_size = 8*self.rt_map_input_size*self.rt_map_input_size*2
         self.hidden_size = self.rt_map_output_size*self.rt_map_output_size
-
 #         self.hidden_states = torch.zeros(1, self.batch_size, self.hidden_size, device=self.device)
 
         self.rnn = RNNStateEncoder(input_size=self.input_size, 
                                    hidden_size=self.hidden_size).to(self.device)
         self.outc = outconv(1, self.rooms)
         
-        #self.visual = SMTCNN(observations)
-        #self.audio = AudioCNN(observations, 128, "audio")
-        
-        
+       
     def init_hidden_states(self):
         hidden_states = torch.zeros(1, self.batch_size, self.hidden_size, device=self.device)
         return hidden_states
 
-    def feature_alignment(self, local_feature_maps, curr_poses, curr_rpys):   
-        # local feature maps: (batch, 64, 32, 32)
-        # curr_poses: (batch, 3)
-        # curr_rpys: (batch, 3)
-        x, y = curr_poses[:,0], curr_poses[:,1]
-        yaw = curr_rpys
-        batch_sz, rt_sz, local_sz, _ = local_feature_maps.shape
-        global_sz = self.rt_map_input_size # 140
-        global_unpadded_sz = int(global_sz/1.4) #self.config["rt_map_unpadded_size"] # 100
-        padded_local_maps = np.zeros((batch_sz, rt_sz, global_sz, global_sz))
-        # global sz: 140, local_sz: 32
-        padded_local_maps[:, :, int(global_sz/2-local_sz/2):int(global_sz/2+local_sz/2),
+    def feature_alignment(self, local_feature_maps, pos, orn, masks, map_resolution):      
+        batch_sz, channels, local_sz, _ = local_feature_maps.shape # batch_sz*step_sz, 8, 32, 32
+        global_sz = self.rt_map_input_size # 50
+        
+        global_maps = np.zeros((batch_sz, channels, global_sz, global_sz))
+        global_maps[:, :, int(global_sz/2-local_sz/2):int(global_sz/2+local_sz/2),
                         int(global_sz/2-local_sz/2):int(global_sz/2+local_sz/2)] = local_feature_maps
-        rotated_local_maps = np.zeros((batch_sz, rt_sz, global_sz, global_sz))
+        transformed_global_maps = np.zeros((batch_sz, channels, global_sz, global_sz))
+        
         for i in range(batch_sz):
-            rot = scipy.ndimage.rotate(padded_local_maps[i], -90+yaw[i]*180.0/3.141593, 
-                                 axes=(1, 2), reshape=False) # (64, 140, 140)
-            rot = scipy.ndimage.shift(rot, [0, -y[i]/(global_unpadded_sz/1000), x[i]/(global_unpadded_sz/1000)]) # down, right
-            rotated_local_maps[i] = rot
-
-        return rotated_local_maps #(batch, 64, 140, 140)
+            transformed = scipy.ndimage.rotate(global_maps[i], -90+orn[i]*180.0/3.141593, 
+                                 axes=(1, 2), reshape=False)
+            delta_pos = pos[i, :2]/map_resolution[i]
+            transformed = scipy.ndimage.shift(transformed, [0, -delta_pos[1], delta_pos[0]])
+            transformed_global_maps[i] = transformed
+        # adding a weighting factor
+        return transformed_global_maps
          
-#     def set_eval_encoders(self):
         
     def update(self, observations, dones, rt_hidden_states, visual_features=None, audio_features=None):
         # 23 rooms
         # save to observations
-        if dones is None and rt_hidden_states is None:
-            observations['rt_map_features'].copy_(torch.zeros((self.batch_size, 784))) #, 
-            observations['rt_map'].copy_(torch.zeros((self.batch_size, 23,28,28)))
-            observations['rt_map_gt'].copy_(torch.zeros((self.batch_size, 28,28)))
-            observations['visual_features'].copy_(torch.zeros((self.batch_size, 128)))
-            observations['audio_features'].copy_(torch.zeros((self.batch_size, 128)))
-
-            rt_hidden_states = torch.zeros(1, self.batch_size, self.hidden_size)   
-        
-        else:
-            with torch.no_grad():
-                masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
-                                     dtype=torch.float, device=self.device)
-                global_maps_features, global_maps, rt_hidden_states = self.cnn_forward(observations, rt_hidden_states, masks)
-    #             pdb.set_trace()
-                observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) #, 
-                observations['rt_map'].copy_(global_maps)
+        with torch.no_grad():
+            masks = torch.tensor([[0.0] if done else [1.0] for done in dones], 
+                                 dtype=torch.float, device=self.device)
+            global_maps_features, global_maps, rt_hidden_states = self.cnn_forward(observations, rt_hidden_states, masks)
+            observations['rt_map_features'].copy_(torch.flatten(global_maps_features, start_dim=1)) 
+            observations['rt_map'].copy_(global_maps)
         return rt_hidden_states
             
+        
     def cnn_forward_visual(self, features):       
-        x_feat = features.view(-1, 128, 1, 1) # [batch size, 128, 1,1], or [batch size*step size, 128, 1,1]
-        print("**", x_feat.shape)
+        x_feat = features.view(-1, 128, 1, 1) #[batch size*step size, 128, 1,1]
         for mod in self.scaler:
             x_feat = mod(x_feat)
         return x_feat
@@ -185,22 +164,22 @@ class RTPredictor(nn.Module):
         
         local_vmaps = self.cnn_forward_visual(visual_features).cpu().detach().numpy()
         local_amaps = self.cnn_forward_audio(audio_features).cpu().detach().numpy()
+        #[batch_sz*step_sz, 8, 32, 32]
         
         curr_poses = observations["pose_sensor"][:, :2].cpu().detach().numpy()
-        curr_rpys = observations["pose_sensor"][:, 2].cpu().detach().numpy()
+        curr_orns = observations["pose_sensor"][:, 2].cpu().detach().numpy()
+        map_resolution = observations["map_resolution"].cpu().detach().numpy()
         
-        global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_rpys)
-        global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_rpys)
+        global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_orns, masks, map_resolution)
+        global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_orns, masks, map_resolution)
         # [batch_sz*step_sz, 8, 50, 50]
         
-        print("-1", global_vmaps.shape)
         global_vmaps = (torch.from_numpy(global_vmaps)).view(visual_features.shape[0], -1).to(self.device) 
         global_amaps = (torch.from_numpy(global_amaps)).view(visual_features.shape[0], -1).to(self.device)
         # [batch_sz*step_sz, 20000]
 
         global_maps = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
         # [batch_sz*step_sz, 2, 20000] (view)-> [batch_sz*step_sz, 2*20000]
-        
         global_maps, rt_hidden_states = self.rnn(global_maps.type(torch.FloatTensor).to(self.device), 
                                                rt_hidden_states, masks)
         
@@ -209,4 +188,5 @@ class RTPredictor(nn.Module):
         global_maps = self.outc(global_maps_features)
         return global_maps_features, global_maps, rt_hidden_states
         
+
 

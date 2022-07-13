@@ -33,7 +33,7 @@ DEFAULT_MASTER_ADDR = "127.0.0.1"
 
 SLURM_JOBID = os.environ.get("SLURM_JOB_ID", None)
 INTERRUPTED_STATE_FILE = osp.join(
-    os.environ.get("HOME", ""), ".interrupted_states", f"{SLURM_JOBID}.pth"
+    os.environ["HOME"], ".interrupted_states", f"{SLURM_JOBID}.pth"
 )
 
 
@@ -133,11 +133,11 @@ def init_distrib_slurm(
         torch.distributed.is_available()
     ), "torch.distributed must be available"
 
-    #if "GLOO_SOCKET_IFNAME" not in os.environ:
-    #    os.environ["GLOO_SOCKET_IFNAME"] = get_ifname()
+    if "GLOO_SOCKET_IFNAME" not in os.environ:
+        os.environ["GLOO_SOCKET_IFNAME"] = get_ifname()
 
-    #if "NCCL_SOCKET_IFNAME" not in os.environ:
-    #    os.environ["NCCL_SOCKET_IFNAME"] = get_ifname()
+    if "NCCL_SOCKET_IFNAME" not in os.environ:
+        os.environ["NCCL_SOCKET_IFNAME"] = get_ifname()
 
     master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)

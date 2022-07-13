@@ -182,7 +182,7 @@ class AudioNavBaselineNet(Net):
         self._bump = False
         self._n_bump = 0
         
-        self._label = 'category' in observation_space.spaces
+        self._label = False # has_distractor_sound
         
         # for goal descriptors
         self._use_label_belief = False
@@ -205,7 +205,7 @@ class AudioNavBaselineNet(Net):
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
                          (self._n_task_obs if self._task_obs else 0) + (self._hidden_size if self._audiogoal else 0) + \
                          (self._n_bump if self._bump else 0) + \
-                         (observation_space.spaces['category'].shape[0] if self._label else 0) + \
+#                          (observation_space.spaces['category'].shape[0] if self._label else 0) + \
                          (observation_space.spaces['category_belief'].shape[0] if self._use_label_belief else 0) + \
                          (observation_space.spaces['location_belief'].shape[0] if self._use_location_belief else 0)
         
@@ -244,6 +244,8 @@ class AudioNavBaselineNet(Net):
                 x.append(torch.squeeze(observations["bump"], 2))
             else:
                 x.append(observations["bump"]) 
+#         if self._label:
+#             x.append(observations['category'].to(device=x[0].device))
         if self._audiogoal:
             x.append(self.audio_encoder(observations))
         if not self.is_blind:
@@ -314,8 +316,8 @@ class AudioNavSMTNet(Net):
             self._bump = True
             nfeats += observation_space.spaces["bump"].shape[0]
 
-        if self._use_category_input:
-            nfeats += len(CATEGORIES)
+#         if self._use_category_input:
+#             nfeats += len(CATEGORIES) #gt
             
         if self._use_rt_map_features:
             assert "rt_map_features" in observation_space.spaces
@@ -437,14 +439,15 @@ class AudioNavSMTNet(Net):
         x_unflattened.append(observations['task_obs'][:, -2:])
         if self._bump:
             if len(observations["bump"].size()) == 3:
-                x.append(torch.squeeze(observations["bump"], 2))
+                x_unflattened.append(torch.squeeze(observations["bump"], 2))
             else:
-                x.append(observations["bump"])
-        if self._use_category_input:
-            x_unflattened.append(observations["category"])
+                x_unflattened.append(observations["bump"])
+#         if self._use_category_input:
+#             x_unflattened.append(observations["category"])
         if self._use_rt_map_features:
             x_unflattened.append(observations["rt_map_features"])
         x_unflattened.append(observations["pose_sensor"])
         x = torch.cat(x_unflattened, dim=1)
         # redundant: x_unflattened[0] in ppo_trainer, observations['visual_features']
         return x, x_unflattened
+
