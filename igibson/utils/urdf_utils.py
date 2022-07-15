@@ -223,8 +223,8 @@ def save_urdfs_without_floating_joints(tree, main_body_is_fixed, file_prefix):
                         extended_splitted_dict[esd][3],
                         transformation,
                     )
-    logging.info("Number of splits: " + str(len(extended_splitted_dict)))
-    logging.info("Instantiating scene into the following urdfs:")
+    # logging.info("Number of splits: " + str(len(extended_splitted_dict)))
+    # logging.info("Instantiating scene into the following urdfs:")
 
     main_link_name = get_base_link_name(tree)
 
@@ -254,7 +254,7 @@ def save_urdfs_without_floating_joints(tree, main_body_is_fixed, file_prefix):
         transformation = extended_splitted_dict[esd_key][4]
         urdfs_no_floating[esd_key] = (urdf_file_name, transformation, is_fixed, is_main_body)
         xml_tree_parent.write(urdf_file_name, xml_declaration=True)
-        logging.info(urdf_file_name)
+        # logging.info(urdf_file_name)
 
     # There should be exactly one main body
     assert np.sum([val[3] for val in urdfs_no_floating.values()]) == 1

@@ -244,9 +244,9 @@ class Simulator:
             self.cid = p.connect(p.DIRECT)
 
         # Simulation reset is needed for deterministic action replay
-        if self.vr_settings.reset_sim:
-            p.resetSimulation()
-            p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
+        #if self.vr_settings.reset_sim:
+        p.resetSimulation()
+        p.setPhysicsEngineParameter(deterministicOverlappingPairs=1)
         p.setPhysicsEngineParameter(numSolverIterations=self.solver_iterations)
         p.setTimeStep(self.physics_timestep)
         p.setGravity(0, 0, -self.gravity)

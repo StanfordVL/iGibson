@@ -62,7 +62,7 @@ def main(args):
             for line in f:
                 cat_ids.append(line.strip().split("/"))
     for object_cat, object_id in cat_ids:
-        print("Processing %s %s" % (object_cat, object_id))
+        # print("Processing %s %s" % (object_cat, object_id))
         metadata_file = "data/ig_dataset/objects/%s/%s/misc/metadata.json" % (object_cat, object_id)
         with open(metadata_file, "r") as f:
             metadata = json.load(f)

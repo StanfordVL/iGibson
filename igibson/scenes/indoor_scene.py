@@ -44,7 +44,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param pybullet_load_texture: whether to load texture into pybullet. This is for debugging purpose only and does not affect robot's observations
         """
         super(IndoorScene, self).__init__()
-        logging.info("IndoorScene model: {}".format(scene_id))
+        # logging.info("IndoorScene model: {}".format(scene_id))
         self.scene_id = scene_id
         self.trav_map_default_resolution = 0.01  # each pixel represents 0.01m
         self.trav_map_resolution = trav_map_resolution
@@ -107,11 +107,11 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
             maps_path, "floor_trav_{}_py{}{}.p".format(floor, sys.version_info.major, sys.version_info.minor)
         )
         if os.path.isfile(graph_file):
-            logging.info("Loading traversable graph")
+            # logging.info("Loading traversable graph")
             with open(graph_file, "rb") as pfile:
                 g = pickle.load(pfile)
         else:
-            logging.info("Building traversable graph")
+            # logging.info("Building traversable graph")
             g = nx.Graph()
             for i in range(self.trav_map_size):
                 for j in range(self.trav_map_size):

@@ -446,7 +446,7 @@ class MeshRenderer(object):
             return
 
         reader = tinyobjloader.ObjReader()
-        logging.info("Loading {}".format(obj_path))
+        # logging.info("Loading {}".format(obj_path))
         if obj_path.endswith("encrypted.obj"):
             if not os.path.exists(igibson.key_path):
                 raise FileNotFoundError(
@@ -1379,8 +1379,8 @@ class MeshRenderer(object):
         """
         Optimize vertex and texture for optimized renderer
         """
-        for tex_file in self.texture_files:
-            print("Texture: ", tex_file)
+        # for tex_file in self.texture_files:
+        #     print("Texture: ", tex_file)
         # Set cutoff about 4096, otherwise we end up filling VRAM very quickly
         cutoff = 5000 * 5000
         shouldShrinkSmallTextures = True

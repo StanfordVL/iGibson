@@ -48,7 +48,7 @@ class StaticIndoorScene(IndoorScene):
             waypoint_resolution,
             pybullet_load_texture,
         )
-        logging.info("StaticIndoorScene scene: {}".format(scene_id))
+        # logging.info("StaticIndoorScene scene: {}".format(scene_id))
         self.objects = []
 
     def load_floor_metadata(self):

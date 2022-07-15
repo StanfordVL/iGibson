@@ -216,7 +216,7 @@ class URDFObject(StatefulObject):
         self.is_fixed = []
         self.main_body = -1
 
-        logging.info("Category " + self.category)
+        # logging.info("Category " + self.category)
         self.filename = filename
         dirname = os.path.dirname(filename)
         urdf = os.path.basename(filename)
@@ -225,7 +225,7 @@ class URDFObject(StatefulObject):
         if os.path.exists(simplified_urdf):
             self.filename = simplified_urdf
             filename = simplified_urdf
-        logging.info("Loading the following URDF template " + filename)
+        # logging.info("Loading the following URDF template " + filename)
         self.object_tree = ET.parse(filename)  # Parse the URDF
 
         if not visualize_primitives:
@@ -305,7 +305,7 @@ class URDFObject(StatefulObject):
         if self.bounding_box is None:
             self.overwrite_inertial = False
 
-        logging.info("Scale: " + np.array2string(scale))
+        # logging.info("Scale: " + np.array2string(scale))
 
         # We need to know where the base_link origin is wrt. the bounding box
         # center. That allows us to place the model correctly since the joint
@@ -916,14 +916,14 @@ class URDFObject(StatefulObject):
             flags |= p.URDF_IGNORE_VISUAL_SHAPES
 
         for idx in range(len(self.urdf_paths)):
-            logging.info("Loading " + self.urdf_paths[idx])
+            # logging.info("Loading " + self.urdf_paths[idx])
             is_fixed = self.is_fixed[idx]
             body_id = p.loadURDF(self.urdf_paths[idx], flags=flags, useFixedBase=is_fixed)
             # flags=p.URDF_USE_MATERIAL_COLORS_FROM_MTL)
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Moving URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
+            # logging.info("Moving URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
@@ -968,7 +968,7 @@ class URDFObject(StatefulObject):
             transformation = self.poses[idx]
             pos = transformation[0:3, 3]
             orn = np.array(quatXYZWFromRotMat(transformation[0:3, 0:3]))
-            logging.info("Resetting URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
+            # logging.info("Resetting URDF to (pos,ori): " + np.array_str(pos) + ", " + np.array_str(orn))
             dynamics_info = p.getDynamicsInfo(body_id, -1)
             inertial_pos, inertial_orn = dynamics_info[3], dynamics_info[4]
             pos, orn = p.multiplyTransforms(pos, orn, inertial_pos, inertial_orn)
