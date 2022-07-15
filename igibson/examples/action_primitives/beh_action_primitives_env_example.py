@@ -5,7 +5,7 @@ import platform
 import numpy as np
 
 import igibson
-from igibson.action_primitives.b1k_discrete_action_primitives import B1KActionPrimitives
+from igibson.action_primitives.beh_discrete_action_primitives import BEHActionPrimitives
 from igibson.action_primitives.starter_semantic_action_primitives import StarterSemanticActionPrimitive
 from igibson.envs.action_primitive_env import ActionPrimitivesEnv
 from igibson.utils.utils import parse_config
@@ -20,7 +20,7 @@ def main(selection="user", headless=False, short_exec=False):
     config_filename = os.path.join(igibson.configs_path, "fetch_behavior_aps.yaml")
     config = parse_config(config_filename)
     env = ActionPrimitivesEnv(
-        "B1KActionPrimitives",
+        "BEHActionPrimitives",
         config_file=config,
         mode="headless" if headless else "gui_interactive",
         use_pb_gui=(not headless and platform.system() != "Darwin"),
@@ -41,13 +41,13 @@ def main(selection="user", headless=False, short_exec=False):
 
     env.reset()
     if env.env.config["task"] in ["putting_away_Halloween_decorations"]:
+        print("Opening bottom_cabinet")
         env.env.scene.open_all_objs_by_category(category="bottom_cabinet", mode="value", value=0.05)
-        print("bottom_cabinet opened!")
         if env.env.robots[0].model_name == "Tiago":
             # Change its initial location because it collides
             robot_position, robot_orn = env.env.robots[0].get_position_orientation()
             env.env.robots[0].set_position_orientation(np.array([0.5, 0, robot_position[2]]), robot_orn)
-            print("robot moved!")
+            print("Robot placed in a different initial configuration")
 
     # Pass the action into the environment. This will start an attempt to plan and execute the primitive action.
     for action_idx in [0, 1, 2, 3, 0, 4, 5, 6, 0, 4, 7]:

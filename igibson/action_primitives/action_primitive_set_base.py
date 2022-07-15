@@ -36,8 +36,8 @@ class BaseActionPrimitiveSet(with_metaclass(ABCMeta, object)):
     def __init_subclass__(cls, **kwargs):
         """
         Registers all subclasses as part of this registry. This is useful to decouple internal codebase from external
-        user additions. This way, users can add their custom robot by simply extending this Robot class,
-        and it will automatically be registered internally. This allows users to then specify their robot
+        user additions. This way, users can add their custom action primitive sets by simply extending this class,
+        and it will automatically be registered internally. This allows users to then specify their action primitive set
         directly in string-from in e.g., their config files, without having to manually set the str-to-class mapping
         in our code.
         """

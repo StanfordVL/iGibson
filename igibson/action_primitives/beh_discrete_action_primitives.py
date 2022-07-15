@@ -8,8 +8,8 @@ import numpy as np
 import pybullet as p
 
 from igibson.action_primitives.action_primitive_set_base import ActionPrimitiveError, BaseActionPrimitiveSet
-from igibson.action_primitives.b1k_discrete_action_primitives_cfg import (
-    B1KActionPrimitiveSet,
+from igibson.action_primitives.beh_discrete_action_primitives_cfg import (
+    BEHActionPrimitiveSet,
     ap_object_params,
     aps_per_activity,
 )
@@ -22,7 +22,7 @@ from igibson.utils.transform_utils import mat2euler, quat2mat
 logger = logging.getLogger(__name__)
 
 
-class B1KActionPrimitives(BaseActionPrimitiveSet):
+class BEHActionPrimitives(BaseActionPrimitiveSet):
     def __init__(self, env, task, scene, robot, arm=None, execute_free_space_motion=False):
         """ """
         super().__init__(env, task, scene, robot)
@@ -46,12 +46,12 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
         ].use_delta_commands, "The arm to use with the primitives cannot be controlled with deltas"
 
         self.controller_functions = {
-            B1KActionPrimitiveSet.NAVIGATE_TO: self._navigate_to,
-            B1KActionPrimitiveSet.PICK: self._pick,
-            B1KActionPrimitiveSet.PLACE: self._place,
-            B1KActionPrimitiveSet.TOGGLE: self._toggle,
-            B1KActionPrimitiveSet.PULL: self._grasp_and_pull,
-            B1KActionPrimitiveSet.PUSH: self._push,
+            BEHActionPrimitiveSet.NAVIGATE_TO: self._navigate_to,
+            BEHActionPrimitiveSet.PICK: self._pick,
+            BEHActionPrimitiveSet.PLACE: self._place,
+            BEHActionPrimitiveSet.TOGGLE: self._toggle,
+            BEHActionPrimitiveSet.PULL: self._grasp_and_pull,
+            BEHActionPrimitiveSet.PUSH: self._push,
         }
 
         self.action_list = aps_per_activity[self.env.config["task"]]
@@ -181,7 +181,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _navigate_to(self, object_name):
         logger.info("Navigating to object {}".format(object_name))
-        params = ap_object_params[B1KActionPrimitiveSet.NAVIGATE_TO][object_name]
+        params = ap_object_params[BEHActionPrimitiveSet.NAVIGATE_TO][object_name]
         goal_pos = params[:3]
 
         # If we check whether the object has moved from its initial location. If we check that, and the object has moved
@@ -261,7 +261,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                     {"object": object_name},
                 )
 
-        params = ap_object_params[B1KActionPrimitiveSet.PICK][object_name]
+        params = ap_object_params[BEHActionPrimitiveSet.PICK][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -340,7 +340,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _place(self, object_name):
         logger.info("Placing on object {}".format(object_name))
-        params = ap_object_params[B1KActionPrimitiveSet.PLACE][object_name]
+        params = ap_object_params[BEHActionPrimitiveSet.PLACE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -399,7 +399,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _toggle(self, object_name):
         logger.info("Toggling object {}".format(object_name))
-        params = ap_object_params[B1KActionPrimitiveSet.TOGGLE][object_name]
+        params = ap_object_params[BEHActionPrimitiveSet.TOGGLE][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -466,7 +466,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
                 {"object": object_name},
             )
 
-        params = ap_object_params[B1KActionPrimitiveSet.PULL][object_name]
+        params = ap_object_params[BEHActionPrimitiveSet.PULL][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
@@ -568,7 +568,7 @@ class B1KActionPrimitives(BaseActionPrimitiveSet):
 
     def _push(self, object_name):
         logger.info("Pushing object {}".format(object_name))
-        params = ap_object_params[B1KActionPrimitiveSet.PUSH][object_name]
+        params = ap_object_params[BEHActionPrimitiveSet.PUSH][object_name]
         obj_pos = self.task_obj_list[object_name].states[Pose].get_value()[0]
         obj_rot_XYZW = self.task_obj_list[object_name].states[Pose].get_value()[1]
 
