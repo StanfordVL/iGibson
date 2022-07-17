@@ -1,0 +1,6 @@
+torchsummary
+tensorboard
+librosa
+moviepy
+imageio
+scikit-image

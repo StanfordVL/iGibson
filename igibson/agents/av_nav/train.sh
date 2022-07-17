@@ -8,10 +8,10 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --time 192:00:00
-#SBATCH --output=slurm/slurm_%A.out
-#SBATCH --error=slurm/slurm_%A.err
+#SBATCH --output=logs/slurm_%A.out
+#SBATCH --error=logs/slurm_%A.err
 
-#SBATCH --mail-user=wangzz@stanford.edu
+#SBATCH --mail-user=li2053@stanford.edu
 #SBATCH --mail-type=ALL
 
 

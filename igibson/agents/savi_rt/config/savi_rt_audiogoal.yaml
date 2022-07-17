@@ -125,7 +125,11 @@ robot:
             use_delta_commands: false
 
 # sensor spec
+<<<<<<< Updated upstream:igibson/agents/savi_rt/config/savi_rt_audiogoal.yaml
 output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, bump]
+=======
+output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, top_down]
+>>>>>>> Stashed changes:igibson/agents/savi_rt/config/savi_rt_step1.yaml
 extra_rgb: false
 
 # image

@@ -26,13 +26,13 @@ from igibson.tasks.point_nav_fixed_task import PointNavFixedTask
 from igibson.tasks.point_nav_random_task import PointNavRandomTask
 from igibson.tasks.audiogoal_nav_task import AudioGoalNavTask, AudioPointGoalNavTask, AudioGoalVRNavTask
 from igibson.tasks.savi_task import SAViTask
-from igibson.tasks.savi_rt_task import SAViRTTask
+# from igibson.tasks.savi_rt_task import SAViRTTask
 from igibson.tasks.audio_nav_in_savi_task import avNavSAViTask
 from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
-from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP, MAP_SIZE
+from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP#, MAP_SIZE
 from igibson.utils.utils import rotate_vector_3d
 from igibson.agents.savi.utils.logs import logger
 log = logging.getLogger(__name__)
