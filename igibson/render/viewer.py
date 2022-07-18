@@ -545,7 +545,7 @@ class Viewer:
                     self.block_command = True
                     plan = self.planner.plan_base_motion([self.hit_pos[0], self.hit_pos[1], target_yaw])
                     if plan is not None and len(plan) > 0:
-                        self.planner.dry_run_base_plan(plan)
+                        self.planner.visualize_base_path(plan)
                     self.block_command = False
 
             # Visualize base subgoal orientation
@@ -555,13 +555,29 @@ class Viewer:
                     target_yaw = np.arctan2(hit_pos[1] - self.hit_pos[1], hit_pos[0] - self.hit_pos[0])
                     self.planner.set_marker_position_yaw(self.hit_pos, target_yaw)
 
-            # Arm motion
-            if event == cv2.EVENT_MBUTTONDOWN:
+            # Middle mouse button press or only once, when pressing left
+            # mouse while shift key is pressed (Mac compatibility)
+            if (event == cv2.EVENT_MBUTTONDOWN) or (
+                flags == cv2.EVENT_FLAG_LBUTTON + cv2.EVENT_FLAG_SHIFTKEY and not self.middle_down
+            ):
                 hit_pos, hit_normal = self.get_hit(x, y)
                 if hit_pos is not None:
                     self.block_command = True
-                    plan = self.planner.plan_arm_push(hit_pos, -np.array(hit_normal))
-                    self.planner.execute_arm_push(plan, hit_pos, -np.array(hit_normal))
+                    pre_interaction_path, interaction_path = self.planner.plan_ee_push(hit_pos, -np.array(hit_normal))
+                    self.planner.visualize_arm_path(
+                        pre_interaction_path,
+                    )
+                    self.planner.visualize_arm_path(
+                        interaction_path,
+                    )
+                    self.planner.visualize_arm_path(
+                        interaction_path,
+                        reverse_path=True,
+                    )
+                    self.planner.visualize_arm_path(
+                        pre_interaction_path,
+                        reverse_path=True,
+                    )
                     self.block_command = False
 
     def show_help_text(self, frame):
@@ -603,7 +619,7 @@ class Viewer:
             cv2.putText(frame, help_text, (10, 260), cv2.FONT_HERSHEY_SIMPLEX, 0.5, first_color, 1, cv2.LINE_AA)
             print(help_text)
         elif self.show_help % 3 == 2:
-            second_color = (255, 0, 255)
+            second_color = (255, 0, 0)
             help_text = "Mouse control in navigation mode:"
             cv2.putText(frame, help_text, (10, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, second_color, 1, cv2.LINE_AA)
             print(help_text)
