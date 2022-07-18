@@ -62,21 +62,21 @@ def run_example(config, programmatic_actions, headless, short_exec):
     if platform == "darwin":
         config_data["texture_scale"] = 0.5
 
-    # config_data["load_object_categories"] = [
-    #     "bottom_cabinet",
-    #     "bottom_cabinet_no_top",
-    #     "top_cabinet",
-    #     "dishwasher",
-    #     "fridge",
-    #     "microwave",
-    #     "oven",
-    #     "washer",
-    #     "dryer",
-    # ]  # Uncomment this line to accelerate loading with only the building
+    config_data["load_object_categories"] = [
+        "bottom_cabinet",
+        "bottom_cabinet_no_top",
+        "top_cabinet",
+        "dishwasher",
+        "fridge",
+        "microwave",
+        "oven",
+        "washer",
+        "dryer",
+    ]  # Uncomment this line to accelerate loading with only the building
 
-    # config_data["load_room_types"] = ["living_room"]
+    config_data["load_room_types"] = ["living_room"]
     config_data["hide_robot"] = False
-    # print(config_data["load_object_categories"])
+
     env = iGibsonEnv(
         config_file=config_data,
         mode="gui_interactive" if not headless else "headless",
@@ -308,13 +308,15 @@ def main(selection="user", headless=False, short_exec=False):
 
     # Assuming that if selection!="user", headless=True, short_exec=True, we are calling it from tests and we
     # do not want to parse args (it would fail because the calling function is pytest "testfile.py")
+
+    # behavior_robot_motion_planning.yaml, fetch_behavior_motion_planning.yaml, tiago_motion_planning.yaml, fetch_rearrangement_motion_planning.yaml
+    default_config = os.path.join(igibson.configs_path, "fetch_rearrangement_motion_planning.yaml")
     if not (selection != "user" and headless and short_exec):
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--config",
             "-c",
-            # , fetch_behavior_motion_planning, tiago_motion_planning.yaml, behavior_robot_motion_planning.yaml, fetch_behavior_motion_planning.yaml, tiago_motion_planning.yaml, fetch_rl_halloween
-            default=os.path.join(igibson.configs_path, "fetch_rearrangement_motion_planning.yaml"),
+            default=default_config,
             help="which config file to use [default: use yaml files in examples/configs]",
         )
         parser.add_argument(
@@ -328,8 +330,7 @@ def main(selection="user", headless=False, short_exec=False):
         config = args.config
         programmatic_actions = args.programmatic_actions
     else:
-        # behavior_robot_motion_planning.yaml, fetch_behavior_motion_planning.yaml, tiago_motion_planning.yaml
-        config = os.path.join(igibson.configs_path, "behavior_robot_motion_planning.yaml")
+        config = default_config
         programmatic_actions = True
 
     print("Started")
