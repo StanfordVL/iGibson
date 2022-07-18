@@ -32,7 +32,7 @@ from igibson.utils.utils import restoreState
 
 MAX_STEPS_FOR_HAND_MOVE = 100
 MAX_STEPS_FOR_HAND_MOVE_WHEN_OPENING = 30
-MAX_STEPS_FOR_GRASP_OR_RELEASE = 30
+MAX_STEPS_FOR_GRASP_OR_RELEASE = 10
 MAX_WAIT_FOR_GRASP_OR_RELEASE = 10
 MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 200
 
@@ -87,6 +87,22 @@ def pose_to_command(robot, joint_link, pose_in_body):
 
     # Convert pos/quat to [x, y, z, rx, ry, rz]
     return np.concatenate([pose_in_shoulder[0], p.getEulerFromQuaternion(pose_in_shoulder[1])])
+
+
+def behavior_robot_action_to_default_pose(robot: BehaviorRobot):
+    parts_to_move_to_default_pos = [
+        ("eye", "camera", "neck", behavior_robot.EYE_LOC_POSE_TRACKED),
+        ("left_hand", "arm_left_hand", "left_hand_shoulder", behavior_robot.LEFT_HAND_LOC_POSE_TRACKED),
+        ("right_hand", "arm_right_hand", "right_hand_shoulder", behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED),
+    ]
+    # Compute the body information from the current frame.
+    action = np.zeros(robot.action_dim)
+    for part_name, controller_name, shoulder_name, target_pose in parts_to_move_to_default_pos:
+        action[robot.controller_action_idx[controller_name]] = pose_to_command(robot, shoulder_name, target_pose)
+
+    action[robot.controller_action_idx["gripper_right_hand"]] = 1.0
+
+    return action
 
 
 def convert_behavior_robot_part_pose_to_action(
@@ -145,7 +161,7 @@ def convert_behavior_robot_part_pose_to_action(
             part_close[part_name] = is_close(part_pose_in_body_frame, target_pose, dist_threshold, angle_threshold)
             action[robot.controller_action_idx[controller_name]] = pose_to_command(robot, shoulder_name, target_pose)
 
-    indented_print("Part closeness: %s", part_close)
+    indented_print("What parts are close enough to their desired pose? %s", part_close)
 
     # Return None if no action is needed.
     if all(part_close.values()):
@@ -155,6 +171,11 @@ def convert_behavior_robot_part_pose_to_action(
 
 
 class UndoableContext(object):
+    """
+    Context that gets undone at the end.
+    Whatever is done inside, is safe, meaning that when the context exits, the previous state is restored
+    """
+
     def __init__(self, robot: BehaviorRobot):
         self.robot = robot
 
@@ -166,6 +187,7 @@ class UndoableContext(object):
         self.robot.load_state(self.robot_data)
         restoreState(self.state)
         p.removeState(self.state)
+        logger.debug("Exiting UndoableContext context")
 
 
 class StarterSemanticActionPrimitive(IntEnum):
@@ -255,6 +277,9 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
     def close(self, obj):
         yield from self._open_or_close(obj, False)
+
+    def reset(self):
+        yield behavior_robot_action_to_default_pose(self.robot)
 
     def _open_or_close(self, obj, should_open):
 
@@ -347,6 +372,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         obj_in_hand = self._get_obj_in_hand()
         if obj_in_hand is not None:
             if obj_in_hand == obj:
+                logger.info("Object already grasped")
                 return
             else:
                 raise ActionPrimitiveError(
@@ -355,62 +381,65 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
                     {"object": obj, "object_in_hand": obj_in_hand},
                 )
 
-        if self._get_obj_in_hand() != obj:
-            # Open the hand first
-            yield from self._execute_release()
+        # Allow grasping from suboptimal extents if we've tried enough times.
+        force_allow_any_extent = np.random.rand() < 0.5
+        grasp_poses = get_grasp_poses_for_object(self.robot, obj, force_allow_any_extent=force_allow_any_extent)
+        grasp_pose, object_direction = random.choice(grasp_poses)
+        with UndoableContext(self.robot):
+            if self.planner.check_ee_collision(
+                ee_position=grasp_pose[0],
+                ee_orientation=grasp_pose[1],
+                obj_in_hand=None,
+                obstacles=self._get_collision_body_ids(include_robot=True),
+                arm=self.arm,
+            ):
+                raise ActionPrimitiveError(
+                    ActionPrimitiveError.Reason.SAMPLING_ERROR,
+                    "Rejecting grasp pose candidate due to collision",
+                    {"grasp_pose": grasp_pose},  # TODO: Add more info about collision.
+                )
 
-            # Allow grasping from suboptimal extents if we've tried enough times.
-            force_allow_any_extent = np.random.rand() < 0.5
-            grasp_poses = get_grasp_poses_for_object(self.robot, obj, force_allow_any_extent=force_allow_any_extent)
-            grasp_pose, object_direction = random.choice(grasp_poses)
-            with UndoableContext(self.robot):
-                if self.planner.check_ee_collision(
-                    ee_position=grasp_pose[0],
-                    ee_orientation=grasp_pose[1],
-                    obj_in_hand=None,
-                    obstacles=self._get_collision_body_ids(include_robot=True),
-                    arm=self.arm,
-                ):
-                    raise ActionPrimitiveError(
-                        ActionPrimitiveError.Reason.SAMPLING_ERROR,
-                        "Rejecting grasp pose candidate due to collision",
-                        {"grasp_pose": grasp_pose},  # TODO: Add more info about collision.
-                    )
+        # Prepare data for the approach later.
+        approach_pos = grasp_pose[0] + object_direction * GRASP_APPROACH_DISTANCE
+        approach_pose = (approach_pos, grasp_pose[1])
 
-            # Prepare data for the approach later.
-            approach_pos = grasp_pose[0] + object_direction * GRASP_APPROACH_DISTANCE
-            approach_pose = (approach_pos, grasp_pose[1])
+        # If the grasp pose is too far, navigate.
+        yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos)
+        yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
 
-            # If the grasp pose is too far, navigate.
-            yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos)
-            yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
+        yield from self._move_hand(grasp_pose)
 
-            yield from self._move_hand(grasp_pose)
+        # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
+        # It's okay if we can't go all the way because we run into the object.
+        indented_print("Performing grasp approach.")
+        try:
+            # yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
+            yield from self._move_hand(approach_pose, ignore_failure=True, stop_on_contact=True)
+        except ActionPrimitiveError:
+            # An error will be raised when contact fails. If this happens, let's retry.
+            # Retreat back to the grasp pose.
+            yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+            raise
 
-            # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
-            # It's okay if we can't go all the way because we run into the object.
-            indented_print("Performing grasp approach.")
-            try:
-                yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
-            except ActionPrimitiveError:
-                # An error will be raised when contact fails. If this happens, let's retry.
-                # Retreat back to the grasp pose.
-                yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
-                raise
-
-            indented_print("Grasping.")
-            try:
-                yield from self._execute_grasp()
-            except ActionPrimitiveError:
-                # Retreat back to the grasp pose.
-                yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
-                raise
+        indented_print("Grasping.")
+        try:
+            yield from self._execute_grasp()
+        except ActionPrimitiveError:
+            # Retreat back to the grasp pose.
+            yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
+            raise
 
         indented_print("Moving hand back to neutral position.")
-        yield from self._reset_hand()
+        yield from self._reset_hand_high()
 
         if self._get_obj_in_hand() == obj:
+            logger.debug("Successfully grasped the requested object!")
             return
+        else:
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.EXECUTION_ERROR,
+                "Object was not grasped at the end.",
+            )
 
     def place_on_top(self, obj):
         yield from self._place_with_predicate(obj, object_states.OnTop)
@@ -463,7 +492,10 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         if obj_in_hand.states[predicate].get_value(obj):
             return
 
-    def _move_hand(self, target_pose):
+    def _move_hand(self, target_pose, **kwargs):
+        """
+        Plan and execute a trajectory to move the hand to the given target pose (in world frame)
+        """
         target_pose_in_correct_format = list(target_pose[0]) + list(p.getEulerFromQuaternion(target_pose[1]))
 
         # Define the sampling domain.
@@ -475,8 +507,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         with UndoableContext(self.robot):
             plan = self.planner.plan_ee_motion_to_cartesian_pose(
-                ee_position=target_pose[0],
-                ee_orientation=target_pose[1],
+                ee_position=target_pose[0], ee_orientation=target_pose[1], arm=self.arm
             )
 
         if plan is None:
@@ -486,12 +517,19 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
                 {"target_pose": target_pose},
             )
 
-        # Follow the plan to navigate.
+        # Follow the plan to move the hand.
         indented_print("Plan has %d steps.", len(plan))
+        initially_converged = True
         for i, xyz_rpy in enumerate(plan):
-            indented_print("Executing grasp plan step %d/%d", i + 1, len(plan))
-            pose = (xyz_rpy[:3], p.getQuaternionFromEuler(xyz_rpy[3:]))
-            yield from self._move_hand_direct(pose)
+            try:
+                indented_print("Executing grasp plan step %d/%d", i + 1, len(plan))
+                pose = (xyz_rpy[:3], p.getQuaternionFromEuler(xyz_rpy[3:]))
+                yield from self._move_hand_direct(pose, **kwargs)
+                initially_converged = False
+            except ActionPrimitiveError as ape:
+                # Not for the first point
+                if not initially_converged:
+                    raise ape
 
     def _move_hand_direct(self, target_pose, **kwargs):
         yield from self._move_hand_direct_relative_to_robot(self._get_pose_in_robot_frame(target_pose), **kwargs)
@@ -503,19 +541,32 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         max_steps_for_hand_move=MAX_STEPS_FOR_HAND_MOVE,
         stop_on_contact=False,
     ):
+        """
+        Move the hand to a given pose relative to the robot's torso/base frame
+        """
+
+        # Main loop. Try to move the hand to the desired relative pose for max_steps_for_hand_move simulation steps
         for _ in range(max_steps_for_hand_move):
+
+            # If we stop when there is contact
             if stop_on_contact and p.getContactPoints(self.robot.eef_links[self.arm].body_id):  # TODO(MP): Generalize
                 return
 
+            # Obtain the action to try to move the hand
             action = convert_behavior_robot_part_pose_to_action(self.robot, hand_target_pose=relative_target_pose)
+
+            # The motion finished
             if action is None:
+                # If we were expecting to contact an object before the end of the motion, but we didn't, we raise error
                 if stop_on_contact:
                     raise ActionPrimitiveError(
                         ActionPrimitiveError.Reason.EXECUTION_ERROR,
                         "No contact was made when contact was required as a move post-condition.",
                     )
+                # Otherwise, return
                 return
 
+            # While the motion is not finished, we return the action to be executed
             yield action
 
         if not ignore_failure:
@@ -529,15 +580,42 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         if stop_on_contact:
             raise ActionPrimitiveError(ActionPrimitiveError.Reason.EXECUTION_ERROR, "No contact was made.")
 
-    def _execute_grasp(self):
+    def _get_still_action(self):
         action = np.zeros(self.robot.action_dim)
+        # Compute the body information from the current frame.
+        body = self.robot.base_link
+        body_pose = body.get_position_orientation()
+        world_frame_to_body_frame = p.invertTransform(*body_pose)
+        parts_to_move_to_default_pos = [
+            ("eye", "camera", "neck", self.robot.get_parts["eye"].get_local_position_orientation()),
+            (
+                "left_hand",
+                "arm_left_hand",
+                "left_hand_shoulder",
+                self.robot.get_parts["left_hand"].get_local_position_orientation(),
+            ),
+            (
+                "right_hand",
+                "arm_right_hand",
+                "right_hand_shoulder",
+                self.robot.get_parts["right_hand"].get_local_position_orientation(),
+            ),
+        ]
+        for part_name, controller_name, shoulder_name, target_pose in parts_to_move_to_default_pos:
+            action[self.robot.controller_action_idx[controller_name]] = pose_to_command(
+                self.robot, shoulder_name, target_pose
+            )
+        return action
+
+    def _execute_grasp(self):
+        action = self._get_still_action()  # np.zeros(self.robot.action_dim)
         action[self.robot.controller_action_idx["gripper_right_hand"]] = -1.0
         for _ in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
             yield action
 
         # Do nothing for a bit so that AG can trigger.
         for _ in range(MAX_WAIT_FOR_GRASP_OR_RELEASE):
-            yield np.zeros(self.robot.action_dim)
+            yield self._get_still_action()  # np.zeros(self.robot.action_dim)
 
         if self._get_obj_in_hand() is None:
             raise ActionPrimitiveError(
@@ -546,7 +624,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             )
 
     def _execute_release(self):
-        action = np.zeros(self.robot.action_dim)
+        action = self._get_still_action()  # np.zeros(self.robot.action_dim)
         action[self.robot.controller_action_idx["gripper_right_hand"]] = 1.0
         for _ in range(MAX_STEPS_FOR_GRASP_OR_RELEASE):
             # Otherwise, keep applying the action!
@@ -554,7 +632,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         # Do nothing for a bit so that AG can trigger.
         for _ in range(MAX_WAIT_FOR_GRASP_OR_RELEASE):
-            yield np.zeros(self.robot.action_dim)
+            yield self._get_still_action()  # np.zeros(self.robot.action_dim)
 
         if self._get_obj_in_hand() is not None:
             raise ActionPrimitiveError(
@@ -571,24 +649,17 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         )
         yield from self._move_hand(default_pose)
 
+    def _reset_hand_high(self):
+        default_pose = p.multiplyTransforms(
+            # TODO(MP): Generalize.
+            *self.robot.get_position_orientation(),
+            *behavior_robot.RIGHT_HAND_LOC_POSE_TRACKED_HIGH,
+        )
+        yield from self._move_hand(default_pose)
+
     def _navigate_to_pose(self, pose_2d):
-        # TODO(lowprio-MP): Make this less awful.
-        start_xy = np.array(self.robot.get_position())[:2]
-        end_xy = pose_2d[:2]
-        center_xy = (start_xy + end_xy) / 2
-        circle_radius = np.linalg.norm(end_xy - start_xy)  # circle with 2x diameter as the distance
 
-        def sample_fn():
-            # With some probability, sample from a circle centered around the start & goal.
-            within_circle = np.random.rand() > BIRRT_SAMPLING_CIRCLE_PROBABILITY
-
-            while True:
-                random_point = np.array(self.scene.get_random_point()[1][:2])
-
-                if within_circle and np.linalg.norm(random_point - center_xy) > circle_radius:
-                    continue
-
-                return random_point[0], random_point[1], np.random.uniform(-np.pi, np.pi)
+        logger.debug("Navigating the robot to a given location")
 
         with UndoableContext(self.robot):
             # Note that the plan returned by this planner only contains xy pairs & not yaw.
@@ -598,7 +669,9 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         if plan is None:
             # TODO: Would be great to produce a more informative error.
-            raise ActionPrimitiveError(ActionPrimitiveError.Reason.PLANNING_ERROR, "Could not make a navigation plan.")
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.PLANNING_ERROR, "Planner failed: could not find a navigation path."
+            )
 
         # Follow the plan to navigate.
         indented_print("Plan has %d steps.", len(plan))
@@ -606,9 +679,6 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             indented_print("Executing navigation plan step %d/%d", i + 1, len(plan))
             low_precision = True if i < len(plan) - 1 else False
             yield from self._navigate_to_pose_direct(pose_2d, low_precision=low_precision)
-
-        # Match the final desired yaw.
-        # yield from self._rotate_in_place(pose_2d[2])
 
     def _rotate_in_place(self, yaw, low_precision=False):
         cur_pos = self.robot.get_position()
@@ -624,27 +694,32 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             yield action
 
     def _navigate_if_needed(self, obj, pos_on_obj=None, **kwargs):
+        logger.debug("Navigating to get closer to a desired hand configuration")
         if pos_on_obj is not None:
             if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
                 # No need to navigate.
+                logger.debug("Torso is close enough to reach the desired hand configuration. Not moving")
                 return
         elif obj.states[object_states.InReachOfRobot].get_value():
+            logger.debug("Torso is close enough to reach the desired hand configuration. Not moving")
             return
 
+        logger.debug("Torso is too far to reach the desired hand configuration. Moving it!")
         yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, **kwargs)
 
     def _navigate_to_obj(self, obj, pos_on_obj=None, **kwargs):
+        logger.debug("Navigating towards an object ({})".format(obj.name))
         if isinstance(obj, RoomFloor):
             # TODO(lowprio-MP): Pos-on-obj for the room navigation?
+            logger.debug("The object is a room. Sampling a valid location in the room")
             pose = self._sample_pose_in_room(obj.room_instance)
         else:
+            logger.debug("The object is not a room. Sampling a valid location near the object")
             pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj, **kwargs)
 
         yield from self._navigate_to_pose(pose)
 
     def _navigate_to_pose_direct(self, pose_2d, low_precision=False):
-        # First, rotate the robot to face towards the waypoint.
-        # yield from self._rotate_in_place(pose_2d[2])
 
         # Keep the same orientation until the target.
         pose = self._get_robot_pose_from_2d_pose(pose_2d)
@@ -665,6 +740,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         )
 
     def _sample_pose_near_object(self, obj, pos_on_obj=None, **kwargs):
+        logger.debug("Sampling a valid location for the base next to the the given object ({})".format(obj.name))
         if pos_on_obj is None:
             pos_on_obj = self._sample_position_on_aabb_face(obj)
 
@@ -683,8 +759,10 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
                 continue
 
             if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj, **kwargs):
+                logger.debug("Robot location not valid. Continue searching for a valid location next to the object")
                 continue
 
+            logger.debug("Found valid robot location next to the object: {}".format(pose_2d))
             return pose_2d
 
         raise ActionPrimitiveError(

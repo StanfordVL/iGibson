@@ -1283,7 +1283,7 @@ class MotionPlanner(object):
         ]
         colliding_bids = [obs for obs, col in collisions if col]
         if colliding_bids:
-            log.debug("Hand collision with objects: ", colliding_bids)
+            log.debug("Hand collision with objects: {}".format(colliding_bids))
         collision = bool(colliding_bids)
 
         if obj_in_hand is not None:
@@ -1440,7 +1440,7 @@ def get_brobot_hand_planning_fns(
     non_hand_non_oih_obstacles = {
         obs
         for obs in obstacles
-        if ((obj_in_hand is None or obs not in obj_in_hand.get_body_ids()) and (obs != robot.eef_links[arm].body_id))
+        if ((obj_in_hand is None or obs not in [obj_in_hand]) and (obs != robot.eef_links[arm].body_id))
     }
 
     def collision_fn(pose3d):
@@ -1464,7 +1464,7 @@ def get_brobot_hand_planning_fns(
 
         if obj_in_hand is not None:
             # Generalize more.
-            [oih_bid] = obj_in_hand.get_body_ids()  # Generalize.
+            [oih_bid] = [obj_in_hand]  # obj_in_hand.get_body_ids()  # Generalize.
             oih_close_objects = set(x[0] for x in p.getOverlappingObjects(*get_aabb(oih_bid)))
             oih_close_obstacles = (oih_close_objects & non_hand_non_oih_obstacles) | close_obstacles
             obj_collisions = [

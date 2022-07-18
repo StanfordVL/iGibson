@@ -37,11 +37,13 @@ def go_to_sink_and_toggle(s, robot, controller: StarterSemanticActionPrimitives)
             print("Trying to TOGGLE_ON the sink.")
             execute_controller(controller.toggle_on(sink), robot, s)
             print("TOGGLE_ON the sink succeeded!")
+            return True
         except ActionPrimitiveError:
             print("Attempt {} to navigate and toggle on the sink failed. Retry until {}.".format(i + 1, ATTEMPTS))
             continue
 
-        return
+        print("TOGGLE_ON the sink failed!")
+        return False
 
 
 def grasp_tray(s, robot, controller: StarterSemanticActionPrimitives):
@@ -52,11 +54,13 @@ def grasp_tray(s, robot, controller: StarterSemanticActionPrimitives):
             tray = s.scene.objects_by_category["tray"][0]
             execute_controller(controller.grasp(tray), robot, s)
             print("GRASP the tray succeeded!")
-        except ActionPrimitiveError:
-            print("Attempt {} to grasp the tray failed. Retry until {}.".format(i + 1, ATTEMPTS))
+            return True
+        except ActionPrimitiveError as ape:
+            print("Attempt {} out of {} to grasp the tray failed. Error: {}".format(i + 1, ATTEMPTS, ape))
             continue
 
-        return
+    print("GRASP the tray failed!")
+    return False
 
 
 def put_on_table(s, robot, controller: StarterSemanticActionPrimitives):
@@ -67,11 +71,13 @@ def put_on_table(s, robot, controller: StarterSemanticActionPrimitives):
             table = s.scene.objects_by_category["coffee_table"][0]
             execute_controller(controller.place_on_top(table), robot, s)
             print("PLACE_ON_TOP succeeded!")
+            return True
         except ActionPrimitiveError:
             print("Attempt {} to place the held object failed. Retry until {}.".format(i + 1, ATTEMPTS))
             continue
 
-        return
+        print("PLACE_ON_TOP failed!")
+        return False
 
 
 def open_and_close_fridge(s, robot, controller: StarterSemanticActionPrimitives):
@@ -85,11 +91,13 @@ def open_and_close_fridge(s, robot, controller: StarterSemanticActionPrimitives)
             print("Trying to CLOSE the fridge.")
             execute_controller(controller.close(fridge), robot, s)
             print("CLOSE the fridge succeeded!")
+            return True
         except ActionPrimitiveError:
             print("Attempt {} to open and close the fridge failed. Retry until {}.".format(i + 1, ATTEMPTS))
             continue
 
-        return
+        print("OPEN and CLOSE fridge failed!")
+        return False
 
 
 def open_and_close_door(s, robot, controller: StarterSemanticActionPrimitives):
@@ -102,11 +110,13 @@ def open_and_close_door(s, robot, controller: StarterSemanticActionPrimitives):
             print("Trying to CLOSE the door.")
             execute_controller(controller.close(door), robot, s)
             print("CLOSE the door succeeded!")
+            return True
         except ActionPrimitiveError:
             print("Attempt {} to open and close the door failed. Retry until {}.".format(i + 1, ATTEMPTS))
             continue
 
-        return
+        print("OPEN and CLOSE door failed!")
+        return False
 
 
 def open_and_close_cabinet(s, robot, controller: StarterSemanticActionPrimitives):
@@ -119,11 +129,24 @@ def open_and_close_cabinet(s, robot, controller: StarterSemanticActionPrimitives
             print("Trying to CLOSE the cabinet.")
             execute_controller(controller.close(cabinet), robot, s)
             print("CLOSE the cabinet succeeded!")
+            return True
         except ActionPrimitiveError:
             print("Attempt {} to open and close the cabinet failed. Retry until {}.".format(i + 1, ATTEMPTS))
             continue
 
-        return
+        print("OPEN and CLOSE cabinet failed!")
+        return False
+
+
+def open_hand(s, controller, robot):
+    action = np.zeros(robot.action_dim)
+    action[robot.controller_action_idx["gripper_right_hand"]] = 1.0
+    for _ in range(10):
+        robot.apply_action(action)
+        s.step()
+
+    for _ in range(10):
+        execute_controller(controller.reset(), robot, s)
 
 
 def main(selection="user", headless=False, short_exec=False):
@@ -153,34 +176,81 @@ def main(selection="user", headless=False, short_exec=False):
         model_path=model_path,
     )
     env.simulator.import_object(tray)
-    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
 
     robot = env.robots[0]
-
     # Create an Action Primitive Set and use it to convert high-level actions to low-level actions and execute.
     controller = StarterSemanticActionPrimitives(env=env, task=None, scene=env.scene, robot=robot)
-    try:
-        # The pick-and-place demo is always run.
-        grasp_tray(env.simulator, robot, controller)
-        put_on_table(env.simulator, robot, controller)
 
-        # The other demos are only run in the long execution mode.
-        if not short_exec:
-            go_to_sink_and_toggle(env.simulator, robot, controller)
-            open_and_close_fridge(env.simulator, robot, controller)
-            open_and_close_door(env.simulator, robot, controller)
-            open_and_close_cabinet(env.simulator, robot, controller)
+    for attempt in range(5):
 
-        # If we're not running in headless mode, let the simulator run idle after we are done to allow user to inspect.
-        if not headless:
-            while True:
-                action = np.zeros(robot.action_dim)
-                robot.apply_action(action)
-                env.simulator.step()
-    finally:
-        env.simulator.disconnect()
+        tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+        env.land(robot, [0, 0, 0], [0, 0, 0])
+        robot.reset()
+        robot.tuck()
+        # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
+        if env.simulator.viewer is not None:
+            env.simulator.viewer.following_viewer = True
+            env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 1])  # x is in front of the robot
+
+        open_hand(env.simulator, controller, robot)
+
+        print("Attempt {}".format(attempt))
+
+        if grasp_tray(env.simulator, robot, controller):
+            print("Grasped object. Trying to put it on the table.")
+            if put_on_table(env.simulator, robot, controller):
+                print("Placed object.")
+                # If we're not running in headless mode, let the simulator run idle after we are done to allow user to inspect.
+                if not headless and short_exec:
+                    while True:
+                        action = np.zeros(robot.action_dim)
+                        robot.apply_action(action)
+                        env.simulator.step()
+        env.reset()
+
+    # The other demos are only run in the long execution mode.
+
+    if not short_exec:
+        functions_to_execute = [
+            go_to_sink_and_toggle,
+            open_and_close_fridge,
+            open_and_close_door,
+            open_and_close_cabinet,
+        ]
+        print("Attempting a second sequence of actions")
+
+        for function in functions_to_execute:
+            print("Executing another function")
+            for attempt in range(5):
+
+                open_hand(env.simulator, controller, robot)
+                tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+                env.land(robot, [0, 0, 0], [0, 0, 0])
+                robot.reset()
+                robot.tuck()
+                # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
+                if env.simulator.viewer is not None:
+                    env.simulator.viewer.following_viewer = True
+                    env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 1])  # x is in front of the robot
+                open_hand(env.simulator, controller, robot)
+
+                print("Attempt {}".format(attempt))
+                input("presss0")
+                if not function(env.simulator, robot, controller):
+                    env.reset()
+                else:
+                    # If we're not running in headless mode, let the simulator run idle after we are done to allow user to inspect.
+                    if not headless:
+                        while 1000:
+                            action = np.zeros(robot.action_dim)
+                            robot.apply_action(action)
+                            env.simulator.step()
+
+    env.simulator.disconnect()
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
+    logging.getLogger(name="igibson.action_primitives.starter_semantic_action_primitives").setLevel(level=logging.DEBUG)
+    logging.getLogger(name="igibson.utils.motion_planning_utils").setLevel(level=logging.DEBUG)
     main()
