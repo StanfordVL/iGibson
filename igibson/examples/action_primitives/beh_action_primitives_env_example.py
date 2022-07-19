@@ -17,7 +17,9 @@ def main(selection="user", headless=False, short_exec=False):
     primitives.
     """
     print("*" * 80 + "\nDescription:" + main.__doc__ + "*" * 80)
-    config_filename = os.path.join(igibson.configs_path, "fetch_behavior_aps.yaml")
+    config_filename = os.path.join(
+        igibson.configs_path, "tiago_behavior_aps.yaml"
+    )  # Alternative: fetch_behavior_aps.yaml
     config = parse_config(config_filename)
     env = ActionPrimitivesEnv(
         "BEHActionPrimitives",
