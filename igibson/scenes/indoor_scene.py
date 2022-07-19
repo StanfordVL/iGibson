@@ -103,11 +103,11 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
 
             # We make the pixels of the image to be either 0 or 255
             trav_map[trav_map < 255] = 0
-
+#             cv2.imwrite("trav_map_1.png", trav_map.astype(np.uint8))
             # We search for the largest connected areas
             if self.build_graph:
                 self.build_trav_graph(maps_path, floor, trav_map)
-
+#             cv2.imwrite("trav_map_2.png", trav_map.astype(np.uint8))
             self.floor_map.append(trav_map)
 
     # TODO: refactor into C++ for speedup
@@ -244,6 +244,7 @@ class IndoorScene(with_metaclass(ABCMeta, Scene)):
         :param target_world: 2D target location in world reference frame (metric)
         :param entire_path: whether to return the entire path
         """
+        # call every step to calculate the geodesic potential
         assert self.build_graph, "cannot get shortest path without building the graph"
         source_map = tuple(self.world_to_map(source_world))
         target_map = tuple(self.world_to_map(target_world))
