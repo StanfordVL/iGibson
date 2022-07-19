@@ -368,6 +368,10 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             return
 
     def grasp(self, obj):
+        """
+        Compute a viable grasp on the object (a pose), search for a trajectory to pregrasp and grasp and return the
+        actions
+        """
         # Don't do anything if the object is already grasped.
         obj_in_hand = self._get_obj_in_hand()
         if obj_in_hand is not None:
@@ -385,6 +389,8 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         force_allow_any_extent = np.random.rand() < 0.5
         grasp_poses = get_grasp_poses_for_object(self.robot, obj, force_allow_any_extent=force_allow_any_extent)
         grasp_pose, object_direction = random.choice(grasp_poses)
+
+        # Check that the grasping pose is NOT in collision with the robot or the environment
         with UndoableContext(self.robot):
             if self.planner.check_ee_collision(
                 ee_position=grasp_pose[0],
@@ -404,30 +410,18 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         approach_pose = (approach_pos, grasp_pose[1])
 
         # If the grasp pose is too far, navigate.
-        yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos)
-        yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0])
+        yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos, collision_free=True)
+        yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0], collision_free=True)
 
         yield from self._move_hand(grasp_pose)
 
         # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
         # It's okay if we can't go all the way because we run into the object.
         indented_print("Performing grasp approach.")
-        try:
-            # yield from self._move_hand_direct(approach_pose, ignore_failure=True, stop_on_contact=True)
-            yield from self._move_hand(approach_pose, ignore_failure=True, stop_on_contact=True)
-        except ActionPrimitiveError:
-            # An error will be raised when contact fails. If this happens, let's retry.
-            # Retreat back to the grasp pose.
-            yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
-            raise
+        yield from self._move_hand(approach_pose, ignore_failure=False, stop_on_contact=True)
 
         indented_print("Grasping.")
-        try:
-            yield from self._execute_grasp()
-        except ActionPrimitiveError:
-            # Retreat back to the grasp pose.
-            yield from self._move_hand_direct(grasp_pose, ignore_failure=True)
-            raise
+        yield from self._execute_grasp()
 
         indented_print("Moving hand back to neutral position.")
         yield from self._reset_hand_high()
@@ -484,7 +478,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         obj_pose = self._sample_pose_with_object_and_predicate(predicate, obj_in_hand, obj)
         hand_pose = self._get_hand_pose_for_object_pose(obj_pose)
-        yield from self._navigate_if_needed(obj, pos_on_obj=hand_pose[0])
+        yield from self._navigate_if_needed(obj, pos_on_obj=hand_pose[0], collision_free=False)
         yield from self._move_hand(hand_pose)
         yield from self._execute_release()
         yield from self._reset_hand()
@@ -657,7 +651,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         )
         yield from self._move_hand(default_pose)
 
-    def _navigate_to_pose(self, pose_2d):
+    def _navigate_to_pose(self, pose_2d, collision_free=True):
 
         logger.debug("Navigating the robot to a given location")
 
@@ -679,6 +673,11 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             indented_print("Executing navigation plan step %d/%d", i + 1, len(plan))
             low_precision = True if i < len(plan) - 1 else False
             yield from self._navigate_to_pose_direct(pose_2d, low_precision=low_precision)
+            if collision_free:
+                if self._detect_robot_collision():
+                    raise ActionPrimitiveError(
+                        ActionPrimitiveError.Reason.EXECUTION_ERROR, "Detected collision during navigation."
+                    )
 
     def _rotate_in_place(self, yaw, low_precision=False):
         cur_pos = self.robot.get_position()
@@ -693,7 +692,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
             yield action
 
-    def _navigate_if_needed(self, obj, pos_on_obj=None, **kwargs):
+    def _navigate_if_needed(self, obj, pos_on_obj=None, collision_free=True, **kwargs):
         logger.debug("Navigating to get closer to a desired hand configuration")
         if pos_on_obj is not None:
             if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
@@ -705,19 +704,19 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             return
 
         logger.debug("Torso is too far to reach the desired hand configuration. Moving it!")
-        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, **kwargs)
+        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, collision_free=True, **kwargs)
 
-    def _navigate_to_obj(self, obj, pos_on_obj=None, **kwargs):
+    def _navigate_to_obj(self, obj, pos_on_obj=None, collision_free=True, **kwargs):
         logger.debug("Navigating towards an object ({})".format(obj.name))
         if isinstance(obj, RoomFloor):
             # TODO(lowprio-MP): Pos-on-obj for the room navigation?
-            logger.debug("The object is a room. Sampling a valid location in the room")
+            logger.debug("The goal is a room. Sampling a valid location in the room")
             pose = self._sample_pose_in_room(obj.room_instance)
         else:
-            logger.debug("The object is not a room. Sampling a valid location near the object")
+            logger.debug("The goal is not a room. Sampling a valid location near the object")
             pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj, **kwargs)
 
-        yield from self._navigate_to_pose(pose)
+        yield from self._navigate_to_pose(pose, collision_free=True)
 
     def _navigate_to_pose_direct(self, pose_2d, low_precision=False):
 
@@ -840,13 +839,16 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         indented_print("Start collision test.")
         body = self._detect_collision(self.robot.links["body"].body_id)
         if body:
-            indented_print("Body has collision with objects %s", body)
+            bodyInfo = p.getBodyInfo(body[0])
+            indented_print("Body has collision with objects {}".format(bodyInfo[0].decode("ascii")))
         left = self._detect_collision(self.robot.eef_links["left_hand"].body_id)
         if left:
-            indented_print("Left hand has collision with objects %s", left)
+            bodyInfo = p.getBodyInfo(left[0])
+            indented_print("Left hand has collision with objects {}".format(bodyInfo[0].decode("ascii")))
         right = self._detect_collision(self.robot.eef_links[self.arm].body_id, self._get_obj_in_hand())
         if right:
-            indented_print("Right hand has collision with objects %s", right)
+            bodyInfo = p.getBodyInfo(right[0])
+            indented_print("Right hand has collision with objects {}".format(bodyInfo[0].decode("ascii")))
         indented_print("End collision test.")
 
         return body or left or right

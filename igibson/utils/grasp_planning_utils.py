@@ -281,6 +281,9 @@ def grasp_position_for_open_on_revolute_joint(robot, target_obj, relevant_joint_
 
 
 def get_grasp_poses_for_object(robot, target_obj: URDFObject, force_allow_any_extent=True):
+    """
+    Return possible grasping poses for an object based on its bounding box
+    """
     bbox_center_in_world, bbox_quat_in_world, bbox_extent_in_base_frame, _ = target_obj.get_base_aligned_bounding_box(
         visual=False
     )

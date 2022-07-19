@@ -18,7 +18,7 @@ robot:
   name: BehaviorRobot
 
   action_normalize: False
-  show_visual_head: False
+  show_visual_head: True
   higher_limits: True  # This should probably be false.
   controller_config:
     gripper_right_hand:
