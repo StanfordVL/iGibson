@@ -540,7 +540,7 @@ class BaseRobot(StatefulObject):
         else:
             assert len(joint_positions) == len(joint_idx), "List of indices and values are not of the same length"
             for joint_id, joint_position in zip(joint_idx, joint_positions):
-                self._joints.values()[joint_id].reset_state(pos=joint_position, vel=0.0)
+                list(self._joints.values())[joint_id].reset_state(pos=joint_position, vel=0.0)
 
     def set_joint_states(self, joint_states):
         """Set this robot's joint states in the format of Dict[String: (q, q_dot)]]"""
