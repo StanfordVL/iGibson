@@ -158,7 +158,7 @@ class DDPPOTrainer(PPOTrainer):
                 
             #RT
             if self.config['use_rt_map']:
-#                 rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
+                # rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
                 rt_class = RTPredictor
                 self.rt_predictor = rt_class(self.config, self.device, self.envs.batch_size).to(device=self.device)
                 self.rt_predictor.rt_loss_fn = NonZeroWeightedCrossEntropy().to(device=self.device)
