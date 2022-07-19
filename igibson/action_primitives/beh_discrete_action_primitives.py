@@ -482,7 +482,7 @@ class BEHActionPrimitives(BaseActionPrimitiveSet):
         pulling_direction = np.array(params[3:6])
         ee_pulling_orn = p.getQuaternionFromEuler((np.pi / 2, np.pi / 16, 0))
         pre_pulling_distance = 0.1
-        pulling_distance = 0.30
+        pulling_distance = 0.20
 
         finger_size = self.robot.finger_lengths[self.arm]
         logger.debug("Using finger length {} to adapt action".format(finger_size))

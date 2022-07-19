@@ -45,7 +45,7 @@ ap_object_params = {
         "cabinet.n.01_1": [0.35, -0.3, 0.35, -1, 0, 0, 1],  # pulling_position_offset, pulling_dir (absolute coords)
     },
     BEHActionPrimitiveSet.PUSH: {  # push
-        "cabinet.n.01_1": [0.3, -0.6, 0.3, 1, 0, 0],  # dx, dy, dz
+        "cabinet.n.01_1": [0.3, -0.6, 0.45, 1, 0, 0],  # dx, dy, dz
     },
 }
 
