@@ -28,20 +28,16 @@ def execute_controller(ctrl_gen, robot, s):
 
 def go_to_sink_and_toggle(s, robot, controller: StarterSemanticActionPrimitives):
     """Go to the sink object in the scene and toggle it on."""
-    for i in range(ATTEMPTS):
-        try:
-            sink = s.scene.objects_by_category["sink"][1]
-            print("Trying to NAVIGATE_TO sink.")
-            execute_controller(controller._navigate_to_obj(sink), robot, s)
-            print("NAVIGATE_TO sink succeeded!")
-            print("Trying to TOGGLE_ON the sink.")
-            execute_controller(controller.toggle_on(sink), robot, s)
-            print("TOGGLE_ON the sink succeeded!")
-            return True
-        except ActionPrimitiveError:
-            print("Attempt {} to navigate and toggle on the sink failed. Retry until {}.".format(i + 1, ATTEMPTS))
-            continue
-
+    try:
+        sink = s.scene.objects_by_category["sink"][1]
+        print("Trying to NAVIGATE_TO sink.")
+        execute_controller(controller._navigate_to_obj(sink), robot, s)
+        print("NAVIGATE_TO sink succeeded!")
+        print("Trying to TOGGLE_ON the sink.")
+        execute_controller(controller.toggle_on(sink), robot, s)
+        print("TOGGLE_ON the sink succeeded!")
+        return True
+    except ActionPrimitiveError:
         print("TOGGLE_ON the sink failed!")
         return False
 
@@ -74,58 +70,46 @@ def put_on_table(s, robot, controller: StarterSemanticActionPrimitives):
 
 def open_and_close_fridge(s, robot, controller: StarterSemanticActionPrimitives):
     """Demonstrate opening and closing the fridge."""
-    for i in range(ATTEMPTS):
-        try:
-            fridge = s.scene.objects_by_category["fridge"][0]
-            print("Trying to OPEN the fridge.")
-            execute_controller(controller.open(fridge), robot, s)
-            print("OPEN the fridge succeeded!")
-            print("Trying to CLOSE the fridge.")
-            execute_controller(controller.close(fridge), robot, s)
-            print("CLOSE the fridge succeeded!")
-            return True
-        except ActionPrimitiveError:
-            print("Attempt {} to open and close the fridge failed. Retry until {}.".format(i + 1, ATTEMPTS))
-            continue
-
+    try:
+        fridge = s.scene.objects_by_category["fridge"][0]
+        print("Trying to OPEN the fridge.")
+        execute_controller(controller.open(fridge), robot, s)
+        print("OPEN the fridge succeeded!")
+        print("Trying to CLOSE the fridge.")
+        execute_controller(controller.close(fridge), robot, s)
+        print("CLOSE the fridge succeeded!")
+        return True
+    except ActionPrimitiveError:
         print("OPEN and CLOSE fridge failed!")
         return False
 
 
 def open_and_close_door(s, robot, controller: StarterSemanticActionPrimitives):
     """Demonstrate opening and closing the bathroom door."""
-    for i in range(ATTEMPTS):
-        try:
-            door = (set(s.scene.objects_by_category["door"]) & set(s.scene.objects_by_room["bathroom_0"])).pop()
-            print("Trying to OPEN the door.")
-            execute_controller(controller.open(door), robot, s)
-            print("Trying to CLOSE the door.")
-            execute_controller(controller.close(door), robot, s)
-            print("CLOSE the door succeeded!")
-            return True
-        except ActionPrimitiveError:
-            print("Attempt {} to open and close the door failed. Retry until {}.".format(i + 1, ATTEMPTS))
-            continue
-
+    try:
+        door = (set(s.scene.objects_by_category["door"]) & set(s.scene.objects_by_room["bathroom_0"])).pop()
+        print("Trying to OPEN the door.")
+        execute_controller(controller.open(door), robot, s)
+        print("Trying to CLOSE the door.")
+        execute_controller(controller.close(door), robot, s)
+        print("CLOSE the door succeeded!")
+        return True
+    except ActionPrimitiveError:
         print("OPEN and CLOSE door failed!")
         return False
 
 
 def open_and_close_cabinet(s, robot, controller: StarterSemanticActionPrimitives):
     """Demonstrate opening and closing a drawer unit."""
-    for i in range(ATTEMPTS):
-        try:
-            cabinet = s.scene.objects_by_category["bottom_cabinet"][2]
-            print("Trying to OPEN the cabinet.")
-            execute_controller(controller.open(cabinet), robot, s)
-            print("Trying to CLOSE the cabinet.")
-            execute_controller(controller.close(cabinet), robot, s)
-            print("CLOSE the cabinet succeeded!")
-            return True
-        except ActionPrimitiveError:
-            print("Attempt {} to open and close the cabinet failed. Retry until {}.".format(i + 1, ATTEMPTS))
-            continue
-
+    try:
+        cabinet = s.scene.objects_by_category["bottom_cabinet"][2]
+        print("Trying to OPEN the cabinet.")
+        execute_controller(controller.open(cabinet), robot, s)
+        print("Trying to CLOSE the cabinet.")
+        execute_controller(controller.close(cabinet), robot, s)
+        print("CLOSE the cabinet succeeded!")
+        return True
+    except ActionPrimitiveError:
         print("OPEN and CLOSE cabinet failed!")
         return False
 
@@ -142,12 +126,12 @@ def open_hand(s, controller, robot):
 
 
 def reset(env, robot, controller, tray):
+    # TODO: there is still something wrong here. After reset, is like the hands collide with the tray, even if it is not
+    #  supposed to be there
     print("Resetting scene")
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
     env.land(robot, [0, 0, 0], [0, 0, 0])
     robot.reset()
-    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
-    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
     action = np.zeros(robot.action_dim)
     robot.apply_action(action)
@@ -162,8 +146,6 @@ def reset(env, robot, controller, tray):
     if env.simulator.viewer is not None:
         env.simulator.viewer.following_viewer = True
         env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 1])  # x is in front of the robot
-    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
-    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
     tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
     env.simulator.step()
 
@@ -200,6 +182,8 @@ def main(selection="user", headless=False, short_exec=False):
     # Create an Action Primitive Set and use it to convert high-level actions to low-level actions and execute.
     controller = StarterSemanticActionPrimitives(env=env, task=None, scene=env.scene, robot=robot)
 
+    inspect_effect = False  # Change to true if you are manually executing and want to see the effect of actions
+
     for attempt in range(20):
         reset(env, robot, controller, tray)
         print("Attempt {}".format(attempt))
@@ -208,8 +192,8 @@ def main(selection="user", headless=False, short_exec=False):
             if put_on_table(env.simulator, robot, controller):
                 print("Placed object.")
                 # If we're not running in headless mode, let the simulator run idle after we are done to allow user to inspect.
-                if not headless and short_exec:
-                    while True:
+                if not headless and inspect_effect:
+                    while 1000:
                         action = np.zeros(robot.action_dim)
                         robot.apply_action(action)
                         env.simulator.step()
@@ -234,14 +218,13 @@ def main(selection="user", headless=False, short_exec=False):
                 if function(env.simulator, robot, controller):
                     print("Success!")
                     # If we're not running in headless mode, let the simulator run idle after we are done to allow user to inspect.
-                    if not headless:
+                    if not headless and inspect_effect:
                         while 1000:
                             action = np.zeros(robot.action_dim)
                             robot.apply_action(action)
                             env.simulator.step()
                 else:
                     print("Failure")
-                    reset(env, robot, controller, tray)
 
     env.simulator.disconnect()
 
