@@ -205,9 +205,10 @@ class AudioNavBaselineNet(Net):
         rnn_input_size = (0 if self.is_blind else self._hidden_size) + \
                          (self._n_task_obs if self._task_obs else 0) + (self._hidden_size if self._audiogoal else 0) + \
                          (self._n_bump if self._bump else 0) + \
-#                          (observation_space.spaces['category'].shape[0] if self._label else 0) + \
                          (observation_space.spaces['category_belief'].shape[0] if self._use_label_belief else 0) + \
                          (observation_space.spaces['location_belief'].shape[0] if self._use_location_belief else 0)
+        
+        # (observation_space.spaces['category'].shape[0] if self._label else 0) + \
         
         if not self._use_mlp_state_encoder:
             self.state_encoder = RNNStateEncoder(rnn_input_size, self._hidden_size)

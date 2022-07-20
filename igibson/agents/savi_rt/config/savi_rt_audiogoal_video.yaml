@@ -4,10 +4,10 @@ TRAIN_EPISODE_PER_SCENE: 100
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt/eval.log"
+LOG_FILE: "data/logs/eval.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.200.pth"
+CHECKPOINT_FOLDER: "data/checkpoints"
+EVAL_CKPT_PATH_DIR: "data/checkpoints/ckpt_sample_1.pth"
 TENSORBOARD_DIR: "data/savi_rt/tb"
 MODEL_DIR: "data/savi_rt"
 TORCH_GPU_ID: 0
@@ -15,8 +15,8 @@ SEED: 1
 VIDEO_OPTION: ["disk"]
 TEST_EPISODE_COUNT: 1
 automatic_reset: False
-VIDEO_DIR: "/viscam/u/wangzz/avGibson/igibson/repo/"
-AUDIO_DIR: "/viscam/u/wangzz/avGibson/igibson/repo/audio_out"
+VIDEO_DIR: "data/video"
+AUDIO_DIR: "data/audio"
 HAS_DISTRACTOR_SOUND: False
 not_load_object_categories: ['ceilings']
 joint_loss: True

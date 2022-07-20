@@ -30,7 +30,7 @@ from igibson.agents.savi_rt.ddppo.algo.ddp_utils import (
 from igibson.agents.savi_rt.ddppo.algo.ddppo import DDPPO
 from igibson.agents.savi_rt.models.belief_predictor import BeliefPredictor, BeliefPredictorDDP
 from igibson.agents.savi_rt.models.rollout_storage import RolloutStorage
-from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy
+from igibson.agents.savi_rt.models.rt_predictor import RTPredictor, NonZeroWeightedCrossEntropy, RTPredictorDDP
 from igibson.agents.savi_rt.ppo.ppo_trainer import PPOTrainer
 from igibson.agents.savi_rt.ppo.policy import AudioNavSMTPolicy, AudioNavBaselinePolicy
 from igibson.envs.parallel_env import ParallelNavEnv
@@ -273,6 +273,9 @@ class DDPPOTrainer(PPOTrainer):
         self.agent.init_distributed(find_unused_params=True)
         if self.config['use_belief_predictor'] and self.config['online_training']:
             self.belief_predictor.init_distributed(find_unused_params=True)
+        # if self.config['use_rt_map'] and self.config['online_training']:
+        #     self.rt_predictor.init_distributed(find_unused_params=True)
+        
 
         if self.world_rank == 0:
             logger.info(

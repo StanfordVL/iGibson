@@ -18,6 +18,39 @@ from igibson.agents.savi_rt.models.rnn_state_encoder_rt import RNNStateEncoder
 from igibson.agents.savi_rt.models.audio_cnn import AudioCNN
 from igibson.agents.savi_rt.models.smt_cnn import SMTCNN
 
+class DecentralizedDistributedMixinBelief:
+    def init_distributed(self, find_unused_params: bool = True) -> None:
+        r"""Initializes distributed training for the model
+        1. Broadcasts the model weights from world_rank 0 to all other workers
+        2. Adds gradient hooks to the model
+        :param find_unused_params: Whether or not to filter out unused parameters
+                                   before gradient reduction.  This *must* be True if
+                                   there are any parameters in the model that where unused in the
+                                   forward pass, otherwise the gradient reduction
+                                   will not work correctly.
+        """
+        # NB: Used to hide the hooks from the nn.Module,
+        # so they don't show up in the state_dict
+        class Guard:
+            def __init__(self, model, device):
+                if torch.cuda.is_available():
+                    self.ddp = torch.nn.parallel.DistributedDataParallel(
+                        model, device_ids=[device], output_device=device
+                    )
+                else:
+                    self.ddp = torch.nn.parallel.DistributedDataParallel(model)
+
+        self._ddp_hooks = Guard(self, self.device)
+
+        self.reducer = self._ddp_hooks.ddp.reducer
+        self.find_unused_params = find_unused_params
+
+    def before_backward(self, loss):
+        if self.find_unused_params:
+            self.reducer.prepare_for_backward([loss])
+        else:
+            self.reducer.prepare_for_backward([])
+
 class SimpleWeightedCrossEntropy(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
@@ -188,5 +221,19 @@ class RTPredictor(nn.Module):
         global_maps = self.outc(global_maps_features)
         return global_maps_features, global_maps, rt_hidden_states
         
+class RTPredictorDDP(RTPredictor, DecentralizedDistributedMixinBelief):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
+def global_to_local(pointgoal_global, pose, angle):
+    delta = pointgoal_global - pose[:2]
+    delta_theta = np.arctan2(delta[1], delta[0]) - angle
+    d = np.linalg.norm(delta)
+    return np.array([d * np.cos(delta_theta), d * np.sin(delta_theta)])
+
+
+def local_to_global(pointgoal_local, pose, angle):
+    d = np.linalg.norm(pointgoal_local)
+    theta = np.arctan2(pointgoal_local[1], pointgoal_local[0])
+    return np.array([pose[0] + d*np.cos(theta+angle), pose[1] + d * np.sin(theta+angle)])
