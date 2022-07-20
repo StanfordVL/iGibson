@@ -34,7 +34,7 @@ MAX_STEPS_FOR_HAND_MOVE = 100
 MAX_STEPS_FOR_HAND_MOVE_WHEN_OPENING = 30
 MAX_STEPS_FOR_GRASP_OR_RELEASE = 10
 MAX_WAIT_FOR_GRASP_OR_RELEASE = 10
-MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 200
+MAX_STEPS_FOR_WAYPOINT_NAVIGATION = 10
 
 MAX_ATTEMPTS_FOR_SAMPLING_POSE_WITH_OBJECT_AND_PREDICATE = 20
 MAX_ATTEMPTS_FOR_SAMPLING_POSE_NEAR_OBJECT = 60
@@ -105,6 +105,32 @@ def behavior_robot_action_to_default_pose(robot: BehaviorRobot):
     return action
 
 
+def get_still_action(robot: BehaviorRobot):
+    action = np.zeros(robot.action_dim)
+    # Compute the body information from the current frame.
+    body = robot.base_link
+    body_pose = body.get_position_orientation()
+    world_frame_to_body_frame = p.invertTransform(*body_pose)
+    parts_to_move_to_default_pos = [
+        ("eye", "camera", "neck", robot.get_parts["eye"].get_local_position_orientation()),
+        (
+            "left_hand",
+            "arm_left_hand",
+            "left_hand_shoulder",
+            robot.get_parts["left_hand"].get_local_position_orientation(),
+        ),
+        (
+            "right_hand",
+            "arm_right_hand",
+            "right_hand_shoulder",
+            robot.get_parts["right_hand"].get_local_position_orientation(),
+        ),
+    ]
+    for part_name, controller_name, shoulder_name, target_pose in parts_to_move_to_default_pos:
+        action[robot.controller_action_idx[controller_name]] = pose_to_command(robot, shoulder_name, target_pose)
+    return action
+
+
 def convert_behavior_robot_part_pose_to_action(
     robot: BehaviorRobot, body_target_pose=None, hand_target_pose=None, reset_others=True, low_precision=False
 ):
@@ -116,7 +142,13 @@ def convert_behavior_robot_part_pose_to_action(
     world_frame_to_body_frame = p.invertTransform(*body_pose)
 
     # Accumulate the actions in the correct order.
-    action = np.zeros(robot.action_dim)
+    # We expect the action space to be absolute poses of body parts (not deltas) with respect to the robot base frame
+    # If we reset them, we will overwrite the zeros
+    # If we do not reset them, we need to query the current poses and keep still
+    if reset_others:
+        action = np.zeros(robot.action_dim)
+    else:
+        action = get_still_action(robot)
 
     part_close = {}
     dist_threshold = LOW_PRECISION_DIST_THRESHOLD if low_precision else DEFAULT_DIST_THRESHOLD
@@ -187,7 +219,7 @@ class UndoableContext(object):
         self.robot.load_state(self.robot_data)
         restoreState(self.state)
         p.removeState(self.state)
-        logger.debug("Exiting UndoableContext context")
+        indented_print("Exiting UndoableContext context")
 
 
 class StarterSemanticActionPrimitive(IntEnum):
@@ -410,10 +442,10 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         approach_pose = (approach_pos, grasp_pose[1])
 
         # If the grasp pose is too far, navigate.
-        yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos, collision_free=True)
-        yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0], collision_free=True)
+        yield from self._navigate_if_needed(obj, pos_on_obj=approach_pos, detect_collisions_during_motion=True)
+        yield from self._navigate_if_needed(obj, pos_on_obj=grasp_pose[0], detect_collisions_during_motion=True)
 
-        yield from self._move_hand(grasp_pose)
+        yield from self._move_hand(grasp_pose, fail_on_contact=True)
 
         # Since the grasp pose is slightly off the object, we want to move towards the object, around 5cm.
         # It's okay if we can't go all the way because we run into the object.
@@ -427,7 +459,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         yield from self._reset_hand_high()
 
         if self._get_obj_in_hand() == obj:
-            logger.debug("Successfully grasped the requested object!")
+            indented_print("Successfully grasped the requested object!")
             return
         else:
             raise ActionPrimitiveError(
@@ -478,13 +510,29 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
 
         obj_pose = self._sample_pose_with_object_and_predicate(predicate, obj_in_hand, obj)
         hand_pose = self._get_hand_pose_for_object_pose(obj_pose)
-        yield from self._navigate_if_needed(obj, pos_on_obj=hand_pose[0], collision_free=False)
+
+        indented_print("Navigating closer to the object to place on, if needed")
+        yield from self._navigate_if_needed(
+            obj, pos_on_obj=hand_pose[0], detect_collisions_during_motion=False, reset_others=False
+        )
+
+        indented_print("Moving hand to the placing pose")
         yield from self._move_hand(hand_pose)
+
+        indented_print("Releasing the grasped object")
         yield from self._execute_release()
+
+        indented_print("Resetting the hand")
         yield from self._reset_hand()
 
         if obj_in_hand.states[predicate].get_value(obj):
+            indented_print("Success! The grasped object ended placed such that the given predicate is fulfilled!")
             return
+        else:
+            raise ActionPrimitiveError(
+                ActionPrimitiveError.Reason.EXECUTION_ERROR,
+                "Object was not placed in a way that the given predicate is fulfilled at the end.",
+            )
 
     def _move_hand(self, target_pose, **kwargs):
         """
@@ -534,17 +582,26 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         ignore_failure=False,
         max_steps_for_hand_move=MAX_STEPS_FOR_HAND_MOVE,
         stop_on_contact=False,
+        fail_on_contact=False,
     ):
         """
         Move the hand to a given pose relative to the robot's torso/base frame
         """
 
+        assert not (stop_on_contact and fail_on_contact), "Both options cannot be True at the same time"
+
         # Main loop. Try to move the hand to the desired relative pose for max_steps_for_hand_move simulation steps
         for _ in range(max_steps_for_hand_move):
 
-            # If we stop when there is contact
-            if stop_on_contact and p.getContactPoints(self.robot.eef_links[self.arm].body_id):  # TODO(MP): Generalize
-                return
+            # Handling contact
+            if p.getContactPoints(self.robot.eef_links[self.arm].body_id):  # TODO(MP): Generalize
+                if stop_on_contact:
+                    return
+                elif fail_on_contact:
+                    raise ActionPrimitiveError(
+                        ActionPrimitiveError.Reason.EXECUTION_ERROR,
+                        "Contact was made in a motion that was expected to be collision free.",
+                    )
 
             # Obtain the action to try to move the hand
             action = convert_behavior_robot_part_pose_to_action(self.robot, hand_target_pose=relative_target_pose)
@@ -575,31 +632,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
             raise ActionPrimitiveError(ActionPrimitiveError.Reason.EXECUTION_ERROR, "No contact was made.")
 
     def _get_still_action(self):
-        action = np.zeros(self.robot.action_dim)
-        # Compute the body information from the current frame.
-        body = self.robot.base_link
-        body_pose = body.get_position_orientation()
-        world_frame_to_body_frame = p.invertTransform(*body_pose)
-        parts_to_move_to_default_pos = [
-            ("eye", "camera", "neck", self.robot.get_parts["eye"].get_local_position_orientation()),
-            (
-                "left_hand",
-                "arm_left_hand",
-                "left_hand_shoulder",
-                self.robot.get_parts["left_hand"].get_local_position_orientation(),
-            ),
-            (
-                "right_hand",
-                "arm_right_hand",
-                "right_hand_shoulder",
-                self.robot.get_parts["right_hand"].get_local_position_orientation(),
-            ),
-        ]
-        for part_name, controller_name, shoulder_name, target_pose in parts_to_move_to_default_pos:
-            action[self.robot.controller_action_idx[controller_name]] = pose_to_command(
-                self.robot, shoulder_name, target_pose
-            )
-        return action
+        return get_still_action(self.robot)
 
     def _execute_grasp(self):
         action = self._get_still_action()  # np.zeros(self.robot.action_dim)
@@ -651,10 +684,69 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         )
         yield from self._move_hand(default_pose)
 
-    def _navigate_to_pose(self, pose_2d, collision_free=True):
+    def _rotate_in_place(self, yaw, low_precision=False):
+        cur_pos = self.robot.get_position()
+        target_pose = self._get_robot_pose_from_2d_pose((cur_pos[0], cur_pos[1], yaw))
+        for _ in range(MAX_STEPS_FOR_WAYPOINT_NAVIGATION):
+            action = convert_behavior_robot_part_pose_to_action(
+                self.robot, body_target_pose=self._get_pose_in_robot_frame(target_pose), low_precision=low_precision
+            )
+            if action is None:
+                indented_print("Rotate is complete.")
+                break
 
-        logger.debug("Navigating the robot to a given location")
+            yield action
 
+    def _navigate_if_needed(
+        self, obj, pos_on_obj=None, detect_collisions_during_motion=True, reset_others=True, **kwargs
+    ):
+        """
+        Check if the BRobot needs to navigate to get closer to an object for a subsequent interaction
+        If it is needed, compute a navigation path and execute it
+        """
+        indented_print("Navigating to get closer to a desired hand configuration")
+        if pos_on_obj is not None:
+            if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
+                # No need to navigate.
+                indented_print("Robot's body is close enough to reach the desired hand configuration. Not moving")
+                return
+        elif obj.states[object_states.InReachOfRobot].get_value():
+            indented_print("Robot's body is close enough to reach the desired hand configuration. Not moving")
+            return
+
+        indented_print("Robot's body is too far to reach the desired hand configuration. Moving it!")
+        yield from self._navigate_to_obj(
+            obj,
+            pos_on_obj=pos_on_obj,
+            detect_collisions_during_motion=detect_collisions_during_motion,
+            reset_others=reset_others,
+            **kwargs,
+        )
+
+    def _navigate_to_obj(self, obj, pos_on_obj=None, detect_collisions_during_motion=True, reset_others=True, **kwargs):
+        """
+        Sample a valid location next to the given object (the object can be a room), compute a navigation path and
+          execute it
+        """
+        indented_print("Navigating towards an object ({})".format(obj.name))
+        if isinstance(obj, RoomFloor):
+            # TODO(lowprio-MP): Pos-on-obj for the room navigation?
+            indented_print("The goal is a room. Sampling a valid location in the room")
+            pose = self._sample_pose_in_room(obj.room_instance)
+        else:
+            indented_print("The goal is not a room. Sampling a valid location near the object")
+            pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj, **kwargs)
+
+        yield from self._navigate_to_pose(
+            pose, detect_collisions_during_motion=detect_collisions_during_motion, reset_others=reset_others
+        )
+
+    def _navigate_to_pose(self, pose_2d, detect_collisions_during_motion=True, reset_others=True):
+        """
+        Compute a 2D path and execute it to move the BRobot to the given 2D location (actually, it is 3D because of
+          the orientation)
+        """
+        indented_print("Navigating the robot to a given location")
         with UndoableContext(self.robot):
             # Note that the plan returned by this planner only contains xy pairs & not yaw.
             plan = self.planner.plan_base_motion(
@@ -672,59 +764,25 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         for i, pose_2d in enumerate(plan):
             indented_print("Executing navigation plan step %d/%d", i + 1, len(plan))
             low_precision = True if i < len(plan) - 1 else False
-            yield from self._navigate_to_pose_direct(pose_2d, low_precision=low_precision)
-            if collision_free:
+            yield from self._navigate_to_pose_direct(pose_2d, low_precision=low_precision, reset_others=reset_others)
+            if detect_collisions_during_motion:
                 if self._detect_robot_collision():
                     raise ActionPrimitiveError(
                         ActionPrimitiveError.Reason.EXECUTION_ERROR, "Detected collision during navigation."
                     )
 
-    def _rotate_in_place(self, yaw, low_precision=False):
-        cur_pos = self.robot.get_position()
-        target_pose = self._get_robot_pose_from_2d_pose((cur_pos[0], cur_pos[1], yaw))
-        for _ in range(MAX_STEPS_FOR_WAYPOINT_NAVIGATION):
-            action = convert_behavior_robot_part_pose_to_action(
-                self.robot, body_target_pose=self._get_pose_in_robot_frame(target_pose), low_precision=low_precision
-            )
-            if action is None:
-                indented_print("Rotate is complete.")
-                break
-
-            yield action
-
-    def _navigate_if_needed(self, obj, pos_on_obj=None, collision_free=True, **kwargs):
-        logger.debug("Navigating to get closer to a desired hand configuration")
-        if pos_on_obj is not None:
-            if self._get_dist_from_point_to_shoulder(pos_on_obj) < HAND_DISTANCE_THRESHOLD:
-                # No need to navigate.
-                logger.debug("Torso is close enough to reach the desired hand configuration. Not moving")
-                return
-        elif obj.states[object_states.InReachOfRobot].get_value():
-            logger.debug("Torso is close enough to reach the desired hand configuration. Not moving")
-            return
-
-        logger.debug("Torso is too far to reach the desired hand configuration. Moving it!")
-        yield from self._navigate_to_obj(obj, pos_on_obj=pos_on_obj, collision_free=True, **kwargs)
-
-    def _navigate_to_obj(self, obj, pos_on_obj=None, collision_free=True, **kwargs):
-        logger.debug("Navigating towards an object ({})".format(obj.name))
-        if isinstance(obj, RoomFloor):
-            # TODO(lowprio-MP): Pos-on-obj for the room navigation?
-            logger.debug("The goal is a room. Sampling a valid location in the room")
-            pose = self._sample_pose_in_room(obj.room_instance)
-        else:
-            logger.debug("The goal is not a room. Sampling a valid location near the object")
-            pose = self._sample_pose_near_object(obj, pos_on_obj=pos_on_obj, **kwargs)
-
-        yield from self._navigate_to_pose(pose, collision_free=True)
-
-    def _navigate_to_pose_direct(self, pose_2d, low_precision=False):
-
+    def _navigate_to_pose_direct(self, pose_2d, low_precision=False, reset_others=True):
+        """
+        Create an action to displace the entire BRobot to the given 2D location (with orientation)
+        """
         # Keep the same orientation until the target.
         pose = self._get_robot_pose_from_2d_pose(pose_2d)
         for _ in range(MAX_STEPS_FOR_WAYPOINT_NAVIGATION):
             action = convert_behavior_robot_part_pose_to_action(
-                self.robot, body_target_pose=self._get_pose_in_robot_frame(pose), low_precision=low_precision
+                self.robot,
+                body_target_pose=self._get_pose_in_robot_frame(pose),
+                low_precision=low_precision,
+                reset_others=reset_others,
             )
             if action is None:
                 indented_print("Move is complete.")
@@ -739,7 +797,7 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
         )
 
     def _sample_pose_near_object(self, obj, pos_on_obj=None, **kwargs):
-        logger.debug("Sampling a valid location for the base next to the the given object ({})".format(obj.name))
+        indented_print("Sampling a valid location for the base next to the the given object ({})".format(obj.name))
         if pos_on_obj is None:
             pos_on_obj = self._sample_position_on_aabb_face(obj)
 
@@ -758,10 +816,10 @@ class StarterSemanticActionPrimitives(BaseActionPrimitiveSet):
                 continue
 
             if not self._test_pose(pose_2d, pos_on_obj=pos_on_obj, **kwargs):
-                logger.debug("Robot location not valid. Continue searching for a valid location next to the object")
+                indented_print("Robot location not valid. Continue searching for a valid location next to the object")
                 continue
 
-            logger.debug("Found valid robot location next to the object: {}".format(pose_2d))
+            indented_print("Found valid robot location next to the object: {}".format(pose_2d))
             return pose_2d
 
         raise ActionPrimitiveError(

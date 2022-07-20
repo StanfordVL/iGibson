@@ -48,34 +48,26 @@ def go_to_sink_and_toggle(s, robot, controller: StarterSemanticActionPrimitives)
 
 def grasp_tray(s, robot, controller: StarterSemanticActionPrimitives):
     """Grasp the tray that's on the floor of the room."""
-    for i in range(ATTEMPTS):
-        try:
-            print("Trying to GRASP tray.")
-            tray = s.scene.objects_by_category["tray"][0]
-            execute_controller(controller.grasp(tray), robot, s)
-            print("GRASP the tray succeeded!")
-            return True
-        except ActionPrimitiveError as ape:
-            print("Attempt {} out of {} to grasp the tray failed. Error: {}".format(i + 1, ATTEMPTS, ape))
-            continue
-
-    print("GRASP the tray failed!")
-    return False
+    try:
+        print("Trying to GRASP tray.")
+        tray = s.scene.objects_by_category["tray"][0]
+        execute_controller(controller.grasp(tray), robot, s)
+        print("GRASP the tray succeeded!")
+        return True
+    except ActionPrimitiveError as ape:
+        print("GRASP the tray failed!")
+        return False
 
 
 def put_on_table(s, robot, controller: StarterSemanticActionPrimitives):
     """Place the currently-held object on top of the coffee table."""
-    for i in range(ATTEMPTS):
-        try:
-            print("Trying to PLACE_ON_TOP the held object on coffee table.")
-            table = s.scene.objects_by_category["coffee_table"][0]
-            execute_controller(controller.place_on_top(table), robot, s)
-            print("PLACE_ON_TOP succeeded!")
-            return True
-        except ActionPrimitiveError:
-            print("Attempt {} to place the held object failed. Retry until {}.".format(i + 1, ATTEMPTS))
-            continue
-
+    try:
+        print("Trying to PLACE_ON_TOP the held object on coffee table.")
+        table = s.scene.objects_by_category["coffee_table"][0]
+        execute_controller(controller.place_on_top(table), robot, s)
+        print("PLACE_ON_TOP succeeded!")
+        return True
+    except ActionPrimitiveError:
         print("PLACE_ON_TOP failed!")
         return False
 
@@ -149,6 +141,33 @@ def open_hand(s, controller, robot):
         execute_controller(controller.reset(), robot, s)
 
 
+def reset(env, robot, controller, tray):
+    print("Resetting scene")
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    env.land(robot, [0, 0, 0], [0, 0, 0])
+    robot.reset()
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    action = np.zeros(robot.action_dim)
+    robot.apply_action(action)
+    env.simulator.step()
+    open_hand(env.simulator, controller, robot)
+    robot.set_position_orientation(*robot.get_parts["body"].get_position_orientation())
+    cam_pose = robot.get_parts["eye"].get_position_orientation()
+    # Rotate cam
+    cam_pose_new = (cam_pose[0], p.getQuaternionFromEuler([0, 70, 0]))
+    robot.get_parts["eye"].set_position_orientation(*cam_pose_new)
+    # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
+    if env.simulator.viewer is not None:
+        env.simulator.viewer.following_viewer = True
+        env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 1])  # x is in front of the robot
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
+    env.simulator.step()
+
+
 def main(selection="user", headless=False, short_exec=False):
     """
     Launches a simulator scene and showcases a variety of semantic action primitives such as navigation, grasping,
@@ -181,21 +200,9 @@ def main(selection="user", headless=False, short_exec=False):
     # Create an Action Primitive Set and use it to convert high-level actions to low-level actions and execute.
     controller = StarterSemanticActionPrimitives(env=env, task=None, scene=env.scene, robot=robot)
 
-    for attempt in range(5):
-
-        tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
-        env.land(robot, [0, 0, 0], [0, 0, 0])
-        robot.reset()
-        robot.tuck()
-        # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
-        if env.simulator.viewer is not None:
-            env.simulator.viewer.following_viewer = True
-            env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 1])  # x is in front of the robot
-
-        open_hand(env.simulator, controller, robot)
-
+    for attempt in range(20):
+        reset(env, robot, controller, tray)
         print("Attempt {}".format(attempt))
-
         if grasp_tray(env.simulator, robot, controller):
             print("Grasped object. Trying to put it on the table.")
             if put_on_table(env.simulator, robot, controller):
@@ -206,10 +213,9 @@ def main(selection="user", headless=False, short_exec=False):
                         action = np.zeros(robot.action_dim)
                         robot.apply_action(action)
                         env.simulator.step()
-        env.reset()
+                break
 
     # The other demos are only run in the long execution mode.
-
     if not short_exec:
         functions_to_execute = [
             go_to_sink_and_toggle,
@@ -222,29 +228,20 @@ def main(selection="user", headless=False, short_exec=False):
         for function in functions_to_execute:
             print("Executing another function")
             for attempt in range(5):
-
-                open_hand(env.simulator, controller, robot)
-                tray.set_position_orientation([0, 1, 0.3], p.getQuaternionFromEuler([0, np.pi / 2, 0]))
-                env.land(robot, [0, 0, 0], [0, 0, 0])
-                robot.reset()
-                robot.tuck()
-                # Make the viewer follow the robot, placing the virtual camera in front of it and watching it
-                if env.simulator.viewer is not None:
-                    env.simulator.viewer.following_viewer = True
-                    env.simulator.viewer.camlocation_in_rf = np.array([1.0, 0.0, 1])  # x is in front of the robot
-                open_hand(env.simulator, controller, robot)
-
+                reset(env, robot, controller, tray)
                 print("Attempt {}".format(attempt))
-                input("presss0")
-                if not function(env.simulator, robot, controller):
-                    env.reset()
-                else:
+                input("[debug] press enter")
+                if function(env.simulator, robot, controller):
+                    print("Success!")
                     # If we're not running in headless mode, let the simulator run idle after we are done to allow user to inspect.
                     if not headless:
                         while 1000:
                             action = np.zeros(robot.action_dim)
                             robot.apply_action(action)
                             env.simulator.step()
+                else:
+                    print("Failure")
+                    reset(env, robot, controller, tray)
 
     env.simulator.disconnect()
 

@@ -21,6 +21,8 @@ from igibson.external.pybullet_tools.utils import (
     direct_path,
     get_aabb,
     get_base_values,
+    get_body_name,
+    get_body_name_alt,
     get_joint_names,
     get_joint_positions,
     get_joints,
@@ -1283,7 +1285,11 @@ class MotionPlanner(object):
         ]
         colliding_bids = [obs for obs, col in collisions if col]
         if colliding_bids:
-            log.debug("Hand collision with objects: {}".format(colliding_bids))
+            log.debug(
+                "Hand collision with objects: {} ({})".format(
+                    colliding_bids, [get_body_name_alt(bid) for bid in colliding_bids]
+                )
+            )
         collision = bool(colliding_bids)
 
         if obj_in_hand is not None:

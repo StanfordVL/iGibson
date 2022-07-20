@@ -1188,6 +1188,12 @@ def get_base_name(body):
 def get_body_name(body):
     return get_body_info(body).body_name.decode(encoding='UTF-8')
 
+def get_body_name_alt(body):
+    """
+    The original functions may be wrong. This provides a more accurate name
+    """
+    return get_body_info(body).base_name.decode(encoding='UTF-8')
+
 
 def get_name(body):
     name = get_body_name(body)
