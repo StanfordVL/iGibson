@@ -1,3 +1,4 @@
+import sys
 from igibson.robots.fetch import Fetch
 from igibson.simulator import Simulator
 from igibson.scenes.igibson_indoor_scene import InteractiveIndoorScene, StaticIndoorScene
@@ -9,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from IPython import embed
 from igibson.utils.mesh_util import ortho
+
 import cv2
 from igibson.audio.ig_acoustic_mesh import getIgAcousticMesh
 from igibson.audio.matterport_acoustic_mesh import getMatterportAcousticMesh
@@ -78,15 +80,15 @@ def img_mtx_to_overlay(overlay):
 
 def main():
     scene_choices = {
-        "Rs_int": "ig",
+        #"Rs_int": "ig",
         #"1LXtFkjw3qL: "mp3d"",
-        #"1pXnuDYAj8r: "mp3d"",
+        "1pXnuDYAj8r": "mp3d",
         #"Ihlen_0_int": "mp3d",
     }
     scene_trav_map_size = {
         "1pXnuDYAj8r": 4000,
-        "1LXtFkjw3qL": 3600,
-        "Rs_int": 1000,
+        #"1LXtFkjw3qL": 3600,
+        #"Rs_int": 1000,
         #"Ihlen_0_int": 2000
     }
     for scene_id, scene_type in scene_choices.items():
@@ -98,8 +100,8 @@ def main():
             scene = InteractiveIndoorScene(scene_id, texture_randomization=False, object_randomization=False, trav_map_resolution = 0.1,)
             s.import_scene(scene)
             acousticMesh = getIgAcousticMesh(s)
-            camera_pose = np.array([0, 0, -0.5])
-            view_direction = np.array([0, 0, 0.5])
+            camera_pose = np.array([0, 0, -0.7])
+            view_direction = np.array([0, 0, 0.7])
         else:
             scene = StaticIndoorScene(scene_id,  trav_map_resolution = 0.1)
             s.import_scene(scene)
@@ -108,17 +110,17 @@ def main():
             view_direction = np.array([0, 0, 1.0])
         
         renderer = s.renderer
-        print(scene.trav_map_original_size)
         trav_res = scene.trav_map_default_resolution
         points = scene.get_points_grid(100)[0]
         
         
         fake_viewer = FakeViewer()
-        audioSystem = AudioSystem(s, fake_viewer, acousticMesh, is_Viewer=True, renderReverbReflections=False, renderAmbisonics=True)
+        audioSystem = AudioSystem(s, fake_viewer, acousticMesh, is_Viewer=True, renderReverbReflections=True, renderAmbisonics=False, spectrogram_window_len=s.render_timestep)
 
         #s.step()
         
-        obj1 = cube.Cube(pos=points[0], dim=[0.1,0.1,0.01], visual_only=True, mass=0, color=[1,0,0,1])
+        obj_pos = [7, -4.5, -0.05869176]
+        obj1 = cube.Cube(pos=obj_pos, dim=[0.1,0.1,0.01], visual_only=True, mass=0, color=[255,255,255,1])
         s.import_object(obj1)
         obj_id = obj1.get_body_ids()[0]
         
@@ -139,7 +141,6 @@ def main():
         frame[depth == 0] = 1.0
         frame = cv2.flip(frame, 0)
         bg = (frame[:, :, 0:3][:, :, ::-1] * 255).astype(np.uint8)
-        print(bg.shape)
         overlay = np.zeros((bg.shape[0], bg.shape[1]))
         occl_overlay = np.zeros((bg.shape[0], bg.shape[1]))
         cv2.imwrite("floorplan/{}.png".format(scene_id), bg)
@@ -151,32 +152,40 @@ def main():
         for idx, world_point in enumerate(points):
             fake_viewer.px = world_point[0]
             fake_viewer.py = world_point[1]
-            fake_viewer.pz = world_point[2]
-            s.step()
-            audioSystem.step()
-            spectrograms = audioSystem.get_spectrogram()
-            intensity = spec_power(spectrograms[:,:,0])
+            fake_viewer.pz = world_point[2] + 0.5
+            intensity = 0
+            for sample in range(10):
+                s.step()
+                audioSystem.step()
+                spectrograms = audioSystem.get_spectrogram()
+                intensity += spec_power(spectrograms[:,:,0])
+                intensity += spec_power(spectrograms[:,:,1])
             if intensity == 0.0:
                 continue
 
             if intensity > max_intensity:
                 max_intensity = intensity
-                max_pt = world_point
+                max_pt = [fake_viewer.px, fake_viewer.py, fake_viewer.pz]
             min_intensity = min(min_intensity, intensity)
             px, py = worldToPixel(world_point, map_size, trav_res)
-            for i in range(20):
-                for j in range(20):
-                    overlay[px + i, py + j] = intensity
-                    occl_overlay[px + i, py + j] = audioSystem.occl_intensity
+            square_radius = 30
+            for i in range(-square_radius,square_radius+1):
+                for j in range(-square_radius,square_radius+1):
+                    if overlay[px + i, py + j]:
+                        overlay[px + i, py + j] = (intensity + overlay[px + i, py + j]) / 2
+                        occl_overlay[px + i, py + j] = (occl_overlay[px + i, py + j]+audioSystem.occl_intensity) / 2
+                    else:
+                        overlay[px + i, py + j] = intensity
+                        occl_overlay[px + i, py + j] = audioSystem.occl_intensity
 
         print("Max RMS = " + str(max_intensity) + " Min RMS = " + str(min_intensity))
-        print("Obj 0 at" + str(points[0]))
+        print("Obj 0 at" + str(obj_pos))
         print("Max RMS at " + str(max_pt))
         intensity_overlay = img_mtx_to_overlay(overlay)
-        cv2.imwrite("floorplan/{}_trav.png".format(scene_id), intensity_overlay)
+        cv2.imwrite("floorplan/{}_intensity_bare.png".format(scene_id), intensity_overlay)
 
         occl_overlay = img_mtx_to_overlay(occl_overlay)
-        cv2.imwrite("floorplan/{}_trav.png".format(scene_id), occl_overlay)
+        cv2.imwrite("floorplan/{}_occl_bare.png".format(scene_id), occl_overlay)
   
         img = cv2.addWeighted(bg, 1, intensity_overlay, 0.4, 0)
         cv2.imwrite("floorplan/{}_intensity.png".format(scene_id), img)

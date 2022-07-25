@@ -153,6 +153,8 @@ class BaseEnv(gym.Env):
         """
         Load the scene and robot specified in the config file.
         """
+        if "scene_id" not in self.config:
+            return
         if self.config["scene"] == "empty":
             scene = EmptyScene()
         elif self.config["scene"] == "stadium":
