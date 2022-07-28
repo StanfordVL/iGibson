@@ -3,7 +3,15 @@ import logging
 import os
 import time
 from collections import OrderedDict
+
+#TODO: GOKUL HACK
+ros_path = '/opt/ros/kinetic/lib/python2.7/dist-packages'
+import sys
+if ros_path in sys.path:
+    sys.path.remove(ros_path)
 import cv2
+sys.path.append('/opt/ros/kinetic/lib/python2.7/dist-packages')
+
 from PIL import Image
 import skimage
 import gym
@@ -257,9 +265,15 @@ class iGibsonEnv(BaseEnv):
                 shape=(self.robots[0].proprioception_dim,), low=-np.inf, high=np.inf
             )
         if 'audio' in self.output:
-            spectrogram = self.audio_system.get_spectrogram()
-            observation_space['audio'] = self.build_obs_space(
-                shape=spectrogram.shape, low=-np.inf, high=np.inf)
+            if self.audio_system is not None:
+                spectrogram = self.audio_system.get_spectrogram()
+                print(spectrogram.shape)
+                observation_space['audio'] = self.build_obs_space(
+                    shape=spectrogram.shape, low=-np.inf, high=np.inf)
+            else:
+                # GOKUL HACK
+                observation_space['audio'] = self.build_obs_space(
+                    shape=(257, 83, 2), low=-np.inf, high=np.inf)
         if 'top_down' in self.output:
             if len(self.config["VIDEO_OPTION"])!=0:
                 observation_space["top_down_video"] = self.build_obs_space(
