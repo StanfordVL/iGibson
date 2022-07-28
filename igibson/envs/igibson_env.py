@@ -32,7 +32,7 @@ from igibson.tasks.reaching_random_task import ReachingRandomTask
 from igibson.tasks.room_rearrangement_task import RoomRearrangementTask
 from igibson.utils.constants import MAX_CLASS_COUNT, MAX_INSTANCE_COUNT
 from igibson.utils.utils import quatToXYZW
-from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP#, MAP_SIZE
+from igibson.agents.savi.utils.dataset import CATEGORIES, CATEGORY_MAP, MAP_SIZE
 from igibson.utils.utils import rotate_vector_3d
 from igibson.agents.savi.utils.logs import logger
 log = logging.getLogger(__name__)
@@ -81,6 +81,7 @@ class iGibsonEnv(BaseEnv):
         self.scene_id = scene_id
         self.num_episode = 0
         self.automatic_reset = self.config.get("automatic_reset", True)
+        print("using deivce:", device_idx)
 
     def load_task_setup(self):
         """
@@ -260,6 +261,10 @@ class iGibsonEnv(BaseEnv):
             observation_space['audio'] = self.build_obs_space(
                 shape=spectrogram.shape, low=-np.inf, high=np.inf)
         if 'top_down' in self.output:
+            if len(self.config["VIDEO_OPTION"])!=0:
+                observation_space["top_down_video"] = self.build_obs_space(
+                shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
+                )
             observation_space['top_down'] = self.build_obs_space(
                 shape=(self.image_width_video, self.image_width_video, 3), low=-np.inf, high=np.inf)
         if 'category_belief' in self.output:
@@ -278,6 +283,14 @@ class iGibsonEnv(BaseEnv):
             observation_space['floorplan_map'] = self.build_obs_space(
                 shape=(self.image_height, self.image_height), low=0, high=23)
         if 'rt_map_features' in self.output:
+            if len(self.config["VIDEO_OPTION"])!=0:
+                observation_space["rt_map_video"] = self.build_obs_space(
+                shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
+                )
+                
+                observation_space["rt_map_gt_video"] = self.build_obs_space(
+                shape=(self.image_height_video, self.image_width_video, 3), low=0.0, high=1.0
+                )
             observation_space['rt_map_features'] = self.build_obs_space(
                 shape=(784,), low=-np.inf, high=np.inf)
             observation_space['rt_map'] = self.build_obs_space(
@@ -370,8 +383,8 @@ class iGibsonEnv(BaseEnv):
             frame[depth == 0] = 1.0
 #             frame = cv2.flip(frame, 0)
             bg = (frame[:, :, 0:3][:, :, ::-1] * 255).astype(np.uint8)
-            cv2.imwrite("/viscam/u/wangzz/avGibson/igibson/repo/floorplan_Rs.png", bg)
             state['top_down'] = bg
+            state['top_down_video'] = state['top_down']
             self.simulator.renderer.P = prevP
             
         if 'pose_sensor' in self.output:
@@ -415,6 +428,9 @@ class iGibsonEnv(BaseEnv):
             state['visual_features'] = np.zeros(128)
             state['audio_features'] = np.zeros(128)
             state['map_resolution'] = self.scene.trav_map_resolution
+            if len(self.config["VIDEO_OPTION"])!=0:
+                state['rt_map_video'] = state['rt_map']
+                state['rt_map_gt_video'] = state['rt_map_gt']
             
         if "floorplan_map" in self.output:
             mapdir = '/viscam/u/wangzz/avGibson/data/ig_dataset/scenes/resized_sem/' + self.scene_id + ".png"

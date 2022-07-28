@@ -7,7 +7,7 @@ LOG_INTERVAL: 10
 LOG_FILE: "data/logs/eval.log"
 CHECKPOINT_INTERVAL: 50
 CHECKPOINT_FOLDER: "data/checkpoints"
-EVAL_CKPT_PATH_DIR: "data/checkpoints/ckpt_sample_1.pth"
+EVAL_CKPT_PATH_DIR: "data/checkpoints/ckpt.177.pth"
 TENSORBOARD_DIR: "data/savi_rt/tb"
 MODEL_DIR: "data/savi_rt"
 TORCH_GPU_ID: 0

@@ -120,8 +120,9 @@ class PPOTrainer(BaseRLTrainer):
             last_ckpt = sorted(checkpoints, key=lambda x: int(x.split(".")[1]))[-1]
             checkpoint_path = last_ckpt
             # Restore checkpoints to models
-            ckpt_dict = self.load_checkpoint(checkpoint_path)
+            ckpt_dict = self.load_checkpoint(checkpoint_path, map_location="cpu")
             self.agent.load_state_dict(ckpt_dict["state_dict"])
+            self.agent.to(self.device)
             if self.config['use_belief_predictor']:
                 self.belief_predictor.load_state_dict(ckpt_dict["belief_predictor"])
             if self.config['use_rt_map']:
@@ -532,7 +533,7 @@ class PPOTrainer(BaseRLTrainer):
             test_em = None
             
         prev_actions = torch.zeros(
-            self.config['EVAL_NUM_PROCESS'], 1, device=self.device, dtype=torch.long
+            self.config['EVAL_NUM_PROCESS'], 2, device=self.device, dtype=torch.float32
         )
         not_done_masks = torch.zeros(
             self.config['EVAL_NUM_PROCESS'], 1, device=self.device
@@ -563,6 +564,18 @@ class PPOTrainer(BaseRLTrainer):
                 rt_pred_gt[i].append(pair)
         
         rgb_frames = [
+            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+        ]  # type: List[List[np.ndarray]]
+        depth_frames = [
+            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+        ]  # type: List[List[np.ndarray]]
+        top_down_frames = [
+            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+        ]  # type: List[List[np.ndarray]]
+        rt_map_frames = [
+            [] for _ in range(self.config['EVAL_NUM_PROCESS'])
+        ]  # type: List[List[np.ndarray]]
+        rt_map_gt_frames = [
             [] for _ in range(self.config['EVAL_NUM_PROCESS'])
         ]  # type: List[List[np.ndarray]]
         audios = [
@@ -643,7 +656,6 @@ class PPOTrainer(BaseRLTrainer):
                     pair = (map_prediction, map_gt)
                     rt_pred_gt[i].append(pair)
 
-                
             for i in range(self.envs.batch_size):
                 if len(self.config['VIDEO_OPTION']) > 0:
                     if self.config['use_belief_predictor']:
@@ -654,8 +666,12 @@ class PPOTrainer(BaseRLTrainer):
                     if "rgb" not in observations[i]:
                         observations[i]["rgb"] = np.zeros((self.config['DISPLAY_RESOLUTION'],
                                                            self.config['DISPLAY_RESOLUTION'], 3))
-                    frame = observations_to_image(observations[i], infos[i])
-                    rgb_frames[i].append(frame)
+                    rgb_frame, depth_frame, top_down_frame, rt_map_frame, rt_map_gt_frame = observations_to_image(observations[i], infos[i])
+                    rgb_frames[i].append(rgb_frame)
+                    depth_frames[i].append(depth_frame)
+                    top_down_frames[i].append(top_down_frame)
+                    rt_map_frames[i].append(rt_map_frame)
+                    rt_map_gt_frames[i].append(rt_map_gt_frame)
                     
             rewards = torch.tensor(
                 rewards, dtype=torch.float, device=self.device
@@ -704,11 +720,47 @@ class PPOTrainer(BaseRLTrainer):
                             audios=None,
                             fps=fps
                         )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=depth_frames[i][:-1],
+                            scene_name="depth_video_out",
+                            sound='_',
+                            sr=44100,
+                            episode_id=0,
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+#                             audios=audios[i][:-1] if self.config['extra_audio'] else None,
+                            audios=None,
+                            fps=fps
+                        )
+                        generate_video(
+                            video_option=self.config['VIDEO_OPTION'],
+                            video_dir=self.config['VIDEO_DIR'],
+                            images=top_down_frames[i][:-1],
+                            scene_name="top_down_video_out",
+                            sound='_',
+                            sr=44100,
+                            episode_id=0,
+                            checkpoint_idx=checkpoint_index,
+                            metric_name='spl',
+                            metric_value=infos[i]['spl'],
+                            tb_writer=writer,
+#                             audios=audios[i][:-1] if self.config['extra_audio'] else None,
+                            audios=None,
+                            fps=fps
+                        )
 
                         # observations has been reset but info has not
                         # to be consistent, do not use the last frame
                         rgb_frames[i] = []
-                        audios[i] = []
+                        depth_frames[i] = []
+                        top_down_frames[i] = []
+                        rt_map_frames[i] = []
+                        rt_map_gt_frames[i] = []
+                        audios[i] = [] 
         
                 count += 1
                     

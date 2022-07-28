@@ -158,8 +158,8 @@ class DDPPOTrainer(PPOTrainer):
                 
             #RT
             if self.config['use_rt_map']:
-                # rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
-                rt_class = RTPredictor
+                rt_class = RTPredictorDDP if self.config['online_training'] else RTPredictor
+                # rt_class = RTPredictor
                 self.rt_predictor = rt_class(self.config, self.device, self.envs.batch_size).to(device=self.device)
                 self.rt_predictor.rt_loss_fn = NonZeroWeightedCrossEntropy().to(device=self.device)
                 if self.config['online_training']:
@@ -217,13 +217,16 @@ class DDPPOTrainer(PPOTrainer):
         )
 
         
-    def train(self) -> None:
+    def train(self, args) -> None:
         r"""Main method for DD-PPO.
 
         Returns:
             None
         """
+
+        FreePort = args.free_port
         self.local_rank, tcp_store = init_distrib_slurm(
+            FreePort,
             self.config['distrib_backend']
         )
         add_signal_handlers()
@@ -249,7 +252,8 @@ class DDPPOTrainer(PPOTrainer):
         torch.manual_seed(self.config['SEED'])
 
         if torch.cuda.is_available():
-            self.device = torch.device("cuda", self.local_rank)
+            self.device = torch.device("cuda", self.world_rank)
+            print("cuda_world_rank", self.world_rank)
             torch.cuda.set_device(self.device)
         else:
             self.device = torch.device("cpu")
@@ -258,7 +262,7 @@ class DDPPOTrainer(PPOTrainer):
         scene_splits = data.split(self.config['NUM_PROCESSES'])
 
         def load_env(scene_ids):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=self.world_rank)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_splits], blocking=False)
@@ -273,10 +277,9 @@ class DDPPOTrainer(PPOTrainer):
         self.agent.init_distributed(find_unused_params=True)
         if self.config['use_belief_predictor'] and self.config['online_training']:
             self.belief_predictor.init_distributed(find_unused_params=True)
-        # if self.config['use_rt_map'] and self.config['online_training']:
-        #     self.rt_predictor.init_distributed(find_unused_params=True)
+        if self.config['use_rt_map'] and self.config['online_training']:
+            self.rt_predictor.init_distributed(find_unused_params=True)
         
-
         if self.world_rank == 0:
             logger.info(
                 "agent number of trainable parameters: {}".format(
@@ -293,6 +296,16 @@ class DDPPOTrainer(PPOTrainer):
                         sum(
                             param.numel()
                             for param in self.belief_predictor.parameters()
+                            if param.requires_grad
+                        )
+                    )
+                )
+            if self.config['use_rt_map']:
+                logger.info(
+                    "belief rt predictor number of trainable parameters: {}".format(
+                        sum(
+                            param.numel()
+                            for param in self.rt_predictor.parameters()
                             if param.requires_grad
                         )
                     )

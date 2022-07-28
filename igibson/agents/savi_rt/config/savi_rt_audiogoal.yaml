@@ -1,15 +1,15 @@
-NUM_PROCESSES: 2
+NUM_PROCESSES: 4
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt/train.log"
+LOG_FILE: "data/savi_rt_slurm_0726/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt/checkpoints"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0726/checkpoints"
 EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/savi_rt/tb"
-MODEL_DIR: "data/savi_rt"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0726/tb"
+MODEL_DIR: "data/savi_rt_slurm_0726/"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
-TORCH_GPU_ID: 1
+TORCH_GPU_ID: 0
 SEED: 0
 VIDEO_OPTION: []
 HAS_DISTRACTOR_SOUND: False
@@ -90,6 +90,8 @@ trav_map_type: with_obj
 trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
+not_load_object_categories: ['door']
+texture_scale: 0.8
 
 is_discrete: True
 min_std: 1e-6
@@ -125,7 +127,7 @@ robot:
             use_delta_commands: false
 
 # sensor spec
-output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, top_down]
+output: [depth, rgb, audio, category_belief, location_belief, rt_map_features, pose_sensor, task_obs, category, bump]
 extra_rgb: false
 
 # image

@@ -1,6 +1,11 @@
-assets_path: /viscam/u/wangzz/avGibson/data/assets
+# assets_path: /viscam/u/wangzz/avGibson/data/assets
 g_dataset_path: /cvgl/group/Gibson/matterport3d-downsized/v1
-ig_dataset_path: /viscam/u/wangzz/avGibson/data/ig_dataset
+# ig_dataset_path: /viscam/u/wangzz/avGibson/data/ig_dataset
 threedfront_dataset_path: /viscam/u/wangzz/avGibson/data/threedfront_dataset
 cubicasa_dataset_path: /viscam/u/wangzz/avGibson/data/cubicasa_dataset
-key_path: /viscam/u/wangzz/iGibson/gibson2/data/igibson.key
+# key_path: /viscam/u/wangzz/iGibson/gibson2/data/igibson.key
+
+assets_path: /viscam/u/li2053/iGibson-dev/igibson/data/assets
+ig_dataset_path: /viscam/u/li2053/iGibson-dev/igibson/data/ig_dataset
+key_path: /viscam/u/li2053/iGibson-dev/igibson/data/igibson.key
+

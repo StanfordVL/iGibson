@@ -29,6 +29,7 @@ from igibson.reward_functions.collision_reward import CollisionReward
 from igibson.objects import cube
 from igibson.audio.audio_system import AudioSystem
 import igibson.audio.default_config as default_audio_config
+from torch import device
 from utils import dataset
 # from utils.utils import quaternion_from_coeff, cartesian_to_polar
 from utils.dataset import CATEGORIES, CATEGORY_MAP
@@ -47,9 +48,9 @@ class AVNavRLEnv(iGibsonEnv):
     """
     Redefine the environment (robot, task, dataset)
     """
-    def __init__(self, config_file, mode, scene_splits):
+    def __init__(self, config_file, mode, scene_splits, device_idx):
         scene_id = np.random.choice(scene_splits)
-        super().__init__(config_file, scene_id, mode)
+        super().__init__(config_file, scene_id, mode, device_idx=device_idx)
         self.config["scene_splits"] = scene_splits
         
     def load(self):

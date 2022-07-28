@@ -96,12 +96,13 @@ class BeliefPredictor(nn.Module):
             pass
 
         if self.predict_label:
-            state_dict = torch.load(self.config['label_models'])
+            state_dict = torch.load(self.config['label_models'], map_location="cpu")
             cleaned_state_dict = {
                 k[len('predictor.'):]: v for k, v in state_dict['audiogoal_predictor'].items()
                 if 'predictor.' in k
             }
             self.classifier.load_state_dict(cleaned_state_dict)
+            # self.classifier.to(self.device)
             logging.info("Loaded pretrained label classifier")
 
     def freeze_encoders(self):

@@ -195,6 +195,8 @@ def batch_obs(
         )
         if sensor == "bump":
             batch["bump"] = batch["bump"][:, None]
+        if sensor == "map_resolution":
+            batch["map_resolution"] = batch["map_resolution"][:, None]
  
     return batch
 
@@ -388,6 +390,9 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
     """
     egocentric_view_l_rgb: List[np.ndarray] = []
     egocentric_view_l_depth: List[np.ndarray] = []
+    top_down_view: List[np.ndarray] = []
+    rt_map_view: List[np.ndarray] = []
+    rt_map_gt_view: List[np.ndarray] = []
     if "rgb" in observation:
         rgb = observation["rgb_video"]
         if not isinstance(rgb, np.ndarray):
@@ -404,6 +409,13 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
         depth_map = depth_map.astype(np.uint8)
         depth_map = np.stack([depth_map for _ in range(3)], axis=2)
         egocentric_view_l_depth.append(depth_map)
+    
+    if "top_down" in observation:
+        top_down = observation["top_down_video"]
+        if not isinstance(top_down, np.ndarray):
+            top_down = top_down.cpu().numpy()
+            
+        top_down_view.append(top_down)
 
     # add image goal if observation has image_goal info
     if "imagegoal" in observation:
@@ -415,8 +427,9 @@ def observations_to_image(observation: Dict, info: Dict) -> np.ndarray:
 
     egocentric_view_rgb = np.concatenate(egocentric_view_l_rgb, axis=1)
     egocentric_view_depth = np.concatenate(egocentric_view_l_depth, axis=1)
+    top_down_view = np.concatenate(top_down_view, axis=1)
 
-    return egocentric_view_rgb, egocentric_view_depth
+    return egocentric_view_rgb, egocentric_view_depth, top_down_view, rt_map_view, rt_map_gt_view
 
 def images_to_video(
     images: List[np.ndarray],

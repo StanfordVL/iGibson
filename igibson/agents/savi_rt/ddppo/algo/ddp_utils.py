@@ -17,13 +17,14 @@ from typing import Any, Optional, Tuple
 import ifcfg
 import torch
 import torch.distributed as distrib
-
+from datetime import timedelta
 # from habitat import logger
 
 EXIT = threading.Event()
 EXIT.clear()
 REQUEUE = threading.Event()
 REQUEUE.clear()
+
 
 
 # Default port to initialized the TCP store on
@@ -120,6 +121,7 @@ def get_ifname():
 
 
 def init_distrib_slurm(
+    FreePort,
     backend: str = "nccl",
 ) -> Tuple[int, torch.distributed.TCPStore]:
     r"""Initializes torch.distributed by parsing environment variables set
@@ -139,7 +141,11 @@ def init_distrib_slurm(
     if "NCCL_SOCKET_IFNAME" not in os.environ:
         os.environ["NCCL_SOCKET_IFNAME"] = get_ifname()
 
-    master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
+    if FreePort is not None:
+        master_port = FreePort
+    else:
+        master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
+    print(master_port)
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)
 
     # Check to see if we should parse from torch.distributed.launch
@@ -157,11 +163,12 @@ def init_distrib_slurm(
         local_rank = 0
         world_rank = 0
         world_size = 1
-
+    print(master_port)
     tcp_store = distrib.TCPStore(
-        master_addr, master_port, world_size, world_rank == 0
+        master_addr, master_port, world_size, world_rank == 0, timedelta(seconds=10)
     )
     distrib.init_process_group(
         backend, store=tcp_store, rank=world_rank, world_size=world_size
     )
+
     return local_rank, tcp_store

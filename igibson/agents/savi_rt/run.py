@@ -22,6 +22,8 @@ from igibson.agents.savi_rt.ppo.policy import AudioNavSMTNet
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--local_rank", type=int)
+    parser.add_argument("--free_port", type=int)
     parser.add_argument(
         "--run-type",
         choices=["train", "eval"],
@@ -96,7 +98,7 @@ def main():
                         datefmt="%Y-%m-%d %H:%M:%S")
 
     if args.run_type == "train":
-        trainer.train()
+        trainer.train(args)
     elif args.run_type == "eval":
         trainer.eval()
 

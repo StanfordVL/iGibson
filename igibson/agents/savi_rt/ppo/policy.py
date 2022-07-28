@@ -299,6 +299,7 @@ class AudioNavSMTNet(Net):
         self._bump = False
         
         assert "audio" in observation_space.spaces
+        print("initializing goal encoder")
         self.goal_encoder = AudioCNN(observation_space, 128, "audio")
         audio_feature_dims = 128
 
