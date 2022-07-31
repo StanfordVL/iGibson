@@ -89,7 +89,6 @@ class iGibsonEnv(BaseEnv):
         self.scene_id = scene_id
         self.num_episode = 0
         self.automatic_reset = self.config.get("automatic_reset", True)
-        print("using deivce:", device_idx)
 
     def load_task_setup(self):
         """
@@ -267,7 +266,6 @@ class iGibsonEnv(BaseEnv):
         if 'audio' in self.output:
             if self.audio_system is not None:
                 spectrogram = self.audio_system.get_spectrogram()
-                print(spectrogram.shape)
                 observation_space['audio'] = self.build_obs_space(
                     shape=spectrogram.shape, low=-np.inf, high=np.inf)
             else:

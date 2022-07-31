@@ -11,6 +11,7 @@ import torch.nn.functional as F
 import math
 from PIL import Image
 import scipy
+import math
 
 from igibson.agents.savi_rt.utils.utils import to_tensor
 from igibson.agents.savi_rt.models.Unet_parts import UNetUp
@@ -114,19 +115,26 @@ class RTPredictor(nn.Module):
  
         self.out_scale = (32, 32)
         self.n_channels_out = 128 # resnet 18
-        self.rt_map_input_size = 50
+        self.rt_map_input_size = 32
         self.rt_map_output_size = 28 #put it in self.config, also change in parallel_env 28
         self.rooms = 23
 
         max_out_scale = np.amax(self.out_scale)
         n_upscale = int(np.ceil(math.log(max_out_scale, 2)))
-        unet = [UNetUp(max(self.n_channels_out // (2**i), 8),
-                   max(self.n_channels_out // (2**(i + 1)), 8),
+        unet = [UNetUp(max(self.n_channels_out // (2**i), 64),
+                   max(self.n_channels_out // (2**(i + 1)), 64),
                    bilinear=False,
                    norm="batchnorm") for i in range(n_upscale)]
         
         self.scaler = nn.ModuleList(unet).to(device)
-        self.n_channels_out = max(self.n_channels_out // (2**(n_upscale)), 8)
+        
+        self.audio_scaler = nn.ModuleList([
+            UNetUp(128, 128, bilinear=False, norm="batchnorm")
+            for i in range(n_upscale)
+        ])
+        self.audio_scaler.to(device)
+
+        self.n_channels_out = max(self.n_channels_out // (2**(n_upscale)), 64)
         
         self.audio_cnn = nn.Sequential(
 #             nn.BatchNorm1d(512),
@@ -134,13 +142,18 @@ class RTPredictor(nn.Module):
         ).to(device)   
         
         # for encoder/decoder:
-        self.input_size = 8*self.rt_map_input_size*self.rt_map_input_size*2
+        self.input_size = (128 + 64)*self.rt_map_input_size*self.rt_map_input_size*2
         self.hidden_size = self.rt_map_output_size*self.rt_map_output_size
 #         self.hidden_states = torch.zeros(1, self.batch_size, self.hidden_size, device=self.device)
 
         self.rnn = RNNStateEncoder(input_size=self.input_size, 
                                    hidden_size=self.hidden_size).to(self.device)
         self.outc = outconv(1, self.rooms)
+
+        self.register_buffer(
+            'position_feat',
+            self.position_encoding(np.array([32, 32]), 64)
+        )
         
        
     def init_hidden_states(self):
@@ -148,7 +161,7 @@ class RTPredictor(nn.Module):
         return hidden_states
 
     def feature_alignment(self, local_feature_maps, pos, orn, masks, map_resolution):      
-        batch_sz, channels, local_sz, _ = local_feature_maps.shape # batch_sz*step_sz, 8, 32, 32
+        batch_sz, channels, local_sz, _ = local_feature_maps.shape # batch_sz*step_sz, 128 + 64, 32, 32
         global_sz = self.rt_map_input_size # 50
         
         global_maps = np.zeros((batch_sz, channels, global_sz, global_sz))
@@ -157,14 +170,33 @@ class RTPredictor(nn.Module):
         transformed_global_maps = np.zeros((batch_sz, channels, global_sz, global_sz))
         
         for i in range(batch_sz):
-            transformed = scipy.ndimage.rotate(global_maps[i], -90+orn[i]*180.0/3.141593, 
+            transformed = scipy.ndimage.rotate(global_maps[i], -90+orn[i]*180.0/math.pi, 
                                  axes=(1, 2), reshape=False)
             delta_pos = pos[i, :2]/map_resolution[i]
             transformed = scipy.ndimage.shift(transformed, [0, -delta_pos[1], delta_pos[0]])
             transformed_global_maps[i] = transformed
         # adding a weighting factor
         return transformed_global_maps
-         
+    
+    def position_encoding(self, featshape, n_dim=64):
+        n_dim = n_dim
+        n_freq = n_dim // 2
+        div_term = torch.exp(
+            torch.arange(0, n_freq, 2).float() * (-math.log(10000.0) / n_freq))
+        height, width = featshape
+        out = torch.zeros(n_dim, height, width)
+        pos_w = torch.arange(-width // 2, width // 2 + height % 2).unsqueeze(1)
+        pos_h = torch.arange(-height // 2, height // 2 + height % 2).unsqueeze(1)
+        out[0:n_freq:2, :, :] = torch.sin(pos_h * div_term).transpose(
+            0, 1).unsqueeze(1).repeat(1, height, 1)
+        out[1:n_freq:2, :, :] = torch.cos(pos_h * div_term).transpose(
+            0, 1).unsqueeze(1).repeat(1, height, 1)
+        out[n_freq::2, :, :] = torch.sin(pos_w * div_term).transpose(
+            0, 1).unsqueeze(2).repeat(1, 1, width)
+        out[n_freq + 1::2, :, :] = torch.cos(pos_w * div_term).transpose(
+            0, 1).unsqueeze(2).repeat(1, 1, width)
+        out = out.unsqueeze(0)
+        return out
         
     def update(self, observations, dones, rt_hidden_states, visual_features=None, audio_features=None):
         # 23 rooms
@@ -186,7 +218,7 @@ class RTPredictor(nn.Module):
 
     def cnn_forward_audio(self, features):
         x_feat = self.audio_cnn(features).view(-1, 128, 1, 1)
-        for mod in self.scaler:
+        for mod in self.audio_scaler:
             x_feat = mod(x_feat)
         return x_feat
     
@@ -197,7 +229,16 @@ class RTPredictor(nn.Module):
         
         local_vmaps = self.cnn_forward_visual(visual_features).cpu().detach().numpy()
         local_amaps = self.cnn_forward_audio(audio_features).cpu().detach().numpy()
-        #[batch_sz*step_sz, 8, 32, 32]
+        #[batch_sz*step_sz, 128, 32, 32]
+        print("vmap", local_vmaps.shape)
+        print("amap", local_vmaps.shape)
+
+        local_vmaps = torch.cat((local_vmaps, self.position_feat.expand(local_vmaps.shape[0], -1, -1, -1)), 1)
+        local_amaps = torch.cat((local_amaps, self.position_feat.expand(local_amaps.shape[0], -1, -1, -1)), 1)
+        print("vmap_pos", local_vmaps.shape)
+        print("amap_pos", local_vmaps.shape)
+
+        #[batch_sz*step_sz, 128+64, 32, 32]
         
         curr_poses = observations["pose_sensor"][:, :2].cpu().detach().numpy()
         curr_orns = observations["pose_sensor"][:, 2].cpu().detach().numpy()
@@ -205,14 +246,16 @@ class RTPredictor(nn.Module):
         
         global_vmaps = self.feature_alignment(local_vmaps, curr_poses, curr_orns, masks, map_resolution)
         global_amaps = self.feature_alignment(local_amaps, curr_poses, curr_orns, masks, map_resolution)
-        # [batch_sz*step_sz, 8, 50, 50]
+        print("global_vmap_pos", global_vmaps.shape)
+        print("global_amap_pos", global_vmaps.shape)
+        # [batch_sz*step_sz, 128 + 64, 32, 32]
         
         global_vmaps = (torch.from_numpy(global_vmaps)).view(visual_features.shape[0], -1).to(self.device) 
         global_amaps = (torch.from_numpy(global_amaps)).view(visual_features.shape[0], -1).to(self.device)
-        # [batch_sz*step_sz, 20000]
+        # [batch_sz*step_sz, 320000]
 
         global_maps = torch.stack([global_vmaps, global_amaps], dim=1).view(visual_features.shape[0], -1)
-        # [batch_sz*step_sz, 2, 20000] (view)-> [batch_sz*step_sz, 2*20000]
+        # [batch_sz*step_sz, 2, 320000] (view)-> [batch_sz*step_sz, 2*320000]
         global_maps, rt_hidden_states = self.rnn(global_maps.type(torch.FloatTensor).to(self.device), 
                                                rt_hidden_states, masks)
         

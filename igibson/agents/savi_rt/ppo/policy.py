@@ -321,9 +321,9 @@ class AudioNavSMTNet(Net):
 #         if self._use_category_input:
 #             nfeats += len(CATEGORIES) #gt
             
-        if self._use_rt_map_features:
-            assert "rt_map_features" in observation_space.spaces
-            nfeats += observation_space.spaces["rt_map_features"].shape[0]
+        # if self._use_rt_map_features:
+        #     assert "rt_map_features" in observation_space.spaces
+        #     nfeats += observation_space.spaces["rt_map_features"].shape[0]
         
         # Add pose observations to the memory
         assert "pose_sensor" in observation_space.spaces
@@ -390,6 +390,14 @@ class AudioNavSMTNet(Net):
                 belief = self.belief_encoder(belief)
         else:
             belief = None
+        print("x shape", x.shape)
+        # print("belief", belief.shape)
+        # print("RT_MAP", observations["rt_map_features"].shape)
+        # if self._use_rt_map_features:
+        #     rt_feat = torch.zeros((x.shape[0], 784), device=x.device)
+        #     rt_feat[:] = observations["rt_map_features"]
+        
+        # target = torch.cat((belief, rt_feat), dim=1)
 
         x_att = self.smt_state_encoder(x, ext_memory, ext_memory_masks, goal=belief)
         if self._use_residual_connection:
@@ -446,8 +454,8 @@ class AudioNavSMTNet(Net):
                 x_unflattened.append(observations["bump"])
 #         if self._use_category_input:
 #             x_unflattened.append(observations["category"])
-        if self._use_rt_map_features:
-            x_unflattened.append(observations["rt_map_features"])
+        # if self._use_rt_map_features:
+        #     x_unflattened.append(observations["rt_map_features"])
         x_unflattened.append(observations["pose_sensor"])
         x = torch.cat(x_unflattened, dim=1)
         # redundant: x_unflattened[0] in ppo_trainer, observations['visual_features']

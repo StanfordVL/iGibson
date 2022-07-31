@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 #SBATCH --job-name=audiogoal_occl1
-#SBATCH --partition=svl --qos=normal --nodelist=svl7
+#SBATCH --partition=svl --qos=normal --nodelist=svl9
 #SBATCH --nodes=1
 #SBATCH --ntasks=6
 #SBATCH --ntasks-per-node=6

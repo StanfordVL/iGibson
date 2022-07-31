@@ -75,6 +75,7 @@ class DDPPOTrainer(PPOTrainer):
         has_distractor_sound = self.config['HAS_DISTRACTOR_SOUND']
         if self.config["robot"]["action_type"] == "discrete":
             self.is_discrete = True
+
         elif self.config["robot"]["action_type"] == "continuous":
             self.is_discrete=False
         else:
@@ -146,7 +147,8 @@ class DDPPOTrainer(PPOTrainer):
                 bp_class = BeliefPredictorDDP if self.config['online_training'] else BeliefPredictor
                 self.belief_predictor = bp_class(self.config, self.device, smt._input_size, smt._pose_indices,
                                                  smt.hidden_state_size, self.envs.batch_size, has_distractor_sound
-                                                 ).to(device=self.device)
+                                                 )
+                self.belief_predictor.to(device=self.device)
                 if self.config['online_training']:
                     params = list(self.belief_predictor.predictor.parameters())
                     if self.config['train_encoder']:
@@ -154,7 +156,7 @@ class DDPPOTrainer(PPOTrainer):
                                   list(self.actor_critic.net.visual_encoder.parameters()) + \
                                   list(self.actor_critic.net.action_encoder.parameters())
                     self.belief_predictor.optimizer = torch.optim.Adam(params, lr=self.config['belief_cfg_lr'])
-#                 self.belief_predictor.freeze_encoders() # ?
+                self.belief_predictor.freeze_encoders() # try both
                 
             #RT
             if self.config['use_rt_map']:
@@ -344,28 +346,24 @@ class DDPPOTrainer(PPOTrainer):
         # they will be kept in memory for the entire duration of training!
         batch = None
         observations = None
-        # 0518
-#         current_episode_reward = torch.zeros(
-#             self.envs.batch_size, 1, device=self.device
-#         )
-#         running_episode_stats = dict(
-#             count=torch.zeros(self.envs.batch_size, 1, device=self.device),
-#             reward=torch.zeros(self.envs.batch_size, 1, device=self.device),
-#         )
-#         window_episode_stats = defaultdict(
-#             lambda: deque(maxlen=self.config['reward_window_size'])
-#         )
+        
+        # episode_spls = torch.zeros(self.envs.batch_size, 1, device=self.device)
+        # episode_steps = torch.zeros(self.envs.batch_size, 1, device=self.device)
 
-        episode_rewards = torch.zeros(self.envs.batch_size, 1)
-        episode_spls = torch.zeros(self.envs.batch_size, 1)
-        episode_steps = torch.zeros(self.envs.batch_size, 1)
-        episode_counts = torch.zeros(self.envs.batch_size, 1)
-        current_episode_reward = torch.zeros(self.envs.batch_size, 1)
-        current_episode_step = torch.zeros(self.envs.batch_size, 1)
-        window_episode_reward = deque(maxlen=self.config['reward_window_size'])
-        window_episode_spl = deque(maxlen=self.config['reward_window_size'])
-        window_episode_step = deque(maxlen=self.config['reward_window_size'])
-        window_episode_counts = deque(maxlen=self.config['reward_window_size'])
+        running_episode_stats = dict(
+            reward=torch.zeros(self.envs.batch_size, 1, device=self.device),
+            count=torch.zeros(self.envs.batch_size, 1, device=self.device),
+        )
+        print(running_episode_stats)
+
+        current_episode_reward = torch.zeros(self.envs.batch_size, 1, device=self.device)
+        # current_episode_step = torch.zeros(self.envs.batch_size, 1, device=self.device)
+        # window_episode_spl = deque(maxlen=self.config['reward_window_size'])
+        # window_episode_step = deque(maxlen=self.config['reward_window_size'])
+        
+        window_episode_stats = defaultdict(
+            lambda:deque(maxlen=self.config['reward_window_size'])
+        )
 
         t_start = time.time()
         env_time = 0
@@ -387,7 +385,7 @@ class DDPPOTrainer(PPOTrainer):
         interrupted_state = load_interrupted_state()
         if interrupted_state is not None:
             self.agent.load_state_dict(interrupted_state["state_dict"])
-            if self.config.RL.PPO.use_belief_predictor:
+            if self.config['use_belief_predictor']:
                 self.belief_predictor.load_state_dict(interrupted_state["belief_predictor"])
             self.agent.optimizer.load_state_dict(
                 interrupted_state["optim_state"]
@@ -437,13 +435,14 @@ class DDPPOTrainer(PPOTrainer):
                                 config=self.config,
                                 requeue_stats=requeue_stats,
                             )
-                        if self.config.RL.PPO.use_belief_predictor:
+                        if self.config['use_belief_predictor']:
                             state_dict['belief_predictor'] = self.belief_predictor.state_dict()
                         save_interrupted_state(state_dict)
 
                     requeue_job()
                     return
 
+                count_steps_delta = 0
                 self.agent.eval() # set to eval mode
                 if self.config['use_belief_predictor']:
                     self.belief_predictor.eval()
@@ -455,21 +454,26 @@ class DDPPOTrainer(PPOTrainer):
                         delta_env_time,
                         delta_steps,
                     ) = self._collect_rollout_step(
-#                         rollouts, current_episode_reward, running_episode_stats # 0518
                         rollouts,
                         current_episode_reward,
-                        current_episode_step,
-                        episode_rewards,
-                        episode_spls,
-                        episode_counts,
-                        episode_steps
+                        # current_episode_step,
+                        # episode_spls,
+                        # episode_steps,
+                        running_episode_stats,
                     )
                     pth_time += delta_pth_time
                     env_time += delta_env_time
-                    count_steps += delta_steps
+                    count_steps_delta += delta_steps
 
                     # This is where the preemption of workers happens.  If a
                     # worker detects it will be a straggler, it preempts itself!
+                    if (
+                        step
+                        >= self.config['num_steps'] * self.SHORT_ROLLOUT_THRESHOLD
+                    ) and int(num_rollouts_done_store.get("num_done")) > (
+                        self.config['sync_frac'] * self.world_size
+                    ):
+                        break
 
                 num_rollouts_done_store.add("num_done", 1)
 
@@ -508,22 +512,53 @@ class DDPPOTrainer(PPOTrainer):
                         dist_entropy,
                     ) = self._update_agent(rollouts)
                     pth_time += delta_pth_time
+                
+                stats_ordering = list(sorted(running_episode_stats.keys()))
+
+                stats = torch.stack(
+                    [running_episode_stats[k] for k in stats_ordering], 0
+                )
+
+                distrib.all_reduce(stats)
+                
+                for i, k in enumerate(stats_ordering):
+                    window_episode_stats[k].append(stats[i].clone())
+
+                # window_episode_spl.append(episode_spls.clone())
+                # window_episode_step.append(episode_steps.clone())
+
+                stats = torch.tensor(
+                    [value_loss, action_loss, dist_entropy, location_predictor_loss, prediction_accuracy, rt_predictor_loss, rt_prediction_accuracy, count_steps_delta],
+                    device=self.device,
+                )
+
+                distrib.all_reduce(stats)
+                count_steps += stats[-1].item()
 
                 if self.world_rank == 0:        
                     num_rollouts_done_store.set("num_done", "0")
-
-                    window_episode_reward.append(episode_rewards.clone())
-                    window_episode_spl.append(episode_spls.clone())
-                    window_episode_step.append(episode_steps.clone())
-                    window_episode_counts.append(episode_counts.clone())
-
-                    losses = [value_loss, action_loss, dist_entropy, rt_predictor_loss]
-                    stats = zip(
-                        ["count", "reward", "step", 'spl'],
-                        [window_episode_counts, window_episode_reward, window_episode_step, window_episode_spl],)
+                    
+                    # window_episode_counts = window_episode_stats['episode_counts']
+                    # window_episode_rewards = window_episode_stats['episode_rewards']
+                    losses = [
+                        stats[0].item() / self.world_size,
+                        stats[1].item() / self.world_size,
+                        stats[2].item() / self.world_size,
+                        stats[3].item() / self.world_size,
+                        stats[4].item() / self.world_size,
+                        stats[5].item() / self.world_size,
+                        stats[6].item() / self.world_size,
+                    ]
+                    # stats = zip(
+                    #     ["count", "reward", "step", 'spl'],
+                    #     [window_episode_counts, window_episode_rewards, window_episode_step, window_episode_spl],)
                     deltas = {
-                        k: ((v[-1] - v[0]).sum().item()
-                            if len(v) > 1 else v[0].sum().item()) for k, v in stats}
+                        k: (
+                            (v[-1] - v[0]).sum().item()
+                            if len(v) > 1 
+                            else v[0].sum().item()
+                        ) 
+                        for k, v in window_episode_stats.items()}
                     deltas["count"] = max(deltas["count"], 1.0)
                 
                     writer.add_scalar(
@@ -540,54 +575,20 @@ class DDPPOTrainer(PPOTrainer):
                     if len(metrics) > 0:
                         for metric, value in metrics.items():
                             writer.add_scalar(f"Metrics/{metric}", value, count_steps)
-# 0518
-#                     writer.add_scalar("Policy/value_loss", losses[0], count_steps)
-#                     writer.add_scalar("Policy/policy_loss", losses[1], count_steps)
-#                     writer.add_scalar("Policy/entropy_loss", losses[2], count_steps)
-#                     writer.add_scalar("Policy/predictor_loss", losses[3], count_steps)
-#                     writer.add_scalar("Policy/predictor_accuracy", losses[4], count_steps)
-#                     writer.add_scalar('Policy/learning_rate', lr_scheduler.get_lr()[0], count_steps)
-                    if update % 10 == 0:
-                        writer.add_scalar("Environment/Reward", deltas["reward"] / deltas["count"], count_steps)
-                        writer.add_scalar("Environment/SPL", deltas["spl"] / deltas["count"], count_steps)
-                        writer.add_scalar("Environment/Episode_length", deltas["step"] / deltas["count"], count_steps)
-                        writer.add_scalar('Policy/Value_Loss', value_loss, count_steps)
-                        writer.add_scalar('Policy/Action_Loss', action_loss, count_steps)
-                        writer.add_scalar('Policy/Entropy', dist_entropy, count_steps)
-                        writer.add_scalar('Policy/location_predictor_loss', location_predictor_loss, count_steps)
-                        writer.add_scalar('Policy/prediction_accuracy', prediction_accuracy, count_steps)
-                        writer.add_scalar('Policy/rt_predictor_loss', rt_predictor_loss, count_steps)
-                        writer.add_scalar('Policy/rt_predictor_accuracy', rt_prediction_accuracy, count_steps)
-                        writer.add_scalar('Policy/Learning_Rate', lr_scheduler.get_lr()[0], count_steps)
-#                         grid = torchvision.utils.make_grid(images)
-#                         writer.add_image('images', grid, 0)
-#                         writer.add_graph(model, images)
-                    # log stats 0518
-#                     if update > 0 and update % self.config['LOG_INTERVAL'] == 0:
-#                         logger.info(
-#                             "update: {}\tfps: {:.3f}\t".format(
-#                                 update,
-#                                 (count_steps - count_steps_start)
-#                                 / ((time.time() - t_start) + prev_time),
-#                             )
-#                         )
 
-#                         logger.info(
-#                             "update: {}\tenv-time: {:.3f}s\tpth-time: {:.3f}s\t"
-#                             "frames: {}".format(
-#                                 update, env_time, pth_time, count_steps
-#                             )
-#                         )
-#                         logger.info(
-#                             "Average window size: {}  {}".format(
-#                                 len(window_episode_stats["count"]),
-#                                 "  ".join(
-#                                     "{}: {:.3f}".format(k, v / deltas["count"])
-#                                     for k, v in deltas.items()
-#                                     if k != "count"
-#                                 ),
-#                             )
-#                         )
+                    # if update % 10 == 0:
+                        # writer.add_scalar("Environment/Reward", deltas["reward"] / deltas["count"], count_steps)
+                        # writer.add_scalar("Environment/SPL", deltas["spl"] / deltas["count"], count_steps)
+                        # writer.add_scalar("Environment/Episode_length", deltas["step"] / deltas["count"], count_steps)
+                    writer.add_scalar('Policy/Value_Loss', losses[0], count_steps)
+                    writer.add_scalar('Policy/Action_Loss', losses[1], count_steps)
+                    writer.add_scalar('Policy/Entropy', losses[2], count_steps)
+                    writer.add_scalar('Policy/location_predictor_loss', losses[3], count_steps)
+                    writer.add_scalar('Policy/prediction_accuracy', losses[4], count_steps)
+                    writer.add_scalar('Policy/rt_predictor_loss', losses[5], count_steps)
+                    writer.add_scalar('Policy/rt_predictor_accuracy', losses[6], count_steps)
+                    writer.add_scalar('Policy/Learning_Rate', lr_scheduler.get_lr()[0], count_steps)
+
                     if update > 0 and update % self.config['LOG_INTERVAL'] == 0:
                         logger.info(
                             "update: {}\tfps: {:.3f}\t".format(update, count_steps / (time.time() - t_start)))
@@ -595,20 +596,30 @@ class DDPPOTrainer(PPOTrainer):
                         logger.info(
                             "update: {}\tenv-time: {:.3f}s\tpth-time: {:.3f}s\t"
                             "frames: {}".format(update, env_time, pth_time, count_steps))
-
-                        window_rewards = (
-                            window_episode_reward[-1] - window_episode_reward[0]).sum()
-                        window_counts = (
-                            window_episode_counts[-1] - window_episode_counts[0]).sum()
-
-                        if window_counts > 0:
-                            logger.info(
-                                "Average window size {} reward: {:3f}".format(len(window_episode_reward),
-                                    (window_rewards / window_counts).item(),))
-                            logger.info("rt_predictor_loss: {:3f}".format(rt_predictor_loss))
-                        else:
-                            logger.info("No episodes finish in current window")
                         
+                        logger.info(
+                            "Average window size: {}  {}".format(
+                                len(window_episode_stats["count"]),
+                                "  ".join(
+                                    "{}: {:.3f}".format(k, v / deltas["count"])
+                                    for k, v in deltas.items()
+                                    if k != "count"
+                                ),
+                            )
+                        )
+
+                        # window_rewards = (
+                        #     window_episode_rewards[-1] - window_episode_rewards[0]).sum()
+                        # window_counts = (
+                        #     window_episode_counts[-1] - window_episode_counts[0]).sum()
+
+                        # if window_counts > 0:
+                        #     logger.info(
+                        #         "Average window size {} reward: {:3f}".format(len(window_episode_rewards),
+                        #             (window_rewards / window_counts).item(),))
+                        #     logger.info("rt_predictor_loss: {:3f}".format(rt_predictor_loss))
+                        # else:
+                        #     logger.info("No episodes finish in current window")
                         
                         
                     # checkpoint model

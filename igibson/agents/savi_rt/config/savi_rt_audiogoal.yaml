@@ -2,12 +2,12 @@ NUM_PROCESSES: 4
 EVAL_NUM_PROCESS: 1
 NUM_UPDATES: 20000
 LOG_INTERVAL: 10
-LOG_FILE: "data/savi_rt_slurm_0726/train.log"
+LOG_FILE: "data/savi_rt_slurm_0730/train.log"
 CHECKPOINT_INTERVAL: 50
-CHECKPOINT_FOLDER: "data/savi_rt_slurm_0726/checkpoints"
+CHECKPOINT_FOLDER: "data/savi_rt_slurm_0730/checkpoints"
 EVAL_CKPT_PATH_DIR: "data/savi_rt/checkpoints/ckpt.52.pth"
-TENSORBOARD_DIR: "data/savi_rt_slurm_0726/tb"
-MODEL_DIR: "data/savi_rt_slurm_0726/"
+TENSORBOARD_DIR: "data/savi_rt_slurm_0730/tb"
+MODEL_DIR: "data/savi_rt_slurm_0730/"
 TRAIN_EPISODE_COUNT_PER_SCENE: 100
 TORCH_GPU_ID: 0
 SEED: 0
@@ -53,6 +53,7 @@ normalize_category_distribution: False
 # use_occupancy_map
 # use_roomtype_map
 use_rt_map: True
+enc_in_scale: [32,32]
 
 # smt
 smt_cfg_memory_size: 1
@@ -91,7 +92,7 @@ trav_map_resolution: 0.1
 trav_map_erosion: 3
 should_open_all_doors: true
 not_load_object_categories: ['door']
-texture_scale: 0.8
+texture_scale: 0.65
 
 is_discrete: True
 min_std: 1e-6

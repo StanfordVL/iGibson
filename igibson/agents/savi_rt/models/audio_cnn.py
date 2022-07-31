@@ -30,7 +30,7 @@ class AudioCNN(nn.Module):
         cnn_dims = np.array(
             observation_space.spaces[audiogoal_sensor].shape[:2], dtype=np.float32
         )
-        print(cnn_dims)
+
         self._has_distractor_sound = has_distractor_sound
         if has_distractor_sound:
             self._n_input_category = 21
@@ -55,7 +55,6 @@ class AudioCNN(nn.Module):
                 kernel_size=np.array(kernel_size, dtype=np.float32),
                 stride=np.array(stride, dtype=np.float32),
             )
-            print(cnn_dims)
 
         self.cnn = nn.Sequential(
             nn.Conv2d(

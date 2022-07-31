@@ -145,7 +145,6 @@ def init_distrib_slurm(
         master_port = FreePort
     else:
         master_port = int(os.environ.get("MASTER_PORT", DEFAULT_PORT))
-    print(master_port)
     master_addr = os.environ.get("MASTER_ADDR", DEFAULT_MASTER_ADDR)
 
     # Check to see if we should parse from torch.distributed.launch
@@ -163,7 +162,6 @@ def init_distrib_slurm(
         local_rank = 0
         world_rank = 0
         world_size = 1
-    print(master_port)
     tcp_store = distrib.TCPStore(
         master_addr, master_port, world_size, world_rank == 0, timedelta(seconds=10)
     )

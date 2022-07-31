@@ -177,10 +177,10 @@ class PPOTrainer(BaseRLTrainer):
     
 
     def _collect_rollout_step(
-        self, rollouts, current_episode_reward, current_episode_step, episode_rewards,
-            episode_spls, episode_counts, episode_steps
-#         self, rollouts, current_episode_reward, running_episode_stats #0518
+        self, rollouts, current_episode_reward, running_episode_stats,
     ):
+         #, current_episode_steps, episode_spls, episode_steps, 
+
         pth_time = 0.0
         env_time = 0.0
 
@@ -216,42 +216,44 @@ class PPOTrainer(BaseRLTrainer):
         env_time += time.time() - t_step_env
 
         t_update_stats = time.time()
-        batch = batch_obs(observations)
-        #0518
-#         rewards = torch.tensor(rewards, dtype=torch.float, device=current_episode_reward.device)
-        rewards = torch.tensor(rewards, dtype=torch.float)
+        batch = batch_obs(observations, device=self.device)
+        rewards = torch.tensor(rewards, dtype=torch.float, device=current_episode_reward.device)
         rewards = rewards.unsqueeze(1)
-        #0518
-#         masks = torch.tensor(
-#             [[0.0] if done else [1.0] for done in dones], dtype=torch.float, device=current_episode_reward.device)
+
         masks = torch.tensor(
-            [[0.0] if done else [1.0] for done in dones], dtype=torch.float)
-        spls = torch.tensor(
-            [[info['spl']] for info in infos])
+            [[0.0] if done else [1.0] for done in dones], dtype=torch.float, device=current_episode_reward.device)
+        # spls = torch.tensor(
+        #     [[info['spl']] for info in infos], device=current_episode_reward.device)
+        
         #0518
-#         current_episode_reward += rewards
-#         running_episode_stats["reward"] += (1 - masks) * current_episode_reward
-#         running_episode_stats["count"] += 1 - masks
-#         for k, v in self._extract_scalars_from_infos(infos).items():
-#             v = torch.tensor(
-#                 v, dtype=torch.float, device=current_episode_reward.device
-#             ).unsqueeze(1)
-#             if k not in running_episode_stats and k != 'last_observation.bump':
-#                 running_episode_stats[k] = torch.zeros_like(
-#                     running_episode_stats["count"]
-#                 )
-#             running_episode_stats[k] += (1 - masks) * v
-
-#         current_episode_reward *= masks
-
+        print("masks", masks.shape)
+        print("cur_reward", current_episode_reward.shape)
         current_episode_reward += rewards
-        current_episode_step += 1
-        episode_rewards += (1 - masks) * current_episode_reward
-        episode_spls += (1 - masks) * spls
-        episode_steps += (1 - masks) * current_episode_step
-        episode_counts += 1 - masks
+        running_episode_stats["reward"] += (1 - masks) * current_episode_reward
+        print("running_reward", running_episode_stats["reward"].shape)
+        running_episode_stats["count"] += 1 - masks
+        print(self._extract_scalars_from_infos(infos))
+        for k, v in self._extract_scalars_from_infos(infos).items():
+            print(k, v)
+            v = torch.tensor(
+                v, dtype=torch.float, device=current_episode_reward.device
+            ).unsqueeze(1)
+            if k not in running_episode_stats and k != 'last_observation.bump':
+                running_episode_stats[k] = torch.zeros_like(
+                    running_episode_stats["count"]
+                )
+            running_episode_stats[k] += (1 - masks) * v
+
         current_episode_reward *= masks
-        current_episode_step *= masks
+
+        # current_episode_reward += rewards
+        # current_episode_step += 1
+        # episode_rewards += (1 - masks) * current_episode_reward
+        # episode_spls += (1 - masks) * spls
+        # episode_steps += (1 - masks) * current_episode_step
+        # episode_counts += 1 - masks
+        # current_episode_reward *= masks
+        # current_episode_step *= masks
         
         rt_hidden_states = torch.zeros(1, self.envs.batch_size, self.rt_predictor.hidden_size) #placeholder   
         rollouts.insert(
@@ -485,7 +487,7 @@ class PPOTrainer(BaseRLTrainer):
         scene_splits = data.split(self.config['NUM_PROCESSES'], data_type="val")
         
         def load_env(scene_ids):
-            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids)
+            return AVNavRLEnv(config_file=self.config_file, mode='headless', scene_splits=scene_ids, device_idx=0)
 
         self.envs = ParallelNavEnv([lambda sid=sid: load_env(sid)
                          for sid in scene_splits])
